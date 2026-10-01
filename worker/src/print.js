@@ -15,7 +15,7 @@ export async function queuePrint(env, kind, lines) {
 export function kitchenTicket({ table, kind, lines, comment, by }) {
   return [
     ['invb', `СТІЛ ${table}`],
-    ['c', `${kind}${by ? ' · ' + by : ''}  ·  ${hhmm()}`],
+    ['c', `${kind}  ·  ${hhmm()}`],
     ['dbl'],
     ...lines.map(l => { const m = l.match(/^(\d+)× (.+?) — \d+$/); return ['k', m ? `${m[1]} × ${m[2]}` : l]; }),
     ...(comment ? [['dbl'], ['inv', `!! ${comment}`]] : []),
