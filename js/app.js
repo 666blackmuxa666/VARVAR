@@ -17,7 +17,7 @@
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const unit = s => lang === 'uk' ? s : s.replace(/ г/g, ' g').replace(/ л/g, ' l').replace(/^л$/, 'l').replace('шт', 'pc').replace("м'яса", 'meat');
   const money = n => n.toLocaleString('uk-UA') + ' ' + t('cur');
-  const IMG_VER = 6; // збільшити після оновлення фото, щоб телефони не брали стару копію
+  const IMG_VER = 7; // збільшити після оновлення фото, щоб телефони не брали стару копію
   let menu, byId = {};
   // напої — менші картки
   const DRINKS = new Set(['coffee', 'soft', 'lemonades', 'cocktails', 'shots', 'whisky', 'rum', 'vermouth', 'liqueur', 'cognac', 'vodka', 'tequila', 'gin', 'wine', 'beer', 'hookah']);
