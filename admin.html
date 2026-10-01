@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>VARVAR — адмін</title><link rel="stylesheet" href="css/style.css">
+<style>main{max-width:420px;padding-top:30px;display:grid;gap:12px}input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--text);font:inherit}pre{white-space:pre-wrap;color:var(--muted)}</style>
+</head><body><main>
+<h1 class="logo">VARVAR · Wi‑Fi</h1>
+<p>Відкрийте цю сторінку з телефону, <b>підключеного до Wi‑Fi закладу</b>, і натисніть кнопку. Тоді замовлення з цієї мережі прийматимуться. Робіть це, якщо гості пишуть, що не можуть замовити.</p>
+<input id="pin" type="password" inputmode="numeric" placeholder="PIN">
+<button class="btn" data-a="add">Це наша мережа ✓</button>
+<button class="btn ghost" data-a="list">Показати збережені</button>
+<button class="btn ghost" data-a="clear">Очистити всі</button>
+<pre id="out"></pre>
+</main>
+<script src="js/config.js"></script>
+<script>
+document.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
+  if (b.dataset.a === 'clear' && !confirm('Видалити всі мережі?')) return;
+  const r = await fetch(VARVAR.api + '/api/admin', { method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ pin: document.getElementById('pin').value, action: b.dataset.a }) });
+  const d = await r.json().catch(() => ({}));
+  document.getElementById('out').textContent = r.ok
+    ? `Ваша мережа зараз: ${d.current}\nЗбережені:\n` + d.list.map(x => `• ${x.k} (${new Date(x.at).toLocaleString('uk-UA')})`).join('\n')
+    : 'Невірний PIN';
+});
+</script>
+</body></html>

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="uk"><head><meta charset="utf-8"><title>Табличка QR</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik+Dirt&family=Rubik:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="../js/config.js"></script>
+<style>
+body{font-family:Rubik,sans-serif;margin:0;padding:20px;background:#ddd}
+.card{width:90mm;height:130mm;background:#141414;color:#eee;border-radius:6mm;padding:8mm;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center;margin:auto}
+h1{font-family:'Rubik Dirt';font-weight:400;font-size:40px;margin:0}
+#qr{background:#fff;padding:4mm;border-radius:3mm}
+.w{font-size:14px;line-height:1.5}.w b{color:#f2c14e}
+@media print{body{background:none;padding:0}.no{display:none}}
+</style></head><body>
+<p class="no">URL меню: <input id="u" size="50" value="https://666blackmuxa666.github.io/VARVAR/"> <button onclick="go()">Оновити</button> <button onclick="print()">Друк</button></p>
+<div class="card">
+  <h1>VARVAR</h1>
+  <div>Скануй — меню і замовлення<br><small>Scan for menu &amp; order</small></div>
+  <div id="qr"></div>
+  <div class="w">1. Підключіться до Wi‑Fi <b id="s"></b><br>Пароль: <b id="p"></b><br>2. Оберіть страви і стіл → Замовити</div>
+</div>
+<script>
+s.textContent = VARVAR.wifi.ssid; p.textContent = VARVAR.wifi.password;
+function go(){ qr.innerHTML=''; new QRCode(qr,{text:u.value,width:200,height:200,correctLevel:QRCode.CorrectLevel.M}); }
+go();
+</script>
+</body></html>
