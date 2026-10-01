@@ -25,6 +25,11 @@ export default {
         return b ? new Response(b, { headers: { 'content-type': 'image/jpeg', 'cache-control': 'public, max-age=31536000' } }) : new Response('', { status: 404 });
       }
       if (url.pathname.startsWith('/api/print/')) return printApi(req, env, url);
+      // програма друку і логотип через простий HTTP (Windows 7 не вміє TLS 1.2)
+      if (url.pathname === '/print/agent.ps1' || url.pathname === '/print/logo.png') {
+        const r = await fetch('https://666blackmuxa666.github.io/VARVAR/printer/' + (url.pathname.endsWith('.png') ? 'logo.png' : 'varvar-print.ps1'), { cf: { cacheTtl: 30 } });
+        return new Response(r.body, { headers: { 'content-type': url.pathname.endsWith('.png') ? 'image/png' : 'application/octet-stream' } });
+      }
       if (url.pathname === '/api/orders') { // статуси замовлень гостя: ?ids=a,b
         const ids = (url.searchParams.get('ids') || '').split(',').filter(x => /^[a-z0-9]{6,12}$/.test(x)).slice(0, 20);
         const out = {}; for (const id of ids) out[id] = await env.DB.get('ord:' + id, 'json');
