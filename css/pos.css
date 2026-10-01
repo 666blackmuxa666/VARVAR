@@ -31,7 +31,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); }
 .btn:disabled { opacity: .4; pointer-events: none; }
 
 /* ---------- вхід ---------- */
-.login { position: fixed; inset: 0; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 0%, #2a2410, var(--bg) 60%); }
+.login { position: fixed; top: 0; right: 0; bottom: 0; left: 0; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 0%, #2a2410, var(--bg) 60%); }
 .login-box { width: min(360px, 92vw); text-align: center; }
 .logo-img { display: block; margin: 0 auto; width: 190px; filter: invert(1); mix-blend-mode: screen; }
 .nav .brand img { width: 62px; filter: invert(1); mix-blend-mode: screen; display: block; }
@@ -117,9 +117,9 @@ main { overflow: auto; padding: 22px 24px 40px; }
 @keyframes in { from { opacity: 0; transform: translateY(8px); } }
 
 /* ---------- лист столу (sheet) ---------- */
-.sheet-bg { position: fixed; inset: 0; background: #000a; backdrop-filter: blur(6px); z-index: 20; animation: fade .2s; }
+.sheet-bg { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: #000a; backdrop-filter: blur(6px); z-index: 20; animation: fade .2s; }
 @keyframes fade { from { opacity: 0; } }
-.sheet { position: fixed; inset: 18px; z-index: 21; background: var(--bg2); border-radius: 28px; border: 1px solid var(--line); display: grid; grid-template-rows: auto 1fr; overflow: hidden; animation: up .28s cubic-bezier(.2, .9, .3, 1); box-shadow: 0 30px 80px #000c; }
+.sheet { position: fixed; top: 18px; right: 18px; bottom: 18px; left: 18px; z-index: 21; background: var(--bg2); border-radius: 28px; border: 1px solid var(--line); display: grid; grid-template-rows: auto 1fr; overflow: hidden; animation: up .28s cubic-bezier(.2, .9, .3, 1); box-shadow: 0 30px 80px #000c; }
 @keyframes up { from { transform: translateY(40px); opacity: 0; } }
 .sheet-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .sheet-head h2 { margin: 0; font-size: 26px; font-weight: 800; }
@@ -177,7 +177,7 @@ main { overflow: auto; padding: 22px 24px 40px; }
 .form label { font-size: 13px; color: var(--muted); display: grid; gap: 6px; }
 
 /* ---------- модальні вікна ---------- */
-.modal-bg { position: fixed; inset: 0; background: #0009; backdrop-filter: blur(8px); z-index: 40; display: grid; place-items: center; animation: fade .15s; padding: 16px; }
+.modal-bg { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: #0009; backdrop-filter: blur(8px); z-index: 40; display: grid; place-items: center; animation: fade .15s; padding: 16px; }
 .modal { background: #232326ee; backdrop-filter: blur(30px); border-radius: 22px; width: min(420px, 100%); padding: 20px; border: 1px solid var(--line); animation: pop .2s cubic-bezier(.2, .9, .3, 1.2); max-height: 90vh; overflow: auto; }
 @keyframes pop { from { transform: scale(.92); opacity: 0; } }
 .modal h3 { margin: 0 0 6px; font-size: 19px; text-align: center; }
@@ -195,7 +195,7 @@ main { overflow: auto; padding: 22px 24px 40px; }
   .nav { order: 2; flex-direction: row; justify-content: space-around; border: 0; border-top: 1px solid var(--line); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); overflow-x: auto; }
   .nav .brand, .nav .grow, .nav .me { display: none; }
   .nav button { width: auto; min-width: 58px; padding: 6px 4px; }
-  .feed { position: fixed; inset: 0 0 0 auto; width: min(380px, 100%); z-index: 15; transform: translateX(100%); transition: transform .25s; box-shadow: -20px 0 50px #000a; }
+  .feed { position: fixed; top: 0; right: 0; bottom: 0; left: auto; width: min(380px, 100%); z-index: 15; transform: translateX(100%); transition: transform .25s; box-shadow: -20px 0 50px #000a; }
   .feed.open { transform: none; }
   main { padding: 16px 14px 30px; }
   .head h1 { font-size: 26px; }
@@ -203,7 +203,7 @@ main { overflow: auto; padding: 22px 24px 40px; }
   .tbl { padding: 10px 12px; border-radius: 18px; }
   .tbl .n { font-size: 28px; }
   .tbl .sum { font-size: 16px; }
-  .sheet { inset: 0; border-radius: 0; }
+  .sheet { top: 0; right: 0; bottom: 0; left: 0; border-radius: 0; }
   .sheet-body { grid-template-columns: 1fr; }
   .sheet-body.show-menu .bill, .sheet-body:not(.show-menu) .menu-pane { display: none; }
   .tabs2 { display: flex; gap: 6px; background: var(--card); border-radius: 12px; padding: 3px; }
