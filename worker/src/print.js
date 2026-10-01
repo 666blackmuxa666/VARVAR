@@ -42,7 +42,6 @@ export async function receipt(env, { table, bill, final, pay, by }) {
     ...(final ? [] : [['s', 'не є фіскальним чеком']]),
     ['gap'],
     ['lr', 'Стіл', String(table)],
-    ...(by ? [['lr', 'Офіціант', by]] : []),
     ...(bill.opened ? [['lr', 'Відкрито', fmt(bill.opened)]] : []),
     ['lr', final ? 'Закрито' : 'Надруковано', fmt(Date.now())],
     ['dbl'],
