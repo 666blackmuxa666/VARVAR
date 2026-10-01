@@ -1,0 +1,6 @@
+﻿@echo off
+chcp 65001 >nul
+del "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\VARVAR-print.vbs" 2>nul
+powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='powershell.exe'\" | Where-Object { $_.CommandLine -like '*varvar-print.ps1*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"
+echo Програму друку VARVAR зупинено і прибрано з автозапуску.
+pause

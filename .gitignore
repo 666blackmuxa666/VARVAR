@@ -6,3 +6,5 @@ worker/.dev.vars
 *.pdf
 *.HEIC
 worker/.tgsecret
+printer/varvar-print.config.json
+printer/*.zip

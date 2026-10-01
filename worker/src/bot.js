@@ -2,6 +2,7 @@
 // за паролем (звіти, видалення столів, меню, Wi‑Fi, пароль).
 import { getMenu, handleMenuText, handleMenuPhoto, HELP as MENU_HELP } from './menu.js';
 import { parseWaiterOrder, draftText } from './waiter.js';
+import { queuePrint, kitchenTicket, receipt } from './print.js';
 
 export const tg = (env, method, body) => fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 export const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -30,6 +31,7 @@ ${W.tables} — відкриті столи і суми
 ${W.close} — закрити рахунок (гість розрахувався)
 ${W.stop} — чого немає / повернути в меню
 ${W.admin} — режим адміністратора (за паролем)
+<code>принтер</code> — стан принтера і тестовий друк
 
 <b>Записати замовлення за стіл</b> — просто напишіть:
 <code>1
@@ -82,6 +84,7 @@ async function closeTable(env, t, who, pay = 'cash') {
   const bill = await getBill(env, t);
   if (!bill.total) return `Стіл ${t} вже закритий.`;
   const card = pay === 'card' ? bill.total : 0, cash = bill.total - card;
+  await queuePrint(env, 'receipt', await receipt(env, { table: t, bill, final: true, pay, by: who })); // фінальний чек
   await env.DB.delete('bill:' + t);
   await bump(env, 'day:' + dayKey(), d => { d.closed = (d.closed || 0) + bill.total; d.tables = (d.tables || 0) + 1; d.cash = (d.cash || 0) + cash; d.card = (d.card || 0) + card; });
   await logClosed(env, { t, sum: bill.total, cash, card, at: hhmm(), by: who || '' });
@@ -89,7 +92,7 @@ async function closeTable(env, t, who, pay = 'cash') {
 }
 const payLabel = (cash, card) => card ? '💳 карта' : '💵 готівка';
 const PAY_PICK = { cash: '💵 готівка', card: '💳 карта' };
-const payButtons = t => ({ inline_keyboard: [[{ text: '💵 Готівка', callback_data: `clsok:${t}:cash` }, { text: '💳 Карта', callback_data: `clsok:${t}:card` }], [{ text: 'Скасувати', callback_data: 'no' }]] });
+const payButtons = t => ({ inline_keyboard: [[{ text: '💵 Готівка', callback_data: `clsok:${t}:cash` }, { text: '💳 Карта', callback_data: `clsok:${t}:card` }], [{ text: '🖨 Пречек', callback_data: 'pre:' + t }, { text: 'Скасувати', callback_data: 'no' }]] });
 async function closeAsk(env, t) {
   const b = await getBill(env, t);
   if (!b.total) return { text: `Стіл ${t} вже закритий.` };
@@ -144,6 +147,7 @@ async function addWaiterOrder(env, d, who) {
   await env.DB.put('bill:' + d.table, JSON.stringify(bill), { expirationTtl: 12 * 3600 });
   await addStat(env, 'orders', 1);
   await addDishes(env, ok.map(i => ({ n: i.name, q: i.q, sum: i.price * i.q })));
+  await queuePrint(env, 'kitchen', kitchenTicket({ table: d.table, kind: 'ВІД ОФІЦІАНТА', lines, by: who }));
   return { sum, total: bill.total, lines };
 }
 
@@ -209,7 +213,7 @@ async function tableView(env, t) {
   const log = (b.log || []).map(o => `<b>${o.at}</b> ${o.kind}\n${o.lines.map(esc).join('\n')}${o.comment ? `\n💬 ${esc(o.comment)}` : ''}`).join('\n\n');
   return {
     text: `🪑 <b>Стіл ${t}</b> — ${money(b.total)}${b.check ? ' · 🧾 просять чек' : ''}\n\n${log || '(деталі недоступні)'}`,
-    markup: { inline_keyboard: [[{ text: '🧾 Закрити стіл', callback_data: 'cls:' + t }]] },
+    markup: { inline_keyboard: [[{ text: '🖨 Пречек', callback_data: 'pre:' + t }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + t }]] },
   };
 }
 async function pickTable(env, title, act) {
@@ -272,6 +276,8 @@ async function wifiView(env) {
   };
 }
 const chunk = (a, n) => a.reduce((r, x, i) => (i % n ? r[r.length - 1].push(x) : r.push([x]), r), []);
+
+const TEST_PRINT = () => [['logo'], ['big', 'ТЕСТ ДРУКУ'], ['c', 'VARVAR · ' + hhmm()], ['hr'], ['l', 'Українські літери: Іі Її Єє Ґґ'], ['lr', '2 × Мєско', '760'], ['lr2', 'Всього', '760 грн'], ['hr'], ['gap']];
 
 // ---------- повідомлення ----------
 export async function handleUpdate(u, env) {
@@ -349,6 +355,11 @@ export async function handleUpdate(u, env) {
   if ((x = low.match(/^(?:\/table|стіл|стол)\s+(\d+)$/))) return send(await tableView(env, +x[1]));
   if ((x = low.match(/^(?:\/close|закрити|закрий)\s+(\d+)$/))) return send(await closeAsk(env, +x[1]));
   if (low === '/close' || text === W.close) return send(await pickTable(env, '🧾 Який стіл закрити?', 'cls'));
+  if (low === 'принтер' || low === '/printer') {
+    const seen = +(await env.DB.get('printer_seen') || 0), q = (await env.DB.list({ prefix: 'pq:' })).keys.length;
+    const ok = Date.now() - seen < 60e3;
+    return send({ text: `🖨 <b>Принтер</b>: ${ok ? '✅ на звʼязку' : seen ? `❌ немає звʼязку з ${hhmm(seen)}` : '❌ програма друку ще не запускалась'}\nУ черзі: ${q}`, markup: { inline_keyboard: [[{ text: '🖨 Тестовий друк', callback_data: 'ptest' }]] } });
+  }
   if (low === '/stoplist' || text === W.stop || low === 'стоп-лист' || low === 'стоп лист') return send(await stopView(env));
 
   // --- адміністратор ---
@@ -425,6 +436,12 @@ async function handleCallback(q, env) {
     return answer('Додано');
   }
   if (act === 'clsok') { await edit(await closeTable(env, +arg, who, oid === 'card' ? 'card' : 'cash')); return answer('Закрито'); }
+  if (act === 'pre') {
+    const b = await getBill(env, arg); if (!b.total) return answer(`Стіл ${arg} порожній`);
+    await queuePrint(env, 'precheck', await receipt(env, { table: +arg, bill: b, final: false, by: who }));
+    return answer('🖨 Пречек відправлено на принтер');
+  }
+  if (act === 'ptest') { await queuePrint(env, 'test', TEST_PRINT()); return answer('🖨 Тест відправлено'); }
   if (act === 'tbl') { await send(await tableView(env, +arg)); return answer(''); }
   if (act === 'back') {
     const menu = await getMenu(env); const it = menu.categories.flatMap(c => c.items).find(i => i.id === arg);

@@ -2,6 +2,7 @@
 // Secrets: BOT_TOKEN, CHAT_ID, ADMIN_PIN, TG_SECRET   Vars: ALLOWED_ORIGIN, TABLES, SELF_URL   KV: DB
 import { getMenu, priceMap } from './menu.js';
 import { handleUpdate, tg, esc, getBill, addStat, addDishes, hhmm } from './bot.js';
+import { queuePrint, kitchenTicket, printApi } from './print.js';
 
 const TYPES = { order: 'НОВЕ ЗАМОВЛЕННЯ', order_check: 'НОВЕ ЗАМОВЛЕННЯ', reorder: 'ДОЗАМОВЛЕННЯ', check: 'ПРОСЯТЬ ЧЕК' };
 const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;
@@ -23,6 +24,7 @@ export default {
         const b = await env.DB.get('img:' + url.pathname.slice(5), 'arrayBuffer');
         return b ? new Response(b, { headers: { 'content-type': 'image/jpeg', 'cache-control': 'public, max-age=31536000' } }) : new Response('', { status: 404 });
       }
+      if (url.pathname.startsWith('/api/print/')) return printApi(req, env, url);
       if (url.pathname === '/api/orders') { // статуси замовлень гостя: ?ids=a,b
         const ids = (url.searchParams.get('ids') || '').split(',').filter(x => /^[a-z0-9]{6,12}$/.test(x)).slice(0, 20);
         const out = {}; for (const id of ids) out[id] = await env.DB.get('ord:' + id, 'json');
@@ -110,7 +112,10 @@ async function order(b, ip, env) {
   await env.DB.put('ord:' + oid, JSON.stringify({ s: 'new', t: table }), { expirationTtl: BILL_TTL });
   await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: msg, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[
     { text: '✅ Прийняв', callback_data: `acc:${table}:${oid}` }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + table }]] } });
-  if (lines.length) { await addStat(env, 'orders', 1); await addDishes(env, sold); }
+  if (lines.length) {
+    await addStat(env, 'orders', 1); await addDishes(env, sold);
+    await queuePrint(env, 'kitchen', kitchenTicket({ table, kind: TYPES[type], lines, comment, by: 'гість (сайт)' })); // бігунок
+  }
   await env.DB.put('bill:' + table, JSON.stringify(bill), { expirationTtl: BILL_TTL });
   await env.DB.put('rl:' + dev, String(Date.now()), { expirationTtl: 60 });
   return [{ ok: true, id: oid, orderTotal: sum, tableTotal: bill.total }, 200];
