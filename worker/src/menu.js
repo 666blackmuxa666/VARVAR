@@ -90,11 +90,13 @@ export const HELP = `<b>Як керувати меню</b> (пишіть зви�
 🧾 Рахунки: /tables, /close 5`;
 
 // повертає текст відповіді або null (не схоже на команду меню)
-export async function handleMenuText(text, env) {
+export async function handleMenuText(text, env, { canEdit = true } = {}) {
   const t = text.trim(); let m;
+  const NO = '🔐 Змінювати меню може лише адміністратор. Натисніть «🔐 Адмін».';
   const menu = await getMenu(env);
 
   if (/^(відмінити|відміна|скасувати|undo)$/i.test(t)) {
+    if (!canEdit) return NO;
     const prev = await env.DB.get('menu_prev'); if (!prev) return 'Нема що відміняти.';
     await env.DB.put('menu', prev); await env.DB.delete('menu_prev');
     return '↩️ Останню зміну скасовано.';
@@ -105,6 +107,7 @@ export async function handleMenuText(text, env) {
     return `<b>${esc(cs[0].name.uk)}</b>\n` + cs[0].items.map(it => `• ${esc(it.name.uk)}${it.hidden ? ' ⛔' : ''} — ${it.variants ? it.variants.map(v => v.v + 'л ' + v.p).join(' / ') : it.price} грн`).join('\n');
   }
   if ((m = t.match(/^(видалити|видали|удалить)\s+(.+)$/i))) {
+    if (!canEdit) return NO;
     const r = findItem(menu, m[2]); if (!r.length) return `Не знайшов «${esc(m[2])}».`; if (r.length > 1) return many(r, m[2]);
     r[0].c.items = r[0].c.items.filter(x => x !== r[0].it); await saveMenu(env, menu);
     return `🗑 Видалено: <b>${esc(r[0].it.name.uk)}</b>\n(передумали — напишіть «відмінити»)`;
@@ -117,6 +120,7 @@ export async function handleMenuText(text, env) {
     return hide ? `⛔ <b>${esc(r[0].it.name.uk)}</b> у стоп-листі (не показується на сайті)` : `✅ <b>${esc(r[0].it.name.uk)}</b> знову в меню`;
   }
   if ((m = t.match(/^(додати|додай|добавити|добав)\s+(?:в|у|до)?\s*([^:]+):\s*([\s\S]+)$/i))) {
+    if (!canEdit) return NO;
     const cs = findCat(menu, m[2]); if (cs.length !== 1) return `Не знайшов розділ «${esc(m[2])}». Напишіть «розділи».`;
     const f = parseFields(m[3]);
     const price = parseInt(f.price, 10);
@@ -137,6 +141,7 @@ export async function handleMenuText(text, env) {
   if (r.length > 1) return many(r, f.head);
   const { it, c } = r[0];
   if (!edits.length) return card(it, c);
+  if (!canEdit) return NO;
   if (f.price != null) {
     if (it.variants) {
       const pm = f.price.match(/^(\d+(?:[.,]\d+)?)\s*(?:л)?\s*[-=:–]?\s*(\d+)$/);

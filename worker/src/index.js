@@ -1,7 +1,7 @@
 // VARVAR — Cloudflare Worker: прийом замовлень, перевірка Wi‑Fi закладу, Telegram.
 // Secrets: BOT_TOKEN, CHAT_ID, ADMIN_PIN, TG_SECRET   Vars: ALLOWED_ORIGIN, TABLES, SELF_URL   KV: DB
 import { getMenu, priceMap } from './menu.js';
-import { handleUpdate, tg, esc, getBill, addStat, hhmm } from './bot.js';
+import { handleUpdate, tg, esc, getBill, addStat, addDishes, hhmm } from './bot.js';
 
 const TYPES = { order: 'НОВЕ ЗАМОВЛЕННЯ', order_check: 'НОВЕ ЗАМОВЛЕННЯ', reorder: 'ДОЗАМОВЛЕННЯ', check: 'ПРОСЯТЬ ЧЕК' };
 const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;
@@ -66,13 +66,14 @@ async function order(b, ip, env) {
 
   // ціни рахуємо на сервері — клієнту не довіряємо
   const PRICES = priceMap(await getMenu(env));
-  const lines = []; let sum = 0;
+  const lines = [], sold = []; let sum = 0;
   for (const it of (Array.isArray(b.items) ? b.items : []).slice(0, 60)) {
     const p = PRICES[it.id], q = Math.min(50, Math.max(0, parseInt(it.q, 10) || 0));
     if (!p || !q) continue;
     const price = typeof p.p === 'number' ? p.p : p.p[it.v];
     if (!price) continue;
     sum += price * q;
+    sold.push({ n: p.n + (typeof p.p === 'number' ? '' : ` ${it.v} л`), q, sum: price * q });
     lines.push(`${q}× ${p.n}${typeof p.p === 'number' ? '' : ` ${it.v} л`} — ${price * q}`);
   }
   if (type !== 'check' && !lines.length) return [{ error: 'empty' }, 400];
@@ -108,7 +109,7 @@ async function order(b, ip, env) {
   await env.DB.put('ord:' + oid, JSON.stringify({ s: 'new', t: table }), { expirationTtl: BILL_TTL });
   await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: msg, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[
     { text: '✅ Прийняв', callback_data: `acc:${table}:${oid}` }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + table }]] } });
-  if (lines.length) await addStat(env, 'orders', 1);
+  if (lines.length) { await addStat(env, 'orders', 1); await addDishes(env, sold); }
   await env.DB.put('bill:' + table, JSON.stringify(bill), { expirationTtl: BILL_TTL });
   await env.DB.put('rl:' + dev, String(Date.now()), { expirationTtl: 60 });
   return [{ ok: true, id: oid, orderTotal: sum, tableTotal: bill.total }, 200];
