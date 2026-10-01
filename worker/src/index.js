@@ -30,8 +30,10 @@ export default {
       }
       if (url.pathname.startsWith('/api/print/')) return printApi(req, env, url);
       // програма друку і логотип через простий HTTP (Windows 7 не вміє TLS 1.2)
-      if (url.pathname === '/print/agent.ps1' || url.pathname === '/print/logo.png') {
-        const r = await fetch('https://666blackmuxa666.github.io/VARVAR/printer/' + (url.pathname.endsWith('.png') ? 'logo.png' : 'varvar-print.ps1'), { cf: { cacheTtl: 30 } });
+      const pf = url.pathname.match(/^\/print\/(agent\.ps1|[a-z0-9-]+\.png)$/);
+      if (pf) {
+        const r = await fetch('https://666blackmuxa666.github.io/VARVAR/printer/' + (pf[1] === 'agent.ps1' ? 'varvar-print.ps1' : pf[1]), { cf: { cacheTtl: 30 } });
+        if (!r.ok) return new Response('not found', { status: 404 });
         return new Response(r.body, { headers: { 'content-type': url.pathname.endsWith('.png') ? 'image/png' : 'application/octet-stream' } });
       }
       if (url.pathname === '/api/orders') { // статуси замовлень гостя: ?ids=a,b

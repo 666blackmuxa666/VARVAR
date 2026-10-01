@@ -52,6 +52,13 @@ $fTot = New-Object System.Drawing.Font('Arial', 14, [System.Drawing.FontStyle]::
 $sfC = New-Object System.Drawing.StringFormat; $sfC.Alignment = 'Center'
 $sfR = New-Object System.Drawing.StringFormat; $sfR.Alignment = 'Far'
 
+# картинки для друку (QR тощо): /print/<name>.png, кешуються
+$imgs = @{}
+function Get-Img($name) {
+  if (-not $imgs.ContainsKey($name)) { $b = [byte[]](Http 'GET' ($cfg.api + '/print/' + $name + '.png')).ResponseBody; $imgs[$name] = [System.Drawing.Image]::FromStream((New-Object IO.MemoryStream(,$b))) }
+  return $imgs[$name]
+}
+
 function Measure-Job($g, $lines) {
   $h = 0
   foreach ($l in $lines) {
@@ -64,6 +71,7 @@ function Measure-Job($g, $lines) {
       'inv'  { $h += $fT.GetHeight($g) + 10 }
       'invb' { $h += $fBig.GetHeight($g) + 12 }
       'dbl'  { $h += 10 }
+      'img'  { $i = Get-Img $l[1]; $iw = [int]$l[2]; $h += [int]($i.Height * $iw / $i.Width) + 6 }
       'item' { $h += [Math]::Max($fI.GetHeight($g), $g.MeasureString($l[1], $fI, ($W - 70)).Height) + 1 }
       'sub'  { $h += $fS.GetHeight($g) + 3 }
       's'    { $h += $g.MeasureString($l[1], $fS, $W).Height + 1 }
@@ -87,6 +95,7 @@ function Draw-Job($g, $lines) {
       'gap'  { $y += 14 }
       'inv'  { $hh = $fT.GetHeight($g) + 6; $g.FillRectangle([System.Drawing.Brushes]::Black, 0, $y, $W, $hh); $r = New-Object System.Drawing.RectangleF(0, ($y + 3), $W, $hh); $g.DrawString($l[1], $fT, [System.Drawing.Brushes]::White, $r, $sfC); $y += $hh + 4 }
       'invb' { $hh = $fBig.GetHeight($g) + 8; $g.FillRectangle([System.Drawing.Brushes]::Black, 0, $y, $W, $hh); $r = New-Object System.Drawing.RectangleF(0, ($y + 4), $W, $hh); $g.DrawString($l[1], $fBig, [System.Drawing.Brushes]::White, $r, $sfC); $y += $hh + 4 }
+      'img'  { $i = Get-Img $l[1]; $iw = [int]$l[2]; $ih = [int]($i.Height * $iw / $i.Width); $g.InterpolationMode = 'NearestNeighbor'; $g.DrawImage($i, [int](($W - $iw) / 2), $y, $iw, $ih); $y += $ih + 6 }
       'dbl'  { $p = New-Object System.Drawing.Pen([System.Drawing.Color]::Black, 1); $g.DrawLine($p, 0, $y + 3, $W, $y + 3); $g.DrawLine($p, 0, $y + 6, $W, $y + 6); $y += 10 }
       'item' { $g.DrawString($l[1], $fI, [System.Drawing.Brushes]::Black, (New-Object System.Drawing.RectangleF(0, $y, ($W - 70), 100))); $r = New-Object System.Drawing.RectangleF(0, $y, $W, 100); $g.DrawString($l[2], $fI, [System.Drawing.Brushes]::Black, $r, $sfR); $y += [Math]::Max($fI.GetHeight($g), $g.MeasureString($l[1], $fI, ($W - 70)).Height) + 1 }
       'sub'  { $g.DrawString($l[1], $fS, [System.Drawing.Brushes]::Black, 8, $y); $y += $fS.GetHeight($g) + 3 }

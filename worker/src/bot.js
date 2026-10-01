@@ -423,7 +423,7 @@ export async function handleUpdate(u, env) {
   if (low === 'принтер' || low === '/printer') {
     const { seen, q } = await printStatus(env);
     const ok = Date.now() - seen < 60e3;
-    return send({ text: `🖨 <b>Принтер</b>: ${ok ? '✅ на звʼязку' : seen ? `❌ немає звʼязку з ${hhmm(seen)}` : '❌ програма друку ще не запускалась'}\nУ черзі: ${q}`, markup: { inline_keyboard: [[{ text: '🖨 Тестовий друк', callback_data: 'ptest' }]] } });
+    return send({ text: `🖨 <b>Принтер</b>: ${ok ? '✅ на звʼязку' : seen ? `❌ немає звʼязку з ${hhmm(seen)}` : '❌ програма друку ще не запускалась'}\nУ черзі: ${q}`, markup: { inline_keyboard: [[{ text: '🖨 Тестовий друк', callback_data: 'ptest' }, { text: '🔳 QR меню', callback_data: 'pqr' }]] } });
   }
   if (low === '/stoplist' || text === W.stop || low === 'стоп-лист' || low === 'стоп лист') return send(await stopView(env));
 
@@ -526,6 +526,7 @@ async function handleCallback(q, env) {
     await queuePrint(env, 'precheck', await receipt(env, { table: +arg, bill: b, final: false, by: who }));
     return answer('🖨 Пречек відправлено на принтер');
   }
+  if (act === 'pqr') { await queuePrint(env, 'qr', [['logo'], ['inv', 'МЕНЮ ТА ЗАМОВЛЕННЯ'], ['gap'], ['img', 'qr', 220], ['c', 'Скануйте камерою телефона'], ['s', 'Замовлення — через Wi-Fi VARVAR'], ['gap']]); return answer('🖨 QR відправлено на принтер'); }
   if (act === 'ptest') { await queuePrint(env, 'test', TEST_PRINT()); return answer('🖨 Тест відправлено'); }
   if (act === 'tbl') { await send(await tableView(env, +arg)); return answer(''); }
   if (act === 'ed') { const v = await editView(env, +arg); await edit(v.text, v.markup); return answer(''); }
