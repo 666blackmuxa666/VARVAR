@@ -4,10 +4,18 @@
 param([switch]$Test)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]3072 } catch { try { [Net.ServicePointManager]::SecurityProtocol = 3072 } catch { } }
+Add-Type -AssemblyName System.Web.Extensions
+$js = New-Object System.Web.Script.Serialization.JavaScriptSerializer
+function FromJson($t) { $o = $js.DeserializeObject($t); return (ToObj $o) }
+function ToObj($o) {
+  if ($o -is [System.Collections.Generic.IDictionary[string,object]]) { $h = New-Object PSObject; foreach ($k in $o.Keys) { $h | Add-Member NoteProperty $k (ToObj $o[$k]) }; return $h }
+  if ($o -is [object[]]) { return ,@($o | ForEach-Object { ToObj $_ }) }
+  return $o
+}
 
 $dir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$cfg = Get-Content -Raw -Encoding UTF8 (Join-Path $dir 'varvar-print.config.json') | ConvertFrom-Json
+$cfg = FromJson ([IO.File]::ReadAllText((Join-Path $dir 'varvar-print.config.json'), [Text.Encoding]::UTF8))
 $logFile = Join-Path $dir 'varvar-print.log'
 function Log($m) { "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $m" | Add-Content -Encoding UTF8 $logFile }
 
@@ -97,7 +105,7 @@ $done = @{}
 while ($true) {
   try {
     $wc = New-Object Net.WebClient; $wc.Encoding = [Text.Encoding]::UTF8
-    $r = $wc.DownloadString("$($cfg.api)/api/print/pull?key=$($cfg.key)") | ConvertFrom-Json
+    $r = FromJson ($wc.DownloadString("$($cfg.api)/api/print/pull?key=$($cfg.key)"))
     # "$($cfg.api)/api/print/pull?key=$($cfg.key)" -TimeoutSec 15
     $ok = @()
     foreach ($job in $r.jobs) {
@@ -107,7 +115,7 @@ while ($true) {
       }
       $ok += $job.id
     }
-    if ($ok.Count) { Invoke-RestMethod -Method Post -Uri "$($cfg.api)/api/print/ack" -ContentType 'application/json' -Body (@{ key = $cfg.key; ids = $ok } | ConvertTo-Json) -TimeoutSec 15 | Out-Null }
+    if ($ok.Count) { $w2 = New-Object Net.WebClient; $w2.Headers.Add('Content-Type','application/json'); $w2.Encoding = [Text.Encoding]::UTF8; $w2.UploadString("$($cfg.api)/api/print/ack", $js.Serialize(@{ key = $cfg.key; ids = [object[]]$ok })) | Out-Null }
     if ($done.Count -gt 500) { $done = @{} }
   } catch { Log "net error: $($_.Exception.Message)"; Start-Sleep 10 }
   Start-Sleep 3
