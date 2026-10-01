@@ -28,16 +28,16 @@ for f in a[2...] {
   obj = obj.applyingFilter("CIBlendWithAlphaMask", parameters: ["inputBackgroundImage": CIImage.empty(), "inputMaskImage": soft])
 
   // падаюча тінь: силует, вниз, розмитий, 45%
-  let drop = alpha.applyingFilter("CIColorMatrix", parameters: ["inputAVector": CIVector(x: 0, y: 0, z: 0, w: 0.45)])
-                 .transformed(by: CGAffineTransform(translationX: 0, y: -H * 0.018)).applyingGaussianBlur(sigma: 9)
+  let drop = alpha.applyingFilter("CIColorMatrix", parameters: ["inputAVector": CIVector(x: 0, y: 0, z: 0, w: 0.75)])
+                 .transformed(by: CGAffineTransform(translationX: 0, y: -H * 0.025)).applyingGaussianBlur(sigma: 12)
 
   // контактна тінь: еліпс під нижнім краєм обʼєкта (координати CI — знизу вгору)
   let cx = W / 2 + ((CGFloat(minX + maxX) / 2) - W / 2) * k
   let objW = CGFloat(maxX - minX) * k
   let bottom = H / 2 + H * 0.03 - (CGFloat(maxY) - H / 2) * k
-  let ew = objW * 0.85, eh = max(10, objW * 0.09)
+  let ew = objW * 0.95, eh = max(14, objW * 0.13)
   let ellipse = CIFilter(name: "CIRadialGradient", parameters: ["inputCenter": CIVector(x: 0, y: 0), "inputRadius0": 0, "inputRadius1": 50,
-    "inputColor0": CIColor(red: 0, green: 0, blue: 0, alpha: 0.7), "inputColor1": CIColor(red: 0, green: 0, blue: 0, alpha: 0)])!.outputImage!
+    "inputColor0": CIColor(red: 0, green: 0, blue: 0, alpha: 0.95), "inputColor1": CIColor(red: 0, green: 0, blue: 0, alpha: 0)])!.outputImage!
     .cropped(to: CGRect(x: -50, y: -50, width: 100, height: 100))
     .transformed(by: CGAffineTransform(scaleX: ew / 100, y: eh / 100))
     .transformed(by: CGAffineTransform(translationX: cx, y: bottom + eh * 0.15))

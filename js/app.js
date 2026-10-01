@@ -17,6 +17,7 @@
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const unit = s => lang === 'uk' ? s : s.replace(/ г/g, ' g').replace(/ л/g, ' l').replace(/^л$/, 'l').replace('шт', 'pc').replace("м'яса", 'meat');
   const money = n => n.toLocaleString('uk-UA') + ' ' + t('cur');
+  const IMG_VER = 3; // збільшити після оновлення фото, щоб телефони не брали стару копію
   let menu, byId = {};
   // напої — менші картки
   const DRINKS = new Set(['coffee', 'soft', 'lemonades', 'cocktails', 'shots', 'whisky', 'rum', 'vermouth', 'liqueur', 'cognac', 'vodka', 'tequila', 'gin', 'wine', 'beer', 'hookah']);
@@ -47,7 +48,7 @@
       ? `<div class="vars">${it.variants.map(v => addBtn(it.id + '|' + v.v, unit(`${v.v} л`) + ` · ${v.p}`)).join('')}</div>`
       : `<div class="row"><span class="price">${it.price} <small>${t('cur')}</small></span>${addBtn(it.id, '+')}</div>`;
     return `<article class="item">
-      ${it.img ? `<div class="ph"><img src="${it.img}" alt="" loading="lazy" decoding="async"></div>` : ''}
+      ${it.img ? `<div class="ph"><img src="${it.img}${it.img.includes('?') ? '' : '?v=' + IMG_VER}" alt="" loading="lazy" decoding="async"></div>` : ''}
       <div class="info">
         <h3>${esc(it.name[lang])}${it.size && !it.variants ? `<span class="size">${esc(unit(it.size))}</span>` : ''}</h3>
         ${it.desc ? `<p>${esc(it.desc[lang])}</p>` : ''}

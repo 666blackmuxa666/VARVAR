@@ -1,4 +1,5 @@
 :root {
+  color-scheme: only dark; /* сайт завжди темний — браузери не перефарбовують */
   --bg: #141414; --card: #1d1d1d; --line: #2c2c2c; --text: #eee; --muted: #9a9a9a;
   --accent: #f2c14e; --accent-ink: #1a1400; --green: #7bc96f; --danger: #e5604f;
   --r: 14px; --gut: 16px;
@@ -34,7 +35,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 0 var(--gut); }
 @media (min-width: 700px) { .grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); } }
 
 .item { background: var(--card); border-radius: var(--r); overflow: hidden; display: flex; flex-direction: column; }
-.ph { aspect-ratio: 1; background: #1a1a1a url(../img/bg.jpg) center/cover; display: grid; place-items: center; }
+.ph { aspect-ratio: 1; background: #1a1a1a url(../img/bg.jpg?v=3) center/cover; display: grid; place-items: center; }
 .ph img { width: 100%; height: 100%; object-fit: contain; } /* тіні вже «запечені» у PNG */
 
 /* напої — компактні картки, 3 в ряд на телефоні */
