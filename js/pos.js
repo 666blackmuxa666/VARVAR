@@ -1,4 +1,5 @@
 // VARVAR POS — касова програма. Ті самі дані й дії, що в Telegram-боті (сервер: worker/src/pos.js → ops.js).
+// ⚠️ Після змін: npx esbuild js/pos.js --target=safari11,chrome61 --outfile=js/pos.build.js (pos.html підключає build — для старих планшетів).
 // Живе оновлення: WebSocket /api/pos/live — будь-яка зміна (з бота, сайту чи іншого планшета) з'являється одразу.
 (() => {
   const API = new URLSearchParams(location.search).get('api') || 'https://varvar-menu.varvar.workers.dev';
