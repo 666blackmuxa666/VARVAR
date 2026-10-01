@@ -98,7 +98,7 @@
     const shown = tableTotal ?? histSum;
     $('#history').innerHTML = hist.orders.length || tableTotal ? `
       <details><summary>${t('ordered')}: <b>${money(shown)}</b></summary>
-      ${hist.orders.map(o => `<div class="h">${o.items.map(([k, q]) => `${q}× ${esc(labelOf(k))}`).join(', ')}</div>`).join('')}</details>` : '';
+      ${hist.orders.map(o => `<div class="h">${badge(o)} ${o.items.map(([k, q]) => `${q}× ${esc(labelOf(k))}`).join(', ')}</div>`).join('')}</details>` : '';
     const first = !hist.orders.length;
     const hasItems = rows.length > 0;
     $('#actions').innerHTML = first
@@ -107,6 +107,38 @@
       : `<button class="btn" data-send="reorder" ${hasItems ? '' : 'disabled'}>${t('reorder')}</button>
          <button class="btn alt" data-send="check">${t('check')}</button>`;
   }
+  // ---------- статус замовлення (офіціант натиснув «Прийняв» у Telegram) ----------
+  const badge = o => !o.id ? '' : o.s === 'acc' ? '<span class="st ok">✅</span>' : '<span class="st wait">⏳</span>';
+  function renderStatus() {
+    const last = hist.reqs && hist.reqs[hist.reqs.length - 1];
+    const bar = $('#orderStatus');
+    if (!last || (last.s === 'acc' && Date.now() - (last.accAt || 0) > 3 * 60e3)) { bar.hidden = true; return; }
+    bar.hidden = false;
+    bar.className = 'order-status ' + (last.s === 'acc' ? 'ok' : 'wait');
+    bar.textContent = last.s === 'acc'
+      ? (last.type === 'check' ? t('accCheck') : t('accOrder')) + (last.by ? ` · ${last.by}` : '')
+      : (last.type === 'check' ? t('waitCheck') : t('waitOrder'));
+  }
+  async function pollOrders() {
+    const pending = (hist.reqs || []).filter(r => r.s !== 'acc');
+    if (!pending.length) return;
+    try {
+      const { data } = await api('/api/orders?ids=' + pending.map(r => r.id).join(','));
+      let changed = false;
+      for (const r of pending) {
+        const st = data[r.id];
+        if (st && st.s === 'acc') {
+          Object.assign(r, { s: 'acc', by: st.by, accAt: Date.now() }); changed = true;
+          const o = hist.orders.find(x => x.id === r.id); if (o) o.s = 'acc';
+          navigator.vibrate?.(80);
+        }
+      }
+      if (changed) { save(); renderStatus(); if (!$('#sheet').hidden) renderCart(); }
+    } catch {}
+  }
+  setInterval(pollOrders, 5000);
+  setInterval(renderStatus, 30000);
+
   const openSheet = () => { $('#msg').textContent = ''; renderCart(); $('#sheet').hidden = false; document.body.classList.add('lock'); syncStatus(); };
   const closeAll = () => { $('#sheet').hidden = $('#wifiModal').hidden = true; document.body.classList.remove('lock'); };
 
@@ -128,7 +160,7 @@
       inVenue = !!data.inVenue;
       if (table && typeof data.tableTotal === 'number') {
         // стіл закрили (/close) — сесія скінчилась
-        if (data.tableTotal === 0 && hist.orders.length) { hist = { ts: 0, orders: [] }; save(); }
+        if (data.tableTotal === 0 && hist.orders.length) { hist = { ts: 0, orders: [] }; save(); renderStatus(); }
         tableTotal = data.tableTotal || null;
       }
     } catch { inVenue = null; }
@@ -151,7 +183,10 @@
       if (status === 403) { showWifi(); $('#msg').textContent = ''; return; }
       if (status === 429) { $('#msg').textContent = t('wait'); return; }
       if (status !== 200) throw 0;
-      if (items.length) { hist.orders.push({ items, total: data.orderTotal }); hist.ts = Date.now(); }
+      if (items.length) { hist.orders.push({ items, total: data.orderTotal, id: data.id, s: 'new' }); }
+      hist.ts = Date.now();
+      if (data.id) { hist.reqs = [...(hist.reqs || []), { id: data.id, type: items.length ? 'order' : 'check', s: 'new' }].slice(-20); }
+      renderStatus();
       tableTotal = data.tableTotal; cart = {}; $('#comment').value = ''; save();
       renderCart(); refreshButtons(); renderFab();
       $('#msg').textContent = type === 'check' || type === 'order_check' ? t('sentCheck') : t('sent');
@@ -166,21 +201,21 @@
 
   // ---------- події ----------
   document.addEventListener('click', e => {
-    const el = e.target.closest('button, [data-close], #wifiBanner');
+    const el = e.target.closest('button, [data-close], #wifiBanner, #orderStatus');
     if (!el) return;
     if (el.dataset.add) change(el.dataset.add, 1);
     else if (el.dataset.inc) change(el.dataset.inc, 1);
     else if (el.dataset.dec) change(el.dataset.dec, -1);
     else if (el.dataset.send) send(el.dataset.send);
     else if ('close' in el.dataset) el.closest('.modal') ? ($('#wifiModal').hidden = true) : closeAll();
-    else if (el.id === 'fab') openSheet();
+    else if (el.id === 'fab' || el.id === 'orderStatus') openSheet();
     else if (el.id === 'wifiBanner') showWifi();
     else if (el.id === 'lang') { lang = lang === 'uk' ? 'en' : 'uk'; store.set('lang', lang); renderMenu(); syncStatus(); }
     else if (el.id === 'copyPass') navigator.clipboard?.writeText(C.wifi.password).then(() => el.textContent = t('copied'));
     else if (el.id === 'retry') { $('#wifiModal').hidden = true; syncStatus(); }
   });
   $('#table').addEventListener('change', e => { table = e.target.value; save(); syncStatus(); });
-  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && syncStatus());
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { syncStatus(); pollOrders(); } });
 
   // меню з сервера (редагується через Telegram); якщо сервер недоступний — локальна копія
   const load = u => fetch(u).then(r => { if (!r.ok) throw 0; return r.json(); });
@@ -189,6 +224,6 @@
     m.categories = m.categories.filter(c => c.items.length);
     menu = m;
     m.categories.forEach(c => c.items.forEach(it => byId[it.id] = it));
-    renderMenu(); syncStatus();
+    renderMenu(); syncStatus(); renderStatus(); pollOrders();
   });
 })();

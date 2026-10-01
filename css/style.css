@@ -123,3 +123,14 @@ summary { cursor: pointer; }
 .wifi-card { background: var(--card); border-radius: 12px; padding: 12px; display: grid; gap: 4px; font-size: 17px; }
 .wifi-card b { color: var(--accent); }
 .fab[hidden] { display: none; }
+
+/* статус замовлення над кнопкою кошика */
+.order-status {
+  position: fixed; z-index: 10; left: 50%; transform: translateX(-50%); bottom: calc(max(16px, env(safe-area-inset-bottom)) + 66px);
+  width: min(calc(100% - 32px), 440px); padding: 10px 16px; border-radius: 14px; font-size: 14px; font-weight: 500; text-align: center;
+  box-shadow: 0 8px 28px rgba(0,0,0,.55); cursor: pointer; animation: up .25s ease-out;
+}
+.order-status[hidden] { display: none; }
+.order-status.wait { background: #2b2412; color: var(--accent); border: 1px solid #4a3d16; }
+.order-status.ok { background: #16301a; color: #9fe39a; border: 1px solid #2b5a2f; }
+.st { font-size: 12px; }

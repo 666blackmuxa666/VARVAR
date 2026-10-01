@@ -138,11 +138,12 @@ async function handleCallback(q, env) {
   if (String(chat) !== String(env.CHAT_ID)) return answer('Немає доступу');
   const edit = (text, markup) => tg(env, 'editMessageText', { chat_id: chat, message_id: mid, text, parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: markup || { inline_keyboard: [] } });
   const send = (v) => tg(env, 'sendMessage', { chat_id: chat, text: v.text, parse_mode: 'HTML', reply_markup: v.markup || KEYBOARD });
-  const [act, arg] = (q.data || '').split(':');
+  const [act, arg, oid] = (q.data || '').split(':');
   const who = q.from?.first_name || '';
 
   if (act === 'acc') { // ✅ Прийняв — дописуємо, хто взяв, лишаємо кнопку закриття
     const html = q.message.text ? esc(q.message.text) : '';
+    if (oid && /^[a-z0-9]+$/.test(oid)) await env.DB.put('ord:' + oid, JSON.stringify({ s: 'acc', t: +arg, by: who, at: hhmm() }), { expirationTtl: 12 * 3600 });
     await edit(`${html}\n\n✅ Прийняв: <b>${esc(who)}</b> о ${hhmm()}`, { inline_keyboard: [[{ text: '🧾 Закрити стіл ' + arg, callback_data: 'cls:' + arg }]] });
     return answer('Прийнято');
   }

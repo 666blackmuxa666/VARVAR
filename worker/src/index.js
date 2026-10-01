@@ -23,6 +23,11 @@ export default {
         const b = await env.DB.get('img:' + url.pathname.slice(5), 'arrayBuffer');
         return b ? new Response(b, { headers: { 'content-type': 'image/jpeg', 'cache-control': 'public, max-age=31536000' } }) : new Response('', { status: 404 });
       }
+      if (url.pathname === '/api/orders') { // статуси замовлень гостя: ?ids=a,b
+        const ids = (url.searchParams.get('ids') || '').split(',').filter(x => /^[a-z0-9]{6,12}$/.test(x)).slice(0, 20);
+        const out = {}; for (const id of ids) out[id] = await env.DB.get('ord:' + id, 'json');
+        return json(out);
+      }
       if (url.pathname === '/api/order' && req.method === 'POST') return json(...await order(await req.json(), ip, env));
       if (url.pathname === '/api/admin' && req.method === 'POST') return json(...await admin(await req.json(), ip, env));
       if (url.pathname === '/tg' && req.method === 'POST') {
@@ -91,12 +96,15 @@ async function order(b, ip, env) {
     wantsCheck ? '🧾 <b>Хоче чек</b>' : '',
   ].filter(Boolean).join('\n');
 
+  // номер замовлення — за ним гість бачить, чи прийняв офіціант
+  const oid = crypto.randomUUID().replace(/-/g, '').slice(0, 10);
+  await env.DB.put('ord:' + oid, JSON.stringify({ s: 'new', t: table }), { expirationTtl: BILL_TTL });
   await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: msg, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[
-    { text: '✅ Прийняв', callback_data: 'acc:' + table }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + table }]] } });
+    { text: '✅ Прийняв', callback_data: `acc:${table}:${oid}` }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + table }]] } });
   if (lines.length) await addStat(env, 'orders', 1);
   await env.DB.put('bill:' + table, JSON.stringify(bill), { expirationTtl: BILL_TTL });
   await env.DB.put('rl:' + dev, String(Date.now()), { expirationTtl: 60 });
-  return [{ ok: true, orderTotal: sum, tableTotal: bill.total }, 200];
+  return [{ ok: true, id: oid, orderTotal: sum, tableTotal: bill.total }, 200];
 }
 
 // не частіше ніж раз на 30 хв: підказка персоналу, якщо змінився IP роутера
