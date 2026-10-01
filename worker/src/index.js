@@ -28,7 +28,8 @@ export default {
       if (url.pathname === '/api/menu') return new Response(JSON.stringify(await getMenu(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'no-cache' } });
       if (url.pathname.startsWith('/img/')) {
         const b = await env.DB.get('img:' + url.pathname.slice(5), 'arrayBuffer');
-        return b ? new Response(b, { headers: { 'content-type': 'image/jpeg', 'cache-control': 'public, max-age=31536000' } }) : new Response('', { status: 404 });
+        if (b) return new Response(b, { headers: { 'content-type': 'image/jpeg', 'cache-control': 'public, max-age=31536000' } });
+        return proxySite(url); // статичні картинки сайту (для каси через запасну адресу)
       }
       if (url.pathname.startsWith('/api/print/')) return printApi(req, env, url);
       // програма друку і логотип через простий HTTP (Windows 7 не вміє TLS 1.2)
@@ -52,6 +53,8 @@ export default {
         await handleUpdate(await req.json(), env);
         return new Response('ok');
       }
+      // запасна адреса каси для старих Windows 7 без нових сертифікатів: http://varvar-menu.varvar.workers.dev/pos.html
+      if (req.method === 'GET' && /^\/(pos\.html|pos\.webmanifest|css\/|js\/|printer\/logo\.png)/.test(url.pathname)) return proxySite(url);
       return json({ error: 'not_found' }, 404);
     } catch (e) {
       return json({ error: 'bad_request' }, 400);
@@ -155,4 +158,9 @@ async function admin(b, ip, env) {
     await env.DB.put('venue_ips', JSON.stringify(list));
   } else if (b.action === 'clear') { list = []; await env.DB.put('venue_ips', '[]'); }
   return [{ ok: true, current: ipKey(ip), list }, 200];
+}
+
+async function proxySite(url) {
+  const r = await fetch('https://666blackmuxa666.github.io/VARVAR' + url.pathname + url.search, { cf: { cacheTtl: 30 } });
+  return new Response(r.body, { status: r.status, headers: { 'content-type': r.headers.get('content-type') || 'application/octet-stream', 'cache-control': 'no-cache' } });
 }

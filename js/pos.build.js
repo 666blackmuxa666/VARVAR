@@ -15,7 +15,7 @@ var __spreadValues = (a, b) => {
   return a;
 };
 (() => {
-  const API = new URLSearchParams(location.search).get("api") || "https://varvar-menu.varvar.workers.dev";
+  const API = new URLSearchParams(location.search).get("api") || (/workers\.dev$/.test(location.hostname) ? location.origin : "https://varvar-menu.varvar.workers.dev");
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s != null ? s : "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const money = (n) => "".concat(Math.round(n || 0).toLocaleString("uk-UA"), " \u20B4");

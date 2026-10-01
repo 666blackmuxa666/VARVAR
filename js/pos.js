@@ -2,7 +2,7 @@
 // ⚠️ Після змін: npx esbuild js/pos.js --target=safari11,chrome61 --outfile=js/pos.build.js (pos.html підключає build — для старих планшетів).
 // Живе оновлення: WebSocket /api/pos/live — будь-яка зміна (з бота, сайту чи іншого планшета) з'являється одразу.
 (() => {
-  const API = new URLSearchParams(location.search).get('api') || 'https://varvar-menu.varvar.workers.dev';
+  const API = new URLSearchParams(location.search).get('api') || (/workers\.dev$/.test(location.hostname) ? location.origin : 'https://varvar-menu.varvar.workers.dev');
   const $ = s => document.querySelector(s);
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const money = n => `${Math.round(n || 0).toLocaleString('uk-UA')} ₴`;
