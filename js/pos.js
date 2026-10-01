@@ -104,7 +104,7 @@
   const NAV = [['hall', '🪑', 'Зал'], ['closed', '📜', 'Закриті'], ['stop', '⛔', 'Стоп-лист'], ['printer', '🖨', 'Принтер'], ['reports', '📊', 'Звіти', 1], ['menu', '📖', 'Меню', 1], ['settings', '⚙️', 'Налашт.', 1]];
   function renderNav() {
     const newCnt = S.events.filter(e => e.k === 'guest' && e.s !== 'acc').length;
-    $('#nav').innerHTML = `<div class="brand">VARVAR</div>` +
+    $('#nav').innerHTML = `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` +
       NAV.filter(n => !n[3] || isAdmin()).map(([v, ic, l]) => `<button class="${S.view === v ? 'on' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join('') +
       `<button class="feed-btn" data-a="feed"><span class="ic">🔔</span>Стрічка${newCnt ? `<span class="badge">${newCnt}</span>` : ''}</button>` +
       `<div class="grow"></div><div class="me">${esc(S.me?.name)}<br>${isAdmin() ? 'адмін' : 'офіціант'}</div>` +
