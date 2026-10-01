@@ -49,7 +49,7 @@ async function openTables(env) {
 export async function addStat(env, field, n) {
   const k = 'day:' + dayKey(); const d = (await env.DB.get(k, 'json')) || {};
   d[field] = (d[field] || 0) + n;
-  await env.DB.put(k, JSON.stringify(d), { expirationTtl: 40 * 86400 });
+  await env.DB.put(k, JSON.stringify(d), { expirationTtl: 400 * 86400 });
 }
 async function closeTable(env, t, who) {
   const bill = await getBill(env, t);
@@ -86,9 +86,14 @@ async function closePicker(env) {
 async function revenueView(env) {
   const days = await Promise.all([...Array(7)].map(async (_, i) => { const k = dayKey(Date.now() - i * 86400e3); return { k, d: (await env.DB.get('day:' + k, 'json')) || {} }; }));
   const open = (await openTables(env)).reduce((s, r) => s + r.b.total, 0);
+  // поточний місяць: з 1-го числа по сьогодні (за київським часом)
+  const today = dayKey(), ym = today.slice(0, 7), dnum = +today.slice(8);
+  const monthDays = await Promise.all([...Array(dnum)].map(async (_, i) => (await env.DB.get(`day:${ym}-${String(i + 1).padStart(2, '0')}`, 'json')) || {}));
+  const sumOf = arr => arr.reduce((a, d) => ({ closed: (a.closed || 0) + (d.closed || 0), tables: (a.tables || 0) + (d.tables || 0), orders: (a.orders || 0) + (d.orders || 0) }), {});
+  const monthName = new Date().toLocaleDateString('uk-UA', { timeZone: TZ, month: 'long' });
   const line = (label, d) => `${label}: <b>${money(d.closed || 0)}</b> закрито · столів ${d.tables || 0} · замовлень ${d.orders || 0}`;
-  const week = days.reduce((a, { d }) => ({ closed: (a.closed || 0) + (d.closed || 0), tables: (a.tables || 0) + (d.tables || 0), orders: (a.orders || 0) + (d.orders || 0) }), {});
-  return { text: `📊 <b>Виручка</b>\n${line('Сьогодні', days[0].d)}\nЩе відкрито в залі: <b>${money(open)}</b>\n\n${line('Вчора', days[1].d)}\n${line('7 днів', week)}\n\n<i>«Закрито» — рахунки, закриті кнопкою «Закрити стіл».</i>` };
+  const week = sumOf(days.map(x => x.d)), month = sumOf(monthDays);
+  return { text: `📊 <b>Виручка</b>\n${line('Сьогодні', days[0].d)}\nЩе відкрито в залі: <b>${money(open)}</b>\n\n${line('Вчора', days[1].d)}\n${line('7 днів', week)}\n${line('Місяць (' + monthName + ')', month)}\n\n<i>«Закрито» — рахунки, закриті кнопкою «Закрити стіл».</i>` };
 }
 async function stopView(env) {
   const menu = await getMenu(env);
