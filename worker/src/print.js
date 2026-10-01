@@ -3,12 +3,38 @@
 //   стилі: logo · big (великий жирний по центру) · c (по центру) · b (жирний) · l (звичайний) · lr (ліворуч + праворуч) · hr (риска) · gap
 import { hhmm, dayKey } from './bot.js';
 
-const TTL = 2 * 86400;
 
+// черга живе в Durable Object: програма друку чекає на /pull (long-poll), і чек віддається миттєво
+const q = env => env.PRINTQ.get(env.PRINTQ.idFromName('main'));
+const qcall = (env, path, body) => q(env).fetch('https://q' + path, body ? { method: 'POST', body: JSON.stringify(body) } : undefined);
 export async function queuePrint(env, kind, lines) {
   const id = `${Date.now()}-${crypto.randomUUID().slice(0, 6)}`;
-  await env.DB.put('pq:' + id, JSON.stringify({ id, kind, lines }), { expirationTtl: TTL });
+  await qcall(env, '/push', { id, kind, lines });
   return id;
+}
+export const printStatus = async env => (await qcall(env, '/status')).json();
+
+export class PrintQ {
+  constructor(state) { this.st = state.storage; this.wait = []; }
+  async jobs() { return [...(await this.st.list({ prefix: 'j:', limit: 10 })).values()]; }
+  wake() { const w = this.wait; this.wait = []; w.forEach(f => f()); }
+  async fetch(req) {
+    const u = new URL(req.url);
+    if (u.pathname === '/push') { const j = await req.json(); await this.st.put('j:' + j.id, j); this.wake(); return new Response('ok'); }
+    if (u.pathname === '/status') return Response.json({ seen: (await this.st.get('seen')) || 0, q: (await this.st.list({ prefix: 'j:' })).size });
+    if (u.pathname === '/ack') { const { ids } = await req.json(); await this.st.delete(ids.filter(id => /^[\w-]+$/.test(id)).map(id => 'j:' + id)); return new Response('ok'); }
+    if (u.pathname === '/pull') {
+      await this.st.put('seen', Date.now());
+      let jobs = await this.jobs();
+      const wait = Math.min(+u.searchParams.get('wait') || 0, 25);
+      if (!jobs.length && wait) {
+        await new Promise(r => { const t = setTimeout(r, wait * 1000); this.wait.push(() => { clearTimeout(t); r(); }); });
+        jobs = await this.jobs();
+      }
+      return Response.json({ jobs });
+    }
+    return new Response('not found', { status: 404 });
+  }
 }
 
 // бігунок на кухню/бар — без цін, стіл на чорній плашці
@@ -67,16 +93,14 @@ async function nextReceiptNo(env) {
 export async function printApi(req, env, url) {
   const key = url.searchParams.get('key') || (req.method === 'POST' ? (await req.clone().json().catch(() => ({}))).key : '');
   if (!env.PRINT_KEY || key !== env.PRINT_KEY) return new Response('forbidden', { status: 403 });
-  await env.DB.put('printer_seen', String(Date.now()), { expirationTtl: TTL });
   if (url.pathname === '/api/print/pull') {
-    const keys = (await env.DB.list({ prefix: 'pq:' })).keys.slice(0, 10);
-    const jobs = (await Promise.all(keys.map(k => env.DB.get(k.name, 'json')))).filter(Boolean);
-    return new Response(JSON.stringify({ jobs }), { headers: { 'content-type': 'application/json; charset=utf-8' } }); // charset — інакше PowerShell 5 ламає кирилицю
+    const r = await qcall(env, '/pull?wait=' + (+url.searchParams.get('wait') || 0));
+    return new Response(await r.text(), { headers: { 'content-type': 'application/json; charset=utf-8' } }); // charset — інакше PowerShell ламає кирилицю
   }
   if (url.pathname === '/api/print/ack') {
     // GET ?ids=a,b (старі Windows) або POST {ids}
     const ids = req.method === 'POST' ? [].concat((await req.json().catch(() => ({}))).ids || []) : (url.searchParams.get('ids') || '').split(',');
-    await Promise.all(ids.filter(id => /^[\w-]+$/.test(id)).map(id => env.DB.delete('pq:' + id)));
+    await qcall(env, '/ack', { ids: ids.filter(Boolean) });
     return Response.json({ ok: true });
   }
   return new Response('not found', { status: 404 });

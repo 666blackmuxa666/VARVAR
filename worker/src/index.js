@@ -3,6 +3,7 @@
 import { getMenu, priceMap } from './menu.js';
 import { handleUpdate, tg, esc, getBill, addStat, addDishes, hhmm } from './bot.js';
 import { queuePrint, kitchenTicket, printApi } from './print.js';
+export { PrintQ } from './print.js';
 
 const TYPES = { order: 'НОВЕ ЗАМОВЛЕННЯ', order_check: 'НОВЕ ЗАМОВЛЕННЯ', reorder: 'ДОЗАМОВЛЕННЯ', check: 'ПРОСЯТЬ ЧЕК' };
 const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;

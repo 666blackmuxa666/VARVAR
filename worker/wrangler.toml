@@ -12,3 +12,12 @@ SITE_URL = "https://666blackmuxa666.github.io/VARVAR/"
 [[kv_namespaces]]
 binding = "DB"
 id = "279c013ca4564083a7f56326a2855bbd"
+
+# черга друку (миттєва доставка чеків на принтер)
+[[durable_objects.bindings]]
+name = "PRINTQ"
+class_name = "PrintQ"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["PrintQ"]

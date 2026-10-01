@@ -2,7 +2,7 @@
 // за паролем (звіти, видалення столів, меню, Wi‑Fi, пароль).
 import { getMenu, handleMenuText, handleMenuPhoto, HELP as MENU_HELP } from './menu.js';
 import { parseWaiterOrder, draftText } from './waiter.js';
-import { queuePrint, kitchenTicket, receipt } from './print.js';
+import { queuePrint, kitchenTicket, receipt, printStatus } from './print.js';
 
 export const tg = (env, method, body) => fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 export const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -389,7 +389,7 @@ export async function handleUpdate(u, env) {
   if ((x = low.match(/^(?:\/close|закрити|закрий)\s+(\d+)$/))) return send(await closeAsk(env, +x[1]));
   if (low === '/close' || text === W.close) return send(await pickTable(env, '🧾 Який стіл закрити?', 'cls'));
   if (low === 'принтер' || low === '/printer') {
-    const seen = +(await env.DB.get('printer_seen') || 0), q = (await env.DB.list({ prefix: 'pq:' })).keys.length;
+    const { seen, q } = await printStatus(env);
     const ok = Date.now() - seen < 60e3;
     return send({ text: `🖨 <b>Принтер</b>: ${ok ? '✅ на звʼязку' : seen ? `❌ немає звʼязку з ${hhmm(seen)}` : '❌ програма друку ще не запускалась'}\nУ черзі: ${q}`, markup: { inline_keyboard: [[{ text: '🖨 Тестовий друк', callback_data: 'ptest' }]] } });
   }

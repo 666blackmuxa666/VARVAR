@@ -18,7 +18,7 @@ function ToObj($o) {
 function Http($method, $url, $body) {
   $h = New-Object -ComObject 'WinHttp.WinHttpRequest.5.1'
   try { [void]$h.GetType().InvokeMember('Option', [Reflection.BindingFlags]::SetProperty, $null, $h, @(9, 0x0A80)) } catch { }
-  $h.SetTimeouts(10000, 10000, 15000, 15000)
+  $h.SetTimeouts(10000, 10000, 15000, 40000)
   $h.Open($method, $url, $false)
   if ($body) { $h.SetRequestHeader('Content-Type', 'application/json; charset=utf-8'); $h.Send($body) } else { $h.Send() }
   if ($h.Status -ne 200) { throw "HTTP $($h.Status)" }
@@ -136,7 +136,7 @@ Log "start, printer=$($cfg.printer)"
 $done = @{}
 while ($true) {
   try {
-    $r = FromJson ((Http 'GET' "$($cfg.api)/api/print/pull?key=$($cfg.key)").ResponseText)
+    $r = FromJson ((Http 'GET' "$($cfg.api)/api/print/pull?key=$($cfg.key)&wait=25").ResponseText)   # сервер тримає запит до появи чека
     $ok = @()
     foreach ($job in $r.jobs) {
       if (-not $done.ContainsKey($job.id)) {
