@@ -80,11 +80,11 @@ async function logClosed(env, rec) {
   list.push(rec); await env.DB.put(k, JSON.stringify(list.slice(-300)), { expirationTtl: YEAR });
 }
 // pay: 'cash' | 'card'
-async function closeTable(env, t, who, pay = 'cash') {
+async function closeTable(env, t, who, pay = 'cash', print = true) {
   const bill = await getBill(env, t);
   if (!bill.total) return `Стіл ${t} вже закритий.`;
   const card = pay === 'card' ? bill.total : 0, cash = bill.total - card;
-  await queuePrint(env, 'receipt', await receipt(env, { table: t, bill, final: true, pay, by: who })); // фінальний чек
+  if (print) await queuePrint(env, 'receipt', await receipt(env, { table: t, bill, final: true, pay, by: who })); // фінальний чек
   await env.DB.delete('bill:' + t);
   await bump(env, 'day:' + dayKey(), d => { d.closed = (d.closed || 0) + bill.total; d.tables = (d.tables || 0) + 1; d.cash = (d.cash || 0) + cash; d.card = (d.card || 0) + card; });
   await logClosed(env, { t, sum: bill.total, cash, card, at: hhmm(), by: who || '' });
@@ -92,7 +92,8 @@ async function closeTable(env, t, who, pay = 'cash') {
 }
 const payLabel = (cash, card) => card ? '💳 карта' : '💵 готівка';
 const PAY_PICK = { cash: '💵 готівка', card: '💳 карта' };
-const payButtons = t => ({ inline_keyboard: [[{ text: '💵 Готівка', callback_data: `clsok:${t}:cash` }, { text: '💳 Карта', callback_data: `clsok:${t}:card` }], [{ text: '🖨 Пречек', callback_data: 'pre:' + t }, { text: 'Скасувати', callback_data: 'no' }]] });
+const payButtons = t => ({ inline_keyboard: [[{ text: '💵 Готівка + 🖨 чек', callback_data: `clsok:${t}:cash` }, { text: '💳 Карта + 🖨 чек', callback_data: `clsok:${t}:card` }],
+  [{ text: '💵 Готівка, без чека', callback_data: `clsok:${t}:cash:np` }, { text: '💳 Карта, без чека', callback_data: `clsok:${t}:card:np` }], [{ text: '🖨 Пречек', callback_data: 'pre:' + t }, { text: 'Скасувати', callback_data: 'no' }]] });
 async function closeAsk(env, t) {
   const b = await getBill(env, t);
   if (!b.total) return { text: `Стіл ${t} вже закритий.` };
@@ -414,7 +415,7 @@ async function handleCallback(q, env) {
     if (admin) await remember(env, uid, chat, [await msgId(r)]);
     return r;
   };
-  const [act, arg, oid] = (q.data || '').split(':');
+  const [act, arg, oid, opt] = (q.data || '').split(':');
   const who = q.from?.first_name || '';
   const confirm = (text, yes) => send({ text, markup: { inline_keyboard: [[{ text: '✅ Так', callback_data: yes }, { text: 'Ні', callback_data: 'no' }]] } });
 
@@ -435,7 +436,7 @@ async function handleCallback(q, env) {
       { inline_keyboard: [[{ text: `🪑 Стіл ${d.table}`, callback_data: 'tbl:' + d.table }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + d.table }]] });
     return answer('Додано');
   }
-  if (act === 'clsok') { await edit(await closeTable(env, +arg, who, oid === 'card' ? 'card' : 'cash')); return answer('Закрито'); }
+  if (act === 'clsok') { await edit(await closeTable(env, +arg, who, oid === 'card' ? 'card' : 'cash', opt !== 'np')); return answer('Закрито'); }
   if (act === 'pre') {
     const b = await getBill(env, arg); if (!b.total) return answer(`Стіл ${arg} порожній`);
     await queuePrint(env, 'precheck', await receipt(env, { table: +arg, bill: b, final: false, by: who }));

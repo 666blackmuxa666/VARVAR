@@ -38,7 +38,6 @@ export async function receipt(env, { table, bill, final, pay, by }) {
   return [
     ['logo'],
     ['s', 'FOOD & BAR'],
-    ['gap'],
     ['inv', final ? `ЧЕК № ${no}` : 'ПРЕЧЕК'],
     ...(final ? [] : [['s', 'не є фіскальним чеком']]),
     ['gap'],
@@ -55,8 +54,6 @@ export async function receipt(env, { table, bill, final, pay, by }) {
     ['gap'],
     ['c', 'Дякуємо, що завітали!'],
     ['c', 'Чекаємо на вас знову ♥'],
-    ['gap'],
-    ['s', 'Wi-Fi: VARVAR · пароль 66666666'],
     ['s', 'Меню і замовлення — QR-код на столі'],
     ['gap'],
   ];
