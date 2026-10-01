@@ -214,8 +214,40 @@ async function tableView(env, t) {
   const log = (b.log || []).map(o => `<b>${o.at}</b> ${o.kind}\n${o.lines.map(esc).join('\n')}${o.comment ? `\n💬 ${esc(o.comment)}` : ''}`).join('\n\n');
   return {
     text: `🪑 <b>Стіл ${t}</b> — ${money(b.total)}${b.check ? ' · 🧾 просять чек' : ''}\n\n${log || '(деталі недоступні)'}`,
-    markup: { inline_keyboard: [[{ text: '🖨 Пречек', callback_data: 'pre:' + t }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + t }]] },
+    markup: { inline_keyboard: [[{ text: '🖨 Пречек', callback_data: 'pre:' + t }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + t }], [{ text: '✏️ Редагувати чек', callback_data: 'ed:' + t }]] },
   };
+}
+// редагування рахунку: позиції зведені по назві, «➖» прибирає 1 шт (з останнього замовлення, де вона є)
+const LINE = /^(\d+)× (.+?) — (\d+)$/;
+function billItems(b) {
+  const m = new Map();
+  for (const o of b.log || []) for (const l of o.lines) { const x = l.match(LINE); if (!x) continue; const a = m.get(x[2]) || { q: 0, sum: 0 }; a.q += +x[1]; a.sum += +x[3]; m.set(x[2], a); }
+  return [...m].map(([name, a]) => ({ name, ...a }));
+}
+async function editView(env, t, note = '') {
+  const b = await getBill(env, t);
+  if (!b.total) return { text: `🪑 Стіл ${t}: відкритого рахунку немає${note ? '\n\n' + note : ''}` };
+  const items = billItems(b);
+  return {
+    text: `✏️ <b>Стіл ${t}</b> — ${money(b.total)}\nНатисніть позицію, щоб прибрати 1 шт.${note ? '\n\n' + note : ''}`,
+    markup: { inline_keyboard: [...items.map((it, i) => [{ text: `➖ ${it.name} · ${it.q} шт · ${it.sum}`, callback_data: `rm:${t}:${i}` }]), [{ text: '✅ Готово', callback_data: 'tbl:' + t }]] },
+  };
+}
+async function removeOne(env, t, idx) {
+  const b = await getBill(env, t); const it = billItems(b)[idx];
+  if (!it) return '';
+  for (let i = (b.log || []).length - 1; i >= 0; i--) {
+    const o = b.log[i]; const j = o.lines.findIndex(l => (l.match(LINE) || [])[2] === it.name);
+    if (j < 0) continue;
+    const [, q, , sum] = o.lines[j].match(LINE); const unit = Math.round(+sum / +q);
+    if (+q > 1) o.lines[j] = `${+q - 1}× ${it.name} — ${+sum - unit}`; else o.lines.splice(j, 1);
+    if (!o.lines.length) b.log.splice(i, 1);
+    b.total = Math.max(0, b.total - unit);
+    if (b.total) await env.DB.put('bill:' + t, JSON.stringify(b), { expirationTtl: 12 * 3600 }); else await env.DB.delete('bill:' + t);
+    await addDishes(env, [{ n: it.name, q: -1, sum: -unit }]);
+    return `🗑 Прибрано: 1× ${esc(it.name)} (−${unit} грн)`;
+  }
+  return '';
 }
 async function pickTable(env, title, act) {
   const rows = await openTables(env);
@@ -444,6 +476,8 @@ async function handleCallback(q, env) {
   }
   if (act === 'ptest') { await queuePrint(env, 'test', TEST_PRINT()); return answer('🖨 Тест відправлено'); }
   if (act === 'tbl') { await send(await tableView(env, +arg)); return answer(''); }
+  if (act === 'ed') { const v = await editView(env, +arg); await edit(v.text, v.markup); return answer(''); }
+  if (act === 'rm') { const n = await removeOne(env, +arg, +oid); const v = await editView(env, +arg, n); await edit(v.text, v.markup); return answer(n ? 'Прибрано' : ''); }
   if (act === 'back') {
     const menu = await getMenu(env); const it = menu.categories.flatMap(c => c.items).find(i => i.id === arg);
     if (it) { delete it.hidden; const prev = await env.DB.get('menu'); if (prev) await env.DB.put('menu_prev', prev); await env.DB.put('menu', JSON.stringify(menu)); }
