@@ -1,7 +1,9 @@
 // VARVAR — Cloudflare Worker: прийом замовлень, перевірка Wi‑Fi закладу, Telegram.
 // Secrets: BOT_TOKEN, CHAT_ID, ADMIN_PIN, TG_SECRET   Vars: ALLOWED_ORIGIN, TABLES, SELF_URL   KV: DB
 import { getMenu, priceMap } from './menu.js';
-import { handleUpdate, tg, esc, getBill, addStat, addDishes, hhmm } from './bot.js';
+import { handleUpdate } from './bot.js';
+import { tg, esc, getBill, putBill, addStat, addDishes, hhmm, logEvent } from './ops.js';
+import { posApi, posLive } from './pos.js';
 import { queuePrint, kitchenTicket, printApi } from './print.js';
 export { PrintQ } from './print.js';
 export { Store } from './store.js';
@@ -38,9 +40,11 @@ export default {
       }
       if (url.pathname === '/api/orders') { // статуси замовлень гостя: ?ids=a,b
         const ids = (url.searchParams.get('ids') || '').split(',').filter(x => /^[a-z0-9]{6,12}$/.test(x)).slice(0, 20);
-        const out = {}; for (const id of ids) out[id] = await env.DB.get('ord:' + id, 'json');
+        const out = {}; for (const id of ids) { const o = await env.DB.get('ord:' + id, 'json'); out[id] = o && { s: o.s, t: o.t, by: o.by, at: o.at }; }
         return json(out);
       }
+      if (url.pathname === '/api/pos/live') return posLive(req, env, url);
+      if (url.pathname === '/api/pos' && req.method === 'POST') return json(...await posApi(await req.json(), req, env));
       if (url.pathname === '/api/order' && req.method === 'POST') return json(...await order(await req.json(), ip, env));
       if (url.pathname === '/api/admin' && req.method === 'POST') return json(...await admin(await req.json(), ip, env));
       if (url.pathname === '/tg' && req.method === 'POST') {
@@ -58,7 +62,7 @@ export default {
 function corsHeaders(req, env) {
   const o = req.headers.get('Origin') || '';
   const allowed = (env.ALLOWED_ORIGIN || '').split(',').map(s => s.trim());
-  return { 'Access-Control-Allow-Origin': allowed.includes(o) ? o : allowed[0] || '', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'content-type', Vary: 'Origin' };
+  return { 'Access-Control-Allow-Origin': allowed.includes(o) ? o : allowed[0] || '', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'content-type, authorization', Vary: 'Origin' };
 }
 const tableNum = (v, env) => { const n = parseInt(v, 10); return n >= 1 && n <= +(env.TABLES || 50) ? n : 0; };
 
@@ -120,14 +124,17 @@ async function order(b, ip, env) {
 
   // номер замовлення — за ним гість бачить, чи прийняв офіціант
   const oid = crypto.randomUUID().replace(/-/g, '').slice(0, 10);
-  await env.DB.put('ord:' + oid, JSON.stringify({ s: 'new', t: table }), { expirationTtl: BILL_TTL });
-  await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: msg, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[
+  const r = await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: msg, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[
     { text: '✅ Прийняв', callback_data: `acc:${table}:${oid}` }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + table }]] } });
+  const mid = await r.json().then(j => j.result?.message_id).catch(() => null);
+  // mid/html — щоб «Прийняв» з каси (POS) оновив і повідомлення в Telegram
+  await env.DB.put('ord:' + oid, JSON.stringify({ s: 'new', t: table, mid, html: msg }), { expirationTtl: BILL_TTL });
+  await logEvent(env, { k: lines.length ? 'guest' : 'check', t: table, oid, s: 'new', kind: TYPES[type], lines, comment, sum, check: wantsCheck, pay });
   if (lines.length) {
     await addStat(env, 'orders', 1); await addDishes(env, sold);
     await queuePrint(env, 'kitchen', kitchenTicket({ table, kind: TYPES[type], lines, comment, by: 'гість (сайт)' })); // бігунок
   }
-  await env.DB.put('bill:' + table, JSON.stringify(bill), { expirationTtl: BILL_TTL });
+  await putBill(env, table, bill);
   await env.DB.put('rl:' + dev, String(Date.now()), { expirationTtl: 60 });
   return [{ ok: true, id: oid, orderTotal: sum, tableTotal: bill.total }, 200];
 }

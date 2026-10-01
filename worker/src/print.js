@@ -1,7 +1,7 @@
 // Черга друку для принтера в закладі (XP-80C через програму printer/varvar-print.ps1 на Windows).
 // Завдання = список рядків: [стиль, текст, текст-праворуч?]
 //   стилі: logo · big (великий жирний по центру) · c (по центру) · b (жирний) · l (звичайний) · lr (ліворуч + праворуч) · hr (риска) · gap
-import { hhmm, dayKey } from './bot.js';
+import { hhmm, dayKey } from './ops.js';
 
 
 // черга живе в Durable Object: програма друку чекає на /pull (long-poll), і чек віддається миттєво
@@ -74,7 +74,8 @@ export async function receipt(env, { table, bill, final, pay, by }) {
     ...[...agg].flatMap(([name, a]) => [['item', name, `${a.sum}`], ['sub', `${a.q} × ${Math.round(a.sum / a.q)} грн`]]),
     ['dbl'],
     ['lr', 'Позицій', String(count)],
-    ['total', final ? 'СПЛАЧЕНО' : 'ДО СПЛАТИ', `${bill.total} грн`],
+    ...(bill.disc ? [['lr', 'Сума', `${bill.total} грн`], ['lr', `Знижка ${bill.disc}%`, `−${Math.round(bill.total * bill.disc / 100)} грн`]] : []),
+    ['total', final ? 'СПЛАЧЕНО' : 'ДО СПЛАТИ', `${bill.total - Math.round(bill.total * (bill.disc || 0) / 100)} грн`],
     ...(final && pay ? [['lr', 'Оплата', pay === 'card' ? 'Картка' : 'Готівка']] : []),
     ['gap'],
     ['c', 'Дякуємо, що завітали!'],

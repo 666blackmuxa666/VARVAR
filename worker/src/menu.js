@@ -2,7 +2,7 @@
 import DEFAULT_MENU from '../../data/menu.json';
 
 export async function getMenu(env) { return (await env.DB.get('menu', 'json')) || DEFAULT_MENU; }
-async function saveMenu(env, menu) {
+export async function saveMenu(env, menu) {
   const cur = await env.DB.get('menu');
   if (cur) await env.DB.put('menu_prev', cur);           // для «відмінити»
   await env.DB.put('menu', JSON.stringify(menu));

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0b0b0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VARVAR каса">
+<meta name="robots" content="noindex">
+<title>VARVAR — каса</title>
+<link rel="manifest" href="pos.webmanifest">
+<link rel="icon" href="img/icon.png">
+<link rel="apple-touch-icon" href="img/icon.png">
+<link rel="stylesheet" href="css/pos.css?v=2">
+</head>
+<body>
+
+<!-- вхід -->
+<section class="login" id="login" hidden>
+  <div class="login-box">
+    <div class="logo">VARVAR</div>
+    <div class="sub" id="loginSub">Введіть свій PIN</div>
+    <div id="pinView">
+      <div class="dots" id="dots"><i></i><i></i><i></i><i></i></div>
+      <div class="keypad" id="keypad"></div>
+      <button class="alt" id="toPass">Увійти паролем</button>
+    </div>
+    <form class="passform" id="passView" hidden>
+      <input id="lName" placeholder="Ваше імʼя" autocomplete="name" required>
+      <input id="lPass" type="password" placeholder="Пароль офіціанта або адміністратора" autocomplete="current-password" required>
+      <button class="btn primary">Увійти</button>
+      <button type="button" class="alt" id="toPin">← Вхід за PIN</button>
+    </form>
+    <div class="err" id="lErr"></div>
+  </div>
+</section>
+
+<!-- програма -->
+<div class="app" id="app" hidden>
+  <nav class="nav" id="nav"></nav>
+  <main id="main"></main>
+  <aside class="feed" id="feed">
+    <h2><span class="live" id="live"></span> Стрічка <span class="grow" style="flex:1"></span><button class="btn sm ghost feed-btn" data-a="feed">✕</button></h2>
+    <div class="list" id="events"></div>
+  </aside>
+</div>
+
+<div id="layer"></div>
+
+<script src="js/config.js?v=2"></script>
+<script src="js/pos.js?v=2"></script>
+</body>
+</html>

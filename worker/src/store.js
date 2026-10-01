@@ -4,6 +4,8 @@
 import { DurableObject } from 'cloudflare:workers';
 
 const now = () => Date.now();
+// ключі, зміна яких оновлює екрани POS
+const WATCH = /^(bill:|closed:|day:|exp:|ev:|menu$|staff$|ord:)/;
 const alive = r => r && (!r.e || r.e > now());
 
 export class Store extends DurableObject {
@@ -26,11 +28,29 @@ export class Store extends DurableObject {
     await this.ctx.storage.put('__migrated', n);
     await this.ctx.storage.setAlarm(now() + 3600e3);
   }
+  // ---- живе оновлення для POS: WebSocket-и підключені до цього ж об'єкта ----
+  async fetch(req) {
+    if (req.headers.get('Upgrade') !== 'websocket') return new Response('expected websocket', { status: 426 });
+    const [client, server] = Object.values(new WebSocketPair());
+    this.ctx.acceptWebSocket(server);
+    return new Response(null, { status: 101, webSocket: client });
+  }
+  webSocketMessage(ws, msg) { if (msg === 'ping') ws.send('pong'); }
+  webSocketClose(ws, code) { try { ws.close(code); } catch {} }
+  changed(keys) {
+    const ks = keys.filter(k => WATCH.test(k)); if (!ks.length) return;
+    (this.pend ||= new Set()); ks.forEach(k => this.pend.add(k.split(':')[0]));
+    if (this.timer) return;
+    this.timer = setTimeout(() => {
+      const msg = JSON.stringify({ type: 'changed', keys: [...this.pend] }); this.pend = new Set(); this.timer = null;
+      for (const ws of this.ctx.getWebSockets()) { try { ws.send(msg); } catch {} }
+    }, 40);
+  }
   async get(k) { const r = await this.ctx.storage.get(k); return alive(r) ? r.v : null; }
   async getMany(ks) { const m = await this.ctx.storage.get(ks); return ks.map(k => { const r = m.get(k); return alive(r) ? r.v : null; }); }
-  async put(k, v, ttl) { await this.ctx.storage.put(k, { v, e: ttl ? now() + ttl * 1000 : 0 }); }
-  async del(k) { await this.ctx.storage.delete(k); }
-  async delMany(ks) { for (let i = 0; i < ks.length; i += 128) await this.ctx.storage.delete(ks.slice(i, i + 128)); }
+  async put(k, v, ttl) { await this.ctx.storage.put(k, { v, e: ttl ? now() + ttl * 1000 : 0 }); this.changed([k]); }
+  async del(k) { await this.ctx.storage.delete(k); this.changed([k]); }
+  async delMany(ks) { for (let i = 0; i < ks.length; i += 128) await this.ctx.storage.delete(ks.slice(i, i + 128)); this.changed(ks); }
   async list(prefix) { const m = await this.ctx.storage.list({ prefix }); return [...m].filter(([, r]) => alive(r)).map(([name]) => name); }
   // раз на годину прибираємо прострочене
   async alarm() {
@@ -40,6 +60,7 @@ export class Store extends DurableObject {
   }
 }
 
+export const storeStub = env => env.STORE.get(env.STORE.idFromName('main'));
 export function storeDB(kv, ns) {
   const s = ns.get(ns.idFromName('main'));
   const img = k => k.startsWith('img:');

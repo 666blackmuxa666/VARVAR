@@ -3,7 +3,7 @@ main = "src/index.js"
 compatibility_date = "2026-09-01"
 
 [vars]
-ALLOWED_ORIGIN = "https://666blackmuxa666.github.io"
+ALLOWED_ORIGIN = "https://666blackmuxa666.github.io,http://localhost:8000"
 TABLES = "15"
 SELF_URL = "https://varvar-menu.varvar.workers.dev"
 SITE_URL = "https://666blackmuxa666.github.io/VARVAR/"
