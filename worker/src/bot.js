@@ -12,10 +12,11 @@ const YEAR = 400 * 86400, ADMIN_TTL = 12 * 3600;
 
 // ---------- клавіатури ----------
 const W = { tables: '📋 Столи', close: '🧾 Закрити стіл', stop: '⛔ Стоп-лист', help: '❓ Допомога', admin: '🔐 Адмін' };
-const A = { reports: '📊 Звіти', closed: '📜 Закриті сьогодні', top: '🏆 Топ страв', del: '🗑 Видалити стіл', menu: '📖 Редагувати меню', wifi: '📶 Wi‑Fi', pass: '🔑 Змінити пароль', waiter: '⬅️ Режим офіціанта', logout: '🚪 Вийти' };
+const A = { reports: '📊 Звіти', closed: '📜 Закриті сьогодні', top: '🏆 Топ страв', del: '🗑 Видалити стіл', menu: '📖 Редагувати меню', wifi: '📶 Wi‑Fi', pass: '🔑 Змінити пароль', waiter: '⬅️ Режим офіціанта', logout: '🚪 Вийти',
+  delClosed: '🧹 Видалити закритий', reset: '♻️ Обнулити все' }; // ТЕСТ: delClosed і reset прибрати перед запуском
 const kb = rows => ({ keyboard: rows.map(r => r.map(text => ({ text }))), resize_keyboard: true, is_persistent: true });
 export const KEYBOARD = kb([[W.tables, W.close], [W.stop, W.help], [W.admin]]);
-const ADMIN_KB = kb([[A.reports, A.closed], [A.top, A.del], [W.tables, W.stop], [A.menu, A.wifi], [A.pass, A.waiter, A.logout]]);
+const ADMIN_KB = kb([[A.reports, A.closed], [A.top, A.del], [W.tables, W.stop], [A.menu, A.wifi], [A.delClosed, A.reset], [A.pass, A.waiter, A.logout]]);
 
 export const COMMANDS = [
   ['tables', 'Відкриті столи і рахунки'], ['table', 'Деталі столу: /table 5'], ['close', 'Закрити рахунок столу'],
@@ -43,6 +44,8 @@ ${A.top} — що найбільше замовляють цього місяц�
 ${A.del} — прибрати помилковий/тестовий стіл (не йде у виручку)
 ${A.menu} — ціни, склад, нові страви, фото
 ${A.wifi} — мережі закладу для замовлень
+${A.delClosed} — прибрати закритий рахунок з виручки (тест)
+${A.reset} — стерти всю статистику й столи (тест)
 ${A.pass} — новий пароль адміністратора
 ${A.waiter} — звичайні кнопки (вхід зберігається)
 ${A.logout} — вийти з режиму адміністратора
@@ -78,6 +81,34 @@ async function deleteTable(env, t, who) {
   await env.DB.delete('bill:' + t);
   await logClosed(env, { t, sum: bill.total, at: hhmm(), by: who || '', del: 1 });
   return `🗑 <b>Стіл ${t} видалено</b> (${money(bill.total)}) — у виручку не піде.`;
+}
+
+// ---------- ТЕСТ: видалення закритих рахунків і повне обнулення (прибрати перед запуском) ----------
+async function delClosedPicker(env) {
+  const list = (await env.DB.get('closed:' + dayKey(), 'json')) || [];
+  const ok = list.map((x, i) => ({ ...x, i })).filter(x => !x.del);
+  if (!ok.length) return { text: '🧹 Сьогодні закритих рахунків немає.' };
+  return { text: '🧹 Який закритий рахунок видалити? (сума відніметься з виручки)', markup: { inline_keyboard: chunk(ok.map(x => ({ text: `${x.at} · стіл ${x.t} · ${x.sum}`, callback_data: 'dc:' + x.i })), 1) } };
+}
+async function delClosed(env, i) {
+  const k = 'closed:' + dayKey(); const list = (await env.DB.get(k, 'json')) || [];
+  const x = list[i]; if (!x || x.del) return 'Цей рахунок уже видалено.';
+  x.del = 1; await env.DB.put(k, JSON.stringify(list), { expirationTtl: YEAR });
+  await bump(env, 'day:' + dayKey(), d => { d.closed = Math.max(0, (d.closed || 0) - x.sum); d.tables = Math.max(0, (d.tables || 0) - 1); });
+  return `🧹 Рахунок стола ${x.t} (${money(x.sum)}, ${x.at}) видалено з виручки.`;
+}
+async function resetAll(env) {
+  let n = 0;
+  for (const prefix of ['day:', 'closed:', 'dish:', 'bill:', 'ord:', 'rl:']) {
+    let cursor;
+    do {
+      const r = await env.DB.list({ prefix, cursor });
+      await Promise.all(r.keys.map(k => env.DB.delete(k.name))); n += r.keys.length;
+      cursor = r.list_complete ? null : r.cursor;
+    } while (cursor);
+  }
+  return `♻️ <b>Усе обнулено</b> (${n} записів): звіти, закриті рахунки, топ страв, відкриті столи.
+Меню, Wi‑Fi і пароль не чіпались.`;
 }
 
 // ---------- адміністратор ----------
@@ -214,13 +245,15 @@ export async function handleUpdate(u, env) {
   if (low === '/stoplist' || text === W.stop || low === 'стоп-лист' || low === 'стоп лист') return send(await stopView(env));
 
   // --- адміністратор ---
-  const ADM = [A.reports, A.closed, A.top, A.del, A.menu, A.wifi, A.pass, A.waiter, A.logout];
+  const ADM = [A.reports, A.closed, A.top, A.del, A.menu, A.wifi, A.pass, A.waiter, A.logout, A.delClosed, A.reset];
   const admOnly = ADM.includes(text) || /^(\/revenue|\/wifi|\/menu|виручка|каса|звіти|видалити стіл)/.test(low);
   if (admOnly && !admin) return send({ text: `🔐 Це доступно лише адміністратору. Натисніть «${W.admin}».` });
   if (text === A.reports || low === '/revenue' || low === 'виручка' || low === 'каса' || low === 'звіти') return send(await reportsView(env));
   if (text === A.closed) return send(await closedView(env));
   if (text === A.top) return send(await topView(env));
   if (text === A.del) return send(await pickTable(env, '🗑 Який стіл видалити? (помилковий або тестовий — у виручку не піде)', 'del'));
+  if (text === A.delClosed) return send(await delClosedPicker(env));
+  if (text === A.reset) return send({ text: '♻️ <b>Обнулити все?</b>\nЗітруться: звіти, виручка, закриті рахунки, топ страв і ВСІ відкриті столи.\nМеню, Wi‑Fi і пароль залишаться.', markup: { inline_keyboard: [[{ text: '⚠️ Так, обнулити', callback_data: 'rst1' }, { text: 'Ні', callback_data: 'no' }]] } });
   if (text === A.menu || low === '/menu') return send({ text: MENU_HELP });
   if (text === A.wifi || low === '/wifi') return send(await wifiView(env));
   if (text === A.pass) { await env.DB.put('st:' + uid, 'newpass', { expirationTtl: 300 }); return send({ text: '🔑 Напишіть новий пароль (мінімум 4 символи). Повідомлення одразу видалиться.' }); }
@@ -264,7 +297,7 @@ async function handleCallback(q, env) {
     const v = await stopView(env); await edit(v.text, v.markup); return answer(it ? `${it.name.uk} знову в меню` : 'Не знайдено');
   }
   // лише адміністратор
-  if (['del', 'delok', 'wifiask', 'wifiok'].includes(act) && !admin) return answer('🔐 Лише для адміністратора');
+  if (['del', 'delok', 'wifiask', 'wifiok', 'dc', 'dcok', 'rst1', 'rst2'].includes(act) && !admin) return answer('🔐 Лише для адміністратора');
   if (act === 'del') {
     const b = await getBill(env, arg);
     if (!b.total) return answer(`Стіл ${arg} вже порожній`);
@@ -273,6 +306,10 @@ async function handleCallback(q, env) {
   if (act === 'delok') { await edit(await deleteTable(env, +arg, who)); return answer('Видалено'); }
   if (act === 'wifiask') { await confirm('🗑 Скинути всі мережі? Замовлення не прийматимуться, поки не додасте мережу знову через admin.html.', 'wifiok'); return answer(''); }
   if (act === 'wifiok') { await env.DB.put('venue_ips', '[]'); await edit('📶 Усі мережі скинуто. Додайте мережу закладу через admin.html.'); return answer('Скинуто'); }
+  if (act === 'dc') { await confirm('🧹 Видалити цей закритий рахунок? Сума відніметься з виручки.', 'dcok:' + arg); return answer(''); }
+  if (act === 'dcok') { await edit(await delClosed(env, +arg)); return answer('Видалено'); }
+  if (act === 'rst1') { await edit('⚠️ Точно? Це не можна скасувати.', { inline_keyboard: [[{ text: '♻️ Так, усе обнулити', callback_data: 'rst2' }, { text: 'Ні', callback_data: 'no' }]] }); return answer(''); }
+  if (act === 'rst2') { await edit(await resetAll(env)); return answer('Обнулено'); }
   if (act === 'no') { await edit('Скасовано.'); return answer(''); }
   return answer('');
 }
