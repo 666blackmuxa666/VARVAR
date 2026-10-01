@@ -147,6 +147,5 @@ while ($true) {
     }
     if ($ok.Count) { Http 'GET' "$($cfg.api)/api/print/ack?key=$($cfg.key)&ids=$($ok -join ',')" | Out-Null }
     if ($done.Count -gt 500) { $done = @{} }
-  } catch { Log "net error: $($_.Exception.Message)"; Start-Sleep 10 }
-  Start-Sleep 3
+  } catch { Log "net error: $($_.Exception.Message)"; Start-Sleep 5 }
 }
