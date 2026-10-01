@@ -7,7 +7,7 @@ import { storeStub } from './store.js';
 import {
   esc, money, hhmm, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
-  topData, setHidden, adminPass, waiterPass, pinHash, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
+  topData, setHidden, samePass, adminPass, waiterPass, pinHash, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
 } from './ops.js';
 
 const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400 };
@@ -133,9 +133,9 @@ async function login(b, env, ip) {
   let me = null;
   if (b.pin) { const h = await pinHash(String(b.pin)); const s = (await getStaff(env)).find(x => x.pin === h); if (s) me = { name: s.name, role: s.role, sid: s.id }; }
   if (b.pass) {
-    const p = String(b.pass).toLowerCase();
-    if (p === (await adminPass(env)).toLowerCase()) me = { name: String(b.name || 'Адміністратор').slice(0, 30), role: 'admin' };
-    else if (p === (await waiterPass(env)).toLowerCase()) me = { name: String(b.name || 'Офіціант').slice(0, 30), role: 'waiter' };
+    const p = String(b.pass);
+    if (samePass(p, await adminPass(env))) me = { name: String(b.name || 'Адміністратор').slice(0, 30), role: 'admin' };
+    else if (samePass(p, await waiterPass(env))) me = { name: String(b.name || 'Офіціант').slice(0, 30), role: 'waiter' };
   }
   if (!me) return [{ error: 'Невірний PIN або пароль' }, 401];
   const token = [...crypto.getRandomValues(new Uint8Array(16))].map(x => x.toString(16).padStart(2, '0')).join('');

@@ -8,7 +8,7 @@ import { queuePrint, printStatus } from './print.js';
 import {
   tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
   precheck, setDiscount, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
-  reportsData, topData, setHidden, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
+  reportsData, topData, setHidden, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
 } from './ops.js';
 export { tg, esc, hhmm, getBill } from './ops.js';
 export { addStat, addDishes } from './ops.js';
@@ -243,7 +243,7 @@ export async function handleUpdate(u, env) {
     if (['login', 'newpass', 'wlogin', 'newwpass', 'stfadd'].includes(state)) await tg(env, 'deleteMessage', { chat_id: chat, message_id: m.message_id }); // прибираємо паролі/PIN з чату
     if (state === 'wlogin') {
       if (await tooMany()) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' }, { remove_keyboard: true });
-      if (text.toLowerCase() !== (await waiterPass(env)).toLowerCase() && text.toLowerCase() !== (await adminPass(env)).toLowerCase()) {
+      if (!samePass(text, await waiterPass(env)) && !samePass(text, await adminPass(env))) {
         const n = await fail(); await env.DB.put('st:' + uid, 'wlogin', { expirationTtl: 3600 });
         return send({ text: `❌ Невірний пароль Введіть ще раз:` }, { remove_keyboard: true });
       }
@@ -253,7 +253,7 @@ export async function handleUpdate(u, env) {
     }
     if (state === 'login') {
       if (await tooMany()) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' });
-      if (text.toLowerCase() !== (await adminPass(env)).toLowerCase()) {
+      if (!samePass(text, await adminPass(env))) {
         const n = await fail();
         return send({ text: `❌ Невірний пароль. Натисніть «${W.admin}», щоб спробувати ще.` }, KEYBOARD);
       }

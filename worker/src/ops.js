@@ -247,6 +247,9 @@ export async function setHidden(env, id, hidden) {
 }
 
 // ---------- доступ: паролі, персонал ----------
+// порівняння паролів без різниці в розкладці: «фиц» / «фіц» / латинська i, великі літери, пробіли
+export const normPass = s => String(s || '').trim().toLowerCase().replace(/[иiыїі]/g, 'і').replace(/ё/g, 'е').replace(/[.\s]+$/g, '');
+export const samePass = (a, b) => !!b && normPass(a) === normPass(b);
 export const adminPass = async env => (await env.DB.get('admin_pass')) || env.ADMIN_PIN || '';
 export const waiterPass = async env => (await env.DB.get('waiter_pass')) || 'фіц';
 export const isAdmin = async (env, uid) => !!uid && !!(await env.DB.get('adm:' + uid));
