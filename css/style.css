@@ -15,8 +15,12 @@ body.lock { overflow: hidden; }
 button { font: inherit; color: inherit; cursor: pointer; }
 h1, h2, .cats a { font-family: 'Rubik Dirt', Rubik, sans-serif; font-weight: 400; letter-spacing: .02em; }
 
-.top { display: flex; align-items: center; justify-content: space-between; padding: 14px var(--gut) 6px; }
+.top { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 14px var(--gut) 6px; }
 .logo { margin: 0; font-size: 34px; }
+.langs { position: absolute; right: 12px; top: calc(100% + 6px); z-index: 50; background: var(--card, #1d1d1d); border: 1px solid var(--line); border-radius: 14px; padding: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; box-shadow: 0 10px 30px #000a; width: min(320px, calc(100vw - 24px)); }
+.langs[hidden] { display: none; }
+.langs button { background: none; border: 0; color: inherit; text-align: left; padding: 9px 10px; border-radius: 10px; font: inherit; white-space: nowrap; }
+.langs button:hover { background: #ffffff14; }
 .lang { background: none; border: 1px solid var(--line); border-radius: 99px; padding: 6px 14px; font-weight: 700; }
 
 .cats {

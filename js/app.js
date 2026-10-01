@@ -5,7 +5,9 @@
     set(k, v) { try { localStorage.setItem('vv_' + k, JSON.stringify(v)); } catch {} },
   };
   const SESSION_MS = 8 * 3600e3;
-  let lang = store.get('lang', navigator.language.startsWith('uk') || navigator.language.startsWith('ru') ? 'uk' : 'en');
+  const nav = (navigator.language || 'en').slice(0, 2).toLowerCase();
+  let lang = store.get('lang', nav === 'ru' || nav === 'uk' ? 'uk' : I18N[nav] ? nav : 'en');
+  if (!I18N[lang]) lang = 'en';
   let cart = store.get('cart', {});           // "id" або "id|варіант" → кількість
   let table = store.get('table', '');
   let hist = store.get('hist', { ts: 0, orders: [] }); // замовлення цієї сесії
@@ -13,7 +15,18 @@
   if (Date.now() - hist.ts > SESSION_MS) hist = { ts: 0, orders: [] };
   const device = store.get('device', null) || (() => { const d = crypto.randomUUID(); store.set('device', d); return d; })();
 
-  const t = k => I18N[lang][k] ?? k;
+  const t = k => I18N[lang][k] ?? I18N.en[k] ?? k;
+  // назви і склад: uk/en — з меню; інші мови — з js/menu-i18n.js (склад по словах), інакше англійською
+  const MI = () => (window.MENU_I18N || {})[lang];
+  const catName = c => c.name[lang] || MI()?.c[c.id] || c.name.en;
+  const itemName = it => it.name[lang] || MI()?.n[it.id] || it.name.en;
+  const itemDesc = it => {
+    if (!it.desc) return '';
+    if (it.desc[lang]) return it.desc[lang];
+    const m = MI(); if (!m) return it.desc.en;
+    const r = it.desc.en.split(', ').map(p => m.t[p.toLowerCase()] || p).join(', ');
+    return r.charAt(0).toUpperCase() + r.slice(1);
+  };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const unit = s => lang === 'uk' ? s : s.replace(/ г/g, ' g').replace(/ л/g, ' l').replace(/^л$/, 'l').replace('шт', 'pc').replace("м'яса", 'meat');
   const money = n => n.toLocaleString('uk-UA') + ' ' + t('cur');
@@ -23,21 +36,22 @@
   const DRINKS = new Set(['coffee', 'soft', 'lemonades', 'cocktails', 'shots', 'whisky', 'rum', 'vermouth', 'liqueur', 'cognac', 'vodka', 'tequila', 'gin', 'wine', 'beer', 'hookah']);
 
   const priceOf = key => { const [id, v] = key.split('|'); const it = byId[id]; return v ? it.variants.find(x => x.v === v).p : it.price; };
-  const labelOf = key => { const [id, v] = key.split('|'); const it = byId[id]; return it.name[lang] + (v ? unit(` ${v} л`) : ''); };
+  const labelOf = key => { const [id, v] = key.split('|'); const it = byId[id]; return itemName(it) + (v ? unit(` ${v} л`) : ''); };
   const cartEntries = () => Object.entries(cart).filter(([k, q]) => q > 0 && byId[k.split('|')[0]]);
   const cartSum = () => cartEntries().reduce((s, [k, q]) => s + priceOf(k) * q, 0);
   const save = () => { store.set('cart', cart); store.set('hist', hist); store.set('table', table); };
 
   // ---------- меню ----------
+  $('#langs').innerHTML = LANGS.map(([c, f, n]) => `<button data-lang="${c}">${f} ${n}</button>`).join('');
   function renderMenu() {
     document.documentElement.lang = lang;
-    $('#lang').textContent = lang === 'uk' ? 'EN' : 'UA';
+    $('#lang').textContent = (LANGS.find(l => l[0] === lang) || ['', '🌐'])[1] + ' ' + lang.toUpperCase();
     document.querySelectorAll('[data-i18n]').forEach(e => e.textContent = t(e.dataset.i18n));
     document.querySelectorAll('[data-i18n-ph]').forEach(e => e.placeholder = t(e.dataset.i18nPh));
-    $('#cats').innerHTML = menu.categories.map(c => `<a href="#c-${c.id}" data-cat="${c.id}">${esc(c.name[lang])}</a>`).join('');
+    $('#cats').innerHTML = menu.categories.map(c => `<a href="#c-${c.id}" data-cat="${c.id}">${esc(catName(c))}</a>`).join('');
     $('#menu').innerHTML = menu.categories.map(c => `
       <section class="cat ${c.id === 'extras' ? 'compact' : DRINKS.has(c.id) ? 'drinks' : ''}" id="c-${c.id}">
-        <h2>${esc(c.name[lang])}</h2>
+        <h2>${esc(catName(c))}</h2>
         <div class="grid">${c.items.map(card).join('')}</div>
       </section>`).join('');
     observeCats();
@@ -50,8 +64,8 @@
     return `<article class="item">
       ${it.img ? `<div class="ph"><img src="${it.img}${it.img.includes('?') ? '' : '?v=' + IMG_VER}" alt="" loading="lazy" decoding="async"></div>` : ''}
       <div class="info">
-        <h3>${esc(it.name[lang])}${it.size && !it.variants ? `<span class="size">${esc(unit(it.size))}</span>` : ''}</h3>
-        ${it.desc ? `<p>${esc(it.desc[lang])}</p>` : ''}
+        <h3>${esc(itemName(it))}${it.size && !it.variants ? `<span class="size">${esc(unit(it.size))}</span>` : ''}</h3>
+        ${it.desc ? `<p>${esc(itemDesc(it))}</p>` : ''}
         ${btns}
       </div></article>`;
   }
@@ -209,6 +223,7 @@
   // ---------- події ----------
   document.addEventListener('click', e => {
     const el = e.target.closest('button, [data-close], #wifiBanner, #orderStatus');
+    if (!el || (el.id !== 'lang' && !el.dataset.lang)) $('#langs').hidden = true;
     if (!el) return;
     if (el.dataset.add) change(el.dataset.add, 1);
     else if (el.dataset.inc) change(el.dataset.inc, 1);
@@ -218,7 +233,8 @@
     else if ('close' in el.dataset) el.closest('.modal') ? (el.closest('.modal').hidden = true) : closeAll();
     else if (el.id === 'fab' || el.id === 'orderStatus') openSheet();
     else if (el.id === 'wifiBanner') showWifi();
-    else if (el.id === 'lang') { lang = lang === 'uk' ? 'en' : 'uk'; store.set('lang', lang); renderMenu(); syncStatus(); }
+    else if (el.id === 'lang') { const p = $('#langs'); p.hidden = !p.hidden; }
+    else if (el.dataset.lang) { lang = el.dataset.lang; store.set('lang', lang); $('#langs').hidden = true; renderMenu(); syncStatus(); }
     else if (el.id === 'copyPass') navigator.clipboard?.writeText(C.wifi.password).then(() => el.textContent = t('copied'));
     else if (el.id === 'retry') { $('#wifiModal').hidden = true; syncStatus(); }
   });
