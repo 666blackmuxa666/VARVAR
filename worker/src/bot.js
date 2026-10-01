@@ -286,7 +286,28 @@ async function closedView(env, day = dayKey()) {
   const list = (await env.DB.get('closed:' + day, 'json')) || [];
   if (!list.length) return { text: `📜 За ${day} закритих рахунків ще немає.` };
   const ok = list.filter(x => !(x.del || x.rm)), sum = ok.reduce((s, x) => s + x.sum, 0);
-  return { text: `📜 <b>Закриті рахунки за ${day}</b>\n` + list.map(x => `${(x.del || x.rm) ? '🗑' : '✅'} ${x.at} · стіл ${x.t} · ${money(x.sum)}${(x.del || x.rm) ? '' : ' · ' + payLabel(x.cash ?? x.sum, x.card || 0)}${x.by ? ` · ${esc(x.by)}` : ''}${(x.del || x.rm) ? ' (видалено)' : ''}`).join('\n') + `\n\nРазом: <b>${money(sum)}</b> · рахунків ${ok.length}\n💵 ${money(ok.reduce((s, x) => s + (x.cash ?? x.sum), 0))} · 💳 ${money(ok.reduce((s, x) => s + (x.card || 0), 0))}` };
+  const btns = list.map((x, k) => ({ x, k })).filter(({ x }) => !(x.del || x.rm)).map(({ x, k }) => ({ text: `🧾 ${x.at} · стіл ${x.t} · ${x.sum}`, callback_data: 'cv:' + (x.id || k) }));
+  return { markup: btns.length ? { inline_keyboard: chunk(btns, 1) } : undefined, text: `📜 <b>Закриті рахунки за ${day}</b>\n` + list.map(x => `${(x.del || x.rm) ? '🗑' : '✅'} ${x.at} · стіл ${x.t} · ${money(x.sum)}${(x.del || x.rm) ? '' : ' · ' + payLabel(x.cash ?? x.sum, x.card || 0)}${x.by ? ` · ${esc(x.by)}` : ''}${(x.del || x.rm) ? ' (видалено)' : ''}`).join('\n') + `\n\nРазом: <b>${money(sum)}</b> · рахунків ${ok.length}\n💵 ${money(ok.reduce((s, x) => s + (x.cash ?? x.sum), 0))} · 💳 ${money(ok.reduce((s, x) => s + (x.card || 0), 0))}` };
+}
+// один закритий рахунок: що було, повторний друк чека, видалення з виручки
+async function closedOne(env, ref) {
+  const list = (await env.DB.get('closed:' + dayKey(), 'json')) || [];
+  const x = list.find(e => e.id === ref) || (/^\d+$/.test(ref) ? list[+ref] : null);
+  if (!x) return { text: 'Рахунок не знайдено.' };
+  const lines = (x.dishes || []).map(([n, q, sum]) => `${q}× ${n} — ${sum}`);
+  const gone = x.del || x.rm;
+  return {
+    text: `🧾 <b>Стіл ${x.t}</b> · закрито о ${x.at}${x.by ? ` · ${esc(x.by)}` : ''}\n\n${lines.length ? lines.map(esc).join('\n') : '<i>(перелік страв не збережено — рахунок закрито до оновлення)</i>'}\n\nРазом: <b>${money(x.sum)}</b> · ${payLabel(x.cash ?? x.sum, x.card || 0)}${gone ? '\n\n🗑 Видалено з виручки' : ''}`,
+    markup: { inline_keyboard: [[...(lines.length ? [{ text: '🖨 Друкувати чек', callback_data: 'cvp:' + ref }] : []), ...(gone ? [] : [{ text: '🗑 Видалити з виручки', callback_data: 'dc:' + ref }])], [{ text: '⬅️ Назад', callback_data: 'cvb' }]] },
+  };
+}
+async function reprintClosed(env, ref, who) {
+  const list = (await env.DB.get('closed:' + dayKey(), 'json')) || [];
+  const x = list.find(e => e.id === ref) || (/^\d+$/.test(ref) ? list[+ref] : null);
+  if (!x?.dishes?.length) return false;
+  const bill = { total: x.sum, log: [{ lines: x.dishes.map(([n, q, sum]) => `${q}× ${n} — ${sum}`) }] };
+  await queuePrint(env, 'receipt', await receipt(env, { table: x.t, bill, final: true, pay: x.card ? 'card' : 'cash', by: who }));
+  return true;
 }
 async function topView(env) {
   const ym = dayKey().slice(0, 7); const d = (await env.DB.get('dish:' + ym, 'json')) || {};
@@ -515,7 +536,7 @@ async function handleCallback(q, env) {
     const v = await stopView(env); await edit(v.text, v.markup); return answer(it ? `${it.name.uk} знову в меню` : 'Не знайдено');
   }
   // лише адміністратор
-  if (['del', 'delok', 'wifiask', 'wifiok', 'dc', 'dcok', 'rst1', 'rst2', 'exs', 'exdel', 'exdelok', 'float', 'exlist'].includes(act) && !admin) return answer('🔐 Лише для адміністратора');
+  if (['del', 'delok', 'wifiask', 'wifiok', 'dc', 'dcok', 'cv', 'cvb', 'cvp', 'rst1', 'rst2', 'exs', 'exdel', 'exdelok', 'float', 'exlist'].includes(act) && !admin) return answer('🔐 Лише для адміністратора');
   if (act === 'del') {
     const b = await getBill(env, arg);
     if (!b.total) return answer(`Стіл ${arg} вже порожній`);
@@ -524,6 +545,9 @@ async function handleCallback(q, env) {
   if (act === 'delok') { await edit(await deleteTable(env, +arg, who)); return answer('Видалено'); }
   if (act === 'wifiask') { await confirm('🗑 Скинути всі мережі? Замовлення не прийматимуться, поки не додасте мережу знову через admin.html.', 'wifiok'); return answer(''); }
   if (act === 'wifiok') { await env.DB.put('venue_ips', '[]'); await edit('📶 Усі мережі скинуто. Додайте мережу закладу через admin.html.'); return answer('Скинуто'); }
+  if (act === 'cv') { const v = await closedOne(env, arg); await edit(v.text, v.markup); return answer(''); }
+  if (act === 'cvb') { const v = await closedView(env); await edit(v.text, v.markup); return answer(''); }
+  if (act === 'cvp') return answer(await reprintClosed(env, arg, who) ? '🖨 Чек відправлено на принтер' : 'Немає переліку страв');
   if (act === 'dc') { await confirm('🧹 Видалити цей закритий рахунок? Сума відніметься з виручки.', 'dcok:' + arg); return answer(''); }
   if (act === 'dcok') { await edit(await delClosed(env, arg)); return answer('Видалено'); }
   if (act === 'rst1') { await edit('⚠️ Точно? Це не можна скасувати.', { inline_keyboard: [[{ text: '♻️ Так, усе обнулити', callback_data: 'rst2' }, { text: 'Ні', callback_data: 'no' }]] }); return answer(''); }
