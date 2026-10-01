@@ -73,8 +73,9 @@ export async function printApi(req, env, url) {
     const jobs = (await Promise.all(keys.map(k => env.DB.get(k.name, 'json')))).filter(Boolean);
     return new Response(JSON.stringify({ jobs }), { headers: { 'content-type': 'application/json; charset=utf-8' } }); // charset — інакше PowerShell 5 ламає кирилицю
   }
-  if (url.pathname === '/api/print/ack' && req.method === 'POST') {
-    const ids = [].concat((await req.json()).ids || []);
+  if (url.pathname === '/api/print/ack') {
+    // GET ?ids=a,b (старі Windows) або POST {ids}
+    const ids = req.method === 'POST' ? [].concat((await req.json().catch(() => ({}))).ids || []) : (url.searchParams.get('ids') || '').split(',');
     await Promise.all(ids.filter(id => /^[\w-]+$/.test(id)).map(id => env.DB.delete('pq:' + id)));
     return Response.json({ ok: true });
   }
