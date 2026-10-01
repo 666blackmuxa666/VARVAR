@@ -17,7 +17,7 @@
 
   // ---------- API ----------
   async function api(op, data = {}) {
-    const r = await fetch(API + '/api/pos', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + S.token }, body: JSON.stringify({ op, ...data }) });
+    const r = await withTimeout(fetch(API + '/api/pos', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + S.token }, body: JSON.stringify({ op, ...data }) }), 12000);
     const j = await r.json().catch(() => ({}));
     if (r.status === 401 && op !== 'login') { logout(true); throw new Error('auth'); }
     if (!r.ok) { const e = new Error(j.error || 'error'); e.data = j; throw e; }
@@ -25,6 +25,8 @@
   }
   const act = async (op, data, okMsg) => { try { const r = await api(op, data); if (okMsg) toast(okMsg); return r; } catch (e) { if (e.message !== 'auth') toast('⚠️ ' + errText(e.message)); return null; } };
   const errText = e => ({ admin: 'Лише для адміністратора', empty: 'Нічого не вибрано', table: 'Невірний стіл', nothing: 'Нема що відміняти' })[e] || e;
+
+  const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('Сервер не відповідає (перевірте інтернет / дату й час на компʼютері)')), ms))]);
 
   // ---------- вхід ----------
   let pin = '';
@@ -34,13 +36,13 @@
   }
   const dots = () => { const d = $('#dots'); const len = Math.max(4, pin.length); d.innerHTML = Array.from({ length: len }, (_, i) => `<i class="${i < pin.length ? 'on' : ''}"></i>`).join(''); };
   async function tryLogin(body) {
-    $('#lErr').textContent = '';
+    $('#lErr').style.color = 'var(--muted)'; $('#lErr').textContent = 'Перевіряю…';
     try {
       const r = await api('login', body);
       S.token = r.token; S.me = r.me; store.set('token', r.token); store.set('me', r.me);
       start();
     } catch (e) {
-      $('#lErr').textContent = e.message === 'error' ? 'Помилка зʼєднання' : e.message;
+      $('#lErr').style.color = ''; $('#lErr').textContent = e.message === 'error' ? 'Помилка зʼєднання' : /fetch|network/i.test(e.message) ? 'Немає звʼязку з сервером: ' + e.message : e.message;
       pin = ''; dots(); $('#dots').classList.add('shake'); setTimeout(() => $('#dots').classList.remove('shake'), 400);
     }
   }

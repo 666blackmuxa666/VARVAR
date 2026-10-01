@@ -58,7 +58,7 @@ var __spreadValues = (a, b) => {
     return ((_a = S.me) == null ? void 0 : _a.role) === "admin";
   };
   async function api(op, data = {}) {
-    const r = await fetch(API + "/api/pos", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + S.token }, body: JSON.stringify(__spreadValues({ op }, data)) });
+    const r = await withTimeout(fetch(API + "/api/pos", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + S.token }, body: JSON.stringify(__spreadValues({ op }, data)) }), 12e3);
     const j = await r.json().catch(() => ({}));
     if (r.status === 401 && op !== "login") {
       logout(true);
@@ -82,6 +82,7 @@ var __spreadValues = (a, b) => {
     }
   };
   const errText = (e) => ({ admin: "\u041B\u0438\u0448\u0435 \u0434\u043B\u044F \u0430\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440\u0430", empty: "\u041D\u0456\u0447\u043E\u0433\u043E \u043D\u0435 \u0432\u0438\u0431\u0440\u0430\u043D\u043E", table: "\u041D\u0435\u0432\u0456\u0440\u043D\u0438\u0439 \u0441\u0442\u0456\u043B", nothing: "\u041D\u0435\u043C\u0430 \u0449\u043E \u0432\u0456\u0434\u043C\u0456\u043D\u044F\u0442\u0438" })[e] || e;
+  const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("\u0421\u0435\u0440\u0432\u0435\u0440 \u043D\u0435 \u0432\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u0430\u0454 (\u043F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435 \u0456\u043D\u0442\u0435\u0440\u043D\u0435\u0442 / \u0434\u0430\u0442\u0443 \u0439 \u0447\u0430\u0441 \u043D\u0430 \u043A\u043E\u043C\u043F\u02BC\u044E\u0442\u0435\u0440\u0456)")), ms))]);
   let pin = "";
   function showLogin(msg = "") {
     $("#app").hidden = true;
@@ -97,7 +98,8 @@ var __spreadValues = (a, b) => {
     d.innerHTML = Array.from({ length: len }, (_, i) => '<i class="'.concat(i < pin.length ? "on" : "", '"></i>')).join("");
   };
   async function tryLogin(body) {
-    $("#lErr").textContent = "";
+    $("#lErr").style.color = "var(--muted)";
+    $("#lErr").textContent = "\u041F\u0435\u0440\u0435\u0432\u0456\u0440\u044F\u044E\u2026";
     try {
       const r = await api("login", body);
       S.token = r.token;
@@ -106,7 +108,8 @@ var __spreadValues = (a, b) => {
       store.set("me", r.me);
       start();
     } catch (e) {
-      $("#lErr").textContent = e.message === "error" ? "\u041F\u043E\u043C\u0438\u043B\u043A\u0430 \u0437\u02BC\u0454\u0434\u043D\u0430\u043D\u043D\u044F" : e.message;
+      $("#lErr").style.color = "";
+      $("#lErr").textContent = e.message === "error" ? "\u041F\u043E\u043C\u0438\u043B\u043A\u0430 \u0437\u02BC\u0454\u0434\u043D\u0430\u043D\u043D\u044F" : /fetch|network/i.test(e.message) ? "\u041D\u0435\u043C\u0430\u0454 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443 \u0437 \u0441\u0435\u0440\u0432\u0435\u0440\u043E\u043C: " + e.message : e.message;
       pin = "";
       dots();
       $("#dots").classList.add("shake");
