@@ -69,7 +69,8 @@
       if (!e.isIntersecting) return;
       links.forEach(a => a.classList.toggle('on', a.dataset.cat === e.target.id.slice(2)));
       const a = links.find(a => a.classList.contains('on'));
-      a && a.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+      // крутимо лише рядок категорій по горизонталі — сторінку не чіпаємо (scrollIntoView смикав скрол на телефонах)
+      if (a) { const nav = $('#cats'); nav.scrollTo({ left: a.offsetLeft - (nav.clientWidth - a.offsetWidth) / 2, behavior: 'smooth' }); }
     }), { rootMargin: '-45% 0px -50% 0px' });
     document.querySelectorAll('.cat').forEach(s => io.observe(s));
   }
@@ -156,6 +157,7 @@
   }
   function showWifi() {
     $('#wSsid').textContent = C.wifi.ssid; $('#wPass').textContent = C.wifi.password;
+    $('#wPassRow').hidden = $('#copyPass').hidden = !C.wifi.password;
     $('#wifiModal').hidden = false;
   }
 

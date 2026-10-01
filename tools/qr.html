@@ -16,10 +16,10 @@ h1{font-family:'Rubik Dirt';font-weight:400;font-size:40px;margin:0}
   <h1>VARVAR</h1>
   <div>Скануй — меню і замовлення<br><small>Scan for menu &amp; order</small></div>
   <div id="qr"></div>
-  <div class="w">1. Підключіться до Wi‑Fi <b id="s"></b><br>Пароль: <b id="p"></b><br>2. Оберіть страви і стіл → Замовити</div>
+  <div class="w">1. Підключіться до Wi‑Fi <b id="s"></b><span id="pw"><br>Пароль: <b id="p"></b></span><br>2. Оберіть страви і стіл → Замовити</div>
 </div>
 <script>
-s.textContent = VARVAR.wifi.ssid; p.textContent = VARVAR.wifi.password;
+s.textContent = VARVAR.wifi.ssid; p.textContent = VARVAR.wifi.password; if (!VARVAR.wifi.password) pw.hidden = true;
 function go(){ qr.innerHTML=''; new QRCode(qr,{text:u.value,width:200,height:200,correctLevel:QRCode.CorrectLevel.M}); }
 go();
 </script>

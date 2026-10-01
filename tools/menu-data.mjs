@@ -9,7 +9,7 @@ const i = (c, id, crop, [uk, en], size, price, desc) => c.items.push({
   id, name: { uk, en }, size,
   ...(Array.isArray(price) ? { variants: price.map(([v, p]) => ({ v, p })) } : { price }),
   ...(desc ? { desc: { uk: desc[0], en: desc[1] } } : {}),
-  ...(crop ? { img: `img/${id}.jpg`, crop } : {}),
+  ...(crop ? { img: `img/${id}.png`, crop } : {}),
 });
 
 let c = cat('minimax', 'Мінімакс', 'Minimax');
