@@ -177,6 +177,19 @@ async function resetAll(env) {
 }
 
 // ---------- адміністратор ----------
+// усі повідомлення адмін-сесії (свої і бота) — щоб стерти їх з чату при виході
+async function remember(env, uid, chat, ids) {
+  const k = 'admmsg:' + uid; const d = (await env.DB.get(k, 'json')) || { chat, ids: [] };
+  d.chat = chat; d.ids = [...d.ids, ...ids.filter(Boolean)].slice(-1000);
+  await env.DB.put(k, JSON.stringify(d), { expirationTtl: 2 * 86400 });
+}
+async function purgeAdminChat(env, uid) {
+  const d = await env.DB.get('admmsg:' + uid, 'json'); await env.DB.delete('admmsg:' + uid);
+  if (!d?.ids?.length) return;
+  const ids = [...new Set(d.ids)];
+  for (let i = 0; i < ids.length; i += 100) await tg(env, 'deleteMessages', { chat_id: d.chat, message_ids: ids.slice(i, i + 100) });
+}
+const msgId = async r => { try { return (await r.json()).result?.message_id; } catch { return null; } };
 const isAdmin = async (env, uid) => !!uid && !!(await env.DB.get('adm:' + uid));
 const adminPass = async env => (await env.DB.get('admin_pass')) || env.ADMIN_PIN || '';
 
@@ -267,8 +280,15 @@ export async function handleUpdate(u, env) {
   const uid = m.from?.id, chat = m.chat.id, who = m.from?.first_name || '';
   const staff = String(chat) === String(env.CHAT_ID);
   const admin = await isAdmin(env, uid);
+  // вхід закінчився сам (12 год) — прибираємо, що лишилось від сесії
+  if (!admin && uid && await env.DB.get('admmsg:' + uid) && await env.DB.get('st:' + uid) !== 'login') await purgeAdminChat(env, uid);
+  let track = admin; // повідомлення цієї взаємодії належать адмін-сесії
   const waiterView = admin && !!(await env.DB.get('kbw:' + uid)); // адмін перемкнувся на кнопки офіціанта
-  const send = (v, keyboard) => tg(env, 'sendMessage', { chat_id: chat, text: v.text, parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: v.markup || keyboard || (admin && !waiterView ? ADMIN_KB : KEYBOARD) });
+  const send = async (v, keyboard) => {
+    const r = await tg(env, 'sendMessage', { chat_id: chat, text: v.text, parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: v.markup || keyboard || (admin && !waiterView ? ADMIN_KB : KEYBOARD) });
+    if (track) await remember(env, uid, chat, [m.message_id, await msgId(r)]);
+    return r;
+  };
   const text = (m.text || '').trim(), low = text.toLowerCase().replace(/@\S+/, '');
 
   // очікуємо пароль (вхід) або новий пароль (зміна)
@@ -285,6 +305,7 @@ export async function handleUpdate(u, env) {
       }
       await env.DB.delete('fail:' + uid);
       await env.DB.put('adm:' + uid, JSON.stringify({ name: who, at: Date.now() }), { expirationTtl: ADMIN_TTL });
+      track = true;
       return send({ text: `✅ Вітаю, ${esc(who)}! Ви в режимі адміністратора.\n\n` + ADMIN_HELP }, ADMIN_KB);
     }
     const num = parseFloat(text.replace(',', '.').replace(/\s/g, ''));
@@ -314,6 +335,7 @@ export async function handleUpdate(u, env) {
   if (low === '/admin' || text === W.admin) {
     if (admin) { await env.DB.delete('kbw:' + uid); return send({ text: ADMIN_HELP }, ADMIN_KB); }
     await env.DB.put('st:' + uid, 'login', { expirationTtl: 300 });
+    track = true; // запрошення до входу теж приберемо при виході
     return send({ text: '🔐 Введіть пароль адміністратора (повідомлення одразу видалиться):' }, { remove_keyboard: true });
   }
   if (!staff && !admin) return send({ text: '⛔ Цей бот — для персоналу VARVAR. Адміністратор може увійти командою /admin.' }, { remove_keyboard: true });
@@ -346,7 +368,11 @@ export async function handleUpdate(u, env) {
   if (text === A.pass) { await env.DB.put('st:' + uid, 'newpass', { expirationTtl: 300 }); return send({ text: '🔑 Напишіть новий пароль (мінімум 4 символи). Повідомлення одразу видалиться.' }); }
   if (text === A.waiter) await env.DB.put('kbw:' + uid, '1', { expirationTtl: ADMIN_TTL });
   if (text === A.waiter) return send({ text: `Звичайні кнопки. Вхід адміністратора зберігається — «${W.admin}», щоб повернутись.` }, KEYBOARD);
-  if (text === A.logout) { await env.DB.delete('adm:' + uid); await env.DB.delete('kbw:' + uid); return send({ text: '🚪 Ви вийшли з режиму адміністратора.' }, KEYBOARD); }
+  if (text === A.logout) {
+    await env.DB.delete('adm:' + uid); await env.DB.delete('kbw:' + uid);
+    await remember(env, uid, chat, [m.message_id]); await purgeAdminChat(env, uid); track = false;
+    return send({ text: '🚪 Ви вийшли з режиму адміністратора. Переписку адмін-режиму видалено з чату.' }, KEYBOARD);
+  }
 
   // --- замовлення від офіціанта: «номер столу» + рядки «страва кількість» ---
   if (text.includes('\n')) {
@@ -372,7 +398,11 @@ async function handleCallback(q, env) {
   const admin = await isAdmin(env, uid);
   if (String(chat) !== String(env.CHAT_ID) && !admin) return answer('Немає доступу');
   const edit = (text, markup) => tg(env, 'editMessageText', { chat_id: chat, message_id: mid, text, parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: markup || { inline_keyboard: [] } });
-  const send = (v) => tg(env, 'sendMessage', { chat_id: chat, text: v.text, parse_mode: 'HTML', reply_markup: v.markup || (admin ? ADMIN_KB : KEYBOARD) });
+  const send = async (v) => {
+    const r = await tg(env, 'sendMessage', { chat_id: chat, text: v.text, parse_mode: 'HTML', reply_markup: v.markup || (admin ? ADMIN_KB : KEYBOARD) });
+    if (admin) await remember(env, uid, chat, [await msgId(r)]);
+    return r;
+  };
   const [act, arg, oid] = (q.data || '').split(':');
   const who = q.from?.first_name || '';
   const confirm = (text, yes) => send({ text, markup: { inline_keyboard: [[{ text: '✅ Так', callback_data: yes }, { text: 'Ні', callback_data: 'no' }]] } });
