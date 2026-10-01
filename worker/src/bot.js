@@ -233,7 +233,7 @@ export async function handleUpdate(u, env) {
     return r;
   };
   const text = (m.text || '').trim(), low = text.toLowerCase().replace(/@\S+/, '');
-  const tooMany = async () => +(await env.DB.get('fail:' + uid) || 0) >= 5;
+  const tooMany = async () => false; // без блокування на 15 хв (просив власник)
   const fail = async () => { const n = +(await env.DB.get('fail:' + uid) || 0) + 1; await env.DB.put('fail:' + uid, String(n), { expirationTtl: 900 }); return n; };
 
   // очікуємо пароль або інше введення
@@ -245,7 +245,7 @@ export async function handleUpdate(u, env) {
       if (await tooMany()) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' }, { remove_keyboard: true });
       if (text.toLowerCase() !== (await waiterPass(env)).toLowerCase() && text.toLowerCase() !== (await adminPass(env)).toLowerCase()) {
         const n = await fail(); await env.DB.put('st:' + uid, 'wlogin', { expirationTtl: 3600 });
-        return send({ text: `❌ Невірний пароль (спроба ${n} з 5). Введіть ще раз:` }, { remove_keyboard: true });
+        return send({ text: `❌ Невірний пароль Введіть ще раз:` }, { remove_keyboard: true });
       }
       await env.DB.delete('fail:' + uid);
       await env.DB.put('wlog:' + uid, JSON.stringify({ name: who, at: Date.now() }));
@@ -255,7 +255,7 @@ export async function handleUpdate(u, env) {
       if (await tooMany()) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' });
       if (text.toLowerCase() !== (await adminPass(env)).toLowerCase()) {
         const n = await fail();
-        return send({ text: `❌ Невірний пароль (спроба ${n} з 5). Натисніть «${W.admin}», щоб спробувати ще.` }, KEYBOARD);
+        return send({ text: `❌ Невірний пароль. Натисніть «${W.admin}», щоб спробувати ще.` }, KEYBOARD);
       }
       await env.DB.delete('fail:' + uid);
       await env.DB.put('adm:' + uid, JSON.stringify({ name: who, at: Date.now() }), { expirationTtl: ADMIN_TTL });

@@ -130,8 +130,6 @@ export async function posApi(b, req, env) {
 }
 
 async function login(b, env, ip) {
-  const fk = 'pfail:' + ipKey(ip), fails = +(await env.DB.get(fk) || 0);
-  if (fails >= 8) return [{ error: 'Забагато спроб. Зачекайте 15 хвилин.' }, 429];
   let me = null;
   if (b.pin) { const h = await pinHash(String(b.pin)); const s = (await getStaff(env)).find(x => x.pin === h); if (s) me = { name: s.name, role: s.role, sid: s.id }; }
   if (b.pass) {
@@ -139,8 +137,7 @@ async function login(b, env, ip) {
     if (p === (await adminPass(env)).toLowerCase()) me = { name: String(b.name || 'Адміністратор').slice(0, 30), role: 'admin' };
     else if (p === (await waiterPass(env)).toLowerCase()) me = { name: String(b.name || 'Офіціант').slice(0, 30), role: 'waiter' };
   }
-  if (!me) { await env.DB.put(fk, String(fails + 1), { expirationTtl: 900 }); return [{ error: 'Невірний PIN або пароль' }, 401]; }
-  await env.DB.delete(fk);
+  if (!me) return [{ error: 'Невірний PIN або пароль' }, 401];
   const token = [...crypto.getRandomValues(new Uint8Array(16))].map(x => x.toString(16).padStart(2, '0')).join('');
   await env.DB.put('pos:' + token, JSON.stringify({ ...me, at: Date.now() }), { expirationTtl: SESSION_TTL[me.role] });
   return [{ ok: true, token, me }, 200];
