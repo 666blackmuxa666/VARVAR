@@ -33,7 +33,7 @@ i(c, 'b310', [3, 815, 840, 370, 480], ['Б-310', 'B-310'], '570 г', 540, ['2 к
 i(c, 'diablo', [3, 0, 1305, 505, 340], ['Діабло', 'Diablo'], '460 г', 420, ['Свинна котлета, бекон, сир чеддер, листя салату, соус айолі, перець чилі, огірок маринований, картопля фрі, соус BBQ', 'Pork patty, bacon, cheddar, lettuce, aioli, chili pepper, pickles, fries, BBQ sauce']);
 i(c, 'shchisti', [4, 0, 205, 490, 330], ['Щісті', 'Shchisti'], '400 г', 350, ['Куряча котлета, листя салату, помідор, соус айолі, кетчуп, сир чеддер, карамелізована цибуля, картопля фрі', 'Chicken patty, lettuce, tomato, aioli, ketchup, cheddar, caramelized onion, fries']);
 i(c, 'horunia', [4, 775, 680, 410, 350], ['Горунья', 'Horunia'], '480 г', 440, ['Свинина, листя салату, бекон, яйце, помідор, сир чеддер, соус айолі, кетчуп, маринований огірок, картопля фрі', 'Pork, lettuce, bacon, egg, tomato, cheddar, aioli, ketchup, pickles, fries']);
-i(c, 'cheesy', [4, 0, 1045, 475, 440], ['Чізі', 'Cheesy'], '470 г', 470, ['2 телячі котлети, 3 види сиру, соус пармезан, кетчуп, картопля фрі', '2 veal patties, 3 kinds of cheese, parmesan sauce, ketchup, fries']);
+i(c, 'cheesy', [4, 120, 1045, 355, 440], ['Чізі', 'Cheesy'], '470 г', 470, ['2 телячі котлети, 3 види сиру, соус пармезан, кетчуп, картопля фрі', '2 veal patties, 3 kinds of cheese, parmesan sauce, ketchup, fries']);
 
 c = cat('salads', 'Салати', 'Salads');
 i(c, 'khrum', [5, 65, 185, 415, 410], ['Хрум', 'Khrum'], '300 г', 250, ['Огірки, помідори, цибуля, грецькі горіхи, оливкова олія, сік лимона', 'Cucumbers, tomatoes, onion, walnuts, olive oil, lemon juice']);
