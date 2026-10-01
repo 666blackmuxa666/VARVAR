@@ -18,6 +18,8 @@
   const unit = s => lang === 'uk' ? s : s.replace(/ г/g, ' g').replace(/ л/g, ' l').replace(/^л$/, 'l').replace('шт', 'pc').replace("м'яса", 'meat');
   const money = n => n.toLocaleString('uk-UA') + ' ' + t('cur');
   let menu, byId = {};
+  // напої — менші картки
+  const DRINKS = new Set(['coffee', 'soft', 'lemonades', 'cocktails', 'shots', 'whisky', 'rum', 'vermouth', 'liqueur', 'cognac', 'vodka', 'tequila', 'gin', 'wine', 'beer', 'hookah']);
 
   const priceOf = key => { const [id, v] = key.split('|'); const it = byId[id]; return v ? it.variants.find(x => x.v === v).p : it.price; };
   const labelOf = key => { const [id, v] = key.split('|'); const it = byId[id]; return it.name[lang] + (v ? unit(` ${v} л`) : ''); };
@@ -33,7 +35,7 @@
     document.querySelectorAll('[data-i18n-ph]').forEach(e => e.placeholder = t(e.dataset.i18nPh));
     $('#cats').innerHTML = menu.categories.map(c => `<a href="#c-${c.id}" data-cat="${c.id}">${esc(c.name[lang])}</a>`).join('');
     $('#menu').innerHTML = menu.categories.map(c => `
-      <section class="cat ${c.id === 'extras' ? 'compact' : ''}" id="c-${c.id}">
+      <section class="cat ${c.id === 'extras' ? 'compact' : DRINKS.has(c.id) ? 'drinks' : ''}" id="c-${c.id}">
         <h2>${esc(c.name[lang])}</h2>
         <div class="grid">${c.items.map(card).join('')}</div>
       </section>`).join('');

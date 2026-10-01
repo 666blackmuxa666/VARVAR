@@ -35,7 +35,17 @@ main { max-width: 1100px; margin: 0 auto; padding: 0 var(--gut); }
 
 .item { background: var(--card); border-radius: var(--r); overflow: hidden; display: flex; flex-direction: column; }
 .ph { aspect-ratio: 1; background: #1a1a1a; display: grid; place-items: center; }
-.ph img { width: 100%; height: 100%; object-fit: contain; padding: 8px; filter: drop-shadow(0 6px 10px rgba(0,0,0,.5)); }
+.ph img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 6px 10px rgba(0,0,0,.5)); }
+
+/* напої — компактні картки, 3 в ряд на телефоні */
+.drinks .grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+@media (min-width: 700px) { .drinks .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
+.drinks .info { padding: 6px 8px 8px; gap: 4px; }
+.drinks .info h3 { font-size: 13px; }
+.drinks .info p { font-size: 11px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.drinks .price { font-size: 15px; }
+.drinks .add { height: 30px; min-width: 32px; padding: 0 8px; }
+.drinks .vars .add { font-size: 11px; padding: 0 4px; }
 .info { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
 .info h3 { margin: 0; font-size: 16px; line-height: 1.2; text-transform: uppercase; }
 .size { display: block; color: var(--muted); font-size: 12px; font-weight: 400; text-transform: none; margin-top: 2px; }
