@@ -5,3 +5,4 @@ worker/.dev.vars
 *.psb
 *.pdf
 *.HEIC
+worker/.tgsecret

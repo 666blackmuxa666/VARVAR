@@ -4,9 +4,9 @@ compatibility_date = "2026-09-01"
 
 [vars]
 ALLOWED_ORIGIN = "https://666blackmuxa666.github.io"
-TABLES = "20"
+TABLES = "15"
 
 # створіть: npx wrangler kv namespace create DB  → вставте id нижче
 [[kv_namespaces]]
 binding = "DB"
-id = "REPLACE_WITH_KV_ID"
+id = "279c013ca4564083a7f56326a2855bbd"
