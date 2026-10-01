@@ -9,7 +9,7 @@
   let cart = store.get('cart', {});           // "id" або "id|варіант" → кількість
   let table = store.get('table', '');
   let hist = store.get('hist', { ts: 0, orders: [] }); // замовлення цієї сесії
-  let tableTotal = null, inVenue = null, busy = false;
+  let tableTotal = null, inVenue = null, busy = false, pendingType = null;
   if (Date.now() - hist.ts > SESSION_MS) hist = { ts: 0, orders: [] };
   const device = store.get('device', null) || (() => { const d = crypto.randomUUID(); store.set('device', d); return d; })();
 
@@ -174,15 +174,17 @@
     if (!$('#sheet').hidden) renderCart();
     renderFab();
   }
-  async function send(type) {
+  async function send(type, pay) {
     if (busy) return;
     table = $('#table').value; save();
     if (!table) { $('#msg').textContent = t('chooseTable'); $('#table').focus(); return; }
+    // запит чека — спершу питаємо спосіб оплати
+    if ((type === 'check' || type === 'order_check') && !pay) { pendingType = type; $('#payModal').hidden = false; return; }
     const items = type === 'check' ? [] : cartEntries();
     busy = true; $('#msg').textContent = '…';
     try {
       const { status, data } = await api('/api/order', {
-        table: +table, type, device, comment: $('#comment').value.slice(0, 300),
+        table: +table, type, pay, device, comment: $('#comment').value.slice(0, 300),
         items: items.map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; }),
       });
       if (status === 403) { showWifi(); $('#msg').textContent = ''; return; }
@@ -212,7 +214,8 @@
     else if (el.dataset.inc) change(el.dataset.inc, 1);
     else if (el.dataset.dec) change(el.dataset.dec, -1);
     else if (el.dataset.send) send(el.dataset.send);
-    else if ('close' in el.dataset) el.closest('.modal') ? ($('#wifiModal').hidden = true) : closeAll();
+    else if (el.dataset.pay) { $('#payModal').hidden = true; send(pendingType, el.dataset.pay); }
+    else if ('close' in el.dataset) el.closest('.modal') ? (el.closest('.modal').hidden = true) : closeAll();
     else if (el.id === 'fab' || el.id === 'orderStatus') openSheet();
     else if (el.id === 'wifiBanner') showWifi();
     else if (el.id === 'lang') { lang = lang === 'uk' ? 'en' : 'uk'; store.set('lang', lang); renderMenu(); syncStatus(); }

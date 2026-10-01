@@ -86,7 +86,8 @@ async function order(b, ip, env) {
     bill.total += sum; bill.orders++; bill.opened = bill.opened || Date.now();
     bill.log = [...(bill.log || []), { at: hhmm(), kind: TYPES[type].toLowerCase(), lines, comment }].slice(-40);
   }
-  if (wantsCheck) bill.check = true;
+  const pay = ['cash', 'card'].includes(b.pay) ? b.pay : null;
+  if (wantsCheck) { bill.check = true; if (pay) bill.pay = pay; }
 
   // усе по столу в одному повідомленні: нове зверху, раніше замовлене — нижче
   const prev = (bill.log || []).slice(0, lines.length ? -1 : undefined);
@@ -101,7 +102,7 @@ async function order(b, ip, env) {
     ...prevBlock,
     '',
     `💰 Разом за стіл: <b>${bill.total} грн</b>`,
-    wantsCheck ? '🧾 <b>Хоче чек</b>' : '',
+    wantsCheck ? `🧾 <b>Хоче чек</b>${pay ? (pay === 'card' ? ' · 💳 <b>карта</b> (несіть термінал)' : ' · 💵 <b>готівка</b>') : ''}` : '',
   ].filter((x, i, arr) => x !== '' || (arr[i - 1] !== '' && i > 0)).join('\n').trim();
 
   // номер замовлення — за ним гість бачить, чи прийняв офіціант
