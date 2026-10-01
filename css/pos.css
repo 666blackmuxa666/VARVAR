@@ -90,6 +90,15 @@ main { overflow: auto; padding: 22px 24px 40px; }
 .tag.g { background: var(--green); color: #032; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 6px #ff9f0a30; } }
 
+/* зал на планшеті/ПК: столи рівномірно на всю робочу зону, без прокрутки */
+@media (min-width: 981px) {
+  main.hall { display: flex; flex-direction: column; overflow: hidden; }
+  main.hall .tables { flex: 1; min-height: 0; grid-template-columns: repeat(var(--cols, 5), 1fr); grid-template-rows: repeat(var(--rows, 3), 1fr); }
+  main.hall .tbl { aspect-ratio: auto; min-height: 0; }
+  main.hall .tbl .n { font-size: clamp(28px, 4.2vh, 52px); }
+  main.hall .tbl .sum { font-size: clamp(16px, 2.6vh, 26px); }
+}
+
 /* ---------- стрічка подій ---------- */
 .feed { background: var(--bg2); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
 .feed h2 { font-size: 20px; margin: 0; padding: 20px 18px 10px; display: flex; align-items: center; gap: 8px; }

@@ -245,7 +245,8 @@
   }
   function renderMain() {
     const v = S.view, m = $('#main');
-    if (v === 'hall') m.innerHTML = hallHTML();
+    m.classList.toggle('hall', v === 'hall');
+    if (v === 'hall') { const cols = Math.ceil(Math.sqrt(S.n * 1.6)); m.style.setProperty('--cols', cols); m.style.setProperty('--rows', Math.ceil(S.n / cols)); m.innerHTML = hallHTML(); }
     else if (v === 'closed') m.innerHTML = closedHTML();
     else if (v === 'stop') m.innerHTML = stopHTML();
     else if (v === 'printer') m.innerHTML = printerHTML();
