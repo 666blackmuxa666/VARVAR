@@ -1,6 +1,6 @@
 // VARVAR — Cloudflare Worker: прийом замовлень, перевірка Wi‑Fi закладу, Telegram.
-// Secrets: BOT_TOKEN, CHAT_ID, ADMIN_PIN, TG_SECRET   Vars: ALLOWED_ORIGIN, TABLES   KV: DB
-import PRICES from './prices.json';
+// Secrets: BOT_TOKEN, CHAT_ID, ADMIN_PIN, TG_SECRET   Vars: ALLOWED_ORIGIN, TABLES, SELF_URL   KV: DB
+import { getMenu, priceMap, handleMenuText, handleMenuPhoto, HELP } from './menu.js';
 
 const TYPES = { order: 'НОВЕ ЗАМОВЛЕННЯ', order_check: 'НОВЕ ЗАМОВЛЕННЯ', reorder: 'ДОЗАМОВЛЕННЯ', check: 'ПРОСЯТЬ ЧЕК' };
 const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;
@@ -16,6 +16,11 @@ export default {
         const table = tableNum(url.searchParams.get('table'), env);
         const bill = table ? await getBill(env, table) : null;
         return json({ inVenue: await inVenue(env, ip), tableTotal: bill ? bill.total : undefined });
+      }
+      if (url.pathname === '/api/menu') return new Response(JSON.stringify(await getMenu(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'no-cache' } });
+      if (url.pathname.startsWith('/img/')) {
+        const b = await env.DB.get('img:' + url.pathname.slice(5), 'arrayBuffer');
+        return b ? new Response(b, { headers: { 'content-type': 'image/jpeg', 'cache-control': 'public, max-age=31536000' } }) : new Response('', { status: 404 });
       }
       if (url.pathname === '/api/order' && req.method === 'POST') return json(...await order(await req.json(), ip, env));
       if (url.pathname === '/api/admin' && req.method === 'POST') return json(...await admin(await req.json(), ip, env));
@@ -55,6 +60,7 @@ async function order(b, ip, env) {
   if (last && Date.now() - +last < RATE_MS) return [{ error: 'rate' }, 429];
 
   // ціни рахуємо на сервері — клієнту не довіряємо
+  const PRICES = priceMap(await getMenu(env));
   const lines = []; let sum = 0;
   for (const it of (Array.isArray(b.items) ? b.items : []).slice(0, 60)) {
     const p = PRICES[it.id], q = Math.min(50, Math.max(0, parseInt(it.q, 10) || 0));
@@ -107,9 +113,10 @@ async function admin(b, ip, env) {
 
 async function telegramUpdate(u, env) {
   const m = u.message; if (!m || String(m.chat.id) !== String(env.CHAT_ID)) return;
-  const [cmd, arg] = (m.text || '').trim().split(/\s+/);
   const reply = text => tg(env, 'sendMessage', { chat_id: m.chat.id, text, parse_mode: 'HTML' });
-  const c = cmd.replace(/@.*/, '');
+  if (m.photo) return reply(await handleMenuPhoto(m, env, tg));
+  const [cmd = '', arg] = (m.text || '').trim().split(/\s+/);
+  const c = cmd.replace(/@.*/, '').toLowerCase();
   if (c === '/close') {
     const t = tableNum(arg, env); if (!t) return reply('Формат: /close 5');
     const bill = await getBill(env, t);
@@ -121,7 +128,8 @@ async function telegramUpdate(u, env) {
     const rows = await Promise.all(keys.map(async k => `Стіл ${k.name.slice(5)}: ${(await env.DB.get(k.name, 'json')).total} грн`));
     return reply(rows.length ? rows.join('\n') : 'Відкритих столів немає');
   }
-  if (c === '/help' || c === '/start') return reply('/tables — відкриті рахунки\n/close N — закрити рахунок столу N');
+  if (['/help', '/start', 'help', 'допомога', '/menu'].includes(c)) return reply(HELP);
+  if (m.text) return reply((await handleMenuText(m.text, env)) || 'Не зрозумів 🤔 Напишіть «help», щоб побачити приклади.');
 }
 
 const tg = (env, method, body) => fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });

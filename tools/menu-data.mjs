@@ -1,4 +1,6 @@
-// Джерело даних меню. Запуск: node tools/menu-data.mjs → data/menu.json + worker/src/prices.json
+// Початкові дані меню. Запуск: node tools/menu-data.mjs → data/menu.json
+// УВАГА: після запуску бота меню живе на сервері (KV) і редагується через Telegram;
+// цей файл — лише стартова копія / резерв, якщо сервер недоступний.
 // crop: [сторінка PDF, x, y, w, h] у координатах сторінки шириною 1300px
 import { writeFileSync } from 'node:fs';
 
@@ -177,8 +179,4 @@ i(c, 'hookah-platinum', [15, 15, 715, 140, 130], ['Кальян Platinum', 'Hook
 const menu = { currency: 'грн', categories: cats.map(k => ({ ...k, items: k.items.map(({ crop, ...r }) => r) })) };
 writeFileSync(new URL('../data/menu.json', import.meta.url), JSON.stringify(menu));
 writeFileSync(new URL('../tools/crops.json', import.meta.url), JSON.stringify(cats.flatMap(k => k.items.filter(x => x.crop).map(x => [x.id, ...x.crop]))));
-// ціни для Worker'а: id → {ціна} або {варіант: ціна}; назва для повідомлення
-const prices = {};
-cats.forEach(k => k.items.forEach(it => { prices[it.id] = { n: it.name.uk, p: it.price ?? Object.fromEntries(it.variants.map(v => [v.v, v.p])) }; }));
-writeFileSync(new URL('../worker/src/prices.json', import.meta.url), JSON.stringify(prices));
 console.log(cats.reduce((s, k) => s + k.items.length, 0), 'items');

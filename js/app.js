@@ -179,7 +179,11 @@
   $('#table').addEventListener('change', e => { table = e.target.value; save(); syncStatus(); });
   document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && syncStatus());
 
-  fetch('data/menu.json').then(r => r.json()).then(m => {
+  // меню з сервера (редагується через Telegram); якщо сервер недоступний — локальна копія
+  const load = u => fetch(u).then(r => { if (!r.ok) throw 0; return r.json(); });
+  load(C.api + '/api/menu').catch(() => load('data/menu.json')).then(m => {
+    m.categories.forEach(c => c.items = c.items.filter(it => !it.hidden));
+    m.categories = m.categories.filter(c => c.items.length);
     menu = m;
     m.categories.forEach(c => c.items.forEach(it => byId[it.id] = it));
     renderMenu(); syncStatus();

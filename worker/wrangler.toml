@@ -5,6 +5,7 @@ compatibility_date = "2026-09-01"
 [vars]
 ALLOWED_ORIGIN = "https://666blackmuxa666.github.io"
 TABLES = "15"
+SELF_URL = "https://varvar-menu.varvar.workers.dev"
 
 # створіть: npx wrangler kv namespace create DB  → вставте id нижче
 [[kv_namespaces]]
