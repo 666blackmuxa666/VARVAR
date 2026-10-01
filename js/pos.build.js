@@ -113,10 +113,22 @@ var __spreadValues = (a, b) => {
       setTimeout(() => $("#dots").classList.remove("shake"), 400);
     }
   }
+  document.addEventListener("keydown", (e) => {
+    if ($("#login").hidden || $("#pinView").hidden) return;
+    if (/^\d$/.test(e.key)) pinKey(e.key);
+    else if (e.key === "Backspace") pinKey("b");
+    else if (e.key === "Escape") pinKey("c");
+    else if (e.key === "Enter" && pin.length >= 4) {
+      clearTimeout(tryLogin.t);
+      tryLogin({ pin });
+    }
+  });
   $("#keypad").addEventListener("click", (e) => {
     var _a;
     const k = (_a = e.target.closest("[data-k]")) == null ? void 0 : _a.dataset.k;
-    if (!k) return;
+    if (k) pinKey(k);
+  });
+  function pinKey(k) {
     if (k === "c") pin = "";
     else if (k === "b") pin = pin.slice(0, -1);
     else if (pin.length < 6) pin += k;
@@ -125,7 +137,7 @@ var __spreadValues = (a, b) => {
       clearTimeout(tryLogin.t);
       tryLogin.t = setTimeout(() => tryLogin({ pin }), pin.length === 6 ? 0 : 700);
     }
-  });
+  }
   $("#toPass").onclick = () => {
     $("#pinView").hidden = true;
     $("#passView").hidden = false;
