@@ -112,7 +112,7 @@
   function renderStatus() {
     const last = hist.reqs && hist.reqs[hist.reqs.length - 1];
     const bar = $('#orderStatus');
-    if (!last || (last.s === 'acc' && Date.now() - (last.accAt || 0) > 3 * 60e3)) { bar.hidden = true; return; }
+    if (!last || (last.s === 'acc' && Date.now() - (last.accAt || 0) > 3000)) { bar.hidden = true; return; }
     bar.hidden = false;
     bar.className = 'order-status ' + (last.s === 'acc' ? 'ok' : 'wait');
     bar.textContent = last.s === 'acc'
@@ -133,7 +133,7 @@
           navigator.vibrate?.(80);
         }
       }
-      if (changed) { save(); renderStatus(); if (!$('#sheet').hidden) renderCart(); }
+      if (changed) { save(); renderStatus(); setTimeout(renderStatus, 3100); if (!$('#sheet').hidden) renderCart(); } // зелена плашка — 3 с
     } catch {}
   }
   setInterval(pollOrders, 5000);
