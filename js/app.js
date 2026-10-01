@@ -96,9 +96,14 @@
     $('#table').innerHTML = `<option value="">—</option>` + Array.from({ length: C.tables }, (_, i) => `<option ${String(i + 1) === String(table) ? 'selected' : ''}>${i + 1}</option>`).join('');
     const histSum = hist.orders.reduce((s, o) => s + o.total, 0);
     const shown = tableTotal ?? histSum;
+    // що вже замовлено: кожне замовлення окремо (замовлення / дозамовлення, час, статус)
     $('#history').innerHTML = hist.orders.length || tableTotal ? `
-      <details><summary>${t('ordered')}: <b>${money(shown)}</b></summary>
-      ${hist.orders.map(o => `<div class="h">${badge(o)} ${o.items.map(([k, q]) => `${q}× ${esc(labelOf(k))}`).join(', ')}</div>`).join('')}</details>` : '';
+      <div class="hist"><div class="hist-title">${t('ordered')}</div>
+      ${hist.orders.map((o, i) => `<div class="hist-order">
+        <div class="hist-head"><span>${i ? t('reorderLbl') : t('orderLbl')}${o.at ? ' · ' + o.at : ''}</span>${badge(o)}</div>
+        ${o.items.map(([k, q]) => `<div class="hist-line"><span>${q}× ${esc(labelOf(k))}</span><span>${byId[k.split('|')[0]] ? money(priceOf(k) * q) : ''}</span></div>`).join('')}
+      </div>`).join('')}
+      <div class="hist-total"><span>${t('tableTotal')}</span><b>${money(shown)}</b></div></div>` : '';
     const first = !hist.orders.length;
     const hasItems = rows.length > 0;
     $('#actions').innerHTML = first
@@ -108,7 +113,7 @@
          <button class="btn alt" data-send="check">${t('check')}</button>`;
   }
   // ---------- статус замовлення (офіціант натиснув «Прийняв» у Telegram) ----------
-  const badge = o => !o.id ? '' : o.s === 'acc' ? '<span class="st ok">✅</span>' : '<span class="st wait">⏳</span>';
+  const badge = o => !o.id ? '' : o.s === 'acc' ? `<span class="st ok">✅ ${t('accShort')}</span>` : `<span class="st wait">⏳ ${t('waitShort')}</span>`;
   function renderStatus() {
     const last = hist.reqs && hist.reqs[hist.reqs.length - 1];
     const bar = $('#orderStatus');
@@ -183,7 +188,7 @@
       if (status === 403) { showWifi(); $('#msg').textContent = ''; return; }
       if (status === 429) { $('#msg').textContent = t('wait'); return; }
       if (status !== 200) throw 0;
-      if (items.length) { hist.orders.push({ items, total: data.orderTotal, id: data.id, s: 'new' }); }
+      if (items.length) { hist.orders.push({ items, total: data.orderTotal, id: data.id, s: 'new', at: new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' }) }); }
       hist.ts = Date.now();
       if (data.id) { hist.reqs = [...(hist.reqs || []), { id: data.id, type: items.length ? 'order' : 'check', s: 'new' }].slice(-20); }
       renderStatus();

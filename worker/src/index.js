@@ -87,14 +87,21 @@ async function order(b, ip, env) {
   }
   if (wantsCheck) bill.check = true;
 
+  // усе по столу в одному повідомленні: нове зверху, раніше замовлене — нижче
+  const prev = (bill.log || []).slice(0, lines.length ? -1 : undefined);
+  const prevBlock = prev.length ? ['', '📋 <b>Вже замовлено раніше:</b>', ...prev.flatMap(o => [`<i>${o.at} ${esc(o.kind)}</i>`, ...o.lines.map(esc)])] : [];
+  const isMore = prev.length > 0 && lines.length;
   const msg = [
     `🪑 <b>Стіл ${table}</b> — ${TYPES[type]}`,
-    ...lines.map(esc),
-    lines.length ? `<b>Сума: ${sum} грн</b>` : '',
+    lines.length ? (isMore ? '➕ <b>Дозамовили:</b>' : '') : '',
+    ...lines.map(l => isMore ? `<b>${esc(l)}</b>` : esc(l)),
+    lines.length ? `Сума: <b>${sum} грн</b>` : '',
     comment ? `💬 ${esc(comment)}` : '',
-    `Разом за стіл: <b>${bill.total} грн</b>`,
+    ...prevBlock,
+    '',
+    `💰 Разом за стіл: <b>${bill.total} грн</b>`,
     wantsCheck ? '🧾 <b>Хоче чек</b>' : '',
-  ].filter(Boolean).join('\n');
+  ].filter((x, i, arr) => x !== '' || (arr[i - 1] !== '' && i > 0)).join('\n').trim();
 
   // номер замовлення — за ним гість бачить, чи прийняв офіціант
   const oid = crypto.randomUUID().replace(/-/g, '').slice(0, 10);

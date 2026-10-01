@@ -2,7 +2,8 @@ window.I18N = {
   uk: {
     cart: 'Кошик', comment: 'Побажання до замовлення…', table: 'Стіл №', chooseTable: 'Оберіть номер столу',
     order: 'Замовити', orderCheck: 'Замовити + чек', reorder: 'Дозамовити', check: 'Хочу чек',
-    empty: 'Кошик порожній', total: 'Разом', tableTotal: 'Ваш рахунок за столом', ordered: 'Вже замовлено',
+    empty: 'Кошик порожній', total: 'Разом', tableTotal: 'Ваш рахунок за столом', ordered: 'Ваші замовлення',
+    orderLbl: 'Замовлення', reorderLbl: 'Дозамовлення', accShort: 'прийнято', waitShort: 'очікує',
     sent: 'Замовлення надіслано! Чекаємо підтвердження офіціанта ⏳', sentCheck: 'Запит на чек надіслано ⏳',
     waitOrder: '⏳ Замовлення надіслано — чекаємо підтвердження', accOrder: '✅ Офіціант прийняв ваше замовлення',
     waitCheck: '⏳ Запит на чек надіслано', accCheck: '✅ Офіціант несе чек',
@@ -14,7 +15,8 @@ window.I18N = {
   en: {
     cart: 'Cart', comment: 'Notes for the kitchen…', table: 'Table #', chooseTable: 'Choose your table number',
     order: 'Order', orderCheck: 'Order + bill', reorder: 'Order more', check: 'Bring the bill',
-    empty: 'Your cart is empty', total: 'Total', tableTotal: 'Your table bill', ordered: 'Already ordered',
+    empty: 'Your cart is empty', total: 'Total', tableTotal: 'Your table bill', ordered: 'Your orders',
+    orderLbl: 'Order', reorderLbl: 'Additional order', accShort: 'accepted', waitShort: 'pending',
     sent: 'Order sent! Waiting for the waiter to confirm ⏳', sentCheck: 'Bill request sent ⏳',
     waitOrder: '⏳ Order sent — waiting for confirmation', accOrder: '✅ The waiter accepted your order',
     waitCheck: '⏳ Bill request sent', accCheck: '✅ The waiter is bringing your bill',
