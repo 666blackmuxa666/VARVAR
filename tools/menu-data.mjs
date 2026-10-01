@@ -11,7 +11,7 @@ const i = (c, id, crop, [uk, en], size, price, desc) => c.items.push({
   id, name: { uk, en }, size,
   ...(Array.isArray(price) ? { variants: price.map(([v, p]) => ({ v, p })) } : { price }),
   ...(desc ? { desc: { uk: desc[0], en: desc[1] } } : {}),
-  ...(crop ? { img: `img/${id}.png`, crop } : {}),
+  ...(crop ? { img: `img/${id}.png`, ...(Array.isArray(crop) ? { crop } : {}) } : {}), // crop 'src' — фото з tools/src
 });
 
 let c = cat('minimax', 'Мінімакс', 'Minimax');
@@ -172,11 +172,11 @@ const en = { hetman: 'Hetman', nastoyanky: 'House infusions', alazani: 'Alazani 
 cats.forEach(k => k.items.forEach(it => { if (en[it.id]) it.name.en = en[it.id]; }));
 
 c = cat('hookah', 'Кальян', 'Hookah');
-i(c, 'hookah-silver', [15, 215, 245, 130, 110], ['Кальян Silver', 'Hookah Silver'], '', 700);
-i(c, 'hookah-gold', [15, 85, 470, 145, 155], ['Кальян Gold', 'Hookah Gold'], '', 750);
-i(c, 'hookah-platinum', [15, 15, 715, 140, 130], ['Кальян Platinum', 'Hookah Platinum'], '', 800);
+i(c, 'hookah-silver', 'src', ['Кальян Silver', 'Hookah Silver'], '', 700);
+i(c, 'hookah-gold', 'src', ['Кальян Gold', 'Hookah Gold'], '', 750);
+i(c, 'hookah-platinum', 'src', ['Кальян Platinum', 'Hookah Platinum'], '', 800);
 
 const menu = { currency: 'грн', categories: cats.map(k => ({ ...k, items: k.items.map(({ crop, ...r }) => r) })) };
 writeFileSync(new URL('../data/menu.json', import.meta.url), JSON.stringify(menu));
-writeFileSync(new URL('../tools/crops.json', import.meta.url), JSON.stringify(cats.flatMap(k => k.items.filter(x => x.crop).map(x => [x.id, ...x.crop]))));
+writeFileSync(new URL('../tools/crops.json', import.meta.url), JSON.stringify(cats.flatMap(k => k.items.filter(x => Array.isArray(x.crop)).map(x => [x.id, ...x.crop]))));
 console.log(cats.reduce((s, k) => s + k.items.length, 0), 'items');
