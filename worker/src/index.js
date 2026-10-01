@@ -4,12 +4,15 @@ import { getMenu, priceMap } from './menu.js';
 import { handleUpdate, tg, esc, getBill, addStat, addDishes, hhmm } from './bot.js';
 import { queuePrint, kitchenTicket, printApi } from './print.js';
 export { PrintQ } from './print.js';
+export { Store } from './store.js';
+import { storeDB } from './store.js';
 
 const TYPES = { order: 'НОВЕ ЗАМОВЛЕННЯ', order_check: 'НОВЕ ЗАМОВЛЕННЯ', reorder: 'ДОЗАМОВЛЕННЯ', check: 'ПРОСЯТЬ ЧЕК' };
 const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;
 
 export default {
   async fetch(req, env) {
+    env = { ...env, DB: storeDB(env.DB, env.STORE) }; // стан закладу — у Durable Object (див. store.js)
     const url = new URL(req.url), cors = corsHeaders(req, env);
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
     const json = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { ...cors, 'content-type': 'application/json' } });

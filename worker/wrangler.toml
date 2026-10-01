@@ -21,3 +21,12 @@ class_name = "PrintQ"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["PrintQ"]
+
+# сховище закладу (столи, звіти, каса) — без затримок KV
+[[durable_objects.bindings]]
+name = "STORE"
+class_name = "Store"
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Store"]
