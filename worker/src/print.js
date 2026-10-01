@@ -4,7 +4,6 @@
 import { hhmm, dayKey } from './bot.js';
 
 const TTL = 2 * 86400;
-const date = () => new Date().toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv' });
 
 export async function queuePrint(env, kind, lines) {
   const id = `${Date.now()}-${crypto.randomUUID().slice(0, 6)}`;
@@ -12,16 +11,15 @@ export async function queuePrint(env, kind, lines) {
   return id;
 }
 
-// бігунок на кухню/бар — без цін, великими літерами стіл
+// бігунок на кухню/бар — без цін, стіл на чорній плашці
 export function kitchenTicket({ table, kind, lines, comment, by }) {
   return [
-    ['big', `СТІЛ ${table}`],
-    ['c', `${kind}${by ? ' · ' + by : ''}`],
-    ['c', `${date()} ${hhmm()}`],
-    ['hr'],
-    ...lines.map(l => { const m = l.match(/^(\d+)× (.+?) — \d+$/); return ['b', m ? `${m[1]} × ${m[2]}` : l]; }),
-    ...(comment ? [['hr'], ['b', `!! ${comment}`]] : []),
-    ['hr'], ['gap'],
+    ['invb', `СТІЛ ${table}`],
+    ['c', `${kind}${by ? ' · ' + by : ''}  ·  ${hhmm()}`],
+    ['dbl'],
+    ...lines.map(l => { const m = l.match(/^(\d+)× (.+?) — \d+$/); return ['k', m ? `${m[1]} × ${m[2]}` : l]; }),
+    ...(comment ? [['dbl'], ['inv', `!! ${comment}`]] : []),
+    ['dbl'], ['gap'],
   ];
 }
 
@@ -35,25 +33,31 @@ export async function receipt(env, { table, bill, final, pay, by }) {
     const a = agg.get(name) || { q: 0, sum: 0 }; a.q += q; a.sum += sum; agg.set(name, a);
   }
   const no = final ? await nextReceiptNo(env) : null;
-  const opened = bill.opened ? new Date(bill.opened).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '') : '';
-  const now = `${date()} ${hhmm()}`;
+  const fmt = t => new Date(t).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '');
+  const count = [...agg.values()].reduce((s, a) => s + a.q, 0);
   return [
     ['logo'],
-    ...(final ? [] : [['big', 'ПРЕЧЕК'], ['c', 'не є фіскальним чеком']]),
+    ['s', 'FOOD & BAR'],
+    ['gap'],
+    ['inv', final ? `ЧЕК № ${no}` : 'ПРЕЧЕК'],
+    ...(final ? [] : [['s', 'не є фіскальним чеком']]),
     ['gap'],
     ['lr', 'Стіл', String(table)],
-    ...(no ? [['lr', 'Номер чеку', no]] : []),
-    ...(opened ? [['lr', 'Відкритий', opened]] : []),
-    ['lr', final ? 'Закритий' : 'Надруковано', now],
     ...(by ? [['lr', 'Офіціант', by]] : []),
-    ['hr'],
-    ...[...agg].flatMap(([name, a]) => [['l', name], ['lr', `   ${a.q} × ${Math.round(a.sum / a.q)}`, String(a.sum)]]),
-    ['hr'],
-    ['lr2', 'Всього', `${bill.total} грн`],
-    ...(final && pay ? [['lr', pay === 'card' ? 'Картка' : 'Готівка', String(bill.total)]] : []),
-    ['hr'],
-    ['c', 'Дякуємо, що завітали до VARVAR!'],
-    ['c', 'Меню і замовлення — скануйте QR на столі'],
+    ...(bill.opened ? [['lr', 'Відкрито', fmt(bill.opened)]] : []),
+    ['lr', final ? 'Закрито' : 'Надруковано', fmt(Date.now())],
+    ['dbl'],
+    ...[...agg].flatMap(([name, a]) => [['item', name, `${a.sum}`], ['sub', `${a.q} × ${Math.round(a.sum / a.q)} грн`]]),
+    ['dbl'],
+    ['lr', 'Позицій', String(count)],
+    ['total', final ? 'СПЛАЧЕНО' : 'ДО СПЛАТИ', `${bill.total} грн`],
+    ...(final && pay ? [['lr', 'Оплата', pay === 'card' ? 'Картка' : 'Готівка']] : []),
+    ['gap'],
+    ['c', 'Дякуємо, що завітали!'],
+    ['c', 'Чекаємо на вас знову ♥'],
+    ['gap'],
+    ['s', 'Wi-Fi: VARVAR · пароль 66666666'],
+    ['s', 'Меню і замовлення — QR-код на столі'],
     ['gap'],
   ];
 }

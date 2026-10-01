@@ -45,6 +45,10 @@ $fN = New-Object System.Drawing.Font('Arial', 9)
 $fB = New-Object System.Drawing.Font('Arial', 9, [System.Drawing.FontStyle]::Bold)
 $fT = New-Object System.Drawing.Font('Arial', 11, [System.Drawing.FontStyle]::Bold)
 $fBig = New-Object System.Drawing.Font('Arial', 16, [System.Drawing.FontStyle]::Bold)
+$fS = New-Object System.Drawing.Font('Arial', 7.5)
+$fI = New-Object System.Drawing.Font('Arial', 10, [System.Drawing.FontStyle]::Bold)
+$fK = New-Object System.Drawing.Font('Arial', 12, [System.Drawing.FontStyle]::Bold)
+$fTot = New-Object System.Drawing.Font('Arial', 14, [System.Drawing.FontStyle]::Bold)
 $sfC = New-Object System.Drawing.StringFormat; $sfC.Alignment = 'Center'
 $sfR = New-Object System.Drawing.StringFormat; $sfR.Alignment = 'Far'
 
@@ -52,11 +56,19 @@ function Measure-Job($g, $lines) {
   $h = 0
   foreach ($l in $lines) {
     switch ($l[0]) {
-      'logo' { $h += 130 }
+      'logo' { $h += [int]($logo.Height * 120 / $logo.Width) + 8 }
       'big'  { $h += $g.MeasureString($l[1], $fBig, $W).Height + 2 }
       'hr'   { $h += 8 }
       'gap'  { $h += 14 }
       'lr2'  { $h += $fT.GetHeight($g) + 2 }
+      'inv'  { $h += $fT.GetHeight($g) + 10 }
+      'invb' { $h += $fBig.GetHeight($g) + 12 }
+      'dbl'  { $h += 10 }
+      'item' { $h += [Math]::Max($fI.GetHeight($g), $g.MeasureString($l[1], $fI, ($W - 70)).Height) + 1 }
+      'sub'  { $h += $fS.GetHeight($g) + 3 }
+      's'    { $h += $g.MeasureString($l[1], $fS, $W).Height + 1 }
+      'k'    { $h += $g.MeasureString($l[1], $fK, $W).Height + 3 }
+      'total' { $h += $fTot.GetHeight($g) + 14 }
       'lr'   { $h += $fN.GetHeight($g) + 1 }
       default { $f = if ($l[0] -eq 'b') { $fB } else { $fN }; $h += $g.MeasureString($l[1], $f, $W).Height + 1 }
     }
@@ -68,11 +80,19 @@ function Draw-Job($g, $lines) {
   $y = 0
   foreach ($l in $lines) {
     switch ($l[0]) {
-      'logo' { $lw = 120; $lh = [int]($logo.Height * $lw / $logo.Width); $g.DrawImage($logo, [int](($W - $lw) / 2), $y, $lw, $lh); $y += 130 }
+      'logo' { $lw = 120; $lh = [int]($logo.Height * $lw / $logo.Width); $g.DrawImage($logo, [int](($W - $lw) / 2), $y, $lw, $lh); $y += $lh + 8 }
       'big'  { $r = New-Object System.Drawing.RectangleF(0, $y, $W, 200); $g.DrawString($l[1], $fBig, [System.Drawing.Brushes]::Black, $r, $sfC); $y += $g.MeasureString($l[1], $fBig, $W).Height + 2 }
       'c'    { $r = New-Object System.Drawing.RectangleF(0, $y, $W, 200); $g.DrawString($l[1], $fN, [System.Drawing.Brushes]::Black, $r, $sfC); $y += $g.MeasureString($l[1], $fN, $W).Height + 1 }
       'hr'   { $p = New-Object System.Drawing.Pen([System.Drawing.Color]::Black, 1); $p.DashStyle = 'Dash'; $g.DrawLine($p, 0, $y + 4, $W, $y + 4); $y += 8 }
       'gap'  { $y += 14 }
+      'inv'  { $hh = $fT.GetHeight($g) + 6; $g.FillRectangle([System.Drawing.Brushes]::Black, 0, $y, $W, $hh); $r = New-Object System.Drawing.RectangleF(0, ($y + 3), $W, $hh); $g.DrawString($l[1], $fT, [System.Drawing.Brushes]::White, $r, $sfC); $y += $hh + 4 }
+      'invb' { $hh = $fBig.GetHeight($g) + 8; $g.FillRectangle([System.Drawing.Brushes]::Black, 0, $y, $W, $hh); $r = New-Object System.Drawing.RectangleF(0, ($y + 4), $W, $hh); $g.DrawString($l[1], $fBig, [System.Drawing.Brushes]::White, $r, $sfC); $y += $hh + 4 }
+      'dbl'  { $p = New-Object System.Drawing.Pen([System.Drawing.Color]::Black, 1); $g.DrawLine($p, 0, $y + 3, $W, $y + 3); $g.DrawLine($p, 0, $y + 6, $W, $y + 6); $y += 10 }
+      'item' { $g.DrawString($l[1], $fI, [System.Drawing.Brushes]::Black, (New-Object System.Drawing.RectangleF(0, $y, ($W - 70), 100))); $r = New-Object System.Drawing.RectangleF(0, $y, $W, 100); $g.DrawString($l[2], $fI, [System.Drawing.Brushes]::Black, $r, $sfR); $y += [Math]::Max($fI.GetHeight($g), $g.MeasureString($l[1], $fI, ($W - 70)).Height) + 1 }
+      'sub'  { $g.DrawString($l[1], $fS, [System.Drawing.Brushes]::Black, 8, $y); $y += $fS.GetHeight($g) + 3 }
+      's'    { $r = New-Object System.Drawing.RectangleF(0, $y, $W, 200); $g.DrawString($l[1], $fS, [System.Drawing.Brushes]::Black, $r, $sfC); $y += $g.MeasureString($l[1], $fS, $W).Height + 1 }
+      'k'    { $r = New-Object System.Drawing.RectangleF(0, $y, $W, 400); $g.DrawString($l[1], $fK, [System.Drawing.Brushes]::Black, $r); $y += $g.MeasureString($l[1], $fK, $W).Height + 3 }
+      'total' { $hh = $fTot.GetHeight($g) + 10; $g.FillRectangle([System.Drawing.Brushes]::Black, 0, $y, $W, $hh); $g.DrawString($l[1], $fTot, [System.Drawing.Brushes]::White, 6, ($y + 5)); $r = New-Object System.Drawing.RectangleF(0, ($y + 5), ($W - 6), $hh); $g.DrawString($l[2], $fTot, [System.Drawing.Brushes]::White, $r, $sfR); $y += $hh + 4 }
       { $_ -eq 'lr' -or $_ -eq 'lr2' } {
         $f = if ($l[0] -eq 'lr2') { $fT } else { $fN }
         $g.DrawString($l[1], $f, [System.Drawing.Brushes]::Black, 0, $y)
