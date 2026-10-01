@@ -1,6 +1,7 @@
 // Telegram-бот закладу: режим офіціанта (столи, закриття, стоп-лист) і режим адміністратора
 // за паролем (звіти, видалення столів, меню, Wi‑Fi, пароль).
 import { getMenu, handleMenuText, handleMenuPhoto, HELP as MENU_HELP } from './menu.js';
+import { parseWaiterOrder, draftText } from './waiter.js';
 
 export const tg = (env, method, body) => fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 export const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -29,6 +30,13 @@ ${W.tables} — відкриті столи і суми
 ${W.close} — закрити рахунок (гість розрахувався)
 ${W.stop} — чого немає / повернути в меню
 ${W.admin} — режим адміністратора (за паролем)
+
+<b>Записати замовлення за стіл</b> — просто напишіть:
+<code>1
+гранд 2
+мумо 3
+пепсі 0.5 4</code>
+Перший рядок — номер столу, далі «страва кількість». Помилки в назвах — не страшно, бот покаже, що зрозумів, і попросить підтвердити.
 
 <b>Текстом:</b> <code>стіл 5</code> · <code>закрити 5</code> · <code>стоп мєско</code> · <code>повернути мєско</code>
 
@@ -81,6 +89,20 @@ async function deleteTable(env, t, who) {
   await env.DB.delete('bill:' + t);
   await logClosed(env, { t, sum: bill.total, at: hhmm(), by: who || '', del: 1 });
   return `🗑 <b>Стіл ${t} видалено</b> (${money(bill.total)}) — у виручку не піде.`;
+}
+
+// замовлення від офіціанта → до рахунку столу (як замовлення гостя з сайту)
+async function addWaiterOrder(env, d, who) {
+  const ok = d.items.filter(i => !i.hidden);
+  if (!ok.length) return null;
+  const lines = ok.map(i => `${i.q}× ${i.name} — ${i.price * i.q}`), sum = ok.reduce((s, i) => s + i.price * i.q, 0);
+  const bill = await getBill(env, d.table);
+  bill.total += sum; bill.orders++; bill.opened = bill.opened || Date.now();
+  bill.log = [...(bill.log || []), { at: hhmm(), kind: `від офіціанта (${who})`, lines }].slice(-40);
+  await env.DB.put('bill:' + d.table, JSON.stringify(bill), { expirationTtl: 12 * 3600 });
+  await addStat(env, 'orders', 1);
+  await addDishes(env, ok.map(i => ({ n: i.name, q: i.q, sum: i.price * i.q })));
+  return { sum, total: bill.total, lines };
 }
 
 // ---------- ТЕСТ: видалення закритих рахунків і повне обнулення (прибрати перед запуском) ----------
@@ -261,6 +283,18 @@ export async function handleUpdate(u, env) {
   if (text === A.waiter) return send({ text: `Звичайні кнопки. Вхід адміністратора зберігається — «${W.admin}», щоб повернутись.` }, KEYBOARD);
   if (text === A.logout) { await env.DB.delete('adm:' + uid); await env.DB.delete('kbw:' + uid); return send({ text: '🚪 Ви вийшли з режиму адміністратора.' }, KEYBOARD); }
 
+  // --- замовлення від офіціанта: «номер столу» + рядки «страва кількість» ---
+  if (text.includes('\n')) {
+    const d = parseWaiterOrder(await getMenu(env), text, +(env.TABLES || 50));
+    if (d?.error) return send({ text: '⚠️ ' + d.error });
+    if (d) {
+      const did = crypto.randomUUID().replace(/-/g, '').slice(0, 10);
+      await env.DB.put('draft:' + did, JSON.stringify(d), { expirationTtl: 3600 });
+      const can = d.items.some(i => !i.hidden);
+      return send({ text: draftText(d), markup: { inline_keyboard: [can ? [{ text: `✅ Додати до столу ${d.table}`, callback_data: 'wok:' + did }, { text: '❌ Скасувати', callback_data: 'no' }] : [{ text: 'OK', callback_data: 'no' }]] } });
+    }
+  }
+
   // --- меню: стоп-лист — усім, решта змін — лише адміністратору ---
   const r = await handleMenuText(text, env, { canEdit: admin });
   return send({ text: r || 'Не зрозумів 🤔 Скористайтесь кнопками внизу або натисніть «❓ Допомога».' });
@@ -288,6 +322,16 @@ async function handleCallback(q, env) {
     const b = await getBill(env, arg);
     if (!b.total) return answer(`Стіл ${arg} вже закритий`);
     await confirm(`🧾 Закрити <b>стіл ${arg}</b> на ${money(b.total)}?`, 'clsok:' + arg); return answer('');
+  }
+  if (act === 'wok') { // підтвердження замовлення офіціанта
+    const d = await env.DB.get('draft:' + arg, 'json');
+    if (!d) { await edit('⌛ Чернетка застаріла або вже додана. Надішліть замовлення ще раз.'); return answer(''); }
+    await env.DB.delete('draft:' + arg);
+    const r = await addWaiterOrder(env, d, who);
+    if (!r) { await edit('Нічого додати.'); return answer(''); }
+    await edit(`✅ <b>Додано до столу ${d.table}</b> (${esc(who)}, ${hhmm()})\n${r.lines.map(esc).join('\n')}\nСума: <b>${money(r.sum)}</b>\n\n💰 Разом за стіл: <b>${money(r.total)}</b>`,
+      { inline_keyboard: [[{ text: `🪑 Стіл ${d.table}`, callback_data: 'tbl:' + d.table }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + d.table }]] });
+    return answer('Додано');
   }
   if (act === 'clsok') { await edit(await closeTable(env, +arg, who)); return answer('Закрито'); }
   if (act === 'tbl') { await send(await tableView(env, +arg)); return answer(''); }
