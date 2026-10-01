@@ -1,6 +1,7 @@
 // VARVAR — Cloudflare Worker: прийом замовлень, перевірка Wi‑Fi закладу, Telegram.
 // Secrets: BOT_TOKEN, CHAT_ID, ADMIN_PIN, TG_SECRET   Vars: ALLOWED_ORIGIN, TABLES, SELF_URL   KV: DB
-import { getMenu, priceMap, handleMenuText, handleMenuPhoto, HELP } from './menu.js';
+import { getMenu, priceMap } from './menu.js';
+import { handleUpdate, tg, esc, getBill, addStat, hhmm } from './bot.js';
 
 const TYPES = { order: 'НОВЕ ЗАМОВЛЕННЯ', order_check: 'НОВЕ ЗАМОВЛЕННЯ', reorder: 'ДОЗАМОВЛЕННЯ', check: 'ПРОСЯТЬ ЧЕК' };
 const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;
@@ -26,7 +27,7 @@ export default {
       if (url.pathname === '/api/admin' && req.method === 'POST') return json(...await admin(await req.json(), ip, env));
       if (url.pathname === '/tg' && req.method === 'POST') {
         if (req.headers.get('X-Telegram-Bot-Api-Secret-Token') !== env.TG_SECRET) return new Response('no', { status: 403 });
-        await telegramUpdate(await req.json(), env);
+        await handleUpdate(await req.json(), env);
         return new Response('ok');
       }
       return json({ error: 'not_found' }, 404);
@@ -48,7 +49,6 @@ const ipKey = ip => ip.includes(':') ? ip.split(':').slice(0, 4).join(':') + '::
 async function venueIps(env) { return (await env.DB.get('venue_ips', 'json')) || []; }
 async function inVenue(env, ip) { const k = ipKey(ip); return (await venueIps(env)).some(x => x.k === k); }
 
-const getBill = async (env, t) => (await env.DB.get('bill:' + t, 'json')) || { total: 0, orders: 0 };
 
 async function order(b, ip, env) {
   const table = tableNum(b.table, env), type = b.type;
@@ -74,9 +74,13 @@ async function order(b, ip, env) {
   if (sum > MAX_ORDER) return [{ error: 'too_big' }, 400];
 
   const bill = await getBill(env, table);
-  if (lines.length) { bill.total += sum; bill.orders++; }
   const wantsCheck = type === 'check' || type === 'order_check';
   const comment = String(b.comment || '').trim().slice(0, 300);
+  if (lines.length) {
+    bill.total += sum; bill.orders++; bill.opened = bill.opened || Date.now();
+    bill.log = [...(bill.log || []), { at: hhmm(), kind: TYPES[type].toLowerCase(), lines, comment }].slice(-40);
+  }
+  if (wantsCheck) bill.check = true;
 
   const msg = [
     `🪑 <b>Стіл ${table}</b> — ${TYPES[type]}`,
@@ -87,7 +91,9 @@ async function order(b, ip, env) {
     wantsCheck ? '🧾 <b>Хоче чек</b>' : '',
   ].filter(Boolean).join('\n');
 
-  await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: msg, parse_mode: 'HTML' });
+  await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: msg, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[
+    { text: '✅ Прийняв', callback_data: 'acc:' + table }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + table }]] } });
+  if (lines.length) await addStat(env, 'orders', 1);
   await env.DB.put('bill:' + table, JSON.stringify(bill), { expirationTtl: BILL_TTL });
   await env.DB.put('rl:' + dev, String(Date.now()), { expirationTtl: 60 });
   return [{ ok: true, orderTotal: sum, tableTotal: bill.total }, 200];
@@ -110,27 +116,3 @@ async function admin(b, ip, env) {
   } else if (b.action === 'clear') { list = []; await env.DB.put('venue_ips', '[]'); }
   return [{ ok: true, current: ipKey(ip), list }, 200];
 }
-
-async function telegramUpdate(u, env) {
-  const m = u.message; if (!m || String(m.chat.id) !== String(env.CHAT_ID)) return;
-  const reply = text => tg(env, 'sendMessage', { chat_id: m.chat.id, text, parse_mode: 'HTML' });
-  if (m.photo) return reply(await handleMenuPhoto(m, env, tg));
-  const [cmd = '', arg] = (m.text || '').trim().split(/\s+/);
-  const c = cmd.replace(/@.*/, '').toLowerCase();
-  if (c === '/close') {
-    const t = tableNum(arg, env); if (!t) return reply('Формат: /close 5');
-    const bill = await getBill(env, t);
-    await env.DB.delete('bill:' + t);
-    return reply(`✅ Стіл ${t} закрито. Було: ${bill.total} грн.`);
-  }
-  if (c === '/tables') {
-    const keys = (await env.DB.list({ prefix: 'bill:' })).keys;
-    const rows = await Promise.all(keys.map(async k => `Стіл ${k.name.slice(5)}: ${(await env.DB.get(k.name, 'json')).total} грн`));
-    return reply(rows.length ? rows.join('\n') : 'Відкритих столів немає');
-  }
-  if (['/help', '/start', 'help', 'допомога', '/menu'].includes(c)) return reply(HELP);
-  if (m.text) return reply((await handleMenuText(m.text, env)) || 'Не зрозумів 🤔 Напишіть «help», щоб побачити приклади.');
-}
-
-const tg = (env, method, body) => fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
