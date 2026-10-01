@@ -526,7 +526,16 @@ async function handleCallback(q, env) {
     await queuePrint(env, 'precheck', await receipt(env, { table: +arg, bill: b, final: false, by: who }));
     return answer('🖨 Пречек відправлено на принтер');
   }
-  if (act === 'pqr') { await queuePrint(env, 'qr', [['logo'], ['inv', 'МЕНЮ ТА ЗАМОВЛЕННЯ'], ['gap'], ['img', 'qr', 220], ['c', 'Скануйте камерою телефона'], ['s', 'Замовлення — через Wi-Fi VARVAR'], ['gap']]); return answer('🖨 QR відправлено на принтер'); }
+  if (act === 'pqr') { // вибір столу для QR
+    const n = +env.TABLES || 15;
+    await send({ text: '🔳 <b>QR меню</b> — для якого столу?\n<i>Гість сканує — і стіл у меню обирається сам.</i>', markup: { inline_keyboard: [...chunk(Array.from({ length: n }, (_, i) => ({ text: String(i + 1), callback_data: 'pqrt:' + (i + 1) })), 5), [{ text: 'Без столу', callback_data: 'pqrt:0' }]] } });
+    return answer('');
+  }
+  if (act === 'pqrt') {
+    const t = +arg;
+    await queuePrint(env, 'qr', [['logo'], ...(t ? [['invb', `СТІЛ ${t}`]] : []), ['inv', 'МЕНЮ ТА ЗАМОВЛЕННЯ'], ['gap'], ['img', t ? 'qr-' + t : 'qr', 220], ['c', 'Скануйте камерою телефона'], ['s', 'Замовлення — через Wi-Fi VARVAR'], ['gap']]);
+    return answer(`🖨 QR${t ? ' столу ' + t : ''} відправлено на принтер`);
+  }
   if (act === 'ptest') { await queuePrint(env, 'test', TEST_PRINT()); return answer('🖨 Тест відправлено'); }
   if (act === 'tbl') { await send(await tableView(env, +arg)); return answer(''); }
   if (act === 'ed') { const v = await editView(env, +arg); await edit(v.text, v.markup); return answer(''); }

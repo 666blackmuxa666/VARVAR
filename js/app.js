@@ -8,6 +8,9 @@
   let lang = store.get('lang', navigator.language.startsWith('uk') || navigator.language.startsWith('ru') ? 'uk' : 'en');
   let cart = store.get('cart', {});           // "id" або "id|варіант" → кількість
   let table = store.get('table', '');
+  // QR зі столу: ?t=5 — стіл обирається сам (і прибирається з адреси)
+  const qt = +new URLSearchParams(location.search).get('t');
+  if (qt >= 1 && qt <= (window.VARVAR?.tables || 15)) { if (String(qt) !== String(table)) { table = String(qt); store.set('table', table); } history.replaceState(null, '', location.pathname); }
   let hist = store.get('hist', { ts: 0, orders: [] }); // замовлення цієї сесії
   let tableTotal = null, inVenue = null, busy = false, pendingType = null;
   if (Date.now() - hist.ts > SESSION_MS) hist = { ts: 0, orders: [] };
