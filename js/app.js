@@ -33,7 +33,7 @@
   const IMG_VER = 7; // збільшити після оновлення фото, щоб телефони не брали стару копію
   let menu, byId = {};
   // напої — менші картки
-  const DRINKS = new Set(['coffee', 'soft', 'lemonades', 'cocktails', 'shots', 'whisky', 'rum', 'vermouth', 'liqueur', 'cognac', 'vodka', 'tequila', 'gin', 'wine', 'beer', 'hookah']);
+  const DRINKS = new Set(['coffee', 'soft', 'lemonades', 'cocktails', 'shots', 'whisky', 'rum', 'vermouth', 'liqueur', 'cognac', 'vodka', 'tequila', 'gin', 'wine', 'beer', 'hookah', 'upakuvannia']); // компактні картки (3 в ряд)
 
   const priceOf = key => { const [id, v] = key.split('|'); const it = byId[id]; return v ? it.variants.find(x => x.v === v).p : it.price; };
   const labelOf = key => { const [id, v] = key.split('|'); const it = byId[id]; return itemName(it) + (v ? unit(` ${v} л`) : ''); };
