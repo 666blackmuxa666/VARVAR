@@ -83,7 +83,7 @@
       start(); toast(`👋 Вітаю, ${r.me.name}! Ваш PIN збережено`);
     } catch (e2) { $('#lErr').style.color = ''; $('#lErr').textContent = e2.message; }
   };
-  $('#toPass').onclick = () => { $('#pinView').hidden = true; $('#passView').hidden = false; $('#loginSub').textContent = 'Вхід паролем'; $('#lName').focus(); };
+  if ($('#toPass')) $('#toPass').onclick = () => { $('#pinView').hidden = true; $('#passView').hidden = false; $('#loginSub').textContent = 'Вхід паролем'; $('#lName').focus(); };
   $('#toPin').onclick = () => { $('#pinView').hidden = false; $('#passView').hidden = true; $('#loginSub').textContent = 'Введіть свій PIN'; };
   $('#passView').onsubmit = e => { e.preventDefault(); tryLogin({ pass: $('#lPass').value, name: $('#lName').value }); };
   async function logout(expired) {

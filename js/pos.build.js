@@ -212,7 +212,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       $("#lErr").textContent = e2.message;
     }
   };
-  $("#toPass").onclick = () => {
+  if ($("#toPass")) $("#toPass").onclick = () => {
     $("#pinView").hidden = true;
     $("#passView").hidden = false;
     $("#loginSub").textContent = "\u0412\u0445\u0456\u0434 \u043F\u0430\u0440\u043E\u043B\u0435\u043C";
