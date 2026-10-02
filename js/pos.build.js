@@ -650,12 +650,15 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     var _a2;
     const last = (_a2 = await api("shift").catch(() => null)) == null ? void 0 : _a2.last;
     last0 = last ? String(last.sum) : 0;
+    const fmt = (d) => d.split("-").reverse().join(".");
+    const how = !last ? "" : last.z ? `\u044F\u043A \u043F\u0440\u0438 \u0437\u0430\u043A\u0440\u0438\u0442\u0442\u0456 \u043A\u0430\u0441\u0438 ${new Date(last.z).toLocaleString("uk-UA", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}` : `\u0437 ${fmt(last.from)}: \u0440\u043E\u0437\u043C\u0456\u043D ${money(last.first)} + \u0433\u043E\u0442\u0456\u0432\u043A\u0430 ${money(last.cash)} \u2212 \u0432\u0438\u0442\u0440\u0430\u0442\u0438 ${money(last.ex)}`;
     const b = await modal({
       title: "\u{1F513} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u043A\u0430\u0441\u0443",
-      text: "\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u0433\u0440\u043E\u0448\u0435\u0439 \u0443 \u043A\u0430\u0441\u0456 \u043D\u0430 \u043F\u043E\u0447\u0430\u0442\u043E\u043A \u0437\u043C\u0456\u043D\u0438",
+      text: "\u041E\u0434\u043D\u0435 \u043D\u0430\u0442\u0438\u0441\u043A\u0430\u043D\u043D\u044F \u2014 \u043F\u0440\u043E\u0434\u043E\u0432\u0436\u0438\u0442\u0438 \u0437 \u0442\u0456\u0454\u044E \u0436 \u0433\u043E\u0442\u0456\u0432\u043A\u043E\u044E, \u0449\u043E \u0432 \u043A\u0430\u0441\u0456",
       keep: true,
-      body: `<div class="form"><input id="fIn" inputmode="decimal" placeholder="\u0421\u0443\u043C\u0430 \u043D\u0430 \u043F\u043E\u0447\u0430\u0442\u043E\u043A, \u20B4" value="${last ? last.sum : ""}">${last ? `<button type="button" class="btn" id="fLast">\u{1F4B0} \u0417\u0430\u0433\u0430\u043B\u044C\u043D\u0430 \u0441\u0443\u043C\u0430 \xB7 ${money(last.sum)}</button><div class="muted" style="font-size:13px;text-align:center">\u0433\u043E\u0442\u0456\u0432\u043A\u0430 \u0437\u0430 \u0432\u0435\u0441\u044C \u0447\u0430\u0441${last.from ? " (\u0437 " + last.from.split("-").reverse().join(".") + ")" : ""}: ${money(last.cash)} \u0432\u0456\u0434 \u0433\u043E\u0441\u0442\u0435\u0439 \u2212 ${money(last.ex)} \u0432\u0438\u0442\u0440\u0430\u0442</div>` : ""}</div>`,
-      buttons: [{ label: "\u{1F513} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }]
+      body: `<div class="form">${last ? `<button type="button" class="btn primary big1" data-mi-quick>\u{1F513} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \xB7 ${money(last.sum)}</button><div class="muted" style="font-size:13px;text-align:center">${how}</div>` : ""}
+        <input id="fIn" inputmode="decimal" placeholder="\u0410\u0431\u043E \u0432\u043F\u0438\u0448\u0456\u0442\u044C \u0456\u043D\u0448\u0443 \u0441\u0443\u043C\u0443, \u20B4"></div>`,
+      buttons: [{ label: "\u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u0437 \u0432\u043F\u0438\u0441\u0430\u043D\u043E\u044E \u0441\u0443\u043C\u043E\u044E", val: "ok" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }]
     });
     const v = b ? $("#fIn").value.trim() : null;
     closeModal();
@@ -913,9 +916,10 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         if (i != null) modalResolve(buttons[+i].val);
       });
       document.body.append(el);
-      const fl = el.querySelector("#fLast");
-      if (fl && last0) fl.onclick = () => {
+      const fq = el.querySelector("[data-mi-quick]");
+      if (fq) fq.onclick = () => {
         el.querySelector("#fIn").value = last0;
+        modalResolve("ok");
       };
     });
   }
