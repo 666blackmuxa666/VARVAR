@@ -547,7 +547,7 @@ async function handleCallback(q, env) {
   if (act === 'shopl') {
     const lz = await lastZ(env); if (!lz) return answer('Немає попереднього закриття');
     const r = await openShift(env, lz.sum, who); if (r.error) return answer(r.error);
-    await env.DB.delete('st:' + uid); await edit(`🔓 Касу відкрито · розмін ${money(lz.sum)} (уся готівка за весь час)`); await send(await cashView(env)); return answer('Касу відкрито'); }
+    await env.DB.delete('st:' + uid); await edit(`🔓 Касу відкрито · на початок ${money(lz.sum)} (уся готівка за весь час)`); await send(await cashView(env)); return answer('Касу відкрито'); }
   if (act === 'shcl') {
     const d = await shiftData(env); if (!d.open) return answer('Каса вже закрита');
     await env.DB.put('st:' + uid, 'shclose', { expirationTtl: 900 });
