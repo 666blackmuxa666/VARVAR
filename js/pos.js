@@ -137,8 +137,7 @@
       const tag = b.check ? `<span class="tag c">🧾 рахунок</span>${b.pay ? `<i class="pay" title="${b.pay === 'card' ? 'карта' : 'готівка'}">${b.pay === 'card' ? '💳' : '💵'}</i>` : ''}` : pending.has(t) ? '<span class="tag g">нове</span>' : '';
       return `<button class="tbl ${cls}" data-a="table" data-t="${t}">${tag}<div class="n">${t}</div><div class="st">${b.orders} замовл.${b.disc ? ` · −${b.disc}%` : ''}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">з ${b.opened ? hhmm(b.opened) : '—'}</div></button>`;
     }).join('');
-    const banner = S.shift ? '' : `<div class="banner"><span>🔒 <b>Каса закрита</b> — відкрийте зміну на початку дня</span>${isAdmin() ? '<button class="btn sm primary" data-a="shOpen">🔓 Відкрити касу</button>' : ''}</div>`;
-    return `${banner}<div class="head"><h1>Зал</h1><div class="stat">Відкрито<b>${list.length}</b></div><div class="stat">У залі<b class="money">${money(sum)}</b></div>
+    return `<div class="head"><h1>Зал</h1><div class="stat">Відкрито<b>${list.length}</b></div><div class="stat">У залі<b class="money">${money(sum)}</b></div>
       <button class="btn primary" data-a="newOrder">➕ Замовлення</button></div><div class="tables">${tiles}</div>`;
   }
 
@@ -339,31 +338,36 @@
   // ---------- каса (зміна) ----------
   function cashHTML() {
     const r = S.data.shift; if (!r) return '<div class="head"><h1>Каса</h1></div><div class="muted">Завантаження…</div>';
-    const d = r.d, c = r.day, dt = t => new Date(t).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const z = r.z, pc = z.total ? Math.round(z.cash / z.total * 100) : 0;
+    const today = new Date().toLocaleDateString('uk-UA', { weekday: 'long', day: 'numeric', month: 'long' });
+    // 1. головне: виручка за сьогодні, готівка/картка, кнопка Z
+    const hero = `<div class="cash-hero on"><div class="hero-main"><div class="muted">${today}</div><div class="hero-l">Виручка за сьогодні</div><div class="hero-n money">${money(z.total)}</div>
+        <div class="split"><div class="bar2"><i style="width:${pc}%"></i></div><div class="split-l"><span>💵 Готівка <b class="money">${money(z.cash)}</b></span><span>💳 Картка <b class="money">${money(z.card)}</b></span></div></div></div>
+      <button class="btn primary zbtn" data-a="zDay">🧾 Z-звіт<small>надрукувати й надіслати</small></button></div>`;
+    // 2. плитки
+    const tiles = [['🧾 Чеків', z.checks], ['Ø Середній чек', z.checks ? money(z.total / z.checks) : '—'], ['🏷 Знижки', money(z.disc)], ['💸 Витрати', money(z.exCash + z.exCard)], ['📈 Чистими', money(z.net), 'green'], ['⏳ Відкрито в залі', z.openTables ? `${money(z.openSum)} · ${z.openTables} ст.` : '—']];
+    const tilesH = `<div class="widgets">${tiles.map(([l, v, c]) => `<div class="widget ${c || ''}"><span>${l}</span><b class="money">${v}</b></div>`).join('')}</div>`;
+    // 3. операції
+    const ops = `<div class="card"><h3>⚡ Операції</h3><div class="opsg"><button class="btn" data-a="expense">💸 Витрата</button><button class="btn" data-a="cMove" data-t="in">➕ Внести</button><button class="btn" data-a="cMove" data-t="out">➖ Вилучити</button><button class="btn" data-a="cMove" data-t="x">🔁 Обмін</button></div>
+      <div class="muted" style="font-size:12px;margin-top:8px">Витрата — купили щось · Внести / вилучити — поклали чи забрали гроші · Обмін — картка ↔ готівка</div></div>`;
+    // 4. готівка за весь час
     const kv = (l, v, cls = '') => `<div class="kv ${cls}"><span>${l}</span><b class="money">${v}</b></div>`;
-    // 1. стан зміни + головне число
-    const top = d.open
-      ? `<div class="cash-hero on"><div><div class="muted">🔓 Зміна відкрита з ${dt(d.opened)}${d.by ? ' · ' + esc(d.by) : ''}</div><div class="hero-l">Має бути в касі</div><div class="hero-n money">${money(d.inBox)}</div></div>
-          <button class="btn red" data-a="shClose">🔒 Закрити касу</button></div>`
-      : `<div class="cash-hero"><div><div class="muted">🔒 Каса закрита${d.lastZ ? ` · остання зміна закрита ${dt(d.lastZ.closed)}` : ''}</div>${d.lastZ ? `<div class="hero-l">Лишилось у касі</div><div class="hero-n money">${money(d.lastZ.counted ?? d.lastZ.inBox)}</div>` : '<div class="hero-l">Відкрийте зміну, щоб рахувати касу</div>'}</div>
-          <button class="btn primary" data-a="shOpen">🔓 Відкрити касу</button></div>`;
-    // 2. звідки число «має бути в касі»
-    const led = d.open ? `<div class="card"><h3>🧮 Розрахунок каси (за зміну)</h3>${kv('На початок зміни', money(d.float))}${kv('+ 💵 Готівка від гостей', money(d.cash))}${kv('− 💸 Витрати готівкою', money(d.exCash))}${d.mvCash ? kv(`${d.mvCash > 0 ? '+' : '−'} 🔁 Рух коштів`, money(Math.abs(d.mvCash))) : ''}${kv('= Має бути в касі', money(d.inBox), 'tot')}
-      <div class="mini">${[['Чеків', d.checks], ['Виручка', money(d.total)], ['💳 Картка', money(d.card + (d.mvCard || 0))], ['Сер. чек', d.checks ? money(d.total / d.checks) : '—']].map(([l, v]) => `<div><span>${l}</span><b>${v}</b></div>`).join('')}</div></div>`
-      : d.lastZ ? `<div class="card"><h3>🔒 Остання зміна</h3>${kv('Чеків · виручка', `${d.lastZ.checks} · ${money(d.lastZ.total)}`)}${kv('💵 Готівка', money(d.lastZ.cash))}${kv('💳 Картка', money(d.lastZ.card))}${kv('Має бути в касі', money(d.lastZ.inBox))}${d.lastZ.counted != null ? kv('Пораховано', money(d.lastZ.counted)) + kv('Різниця', `${d.lastZ.diff > 0 ? '+' : ''}${money(d.lastZ.diff)}`, d.lastZ.diff ? 'bad' : '') : ''}</div>` : '';
-    // 3. сьогодні
-    const today = `<div class="card"><h3>📅 Сьогодні</h3>${kv('Виручка', money(c.cash + c.card), 'tot')}${kv('💵 Готівка', money(c.cash))}${kv('💳 Картка', money(c.card))}${kv('💸 Витрати', money(c.exCash + c.exCard))}${c.disc ? kv('🏷 Знижки', money(c.disc)) : ''}${kv('Чистими', money(c.net))}${c.open ? kv('⏳ Ще відкрито в залі', money(c.open)) : ''}</div>`;
-    // 4. операції
-    const ops = `<div class="card"><h3>⚡ Операції з касою</h3><div class="opsg"><button class="btn" data-a="expense">💸 Витрата</button><button class="btn" data-a="cMove" data-t="in">➕ Внести</button><button class="btn" data-a="cMove" data-t="out">➖ Вилучити</button><button class="btn" data-a="cMove" data-t="x">🔁 Обмін</button></div>
-      <div class="muted" style="font-size:12px;margin-top:8px">Витрата — купили щось. Внести/вилучити — поклали чи забрали гроші. Обмін — картка ↔ готівка.</div></div>`;
-    // 5. журнал за сьогодні: чеки, витрати, рух — за часом
-    const J = [...(r.closed || []).filter(x => !x.del && !x.rm).map(x => ({ at: x.at, ic: x.card ? '💳' : '💵', t: `Стіл ${x.t}${x.by ? ' · ' + esc(x.by) : ''}`, v: '+' + money(x.sum), cls: 'in' })),
+    const all = r.last ? `<div class="card"><h3>🏦 Готівка за весь час</h3>${kv('💵 Від гостей', money(r.last.cash))}${r.last.mv ? kv('🔁 Рух коштів', money(r.last.mv)) : ''}${kv('💸 Витрати готівкою', money(r.last.ex))}<div class="muted" style="font-size:12px;margin-top:6px">з ${r.last.from ? r.last.from.split('-').reverse().join('.') : '—'}</div></div>` : '';
+    // 5. рух коштів сьогодні (якщо є)
+    const mvH = z.mvCash || z.mvCard ? `<div class="card"><h3>🔁 Рух коштів сьогодні</h3>${kv('Готівка', (z.mvCash > 0 ? '+' : '') + money(z.mvCash))}${z.mvCard ? kv('Картка', (z.mvCard > 0 ? '+' : '') + money(z.mvCard)) : ''}</div>` : '';
+    // 6. журнал за сьогодні
+    const J = [...(r.closed || []).filter(x => !x.del && !x.rm).map(x => ({ at: x.at, ic: x.card ? '💳' : '💵', t: `Стіл ${x.t}${x.by ? ' · ' + esc(x.by) : ''}${x.disc ? ` · −${x.disc}%` : ''}`, v: '+' + money(x.sum), cls: 'in' })),
       ...r.exp.map((e, i) => ({ at: e.at, ic: '💸', t: esc(e.note || 'Витрата') + (e.src === 'card' ? ' (картка)' : ''), v: '−' + money(e.sum), cls: 'out', del: e.del, btn: `<button class="xb" data-a="expDel" data-i="${i}">✕</button>` })),
       ...(r.mov || []).map((m, i) => ({ at: m.at, ic: '🔁', t: MOVE[m.type] + (m.note ? ' · ' + esc(m.note) : ''), v: money(m.sum), cls: 'mv', del: m.del, btn: `<button class="xb" data-a="movDel" data-i="${i}">✕</button>` }))]
       .sort((a, b) => String(b.at).localeCompare(String(a.at)));
-    const journal = `<div class="card"><h3>📒 Журнал за сьогодні</h3>${J.length ? J.map(x => `<div class="jr ${x.cls}${x.del ? ' del' : ''}"><span class="muted">${x.at}</span><span>${x.ic}</span><span class="jt">${x.t}</span><b class="money">${x.v}</b>${!x.del && x.btn ? x.btn : '<i></i>'}</div>`).join('') : '<div class="muted">Поки порожньо</div>'}</div>`;
-    const all = r.last ? `<div class="card"><h3>🏦 Готівка за весь час</h3>${kv('💵 Від гостей', money(r.last.cash))}${r.last.mv ? kv('🔁 Рух коштів', money(r.last.mv)) : ''}${kv('💸 Витрати готівкою', money(r.last.ex))}<div class="muted" style="font-size:12px;margin-top:6px">з ${r.last.from ? r.last.from.split('-').reverse().join('.') : '—'}. Ця сума пропонується при відкритті каси.</div></div>` : '';
-    return `<div class="head"><h1>Каса</h1></div>${top}<div class="cash-grid"><div class="col">${led}${ops}${today}</div><div class="col">${journal}${all}</div></div>`;
+    const journal = `<div class="card"><h3>📒 Журнал за сьогодні <span class="muted" style="font-weight:400;font-size:13px">· ${J.length}</span></h3>${J.length ? J.map(x => `<div class="jr ${x.cls}${x.del ? ' del' : ''}"><span class="muted">${x.at}</span><span>${x.ic}</span><span class="jt">${x.t}</span><b class="money">${x.v}</b>${!x.del && x.btn ? x.btn : '<i></i>'}</div>`).join('') : '<div class="muted">Поки порожньо</div>'}</div>`;
+    return `<div class="head"><h1>Каса</h1></div>${hero}${tilesH}<div class="cash-grid"><div class="col">${journal}</div><div class="col">${ops}${mvH}${all}</div></div>`;
+  }
+  async function zDay() {
+    const v = await choose('🧾 Z-звіт за сьогодні', 'Підсумок дня: чеки, готівка, картка, знижки, витрати', [{ label: '🖨 Надрукувати й надіслати в Telegram', val: 'p', cls: 'primary' }, { label: '📲 Лише в Telegram', val: 'n' }]);
+    if (!v) return;
+    const r = await act('zDay', { print: v === 'p' }, v === 'p' ? '🧾 Z-звіт надруковано' : '🧾 Z-звіт надіслано');
+    if (r) loadView();
   }
   async function shOpen() {
     const last = (await api('shift').catch(() => null))?.last; last0 = last ? String(last.sum) : 0;
@@ -471,7 +475,7 @@
     } else if (T === 'checks') body = checks.length ? [...checks].reverse().slice(0, 300).map(c => `<div class="kv"><span>${c.d.slice(5)} ${c.at} · стіл ${c.t} · ${esc(c.by)} ${c.card ? '💳' : '💵'}${c.disc ? ' 🏷' : ''}<br><small class="muted">${c.ds.map(([nm, qq]) => `${qq}× ${esc(nm)}`).join(', ')}</small></span><b class="money">${money(c.val)}</b></div>`).join('') : '<div class="muted">Немає чеків</div>';
     else if (T === 'exp') body = r.exp.length ? r.exp.map(e => `<div class="kv"><span>${e.d.slice(5)} ${e.at} ${e.src === 'card' ? '💳' : '💵'} ${esc(e.note)} <span class="muted">${esc(e.by)}</span></span><b class="money">${money(e.sum)}</b></div>`).join('') : '<div class="muted">Витрат немає</div>';
     else if (T === 'mov') body = (r.mov || []).length ? r.mov.map(m => `<div class="kv"><span>${m.d.slice(5)} ${m.at} ${MOVE[m.type]} ${esc(m.note)} <span class="muted">${esc(m.by)}</span></span><b class="money">${money(m.sum)}</b></div>`).join('') : '<div class="muted">Руху коштів немає</div>';
-    else if (T === 'z') body = r.z.length ? [...r.z].reverse().map(z => `<div class="kv"><span>${new Date(z.opened).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} — ${new Date(z.closed).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })} · ${z.checks} чек. · ${esc(z.closedBy)}${z.diff ? ` · <b style="color:var(--red)">різниця ${z.diff > 0 ? '+' : ''}${money(z.diff)}</b>` : ''}</span><b class="money">${money(z.total)}</b></div>`).join('') : '<div class="muted">Закритих змін за період немає</div>';
+    else if (T === 'z') body = r.z.length ? [...r.z].reverse().map(z => `<div class="kv"><span>${new Date(z.opened).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} — ${new Date(z.closed).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })} · ${z.checks} чек. · ${esc(z.closedBy)}${z.diff ? ` · <b style="color:var(--red)">різниця ${z.diff > 0 ? '+' : ''}${money(z.diff)}</b>` : ''}</span><b class="money">${money(z.total)}</b></div>`).join('') : '<div class="muted">Z-звітів за період немає</div>';
     // 🏆 топ страв за вибраний період (з урахуванням фільтрів)
     const top = dishAgg(nm => nm).sort((x, y) => y[1][0] - x[1][0] || y[1][1] - x[1][1]).slice(0, 10), tmax = Math.max(1, ...top.map(x => x[1][0]));
     const topHTML = `<div class="card top"><h3>🏆 Топ страв</h3>${top.length ? top.map(([k, [qq, ss]], i) => `<div class="bar"><div class="bl"><span>${['🥇', '🥈', '🥉'][i] || `<span class="muted">${i + 1}.</span>`} ${esc(k)}</span><b>${qq} шт</b><span class="muted money">${money(ss)}</span></div><i style="width:${Math.max(2, qq / tmax * 100)}%"></i></div>`).join('') : '<div class="muted">Ще немає продажів за цей період</div>'}</div>`;
@@ -577,6 +581,7 @@
       case 'tw': S.tw[t] = !S.tw[t]; S.packAdj[t] = 0; renderSheet(); break;
       case 'pk': { const cur = packQ(t); if (cur + +el.dataset.d >= 0) S.packAdj[t] = (S.packAdj[t] || 0) + +el.dataset.d; renderSheet(); break; }
       case 'photos': S.photos = !S.photos; store.set('photos', S.photos); renderSheet(); break;
+      case 'zDay': zDay(); break;
       case 'shOpen': shOpen(); break;
       case 'shClose': shClose(); break;
       case 'rp': S.rep.p = el.dataset.p; loadView(); break;

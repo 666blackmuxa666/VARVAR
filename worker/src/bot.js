@@ -8,7 +8,7 @@ import { queuePrint, printStatus } from './print.js';
 import {
   tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
   precheck, setDiscount, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
-  reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, MOVE, addMove, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
+  reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, addMove, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
 } from './ops.js';
 export { tg, esc, hhmm, getBill } from './ops.js';
 export { addStat, addDishes } from './ops.js';
@@ -132,19 +132,17 @@ async function pickTable(env, title, act) {
 }
 const fmtT = t => new Date(t).toLocaleString('uk-UA', { timeZone: TZ, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '');
 async function cashView(env) {
-  const c = await cashData(env), sh = await shiftData(env), z = sh.lastZ;
-  const ledger = sh.open ? [`🔓 <b>Зміна відкрита</b> з ${fmtT(sh.opened)}${sh.by ? ` (${esc(sh.by)})` : ''}`, '',
-    `На початок зміни: ${money(sh.float)}`, `+ 💵 Готівка від гостей: ${money(sh.cash)}`, `− 💸 Витрати готівкою: ${money(sh.exCash)}`,
-    ...(sh.mvCash ? [`${sh.mvCash > 0 ? '+' : '−'} 🔁 Рух коштів: ${money(Math.abs(sh.mvCash))}`] : []),
-    `= <b>Має бути в касі: ${money(sh.inBox)}</b>`, '', `За зміну: чеків ${sh.checks} · виручка ${money(sh.total)} (💳 ${money(sh.card + sh.mvCard)})`]
-    : ['🔒 <b>Каса закрита</b>', ...(z ? [`Останнє закриття ${fmtT(z.closed)}: в касі ${money(z.counted ?? z.inBox)}${z.counted != null ? ' (пораховано)' : ''}`] : [])];
+  const z = await dayZData(env), lz = await lastZ(env);
   return {
-    text: [...ledger, '', `📅 <b>Сьогодні (${c.day})</b>`,
-      `Виручка: <b>${money(c.cash + c.card)}</b> (💵 ${money(c.cash)} · 💳 ${money(c.card)})`,
-      `Витрати: ${money(c.exCash + c.exCard)} · чистими: <b>${money(c.net)}</b>`,
-      c.disc ? `🏷 Знижки: ${money(c.disc)}` : '',
-      c.open ? `⏳ Ще відкрито в залі: ${money(c.open)}` : ''].filter(x => x !== '').join('\n'),
-    markup: { inline_keyboard: [[sh.open ? { text: '🔒 Закрити касу (Z-звіт)', callback_data: 'shcl' } : { text: '🔓 Відкрити касу', callback_data: 'shop' }], [{ text: '💸 Витрати сьогодні', callback_data: 'exlist' }], [{ text: '➕ Внести', callback_data: 'cmv:in' }, { text: '➖ Вилучити', callback_data: 'cmv:out' }, { text: '🔁 Обмін', callback_data: 'cmvx' }]] },
+    text: [`💰 <b>Каса · сьогодні (${z.day.split('-').reverse().join('.')})</b>`, '',
+      `Виручка: <b>${money(z.total)}</b> · чеків ${z.checks}${z.checks ? ` · сер. чек ${money(z.total / z.checks)}` : ''}`,
+      `💵 Готівка: ${money(z.cash)} · 💳 Картка: ${money(z.card)}`,
+      z.disc ? `🏷 Знижки: ${money(z.disc)}` : '',
+      `💸 Витрати: ${money(z.exCash + z.exCard)} · 📈 чистими: <b>${money(z.net)}</b>`,
+      z.mvCash || z.mvCard ? `🔁 Рух коштів: готівка ${money(z.mvCash)}${z.mvCard ? `, картка ${money(z.mvCard)}` : ''}` : '',
+      z.openTables ? `⏳ Ще відкрито в залі: ${money(z.openSum)} (${z.openTables} ст.)` : '',
+      lz ? `\n🏦 Готівка від гостей за весь час: ${money(lz.cash)}` : ''].filter(x => x !== '').join('\n'),
+    markup: { inline_keyboard: [[{ text: '🧾 Z-звіт (друк)', callback_data: 'zday' }], [{ text: '💸 Витрати сьогодні', callback_data: 'exlist' }], [{ text: '➕ Внести', callback_data: 'cmv:in' }, { text: '➖ Вилучити', callback_data: 'cmv:out' }, { text: '🔁 Обмін', callback_data: 'cmvx' }]] },
   };
 }
 async function expListView(env) {
@@ -514,7 +512,7 @@ async function handleCallback(q, env) {
     const v = await stopView(env); await edit(v.text, v.markup); return answer(it ? `${it.name.uk} знову в меню` : 'Не знайдено');
   }
   // лише адміністратор
-  if (['del', 'delok', 'wifiask', 'wifiok', 'dc', 'dcok', 'cv', 'cvb', 'cvp', 'rst1', 'rst2', 'exs', 'exdel', 'exdelok', 'float', 'exlist', 'shop', 'shopl', 'shcl', 'cmv', 'cmvx', 'rp', 'stfadd', 'stfdel', 'wout'].includes(act) && !admin) return answer('🔐 Лише для адміністратора');
+  if (['del', 'delok', 'wifiask', 'wifiok', 'dc', 'dcok', 'cv', 'cvb', 'cvp', 'rst1', 'rst2', 'exs', 'exdel', 'exdelok', 'float', 'exlist', 'shop', 'shopl', 'shcl', 'cmv', 'cmvx', 'zday', 'rp', 'stfadd', 'stfdel', 'wout'].includes(act) && !admin) return answer('🔐 Лише для адміністратора');
   if (act === 'del') {
     const b = await getBill(env, arg);
     if (!b.total) return answer(`Стіл ${arg} вже порожній`);
@@ -540,6 +538,7 @@ async function handleCallback(q, env) {
   if (act === 'exlist') { await send(await expListView(env)); return answer(''); }
   if (act === 'exdel') { await confirm('🗑 Видалити цю витрату?', 'exdelok:' + arg); return answer(''); }
   if (act === 'exdelok') { await delExpense(env, +arg); await edit('🗑 Витрату видалено.'); return answer(''); }
+  if (act === 'zday') { const z = await dayZ(env, who, true); await send({ text: zDayText(z) + '\n\n🖨 Надруковано' }); return answer('Z-звіт'); }
   if (act === 'cmvx') { await send({ text: '🔁 <b>Обмін</b> — звідки куди?', markup: { inline_keyboard: [[{ text: '💳 Картка → 💵 готівка', callback_data: 'cmv:k2c' }], [{ text: '💵 Готівка → 💳 картка', callback_data: 'cmv:c2k' }]] } }); return answer(''); }
   if (act === 'cmv') { if (!MOVE[arg]) return answer(''); await env.DB.put('st:' + uid, 'cmv:' + arg, { expirationTtl: 600 }); await send({ text: `${MOVE[arg]}\nНапишіть суму і коментар, наприклад: <code>500 з банку</code>` }); return answer(''); }
   if (act === 'shop') { if (await getShift(env)) return answer('Зміна вже відкрита'); await env.DB.put('st:' + uid, 'shopen', { expirationTtl: 600 }); const lz = await lastZ(env);

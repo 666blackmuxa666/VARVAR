@@ -346,6 +346,41 @@ function zTicket(z) {
     ...(z.openTables ? [['dbl'], ['b', `Увага: відкрито столів ${z.openTables} на ${z.openSum} грн`]] : []), ['gap']];
 }
 
+// ---------- Z-звіт за день (без відкриття/закриття каси) ----------
+export async function dayZData(env, day = dayKey()) {
+  const [cl, ex, mv, d] = await Promise.all([getClosed(env, day), getExp(env, day), getMov(env, day), env.DB.get('day:' + day, 'json')]);
+  const recs = cl.filter(x => !x.del && !x.rm), exps = ex.filter(e => !e.del), movs = mv.filter(m => !m.del);
+  const sum = (l, f) => l.reduce((a, x) => a + (f(x) || 0), 0);
+  const cash = sum(recs, x => x.cash ?? x.sum), card = sum(recs, x => x.card);
+  const exCash = sum(exps.filter(e => e.src !== 'card'), e => e.sum), exCard = sum(exps.filter(e => e.src === 'card'), e => e.sum);
+  const mvCash = sum(movs, moveCash), mvCard = sum(movs, moveCard);
+  const open = day === dayKey() ? await openTables(env) : [];
+  return { day, checks: recs.length, cash, card, total: cash + card, disc: sum(recs, x => x.discSum), exCash, exCard, mvCash, mvCard,
+    net: cash + card - exCash - exCard, orders: (d || {}).orders || 0, dels: cl.filter(x => x.del || x.rm).length,
+    openTables: open.length, openSum: open.reduce((a, r) => a + payable(r.b), 0) };
+}
+export async function dayZ(env, who, print = true, day = dayKey()) {
+  const z = { ...(await dayZData(env, day)), opened: dayStart(Date.parse(day + 'T12:00:00Z')), closed: Date.now(), closedBy: who || '', kind: 'day' };
+  const k = 'z:' + day, l = (await env.DB.get(k, 'json')) || []; l.push(z); await env.DB.put(k, JSON.stringify(l));
+  if (print) await queuePrint(env, 'z', zDayTicket(z));
+  await logEvent(env, { k: 'shift', by: who, text: `🧾 Z-звіт за ${day}: ${z.total} грн · чеків ${z.checks}` });
+  return z;
+}
+const dm = d => d.split('-').reverse().join('.');
+export const zDayText = z => [`🧾 <b>Z-звіт за ${dm(z.day)}</b>`, '',
+  `Чеків: ${z.checks} · виручка <b>${money(z.total)}</b>`, `💵 Готівка: ${money(z.cash)}`, `💳 Картка: ${money(z.card)}`,
+  z.disc ? `🏷 Знижки: ${money(z.disc)}` : '', `💸 Витрати: ${money(z.exCash + z.exCard)}${z.exCard ? ` (з картки ${money(z.exCard)})` : ''}`,
+  z.mvCash || z.mvCard ? `🔁 Рух коштів: готівка ${z.mvCash >= 0 ? '+' : ''}${money(z.mvCash)}${z.mvCard ? `, картка ${z.mvCard >= 0 ? '+' : ''}${money(z.mvCard)}` : ''}` : '',
+  `📈 Чистими: <b>${money(z.net)}</b>`, z.openTables ? `\n⚠️ Ще відкрито столів: ${z.openTables} (${money(z.openSum)})` : ''].filter(x => x !== '').join('\n');
+function zDayTicket(z) {
+  return [['invb', 'Z-ЗВІТ'], ['c', dm(z.day)], ['gap'], ['lr', 'Надруковано', fmtDT(z.closed)], ['lr', 'Хто', z.closedBy || '—'], ['dbl'],
+    ['lr', 'Чеків', String(z.checks)], ['lr', 'Готівка', `${z.cash} грн`], ['lr', 'Картка', `${z.card} грн`], ...(z.disc ? [['lr', 'Знижки', `${z.disc} грн`]] : []),
+    ['total', 'ВИРУЧКА', `${z.total} грн`], ['dbl'],
+    ['lr', 'Витрати (готівка)', `${z.exCash} грн`], ...(z.exCard ? [['lr', 'Витрати (картка)', `${z.exCard} грн`]] : []),
+    ...(z.mvCash ? [['lr', 'Рух коштів (готівка)', `${z.mvCash > 0 ? '+' : ''}${z.mvCash} грн`]] : []), ...(z.mvCard ? [['lr', 'Рух коштів (картка)', `${z.mvCard > 0 ? '+' : ''}${z.mvCard} грн`]] : []),
+    ['total', 'ЧИСТИМИ', `${z.net} грн`], ...(z.openTables ? [['dbl'], ['b', `Увага: відкрито столів ${z.openTables} на ${z.openSum} грн`]] : []), ['gap']];
+}
+
 // ---------- звіт за довільний період (сирі дані — фільтри рахує POS, підсумки — бот) ----------
 export async function reportRange(env, from, to) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) return null;

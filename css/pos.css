@@ -365,3 +365,13 @@ body { position: fixed; top: 0; right: 0; bottom: 0; left: 0; overscroll-behavio
 .jr.del { opacity: .35; text-decoration: line-through; }
 .xb { width: 26px; height: 26px; border-radius: 50%; background: var(--card2); color: var(--muted); font-size: 12px; }
 @media (max-width: 900px) { .cash-grid { grid-template-columns: 1fr; } .mini { grid-template-columns: 1fr 1fr; } }
+
+.hero-main { flex: 1; min-width: 240px; }
+.split { margin-top: 10px; max-width: 520px; }
+.bar2 { height: 8px; border-radius: 99px; background: var(--blue); overflow: hidden; }
+.bar2 i { display: block; height: 100%; background: var(--green); }
+.split-l { display: flex; justify-content: space-between; gap: 10px; margin-top: 6px; font-size: 14px; color: var(--muted); flex-wrap: wrap; }
+.split-l b { color: var(--text); margin-left: 4px; }
+.zbtn { flex-direction: column; min-height: 76px; padding: 0 28px; font-size: 19px; gap: 2px; }
+.zbtn small { font-size: 12px; font-weight: 500; opacity: .75; }
+@media (max-width: 600px) { .zbtn { width: 100%; } .hero-n { font-size: 38px; } }
