@@ -331,7 +331,11 @@
       <div class="card"><h3>💸 Витрати сьогодні</h3>${r.exp.length ? r.exp.map((e, i) => `<div class="kv" style="${e.del ? 'opacity:.4;text-decoration:line-through' : ''}"><span>${e.at} ${e.src === 'card' ? '💳' : '💵'} ${esc(e.note || '')}</span><span><b class="money">${money(e.sum)}</b> ${e.del ? '' : `<button class="btn sm red" data-a="expDel" data-i="${i}">🗑</button>`}</span></div>`).join('') : '<div class="muted">Немає</div>'}</div></div>`;
   }
   async function shOpen() {
-    const v = await ask('🔓 Відкрити касу', 'Розмін у касі на початок, ₴', 'number'); if (v == null) return;
+    const last = (await api('shift').catch(() => null))?.last; last0 = last ? String(last.sum) : 0;
+    const b = await modal({ title: '🔓 Відкрити касу', text: 'Скільки грошей у касі на початок зміни', keep: true,
+      body: `<div class="form"><input id="fIn" inputmode="decimal" placeholder="Сума на початок, ₴">${last ? `<button type="button" class="btn" id="fLast">💰 Загальна сума · ${money(last.sum)}</button><div class="muted" style="font-size:13px;text-align:center">залишок при закритті каси ${new Date(last.closed).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}${last.counted ? ' (пораховано)' : ''}</div>` : ''}</div>`,
+      buttons: [{ label: '🔓 Відкрити', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }] });
+    const v = b ? $('#fIn').value.trim() : null; closeModal(); if (!v) return;
     if (await act('shiftOpen', { float: +v.replace(',', '.') }, '🔓 Касу відкрито')) { loadState().catch(() => {}); if (S.view === 'cash') loadView(); }
   }
   async function shClose() {
@@ -487,8 +491,10 @@
       el.innerHTML = `<div class="modal"><h3>${esc(title)}</h3>${text ? `<p>${esc(text)}</p>` : ''}${body}<div class="btns" style="margin-top:14px">${buttons.map((b, i) => `<button class="btn ${b.cls || ''}" data-mi="${i}">${esc(b.label)}</button>`).join('')}</div></div>`;
       el.addEventListener('click', e => { if (e.target === el) return modalResolve(null); const i = e.target.closest('[data-mi]')?.dataset.mi; if (i != null) modalResolve(buttons[+i].val); });
       document.body.append(el);
+      const fl = el.querySelector('#fLast'); if (fl && last0) fl.onclick = () => { el.querySelector('#fIn').value = last0; };
     });
   }
+  let last0 = 0;
   const closeModal = () => $('#modal')?.remove();
   const choose = (title, text, opts) => modal({ title, text, buttons: [...opts, { label: 'Скасувати', val: null }] });
   const confirmBox = (title, text = '') => modal({ title, text, buttons: [{ label: 'Так', val: true, cls: 'red' }, { label: 'Ні', val: null }] });

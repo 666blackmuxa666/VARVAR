@@ -584,8 +584,19 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       <div class="card"><h3>\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</h3>${r.exp.length ? r.exp.map((e, i) => `<div class="kv" style="${e.del ? "opacity:.4;text-decoration:line-through" : ""}"><span>${e.at} ${e.src === "card" ? "\u{1F4B3}" : "\u{1F4B5}"} ${esc(e.note || "")}</span><span><b class="money">${money(e.sum)}</b> ${e.del ? "" : `<button class="btn sm red" data-a="expDel" data-i="${i}">\u{1F5D1}</button>`}</span></div>`).join("") : '<div class="muted">\u041D\u0435\u043C\u0430\u0454</div>'}</div></div>`;
   }
   async function shOpen() {
-    const v = await ask("\u{1F513} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u043A\u0430\u0441\u0443", "\u0420\u043E\u0437\u043C\u0456\u043D \u0443 \u043A\u0430\u0441\u0456 \u043D\u0430 \u043F\u043E\u0447\u0430\u0442\u043E\u043A, \u20B4", "number");
-    if (v == null) return;
+    var _a;
+    const last = (_a = await api("shift").catch(() => null)) == null ? void 0 : _a.last;
+    last0 = last ? String(last.sum) : 0;
+    const b = await modal({
+      title: "\u{1F513} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u043A\u0430\u0441\u0443",
+      text: "\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u0433\u0440\u043E\u0448\u0435\u0439 \u0443 \u043A\u0430\u0441\u0456 \u043D\u0430 \u043F\u043E\u0447\u0430\u0442\u043E\u043A \u0437\u043C\u0456\u043D\u0438",
+      keep: true,
+      body: `<div class="form"><input id="fIn" inputmode="decimal" placeholder="\u0421\u0443\u043C\u0430 \u043D\u0430 \u043F\u043E\u0447\u0430\u0442\u043E\u043A, \u20B4">${last ? `<button type="button" class="btn" id="fLast">\u{1F4B0} \u0417\u0430\u0433\u0430\u043B\u044C\u043D\u0430 \u0441\u0443\u043C\u0430 \xB7 ${money(last.sum)}</button><div class="muted" style="font-size:13px;text-align:center">\u0437\u0430\u043B\u0438\u0448\u043E\u043A \u043F\u0440\u0438 \u0437\u0430\u043A\u0440\u0438\u0442\u0442\u0456 \u043A\u0430\u0441\u0438 ${new Date(last.closed).toLocaleString("uk-UA", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}${last.counted ? " (\u043F\u043E\u0440\u0430\u0445\u043E\u0432\u0430\u043D\u043E)" : ""}</div>` : ""}</div>`,
+      buttons: [{ label: "\u{1F513} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }]
+    });
+    const v = b ? $("#fIn").value.trim() : null;
+    closeModal();
+    if (!v) return;
     if (await act("shiftOpen", { float: +v.replace(",", ".") }, "\u{1F513} \u041A\u0430\u0441\u0443 \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u043E")) {
       loadState().catch(() => {
       });
@@ -838,8 +849,13 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         if (i != null) modalResolve(buttons[+i].val);
       });
       document.body.append(el);
+      const fl = el.querySelector("#fLast");
+      if (fl && last0) fl.onclick = () => {
+        el.querySelector("#fIn").value = last0;
+      };
     });
   }
+  let last0 = 0;
   const closeModal = () => {
     var _a;
     return (_a = $("#modal")) == null ? void 0 : _a.remove();

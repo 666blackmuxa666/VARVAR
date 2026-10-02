@@ -275,6 +275,13 @@ export async function shiftData(env) {
   return { open: !!s, id: s?.id, opened: s?.opened || 0, by: s?.by || '', float, checks: recs.length, cash, card, total: cash + card, disc: sum(recs, x => x.discSum),
     exCash, exCard, inBox: float + cash - exCash, openTables: open.length, openSum: open.reduce((a, r) => a + payable(r.b), 0) };
 }
+// скільки було в касі при закритті попередньої зміни (пораховано, або «має бути»)
+export async function lastZ(env) {
+  const days = [...Array(60)].map((_, i) => dayKey(Date.now() - i * 86400e3));
+  const l = await env.DB.getMany(days.map(d => 'z:' + d), 'json');
+  for (const x of l) if (x?.length) { const z = x[x.length - 1]; return { sum: z.counted ?? z.inBox, closed: z.closed, counted: z.counted != null }; }
+  return null;
+}
 export async function openShift(env, float, who) {
   if (await getShift(env)) return { error: 'Зміна вже відкрита' };
   const s = { id: crypto.randomUUID().slice(0, 8), opened: Date.now(), by: who || '', float: Math.max(0, Math.round(+float || 0)) };

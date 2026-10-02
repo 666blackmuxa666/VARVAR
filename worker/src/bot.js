@@ -8,7 +8,7 @@ import { queuePrint, printStatus } from './print.js';
 import {
   tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
   precheck, setDiscount, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
-  reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
+  reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
 } from './ops.js';
 export { tg, esc, hhmm, getBill } from './ops.js';
 export { addStat, addDishes } from './ops.js';
@@ -505,7 +505,7 @@ async function handleCallback(q, env) {
     const v = await stopView(env); await edit(v.text, v.markup); return answer(it ? `${it.name.uk} знову в меню` : 'Не знайдено');
   }
   // лише адміністратор
-  if (['del', 'delok', 'wifiask', 'wifiok', 'dc', 'dcok', 'cv', 'cvb', 'cvp', 'rst1', 'rst2', 'exs', 'exdel', 'exdelok', 'float', 'exlist', 'shop', 'shcl', 'rp', 'stfadd', 'stfdel', 'wout'].includes(act) && !admin) return answer('🔐 Лише для адміністратора');
+  if (['del', 'delok', 'wifiask', 'wifiok', 'dc', 'dcok', 'cv', 'cvb', 'cvp', 'rst1', 'rst2', 'exs', 'exdel', 'exdelok', 'float', 'exlist', 'shop', 'shopl', 'shcl', 'rp', 'stfadd', 'stfdel', 'wout'].includes(act) && !admin) return answer('🔐 Лише для адміністратора');
   if (act === 'del') {
     const b = await getBill(env, arg);
     if (!b.total) return answer(`Стіл ${arg} вже порожній`);
@@ -531,7 +531,12 @@ async function handleCallback(q, env) {
   if (act === 'exlist') { await send(await expListView(env)); return answer(''); }
   if (act === 'exdel') { await confirm('🗑 Видалити цю витрату?', 'exdelok:' + arg); return answer(''); }
   if (act === 'exdelok') { await delExpense(env, +arg); await edit('🗑 Витрату видалено.'); return answer(''); }
-  if (act === 'shop') { if (await getShift(env)) return answer('Зміна вже відкрита'); await env.DB.put('st:' + uid, 'shopen', { expirationTtl: 600 }); await send({ text: '🔓 <b>Відкриття каси</b>\nСкільки грошей у касі на початок (розмін)? Напишіть число:' }); return answer(''); }
+  if (act === 'shop') { if (await getShift(env)) return answer('Зміна вже відкрита'); await env.DB.put('st:' + uid, 'shopen', { expirationTtl: 600 }); const lz = await lastZ(env);
+    await send({ text: '🔓 <b>Відкриття каси</b>\nСкільки грошей у касі на початок (розмін)? Напишіть число' + (lz ? ' або натисніть «Загальна сума» — залишок з попереднього закриття каси:' : ':'), markup: lz ? { inline_keyboard: [[{ text: `💰 Загальна сума · ${money(lz.sum)}`, callback_data: 'shopl' }]] } : undefined }); return answer(''); }
+  if (act === 'shopl') {
+    const lz = await lastZ(env); if (!lz) return answer('Немає попереднього закриття');
+    const r = await openShift(env, lz.sum, who); if (r.error) return answer(r.error);
+    await env.DB.delete('st:' + uid); await edit(`🔓 Касу відкрито · розмін ${money(lz.sum)} (залишок з попереднього закриття)`); await send(await cashView(env)); return answer('Касу відкрито'); }
   if (act === 'shcl') {
     const d = await shiftData(env); if (!d.open) return answer('Каса вже закрита');
     await env.DB.put('st:' + uid, 'shclose', { expirationTtl: 900 });
