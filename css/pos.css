@@ -340,3 +340,5 @@ body { position: fixed; top: 0; right: 0; bottom: 0; left: 0; overscroll-behavio
 .modal-bg { padding-top: calc(16px + env(safe-area-inset-top)); padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
 .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
 @media (max-width: 600px) { .tbl .pay { font-size: 24px; right: 8px; bottom: 6px; } }
+
+.cart .row.auto { background: #2a2414; border: 1px dashed #f2c14e55; }

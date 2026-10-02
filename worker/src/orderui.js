@@ -27,7 +27,7 @@ export async function tablePick(env, openTables, tables) {
 export async function catsView(env, ob) {
   const cats = [b('⭐ Обрані', 'f'), ...GROUPS.map(g => b(g.name, 'g:' + g.id))];
   const n = ob.items.reduce((s, i) => s + i.q, 0);
-  const tw = b(ob.tw ? '🥡 З собою ✅' : '🥡 З собою', 'tw');
+  const tw = b(ob.tw ? '🥡 З собою ✅ (+упаковка)' : '🥡 З собою', 'tw');
   const foot = ob.items.length
     ? [[b(`✅ Відправити · ${sum(ob)} грн`, 'send')], [b(`✏️ Кошик (${n})`, 'cart'), b(ob.com ? '💬 Змінити коментар' : '💬 Коментар', 'com')], [tw, b('🪑 Інший стіл', 'tp')], [b('✖ Скасувати', 'x')]]
     : [[b('💬 Коментар', 'com'), tw], [b('🪑 Інший стіл', 'tp'), b('✖ Скасувати', 'x')]];
@@ -103,6 +103,15 @@ export async function obCallback(env, uid, p) {
     return { view: cartView(ob) || await catsView(env, ob) };
   }
   if (a === 'com') return { comment: true, ob };
-  if (a === 'send') { if (!ob.items.length) return { toast: 'Кошик порожній' }; await env.DB.delete('ob:' + uid); return { send: ob }; }
+  if (a === 'send') {
+    if (!ob.items.length) return { toast: 'Кошик порожній' }; await env.DB.delete('ob:' + uid);
+    if (ob.tw) { // з собою: 1 упаковка на кожну страву з кухні
+      const menu = await getMenu(env), FOOD = ['minimax', 'pasta', 'burgers', 'salads', 'snacks', 'soups', 'pans'];
+      const food = new Set(menu.categories.filter(c => FOOD.includes(c.id)).flatMap(c => c.items.map(i => i.name.uk)));
+      const pk = menu.categories.find(c => c.id === 'upakuvannia')?.items[0], n = ob.items.filter(i => food.has(i.name)).reduce((s, i) => s + i.q, 0);
+      if (pk && n) ob.items.push({ name: pk.name.uk, price: pk.price, q: n });
+    }
+    return { send: ob };
+  }
   return { toast: '' };
 }

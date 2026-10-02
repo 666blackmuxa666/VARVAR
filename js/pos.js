@@ -162,6 +162,10 @@
 
   // ---------- стіл (лист) ----------
   const cartOf = t => (S.carts[t] ||= {});
+  // «з собою»: 1 упаковка на кожну страву з кухні (як на сайті гостя і в боті)
+  const FOOD = ['minimax', 'pasta', 'burgers', 'salads', 'snacks', 'soups', 'pans'];
+  const packItem = () => S.menu?.categories.find(c => c.id === 'upakuvannia')?.items[0];
+  const packQ = t => { if (!S.tw[t] || !S.menu) return 0; const food = new Set(S.menu.categories.filter(c => FOOD.includes(c.id)).flatMap(c => c.items.map(i => i.id))); return Object.values(cartOf(t)).filter(x => food.has(x.id)).reduce((s, x) => s + x.q, 0); };
   const saveCarts = () => store.set('carts', S.carts);
   const itemsAll = () => S.menu ? S.menu.categories.flatMap(c => c.items) : [];
   function openTable(t) {
@@ -187,7 +191,8 @@
   function renderSheet() {
     const t = S.open; if (!t || !$('#shHead')) return;
     const b = S.tables[t], cart = cartOf(t), cartRows = Object.entries(cart);
-    const cartSum = cartRows.reduce((s, [, x]) => s + x.price * x.q, 0);
+    const pk = packItem(), pq = pk ? packQ(t) : 0;
+    const cartSum = cartRows.reduce((s, [, x]) => s + x.price * x.q, 0) + (pq ? pq * pk.price : 0);
     setHTML($('#shHead'), `<h2>Стіл ${t}</h2>${b ? `<span class="total money">${money(b.pay2)}</span>${b.disc ? `<span class="chip">−${b.disc}%</span>` : ''}<span class="muted hide-s">з ${b.opened ? hhmm(b.opened) : '—'} · ${b.orders} замовл.</span>${b.check ? '<span class="chip" style="background:var(--orange);color:#000">🧾 чек</span>' : ''}` : '<span class="muted">новий</span>'}
         <span class="sp"></span><div class="tabs2"><button class="${S.mobileMenu ? '' : 'on'}" data-a="tab" data-m="0">Рахунок${cartRows.length ? ` (${cartRows.reduce((s, [, x]) => s + x.q, 0)})` : ''}</button><button class="${S.mobileMenu ? 'on' : ''}" data-a="tab" data-m="1">Меню</button></div>
         <button class="close-x" data-a="closeSheet">✕</button>`);
@@ -198,7 +203,7 @@
     const billRows = b ? b.items.map(it => `<div class="row"><div class="nm">${esc(it.name)}<small>${it.q} × ${Math.round(it.sum / it.q)} ₴</small></div><b class="money">${it.sum}</b><button class="rb minus" data-a="rm" data-name="${esc(it.name)}" title="Прибрати 1">−</button></div>`).join('') : '<div class="muted" style="padding:8px 4px">Рахунок порожній — оберіть страви в меню</div>';
     const discRow = b?.disc ? `<div class="row"><div class="nm">Знижка ${b.disc}%</div><b class="money" style="color:var(--green)">−${b.total - b.pay2}</b><button class="rb minus" data-a="discSet" data-p="0">×</button></div>` : '';
     const comments = b ? b.log.filter(o => o.comment).map(o => `<div class="muted" style="padding:2px 6px">💬 ${esc(o.comment)}</div>`).join('') : '';
-    const cartHTML = cartRows.length ? `<div class="cart"><h3>Нове замовлення</h3><div class="rows">${cartRows.map(([k, x]) => `<div class="row"><div class="nm">${esc(x.name)}<small>${x.price} ₴</small></div><button class="rb minus" data-a="cq" data-k="${esc(k)}" data-d="-1">−</button><span class="q">${x.q}</span><button class="rb plus" data-a="cq" data-k="${esc(k)}" data-d="1">+</button></div>`).join('')}</div>
+    const cartHTML = cartRows.length ? `<div class="cart"><h3>Нове замовлення</h3><div class="rows">${cartRows.map(([k, x]) => `<div class="row"><div class="nm">${esc(x.name)}<small>${x.price} ₴</small></div><button class="rb minus" data-a="cq" data-k="${esc(k)}" data-d="-1">−</button><span class="q">${x.q}</span><button class="rb plus" data-a="cq" data-k="${esc(k)}" data-d="1">+</button></div>`).join('')}${pq ? `<div class="row auto"><div class="nm">🥡 ${esc(pk.name.uk)}<small>${pk.price} ₴ × ${pq} · автоматично</small></div><span class="q">${pq}</span></div>` : ''}</div>
       <div class="srow" style="margin:6px 0 10px"><input id="cartCom" placeholder="💬 Коментар для кухні" value="${esc(S.coms[t] || '')}"><button class="btn sm ${S.tw[t] ? 'primary' : 'ghost'}" data-a="tw">🥡 З собою</button></div>
       <div style="display:grid;grid-template-columns:auto 1fr;gap:8px"><button class="btn red" data-a="cartClear">✕</button><button class="btn primary" data-a="send">Відправити · ${money(cartSum)}</button></div></div>` : '';
     const actions = b ? `<div class="actions"><button class="btn" data-a="pre">🖨 Пречек</button><button class="btn" data-a="disc">% Знижка</button>
@@ -242,7 +247,7 @@
     const keepKb = wasKb || searching(); cart[key].q++; saveCarts(); renderSheet(); if (keepKb && !searching()) $('#search')?.focus();
   }
   async function sendCart() {
-    const t = S.open, cart = cartOf(t), items = Object.values(cart).map(x => ({ id: x.id, v: x.v, q: x.q }));
+    const t = S.open, cart = cartOf(t), pk = packItem(), pq = pk ? packQ(t) : 0, items = [...Object.values(cart).map(x => ({ id: x.id, v: x.v, q: x.q })), ...(pq ? [{ id: pk.id, q: pq }] : [])];
     if (!items.length) return;
     const btn = document.querySelector('[data-a="send"]'); if (btn) btn.disabled = true;
     const r = await act('order', { t, items, comment: [S.tw[t] ? 'З СОБОЮ' : '', S.coms[t] || ''].filter(Boolean).join(' · ') });
