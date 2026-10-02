@@ -11,6 +11,7 @@
   let cart = store.get('cart', {});           // "id" або "id|варіант" → кількість
   let table = store.get('table', '');
   let hist = store.get('hist', { ts: 0, orders: [] }); // замовлення цієї сесії
+  let tip = { p: 0, own: false };
   let tableTotal = null, inVenue = null, busy = false, pendingType = null, bill = null, tw = store.get('tw', false);
   // «з собою»: 1 упаковка на кожну страву з кухні (напої, додатки не рахуються)
   const FOOD = new Set(['minimax', 'pasta', 'burgers', 'salads', 'snacks', 'soups', 'pans']);
@@ -123,7 +124,7 @@
       <div class="hist"><div class="hist-title">🧾 ${t('yourBill')}${table ? ` · ${t('table')} ${table}` : ''}</div>
       ${pend.length ? `<div class="pills">${pend.map((o, i) => `<span class="st ${o.s === 'acc' ? 'ok' : 'wait'}">${i ? t('reorderLbl') : t('orderLbl')} ${o.at || ''} · ${o.s === 'acc' ? '✅ ' + t('accShort') : '⏳ ' + t('waitShort')}</span>`).join('')}</div>` : ''}
       ${bill ? bill.items.map(([n, q, sm]) => `<div class="hist-line"><span>${q}× ${esc(n)}</span><span>${money(sm)}</span></div>`).join('') : ''}
-      ${bill && bill.disc ? `<div class="hist-line disc"><span>${t('discount')} ${bill.disc}%</span><span>−${money(bill.gross - bill.pay)}</span></div>` : ''}
+      ${bill && bill.tip ? `<div class="hist-line"><span>💝 ${t('tipLbl')}</span><span>+${money(bill.tip)}</span></div>` : ''}${bill && bill.disc ? `<div class="hist-line disc"><span>${t('discount')} ${bill.disc}%</span><span>−${money(bill.gross - bill.pay)}</span></div>` : ''}
       <div class="hist-total"><span>${t('tableTotal')}</span><b>${money(bill ? bill.pay : tableTotal || 0)}</b></div>
       <div class="hist-note">${t('billNote')}</div></div>` : '';
     const first = !hist.orders.length && !bill;
@@ -177,6 +178,17 @@
     if (!$('#sheet').hidden) renderCart();
   }
 
+  // ---------- чайові (у вікні оплати) ----------
+  const tipBase = () => (bill ? bill.pay : tableTotal || 0) + (pendingType === 'order_check' ? cartSum() : 0);
+  const tipAmount = () => tip.own ? Math.max(0, Math.round(+$('#tipOwn').value || 0)) : Math.round(tipBase() * tip.p / 100);
+  function renderTips() {
+    $('#tipRow').innerHTML = [0, 5, 10, 15].map(p => `<button class="tip ${!tip.own && tip.p === p ? 'on' : ''}" data-tip="${p}">${p ? p + '%' : t('tipNo')}${p && tipBase() ? `<small>${money(Math.round(tipBase() * p / 100))}</small>` : ''}</button>`).join('')
+      + `<button class="tip ${tip.own ? 'on' : ''}" data-tip="own">✏️<small>${t('tipOwnBtn')}</small></button>`;
+    $('#tipOwn').hidden = !tip.own;
+    const a = tipAmount(); $('#tipSum').textContent = a ? '+' + money(a) : '';
+  }
+  $('#tipOwn').addEventListener('input', () => { const a = tipAmount(); $('#tipSum').textContent = a ? '+' + money(a) : ''; });
+
   // ---------- сервер ----------
   async function api(path, body) {
     const r = await fetch(C.api + path, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {});
@@ -203,12 +215,12 @@
     table = $('#table').value; save();
     if (!table) { $('#msg').textContent = t('chooseTable'); $('#table').focus(); return; }
     // запит чека — спершу питаємо спосіб оплати
-    if ((type === 'check' || type === 'order_check') && !pay) { pendingType = type; $('#payModal').hidden = false; return; }
+    if ((type === 'check' || type === 'order_check') && !pay) { pendingType = type; tip = { p: 0, own: false }; $('#tipOwn').value = ''; renderTips(); $('#payModal').hidden = false; return; }
     const items = type === 'check' ? [] : cartEntries();
     busy = true; $('#msg').textContent = '…';
     try {
       const { status, data } = await api('/api/order', {
-        table: +table, type, pay, device, comment: [items.length && tw ? 'З СОБОЮ' : '', $('#comment').value].filter(Boolean).join(' · ').slice(0, 300),
+        table: +table, type, pay, device, tip: pay ? tipAmount() : 0, comment: [items.length && tw ? 'З СОБОЮ' : '', $('#comment').value].filter(Boolean).join(' · ').slice(0, 300),
         items: [...items.map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; }), ...(items.length && packId && packQty() ? [{ id: packId, q: packQty() }] : [])],
       });
       if (status === 403) { showWifi(); $('#msg').textContent = ''; return; }
@@ -241,6 +253,7 @@
     else if (el.dataset.inc) change(el.dataset.inc, 1);
     else if (el.dataset.dec) change(el.dataset.dec, -1);
     else if (el.dataset.send) send(el.dataset.send);
+    else if (el.dataset.tip) { tip = el.dataset.tip === 'own' ? { p: 0, own: true } : { p: +el.dataset.tip, own: false }; renderTips(); if (tip.own) $('#tipOwn').focus(); }
     else if (el.dataset.pay) { $('#payModal').hidden = true; send(pendingType, el.dataset.pay); }
     else if ('close' in el.dataset) el.closest('.modal') ? (el.closest('.modal').hidden = true) : closeAll();
     else if (el.id === 'fab' || el.id === 'orderStatus') openSheet();

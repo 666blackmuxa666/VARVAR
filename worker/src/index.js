@@ -25,7 +25,7 @@ export default {
         const bill = table ? await getBill(env, table) : null;
         // bill — актуальний рахунок (з урахуванням змін офіціанта: прибрані позиції, знижка, перенос)
         return json({ inVenue: await inVenue(env, ip), tableTotal: bill ? payable(bill) : undefined,
-          bill: bill && bill.total ? { items: billItems(bill).map(x => [x.name, x.q, x.sum]), gross: bill.total, disc: bill.disc || 0, pay: payable(bill) } : null });
+          bill: bill && bill.total ? { items: billItems(bill).map(x => [x.name, x.q, x.sum]), gross: bill.total, disc: bill.disc || 0, pay: payable(bill), tip: bill.tip || 0 } : null });
       }
       if (url.pathname === '/api/menu') return new Response(JSON.stringify(await getMenu(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'no-cache' } });
       if (url.pathname.startsWith('/img/')) {
@@ -109,7 +109,8 @@ async function order(b, ip, env) {
     bill.log = [...(bill.log || []), { at: hhmm(), kind: TYPES[type].toLowerCase(), lines, comment }].slice(-40);
   }
   const pay = ['cash', 'card'].includes(b.pay) ? b.pay : null;
-  if (wantsCheck) { bill.check = true; if (pay) bill.pay = pay; }
+  const tip = Math.max(0, Math.min(10000, Math.round(+b.tip || 0)));
+  if (wantsCheck) { bill.check = true; if (pay) bill.pay = pay; if (tip) bill.tip = tip; }
 
   // усе по столу в одному повідомленні: нове зверху, раніше замовлене — нижче
   const prev = (bill.log || []).slice(0, lines.length ? -1 : undefined);
@@ -125,6 +126,7 @@ async function order(b, ip, env) {
     '',
     `💰 Разом за стіл: <b>${bill.total} грн</b>`,
     wantsCheck ? `🧾 <b>Хоче чек</b>${pay ? (pay === 'card' ? ' · 💳 <b>карта</b> (несіть термінал)' : ' · 💵 <b>готівка</b>') : ''}` : '',
+    wantsCheck && tip ? `💝 <b>Чайові: ${tip} грн</b> → разом до сплати <b>${payable(bill) + tip} грн</b>` : '',
   ].filter((x, i, arr) => x !== '' || (arr[i - 1] !== '' && i > 0)).join('\n').trim();
 
   // номер замовлення — за ним гість бачить, чи прийняв офіціант
@@ -134,7 +136,7 @@ async function order(b, ip, env) {
   const mid = await r.json().then(j => j.result?.message_id).catch(() => null);
   // mid/html — щоб «Прийняв» з каси (POS) оновив і повідомлення в Telegram
   await env.DB.put('ord:' + oid, JSON.stringify({ s: 'new', t: table, mid, html: msg }), { expirationTtl: BILL_TTL });
-  await logEvent(env, { k: lines.length ? 'guest' : 'check', t: table, oid, s: 'new', kind: TYPES[type], lines, comment, sum, check: wantsCheck, pay });
+  await logEvent(env, { k: lines.length ? 'guest' : 'check', t: table, oid, s: 'new', kind: TYPES[type], lines, comment, sum, check: wantsCheck, pay, tip });
   if (lines.length) {
     await addStat(env, 'orders', 1); await addDishes(env, sold);
     await queuePrint(env, 'kitchen', kitchenTicket({ table, kind: TYPES[type], lines, comment, by: 'гість (сайт)' })); // бігунок

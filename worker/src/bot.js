@@ -7,7 +7,7 @@ import { tablePick, catsView, obCallback, getOb, putOb } from './orderui.js';
 import { queuePrint, printStatus } from './print.js';
 import {
   tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
-  precheck, setDiscount, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
+  precheck, setDiscount, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
   reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, addMove, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
 } from './ops.js';
 export { tg, esc, hhmm, getBill } from './ops.js';
@@ -100,11 +100,11 @@ async function tableView(env, t) {
   if (!b.total) return { text: `🪑 Стіл ${t}: відкритого рахунку немає` };
   const log = (b.log || []).map(o => `<b>${o.at}</b> ${esc(o.kind)}\n${o.lines.map(esc).join('\n')}${o.comment ? `\n💬 ${esc(o.comment)}` : ''}`).join('\n\n');
   return {
-    text: `🪑 <b>Стіл ${t}</b> — ${billSum(b)}${b.disc ? `\nСума ${money(b.total)} − знижка ${b.disc}% (${money(discAmt(b))})` : ''}${b.check ? ' · 🧾 просять чек' : ''}\n\n${log || '(деталі недоступні)'}`,
+    text: `🪑 <b>Стіл ${t}</b> — ${billSum(b)}${b.disc ? `\nСума ${money(b.total)} − знижка ${b.disc}% (${money(discAmt(b))})` : ''}${b.tip ? `\n💝 Чайові: ${money(b.tip)} (разом ${money(payable(b) + b.tip)})` : ''}${b.check ? ' · 🧾 просять чек' : ''}\n\n${log || '(деталі недоступні)'}`,
     markup: { inline_keyboard: [
       [{ text: '🖨 Пречек', callback_data: 'pre:' + t }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + t }],
       [{ text: '➕ Дозамовити', callback_data: 'o:t:' + t }, { text: '✏️ Редагувати чек', callback_data: 'ed:' + t }],
-      [{ text: '% Знижка', callback_data: 'dsc:' + t }, { text: '↔️ Перенести / об\'єднати', callback_data: 'mv:' + t }]] },
+      [{ text: '% Знижка', callback_data: 'dsc:' + t }, { text: '💝 Чайові', callback_data: 'tip:' + t }], [{ text: '↔️ Перенести / об\'єднати', callback_data: 'mv:' + t }]] },
   };
 }
 async function editView(env, t, note = '') {
@@ -122,9 +122,9 @@ const PAY_PICK = { cash: '💵 готівка', card: '💳 карта' };
 async function closeAsk(env, t) {
   const b = await getBill(env, t);
   if (!b.total) return { text: `Стіл ${t} вже закритий.` };
-  return { text: `🧾 Закрити <b>стіл ${t}</b> на <b>${billSum(b)}</b>?${b.pay ? `\nГість хоче платити: ${PAY_PICK[b.pay]}` : ''}\n\nЯк оплатили?`, markup: payButtons(t) };
+  return { text: `🧾 Закрити <b>стіл ${t}</b> на <b>${billSum(b)}</b>?${b.pay ? `\nГість хоче платити: ${PAY_PICK[b.pay]}` : ''}${b.tip ? `\n💝 Чайові: <b>${money(b.tip)}</b> → разом ${money(payable(b) + b.tip)}` : ''}\n\nЯк оплатили?`, markup: payButtons(t) };
 }
-const closedText = r => r ? `✅ <b>Стіл ${r.t} закрито</b> — ${money(r.sum)}${r.disc ? ` (знижка ${money(r.disc)})` : ''} · ${payLabel(r.cash, r.card)}` : 'Стіл вже закритий.';
+const closedText = r => r ? `✅ <b>Стіл ${r.t} закрито</b> — ${money(r.sum)}${r.tip ? ` + 💝 ${money(r.tip)} чайові` : ''}${r.disc ? ` (знижка ${money(r.disc)})` : ''} · ${payLabel(r.cash, r.card)}` : 'Стіл вже закритий.';
 async function pickTable(env, title, act) {
   const rows = await openTables(env);
   if (!rows.length) return { text: 'Відкритих столів немає' };
@@ -294,6 +294,11 @@ export async function handleUpdate(u, env) {
       ob.com = text.slice(0, 200); await putOb(env, uid, ob);
       const v = await catsView(env, ob);
       return tg(env, 'editMessageText', { chat_id: ob.chat, message_id: ob.mid, text: v.text, parse_mode: 'HTML', reply_markup: v.markup });
+    }
+    if (state.startsWith('tip:') && waiter) {
+      const t = +state.slice(4), n = parseInt(text, 10);
+      if (!(n >= 0)) return send({ text: 'Потрібне число, наприклад 100.' });
+      await setTip(env, t, n, who); return send(await tableView(env, t));
     }
     if (state.startsWith('dscc:') && waiter) { // свій відсоток знижки
       const t = +state.slice(5), p = parseInt(text, 10);
@@ -486,6 +491,7 @@ async function handleCallback(q, env) {
     return answer('');
   }
   if (act === 'dscs') { const b = await setDiscount(env, +arg, +oid, who); if (!b) return answer('Стіл порожній'); const v = await tableView(env, +arg); await edit(v.text, v.markup); return answer(+oid ? `Знижка ${oid}%` : 'Знижку прибрано'); }
+  if (act === 'tip') { await env.DB.put('st:' + uid, 'tip:' + arg, { expirationTtl: 300 }); return answer('💝 Напишіть суму чайових числом (0 — прибрати)'); }
   if (act === 'dscc') { await env.DB.put('st:' + uid, 'dscc:' + arg, { expirationTtl: 300 }); return answer('Напишіть відсоток знижки числом'); }
   if (act === 'mv') { // перенос / об'єднання
     const b = await getBill(env, arg); if (!b.total) return answer(`Стіл ${arg} порожній`);

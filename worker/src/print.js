@@ -78,6 +78,7 @@ export async function receipt(env, { table, bill, final, pay, by }) {
     ['lr', 'Позицій', String(count)],
     ...(bill.disc ? [['lr', 'Сума', `${bill.total} грн`], ['lr', `Знижка ${bill.disc}%`, `−${Math.round(bill.total * bill.disc / 100)} грн`]] : []),
     ['total', final ? 'СПЛАЧЕНО' : 'ДО СПЛАТИ', `${bill.total - Math.round(bill.total * (bill.disc || 0) / 100)} грн`],
+    ...(bill.tip ? [['lr', 'Чайові', `${bill.tip} грн`], ['lr', 'Разом з чайовими', `${bill.total - Math.round(bill.total * (bill.disc || 0) / 100) + bill.tip} грн`]] : []),
     ...(final && pay ? [['lr', 'Оплата', pay === 'card' ? 'Картка' : 'Готівка']] : []),
     ['gap'],
     ['c', 'Дякуємо, що завітали!'],

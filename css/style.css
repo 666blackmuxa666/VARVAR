@@ -186,3 +186,14 @@ textarea { border-radius: 14px; }
 .hist-total b { color: var(--accent); font-size: 18px; }
 .hist-note { color: var(--muted); font-size: 11px; text-align: center; margin-top: 8px; opacity: .7; }
 .actions .btn { border-radius: 14px; padding: 15px 10px; }
+
+/* чайові */
+.tips { background: var(--card); border-radius: 14px; padding: 12px; display: grid; gap: 10px; text-align: left; }
+.tips-t { display: flex; justify-content: space-between; font-weight: 700; }
+.tips-t b { color: var(--accent); }
+.tips-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.tip { border: 1px solid var(--line); background: #ffffff0d; color: var(--text); border-radius: 12px; padding: 10px 2px; font-weight: 700; font-size: 15px; display: grid; gap: 2px; }
+.tip small { font-size: 10px; font-weight: 500; color: var(--muted); }
+.tip.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.tip.on small { color: var(--accent-ink); }
+.tips input { width: 100%; background: #0003; color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 10px; font: inherit; }
