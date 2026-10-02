@@ -652,6 +652,26 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const journal = `<div class="card"><h3>\u{1F4D2} \u0416\u0443\u0440\u043D\u0430\u043B \u0437\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 <span class="muted" style="font-weight:400;font-size:13px">\xB7 ${J.length}</span></h3>${J.length ? J.map((x) => `<div class="jr ${x.cls}${x.del ? " del" : ""}"><span class="muted">${x.at}</span><span>${x.ic}</span><span class="jt">${x.t}</span><b class="money">${x.v}</b>${!x.del && x.btn ? x.btn : "<i></i>"}</div>`).join("") : '<div class="muted">\u041F\u043E\u043A\u0438 \u043F\u043E\u0440\u043E\u0436\u043D\u044C\u043E</div>'}</div>`;
     return `<div class="head"><h1>\u041A\u0430\u0441\u0430</h1></div>${hero}${tilesH}<div class="cash-grid"><div class="col">${journal}</div><div class="col">${ops}${mvH}${all}</div></div>`;
   }
+  const MOVE = { in: "\u2795 \u0412\u043D\u0435\u0441\u0435\u043D\u043D\u044F", out: "\u2796 \u0412\u0438\u043B\u0443\u0447\u0435\u043D\u043D\u044F", k2c: "\u{1F501} \u041A\u0430\u0440\u0442\u043A\u0430 \u2192 \u0433\u043E\u0442\u0456\u0432\u043A\u0430", c2k: "\u{1F501} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 \u2192 \u043A\u0430\u0440\u0442\u043A\u0430" };
+  async function cashMove(t) {
+    if (t === "x") {
+      t = await choose("\u{1F501} \u041E\u0431\u043C\u0456\u043D", "\u0417\u0432\u0456\u0434\u043A\u0438 \u043A\u0443\u0434\u0438 \u043F\u0435\u0440\u0435\u0445\u043E\u0434\u044F\u0442\u044C \u0433\u0440\u043E\u0448\u0456?", [{ label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u043A\u0430 \u2192 \u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u0430", val: "k2c" }, { label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 \u2192 \u{1F4B3} \u043A\u0430\u0440\u0442\u043A\u0430", val: "c2k" }]);
+      if (!t) return;
+    }
+    const v = await modal({
+      title: MOVE[t],
+      text: t === "k2c" ? "\u0417\u043D\u044F\u043B\u0438 \u0437 \u043A\u0430\u0440\u0442\u043A\u0438 \u0439 \u043F\u043E\u043A\u043B\u0430\u043B\u0438 \u0432 \u043A\u0430\u0441\u0443" : t === "c2k" ? "\u0412\u0437\u044F\u043B\u0438 \u0437 \u043A\u0430\u0441\u0438 \u0439 \u043F\u043E\u043A\u043B\u0430\u043B\u0438 \u043D\u0430 \u043A\u0430\u0440\u0442\u043A\u0443" : t === "in" ? "\u041F\u043E\u043A\u043B\u0430\u043B\u0438 \u0433\u0440\u043E\u0448\u0456 \u0432 \u043A\u0430\u0441\u0443" : "\u0417\u0430\u0431\u0440\u0430\u043B\u0438 \u0433\u0440\u043E\u0448\u0456 \u0437 \u043A\u0430\u0441\u0438",
+      body: '<div class="form"><input id="mSum" inputmode="decimal" placeholder="\u0421\u0443\u043C\u0430, \u20B4"><input id="mNote" placeholder="\u041A\u043E\u043C\u0435\u043D\u0442\u0430\u0440 (\u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)"></div>',
+      buttons: [{ label: "\u0417\u0430\u043F\u0438\u0441\u0430\u0442\u0438", val: 1, cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }],
+      keep: true
+    });
+    const sum = v && +$("#mSum").value.replace(",", "."), note = v && $("#mNote").value;
+    closeModal();
+    if (v && sum > 0) {
+      await act("cashMove", { type: t, sum, note }, "\u{1F501} \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E");
+      loadView();
+    }
+  }
   async function zDay() {
     const v = await choose("\u{1F9FE} Z-\u0437\u0432\u0456\u0442 \u0437\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456", "\u041F\u0456\u0434\u0441\u0443\u043C\u043E\u043A \u0434\u043D\u044F: \u0447\u0435\u043A\u0438, \u0433\u043E\u0442\u0456\u0432\u043A\u0430, \u043A\u0430\u0440\u0442\u043A\u0430, \u0437\u043D\u0438\u0436\u043A\u0438, \u0432\u0438\u0442\u0440\u0430\u0442\u0438", [{ label: "\u{1F5A8} \u041D\u0430\u0434\u0440\u0443\u043A\u0443\u0432\u0430\u0442\u0438 \u0439 \u043D\u0430\u0434\u0456\u0441\u043B\u0430\u0442\u0438 \u0432 Telegram", val: "p", cls: "primary" }, { label: "\u{1F4F2} \u041B\u0438\u0448\u0435 \u0432 Telegram", val: "n" }]);
     if (!v) return;

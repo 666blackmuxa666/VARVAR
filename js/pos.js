@@ -363,6 +363,14 @@
     const journal = `<div class="card"><h3>📒 Журнал за сьогодні <span class="muted" style="font-weight:400;font-size:13px">· ${J.length}</span></h3>${J.length ? J.map(x => `<div class="jr ${x.cls}${x.del ? ' del' : ''}"><span class="muted">${x.at}</span><span>${x.ic}</span><span class="jt">${x.t}</span><b class="money">${x.v}</b>${!x.del && x.btn ? x.btn : '<i></i>'}</div>`).join('') : '<div class="muted">Поки порожньо</div>'}</div>`;
     return `<div class="head"><h1>Каса</h1></div>${hero}${tilesH}<div class="cash-grid"><div class="col">${journal}</div><div class="col">${ops}${mvH}${all}</div></div>`;
   }
+  const MOVE = { in: '➕ Внесення', out: '➖ Вилучення', k2c: '🔁 Картка → готівка', c2k: '🔁 Готівка → картка' };
+  async function cashMove(t) {
+    if (t === 'x') { t = await choose('🔁 Обмін', 'Звідки куди переходять гроші?', [{ label: '💳 Картка → 💵 готівка', val: 'k2c' }, { label: '💵 Готівка → 💳 картка', val: 'c2k' }]); if (!t) return; }
+    const v = await modal({ title: MOVE[t], text: t === 'k2c' ? 'Зняли з картки й поклали в касу' : t === 'c2k' ? 'Взяли з каси й поклали на картку' : t === 'in' ? 'Поклали гроші в касу' : 'Забрали гроші з каси',
+      body: '<div class="form"><input id="mSum" inputmode="decimal" placeholder="Сума, ₴"><input id="mNote" placeholder="Коментар (необовʼязково)"></div>', buttons: [{ label: 'Записати', val: 1, cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
+    const sum = v && +$('#mSum').value.replace(',', '.'), note = v && $('#mNote').value; closeModal();
+    if (v && sum > 0) { await act('cashMove', { type: t, sum, note }, '🔁 Записано'); loadView(); }
+  }
   async function zDay() {
     const v = await choose('🧾 Z-звіт за сьогодні', 'Підсумок дня: чеки, готівка, картка, знижки, витрати', [{ label: '🖨 Надрукувати й надіслати в Telegram', val: 'p', cls: 'primary' }, { label: '📲 Лише в Telegram', val: 'n' }]);
     if (!v) return;
