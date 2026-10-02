@@ -91,7 +91,8 @@ export async function receipt(env, { table, bill, final, pay, by }) {
 async function nextReceiptNo(env) {
   const k = 'rcpt:' + dayKey(); const n = +(await env.DB.get(k) || 0) + 1;
   await env.DB.put(k, String(n));
-  return `${dayKey().slice(2).replace(/-/g, '')}-${String(n).padStart(3, '0')}`;
+  const [y, m, d] = dayKey().split('-'); // ДДММРР-номер, напр. 021026-002
+  return `${d}${m}${y.slice(2)}-${String(n).padStart(3, '0')}`;
 }
 
 // API для програми друку: GET /api/print/pull?key=… → завдання; POST /api/print/ack {key, ids}
