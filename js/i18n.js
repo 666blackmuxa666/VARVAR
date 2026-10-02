@@ -1,5 +1,6 @@
 window.I18N = {
   uk: {
+    takeaway: 'З собою', takeawayNote: 'Упакуємо: +1 контейнер на кожну страву', pack: 'Упаковка', yourBill: 'Ваш рахунок', discount: 'Знижка', newOrder: 'Нове замовлення', billNote: 'Оновлюється автоматично',
     cart: 'Кошик', comment: 'Побажання до замовлення…', table: 'Стіл №', chooseTable: 'Оберіть номер столу',
     order: 'Замовити', orderCheck: 'Замовити + чек', reorder: 'Дозамовити', check: 'Хочу чек',
     empty: 'Кошик порожній', total: 'Разом', tableTotal: 'Ваш рахунок за столом', ordered: 'Ваші замовлення',
@@ -14,6 +15,7 @@ window.I18N = {
     add: 'Додати', cur: 'грн', thanks: 'Дякуємо за відвідування! Ваша підтримка цінна для нас.',
   },
   en: {
+    takeaway: 'Takeaway', takeawayNote: 'We will pack it: +1 container per dish', pack: 'Packaging', yourBill: 'Your bill', discount: 'Discount', newOrder: 'New order', billNote: 'Updates automatically',
     cart: 'Cart', comment: 'Notes for the kitchen…', table: 'Table #', chooseTable: 'Choose your table number',
     order: 'Order', orderCheck: 'Order + bill', reorder: 'Order more', check: 'Bring the bill',
     empty: 'Your cart is empty', total: 'Total', tableTotal: 'Your table bill', ordered: 'Your orders',

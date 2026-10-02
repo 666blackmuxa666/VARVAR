@@ -2,7 +2,7 @@
 // Secrets: BOT_TOKEN, CHAT_ID, ADMIN_PIN, TG_SECRET   Vars: ALLOWED_ORIGIN, TABLES, SELF_URL   KV: DB
 import { getMenu, priceMap } from './menu.js';
 import { handleUpdate } from './bot.js';
-import { tg, esc, getBill, putBill, addStat, addDishes, hhmm, logEvent } from './ops.js';
+import { tg, esc, getBill, putBill, addStat, addDishes, hhmm, logEvent, billItems, payable } from './ops.js';
 import { posApi, posLive } from './pos.js';
 import { queuePrint, kitchenTicket, printApi } from './print.js';
 export { PrintQ } from './print.js';
@@ -23,7 +23,9 @@ export default {
       if (url.pathname === '/api/status') {
         const table = tableNum(url.searchParams.get('table'), env);
         const bill = table ? await getBill(env, table) : null;
-        return json({ inVenue: await inVenue(env, ip), tableTotal: bill ? bill.total : undefined });
+        // bill — актуальний рахунок (з урахуванням змін офіціанта: прибрані позиції, знижка, перенос)
+        return json({ inVenue: await inVenue(env, ip), tableTotal: bill ? payable(bill) : undefined,
+          bill: bill && bill.total ? { items: billItems(bill).map(x => [x.name, x.q, x.sum]), gross: bill.total, disc: bill.disc || 0, pay: payable(bill) } : null });
       }
       if (url.pathname === '/api/menu') return new Response(JSON.stringify(await getMenu(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'no-cache' } });
       if (url.pathname.startsWith('/img/')) {

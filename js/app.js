@@ -11,7 +11,10 @@
   let cart = store.get('cart', {});           // "id" або "id|варіант" → кількість
   let table = store.get('table', '');
   let hist = store.get('hist', { ts: 0, orders: [] }); // замовлення цієї сесії
-  let tableTotal = null, inVenue = null, busy = false, pendingType = null;
+  let tableTotal = null, inVenue = null, busy = false, pendingType = null, bill = null, tw = store.get('tw', false);
+  // «з собою»: 1 упаковка на кожну страву з кухні (напої, додатки не рахуються)
+  const FOOD = new Set(['minimax', 'pasta', 'burgers', 'salads', 'snacks', 'soups', 'pans']);
+  let packId = null, catOf = {};
   if (Date.now() - hist.ts > SESSION_MS) hist = { ts: 0, orders: [] };
   const device = store.get('device', null) || (() => { const d = crypto.randomUUID(); store.set('device', d); return d; })();
 
@@ -38,7 +41,9 @@
   const priceOf = key => { const [id, v] = key.split('|'); const it = byId[id]; return v ? it.variants.find(x => x.v === v).p : it.price; };
   const labelOf = key => { const [id, v] = key.split('|'); const it = byId[id]; return itemName(it) + (v ? unit(` ${v} л`) : ''); };
   const cartEntries = () => Object.entries(cart).filter(([k, q]) => q > 0 && byId[k.split('|')[0]]);
-  const cartSum = () => cartEntries().reduce((s, [k, q]) => s + priceOf(k) * q, 0);
+  const packQty = () => tw ? cartEntries().filter(([k]) => FOOD.has(catOf[k.split('|')[0]])).reduce((s, [, q]) => s + q, 0) : 0;
+  const packSum = () => packId ? packQty() * priceOf(packId) : 0;
+  const cartSum = () => cartEntries().reduce((s, [k, q]) => s + priceOf(k) * q, 0) + packSum();
   const save = () => { store.set('cart', cart); store.set('hist', hist); store.set('table', table); };
 
   // ---------- меню ----------
@@ -99,26 +104,28 @@
     $('#fabCount').textContent = n;
     $('#fabSum').textContent = n ? money(cartSum()) : t('cart');
   }
+  const thumb = k => { const it = byId[k.split('|')[0]]; return it?.img ? `<img class="th" src="${esc(it.img)}${it.img.includes('?') ? '' : '?v=' + IMG_VER}" alt="">` : '<span class="th"></span>'; };
   function renderCart() {
-    const rows = cartEntries();
-    $('#cartList').innerHTML = rows.length ? rows.map(([k, q]) => `
-      <div class="line"><span class="ln">${esc(labelOf(k))}</span>
+    const rows = cartEntries(), pq = packQty();
+    $('#cartList').innerHTML = rows.length ? `<div class="cl-title">${t('newOrder')}</div>` + rows.map(([k, q]) => `
+      <div class="line">${thumb(k)}<span class="ln">${esc(labelOf(k))}<small>${money(priceOf(k))}</small></span>
         <span class="qty"><button data-dec="${esc(k)}">−</button><b>${q}</b><button data-inc="${esc(k)}">+</button></span>
         <span class="lp">${money(priceOf(k) * q)}</span></div>`).join('')
+      + (pq && packId ? `<div class="line auto">${thumb(packId)}<span class="ln">🥡 ${t('pack')}<small>${money(priceOf(packId))} × ${pq}</small></span><span class="qty"><b>${pq}</b></span><span class="lp">${money(packSum())}</span></div>` : '')
       + `<div class="line sum"><span>${t('total')}</span><b>${money(cartSum())}</b></div>`
-      : `<p class="empty">${t('empty')}</p>`;
+      : `<p class="empty">🛒 ${t('empty')}</p>`;
+    $('#twBox').innerHTML = rows.length ? `<button class="tw ${tw ? 'on' : ''}" data-tw><span class="tw-ic">🥡</span><span class="tw-t"><b>${t('takeaway')}</b><small>${t('takeawayNote')}</small></span><span class="sw"></span></button>` : '';
     $('#table').innerHTML = `<option value="">—</option>` + Array.from({ length: C.tables }, (_, i) => `<option ${String(i + 1) === String(table) ? 'selected' : ''}>${i + 1}</option>`).join('');
-    const histSum = hist.orders.reduce((s, o) => s + o.total, 0);
-    const shown = tableTotal ?? histSum;
-    // що вже замовлено: кожне замовлення окремо (замовлення / дозамовлення, час, статус)
-    $('#history').innerHTML = hist.orders.length || tableTotal ? `
-      <div class="hist"><div class="hist-title">${t('ordered')}</div>
-      ${hist.orders.map((o, i) => `<div class="hist-order">
-        <div class="hist-head"><span>${i ? t('reorderLbl') : t('orderLbl')}${o.at ? ' · ' + o.at : ''}</span>${badge(o)}</div>
-        ${o.items.map(([k, q]) => `<div class="hist-line"><span>${q}× ${esc(labelOf(k))}</span><span>${byId[k.split('|')[0]] ? money(priceOf(k) * q) : ''}</span></div>`).join('')}
-      </div>`).join('')}
-      <div class="hist-total"><span>${t('tableTotal')}</span><b>${money(shown)}</b></div></div>` : '';
-    const first = !hist.orders.length;
+    // рахунок столу — з сервера, тож зміни офіціанта (прибрав страву, знижка) видно одразу
+    const pend = hist.orders.filter(o => o.id);
+    $('#history').innerHTML = bill || pend.length ? `
+      <div class="hist"><div class="hist-title">🧾 ${t('yourBill')}${table ? ` · ${t('table')} ${table}` : ''}</div>
+      ${pend.length ? `<div class="pills">${pend.map((o, i) => `<span class="st ${o.s === 'acc' ? 'ok' : 'wait'}">${i ? t('reorderLbl') : t('orderLbl')} ${o.at || ''} · ${o.s === 'acc' ? '✅ ' + t('accShort') : '⏳ ' + t('waitShort')}</span>`).join('')}</div>` : ''}
+      ${bill ? bill.items.map(([n, q, sm]) => `<div class="hist-line"><span>${q}× ${esc(n)}</span><span>${money(sm)}</span></div>`).join('') : ''}
+      ${bill && bill.disc ? `<div class="hist-line disc"><span>${t('discount')} ${bill.disc}%</span><span>−${money(bill.gross - bill.pay)}</span></div>` : ''}
+      <div class="hist-total"><span>${t('tableTotal')}</span><b>${money(bill ? bill.pay : tableTotal || 0)}</b></div>
+      <div class="hist-note">${t('billNote')}</div></div>` : '';
+    const first = !hist.orders.length && !bill;
     const hasItems = rows.length > 0;
     $('#actions').innerHTML = first
       ? `<button class="btn" data-send="order" ${hasItems ? '' : 'disabled'}>${t('order')}</button>
@@ -156,6 +163,7 @@
     } catch {}
   }
   setInterval(pollOrders, 5000);
+  setInterval(() => { if (!$('#sheet').hidden && document.visibilityState === 'visible') syncStatus(); }, 5000);
   setInterval(renderStatus, 30000);
 
   const openSheet = () => { $('#msg').textContent = ''; renderCart(); $('#sheet').hidden = false; document.body.classList.add('lock'); syncStatus(); };
@@ -180,7 +188,8 @@
       if (table && typeof data.tableTotal === 'number') {
         // стіл закрили (/close) — сесія скінчилась
         if (data.tableTotal === 0 && hist.orders.length) { hist = { ts: 0, orders: [] }; save(); renderStatus(); }
-        tableTotal = data.tableTotal || null;
+        if (!data.bill) bill = null;
+        tableTotal = data.tableTotal || null; bill = data.bill || null;
       }
     } catch { inVenue = null; }
     $('#wifiBanner').hidden = inVenue !== false;
@@ -198,8 +207,8 @@
     busy = true; $('#msg').textContent = '…';
     try {
       const { status, data } = await api('/api/order', {
-        table: +table, type, pay, device, comment: $('#comment').value.slice(0, 300),
-        items: items.map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; }),
+        table: +table, type, pay, device, comment: [items.length && tw ? 'З СОБОЮ' : '', $('#comment').value].filter(Boolean).join(' · ').slice(0, 300),
+        items: [...items.map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; }), ...(items.length && packId && packQty() ? [{ id: packId, q: packQty() }] : [])],
       });
       if (status === 403) { showWifi(); $('#msg').textContent = ''; return; }
       if (status === 429) { $('#msg').textContent = t('wait'); return; }
@@ -208,7 +217,7 @@
       hist.ts = Date.now();
       if (data.id) { hist.reqs = [...(hist.reqs || []), { id: data.id, type: items.length ? 'order' : 'check', s: 'new' }].slice(-20); }
       renderStatus();
-      tableTotal = data.tableTotal; cart = {}; $('#comment').value = ''; save();
+      tableTotal = data.tableTotal; cart = {}; tw = false; store.set('tw', false); $('#comment').value = ''; save(); syncStatus();
       renderCart(); refreshButtons(); renderFab();
       $('#msg').textContent = type === 'check' || type === 'order_check' ? t('sentCheck') : t('sent');
     } catch { $('#msg').textContent = t('error'); }
@@ -226,6 +235,7 @@
     if (!el || (el.id !== 'lang' && !el.dataset.lang)) $('#langs').hidden = true;
     if (!el) return;
     if (el.dataset.add) change(el.dataset.add, 1);
+    else if ('tw' in el.dataset) { tw = !tw; store.set('tw', tw); renderCart(); renderFab(); }
     else if (el.dataset.inc) change(el.dataset.inc, 1);
     else if (el.dataset.dec) change(el.dataset.dec, -1);
     else if (el.dataset.send) send(el.dataset.send);
@@ -247,7 +257,8 @@
     m.categories.forEach(c => c.items = c.items.filter(it => !it.hidden));
     m.categories = m.categories.filter(c => c.items.length);
     menu = m;
-    m.categories.forEach(c => c.items.forEach(it => byId[it.id] = it));
+    m.categories.forEach(c => c.items.forEach(it => { byId[it.id] = it; catOf[it.id] = c.id; }));
+    packId = (m.categories.find(c => c.id === 'upakuvannia')?.items || [])[0]?.id || null;
     renderMenu(); syncStatus(); renderStatus(); pollOrders();
   });
 })();
