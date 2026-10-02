@@ -543,7 +543,7 @@ async function handleCallback(q, env) {
   if (act === 'cmvx') { await send({ text: '🔁 <b>Обмін</b> — звідки куди?', markup: { inline_keyboard: [[{ text: '💳 Картка → 💵 готівка', callback_data: 'cmv:k2c' }], [{ text: '💵 Готівка → 💳 картка', callback_data: 'cmv:c2k' }]] } }); return answer(''); }
   if (act === 'cmv') { if (!MOVE[arg]) return answer(''); await env.DB.put('st:' + uid, 'cmv:' + arg, { expirationTtl: 600 }); await send({ text: `${MOVE[arg]}\nНапишіть суму і коментар, наприклад: <code>500 з банку</code>` }); return answer(''); }
   if (act === 'shop') { if (await getShift(env)) return answer('Зміна вже відкрита'); await env.DB.put('st:' + uid, 'shopen', { expirationTtl: 600 }); const lz = await lastZ(env);
-    await send({ text: '🔓 <b>Відкриття каси</b>\nСкільки грошей у касі на початок (розмін)? Напишіть число' + (lz ? ' або натисніть «Загальна сума» — уся готівка від гостей за весь час:' : ':'), markup: lz ? { inline_keyboard: [[{ text: `💰 Загальна сума · ${money(lz.sum)}`, callback_data: 'shopl' }]] } : undefined }); return answer(''); }
+    await send({ text: '🔓 <b>Відкриття каси</b>\nСкільки грошей у касі на початок? Напишіть число' + (lz ? ' або натисніть «Загальна сума» — уся готівка від гостей за весь час:' : ':'), markup: lz ? { inline_keyboard: [[{ text: `💰 Загальна сума · ${money(lz.sum)}`, callback_data: 'shopl' }]] } : undefined }); return answer(''); }
   if (act === 'shopl') {
     const lz = await lastZ(env); if (!lz) return answer('Немає попереднього закриття');
     const r = await openShift(env, lz.sum, who); if (r.error) return answer(r.error);
