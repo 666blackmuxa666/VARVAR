@@ -431,7 +431,7 @@
     // 🏆 топ страв за вибраний період (з урахуванням фільтрів)
     const top = dishAgg(nm => nm).sort((x, y) => y[1][0] - x[1][0] || y[1][1] - x[1][1]).slice(0, 10), tmax = Math.max(1, ...top.map(x => x[1][0]));
     const topHTML = `<div class="card top"><h3>🏆 Топ страв</h3>${top.length ? top.map(([k, [qq, ss]], i) => `<div class="bar"><div class="bl"><span>${['🥇', '🥈', '🥉'][i] || `<span class="muted">${i + 1}.</span>`} ${esc(k)}</span><b>${qq} шт</b><span class="muted money">${money(ss)}</span></div><i style="width:${Math.max(2, qq / tmax * 100)}%"></i></div>`).join('') : '<div class="muted">Ще немає продажів за цей період</div>'}</div>`;
-    return head + widgets + topHTML + filters + `<div class="seg wrap" style="margin:14px 0 10px">${Object.entries(TABS).map(([k, l]) => `<button class="${T === k ? 'on' : ''}" data-a="rTab" data-t="${k}">${l}</button>`).join('')}</div><div class="card">${body}</div>`;
+    return head + widgets + filters + `<div class="seg wrap" style="margin:14px 0 10px">${Object.entries(TABS).map(([k, l]) => `<button class="${T === k ? 'on' : ''}" data-a="rTab" data-t="${k}">${l}</button>`).join('')}</div><div class="card">${body}</div>` + topHTML;
   }
   function menuHTML() {
     if (!S.menu) return '<div class="head"><h1>Меню</h1></div><div class="muted">Завантаження…</div>';
