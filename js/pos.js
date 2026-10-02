@@ -593,6 +593,33 @@
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { if ($('#modal')) modalResolve?.(null); else closeSheet(); } });
 
+  // ---------- свайп від лівого краю — «назад» (як в iPhone) ----------
+  function goBack() {
+    if ($('#modal')) return modalResolve?.(null);
+    if ($('#feed').classList.contains('open')) return $('#feed').classList.remove('open');
+    if (S.open) { if (S.mobileMenu && S.tables[S.open] && innerWidth <= 980) { S.mobileMenu = false; return renderSheet(); } return closeSheet(); }
+    if (S.view !== 'hall') { S.view = 'hall'; S.q = ''; renderNav(); renderMain(); }
+  }
+  let sw = null;
+  const swEl = () => $('#modal .modal') || ($('#feed').classList.contains('open') ? null : $('.sheet')) || $('#main');
+  document.addEventListener('touchstart', e => {
+    const p = e.touches[0]; sw = e.touches.length === 1 && p.clientX < 28 && !$('#login').offsetParent ? { x: p.clientX, y: p.clientY, dx: 0, on: false, el: swEl() } : null;
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (!sw) return; const p = e.touches[0], dx = p.clientX - sw.x, dy = p.clientY - sw.y;
+    if (!sw.on) { if (Math.abs(dy) > 14 && Math.abs(dy) > dx) { sw = null; return; } if (dx > 10) sw.on = true; else return; }
+    sw.dx = Math.max(0, dx);
+    if (sw.el) { sw.el.style.transition = 'none'; sw.el.style.transform = `translateX(${sw.dx * .6}px)`; }
+    let a = $('#swArrow'); if (!a) { a = document.createElement('div'); a.id = 'swArrow'; a.textContent = '‹'; document.body.append(a); }
+    a.style.opacity = Math.min(1, sw.dx / 90); a.classList.toggle('go', sw.dx > 90);
+  }, { passive: true });
+  document.addEventListener('touchend', () => {
+    if (!sw) return; const go = sw.on && sw.dx > 90, el = sw.el; sw = null;
+    $('#swArrow')?.remove();
+    if (el) { el.style.transition = 'transform .2s'; el.style.transform = ''; setTimeout(() => { el.style.transition = ''; }, 220); }
+    if (go) { navigator.vibrate?.(10); goBack(); }
+  });
+
   // ---------- старт ----------
   async function start() {
     $('#login').hidden = true; $('#app').hidden = false;
