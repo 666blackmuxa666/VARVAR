@@ -44,7 +44,9 @@ export function kitchenTicket({ table, kind, lines, comment, by }) {
     ['c', `${kind}  ·  ${hhmm()}`],
     ['dbl'],
     ...lines.map(l => { const m = l.match(/^(\d+)× (.+?) — \d+$/); return ['k', m ? `${m[1]} × ${m[2]}` : l]; }),
-    ...(comment ? [['dbl'], ['b', `>> ${comment}`]] : []), // звичайний шрифт, довгий коментар переноситься
+    // «з собою» — окремою чорною плашкою, решта коментаря звичайним шрифтом з переносом
+    ...(/^З СОБОЮ/.test(comment || '') ? [['dbl'], ['inv', 'З СОБОЮ']] : []),
+    ...(comment && comment.replace(/^З СОБОЮ\s*·?\s*/, '') ? [['dbl'], ['b', `>> ${comment.replace(/^З СОБОЮ\s*·?\s*/, '')}`]] : []),
     ['dbl'], ['gap'],
   ];
 }

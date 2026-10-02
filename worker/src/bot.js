@@ -449,9 +449,10 @@ async function handleCallback(q, env) {
       return answer('💬 Напишіть коментар повідомленням (наприклад: без цибулі)');
     }
     if (r.send) {
-      const res = await addWaiterOrder(env, { table: r.send.table, items: r.send.items }, who, r.send.com || '');
+      const com = [r.send.tw ? 'З СОБОЮ' : '', r.send.com || ''].filter(Boolean).join(' · ');
+      const res = await addWaiterOrder(env, { table: r.send.table, items: r.send.items }, who, com);
       if (!res) { await edit('Нічого додати.'); return answer(''); }
-      await edit(`✅ <b>Стіл ${r.send.table}</b> — замовлення відправлено (${esc(who)}, ${hhmm()})\n${res.lines.map(esc).join('\n')}${r.send.com ? `\n💬 ${esc(r.send.com)}` : ''}\nСума: <b>${money(res.sum)}</b>\n\n💰 Разом за стіл: <b>${money(res.total)}</b>`,
+      await edit(`✅ <b>Стіл ${r.send.table}</b> — замовлення відправлено (${esc(who)}, ${hhmm()})\n${res.lines.map(esc).join('\n')}${com ? `\n💬 ${esc(com)}` : ''}\nСума: <b>${money(res.sum)}</b>\n\n💰 Разом за стіл: <b>${money(res.total)}</b>`,
         { inline_keyboard: [[{ text: '➕ Дозамовити', callback_data: 'o:t:' + r.send.table }, { text: `🪑 Стіл ${r.send.table}`, callback_data: 'tbl:' + r.send.table }], [{ text: '🧾 Закрити стіл', callback_data: 'cls:' + r.send.table }]] });
       return answer('🖨 Відправлено на кухню');
     }

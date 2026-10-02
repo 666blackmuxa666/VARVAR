@@ -11,7 +11,7 @@
 
   const S = {
     token: store.get('token', ''), me: store.get('me', null), view: 'hall', n: 15, tables: {}, events: [], printer: {}, menu: null,
-    open: 0, carts: store.get('carts', {}), coms: {}, grp: store.get('grp', ''), cat: '', q: '', fav: [], groups: [], photos: store.get('photos', true), shift: null, shown: new Set(), rep: { p: 'd', pay: '', by: '', grp: '', cat: '', t: '', q: '', tab: 'dishes', sort: 's' }, mobileMenu: false, data: {}, seen: new Set(), ready: false, live: false,
+    tw: {}, open: 0, carts: store.get('carts', {}), coms: {}, grp: store.get('grp', ''), cat: '', q: '', fav: [], groups: [], photos: store.get('photos', true), shift: null, shown: new Set(), rep: { p: 'd', pay: '', by: '', grp: '', cat: '', t: '', q: '', tab: 'dishes', sort: 's' }, mobileMenu: false, data: {}, seen: new Set(), ready: false, live: false,
   };
   const isAdmin = () => S.me?.role === 'admin';
   const setHTML = (el, html) => { if (el && el._h !== html) { el._h = html; el.innerHTML = html; } };
@@ -163,7 +163,7 @@
   function openTable(t) {
     S.open = +t; S.mobileMenu = !S.tables[t]; S.q = ''; if (!S.menu) loadMenu();
     // каркас створюється один раз — далі оновлюються лише частини (без блимання і повторної анімації)
-    $('#layer').innerHTML = `<div class="sheet-bg" data-a="closeSheet"></div><div class="sheet"><div class="sheet-head" id="shHead"></div>
+    $('#layer').innerHTML = `<div class="sheet-bg" data-a="closeSheet"></div><div class="sheet"><div class="sheet-head" id="shHead"></div><div id="shPend"></div>
       <div class="sheet-body" id="shBody"><div class="bill" id="shBill"></div><div class="menu-pane"><div id="shNav"></div><div class="items" id="shItems"></div></div></div></div>`;
     renderSheet();
   }
@@ -187,13 +187,15 @@
     setHTML($('#shHead'), `<h2>Стіл ${t}</h2>${b ? `<span class="total money">${money(b.pay2)}</span>${b.disc ? `<span class="chip">−${b.disc}%</span>` : ''}<span class="muted hide-s">з ${b.opened ? hhmm(b.opened) : '—'} · ${b.orders} замовл.</span>${b.check ? '<span class="chip" style="background:var(--orange);color:#000">🧾 чек</span>' : ''}` : '<span class="muted">новий</span>'}
         <span class="sp"></span><div class="tabs2"><button class="${S.mobileMenu ? '' : 'on'}" data-a="tab" data-m="0">Рахунок${cartRows.length ? ` (${cartRows.reduce((s, [, x]) => s + x.q, 0)})` : ''}</button><button class="${S.mobileMenu ? 'on' : ''}" data-a="tab" data-m="1">Меню</button></div>
         <button class="close-x" data-a="closeSheet">✕</button>`);
+    const pend = S.events.filter(e => e.k === 'guest' && e.s !== 'acc' && +e.t === t);
+    setHTML($('#shPend'), pend.map(e => `<div class="pend"><div><b>🛎 Нове замовлення гостя · ${e.at}</b><div class="lines">${(e.lines || []).map(esc).join('<br>')}</div>${e.comment ? `<div class="com">💬 ${esc(e.comment)}</div>` : ''}</div><button class="btn green" data-a="accept" data-oid="${e.oid}">✅ Прийняв</button></div>`).join(''));
     $('#shBody').className = 'sheet-body' + (S.mobileMenu ? ' show-menu' : '');
     // рахунок
     const billRows = b ? b.items.map(it => `<div class="row"><div class="nm">${esc(it.name)}<small>${it.q} × ${Math.round(it.sum / it.q)} ₴</small></div><b class="money">${it.sum}</b><button class="rb minus" data-a="rm" data-name="${esc(it.name)}" title="Прибрати 1">−</button></div>`).join('') : '<div class="muted" style="padding:8px 4px">Рахунок порожній — оберіть страви в меню</div>';
     const discRow = b?.disc ? `<div class="row"><div class="nm">Знижка ${b.disc}%</div><b class="money" style="color:var(--green)">−${b.total - b.pay2}</b><button class="rb minus" data-a="discSet" data-p="0">×</button></div>` : '';
     const comments = b ? b.log.filter(o => o.comment).map(o => `<div class="muted" style="padding:2px 6px">💬 ${esc(o.comment)}</div>`).join('') : '';
     const cartHTML = cartRows.length ? `<div class="cart"><h3>Нове замовлення</h3><div class="rows">${cartRows.map(([k, x]) => `<div class="row"><div class="nm">${esc(x.name)}<small>${x.price} ₴</small></div><button class="rb minus" data-a="cq" data-k="${esc(k)}" data-d="-1">−</button><span class="q">${x.q}</span><button class="rb plus" data-a="cq" data-k="${esc(k)}" data-d="1">+</button></div>`).join('')}</div>
-      <input id="cartCom" placeholder="💬 Коментар для кухні (необовʼязково)" value="${esc(S.coms[t] || '')}" style="margin:6px 0 10px">
+      <div class="srow" style="margin:6px 0 10px"><input id="cartCom" placeholder="💬 Коментар для кухні" value="${esc(S.coms[t] || '')}"><button class="btn sm ${S.tw[t] ? 'primary' : 'ghost'}" data-a="tw">🥡 З собою</button></div>
       <div style="display:grid;grid-template-columns:auto 1fr;gap:8px"><button class="btn red" data-a="cartClear">✕</button><button class="btn primary" data-a="send">Відправити · ${money(cartSum)}</button></div></div>` : '';
     const actions = b ? `<div class="actions"><button class="btn" data-a="pre">🖨 Пречек</button><button class="btn" data-a="disc">% Знижка</button>
       <button class="btn" data-a="move">↔️ Перенести</button>${isAdmin() ? '<button class="btn red" data-a="delTable">🗑 Видалити</button>' : '<button class="btn" data-a="mobileMenu">➕ Додати</button>'}
@@ -238,8 +240,8 @@
     const t = S.open, cart = cartOf(t), items = Object.values(cart).map(x => ({ id: x.id, v: x.v, q: x.q }));
     if (!items.length) return;
     const btn = document.querySelector('[data-a="send"]'); if (btn) btn.disabled = true;
-    const r = await act('order', { t, items, comment: S.coms[t] || '' });
-    if (r) { S.carts[t] = {}; S.coms[t] = ''; saveCarts(); S.mobileMenu = false; toast(`🖨 Стіл ${t}: відправлено на кухню`); await loadState().catch(() => {}); }
+    const r = await act('order', { t, items, comment: [S.tw[t] ? 'З СОБОЮ' : '', S.coms[t] || ''].filter(Boolean).join(' · ') });
+    if (r) { S.carts[t] = {}; S.coms[t] = ''; S.tw[t] = false; saveCarts(); S.mobileMenu = false; toast(`🖨 Стіл ${t}: відправлено на кухню`); await loadState().catch(() => {}); }
     else if (btn) btn.disabled = false;
   }
   async function closeFlow() {
@@ -546,6 +548,7 @@
       case 'cat': S.cat = el.dataset.c; S.q = ''; renderSheet(); $('#shItems').scrollTop = 0; break;
       case 'grp': S.grp = el.dataset.g; S.cat = ''; S.q = ''; store.set('grp', S.grp); renderSheet(); $('#shItems').scrollTop = 0; break;
       case 'fav': { const on = !S.fav.includes(el.dataset.id); S.fav = on ? [...S.fav, el.dataset.id] : S.fav.filter(x => x !== el.dataset.id); renderSheet(); act('fav', { id: el.dataset.id, on }, on ? '⭐ Додано в обрані' : 'Прибрано з обраних'); break; }
+      case 'tw': S.tw[t] = !S.tw[t]; renderSheet(); break;
       case 'photos': S.photos = !S.photos; store.set('photos', S.photos); renderSheet(); break;
       case 'shOpen': shOpen(); break;
       case 'shClose': shClose(); break;
