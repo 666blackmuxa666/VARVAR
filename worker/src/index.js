@@ -156,7 +156,7 @@ async function admin(b, ip, env) {
   let list = await venueIps(env);
   if (b.action === 'add') {
     const k = ipKey(ip);
-    list = [{ k, at: Date.now() }, ...list.filter(x => x.k !== k)].slice(0, 6);
+    list = [{ k, at: Date.now() }, ...list.filter(x => x.k !== k)].slice(0, 20);
     await env.DB.put('venue_ips', JSON.stringify(list));
   } else if (b.action === 'clear') { list = []; await env.DB.put('venue_ips', '[]'); }
   return [{ ok: true, current: ipKey(ip), list }, 200];

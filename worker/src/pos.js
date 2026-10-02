@@ -120,7 +120,7 @@ export async function posApi(b, req, env) {
     // Wi‑Fi
     case 'wifi': return ok({ list: (await env.DB.get('venue_ips', 'json')) || [], current: ipKey(ip) });
     case 'wifiAdd': {
-      const k = ipKey(ip); const list = [{ k, at: Date.now() }, ...((await env.DB.get('venue_ips', 'json')) || []).filter(x => x.k !== k)].slice(0, 6);
+      const k = ipKey(ip); const list = [{ k, at: Date.now() }, ...((await env.DB.get('venue_ips', 'json')) || []).filter(x => x.k !== k)].slice(0, 20);
       await env.DB.put('venue_ips', JSON.stringify(list)); await notify(env, `🖥 📶 Додано мережу закладу ${k} — ${esc(who)}`); return ok({ list });
     }
     case 'wifiClear': await env.DB.put('venue_ips', '[]'); await notify(env, `🖥 📶 Усі мережі закладу скинуто — ${esc(who)}`); return ok();

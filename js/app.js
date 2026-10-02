@@ -41,7 +41,8 @@
   const priceOf = key => { const [id, v] = key.split('|'); const it = byId[id]; return v ? it.variants.find(x => x.v === v).p : it.price; };
   const labelOf = key => { const [id, v] = key.split('|'); const it = byId[id]; return itemName(it) + (v ? unit(` ${v} л`) : ''); };
   const cartEntries = () => Object.entries(cart).filter(([k, q]) => q > 0 && byId[k.split('|')[0]]);
-  const packQty = () => tw ? cartEntries().filter(([k]) => FOOD.has(catOf[k.split('|')[0]])).reduce((s, [, q]) => s + q, 0) : 0;
+  let packAdj = 0; // ручна поправка кількості упаковок (+/−)
+  const packQty = () => tw ? Math.max(0, cartEntries().filter(([k]) => FOOD.has(catOf[k.split('|')[0]])).reduce((s, [, q]) => s + q, 0) + packAdj) : 0;
   const packSum = () => packId ? packQty() * priceOf(packId) : 0;
   const cartSum = () => cartEntries().reduce((s, [k, q]) => s + priceOf(k) * q, 0) + packSum();
   const save = () => { store.set('cart', cart); store.set('hist', hist); store.set('table', table); };
@@ -111,7 +112,7 @@
       <div class="line">${thumb(k)}<span class="ln">${esc(labelOf(k))}<small>${money(priceOf(k))}</small></span>
         <span class="qty"><button data-dec="${esc(k)}">−</button><b>${q}</b><button data-inc="${esc(k)}">+</button></span>
         <span class="lp">${money(priceOf(k) * q)}</span></div>`).join('')
-      + (pq && packId ? `<div class="line auto">${thumb(packId)}<span class="ln">🥡 ${t('pack')}<small>${money(priceOf(packId))} × ${pq}</small></span><span class="qty"><b>${pq}</b></span><span class="lp">${money(packSum())}</span></div>` : '')
+      + (pq && packId ? `<div class="line auto">${thumb(packId)}<span class="ln">🥡 ${t('pack')}<small>${money(priceOf(packId))} × ${pq}</small></span><span class="qty"><button data-pk="-1">−</button><b>${pq}</b><button data-pk="1">+</button></span><span class="lp">${money(packSum())}</span></div>` : '')
       + `<div class="line sum"><span>${t('total')}</span><b>${money(cartSum())}</b></div>`
       : `<p class="empty">🛒 ${t('empty')}</p>`;
     $('#twBox').innerHTML = rows.length ? `<button class="tw ${tw ? 'on' : ''}" data-tw><span class="tw-ic">🥡</span><span class="tw-t"><b>${t('takeaway')}</b><small>${t('takeawayNote')}</small></span><span class="sw"></span></button>` : '';
@@ -217,7 +218,7 @@
       hist.ts = Date.now();
       if (data.id) { hist.reqs = [...(hist.reqs || []), { id: data.id, type: items.length ? 'order' : 'check', s: 'new' }].slice(-20); }
       renderStatus();
-      tableTotal = data.tableTotal; cart = {}; tw = false; store.set('tw', false); $('#comment').value = ''; save(); syncStatus();
+      tableTotal = data.tableTotal; cart = {}; tw = false; packAdj = 0; store.set('tw', false); $('#comment').value = ''; save(); syncStatus();
       renderCart(); refreshButtons(); renderFab();
       $('#msg').textContent = type === 'check' || type === 'order_check' ? t('sentCheck') : t('sent');
     } catch { $('#msg').textContent = t('error'); }
@@ -235,7 +236,8 @@
     if (!el || (el.id !== 'lang' && !el.dataset.lang)) $('#langs').hidden = true;
     if (!el) return;
     if (el.dataset.add) change(el.dataset.add, 1);
-    else if ('tw' in el.dataset) { tw = !tw; store.set('tw', tw); renderCart(); renderFab(); }
+    else if (el.dataset.pk) { if (packQty() + +el.dataset.pk >= 0) packAdj += +el.dataset.pk; renderCart(); renderFab(); }
+    else if ('tw' in el.dataset) { packAdj = 0; tw = !tw; store.set('tw', tw); renderCart(); renderFab(); }
     else if (el.dataset.inc) change(el.dataset.inc, 1);
     else if (el.dataset.dec) change(el.dataset.dec, -1);
     else if (el.dataset.send) send(el.dataset.send);
