@@ -258,7 +258,7 @@ export function dishResolver(menu) {
 // ---------- зміна (відкрити / закрити касу) ----------
 const dayStart = (t = Date.now()) => { const [h, m, x] = new Date(t).toLocaleTimeString('en-GB', { timeZone: TZ, hour12: false }).split(':').map(Number); return t - ((h % 24) * 3600 + m * 60 + x) * 1000 - (t % 1000); };
 export const getShift = async env => env.DB.get('shift', 'json');
-const dayList = (from, to) => { const out = []; for (let t = Date.parse(from + 'T12:00:00Z'); out.length < 800; t += 86400e3) { const d = new Date(t).toISOString().slice(0, 10); out.push(d); if (d >= to) break; } return out; };
+const dayList = (from, to) => { const out = []; for (let t = Date.parse(from + 'T12:00:00Z'); out.length < 5000; t += 86400e3) { const d = new Date(t).toISOString().slice(0, 10); out.push(d); if (d >= to) break; } return out; };
 // підсумок з моменту відкриття зміни (або з початку дня, якщо зміна не відкрита)
 export async function shiftData(env) {
   const s = await getShift(env), now = Date.now();
@@ -323,7 +323,7 @@ function zTicket(z) {
 // ---------- звіт за довільний період (сирі дані — фільтри рахує POS, підсумки — бот) ----------
 export async function reportRange(env, from, to) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) return null;
-  const days = dayList(from, to).slice(0, 800);
+  const days = dayList(from, to).slice(0, 5000);
   const [cl, ex, zz] = await Promise.all(['closed:', 'exp:', 'z:'].map(p => env.DB.getMany(days.map(d => p + d), 'json')));
   return {
     from, to,

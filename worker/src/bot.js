@@ -165,7 +165,7 @@ async function reportsView(env) {
     `<i>Виручка — закриті рахунки (після знижок). Чистими = виручка − витрати.</i>`, '', '🔎 <b>Детальніше</b> — оберіть період і розріз:'].join('\n'), markup: repMarkup('m') };
 }
 // детальні звіти: період × розріз (ті самі дані, що фільтри в POS)
-const REP_P = { d: 'Сьогодні', y: 'Вчора', w: '7 днів', m: 'Цей місяць', pm: 'Минулий місяць', yr: 'Цей рік' };
+const REP_P = { d: 'Сьогодні', y: 'Вчора', w: '7 днів', m: 'Цей місяць', pm: 'Минулий місяць', yr: 'Цей рік', all: 'За весь час' };
 const REP_BY = { waiter: '👤 Офіціанти', group: '🍳 Кухня/бар', cat: '📂 Категорії', hour: '🕐 Години', table: '🪑 Столи' };
 const repMarkup = p => ({ inline_keyboard: [Object.entries(REP_P).slice(0, 3).map(([k, l]) => ({ text: (k === p ? '• ' : '') + l, callback_data: `rp:${k}:x` })), Object.entries(REP_P).slice(3).map(([k, l]) => ({ text: (k === p ? '• ' : '') + l, callback_data: `rp:${k}:x` })),
   ...chunk(Object.entries(REP_BY).map(([k, l]) => ({ text: l, callback_data: `rp:${p}:${k}` })), 3)] });
@@ -176,6 +176,7 @@ function repRange(p) {
   if (p === 'w') return [dayKey(now - 6 * 86400e3), today];
   if (p === 'pm') { const py = mo === 1 ? y - 1 : y, pmo = mo === 1 ? 12 : mo - 1; return [`${py}-${String(pmo).padStart(2, '0')}-01`, `${py}-${String(pmo).padStart(2, '0')}-${new Date(py, pmo, 0).getDate()}`]; }
   if (p === 'yr') return [`${y}-01-01`, today];
+  if (p === 'all') return ['2026-09-01', today];
   return [today.slice(0, 8) + '01', today];
 }
 async function repView(env, p, by) {

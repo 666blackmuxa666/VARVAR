@@ -374,7 +374,7 @@
 
   // ---------- звіти: віджети + фільтри ----------
   const iso = t => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-  const PER = [['d', 'Сьогодні'], ['y', 'Вчора'], ['w', '7 днів'], ['30', '30 днів'], ['m', 'Цей місяць'], ['pm', 'Мин. місяць'], ['yr', 'Рік'], ['c', 'Свій період']];
+  const PER = [['d', 'Сьогодні'], ['y', 'Вчора'], ['w', '7 днів'], ['30', '30 днів'], ['m', 'Цей місяць'], ['pm', 'Мин. місяць'], ['yr', 'Рік'], ['all', 'За весь час'], ['c', 'Свій період']];
   function perRange(p) {
     const now = new Date(), day = 864e5, y = now.getFullYear(), mo = now.getMonth();
     if (p === 'd') return [iso(now), iso(now)];
@@ -384,6 +384,7 @@
     if (p === 'm') return [iso(new Date(y, mo, 1)), iso(now)];
     if (p === 'pm') return [iso(new Date(y, mo - 1, 1)), iso(new Date(y, mo, 0))];
     if (p === 'yr') return [iso(new Date(y, 0, 1)), iso(now)];
+    if (p === 'all') return ['2026-09-01', iso(now)]; // з початку роботи системи
     return [S.rep.from || iso(now - 6 * day), S.rep.to || iso(now)];
   }
   let resolver;

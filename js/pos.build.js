@@ -693,7 +693,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const d = new Date(t);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   };
-  const PER = [["d", "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456"], ["y", "\u0412\u0447\u043E\u0440\u0430"], ["w", "7 \u0434\u043D\u0456\u0432"], ["30", "30 \u0434\u043D\u0456\u0432"], ["m", "\u0426\u0435\u0439 \u043C\u0456\u0441\u044F\u0446\u044C"], ["pm", "\u041C\u0438\u043D. \u043C\u0456\u0441\u044F\u0446\u044C"], ["yr", "\u0420\u0456\u043A"], ["c", "\u0421\u0432\u0456\u0439 \u043F\u0435\u0440\u0456\u043E\u0434"]];
+  const PER = [["d", "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456"], ["y", "\u0412\u0447\u043E\u0440\u0430"], ["w", "7 \u0434\u043D\u0456\u0432"], ["30", "30 \u0434\u043D\u0456\u0432"], ["m", "\u0426\u0435\u0439 \u043C\u0456\u0441\u044F\u0446\u044C"], ["pm", "\u041C\u0438\u043D. \u043C\u0456\u0441\u044F\u0446\u044C"], ["yr", "\u0420\u0456\u043A"], ["all", "\u0417\u0430 \u0432\u0435\u0441\u044C \u0447\u0430\u0441"], ["c", "\u0421\u0432\u0456\u0439 \u043F\u0435\u0440\u0456\u043E\u0434"]];
   function perRange(p) {
     const now = /* @__PURE__ */ new Date(), day = 864e5, y = now.getFullYear(), mo = now.getMonth();
     if (p === "d") return [iso(now), iso(now)];
@@ -703,6 +703,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     if (p === "m") return [iso(new Date(y, mo, 1)), iso(now)];
     if (p === "pm") return [iso(new Date(y, mo - 1, 1)), iso(new Date(y, mo, 0))];
     if (p === "yr") return [iso(new Date(y, 0, 1)), iso(now)];
+    if (p === "all") return ["2026-09-01", iso(now)];
     return [S.rep.from || iso(now - 6 * day), S.rep.to || iso(now)];
   }
   let resolver;
