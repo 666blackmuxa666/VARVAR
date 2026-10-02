@@ -13,7 +13,7 @@
 <link rel="manifest" href="pos.webmanifest?v=2">
 <link rel="icon" href="img/icon.png">
 <link rel="apple-touch-icon" href="img/icon.png">
-<link rel="stylesheet" href="css/pos.css?v=22">
+<link rel="stylesheet" href="css/pos.css?v=23">
 </head>
 <body>
 
@@ -36,8 +36,8 @@
     <form class="passform" id="regView" hidden>
       <div class="muted" id="regRole" style="text-align:center"></div>
       <input id="rName" placeholder="Ваше імʼя (напр. Назар)" autocomplete="name" required maxlength="30">
-      <input id="rPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="Придумайте свій PIN (4–6 цифр)" required>
-      <input id="rPin2" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="Повторіть PIN" required>
+      <input id="rPin" class="pin4" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="Придумайте PIN — 4 цифри" required>
+      <input id="rPin2" class="pin4" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="Повторіть PIN" required>
       <button class="btn primary">Зареєструватись і увійти</button>
       <button type="button" class="alt" id="regBack">← Назад</button>
     </form>
@@ -58,6 +58,6 @@
 <div id="layer"></div>
 
 <script src="js/config.js?v=4"></script>
-<script src="js/pos.build.js?v=35"></script>
+<script src="js/pos.build.js?v=36"></script>
 </body>
 </html>

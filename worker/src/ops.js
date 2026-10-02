@@ -447,7 +447,7 @@ export async function regRole(env, code) { code = String(code || ''); if (code =
 export const getStaff = async env => (await env.DB.get('staff', 'json')) || [];
 export async function addStaff(env, name, pin, role = 'waiter') {
   name = String(name || '').trim().slice(0, 30); pin = String(pin || '').trim();
-  if (!name || !/^\d{4,6}$/.test(pin)) return { error: 'Потрібні імʼя і PIN з 4–6 цифр.' };
+  if (!name || !/^\d{4}$/.test(pin)) return { error: 'Потрібні імʼя і PIN з 4 цифр.' };
   const list = await getStaff(env), h = await pinHash(pin);
   if (list.some(s => s.pin === h)) return { error: 'Такий PIN уже є — оберіть інший.' };
   if (await regRole(env, pin)) return { error: 'Цей код — для реєстрації. Оберіть інший PIN.' };

@@ -132,7 +132,7 @@ export async function posApi(b, req, env) {
 
     // персонал і паролі
     case 'staff': return ok({ staff: (await getStaff(env)).map(({ pin, ...s }) => s), waiters: await loggedWaiters(env), reg: { admin: await regCode(env, 'admin'), waiter: await regCode(env, 'waiter') } });
-    case 'regCode': { const c = String(b.code || '').trim(); if (!/^\d{4,6}$/.test(c)) return [{ error: 'Код — 4–6 цифр' }, 400]; await env.DB.put('reg_' + (b.role === 'admin' ? 'admin' : 'waiter'), c); return ok(); }
+    case 'regCode': { const c = String(b.code || '').trim(); if (!/^\d{4}$/.test(c)) return [{ error: 'Код — 4 цифри' }, 400]; await env.DB.put('reg_' + (b.role === 'admin' ? 'admin' : 'waiter'), c); return ok(); }
     case 'staffAdd': { const r = await addStaff(env, b.name, b.pin, b.role); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 👥 Додано працівника <b>${esc(r.s.name)}</b> (${r.s.role === 'admin' ? 'адмін' : 'офіціант'}) — ${esc(who)}`); return ok(); }
     case 'staffDel': await delStaff(env, String(b.id)); return ok();
     case 'waiterOut': await env.DB.delete('wlog:' + b.uid); await env.DB.delete('adm:' + b.uid); return ok();

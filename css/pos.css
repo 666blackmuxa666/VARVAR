@@ -376,3 +376,5 @@ body { position: fixed; top: 0; right: 0; bottom: 0; left: 0; overscroll-behavio
 .zbtn small { font-size: 12px; font-weight: 500; opacity: .75; }
 @media (max-width: 600px) { .zbtn { width: 100%; } .hero-n { font-size: 38px; } }
 .chip.tipc { background: #c2185b33; color: #ff9ec0; }
+.pin4 { -webkit-text-security: disc; text-align: center; font-size: 22px; letter-spacing: 10px; }
+.pin4::placeholder { font-size: 15px; letter-spacing: 0; }

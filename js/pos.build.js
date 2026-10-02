@@ -113,7 +113,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   }
   const dots = () => {
     const d = $("#dots");
-    const len = Math.max(4, pin.length);
+    const len = 4;
     d.innerHTML = Array.from({ length: len }, (_, i) => `<i class="${i < pin.length ? "on" : ""}"></i>`).join("");
   };
   async function tryLogin(body) {
@@ -154,11 +154,11 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   function pinKey(k) {
     if (k === "c") pin = "";
     else if (k === "b") pin = pin.slice(0, -1);
-    else if (pin.length < 6) pin += k;
+    else if (pin.length < 4) pin += k;
     dots();
-    if (pin.length >= 4) {
+    if (pin.length === 4) {
       clearTimeout(tryLogin.t);
-      tryLogin.t = setTimeout(() => tryLogin({ pin }), pin.length === 6 ? 0 : 700);
+      tryLogin.t = setTimeout(() => tryLogin({ pin }), 150);
     }
   }
   let regCodeV = "";
@@ -177,6 +177,9 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     $("#rPin2").value = "";
     setTimeout(() => $("#rName").focus(), 50);
   }
+  document.querySelectorAll(".pin4").forEach((i) => i.addEventListener("input", () => {
+    i.value = i.value.replace(/\D/g, "").slice(0, 4);
+  }));
   $("#regBack").onclick = () => {
     $("#regView").hidden = true;
     $("#pinView").hidden = false;
@@ -186,8 +189,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   $("#regView").onsubmit = async (e) => {
     e.preventDefault();
     const name = $("#rName").value.trim(), p1 = $("#rPin").value.trim(), p2 = $("#rPin2").value.trim();
-    if (!/^\d{4,6}$/.test(p1)) {
-      $("#lErr").textContent = "PIN \u2014 \u0432\u0456\u0434 4 \u0434\u043E 6 \u0446\u0438\u0444\u0440";
+    if (!/^\d{4}$/.test(p1)) {
+      $("#lErr").textContent = "PIN \u2014 \u0440\u0456\u0432\u043D\u043E 4 \u0446\u0438\u0444\u0440\u0438";
       return;
     }
     if (p1 !== p2) {
@@ -1308,7 +1311,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         if (await confirmBox("\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438 \u043E\u0441\u0442\u0430\u043D\u043D\u044E \u0437\u043C\u0456\u043D\u0443 \u043C\u0435\u043D\u044E?")) act("menuUndo", {}, "\u21A9\uFE0F \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E");
         break;
       case "staffAdd": {
-        const v = await modal({ title: "\u2795 \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A", body: '<div class="form"><input id="sName" placeholder="\u0406\u043C\u02BC\u044F"><input id="sPin" inputmode="numeric" maxlength="6" placeholder="PIN (4\u20136 \u0446\u0438\u0444\u0440)"></div>', buttons: [{ label: "\u{1F9D1}\u200D\u{1F373} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442", val: "waiter", cls: "primary" }, { label: "\u{1F510} \u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440", val: "admin" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+        const v = await modal({ title: "\u2795 \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A", body: '<div class="form"><input id="sName" placeholder="\u0406\u043C\u02BC\u044F"><input id="sPin" inputmode="numeric" maxlength="4" placeholder="PIN \u2014 4 \u0446\u0438\u0444\u0440\u0438"></div>', buttons: [{ label: "\u{1F9D1}\u200D\u{1F373} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442", val: "waiter", cls: "primary" }, { label: "\u{1F510} \u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440", val: "admin" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
         const name = v && $("#sName").value, p = v && $("#sPin").value;
         closeModal();
         if (v) {
@@ -1318,7 +1321,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         break;
       }
       case "regSet": {
-        const v = await ask(`\u041D\u043E\u0432\u0438\u0439 \u043A\u043E\u0434 \u0440\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u0457 (${el.dataset.r === "admin" ? "\u0430\u0434\u043C\u0456\u043D" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"})`, "4\u20136 \u0446\u0438\u0444\u0440", "number");
+        const v = await ask(`\u041D\u043E\u0432\u0438\u0439 \u043A\u043E\u0434 \u0440\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u0457 (${el.dataset.r === "admin" ? "\u0430\u0434\u043C\u0456\u043D" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"})`, "4 \u0446\u0438\u0444\u0440\u0438", "number");
         if (v) {
           await act("regCode", { role: el.dataset.r, code: v }, "\u{1F195} \u041A\u043E\u0434 \u0437\u043C\u0456\u043D\u0435\u043D\u043E");
           loadView();
