@@ -47,7 +47,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 0 var(--gut); }
 @media (min-width: 700px) { .drinks .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
 .drinks .info { padding: 6px 8px 8px; gap: 4px; }
 .drinks .info h3 { font-size: 13px; }
-.drinks .info p { font-size: 11px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.drinks .info p { font-size: 11px; } /* опис повністю (напр. завдаток за кальян з собою) */
 .drinks .price { font-size: 15px; }
 .drinks .add { height: 30px; min-width: 32px; padding: 0 8px; }
 .drinks .vars .add { font-size: 11px; padding: 0 4px; }
