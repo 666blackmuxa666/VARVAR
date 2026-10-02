@@ -96,7 +96,7 @@
   // ---------- дані і живе оновлення ----------
   async function loadState() {
     const r = await api('state');
-    S.me = { ...S.me, ...r.me }; S.n = r.n; S.printer = r.printer; S.shift = r.shift;
+    S.me = { ...S.me, ...r.me }; S.myTip = r.myTip; S.n = r.n; S.printer = r.printer; S.shift = r.shift;
     S.tables = Object.fromEntries(r.tables.map(b => [b.t, b]));
     const fresh = r.events.filter(e => !S.seen.has(e.id));
     if (S.ready && fresh.some(e => e.k === 'guest' || e.k === 'check')) ding();
@@ -162,7 +162,10 @@
       const tag = b.check ? `<span class="tag c">🧾 рахунок</span>${b.pay ? `<i class="pay" title="${b.pay === 'card' ? 'карта' : 'готівка'}">${b.pay === 'card' ? '💳' : '💵'}</i>` : ''}` : pending.has(t) ? '<span class="tag g">нове</span>' : '';
       return `<button class="tbl ${cls}" data-a="table" data-t="${t}">${tag}<div class="n">${t}</div><div class="st">${b.orders} замовл.${b.disc ? ` · −${b.disc}%` : ''}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">з ${b.opened ? hhmm(b.opened) : '—'}</div></button>`;
     }).join('');
-    return `<div class="head"><h1>Зал</h1><div class="stat">Відкрито<b>${list.length}</b></div><div class="stat">У залі<b class="money">${money(sum)}</b></div>
+    const tp = S.myTip || { sum: 0, n: 0 }, first = String(S.me?.name || '').split(' ')[0];
+    const hello = `<div class="hello"><div class="hi"><div>👋 Вітаю, <b>${esc(first)}</b>!</div><span class="muted">${tp.checks ? `сьогодні закрито ${tp.checks} рах.` : 'гарної зміни'}</span></div>
+      <div class="tipbox"><span>💝 Твої чайові сьогодні</span><b class="money">${money(tp.sum)}</b><small>${tp.n ? `${tp.n} ${tp.n === 1 ? 'чек' : tp.n < 5 ? 'чеки' : 'чеків'}` : 'поки немає'}</small></div></div>`;
+    return `${hello}<div class="head"><h1>Зал</h1><div class="stat">Відкрито<b>${list.length}</b></div><div class="stat">У залі<b class="money">${money(sum)}</b></div>
       <button class="btn primary" data-a="newOrder">➕ Замовлення</button></div><div class="tables">${tiles}</div>`;
   }
 
@@ -327,7 +330,7 @@
   }
   // сітка залу: столи рівномірно на всю робочу зону, без порожніх клітинок, плитки близькі до квадрата
   function hallGrid(m) {
-    const w = m.clientWidth || innerWidth, h = Math.max(200, (m.clientHeight || innerHeight) - 90), n = S.n;
+    const w = m.clientWidth || innerWidth, h = Math.max(200, (m.clientHeight || innerHeight) - 160), n = S.n;
     let best = [1, n], score = 1e9;
     for (let c = 1; c <= n; c++) {
       const r = Math.ceil(n / c), empty = c * r - n, ratio = (w / c) / (h / r);

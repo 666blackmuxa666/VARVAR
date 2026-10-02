@@ -35,8 +35,10 @@ export async function posApi(b, req, env) {
   switch (b.op) {
     case 'logout': await env.DB.delete('pos:' + token); return ok();
     case 'state': {
-      const [rows, events, pr, shift] = await Promise.all([openTables(env), getEvents(env), printStatus(env), getShift(env)]);
-      return ok({ me, shift, n: tablesCount(env), tables: rows.map(r => ({ t: r.t, ...r.b, items: billItems(r.b), pay2: payable(r.b) })), events: events.slice(-120), printer: pr, now: Date.now() });
+      const [rows, events, pr, shift, cl] = await Promise.all([openTables(env), getEvents(env), printStatus(env), getShift(env), getClosed(env)]);
+      const mine = cl.filter(x => !x.del && !x.rm && x.by === me.name); // мої чайові сьогодні
+      const myTip = { sum: mine.reduce((a, x) => a + (x.tip || 0), 0), n: mine.filter(x => x.tip).length, checks: mine.length };
+      return ok({ me, shift, myTip, n: tablesCount(env), tables: rows.map(r => ({ t: r.t, ...r.b, items: billItems(r.b), pay2: payable(r.b) })), events: events.slice(-120), printer: pr, now: Date.now() });
     }
     case 'menu': { const menu = await getMenu(env); return ok({ menu, fav: await getFav(env), groups: GROUPS.map(g => ({ ...g, cats: menu.categories.filter(c => groupOf(c.id) === g.id).map(c => c.id) })) }); }
     case 'fav': { const fav = await toggleFav(env, String(b.id), !!b.on); return ok({ fav }); }

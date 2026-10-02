@@ -244,6 +244,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   async function loadState() {
     const r = await api("state");
     S.me = __spreadValues(__spreadValues({}, S.me), r.me);
+    S.myTip = r.myTip;
     S.n = r.n;
     S.printer = r.printer;
     S.shift = r.shift;
@@ -368,6 +369,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     if (S.open) renderSheet();
   }
   function hallHTML() {
+    var _a2;
     const list = Object.values(S.tables), sum = list.reduce((s, b) => s + b.pay2, 0);
     const pending = new Set(S.events.filter((e) => e.k === "guest" && e.s !== "acc").map((e) => e.t));
     const tiles = Array.from({ length: S.n }, (_, i) => i + 1).map((t) => {
@@ -377,7 +379,10 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       const tag = b.check ? `<span class="tag c">\u{1F9FE} \u0440\u0430\u0445\u0443\u043D\u043E\u043A</span>${b.pay ? `<i class="pay" title="${b.pay === "card" ? "\u043A\u0430\u0440\u0442\u0430" : "\u0433\u043E\u0442\u0456\u0432\u043A\u0430"}">${b.pay === "card" ? "\u{1F4B3}" : "\u{1F4B5}"}</i>` : ""}` : pending.has(t) ? '<span class="tag g">\u043D\u043E\u0432\u0435</span>' : "";
       return `<button class="tbl ${cls}" data-a="table" data-t="${t}">${tag}<div class="n">${t}</div><div class="st">${b.orders} \u0437\u0430\u043C\u043E\u0432\u043B.${b.disc ? ` \xB7 \u2212${b.disc}%` : ""}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">\u0437 ${b.opened ? hhmm(b.opened) : "\u2014"}</div></button>`;
     }).join("");
-    return `<div class="head"><h1>\u0417\u0430\u043B</h1><div class="stat">\u0412\u0456\u0434\u043A\u0440\u0438\u0442\u043E<b>${list.length}</b></div><div class="stat">\u0423 \u0437\u0430\u043B\u0456<b class="money">${money(sum)}</b></div>
+    const tp = S.myTip || { sum: 0, n: 0 }, first = String(((_a2 = S.me) == null ? void 0 : _a2.name) || "").split(" ")[0];
+    const hello = `<div class="hello"><div class="hi"><div>\u{1F44B} \u0412\u0456\u0442\u0430\u044E, <b>${esc(first)}</b>!</div><span class="muted">${tp.checks ? `\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0437\u0430\u043A\u0440\u0438\u0442\u043E ${tp.checks} \u0440\u0430\u0445.` : "\u0433\u0430\u0440\u043D\u043E\u0457 \u0437\u043C\u0456\u043D\u0438"}</span></div>
+      <div class="tipbox"><span>\u{1F49D} \u0422\u0432\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</span><b class="money">${money(tp.sum)}</b><small>${tp.n ? `${tp.n} ${tp.n === 1 ? "\u0447\u0435\u043A" : tp.n < 5 ? "\u0447\u0435\u043A\u0438" : "\u0447\u0435\u043A\u0456\u0432"}` : "\u043F\u043E\u043A\u0438 \u043D\u0435\u043C\u0430\u0454"}</small></div></div>`;
+    return `${hello}<div class="head"><h1>\u0417\u0430\u043B</h1><div class="stat">\u0412\u0456\u0434\u043A\u0440\u0438\u0442\u043E<b>${list.length}</b></div><div class="stat">\u0423 \u0437\u0430\u043B\u0456<b class="money">${money(sum)}</b></div>
       <button class="btn primary" data-a="newOrder">\u2795 \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F</button></div><div class="tables">${tiles}</div>`;
   }
   const evTitle = (e) => ({
@@ -631,7 +636,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     }
   }
   function hallGrid(m) {
-    const w = m.clientWidth || innerWidth, h = Math.max(200, (m.clientHeight || innerHeight) - 90), n = S.n;
+    const w = m.clientWidth || innerWidth, h = Math.max(200, (m.clientHeight || innerHeight) - 160), n = S.n;
     let best = [1, n], score = 1e9;
     for (let c = 1; c <= n; c++) {
       const r = Math.ceil(n / c), empty = c * r - n, ratio = w / c / (h / r);
