@@ -7,7 +7,7 @@ import { storeStub } from './store.js';
 import {
   esc, money, hhmm, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
-  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, addMove, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
+  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, addMove, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
 } from './ops.js';
 
 const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400 };
@@ -36,8 +36,8 @@ export async function posApi(b, req, env) {
     case 'logout': await env.DB.delete('pos:' + token); return ok();
     case 'state': {
       const [rows, events, pr, shift, cl] = await Promise.all([openTables(env), getEvents(env), printStatus(env), getShift(env), getClosed(env)]);
-      const mine = cl.filter(x => !x.del && !x.rm && x.by === me.name); // мої чайові сьогодні
-      const myTip = { sum: mine.reduce((a, x) => a + (x.tip || 0), 0), n: mine.filter(x => x.tip).length, checks: mine.length };
+      const mine = cl.filter(x => !x.del && !x.rm && x.by === me.name);
+      const myTip = { sum: (await tipBalances(env))[me.name] || 0, today: mine.reduce((a, x) => a + (x.tip || 0), 0) }; // накопичені, ще не видані
       return ok({ me, shift, myTip, n: tablesCount(env), tables: rows.map(r => ({ t: r.t, ...r.b, items: billItems(r.b), pay2: payable(r.b) })), events: events.slice(-120), printer: pr, now: Date.now() });
     }
     case 'menu': { const menu = await getMenu(env); return ok({ menu, fav: await getFav(env), groups: GROUPS.map(g => ({ ...g, cats: menu.categories.filter(c => groupOf(c.id) === g.id).map(c => c.id) })) }); }
@@ -84,8 +84,9 @@ export async function posApi(b, req, env) {
   // ---- далі лише адміністратор ----
   if (!admin) return needAdmin();
   switch (b.op) {
-    case 'shift': { const day = await cashData(env); return ok({ z: await dayZData(env), day, exp: day.exp, mov: day.mov, last: await lastZ(env), closed: await getClosed(env) }); }
+    case 'shift': { const day = await cashData(env); return ok({ tipbal: await tipBalances(env), tippay: (await env.DB.get('tippay:' + day.day, 'json')) || [], z: await dayZData(env), day, exp: day.exp, mov: day.mov, last: await lastZ(env), closed: await getClosed(env) }); }
     case 'zDay': { const z = await dayZ(env, who, b.print !== false); await notify(env, `🖥 ${zDayText(z)}\n— ${esc(who)}`); return ok({ z }); }
+    case 'tipPay': { const s = await payTips(env, String(b.name), who); if (!s) return [{ error: 'Нема що видавати' }, 400]; await notify(env, `🖥 💝 Видано чайові: <b>${esc(b.name)}</b> — ${money(s)} · ${esc(who)}`); return ok({ sum: s }); }
     case 'cashMove': { const e = await addMove(env, { type: b.type, sum: +b.sum, note: b.note, by: who }); if (!e) return [{ error: 'Потрібна сума' }, 400]; await notify(env, `🖥 ${MOVE[e.type]}: <b>${money(e.sum)}</b>${e.note ? ` — ${esc(e.note)}` : ''} · ${esc(who)}`); return ok(); }
     case 'moveDel': await delMove(env, +b.i); return ok();
     case 'shiftOpen': { const r = await openShift(env, b.float, who); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 🔓 <b>Касу відкрито</b> — на початок ${money(r.s.float)} · ${esc(who)}`); return ok(); }

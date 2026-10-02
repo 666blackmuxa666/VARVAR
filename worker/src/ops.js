@@ -126,6 +126,7 @@ export async function closeTable(env, t, who, pay = 'cash', print = true) {
   await bump(env, 'day:' + dayKey(), d => { d.closed = (d.closed || 0) + sum; d.tables = (d.tables || 0) + 1; d.cash = (d.cash || 0) + cash; d.card = (d.card || 0) + card; if (disc) d.disc = (d.disc || 0) + disc; if (tip) d.tip = (d.tip || 0) + tip; });
   // страви рахунку — щоб при видаленні закритого рахунку відняти їх і з «топ страв»
   const dishes = []; for (const o of bill.log || []) for (const l of o.lines) { const x = l.match(LINE); if (x) dishes.push([x[2], +x[1], +x[3]]); }
+  if (tip) await addTipBal(env, who, tip);
   await logClosed(env, { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), t, sum, cash, card, at: hhmm(), by: who || '', orders: bill.orders || 0, dishes, ...(tip ? { tip } : {}), ...(disc ? { gross: bill.total, disc: bill.disc, discSum: disc } : {}) });
   await logEvent(env, { k: 'close', t, by: who, sum, pay, print });
   return { t, sum, cash, card, disc, tip };
@@ -156,6 +157,25 @@ export async function setTip(env, t, sum, who) {
   await putBill(env, t, b);
   await logEvent(env, { k: 'disc', t, by: who, text: sum ? `чайові ${sum} грн` : 'чайові прибрано' });
   return b;
+}
+// ---------- рахунок чайових офіціанта: накопичуються, поки адмін не натисне «Видано» ----------
+export async function tipBalances(env) {
+  let b = await env.DB.get('tipbal', 'json');
+  if (!b) { // перший раз — рахуємо з усіх закритих рахунків
+    b = {}; const keys = (await env.DB.list({ prefix: 'closed:' })).keys.map(k => k.name);
+    const lists = keys.length ? await env.DB.getMany(keys, 'json') : [];
+    lists.forEach(l => (l || []).forEach(x => { if (x.tip && !x.del && !x.rm) b[x.by || '—'] = (b[x.by || '—'] || 0) + x.tip; }));
+    await env.DB.put('tipbal', JSON.stringify(b));
+  }
+  return b;
+}
+export async function addTipBal(env, name, n) { if (!n) return; const b = await tipBalances(env); const k = name || '—'; b[k] = Math.max(0, (b[k] || 0) + n); if (!b[k]) delete b[k]; await env.DB.put('tipbal', JSON.stringify(b)); }
+export async function payTips(env, name, who) {
+  const b = await tipBalances(env), sum = b[name] || 0; if (!sum) return null;
+  delete b[name]; await env.DB.put('tipbal', JSON.stringify(b));
+  const k = 'tippay:' + dayKey(), l = (await env.DB.get(k, 'json')) || []; l.push({ ts: Date.now(), at: hhmm(), name, sum, by: who || '' }); await env.DB.put(k, JSON.stringify(l));
+  await logEvent(env, { k: 'shift', by: who, text: `💝 Видано чайові: ${name} — ${sum} грн` });
+  return sum;
 }
 // перенос: стіл a → b. Якщо b зайнятий — об'єднання (рахунок a додається до b)
 export async function moveTable(env, a, b, who) {
@@ -199,6 +219,7 @@ export async function delClosed(env, ref) {
     d.cash = Math.max(0, (d.cash || 0) - (x.cash ?? x.sum)); d.card = Math.max(0, (d.card || 0) - (x.card || 0)); d.orders = Math.max(0, (d.orders || 0) - (x.orders || 0));
     if (x.discSum) d.disc = Math.max(0, (d.disc || 0) - x.discSum); if (x.tip) d.tip = Math.max(0, (d.tip || 0) - x.tip); });
   if (x.dishes?.length) await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q: -q, sum: -sum })));
+  if (x.tip) await addTipBal(env, x.by, -x.tip);
   return x;
 }
 export async function reprintClosed(env, ref, who) {
@@ -471,7 +492,7 @@ export const loggedWaiters = async env => {
 // ---------- тест (прибрати перед запуском — лише коли скаже власник) ----------
 export async function resetAll(env) {
   let n = 0;
-  for (const prefix of ['day:', 'closed:', 'dish:', 'bill:', 'ord:', 'rl:', 'exp:', 'ev:', 'z:', 'shift', 'mov:']) {
+  for (const prefix of ['day:', 'closed:', 'dish:', 'bill:', 'ord:', 'rl:', 'exp:', 'ev:', 'z:', 'shift', 'mov:', 'tipbal', 'tippay:']) {
     const keys = (await env.DB.list({ prefix })).keys.map(k => k.name);
     await env.DB.deleteMany(keys); n += keys.length;
   }

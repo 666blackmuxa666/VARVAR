@@ -5,7 +5,7 @@ import { DurableObject } from 'cloudflare:workers';
 
 const now = () => Date.now();
 // ключі, зміна яких оновлює екрани POS
-const WATCH = /^(bill:|closed:|day:|exp:|ev:|menu$|staff$|ord:|fav$|shift$|z:|mov:)/;
+const WATCH = /^(bill:|closed:|day:|exp:|ev:|menu$|staff$|ord:|fav$|shift$|z:|mov:|tipbal$|tippay:)/;
 const alive = r => r && (!r.e || r.e > now());
 
 export class Store extends DurableObject {
