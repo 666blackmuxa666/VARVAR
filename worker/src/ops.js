@@ -275,17 +275,15 @@ export async function shiftData(env) {
   return { open: !!s, id: s?.id, opened: s?.opened || 0, by: s?.by || '', float, checks: recs.length, cash, card, total: cash + card, disc: sum(recs, x => x.discSum),
     exCash, exCard, inBox: float + cash - exCash, openTables: open.length, openSum: open.reduce((a, r) => a + payable(r.b), 0) };
 }
-// скільки було в касі при закритті попередньої зміни (пораховано, або «має бути»)
+// «Загальна сума» для відкриття каси: уся готівка за весь час (готівка від гостей − витрати готівкою)
 export async function lastZ(env) {
-  const days = [...Array(60)].map((_, i) => dayKey(Date.now() - i * 86400e3));
-  const l = await env.DB.getMany(days.map(d => 'z:' + d), 'json');
-  for (const x of l) if (x?.length) { const z = x[x.length - 1]; return { sum: z.counted ?? z.inBox, closed: z.closed, counted: z.counted != null }; }
-  // ще не було закриття каси — рахуємо залишок останнього робочого дня (розмін + готівка − витрати готівкою)
-  const ds = days.slice(1), [dd, ee] = await Promise.all([env.DB.getMany(ds.map(d => 'day:' + d), 'json'), env.DB.getMany(ds.map(d => 'exp:' + d), 'json')]);
-  for (let i = 0; i < ds.length; i++) { const d = dd[i]; if (!d || !(d.cash || d.float || d.card)) continue;
-    const ex = (ee[i] || []).filter(e => !e.del && e.src !== 'card').reduce((a, e) => a + e.sum, 0);
-    return { sum: Math.max(0, (d.float || 0) + (d.cash || 0) - ex), closed: Date.parse(ds[i] + 'T23:59:00'), day: ds[i] }; }
-  return null;
+  const [dk, ek] = await Promise.all([env.DB.list({ prefix: 'day:' }), env.DB.list({ prefix: 'exp:' })]);
+  const dn = dk.keys.map(k => k.name), en = ek.keys.map(k => k.name);
+  const [dd, ee] = await Promise.all([dn.length ? env.DB.getMany(dn, 'json') : [], en.length ? env.DB.getMany(en, 'json') : []]);
+  const cash = dd.reduce((a, d) => a + ((d && (d.cash ?? d.closed)) || 0), 0);
+  const ex = ee.reduce((a, l) => a + (l || []).filter(e => !e.del && e.src !== 'card').reduce((b, e) => b + e.sum, 0), 0);
+  const from = dn.map(k => k.slice(4)).sort()[0];
+  return { sum: Math.max(0, cash - ex), cash, ex, from, all: true };
 }
 export async function openShift(env, float, who) {
   if (await getShift(env)) return { error: 'Зміна вже відкрита' };

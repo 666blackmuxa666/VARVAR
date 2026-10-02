@@ -357,7 +357,7 @@
   async function shOpen() {
     const last = (await api('shift').catch(() => null))?.last; last0 = last ? String(last.sum) : 0;
     const b = await modal({ title: '🔓 Відкрити касу', text: 'Скільки грошей у касі на початок зміни', keep: true,
-      body: `<div class="form"><input id="fIn" inputmode="decimal" placeholder="Сума на початок, ₴">${last ? `<button type="button" class="btn" id="fLast">💰 Загальна сума · ${money(last.sum)}</button><div class="muted" style="font-size:13px;text-align:center">${last.day ? 'залишок на кінець дня ' + last.day.split('-').reverse().join('.') : 'залишок при закритті каси ' + new Date(last.closed).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}${last.counted ? ' (пораховано)' : ''}</div>` : ''}</div>`,
+      body: `<div class="form"><input id="fIn" inputmode="decimal" placeholder="Сума на початок, ₴" value="${last ? last.sum : ''}">${last ? `<button type="button" class="btn" id="fLast">💰 Загальна сума · ${money(last.sum)}</button><div class="muted" style="font-size:13px;text-align:center">готівка за весь час${last.from ? ' (з ' + last.from.split('-').reverse().join('.') + ')' : ''}: ${money(last.cash)} від гостей − ${money(last.ex)} витрат</div>` : ''}</div>`,
       buttons: [{ label: '🔓 Відкрити', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }] });
     const v = b ? $('#fIn').value.trim() : null; closeModal(); if (!v) return;
     if (await act('shiftOpen', { float: +v.replace(',', '.') }, '🔓 Касу відкрито')) { loadState().catch(() => {}); if (S.view === 'cash') loadView(); }
