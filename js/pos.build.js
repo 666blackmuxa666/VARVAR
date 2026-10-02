@@ -18,6 +18,7 @@ var __spreadValues = (a, b) => {
 };
 var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
 (() => {
+  var _a;
   const API = new URLSearchParams(location.search).get("api") || (/workers\.dev$/.test(location.hostname) ? location.origin : "https://varvar-menu.varvar.workers.dev");
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s != null ? s : "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -64,8 +65,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     live: false
   };
   const isAdmin = () => {
-    var _a;
-    return ((_a = S.me) == null ? void 0 : _a.role) === "admin";
+    var _a2;
+    return ((_a2 = S.me) == null ? void 0 : _a2.role) === "admin";
   };
   const setHTML = (el, html) => {
     if (el && el._h !== html) {
@@ -143,8 +144,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     }
   });
   $("#keypad").addEventListener("click", (e) => {
-    var _a;
-    const k = (_a = e.target.closest("[data-k]")) == null ? void 0 : _a.dataset.k;
+    var _a2;
+    const k = (_a2 = e.target.closest("[data-k]")) == null ? void 0 : _a2.dataset.k;
     if (k) pinKey(k);
   });
   function pinKey(k) {
@@ -279,9 +280,9 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   }
   const NAV = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["closed", "\u{1F4DC}", "\u0417\u0430\u043A\u0440\u0438\u0442\u0456"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["printer", "\u{1F5A8}", "\u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["cash", "\u{1F4B0}", "\u041A\u0430\u0441\u0430", 1], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438", 1], ["menu", "\u{1F4D6}", "\u041C\u0435\u043D\u044E", 1], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442.", 1]];
   function renderNav() {
-    var _a;
+    var _a2;
     const newCnt = S.events.filter((e) => e.k === "guest" && e.s !== "acc").length;
-    setHTML($("#nav"), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` + NAV.filter((n) => !n[3] || isAdmin()).map(([v, ic, l]) => `<button class="${S.view === v ? "on" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : ""}</button><div class="grow"></div><div class="me">${esc((_a = S.me) == null ? void 0 : _a.name)}<br>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"}</div><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
+    setHTML($("#nav"), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` + NAV.filter((n) => !n[3] || isAdmin()).map(([v, ic, l]) => `<button class="${S.view === v ? "on" : ""}${["printer", "menu", "settings", "stop"].includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : ""}</button><button class="more-btn ${["printer", "menu", "settings", "stop"].includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><div class="me">${esc((_a2 = S.me) == null ? void 0 : _a2.name)}<br>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"}</div><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
   }
   function render() {
     renderNav();
@@ -317,8 +318,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   })[e.k] || esc(e.text || e.k);
   function renderFeed() {
     setHTML($("#events"), S.events.length ? [...S.events].reverse().map((e) => {
-      var _a;
-      const lines = ((_a = e.lines) == null ? void 0 : _a.length) ? `<div class="lines">${e.lines.map(esc).join("\n")}</div>` : "";
+      var _a2;
+      const lines = ((_a2 = e.lines) == null ? void 0 : _a2.length) ? `<div class="lines">${e.lines.map(esc).join("\n")}</div>` : "";
       const by = e.by && !["waiter"].includes(e.k) ? ` \xB7 ${esc(e.by)}` : "";
       const btns = e.k === "guest" || e.k === "check" ? `<div class="act">${e.s === "acc" ? `<span class="muted">\u2705 ${esc(e.accBy || "\u043F\u0440\u0438\u0439\u043D\u044F\u0442\u043E")}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432</button>`}<button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${e.t}</button></div>` : "";
       const fresh = S.shown.size && !S.shown.has(e.id) ? " fresh" : "";
@@ -327,8 +328,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     S.events.forEach((e) => S.shown.add(e.id));
   }
   const cartOf = (t) => {
-    var _a;
-    return (_a = S.carts)[t] || (_a[t] = {});
+    var _a2;
+    return (_a2 = S.carts)[t] || (_a2[t] = {});
   };
   const saveCarts = () => store.set("carts", S.carts);
   const itemsAll = () => S.menu ? S.menu.categories.flatMap((c) => c.items) : [];
@@ -360,7 +361,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     return c ? c.items : [];
   }
   function renderSheet() {
-    var _a, _b, _c;
+    var _a2, _b, _c;
     const t = S.open;
     if (!t || !$("#shHead")) return;
     const b = S.tables[t], cart = cartOf(t), cartRows = Object.entries(cart);
@@ -378,7 +379,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const actions = b ? `<div class="actions"><button class="btn" data-a="pre">\u{1F5A8} \u041F\u0440\u0435\u0447\u0435\u043A</button><button class="btn" data-a="disc">% \u0417\u043D\u0438\u0436\u043A\u0430</button>
       <button class="btn" data-a="move">\u2194\uFE0F \u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0442\u0438</button>${isAdmin() ? '<button class="btn red" data-a="delTable">\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438</button>' : '<button class="btn" data-a="mobileMenu">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438</button>'}
       <button class="btn green wide" data-a="closeT">\u{1F4B0} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0440\u0430\u0445\u0443\u043D\u043E\u043A \xB7 ${money(b.pay2)}</button></div>` : "";
-    const keepBill = (_a = $("#shBill .scroll")) == null ? void 0 : _a.scrollTop, focusCom = ((_b = document.activeElement) == null ? void 0 : _b.id) === "cartCom";
+    const keepBill = (_a2 = $("#shBill .scroll")) == null ? void 0 : _a2.scrollTop, focusCom = ((_b = document.activeElement) == null ? void 0 : _b.id) === "cartCom";
     setHTML($("#shBill"), `<div class="scroll"><h3>\u0420\u0430\u0445\u0443\u043D\u043E\u043A</h3>${billRows}${discRow}${comments}</div>${cartHTML}${actions}`);
     if (keepBill) $("#shBill .scroll").scrollTop = keepBill;
     if (focusCom) {
@@ -418,7 +419,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     });
   }
   async function addItem(id) {
-    var _a;
+    var _a2;
     const it = itemsAll().find((i) => i.id === id);
     if (!it) return;
     if (it.hidden) return toast("\u26D4 " + it.name.uk + " \u2014 \u0443 \u0441\u0442\u043E\u043F-\u043B\u0438\u0441\u0442\u0456");
@@ -427,7 +428,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       v = await choose(it.name.uk, "\u041E\u0431\u0435\u0440\u0456\u0442\u044C \u0440\u043E\u0437\u043C\u0456\u0440", it.variants.map((x) => ({ label: `${x.v} ${it.size || ""} \xB7 ${x.p} \u20B4`, val: x.v })));
       if (v == null) return;
     }
-    const vv = (_a = it.variants) == null ? void 0 : _a.find((x) => x.v === v);
+    const vv = (_a2 = it.variants) == null ? void 0 : _a2.find((x) => x.v === v);
     const key = it.id + (v ? "|" + v : ""), cart = cartOf(S.open);
     cart[key] || (cart[key] = { id: it.id, v, name: it.name.uk + (vv ? ` ${vv.v} ${it.size || ""}`.trimEnd() : ""), price: vv ? vv.p : it.price, q: 0 });
     cart[key].q++;
@@ -514,7 +515,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     renderMain();
   }
   function renderMain() {
-    var _a, _b, _c;
+    var _a2, _b, _c;
     const v = S.view, m = $("#main");
     m.classList.toggle("hall", v === "hall");
     if (v === "hall") {
@@ -522,7 +523,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       m.style.setProperty("--cols", cols);
       m.style.setProperty("--rows", Math.ceil(S.n / cols));
     }
-    const html = (_b = (_a = { hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML })[v]) == null ? void 0 : _b.call(_a);
+    const html = (_b = (_a2 = { hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML })[v]) == null ? void 0 : _b.call(_a2);
     const fid = (_c = document.activeElement) == null ? void 0 : _c.id, keep = ["stopSearch", "rQ"].includes(fid);
     setHTML(m, html || "");
     if (keep) {
@@ -538,15 +539,15 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const gone = (x) => x.del || x.rm, ok = l.filter((x) => !gone(x));
     return `<div class="head"><h1>\u0417\u0430\u043A\u0440\u0438\u0442\u0456 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</h1><div class="stat">\u0420\u0430\u0445\u0443\u043D\u043A\u0456\u0432<b>${ok.length}</b></div><div class="stat">\u0420\u0430\u0437\u043E\u043C<b class="money">${money(ok.reduce((s, x) => s + x.sum, 0))}</b></div>
       <div class="stat">\u{1F4B5}<b class="money">${money(ok.reduce((s, x) => {
-      var _a;
-      return s + ((_a = x.cash) != null ? _a : x.sum);
+      var _a2;
+      return s + ((_a2 = x.cash) != null ? _a2 : x.sum);
     }, 0))}</b></div><div class="stat">\u{1F4B3}<b class="money">${money(ok.reduce((s, x) => s + (x.card || 0), 0))}</b></div></div>
       <div class="cards">${[...l].reverse().map((x, i) => {
-      var _a, _b;
+      var _a2, _b;
       const ref = x.id || l.length - 1 - i;
       return `<div class="card" style="${gone(x) ? "opacity:.45" : ""}"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
         <h3 style="margin:0;flex:1">${x.at} \xB7 \u0421\u0442\u0456\u043B ${x.t} \xB7 <span class="money">${money(x.sum)}</span> ${gone(x) ? "\u{1F5D1} \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E" : payL(x)}${x.disc ? ` \xB7 \u0437\u043D\u0438\u0436\u043A\u0430 ${x.disc}%` : ""}</h3><span class="muted">${esc(x.by || "")}</span>
-        ${!gone(x) && ((_a = x.dishes) == null ? void 0 : _a.length) ? `<button class="btn sm" data-a="cPrint" data-ref="${ref}">\u{1F5A8} \u0427\u0435\u043A</button>` : ""}${!gone(x) && isAdmin() ? `<button class="btn sm red" data-a="cDel" data-ref="${ref}">\u{1F5D1} \u0417 \u0432\u0438\u0440\u0443\u0447\u043A\u0438</button>` : ""}</div>
+        ${!gone(x) && ((_a2 = x.dishes) == null ? void 0 : _a2.length) ? `<button class="btn sm" data-a="cPrint" data-ref="${ref}">\u{1F5A8} \u0427\u0435\u043A</button>` : ""}${!gone(x) && isAdmin() ? `<button class="btn sm red" data-a="cDel" data-ref="${ref}">\u{1F5D1} \u0417 \u0432\u0438\u0440\u0443\u0447\u043A\u0438</button>` : ""}</div>
         ${((_b = x.dishes) == null ? void 0 : _b.length) ? `<div class="muted" style="margin-top:8px">${x.dishes.map(([n, q, s]) => `${q}\xD7 ${esc(n)} \u2014 ${s}`).join(" \xB7 ")}</div>` : ""}</div>`;
     }).join("") || '<div class="muted">\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0437\u0430\u043A\u0440\u0438\u0442\u0438\u0445 \u0440\u0430\u0445\u0443\u043D\u043A\u0456\u0432 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454</div>'}</div>`;
   }
@@ -561,10 +562,10 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     }).join("")}`;
   }
   function printerHTML() {
-    var _a;
+    var _a2;
     const p = S.printer || {}, ok = p.seen && Date.now() - p.seen < 6e4;
     return `<div class="head"><h1>\u041F\u0440\u0438\u043D\u0442\u0435\u0440</h1></div><div class="cards"><div class="card"><div class="big">${ok ? "\u2705 \u043D\u0430 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : p.seen ? "\u274C \u043D\u0435\u043C\u0430\u0454 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : "\u274C \u043F\u0440\u043E\u0433\u0440\u0430\u043C\u0430 \u0434\u0440\u0443\u043A\u0443 \u043D\u0435 \u0437\u0430\u043F\u0443\u0449\u0435\u043D\u0430"}</div>
-      <div class="muted">${p.seen ? "\u041E\u0441\u0442\u0430\u043D\u043D\u0456\u0439 \u0437\u0432\u02BC\u044F\u0437\u043E\u043A: " + hhmm(p.seen) : ""} \xB7 \u0443 \u0447\u0435\u0440\u0437\u0456: ${(_a = p.q) != null ? _a : 0}</div></div>
+      <div class="muted">${p.seen ? "\u041E\u0441\u0442\u0430\u043D\u043D\u0456\u0439 \u0437\u0432\u02BC\u044F\u0437\u043E\u043A: " + hhmm(p.seen) : ""} \xB7 \u0443 \u0447\u0435\u0440\u0437\u0456: ${(_a2 = p.q) != null ? _a2 : 0}</div></div>
       <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">\u{1F5A8} \u0422\u0435\u0441\u0442\u043E\u0432\u0438\u0439 \u0434\u0440\u0443\u043A</button><button class="btn" data-a="pQr">\u{1F533} QR \u043C\u0435\u043D\u044E \u0434\u043B\u044F \u0441\u0442\u043E\u043B\u0443</button></div></div>`;
   }
   function cashHTML() {
@@ -584,14 +585,14 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       <div class="card"><h3>\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</h3>${r.exp.length ? r.exp.map((e, i) => `<div class="kv" style="${e.del ? "opacity:.4;text-decoration:line-through" : ""}"><span>${e.at} ${e.src === "card" ? "\u{1F4B3}" : "\u{1F4B5}"} ${esc(e.note || "")}</span><span><b class="money">${money(e.sum)}</b> ${e.del ? "" : `<button class="btn sm red" data-a="expDel" data-i="${i}">\u{1F5D1}</button>`}</span></div>`).join("") : '<div class="muted">\u041D\u0435\u043C\u0430\u0454</div>'}</div></div>`;
   }
   async function shOpen() {
-    var _a;
-    const last = (_a = await api("shift").catch(() => null)) == null ? void 0 : _a.last;
+    var _a2;
+    const last = (_a2 = await api("shift").catch(() => null)) == null ? void 0 : _a2.last;
     last0 = last ? String(last.sum) : 0;
     const b = await modal({
       title: "\u{1F513} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u043A\u0430\u0441\u0443",
       text: "\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u0433\u0440\u043E\u0448\u0435\u0439 \u0443 \u043A\u0430\u0441\u0456 \u043D\u0430 \u043F\u043E\u0447\u0430\u0442\u043E\u043A \u0437\u043C\u0456\u043D\u0438",
       keep: true,
-      body: `<div class="form"><input id="fIn" inputmode="decimal" placeholder="\u0421\u0443\u043C\u0430 \u043D\u0430 \u043F\u043E\u0447\u0430\u0442\u043E\u043A, \u20B4">${last ? `<button type="button" class="btn" id="fLast">\u{1F4B0} \u0417\u0430\u0433\u0430\u043B\u044C\u043D\u0430 \u0441\u0443\u043C\u0430 \xB7 ${money(last.sum)}</button><div class="muted" style="font-size:13px;text-align:center">\u0437\u0430\u043B\u0438\u0448\u043E\u043A \u043F\u0440\u0438 \u0437\u0430\u043A\u0440\u0438\u0442\u0442\u0456 \u043A\u0430\u0441\u0438 ${new Date(last.closed).toLocaleString("uk-UA", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}${last.counted ? " (\u043F\u043E\u0440\u0430\u0445\u043E\u0432\u0430\u043D\u043E)" : ""}</div>` : ""}</div>`,
+      body: `<div class="form"><input id="fIn" inputmode="decimal" placeholder="\u0421\u0443\u043C\u0430 \u043D\u0430 \u043F\u043E\u0447\u0430\u0442\u043E\u043A, \u20B4">${last ? `<button type="button" class="btn" id="fLast">\u{1F4B0} \u0417\u0430\u0433\u0430\u043B\u044C\u043D\u0430 \u0441\u0443\u043C\u0430 \xB7 ${money(last.sum)}</button><div class="muted" style="font-size:13px;text-align:center">${last.day ? "\u0437\u0430\u043B\u0438\u0448\u043E\u043A \u043D\u0430 \u043A\u0456\u043D\u0435\u0446\u044C \u0434\u043D\u044F " + last.day.split("-").reverse().join(".") : "\u0437\u0430\u043B\u0438\u0448\u043E\u043A \u043F\u0440\u0438 \u0437\u0430\u043A\u0440\u0438\u0442\u0442\u0456 \u043A\u0430\u0441\u0438 " + new Date(last.closed).toLocaleString("uk-UA", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}${last.counted ? " (\u043F\u043E\u0440\u0430\u0445\u043E\u0432\u0430\u043D\u043E)" : ""}</div>` : ""}</div>`,
       buttons: [{ label: "\u{1F513} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }]
     });
     const v = b ? $("#fIn").value.trim() : null;
@@ -604,8 +605,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     }
   }
   async function shClose() {
-    var _a;
-    const d = (_a = await api("shift").catch(() => null)) == null ? void 0 : _a.d;
+    var _a2;
+    const d = (_a2 = await api("shift").catch(() => null)) == null ? void 0 : _a2.d;
     if (!d) return;
     const v = await modal({
       title: "\u{1F512} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u043A\u0430\u0441\u0443",
@@ -737,15 +738,15 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       sortable = true;
     } else if (T === "cats") {
       rows = dishAgg((nm) => {
-        var _a;
-        return ((_a = dishOf(nm)) == null ? void 0 : _a.cname) || "\u0406\u043D\u0448\u0435";
+        var _a2;
+        return ((_a2 = dishOf(nm)) == null ? void 0 : _a2.cname) || "\u0406\u043D\u0448\u0435";
       });
       unit = "\u0448\u0442";
       sortable = true;
     } else if (T === "groups") {
       rows = dishAgg((nm) => (S.groups.find((g) => {
-        var _a;
-        return g.id === ((_a = dishOf(nm)) == null ? void 0 : _a.grp);
+        var _a2;
+        return g.id === ((_a2 = dishOf(nm)) == null ? void 0 : _a2.grp);
       }) || { name: "\u0406\u043D\u0448\u0435" }).name);
       unit = "\u0448\u0442";
     } else if (T === "waiters") rows = grpBy((c) => c.by || "\u2014");
@@ -784,14 +785,14 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       <div class="card"><h3>\u{1F9EA} \u0422\u0435\u0441\u0442</h3><div class="muted" style="margin-bottom:10px">\u0422\u0438\u043C\u0447\u0430\u0441\u043E\u0432\u043E, \u0434\u043E \u0437\u0430\u043F\u0443\u0441\u043A\u0443.</div><button class="btn sm red" data-a="reset">\u267B\uFE0F \u041E\u0431\u043D\u0443\u043B\u0438\u0442\u0438 \u0432\u0441\u0435</button></div></div>`;
   }
   async function menuEdit(id) {
-    var _a, _b, _c, _d;
+    var _a2, _b, _c, _d;
     const it = itemsAll().find((i) => i.id === id) || null;
     const cat = it ? S.menu.categories.find((c) => c.items.includes(it)).id : S.menu.categories[0].id;
     const body = `<div class="form">
       <label>\u0420\u043E\u0437\u0434\u0456\u043B<select id="fCat">${S.menu.categories.map((c) => `<option value="${c.id}" ${c.id === cat ? "selected" : ""}>${esc(c.name.uk)}</option>`).join("")}</select></label>
       <label>\u041D\u0430\u0437\u0432\u0430<input id="fName" value="${esc((it == null ? void 0 : it.name.uk) || "")}"></label>
       <label>\u041D\u0430\u0437\u0432\u0430 \u0430\u043D\u0433\u043B\u0456\u0439\u0441\u044C\u043A\u043E\u044E (\u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)<input id="fEn" value="${esc(it && it.name.en !== it.name.uk ? it.name.en : "")}"></label>
-      <label>\u0426\u0456\u043D\u0430, \u20B4 ${(it == null ? void 0 : it.variants) ? "" : ""}<input id="fPrice" inputmode="numeric" value="${(_a = it == null ? void 0 : it.price) != null ? _a : ""}" placeholder="\u043D\u0430\u043F\u0440. 380"></label>
+      <label>\u0426\u0456\u043D\u0430, \u20B4 ${(it == null ? void 0 : it.variants) ? "" : ""}<input id="fPrice" inputmode="numeric" value="${(_a2 = it == null ? void 0 : it.price) != null ? _a2 : ""}" placeholder="\u043D\u0430\u043F\u0440. 380"></label>
       <label>\u0410\u0431\u043E \u0440\u043E\u0437\u043C\u0456\u0440\u0438 (\u0434\u043B\u044F \u043D\u0430\u043F\u043E\u0457\u0432): <span class="muted">0.33=60, 0.5=70</span><input id="fVar" value="${esc((it == null ? void 0 : it.variants) ? it.variants.map((v2) => `${v2.v}=${v2.p}`).join(", ") : "")}"></label>
       <label>\u0412\u0430\u0433\u0430/\u043E\u0431\u02BC\u0454\u043C<input id="fSize" value="${esc((it == null ? void 0 : it.size) || "")}" placeholder="\u043D\u0430\u043F\u0440. 400 \u0433 \u0430\u0431\u043E \u043B"></label>
       <label>\u0421\u043A\u043B\u0430\u0434<textarea id="fDesc" rows="3">${esc(((_b = it == null ? void 0 : it.desc) == null ? void 0 : _b.uk) || "")}</textarea></label>
@@ -843,9 +844,9 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       el.id = "modal";
       el.innerHTML = `<div class="modal"><h3>${esc(title)}</h3>${text ? `<p>${esc(text)}</p>` : ""}${body}<div class="btns" style="margin-top:14px">${buttons.map((b, i) => `<button class="btn ${b.cls || ""}" data-mi="${i}">${esc(b.label)}</button>`).join("")}</div></div>`;
       el.addEventListener("click", (e) => {
-        var _a;
+        var _a2;
         if (e.target === el) return modalResolve(null);
-        const i = (_a = e.target.closest("[data-mi]")) == null ? void 0 : _a.dataset.mi;
+        const i = (_a2 = e.target.closest("[data-mi]")) == null ? void 0 : _a2.dataset.mi;
         if (i != null) modalResolve(buttons[+i].val);
       });
       document.body.append(el);
@@ -857,8 +858,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   }
   let last0 = 0;
   const closeModal = () => {
-    var _a;
-    return (_a = $("#modal")) == null ? void 0 : _a.remove();
+    var _a2;
+    return (_a2 = $("#modal")) == null ? void 0 : _a2.remove();
   };
   const choose = (title, text, opts) => modal({ title, text, buttons: [...opts, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }] });
   const confirmBox = (title, text = "") => modal({ title, text, buttons: [{ label: "\u0422\u0430\u043A", val: true, cls: "red" }, { label: "\u041D\u0456", val: null }] });
@@ -879,15 +880,15 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       el.id = "modal";
       el.innerHTML = `<div class="modal"><h3>${esc(title)}</h3><p>${esc(text)}</p><div class="grid">${Array.from({ length: S.n }, (_, i) => i + 1).filter((n) => n !== skip).map((n) => `<button class="${S.tables[n] ? "busy" : ""}" data-t="${n}">${n}</button>`).join("")}</div><div class="btns"><button class="btn" data-x>\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438</button></div></div>`;
       el.addEventListener("click", (e) => {
-        var _a;
+        var _a2;
         if (e.target === el || e.target.closest("[data-x]")) return modalResolve(null);
-        const t = (_a = e.target.closest("[data-t]")) == null ? void 0 : _a.dataset.t;
+        const t = (_a2 = e.target.closest("[data-t]")) == null ? void 0 : _a2.dataset.t;
         if (t) modalResolve(+t);
       });
       document.body.append(el);
       setTimeout(() => {
-        var _a;
-        return (_a = el.querySelector("input")) == null ? void 0 : _a.focus();
+        var _a2;
+        return (_a2 = el.querySelector("input")) == null ? void 0 : _a2.focus();
       }, 50);
     });
   }
@@ -895,8 +896,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   }, 0);
   let toastT;
   function toast(msg) {
-    var _a;
-    (_a = $(".toast")) == null ? void 0 : _a.remove();
+    var _a2;
+    (_a2 = $(".toast")) == null ? void 0 : _a2.remove();
     const d = document.createElement("div");
     d.className = "toast";
     d.textContent = msg;
@@ -921,6 +922,20 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       case "feed":
         $("#feed").classList.toggle("open");
         break;
+      case "more": {
+        const v = await choose("\u0429\u0435", "", NAV.filter((n) => (!n[3] || isAdmin()) && ["stop", "printer", "menu", "settings"].includes(n[0])).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: "\u{1F512} \u0412\u0438\u0439\u0442\u0438", val: "logout", cls: "red" }]));
+        if (v === "logout") {
+          if (await confirmBox("\u0412\u0438\u0439\u0442\u0438?", "\u041D\u0430\u0441\u0442\u0443\u043F\u043D\u0438\u0439 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A \u0443\u0432\u0456\u0439\u0434\u0435 \u0441\u0432\u043E\u0457\u043C PIN")) logout();
+        } else if (v) {
+          S.view = v;
+          S.q = "";
+          renderNav();
+          renderMain();
+          loadView();
+          $("#main").scrollTop = 0;
+        }
+        break;
+      }
       case "switch":
         if (await confirmBox("\u0412\u0438\u0439\u0442\u0438?", "\u041D\u0430\u0441\u0442\u0443\u043F\u043D\u0438\u0439 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A \u0443\u0432\u0456\u0439\u0434\u0435 \u0441\u0432\u043E\u0457\u043C PIN")) logout();
         break;
@@ -1161,8 +1176,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     }
   });
   document.addEventListener("change", (e) => {
-    var _a;
-    const f = (_a = e.target.dataset) == null ? void 0 : _a.f;
+    var _a2;
+    const f = (_a2 = e.target.dataset) == null ? void 0 : _a2.f;
     if (f) {
       S.rep[f] = e.target.value;
       if (f === "grp") S.rep.cat = "";
@@ -1229,11 +1244,11 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     a.classList.toggle("go", sw.dx > 90);
   }, { passive: true });
   document.addEventListener("touchend", () => {
-    var _a, _b;
+    var _a2, _b;
     if (!sw) return;
     const go = sw.on && sw.dx > 90, el = sw.el;
     sw = null;
-    (_a = $("#swArrow")) == null ? void 0 : _a.remove();
+    (_a2 = $("#swArrow")) == null ? void 0 : _a2.remove();
     if (el) {
       el.style.transition = "transform .2s";
       el.style.transform = "";
@@ -1246,6 +1261,18 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       goBack();
     }
   });
+  const myVer = (((_a = document.querySelector('script[src*="pos.build.js"]')) == null ? void 0 : _a.getAttribute("src")) || "").split("v=")[1];
+  async function checkVer() {
+    try {
+      const h = await (await fetch("pos.html?u=" + Date.now(), { cache: "no-store" })).text();
+      const v = (h.match(/pos\.build\.js\?v=(\d+)/) || [])[1];
+      if (v && myVer && v !== myVer && !S.open && !$("#modal")) location.replace(location.pathname + "?v=" + v);
+    } catch (e) {
+    }
+  }
+  setInterval(checkVer, 5 * 6e4);
+  document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && checkVer());
+  setTimeout(checkVer, 3e3);
   async function start() {
     $("#login").hidden = true;
     $("#app").hidden = false;

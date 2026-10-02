@@ -115,9 +115,9 @@
   function renderNav() {
     const newCnt = S.events.filter(e => e.k === 'guest' && e.s !== 'acc').length;
     setHTML($('#nav'), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` +
-      NAV.filter(n => !n[3] || isAdmin()).map(([v, ic, l]) => `<button class="${S.view === v ? 'on' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join('') +
+      NAV.filter(n => !n[3] || isAdmin()).map(([v, ic, l]) => `<button class="${S.view === v ? 'on' : ''}${['printer', 'menu', 'settings', 'stop'].includes(v) ? ' more-i' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join('') +
       `<button class="feed-btn" data-a="feed"><span class="ic">🔔</span>Стрічка${newCnt ? `<span class="badge">${newCnt}</span>` : ''}</button>` +
-      `<div class="grow"></div><div class="me">${esc(S.me?.name)}<br>${isAdmin() ? 'адмін' : 'офіціант'}</div>` +
+      `<button class="more-btn ${['printer', 'menu', 'settings', 'stop'].includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><div class="me">${esc(S.me?.name)}<br>${isAdmin() ? 'адмін' : 'офіціант'}</div>` +
       `<button data-a="switch"><span class="ic">🔒</span>Вийти</button>`);
   }
   function render() { renderNav(); renderFeed(); if (['hall', 'printer'].includes(S.view)) renderMain(); if (S.open) renderSheet(); }
@@ -333,7 +333,7 @@
   async function shOpen() {
     const last = (await api('shift').catch(() => null))?.last; last0 = last ? String(last.sum) : 0;
     const b = await modal({ title: '🔓 Відкрити касу', text: 'Скільки грошей у касі на початок зміни', keep: true,
-      body: `<div class="form"><input id="fIn" inputmode="decimal" placeholder="Сума на початок, ₴">${last ? `<button type="button" class="btn" id="fLast">💰 Загальна сума · ${money(last.sum)}</button><div class="muted" style="font-size:13px;text-align:center">залишок при закритті каси ${new Date(last.closed).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}${last.counted ? ' (пораховано)' : ''}</div>` : ''}</div>`,
+      body: `<div class="form"><input id="fIn" inputmode="decimal" placeholder="Сума на початок, ₴">${last ? `<button type="button" class="btn" id="fLast">💰 Загальна сума · ${money(last.sum)}</button><div class="muted" style="font-size:13px;text-align:center">${last.day ? 'залишок на кінець дня ' + last.day.split('-').reverse().join('.') : 'залишок при закритті каси ' + new Date(last.closed).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}${last.counted ? ' (пораховано)' : ''}</div>` : ''}</div>`,
       buttons: [{ label: '🔓 Відкрити', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }] });
     const v = b ? $('#fIn').value.trim() : null; closeModal(); if (!v) return;
     if (await act('shiftOpen', { float: +v.replace(',', '.') }, '🔓 Касу відкрито')) { loadState().catch(() => {}); if (S.view === 'cash') loadView(); }
@@ -523,6 +523,8 @@
     switch (a) {
       case 'view': S.view = el.dataset.v; S.q = ''; renderNav(); renderMain(); loadView(); $('#feed').classList.remove('open'); $('#main').scrollTop = 0; break;
       case 'feed': $('#feed').classList.toggle('open'); break;
+      case 'more': { const v = await choose('Ще', '', NAV.filter(n => (!n[3] || isAdmin()) && ['stop', 'printer', 'menu', 'settings'].includes(n[0])).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: '🔒 Вийти', val: 'logout', cls: 'red' }]));
+        if (v === 'logout') { if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); } else if (v) { S.view = v; S.q = ''; renderNav(); renderMain(); loadView(); $('#main').scrollTop = 0; } break; }
       case 'switch': if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); break;
       case 'table': $('#feed').classList.remove('open'); openTable(el.dataset.t); break;
       case 'newOrder': { const n = await pickTable('Новe замовлення', 'Оберіть стіл'); if (n) { openTable(n); S.mobileMenu = true; renderSheet(); } break; }
@@ -619,6 +621,17 @@
     if (el) { el.style.transition = 'transform .2s'; el.style.transform = ''; setTimeout(() => { el.style.transition = ''; }, 220); }
     if (go) { navigator.vibrate?.(10); goBack(); }
   });
+
+  // ---------- автооновлення: телефони/планшети тримають старий pos.html у кеші ----------
+  const myVer = (document.querySelector('script[src*="pos.build.js"]')?.getAttribute('src') || '').split('v=')[1];
+  async function checkVer() {
+    try {
+      const h = await (await fetch('pos.html?u=' + Date.now(), { cache: 'no-store' })).text();
+      const v = (h.match(/pos\.build\.js\?v=(\d+)/) || [])[1];
+      if (v && myVer && v !== myVer && !S.open && !$('#modal')) location.replace(location.pathname + '?v=' + v);
+    } catch {}
+  }
+  setInterval(checkVer, 5 * 60e3); document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && checkVer()); setTimeout(checkVer, 3000);
 
   // ---------- старт ----------
   async function start() {
