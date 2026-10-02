@@ -282,12 +282,9 @@ export async function lastZ(env) {
   const [dd, ee] = await Promise.all([dn.length ? env.DB.getMany(dn, 'json') : [], en.length ? env.DB.getMany(en, 'json') : []]);
   const cash = dd.reduce((a, d) => a + ((d && (d.cash ?? d.closed)) || 0), 0);
   const ex = ee.reduce((a, l) => a + (l || []).filter(e => !e.del && e.src !== 'card').reduce((b, e) => b + e.sum, 0), 0);
-  const days = dn.map(k => k.slice(4)).sort(), from = days[0];
-  // гроші в касі «як учора»: після закриття каси — те, що в ній лишилось; інакше перший розмін + уся готівка − витрати готівкою
-  const z = (await env.DB.getMany([...days].reverse().slice(0, 60).map(d => 'z:' + d), 'json')).find(x => x?.length);
-  if (z) { const last = z[z.length - 1]; return { sum: Math.max(0, last.counted ?? last.inBox), cash, ex, from, z: last.closed }; }
-  const first = (dd[dn.indexOf('day:' + from)] || {}).float || 0;
-  return { sum: Math.max(0, first + cash - ex), cash, ex, first, from };
+  const from = dn.map(k => k.slice(4)).sort()[0];
+  // сума на кнопці = уся готівка від гостей за весь час
+  return { sum: cash, cash, ex, from };
 }
 export async function openShift(env, float, who) {
   if (await getShift(env)) return { error: 'Зміна вже відкрита' };

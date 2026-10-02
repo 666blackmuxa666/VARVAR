@@ -357,7 +357,7 @@
   async function shOpen() {
     const last = (await api('shift').catch(() => null))?.last; last0 = last ? String(last.sum) : 0;
     const fmt = d => d.split('-').reverse().join('.');
-    const how = !last ? '' : last.z ? `як при закритті каси ${new Date(last.z).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : `з ${fmt(last.from)}: розмін ${money(last.first)} + готівка ${money(last.cash)} − витрати ${money(last.ex)}`;
+    const how = !last ? '' : `уся готівка від гостей за весь час${last.from ? ' (з ' + fmt(last.from) + ')' : ''}`;
     const b = await modal({ title: '🔓 Відкрити касу', text: 'Одне натискання — продовжити з тією ж готівкою, що в касі', keep: true,
       body: `<div class="form">${last ? `<button type="button" class="btn primary big1" data-mi-quick>🔓 Відкрити · ${money(last.sum)}</button><div class="muted" style="font-size:13px;text-align:center">${how}</div>` : ''}
         <input id="fIn" inputmode="decimal" placeholder="Або впишіть іншу суму, ₴"></div>`,

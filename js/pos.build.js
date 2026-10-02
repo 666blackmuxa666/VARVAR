@@ -651,7 +651,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const last = (_a2 = await api("shift").catch(() => null)) == null ? void 0 : _a2.last;
     last0 = last ? String(last.sum) : 0;
     const fmt = (d) => d.split("-").reverse().join(".");
-    const how = !last ? "" : last.z ? `\u044F\u043A \u043F\u0440\u0438 \u0437\u0430\u043A\u0440\u0438\u0442\u0442\u0456 \u043A\u0430\u0441\u0438 ${new Date(last.z).toLocaleString("uk-UA", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}` : `\u0437 ${fmt(last.from)}: \u0440\u043E\u0437\u043C\u0456\u043D ${money(last.first)} + \u0433\u043E\u0442\u0456\u0432\u043A\u0430 ${money(last.cash)} \u2212 \u0432\u0438\u0442\u0440\u0430\u0442\u0438 ${money(last.ex)}`;
+    const how = !last ? "" : `\u0443\u0441\u044F \u0433\u043E\u0442\u0456\u0432\u043A\u0430 \u0432\u0456\u0434 \u0433\u043E\u0441\u0442\u0435\u0439 \u0437\u0430 \u0432\u0435\u0441\u044C \u0447\u0430\u0441${last.from ? " (\u0437 " + fmt(last.from) + ")" : ""}`;
     const b = await modal({
       title: "\u{1F513} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u043A\u0430\u0441\u0443",
       text: "\u041E\u0434\u043D\u0435 \u043D\u0430\u0442\u0438\u0441\u043A\u0430\u043D\u043D\u044F \u2014 \u043F\u0440\u043E\u0434\u043E\u0432\u0436\u0438\u0442\u0438 \u0437 \u0442\u0456\u0454\u044E \u0436 \u0433\u043E\u0442\u0456\u0432\u043A\u043E\u044E, \u0449\u043E \u0432 \u043A\u0430\u0441\u0456",
