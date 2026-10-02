@@ -239,7 +239,7 @@ export async function topData(env) {
 }
 
 // ---------- групи меню (кухня / бар / кальян) — однаково в боті й POS ----------
-const KITCHEN = ['minimax', 'pasta', 'burgers', 'salads', 'snacks', 'soups', 'pans', 'extras'];
+const KITCHEN = ['minimax', 'pasta', 'burgers', 'salads', 'snacks', 'soups', 'pans', 'extras', 'upakuvannia'];
 export const GROUPS = [{ id: 'kitchen', name: '🍳 Кухня' }, { id: 'bar', name: '🍹 Бар' }, { id: 'hookah', name: '💨 Кальян' }];
 export const groupOf = cat => cat === 'hookah' ? 'hookah' : KITCHEN.includes(cat) ? 'kitchen' : 'bar';
 // ⭐ обрані страви — спільний список для всіх офіціантів

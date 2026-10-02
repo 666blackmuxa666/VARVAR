@@ -85,9 +85,20 @@ export const HELP = `<b>Як керувати меню</b> (пишіть зви�
 📷 <b>Фото</b>: надішліть фото з підписом <code>фото мєско</code>
 🔎 <code>мєско</code>: показати страву
 📋 <code>розділи</code> або <code>меню бургери</code>
+📂 <code>новий розділ Упакування</code>
 ↩️ <code>відмінити</code>: скасувати останню зміну
 
 🧾 Рахунки: /tables, /close 5`;
+
+// новий розділ меню — у кінець списку (бот: «новий розділ Упакування», POS: «➕ Розділ»)
+export async function addCategory(env, name) {
+  name = String(name || '').trim().slice(0, 40); if (!name) return null;
+  const menu = await getMenu(env);
+  if (menu.categories.some(c => c.name.uk.toLowerCase() === name.toLowerCase())) return { error: 'Такий розділ уже є' };
+  let id = slug(name) || 'cat'; while (menu.categories.some(c => c.id === id)) id += '-2';
+  const c = { id, name: { uk: name, en: name }, items: [] }; menu.categories.push(c); await saveMenu(env, menu);
+  return { c };
+}
 
 // повертає текст відповіді або null (не схоже на команду меню)
 export async function handleMenuText(text, env, { canEdit = true } = {}) {
@@ -100,6 +111,11 @@ export async function handleMenuText(text, env, { canEdit = true } = {}) {
     const prev = await env.DB.get('menu_prev'); if (!prev) return 'Нема що відміняти.';
     await env.DB.put('menu', prev); await env.DB.delete('menu_prev');
     return '↩️ Останню зміну скасовано.';
+  }
+  if ((m = t.match(/^(?:новий|додати|додай)\s+розділ\s+(.+)$/i))) {
+    if (!canEdit) return NO;
+    const r = await addCategory(env, m[1]); if (r?.error) return r.error;
+    return `📂 Розділ <b>${esc(r.c.name.uk)}</b> додано в кінець меню.\nДодати страву: <code>додати в ${esc(r.c.name.uk.toLowerCase())}: Назва, ціна 15</code>`;
   }
   if (/^(розділи|категорії|категории)$/i.test(t)) return menu.categories.map(c => `• ${esc(c.name.uk)} (${c.items.length})`).join('\n');
   if ((m = t.match(/^меню\s+(.+)$/i))) {

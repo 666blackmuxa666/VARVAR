@@ -1,6 +1,6 @@
 // API касової програми (pos.html). POST /api/pos {op, ...} з заголовком Authorization: Bearer <token>.
 // Живі оновлення: WebSocket /api/pos/live?token=… (див. store.js). Логіка — спільна з ботом (ops.js).
-import { getMenu, saveMenu } from './menu.js';
+import { getMenu, saveMenu, addCategory } from './menu.js';
 import { queuePrint, printStatus } from './print.js';
 import { QR_PRINT, TEST_JOB } from './bot.js';
 import { storeStub } from './store.js';
@@ -97,6 +97,7 @@ export async function posApi(b, req, env) {
 
     // меню
     case 'menuSave': return menuSave(env, b.item, who);
+    case 'catAdd': { const r = await addCategory(env, b.name); if (!r || r.error) return [{ error: r?.error || 'Потрібна назва' }, 400]; await notify(env, `🖥 📂 Меню: новий розділ <b>${esc(r.c.name.uk)}</b> — ${esc(who)}`); return ok({ id: r.c.id }); }
     case 'menuDel': {
       const menu = await getMenu(env); let name = '';
       menu.categories.forEach(c => { const i = c.items.findIndex(x => x.id === b.id); if (i >= 0) { name = c.items[i].name.uk; c.items.splice(i, 1); } });
