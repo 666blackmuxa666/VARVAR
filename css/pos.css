@@ -321,3 +321,11 @@ main { overflow: auto; padding: 22px 24px 40px; }
 }
 @media (max-width: 600px) { main.hall .tables { gap: 8px; } main.hall .tbl { aspect-ratio: auto; } }
 .srow .btn { white-space: nowrap; flex: none; }
+
+/* просять рахунок — бурячковий */
+.tbl.check { border-color: #c2185b; background: linear-gradient(160deg, #5a0f2e, #33081a); animation: beetglow 1.6s infinite; }
+.tbl.check .n { color: #ff7aa8; }
+.tag.c { background: #b0174f; color: #fff; display: inline-flex; align-items: center; gap: 4px; }
+.tbl .pay { position: absolute; right: 12px; bottom: 10px; font-style: normal; font-size: clamp(36px, 6.5vh, 60px); line-height: 1; }
+@keyframes beetglow { 50% { box-shadow: 0 0 0 5px #c2185b40, 0 0 26px #c2185b66; } }
+.ev.check { border-left-color: #c2185b; }
