@@ -164,7 +164,7 @@ async function reportsView(env) {
 }
 // детальні звіти: період × розріз (ті самі дані, що фільтри в POS)
 const REP_P = { d: 'Сьогодні', y: 'Вчора', w: '7 днів', m: 'Цей місяць', pm: 'Минулий місяць', yr: 'Цей рік', all: 'За весь час' };
-const REP_BY = { waiter: '👤 Офіціанти', group: '🍳 Кухня/бар', cat: '📂 Категорії', hour: '🕐 Години', table: '🪑 Столи' };
+const REP_BY = { waiter: '👤 Офіціанти', tips: '💝 Чайові', group: '🍳 Кухня/бар', cat: '📂 Категорії', hour: '🕐 Години', table: '🪑 Столи' };
 const repMarkup = p => ({ inline_keyboard: [Object.entries(REP_P).slice(0, 3).map(([k, l]) => ({ text: (k === p ? '• ' : '') + l, callback_data: `rp:${k}:x` })), Object.entries(REP_P).slice(3).map(([k, l]) => ({ text: (k === p ? '• ' : '') + l, callback_data: `rp:${k}:x` })),
   ...chunk(Object.entries(REP_BY).map(([k, l]) => ({ text: l, callback_data: `rp:${p}:${k}` })), 3)] });
 function repRange(p) {

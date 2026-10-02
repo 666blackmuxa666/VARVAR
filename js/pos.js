@@ -381,13 +381,16 @@
     const all = r.last ? `<div class="card"><h3>🏦 Готівка за весь час</h3>${kv('💵 Від гостей', money(r.last.cash))}${r.last.mv ? kv('🔁 Рух коштів', money(r.last.mv)) : ''}${kv('💸 Витрати готівкою', money(r.last.ex))}<div class="muted" style="font-size:12px;margin-top:6px">з ${r.last.from ? r.last.from.split('-').reverse().join('.') : '—'}</div></div>` : '';
     // 5. рух коштів сьогодні (якщо є)
     const mvH = z.mvCash || z.mvCard ? `<div class="card"><h3>🔁 Рух коштів сьогодні</h3>${kv('Готівка', (z.mvCash > 0 ? '+' : '') + money(z.mvCash))}${z.mvCard ? kv('Картка', (z.mvCard > 0 ? '+' : '') + money(z.mvCard)) : ''}</div>` : '';
+    // чайові сьогодні — кожен офіціант окремо
+    const tipBy = {}; (r.closed || []).filter(x => !x.del && !x.rm && x.tip).forEach(x => { const k = x.by || '—'; tipBy[k] = tipBy[k] || [0, 0]; tipBy[k][0]++; tipBy[k][1] += x.tip; });
+    const tipsH = Object.keys(tipBy).length ? `<div class="card"><h3>💝 Чайові сьогодні</h3>${Object.entries(tipBy).sort((a, b) => b[1][1] - a[1][1]).map(([n, [q, s2]]) => kv(`👤 ${esc(n)} <span class="muted">· ${q} чек.</span>`, money(s2))).join('')}${kv('Разом', money(z.tip || 0), 'tot')}</div>` : '';
     // 6. журнал за сьогодні
-    const J = [...(r.closed || []).filter(x => !x.del && !x.rm).map(x => ({ at: x.at, ic: x.card ? '💳' : '💵', t: `Стіл ${x.t}${x.by ? ' · ' + esc(x.by) : ''}${x.disc ? ` · −${x.disc}%` : ''}`, v: '+' + money(x.sum), cls: 'in' })),
+    const J = [...(r.closed || []).filter(x => !x.del && !x.rm).map(x => ({ at: x.at, ic: x.card ? '💳' : '💵', t: `Стіл ${x.t}${x.by ? ' · ' + esc(x.by) : ''}${x.disc ? ` · −${x.disc}%` : ''}${x.tip ? ` · 💝 ${money(x.tip)}` : ''}`, v: '+' + money(x.sum), cls: 'in' })),
       ...r.exp.map((e, i) => ({ at: e.at, ic: '💸', t: esc(e.note || 'Витрата') + (e.src === 'card' ? ' (картка)' : ''), v: '−' + money(e.sum), cls: 'out', del: e.del, btn: `<button class="xb" data-a="expDel" data-i="${i}">✕</button>` })),
       ...(r.mov || []).map((m, i) => ({ at: m.at, ic: '🔁', t: MOVE[m.type] + (m.note ? ' · ' + esc(m.note) : ''), v: money(m.sum), cls: 'mv', del: m.del, btn: `<button class="xb" data-a="movDel" data-i="${i}">✕</button>` }))]
       .sort((a, b) => String(b.at).localeCompare(String(a.at)));
     const journal = `<div class="card"><h3>📒 Журнал за сьогодні <span class="muted" style="font-weight:400;font-size:13px">· ${J.length}</span></h3>${J.length ? J.map(x => `<div class="jr ${x.cls}${x.del ? ' del' : ''}"><span class="muted">${x.at}</span><span>${x.ic}</span><span class="jt">${x.t}</span><b class="money">${x.v}</b>${!x.del && x.btn ? x.btn : '<i></i>'}</div>`).join('') : '<div class="muted">Поки порожньо</div>'}</div>`;
-    return `<div class="head"><h1>Каса</h1></div>${hero}${tilesH}<div class="cash-grid"><div class="col">${journal}</div><div class="col">${ops}${mvH}${all}</div></div>`;
+    return `<div class="head"><h1>Каса</h1></div>${hero}${tilesH}<div class="cash-grid"><div class="col">${journal}</div><div class="col">${tipsH}${ops}${mvH}${all}</div></div>`;
   }
   const MOVE = { in: '➕ Внесення', out: '➖ Вилучення', k2c: '🔁 Картка → готівка', c2k: '🔁 Готівка → картка' };
   async function cashMove(t) {
@@ -490,13 +493,14 @@
     // розрізи
     const grpBy = (keyF, valF = c => c.val) => { const m = new Map(); checks.forEach(c => { const k = keyF(c); const a = m.get(k) || [0, 0]; a[0]++; a[1] += valF(c); m.set(k, a); }); return [...m]; };
     const dishAgg = keyF => { const m = new Map(); checks.forEach(c => c.ds.forEach(([nm, qq, ss]) => { const k = keyF(nm); const a = m.get(k) || [0, 0]; a[0] += qq; a[1] += ss; m.set(k, a); })); return [...m]; };
-    const TABS = { dishes: '🍽 Страви', cats: '📂 Категорії', groups: '🍳 Кухня/бар', waiters: '👤 Офіціанти', hours: '🕐 Години', days: '📅 Дні', tables: '🪑 Столи', checks: '🧾 Чеки', exp: '💸 Витрати', mov: '🔁 Рух коштів', z: '🔒 Z-звіти' };
+    const TABS = { dishes: '🍽 Страви', cats: '📂 Категорії', groups: '🍳 Кухня/бар', waiters: '👤 Офіціанти', tips: '💝 Чайові', hours: '🕐 Години', days: '📅 Дні', tables: '🪑 Столи', checks: '🧾 Чеки', exp: '💸 Витрати', mov: '🔁 Рух коштів', z: '🔒 Z-звіти' };
     let rows, unit = 'чек.', sortable = false;
     const T = R.tab;
     if (T === 'dishes') { rows = dishAgg(nm => nm); unit = 'шт'; sortable = true; }
     else if (T === 'cats') { rows = dishAgg(nm => dishOf(nm)?.cname || 'Інше'); unit = 'шт'; sortable = true; }
     else if (T === 'groups') { rows = dishAgg(nm => (S.groups.find(g => g.id === dishOf(nm)?.grp) || { name: 'Інше' }).name); unit = 'шт'; }
     else if (T === 'waiters') rows = grpBy(c => c.by || '—');
+    else if (T === 'tips') { rows = grpBy(c => c.by || '—', c => c.tip || 0).filter(x => x[1][1] > 0); unit = 'чек.'; }
     else if (T === 'hours') rows = grpBy(c => String(c.at || '').slice(0, 2) + ':00').sort((a, b) => a[0].localeCompare(b[0]));
     else if (T === 'days') rows = grpBy(c => c.d).sort((a, b) => a[0].localeCompare(b[0]));
     else if (T === 'tables') rows = grpBy(c => 'Стіл ' + c.t).sort((a, b) => parseInt(a[0].slice(5)) - parseInt(b[0].slice(5)));

@@ -700,13 +700,21 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const kv = (l, v, cls = "") => `<div class="kv ${cls}"><span>${l}</span><b class="money">${v}</b></div>`;
     const all = r.last ? `<div class="card"><h3>\u{1F3E6} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 \u0437\u0430 \u0432\u0435\u0441\u044C \u0447\u0430\u0441</h3>${kv("\u{1F4B5} \u0412\u0456\u0434 \u0433\u043E\u0441\u0442\u0435\u0439", money(r.last.cash))}${r.last.mv ? kv("\u{1F501} \u0420\u0443\u0445 \u043A\u043E\u0448\u0442\u0456\u0432", money(r.last.mv)) : ""}${kv("\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438 \u0433\u043E\u0442\u0456\u0432\u043A\u043E\u044E", money(r.last.ex))}<div class="muted" style="font-size:12px;margin-top:6px">\u0437 ${r.last.from ? r.last.from.split("-").reverse().join(".") : "\u2014"}</div></div>` : "";
     const mvH = z.mvCash || z.mvCard ? `<div class="card"><h3>\u{1F501} \u0420\u0443\u0445 \u043A\u043E\u0448\u0442\u0456\u0432 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</h3>${kv("\u0413\u043E\u0442\u0456\u0432\u043A\u0430", (z.mvCash > 0 ? "+" : "") + money(z.mvCash))}${z.mvCard ? kv("\u041A\u0430\u0440\u0442\u043A\u0430", (z.mvCard > 0 ? "+" : "") + money(z.mvCard)) : ""}</div>` : "";
+    const tipBy = {};
+    (r.closed || []).filter((x) => !x.del && !x.rm && x.tip).forEach((x) => {
+      const k = x.by || "\u2014";
+      tipBy[k] = tipBy[k] || [0, 0];
+      tipBy[k][0]++;
+      tipBy[k][1] += x.tip;
+    });
+    const tipsH = Object.keys(tipBy).length ? `<div class="card"><h3>\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</h3>${Object.entries(tipBy).sort((a, b) => b[1][1] - a[1][1]).map(([n, [q, s2]]) => kv(`\u{1F464} ${esc(n)} <span class="muted">\xB7 ${q} \u0447\u0435\u043A.</span>`, money(s2))).join("")}${kv("\u0420\u0430\u0437\u043E\u043C", money(z.tip || 0), "tot")}</div>` : "";
     const J = [
-      ...(r.closed || []).filter((x) => !x.del && !x.rm).map((x) => ({ at: x.at, ic: x.card ? "\u{1F4B3}" : "\u{1F4B5}", t: `\u0421\u0442\u0456\u043B ${x.t}${x.by ? " \xB7 " + esc(x.by) : ""}${x.disc ? ` \xB7 \u2212${x.disc}%` : ""}`, v: "+" + money(x.sum), cls: "in" })),
+      ...(r.closed || []).filter((x) => !x.del && !x.rm).map((x) => ({ at: x.at, ic: x.card ? "\u{1F4B3}" : "\u{1F4B5}", t: `\u0421\u0442\u0456\u043B ${x.t}${x.by ? " \xB7 " + esc(x.by) : ""}${x.disc ? ` \xB7 \u2212${x.disc}%` : ""}${x.tip ? ` \xB7 \u{1F49D} ${money(x.tip)}` : ""}`, v: "+" + money(x.sum), cls: "in" })),
       ...r.exp.map((e, i) => ({ at: e.at, ic: "\u{1F4B8}", t: esc(e.note || "\u0412\u0438\u0442\u0440\u0430\u0442\u0430") + (e.src === "card" ? " (\u043A\u0430\u0440\u0442\u043A\u0430)" : ""), v: "\u2212" + money(e.sum), cls: "out", del: e.del, btn: `<button class="xb" data-a="expDel" data-i="${i}">\u2715</button>` })),
       ...(r.mov || []).map((m, i) => ({ at: m.at, ic: "\u{1F501}", t: MOVE[m.type] + (m.note ? " \xB7 " + esc(m.note) : ""), v: money(m.sum), cls: "mv", del: m.del, btn: `<button class="xb" data-a="movDel" data-i="${i}">\u2715</button>` }))
     ].sort((a, b) => String(b.at).localeCompare(String(a.at)));
     const journal = `<div class="card"><h3>\u{1F4D2} \u0416\u0443\u0440\u043D\u0430\u043B \u0437\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 <span class="muted" style="font-weight:400;font-size:13px">\xB7 ${J.length}</span></h3>${J.length ? J.map((x) => `<div class="jr ${x.cls}${x.del ? " del" : ""}"><span class="muted">${x.at}</span><span>${x.ic}</span><span class="jt">${x.t}</span><b class="money">${x.v}</b>${!x.del && x.btn ? x.btn : "<i></i>"}</div>`).join("") : '<div class="muted">\u041F\u043E\u043A\u0438 \u043F\u043E\u0440\u043E\u0436\u043D\u044C\u043E</div>'}</div>`;
-    return `<div class="head"><h1>\u041A\u0430\u0441\u0430</h1></div>${hero}${tilesH}<div class="cash-grid"><div class="col">${journal}</div><div class="col">${ops}${mvH}${all}</div></div>`;
+    return `<div class="head"><h1>\u041A\u0430\u0441\u0430</h1></div>${hero}${tilesH}<div class="cash-grid"><div class="col">${journal}</div><div class="col">${tipsH}${ops}${mvH}${all}</div></div>`;
   }
   const MOVE = { in: "\u2795 \u0412\u043D\u0435\u0441\u0435\u043D\u043D\u044F", out: "\u2796 \u0412\u0438\u043B\u0443\u0447\u0435\u043D\u043D\u044F", k2c: "\u{1F501} \u041A\u0430\u0440\u0442\u043A\u0430 \u2192 \u0433\u043E\u0442\u0456\u0432\u043A\u0430", c2k: "\u{1F501} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 \u2192 \u043A\u0430\u0440\u0442\u043A\u0430" };
   async function cashMove(t) {
@@ -883,7 +891,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       }));
       return [...m];
     };
-    const TABS = { dishes: "\u{1F37D} \u0421\u0442\u0440\u0430\u0432\u0438", cats: "\u{1F4C2} \u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0456\u0457", groups: "\u{1F373} \u041A\u0443\u0445\u043D\u044F/\u0431\u0430\u0440", waiters: "\u{1F464} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0438", hours: "\u{1F550} \u0413\u043E\u0434\u0438\u043D\u0438", days: "\u{1F4C5} \u0414\u043D\u0456", tables: "\u{1FA91} \u0421\u0442\u043E\u043B\u0438", checks: "\u{1F9FE} \u0427\u0435\u043A\u0438", exp: "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438", mov: "\u{1F501} \u0420\u0443\u0445 \u043A\u043E\u0448\u0442\u0456\u0432", z: "\u{1F512} Z-\u0437\u0432\u0456\u0442\u0438" };
+    const TABS = { dishes: "\u{1F37D} \u0421\u0442\u0440\u0430\u0432\u0438", cats: "\u{1F4C2} \u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0456\u0457", groups: "\u{1F373} \u041A\u0443\u0445\u043D\u044F/\u0431\u0430\u0440", waiters: "\u{1F464} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0438", tips: "\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456", hours: "\u{1F550} \u0413\u043E\u0434\u0438\u043D\u0438", days: "\u{1F4C5} \u0414\u043D\u0456", tables: "\u{1FA91} \u0421\u0442\u043E\u043B\u0438", checks: "\u{1F9FE} \u0427\u0435\u043A\u0438", exp: "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438", mov: "\u{1F501} \u0420\u0443\u0445 \u043A\u043E\u0448\u0442\u0456\u0432", z: "\u{1F512} Z-\u0437\u0432\u0456\u0442\u0438" };
     let rows, unit = "\u0447\u0435\u043A.", sortable = false;
     const T = R.tab;
     if (T === "dishes") {
@@ -904,7 +912,10 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       }) || { name: "\u0406\u043D\u0448\u0435" }).name);
       unit = "\u0448\u0442";
     } else if (T === "waiters") rows = grpBy((c) => c.by || "\u2014");
-    else if (T === "hours") rows = grpBy((c) => String(c.at || "").slice(0, 2) + ":00").sort((a, b) => a[0].localeCompare(b[0]));
+    else if (T === "tips") {
+      rows = grpBy((c) => c.by || "\u2014", (c) => c.tip || 0).filter((x) => x[1][1] > 0);
+      unit = "\u0447\u0435\u043A.";
+    } else if (T === "hours") rows = grpBy((c) => String(c.at || "").slice(0, 2) + ":00").sort((a, b) => a[0].localeCompare(b[0]));
     else if (T === "days") rows = grpBy((c) => c.d).sort((a, b) => a[0].localeCompare(b[0]));
     else if (T === "tables") rows = grpBy((c) => "\u0421\u0442\u0456\u043B " + c.t).sort((a, b) => parseInt(a[0].slice(5)) - parseInt(b[0].slice(5)));
     let body;

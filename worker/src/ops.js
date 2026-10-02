@@ -348,7 +348,7 @@ export const zText = z => [`🔒 <b>Касу закрито</b> (${fmtDT(z.opene
 function zTicket(z) {
   return [['invb', 'Z-ЗВІТ'], ['c', 'Закриття каси'], ['gap'],
     ['lr', 'Відкрито', fmtDT(z.opened)], ['lr', 'Закрито', fmtDT(z.closed)], ['lr', 'Відкрив', z.by || '—'], ['lr', 'Закрив', z.closedBy || '—'], ['dbl'],
-    ['lr', 'Чеків', String(z.checks)], ['lr', 'Готівка', `${z.cash} грн`], ['lr', 'Картка', `${z.card} грн`], ...(z.disc ? [['lr', 'Знижки', `${z.disc} грн`]] : []), ...(z.tip ? [['lr', 'Чайові (окремо)', `${z.tip} грн`]] : []),
+    ['lr', 'Чеків', String(z.checks)], ['lr', 'Готівка', `${z.cash} грн`], ['lr', 'Картка', `${z.card} грн`], ...(z.disc ? [['lr', 'Знижки', `${z.disc} грн`]] : []), ...(z.tip ? [['lr', 'Чайові (окремо)', `${z.tip} грн`], ...Object.entries(z.tipBy || {}).map(([n, s]) => ['lr', `  ${n}`, `${s} грн`])] : []),
     ['total', 'ВИРУЧКА', `${z.total} грн`], ['dbl'],
     ['lr', 'На початок', `${z.float} грн`], ['lr', '+ Готівка', `${z.cash} грн`], ['lr', '− Витрати (готівка)', `${z.exCash} грн`], ...(z.mvCash ? [['lr', 'Рух коштів (готівка)', `${z.mvCash > 0 ? '+' : ''}${z.mvCash} грн`]] : []), ...(z.exCard ? [['lr', 'Витрати з картки', `${z.exCard} грн`]] : []),
     ['total', 'В КАСІ', `${z.inBox} грн`],
@@ -365,7 +365,8 @@ export async function dayZData(env, day = dayKey()) {
   const exCash = sum(exps.filter(e => e.src !== 'card'), e => e.sum), exCard = sum(exps.filter(e => e.src === 'card'), e => e.sum);
   const mvCash = sum(movs, moveCash), mvCard = sum(movs, moveCard);
   const open = day === dayKey() ? await openTables(env) : [];
-  return { day, checks: recs.length, cash, card, total: cash + card, disc: sum(recs, x => x.discSum), tip: sum(recs, x => x.tip), exCash, exCard, mvCash, mvCard,
+  const tipBy = {}; recs.filter(x => x.tip).forEach(x => { tipBy[x.by || '—'] = (tipBy[x.by || '—'] || 0) + x.tip; });
+  return { day, tipBy, checks: recs.length, cash, card, total: cash + card, disc: sum(recs, x => x.discSum), tip: sum(recs, x => x.tip), exCash, exCard, mvCash, mvCard,
     net: cash + card - exCash - exCard, orders: (d || {}).orders || 0, dels: cl.filter(x => x.del || x.rm).length,
     openTables: open.length, openSum: open.reduce((a, r) => a + payable(r.b), 0) };
 }
@@ -379,7 +380,7 @@ export async function dayZ(env, who, print = true, day = dayKey()) {
 const dm = d => d.split('-').reverse().join('.');
 export const zDayText = z => [`🧾 <b>Z-звіт за ${dm(z.day)}</b>`, '',
   `Чеків: ${z.checks} · виручка <b>${money(z.total)}</b>`, `💵 Готівка: ${money(z.cash)}`, `💳 Картка: ${money(z.card)}`,
-  z.disc ? `🏷 Знижки: ${money(z.disc)}` : '', z.tip ? `💝 Чайові: ${money(z.tip)}` : '', `💸 Витрати: ${money(z.exCash + z.exCard)}${z.exCard ? ` (з картки ${money(z.exCard)})` : ''}`,
+  z.disc ? `🏷 Знижки: ${money(z.disc)}` : '', z.tip ? `💝 Чайові: ${money(z.tip)}${Object.keys(z.tipBy || {}).length ? '\n' + Object.entries(z.tipBy).map(([n, s]) => `   👤 ${esc(n)}: ${money(s)}`).join('\n') : ''}` : '', `💸 Витрати: ${money(z.exCash + z.exCard)}${z.exCard ? ` (з картки ${money(z.exCard)})` : ''}`,
   z.mvCash || z.mvCard ? `🔁 Рух коштів: готівка ${z.mvCash >= 0 ? '+' : ''}${money(z.mvCash)}${z.mvCard ? `, картка ${z.mvCard >= 0 ? '+' : ''}${money(z.mvCard)}` : ''}` : '',
   `📈 Чистими: <b>${money(z.net)}</b>`, z.openTables ? `\n⚠️ Ще відкрито столів: ${z.openTables} (${money(z.openSum)})` : ''].filter(x => x !== '').join('\n');
 function zDayTicket(z) {
@@ -411,6 +412,7 @@ export async function reportBreakdown(env, from, to, by) {
   const add = (k, q, s) => { const a = m.get(k) || [0, 0]; a[0] += q; a[1] += s; m.set(k, a); };
   for (const c of r.checks) {
     if (by === 'waiter') add(c.by || '—', 1, c.sum);
+    else if (by === 'tips') { if (c.tip) add(c.by || '—', 1, c.tip); }
     else if (by === 'hour') add(String(c.at || '').slice(0, 2) + ':00', 1, c.sum);
     else if (by === 'table') add('Стіл ' + c.t, 1, c.sum);
     else for (const [n, q, s] of c.dishes) { const x = res(n); add(by === 'group' ? (GROUPS.find(g => g.id === groupOf(x?.cat)) || {}).name : (x?.cname || 'Інше'), q, s); }
