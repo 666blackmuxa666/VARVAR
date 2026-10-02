@@ -80,12 +80,15 @@
     render();
   }
   async function loadMenu() { const r = await api('menu'); S.menu = r.menu; S.fav = r.fav || []; S.groups = r.groups || []; if (S.open) renderSheet(); if (['stop', 'menu', 'reports'].includes(S.view)) renderMain(); }
-  let ws, wsTimer, pingT, reloadT;
+  let ws, wsTimer, pingT, reloadT, lastMsg = 0;
+  // iPhone «на головному екрані» присипляє застосунок: зʼєднання тихо вмирає — перепідключаємось і перечитуємо стан
+  function revive() { if (!S.token) return; S.live = false; liveDot(); try { ws.onclose = null; ws.close(); } catch {} clearInterval(pingT); connect(); }
   function connect() {
     try { ws?.close(); } catch {}
     ws = new WebSocket(API.replace(/^http/, 'ws') + '/api/pos/live?token=' + S.token);
-    ws.onopen = () => { S.live = true; liveDot(); clearInterval(pingT); pingT = setInterval(() => ws.readyState === 1 && ws.send('ping'), 25000); loadState().catch(() => {}); };
+    ws.onopen = () => { S.live = true; lastMsg = Date.now(); liveDot(); clearInterval(pingT); pingT = setInterval(() => { if (Date.now() - lastMsg > 45000) return revive(); ws.readyState === 1 && ws.send('ping'); }, 15000); loadState().catch(() => {}); };
     ws.onmessage = e => {
+      lastMsg = Date.now();
       if (e.data === 'pong') return;
       let m; try { m = JSON.parse(e.data); } catch { return; }
       if (m.type !== 'changed') return;
@@ -100,7 +103,8 @@
   }
   const liveDot = () => { $('#live').className = 'live' + (S.live ? ' on' : ''); };
   setInterval(() => { if (S.token && !S.live && document.visibilityState === 'visible') loadState().catch(() => {}); }, 15000); // запасний варіант без WebSocket
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.token) { loadState().catch(() => {}); if (!S.live) connect(); } });
+  const wake = () => { if (document.visibilityState !== 'visible' || !S.token) return; loadState().catch(() => {}); if (!S.live || Date.now() - lastMsg > 20000) revive(); };
+  document.addEventListener('visibilitychange', wake); addEventListener('pageshow', wake); addEventListener('focus', wake); addEventListener('online', wake);
 
   let actx;
   function ding() { // короткий сигнал про нове замовлення гостя

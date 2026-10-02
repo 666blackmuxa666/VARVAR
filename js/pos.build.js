@@ -207,7 +207,19 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     if (S.open) renderSheet();
     if (["stop", "menu", "reports"].includes(S.view)) renderMain();
   }
-  let ws, wsTimer, pingT, reloadT;
+  let ws, wsTimer, pingT, reloadT, lastMsg = 0;
+  function revive() {
+    if (!S.token) return;
+    S.live = false;
+    liveDot();
+    try {
+      ws.onclose = null;
+      ws.close();
+    } catch (e) {
+    }
+    clearInterval(pingT);
+    connect();
+  }
   function connect() {
     try {
       ws == null ? void 0 : ws.close();
@@ -216,13 +228,18 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     ws = new WebSocket(API.replace(/^http/, "ws") + "/api/pos/live?token=" + S.token);
     ws.onopen = () => {
       S.live = true;
+      lastMsg = Date.now();
       liveDot();
       clearInterval(pingT);
-      pingT = setInterval(() => ws.readyState === 1 && ws.send("ping"), 25e3);
+      pingT = setInterval(() => {
+        if (Date.now() - lastMsg > 45e3) return revive();
+        ws.readyState === 1 && ws.send("ping");
+      }, 15e3);
       loadState().catch(() => {
       });
     };
     ws.onmessage = (e) => {
+      lastMsg = Date.now();
       if (e.data === "pong") return;
       let m;
       try {
@@ -255,13 +272,16 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     if (S.token && !S.live && document.visibilityState === "visible") loadState().catch(() => {
     });
   }, 15e3);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && S.token) {
-      loadState().catch(() => {
-      });
-      if (!S.live) connect();
-    }
-  });
+  const wake = () => {
+    if (document.visibilityState !== "visible" || !S.token) return;
+    loadState().catch(() => {
+    });
+    if (!S.live || Date.now() - lastMsg > 2e4) revive();
+  };
+  document.addEventListener("visibilitychange", wake);
+  addEventListener("pageshow", wake);
+  addEventListener("focus", wake);
+  addEventListener("online", wake);
   let actx;
   function ding() {
     try {
