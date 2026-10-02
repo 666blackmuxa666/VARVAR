@@ -91,7 +91,7 @@ main { overflow: auto; padding: 22px 24px 40px; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 6px #ff9f0a30; } }
 
 /* зал на планшеті/ПК: столи рівномірно на всю робочу зону, без прокрутки */
-@media (min-width: 981px) {
+@media (min-width: 0px) {
   main.hall { display: flex; flex-direction: column; overflow: hidden; }
   main.hall .tables { flex: 1; min-height: 0; grid-template-columns: repeat(var(--cols, 5), 1fr); grid-template-rows: repeat(var(--rows, 3), 1fr); }
   main.hall .tbl { aspect-ratio: auto; min-height: 0; }
@@ -313,3 +313,4 @@ main { overflow: auto; padding: 22px 24px 40px; }
   .nav .more-i, .nav [data-a="switch"] { display: none; }
   .more-btn { display: grid !important; }
 }
+@media (max-width: 600px) { main.hall .tables { gap: 8px; } main.hall .tbl { aspect-ratio: auto; } }

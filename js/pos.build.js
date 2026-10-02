@@ -519,9 +519,9 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const v = S.view, m = $("#main");
     m.classList.toggle("hall", v === "hall");
     if (v === "hall") {
-      const cols = Math.ceil(Math.sqrt(S.n * 1.6));
-      m.style.setProperty("--cols", cols);
-      m.style.setProperty("--rows", Math.ceil(S.n / cols));
+      const [c, r] = hallGrid(m);
+      m.style.setProperty("--cols", c);
+      m.style.setProperty("--rows", r);
     }
     const html = (_b = (_a2 = { hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML })[v]) == null ? void 0 : _b.call(_a2);
     const fid = (_c = document.activeElement) == null ? void 0 : _c.id, keep = ["stopSearch", "rQ"].includes(fid);
@@ -532,6 +532,25 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       el.setSelectionRange(el.value.length, el.value.length);
     }
   }
+  function hallGrid(m) {
+    const w = m.clientWidth || innerWidth, h = Math.max(200, (m.clientHeight || innerHeight) - 90), n = S.n;
+    let best = [1, n], score = 1e9;
+    for (let c = 1; c <= n; c++) {
+      const r = Math.ceil(n / c), empty = c * r - n, ratio = w / c / (h / r);
+      const sc = empty * 3 + Math.abs(Math.log(ratio / 1.15));
+      if (sc < score) {
+        score = sc;
+        best = [c, r];
+      }
+    }
+    return best;
+  }
+  addEventListener("resize", () => {
+    if (S.view === "hall" && S.token) {
+      $("#main")._h = "";
+      renderMain();
+    }
+  });
   const payL = (x) => x.card ? "\u{1F4B3} \u043A\u0430\u0440\u0442\u0430" : "\u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u0430";
   function closedHTML() {
     const l = S.data.closed;

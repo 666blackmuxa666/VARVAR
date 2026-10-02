@@ -282,12 +282,24 @@
   function renderMain() {
     const v = S.view, m = $('#main');
     m.classList.toggle('hall', v === 'hall');
-    if (v === 'hall') { const cols = Math.ceil(Math.sqrt(S.n * 1.6)); m.style.setProperty('--cols', cols); m.style.setProperty('--rows', Math.ceil(S.n / cols)); }
+    if (v === 'hall') { const [c, r] = hallGrid(m); m.style.setProperty('--cols', c); m.style.setProperty('--rows', r); }
     const html = { hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML }[v]?.();
     const fid = document.activeElement?.id, keep = ['stopSearch', 'rQ'].includes(fid);
     setHTML(m, html || '');
     if (keep) { const el = $('#' + fid); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
   }
+  // сітка залу: столи рівномірно на всю робочу зону, без порожніх клітинок, плитки близькі до квадрата
+  function hallGrid(m) {
+    const w = m.clientWidth || innerWidth, h = Math.max(200, (m.clientHeight || innerHeight) - 90), n = S.n;
+    let best = [1, n], score = 1e9;
+    for (let c = 1; c <= n; c++) {
+      const r = Math.ceil(n / c), empty = c * r - n, ratio = (w / c) / (h / r);
+      const sc = empty * 3 + Math.abs(Math.log(ratio / 1.15));
+      if (sc < score) { score = sc; best = [c, r]; }
+    }
+    return best;
+  }
+  addEventListener('resize', () => { if (S.view === 'hall' && S.token) { $('#main')._h = ''; renderMain(); } });
   const payL = x => x.card ? '💳 карта' : '💵 готівка';
   function closedHTML() {
     const l = S.data.closed; if (!l) return '<div class="head"><h1>Закриті сьогодні</h1></div><div class="muted">Завантаження…</div>';
