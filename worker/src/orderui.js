@@ -1,6 +1,7 @@
 // Замовлення офіціанта кнопками: стіл → категорія → страва → (розмір) → кількість → знову категорії.
 // Чернетка одна на офіціанта: KV ob:<uid> {table, items:[{name,price,q}], com, mid, chat}; повідомлення редагується на місці.
 import { getMenu } from './menu.js';
+import { GROUPS, groupOf, getFav, toggleFav } from './ops.js';
 
 const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 const TTL = 3 * 3600;
@@ -22,9 +23,9 @@ export async function tablePick(env, openTables, tables) {
   return { text: '🪑 <b>Для якого столу?</b>\n<i>• — стіл уже має рахунок (буде дозамовлення)</i>', markup: { inline_keyboard: [...chunk(btns, 5), [b('✖ Скасувати', 'x')]] } };
 }
 
+// перший екран: ⭐ Обрані · 🍳 Кухня · 🍹 Бар · 💨 Кальян (як у касі)
 export async function catsView(env, ob) {
-  const menu = await getMenu(env);
-  const cats = menu.categories.map((c, i) => b(c.name.uk, 'c:' + i));
+  const cats = [b('⭐ Обрані', 'f'), ...GROUPS.map(g => b(g.name, 'g:' + g.id))];
   const n = ob.items.reduce((s, i) => s + i.q, 0);
   const foot = ob.items.length
     ? [[b(`✅ Відправити · ${sum(ob)} грн`, 'send')], [b(`✏️ Кошик (${n})`, 'cart'), b(ob.com ? '💬 Змінити коментар' : '💬 Коментар', 'com')], [b('🪑 Інший стіл', 'tp'), b('✖ Скасувати', 'x')]]
@@ -32,11 +33,21 @@ export async function catsView(env, ob) {
   return { text: head(ob), markup: { inline_keyboard: [...chunk(cats, 2), ...foot] } };
 }
 
+async function groupView(env, ob, g) {
+  const menu = await getMenu(env), list = menu.categories.map((c, i) => ({ c, i })).filter(x => groupOf(x.c.id) === g);
+  if (list.length === 1) return itemsView(env, ob, list[0].i);
+  return { text: head(ob) + `\n\n${esc((GROUPS.find(x => x.id === g) || {}).name || '')}`, markup: { inline_keyboard: [...chunk(list.map(x => b(x.c.name.uk, 'c:' + x.i)), 2), [b('⬅️ Назад', 'back')]] } };
+}
+async function favView(env, ob) {
+  const menu = await getMenu(env), fav = await getFav(env), btns = [];
+  menu.categories.forEach((c, ci) => c.items.forEach((it, ii) => { if (fav.includes(it.id)) btns.push(it.hidden ? b(`⛔ ${it.name.uk}`, 'h') : b(`${it.name.uk} · ${it.variants ? it.variants[0].p + '+' : it.price}`, `i:${ci}:${ii}`)); }));
+  return { text: head(ob) + '\n\n⭐ <b>Обрані</b>' + (btns.length ? '' : '\n<i>Поки порожньо. Відкрийте страву і натисніть «⭐ В обрані».</i>'), markup: { inline_keyboard: [...chunk(btns, 2), [b('⬅️ Назад', 'back')]] } };
+}
 async function itemsView(env, ob, c) {
   const cat = (await getMenu(env)).categories[c]; if (!cat) return catsView(env, ob);
   const btns = cat.items.map((it, i) => it.hidden ? b(`⛔ ${it.name.uk}`, 'h')
     : b(`${it.name.uk} · ${it.variants ? it.variants[0].p + '+' : it.price}`, `i:${c}:${i}`));
-  return { text: head(ob) + `\n\n📂 <b>${esc(cat.name.uk)}</b>`, markup: { inline_keyboard: [...chunk(btns, 2), [b('⬅️ Категорії', 'back')]] } };
+  return { text: head(ob) + `\n\n📂 <b>${esc(cat.name.uk)}</b>`, markup: { inline_keyboard: [...chunk(btns, 2), [b('⬅️ Назад', 'g:' + groupOf(cat.id))]] } };
 }
 
 async function qtyView(env, ob, c, i, v) {
@@ -45,9 +56,9 @@ async function qtyView(env, ob, c, i, v) {
     return { text: head(ob) + `\n\n🥤 <b>${esc(it.name.uk)}</b> — який розмір?`, markup: { inline_keyboard: [...chunk(it.variants.map((x, k) => b(`${x.v} ${it.size || ''} · ${x.p}`, `i:${c}:${i}:${k}`)), 3), [b('⬅️ Назад', 'c:' + c)]] } };
   const vv = it.variants?.[v], price = vv ? vv.p : it.price;
   const name = it.name.uk + (vv ? ` ${vv.v} ${it.size || ''}`.trimEnd() : '');
-  const tail = v === undefined ? '' : ':' + v;
+  const tail = v === undefined ? '' : ':' + v, isFav = (await getFav(env)).includes(it.id);
   return { text: head(ob) + `\n\n🍽 <b>${esc(name)}</b> · ${price} грн — скільки?`,
-    markup: { inline_keyboard: [[1, 2, 3].map(n => b(String(n), `q:${c}:${i}:${n}${tail}`)), [4, 5, 6].map(n => b(String(n), `q:${c}:${i}:${n}${tail}`)), [b('⬅️ Назад', 'c:' + c)]] } };
+    markup: { inline_keyboard: [[1, 2, 3].map(n => b(String(n), `q:${c}:${i}:${n}${tail}`)), [4, 5, 6].map(n => b(String(n), `q:${c}:${i}:${n}${tail}`)), [b('⬅️ Назад', 'c:' + c), b(isFav ? '☆ Прибрати з обраних' : '⭐ В обрані', `fv:${c}:${i}${tail}`)]] } };
 }
 
 function cartView(ob) {
@@ -66,6 +77,13 @@ export async function obCallback(env, uid, p) {
   if (a === 'x') { await env.DB.delete('ob:' + uid); return { cancel: true }; }
   if (a === 'tp') return { tablePick: true };
   if (a === 'back') return { view: await catsView(env, ob) };
+  if (a === 'f') return { view: await favView(env, ob) };
+  if (a === 'g') return { view: await groupView(env, ob, x) };
+  if (a === 'fv') {
+    const it = (await getMenu(env)).categories[+x]?.items[+y]; if (!it) return { view: await catsView(env, ob) };
+    const on = !(await getFav(env)).includes(it.id); await toggleFav(env, it.id, on);
+    return { view: await qtyView(env, ob, +x, +y, z === undefined ? undefined : +z), toast: on ? '⭐ Додано в обрані' : 'Прибрано з обраних' };
+  }
   if (a === 'c') return { view: await itemsView(env, ob, +x) };
   if (a === 'i') return { view: await qtyView(env, ob, +x, +y, z === undefined ? undefined : +z) };
   if (a === 'q') {

@@ -44,7 +44,7 @@ export function kitchenTicket({ table, kind, lines, comment, by }) {
     ['c', `${kind}  ·  ${hhmm()}`],
     ['dbl'],
     ...lines.map(l => { const m = l.match(/^(\d+)× (.+?) — \d+$/); return ['k', m ? `${m[1]} × ${m[2]}` : l]; }),
-    ...(comment ? [['dbl'], ['inv', `!! ${comment}`]] : []),
+    ...(comment ? [['dbl'], ['b', `>> ${comment}`]] : []), // звичайний шрифт, довгий коментар переноситься
     ['dbl'], ['gap'],
   ];
 }
@@ -86,7 +86,7 @@ export async function receipt(env, { table, bill, final, pay, by }) {
 }
 async function nextReceiptNo(env) {
   const k = 'rcpt:' + dayKey(); const n = +(await env.DB.get(k) || 0) + 1;
-  await env.DB.put(k, String(n), { expirationTtl: 400 * 86400 });
+  await env.DB.put(k, String(n));
   return `${dayKey().slice(2).replace(/-/g, '')}-${String(n).padStart(3, '0')}`;
 }
 

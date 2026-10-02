@@ -1,4 +1,6 @@
 var __defProp = Object.defineProperty;
+var __defProps = Object.defineProperties;
+var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
 var __getOwnPropSymbols = Object.getOwnPropertySymbols;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __propIsEnum = Object.prototype.propertyIsEnumerable;
@@ -14,11 +16,12 @@ var __spreadValues = (a, b) => {
     }
   return a;
 };
+var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
 (() => {
   const API = new URLSearchParams(location.search).get("api") || (/workers\.dev$/.test(location.hostname) ? location.origin : "https://varvar-menu.varvar.workers.dev");
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s != null ? s : "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-  const money = (n) => "".concat(Math.round(n || 0).toLocaleString("uk-UA"), " \u20B4");
+  const money = (n) => `${Math.round(n || 0).toLocaleString("uk-UA")} \u20B4`;
   const store = { get(k, d) {
     try {
       const v = localStorage.getItem("pos_" + k);
@@ -45,8 +48,15 @@ var __spreadValues = (a, b) => {
     open: 0,
     carts: store.get("carts", {}),
     coms: {},
-    cat: 0,
+    grp: store.get("grp", ""),
+    cat: "",
     q: "",
+    fav: [],
+    groups: [],
+    photos: store.get("photos", true),
+    shift: null,
+    shown: /* @__PURE__ */ new Set(),
+    rep: { p: "d", pay: "", by: "", grp: "", cat: "", t: "", q: "", tab: "dishes", sort: "s" },
     mobileMenu: false,
     data: {},
     seen: /* @__PURE__ */ new Set(),
@@ -56,6 +66,12 @@ var __spreadValues = (a, b) => {
   const isAdmin = () => {
     var _a;
     return ((_a = S.me) == null ? void 0 : _a.role) === "admin";
+  };
+  const setHTML = (el, html) => {
+    if (el && el._h !== html) {
+      el._h = html;
+      el.innerHTML = html;
+    }
   };
   async function api(op, data = {}) {
     const r = await withTimeout(fetch(API + "/api/pos", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + S.token }, body: JSON.stringify(__spreadValues({ op }, data)) }), 12e3);
@@ -90,12 +106,12 @@ var __spreadValues = (a, b) => {
     $("#lErr").textContent = msg;
     pin = "";
     dots();
-    $("#keypad").innerHTML = [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => '<button data-k="'.concat(n, '">').concat(n, "</button>")).join("") + '<button class="fn" data-k="c">\u0421\u0442\u0435\u0440\u0442\u0438</button><button data-k="0">0</button><button class="fn" data-k="b">\u232B</button>';
+    $("#keypad").innerHTML = [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button data-k="${n}">${n}</button>`).join("") + '<button class="fn" data-k="c">\u0421\u0442\u0435\u0440\u0442\u0438</button><button data-k="0">0</button><button class="fn" data-k="b">\u232B</button>';
   }
   const dots = () => {
     const d = $("#dots");
     const len = Math.max(4, pin.length);
-    d.innerHTML = Array.from({ length: len }, (_, i) => '<i class="'.concat(i < pin.length ? "on" : "", '"></i>')).join("");
+    d.innerHTML = Array.from({ length: len }, (_, i) => `<i class="${i < pin.length ? "on" : ""}"></i>`).join("");
   };
   async function tryLogin(body) {
     $("#lErr").style.color = "var(--muted)";
@@ -172,6 +188,7 @@ var __spreadValues = (a, b) => {
     S.me = __spreadValues(__spreadValues({}, S.me), r.me);
     S.n = r.n;
     S.printer = r.printer;
+    S.shift = r.shift;
     S.tables = Object.fromEntries(r.tables.map((b) => [b.t, b]));
     const fresh = r.events.filter((e) => !S.seen.has(e.id));
     if (S.ready && fresh.some((e) => e.k === "guest" || e.k === "check")) ding();
@@ -181,9 +198,12 @@ var __spreadValues = (a, b) => {
     render();
   }
   async function loadMenu() {
-    S.menu = (await api("menu")).menu;
+    const r = await api("menu");
+    S.menu = r.menu;
+    S.fav = r.fav || [];
+    S.groups = r.groups || [];
     if (S.open) renderSheet();
-    if (["stop", "menu"].includes(S.view)) renderMain();
+    if (["stop", "menu", "reports"].includes(S.view)) renderMain();
   }
   let ws, wsTimer, pingT, reloadT;
   function connect() {
@@ -213,9 +233,9 @@ var __spreadValues = (a, b) => {
       reloadT = setTimeout(() => {
         loadState().catch(() => {
         });
-        if (m.keys.includes("menu")) loadMenu().catch(() => {
+        if (m.keys.includes("menu") || m.keys.includes("fav")) loadMenu().catch(() => {
         });
-        if (["closed", "reports", "settings"].includes(S.view) && m.keys.some((k) => ["closed", "day", "exp", "staff"].includes(k))) loadView();
+        if (["closed", "reports", "settings", "cash"].includes(S.view) && m.keys.some((k) => ["closed", "day", "exp", "staff", "shift", "z"].includes(k))) loadView(true);
       }, 120);
     };
     ws.onclose = () => {
@@ -257,11 +277,11 @@ var __spreadValues = (a, b) => {
     } catch (e) {
     }
   }
-  const NAV = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["closed", "\u{1F4DC}", "\u0417\u0430\u043A\u0440\u0438\u0442\u0456"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["printer", "\u{1F5A8}", "\u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438", 1], ["menu", "\u{1F4D6}", "\u041C\u0435\u043D\u044E", 1], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442.", 1]];
+  const NAV = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["closed", "\u{1F4DC}", "\u0417\u0430\u043A\u0440\u0438\u0442\u0456"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["printer", "\u{1F5A8}", "\u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["cash", "\u{1F4B0}", "\u041A\u0430\u0441\u0430", 1], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438", 1], ["menu", "\u{1F4D6}", "\u041C\u0435\u043D\u044E", 1], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442.", 1]];
   function renderNav() {
     var _a;
     const newCnt = S.events.filter((e) => e.k === "guest" && e.s !== "acc").length;
-    $("#nav").innerHTML = '<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>' + NAV.filter((n) => !n[3] || isAdmin()).map(([v, ic, l]) => '<button class="'.concat(S.view === v ? "on" : "", '" data-a="view" data-v="').concat(v, '"><span class="ic">').concat(ic, "</span>").concat(l, "</button>")).join("") + '<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430'.concat(newCnt ? '<span class="badge">'.concat(newCnt, "</span>") : "", "</button>") + '<div class="grow"></div><div class="me">'.concat(esc((_a = S.me) == null ? void 0 : _a.name), "<br>").concat(isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442", "</div>") + '<button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>';
+    setHTML($("#nav"), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` + NAV.filter((n) => !n[3] || isAdmin()).map(([v, ic, l]) => `<button class="${S.view === v ? "on" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : ""}</button><div class="grow"></div><div class="me">${esc((_a = S.me) == null ? void 0 : _a.name)}<br>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"}</div><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
   }
   function render() {
     renderNav();
@@ -274,32 +294,37 @@ var __spreadValues = (a, b) => {
     const pending = new Set(S.events.filter((e) => e.k === "guest" && e.s !== "acc").map((e) => e.t));
     const tiles = Array.from({ length: S.n }, (_, i) => i + 1).map((t) => {
       const b = S.tables[t];
-      if (!b) return '<button class="tbl" data-a="table" data-t="'.concat(t, '"><div class="n">').concat(t, '</div><div class="st">\u0432\u0456\u043B\u044C\u043D\u0438\u0439</div></button>');
+      if (!b) return `<button class="tbl" data-a="table" data-t="${t}"><div class="n">${t}</div><div class="st">\u0432\u0456\u043B\u044C\u043D\u0438\u0439</div></button>`;
       const cls = ["busy", b.check ? "check" : "", pending.has(t) ? "new" : ""].join(" ");
-      const tag = b.check ? '<span class="tag c">\u{1F9FE} \u0447\u0435\u043A'.concat(b.pay ? b.pay === "card" ? " \u{1F4B3}" : " \u{1F4B5}" : "", "</span>") : pending.has(t) ? '<span class="tag g">\u043D\u043E\u0432\u0435</span>' : "";
-      return '<button class="tbl '.concat(cls, '" data-a="table" data-t="').concat(t, '">').concat(tag, '<div class="n">').concat(t, '</div><div class="st">').concat(b.orders, " \u0437\u0430\u043C\u043E\u0432\u043B.").concat(b.disc ? " \xB7 \u2212".concat(b.disc, "%") : "", '</div><div class="sum money">').concat(money(b.pay2), '</div><div class="tm">\u0437 ').concat(b.opened ? hhmm(b.opened) : "\u2014", "</div></button>");
+      const tag = b.check ? `<span class="tag c">\u{1F9FE} \u0447\u0435\u043A${b.pay ? b.pay === "card" ? " \u{1F4B3}" : " \u{1F4B5}" : ""}</span>` : pending.has(t) ? '<span class="tag g">\u043D\u043E\u0432\u0435</span>' : "";
+      return `<button class="tbl ${cls}" data-a="table" data-t="${t}">${tag}<div class="n">${t}</div><div class="st">${b.orders} \u0437\u0430\u043C\u043E\u0432\u043B.${b.disc ? ` \xB7 \u2212${b.disc}%` : ""}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">\u0437 ${b.opened ? hhmm(b.opened) : "\u2014"}</div></button>`;
     }).join("");
-    return '<div class="head"><h1>\u0417\u0430\u043B</h1><div class="stat">\u0412\u0456\u0434\u043A\u0440\u0438\u0442\u043E<b>'.concat(list.length, '</b></div><div class="stat">\u0423 \u0437\u0430\u043B\u0456<b class="money">').concat(money(sum), '</b></div>\n      <button class="btn primary" data-a="newOrder">\u2795 \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F</button></div><div class="tables">').concat(tiles, "</div>");
+    const banner = S.shift ? "" : `<div class="banner"><span>\u{1F512} <b>\u041A\u0430\u0441\u0430 \u0437\u0430\u043A\u0440\u0438\u0442\u0430</b> \u2014 \u0432\u0456\u0434\u043A\u0440\u0438\u0439\u0442\u0435 \u0437\u043C\u0456\u043D\u0443 \u043D\u0430 \u043F\u043E\u0447\u0430\u0442\u043A\u0443 \u0434\u043D\u044F</span>${isAdmin() ? '<button class="btn sm primary" data-a="shOpen">\u{1F513} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u043A\u0430\u0441\u0443</button>' : ""}</div>`;
+    return `${banner}<div class="head"><h1>\u0417\u0430\u043B</h1><div class="stat">\u0412\u0456\u0434\u043A\u0440\u0438\u0442\u043E<b>${list.length}</b></div><div class="stat">\u0423 \u0437\u0430\u043B\u0456<b class="money">${money(sum)}</b></div>
+      <button class="btn primary" data-a="newOrder">\u2795 \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F</button></div><div class="tables">${tiles}</div>`;
   }
   const evTitle = (e) => ({
-    guest: "\u{1F6CE} \u0421\u0442\u0456\u043B ".concat(e.t, " \u2014 ").concat(esc((e.kind || "\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F").toLowerCase())),
-    check: "\u{1F9FE} \u0421\u0442\u0456\u043B ".concat(e.t, " \u043F\u0440\u043E\u0441\u0438\u0442\u044C \u0447\u0435\u043A").concat(e.pay ? e.pay === "card" ? " \xB7 \u{1F4B3} \u043A\u0430\u0440\u0442\u0430" : " \xB7 \u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u0430" : ""),
-    waiter: "\u{1F9D1}\u200D\u{1F373} \u0421\u0442\u0456\u043B ".concat(e.t, " \u2014 ").concat(esc(e.by)).concat(e.src === "\u043A\u0430\u0441\u0430" ? " (\u043A\u0430\u0441\u0430)" : ""),
-    close: "\u2705 \u0421\u0442\u0456\u043B ".concat(e.t, " \u0437\u0430\u043A\u0440\u0438\u0442\u043E \u2014 ").concat(money(e.sum), " ").concat(e.pay === "card" ? "\u{1F4B3}" : "\u{1F4B5}").concat(e.print === false ? " \xB7 \u0431\u0435\u0437 \u0447\u0435\u043A\u0430" : ""),
-    del: "\u{1F5D1} \u0421\u0442\u0456\u043B ".concat(e.t, " \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E (").concat(money(e.sum), ")"),
-    move: "\u2194\uFE0F ".concat(esc(e.text)),
-    disc: "% \u0421\u0442\u0456\u043B ".concat(e.t, ": ").concat(esc(e.text)),
-    rm: "\u270F\uFE0F \u0421\u0442\u0456\u043B ".concat(e.t, ": ").concat(esc(e.text)),
-    pre: "\u{1F5A8} \u041F\u0440\u0435\u0447\u0435\u043A \u0441\u0442\u0456\u043B ".concat(e.t)
+    guest: `\u{1F6CE} \u0421\u0442\u0456\u043B ${e.t} \u2014 ${esc((e.kind || "\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F").toLowerCase())}`,
+    check: `\u{1F9FE} \u0421\u0442\u0456\u043B ${e.t} \u043F\u0440\u043E\u0441\u0438\u0442\u044C \u0447\u0435\u043A${e.pay ? e.pay === "card" ? " \xB7 \u{1F4B3} \u043A\u0430\u0440\u0442\u0430" : " \xB7 \u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u0430" : ""}`,
+    waiter: `\u{1F9D1}\u200D\u{1F373} \u0421\u0442\u0456\u043B ${e.t} \u2014 ${esc(e.by)}${e.src === "\u043A\u0430\u0441\u0430" ? " (\u043A\u0430\u0441\u0430)" : ""}`,
+    close: `\u2705 \u0421\u0442\u0456\u043B ${e.t} \u0437\u0430\u043A\u0440\u0438\u0442\u043E \u2014 ${money(e.sum)} ${e.pay === "card" ? "\u{1F4B3}" : "\u{1F4B5}"}${e.print === false ? " \xB7 \u0431\u0435\u0437 \u0447\u0435\u043A\u0430" : ""}`,
+    shift: esc(e.text),
+    del: `\u{1F5D1} \u0421\u0442\u0456\u043B ${e.t} \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E (${money(e.sum)})`,
+    move: `\u2194\uFE0F ${esc(e.text)}`,
+    disc: `% \u0421\u0442\u0456\u043B ${e.t}: ${esc(e.text)}`,
+    rm: `\u270F\uFE0F \u0421\u0442\u0456\u043B ${e.t}: ${esc(e.text)}`,
+    pre: `\u{1F5A8} \u041F\u0440\u0435\u0447\u0435\u043A \u0441\u0442\u0456\u043B ${e.t}`
   })[e.k] || esc(e.text || e.k);
   function renderFeed() {
-    $("#events").innerHTML = S.events.length ? [...S.events].reverse().map((e) => {
+    setHTML($("#events"), S.events.length ? [...S.events].reverse().map((e) => {
       var _a;
-      const lines = ((_a = e.lines) == null ? void 0 : _a.length) ? '<div class="lines">'.concat(e.lines.map(esc).join("\n"), "</div>") : "";
-      const by = e.by && !["waiter"].includes(e.k) ? " \xB7 ".concat(esc(e.by)) : "";
-      const btns = e.k === "guest" || e.k === "check" ? '<div class="act">'.concat(e.s === "acc" ? '<span class="muted">\u2705 '.concat(esc(e.accBy || "\u043F\u0440\u0438\u0439\u043D\u044F\u0442\u043E"), "</span>") : '<button class="btn sm green" data-a="accept" data-oid="'.concat(e.oid, '">\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432</button>'), '<button class="btn sm" data-a="table" data-t="').concat(e.t, '">\u0421\u0442\u0456\u043B ').concat(e.t, "</button></div>") : "";
-      return '<div class="ev '.concat(e.k).concat(e.s === "acc" ? " acc" : "", '"><div class="top"><b>').concat(evTitle(e), '</b><span class="tm">').concat(e.at).concat(by, "</span></div>").concat(lines).concat(e.comment ? '<div class="com">\u{1F4AC} '.concat(esc(e.comment), "</div>") : "").concat(e.sum && ["guest", "waiter"].includes(e.k) ? '<div class="muted">\u0421\u0443\u043C\u0430 '.concat(money(e.sum), "</div>") : "").concat(btns, "</div>");
-    }).join("") : '<div class="muted" style="padding:12px">\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u043F\u043E\u0434\u0456\u0439 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454</div>';
+      const lines = ((_a = e.lines) == null ? void 0 : _a.length) ? `<div class="lines">${e.lines.map(esc).join("\n")}</div>` : "";
+      const by = e.by && !["waiter"].includes(e.k) ? ` \xB7 ${esc(e.by)}` : "";
+      const btns = e.k === "guest" || e.k === "check" ? `<div class="act">${e.s === "acc" ? `<span class="muted">\u2705 ${esc(e.accBy || "\u043F\u0440\u0438\u0439\u043D\u044F\u0442\u043E")}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432</button>`}<button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${e.t}</button></div>` : "";
+      const fresh = S.shown.size && !S.shown.has(e.id) ? " fresh" : "";
+      return `<div class="ev ${e.k}${e.s === "acc" ? " acc" : ""}${fresh}"><div class="top"><b>${evTitle(e)}</b><span class="tm">${e.at}${by}</span></div>${lines}${e.comment ? `<div class="com">\u{1F4AC} ${esc(e.comment)}</div>` : ""}${e.sum && ["guest", "waiter"].includes(e.k) ? `<div class="muted">\u0421\u0443\u043C\u0430 ${money(e.sum)}</div>` : ""}${btns}</div>`;
+    }).join("") : '<div class="muted" style="padding:12px">\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u043F\u043E\u0434\u0456\u0439 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454</div>');
+    S.events.forEach((e) => S.shown.add(e.id));
   }
   const cartOf = (t) => {
     var _a;
@@ -312,48 +337,85 @@ var __spreadValues = (a, b) => {
     S.mobileMenu = !S.tables[t];
     S.q = "";
     if (!S.menu) loadMenu();
+    $("#layer").innerHTML = `<div class="sheet-bg" data-a="closeSheet"></div><div class="sheet"><div class="sheet-head" id="shHead"></div>
+      <div class="sheet-body" id="shBody"><div class="bill" id="shBill"></div><div class="menu-pane"><div id="shNav"></div><div class="items" id="shItems"></div></div></div></div>`;
     renderSheet();
   }
   function closeSheet() {
     S.open = 0;
     $("#layer").innerHTML = "";
   }
+  const grpList = () => [{ id: "fav", name: "\u2B50 \u041E\u0431\u0440\u0430\u043D\u0456" }, ...S.groups];
+  const curGrp = () => S.grp || (S.fav.length ? "fav" : "kitchen");
+  const grpCats = (g) => {
+    const gg = S.groups.find((x) => x.id === g);
+    return gg ? S.menu.categories.filter((c) => gg.cats.includes(c.id)) : [];
+  };
+  function menuItems() {
+    const q = S.q.trim().toLowerCase();
+    if (q) return itemsAll().filter((i) => i.name.uk.toLowerCase().includes(q) || (i.name.en || "").toLowerCase().includes(q));
+    const g = curGrp();
+    if (g === "fav") return S.fav.map((id) => itemsAll().find((i) => i.id === id)).filter(Boolean);
+    const cats = grpCats(g), c = cats.find((x) => x.id === S.cat) || cats[0];
+    return c ? c.items : [];
+  }
   function renderSheet() {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c;
     const t = S.open;
-    if (!t) return;
+    if (!t || !$("#shHead")) return;
     const b = S.tables[t], cart = cartOf(t), cartRows = Object.entries(cart);
     const cartSum = cartRows.reduce((s, [, x]) => s + x.price * x.q, 0);
-    const billRows = b ? b.items.map((it) => '<div class="row"><div class="nm">'.concat(esc(it.name), "<small>").concat(it.q, " \xD7 ").concat(Math.round(it.sum / it.q), ' \u20B4</small></div><b class="money">').concat(it.sum, '</b><button class="rb minus" data-a="rm" data-name="').concat(esc(it.name), '" title="\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 1">\u2212</button></div>')).join("") : '<div class="muted" style="padding:8px 4px">\u0420\u0430\u0445\u0443\u043D\u043E\u043A \u043F\u043E\u0440\u043E\u0436\u043D\u0456\u0439 \u2014 \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u0441\u0442\u0440\u0430\u0432\u0438 \u0432 \u043C\u0435\u043D\u044E</div>';
-    const discRow = (b == null ? void 0 : b.disc) ? '<div class="row"><div class="nm">\u0417\u043D\u0438\u0436\u043A\u0430 '.concat(b.disc, '%</div><b class="money" style="color:var(--green)">\u2212').concat(b.total - b.pay2, '</b><button class="rb minus" data-a="discSet" data-p="0">\xD7</button></div>') : "";
-    const comments = b ? b.log.filter((o) => o.comment).map((o) => '<div class="muted" style="padding:2px 6px">\u{1F4AC} '.concat(esc(o.comment), "</div>")).join("") : "";
-    const cartHTML = cartRows.length ? '<div class="cart"><h3>\u041D\u043E\u0432\u0435 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F</h3><div class="rows">'.concat(cartRows.map(([k, x]) => '<div class="row"><div class="nm">'.concat(esc(x.name), "<small>").concat(x.price, ' \u20B4</small></div><button class="rb minus" data-a="cq" data-k="').concat(esc(k), '" data-d="-1">\u2212</button><span class="q">').concat(x.q, '</span><button class="rb plus" data-a="cq" data-k="').concat(esc(k), '" data-d="1">+</button></div>')).join(""), '</div>\n      <input id="cartCom" placeholder="\u{1F4AC} \u041A\u043E\u043C\u0435\u043D\u0442\u0430\u0440 \u0434\u043B\u044F \u043A\u0443\u0445\u043D\u0456 (\u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)" value="').concat(esc(S.coms[t] || ""), '" style="margin:6px 0 10px">\n      <div style="display:grid;grid-template-columns:auto 1fr;gap:8px"><button class="btn red" data-a="cartClear">\u2715</button><button class="btn primary" data-a="send">\u0412\u0456\u0434\u043F\u0440\u0430\u0432\u0438\u0442\u0438 \u043D\u0430 \u043A\u0443\u0445\u043D\u044E \xB7 ').concat(money(cartSum), "</button></div></div>") : "";
-    const actions = b ? '<div class="actions"><button class="btn" data-a="pre">\u{1F5A8} \u041F\u0440\u0435\u0447\u0435\u043A</button><button class="btn" data-a="disc">% \u0417\u043D\u0438\u0436\u043A\u0430</button>\n      <button class="btn" data-a="move">\u2194\uFE0F \u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0442\u0438</button>'.concat(isAdmin() ? '<button class="btn red" data-a="delTable">\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438</button>' : '<button class="btn" data-a="mobileMenu">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438</button>', '\n      <button class="btn green wide" data-a="closeT">\u{1F4B0} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0440\u0430\u0445\u0443\u043D\u043E\u043A \xB7 ').concat(money(b.pay2), "</button></div>") : "";
-    let menuHTML2 = '<div class="muted" style="padding:20px">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F \u043C\u0435\u043D\u044E\u2026</div>';
-    if (S.menu) {
-      const cats = S.menu.categories;
-      const q = S.q.trim().toLowerCase();
-      const items = q ? itemsAll().filter((i) => i.name.uk.toLowerCase().includes(q) || (i.name.en || "").toLowerCase().includes(q)) : ((_a = cats[S.cat]) == null ? void 0 : _a.items) || [];
-      const inCart = (id) => cartRows.filter(([k]) => k.split("|")[0] === id).reduce((s, [, x]) => s + x.q, 0);
-      menuHTML2 = '<div class="cats">'.concat(cats.map((c, i) => '<button class="chip '.concat(!q && i === S.cat ? "on" : "", '" data-a="cat" data-i="').concat(i, '">').concat(esc(c.name.uk), "</button>")).join(""), '</div>\n        <input class="search" id="search" placeholder="\u{1F50E} \u041F\u043E\u0448\u0443\u043A \u0441\u0442\u0440\u0430\u0432\u0438" value="').concat(esc(S.q), '">\n        <div class="items">').concat(items.map((it) => {
-        const n = inCart(it.id);
-        return '<button class="item '.concat(it.hidden ? "off" : "", '" data-a="add" data-id="').concat(it.id, '">').concat(n ? '<span class="cnt">'.concat(n, "</span>") : "").concat(it.img ? '<img loading="lazy" src="'.concat(esc(it.img), '" alt="">') : "", '<span class="nm">').concat(esc(it.name.uk), "</span>").concat(it.size && !it.variants ? '<span class="muted" style="font-size:12px">'.concat(esc(it.size), "</span>") : "", '<span class="pr">').concat(it.hidden ? "\u26D4 \u043D\u0435\u043C\u0430\u0454" : it.variants ? it.variants.map((v) => v.p).join(" / ") + " \u20B4" : it.price + " \u20B4", "</span></button>");
-      }).join("") || '<div class="muted">\u041D\u0456\u0447\u043E\u0433\u043E \u043D\u0435 \u0437\u043D\u0430\u0439\u0434\u0435\u043D\u043E</div>', "</div>");
-    }
-    const keepScroll = (_b = $(".items")) == null ? void 0 : _b.scrollTop, keepBill = (_c = $(".bill .scroll")) == null ? void 0 : _c.scrollTop, focusSearch = ((_d = document.activeElement) == null ? void 0 : _d.id) === "search", focusCom = ((_e = document.activeElement) == null ? void 0 : _e.id) === "cartCom";
-    $("#layer").innerHTML = '<div class="sheet-bg" data-a="closeSheet"></div><div class="sheet">\n      <div class="sheet-head"><h2>\u0421\u0442\u0456\u043B '.concat(t, "</h2>").concat(b ? '<span class="total money">'.concat(money(b.pay2), "</span>").concat(b.disc ? '<span class="chip">\u2212'.concat(b.disc, "%</span>") : "", '<span class="muted">\u0437 ').concat(b.opened ? hhmm(b.opened) : "\u2014", " \xB7 ").concat(b.orders, " \u0437\u0430\u043C\u043E\u0432\u043B.</span>").concat(b.check ? '<span class="chip" style="background:var(--orange);color:#000">\u{1F9FE} \u043F\u0440\u043E\u0441\u044F\u0442\u044C \u0447\u0435\u043A</span>' : "") : '<span class="muted">\u043D\u043E\u0432\u0438\u0439 \u0440\u0430\u0445\u0443\u043D\u043E\u043A</span>', '\n        <span class="sp"></span><div class="tabs2"><button class="').concat(S.mobileMenu ? "" : "on", '" data-a="tab" data-m="0">\u0420\u0430\u0445\u0443\u043D\u043E\u043A').concat(cartRows.length ? " (".concat(cartRows.length, ")") : "", '</button><button class="').concat(S.mobileMenu ? "on" : "", '" data-a="tab" data-m="1">\u041C\u0435\u043D\u044E</button></div>\n        <button class="close-x" data-a="closeSheet">\u2715</button></div>\n      <div class="sheet-body ').concat(S.mobileMenu ? "show-menu" : "", '">\n        <div class="bill"><div class="scroll"><h3>\u0420\u0430\u0445\u0443\u043D\u043E\u043A</h3>').concat(billRows).concat(discRow).concat(comments, "</div>").concat(cartHTML).concat(actions, '</div>\n        <div class="menu-pane">').concat(menuHTML2, "</div></div></div>");
-    if (keepScroll) $(".items") && ($(".items").scrollTop = keepScroll);
-    if (keepBill) $(".bill .scroll").scrollTop = keepBill;
-    if (focusSearch) {
-      const s = $("#search");
-      s.focus();
-      s.setSelectionRange(s.value.length, s.value.length);
-    }
+    setHTML($("#shHead"), `<h2>\u0421\u0442\u0456\u043B ${t}</h2>${b ? `<span class="total money">${money(b.pay2)}</span>${b.disc ? `<span class="chip">\u2212${b.disc}%</span>` : ""}<span class="muted hide-s">\u0437 ${b.opened ? hhmm(b.opened) : "\u2014"} \xB7 ${b.orders} \u0437\u0430\u043C\u043E\u0432\u043B.</span>${b.check ? '<span class="chip" style="background:var(--orange);color:#000">\u{1F9FE} \u0447\u0435\u043A</span>' : ""}` : '<span class="muted">\u043D\u043E\u0432\u0438\u0439</span>'}
+        <span class="sp"></span><div class="tabs2"><button class="${S.mobileMenu ? "" : "on"}" data-a="tab" data-m="0">\u0420\u0430\u0445\u0443\u043D\u043E\u043A${cartRows.length ? ` (${cartRows.reduce((s, [, x]) => s + x.q, 0)})` : ""}</button><button class="${S.mobileMenu ? "on" : ""}" data-a="tab" data-m="1">\u041C\u0435\u043D\u044E</button></div>
+        <button class="close-x" data-a="closeSheet">\u2715</button>`);
+    $("#shBody").className = "sheet-body" + (S.mobileMenu ? " show-menu" : "");
+    const billRows = b ? b.items.map((it) => `<div class="row"><div class="nm">${esc(it.name)}<small>${it.q} \xD7 ${Math.round(it.sum / it.q)} \u20B4</small></div><b class="money">${it.sum}</b><button class="rb minus" data-a="rm" data-name="${esc(it.name)}" title="\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 1">\u2212</button></div>`).join("") : '<div class="muted" style="padding:8px 4px">\u0420\u0430\u0445\u0443\u043D\u043E\u043A \u043F\u043E\u0440\u043E\u0436\u043D\u0456\u0439 \u2014 \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u0441\u0442\u0440\u0430\u0432\u0438 \u0432 \u043C\u0435\u043D\u044E</div>';
+    const discRow = (b == null ? void 0 : b.disc) ? `<div class="row"><div class="nm">\u0417\u043D\u0438\u0436\u043A\u0430 ${b.disc}%</div><b class="money" style="color:var(--green)">\u2212${b.total - b.pay2}</b><button class="rb minus" data-a="discSet" data-p="0">\xD7</button></div>` : "";
+    const comments = b ? b.log.filter((o) => o.comment).map((o) => `<div class="muted" style="padding:2px 6px">\u{1F4AC} ${esc(o.comment)}</div>`).join("") : "";
+    const cartHTML = cartRows.length ? `<div class="cart"><h3>\u041D\u043E\u0432\u0435 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F</h3><div class="rows">${cartRows.map(([k, x]) => `<div class="row"><div class="nm">${esc(x.name)}<small>${x.price} \u20B4</small></div><button class="rb minus" data-a="cq" data-k="${esc(k)}" data-d="-1">\u2212</button><span class="q">${x.q}</span><button class="rb plus" data-a="cq" data-k="${esc(k)}" data-d="1">+</button></div>`).join("")}</div>
+      <input id="cartCom" placeholder="\u{1F4AC} \u041A\u043E\u043C\u0435\u043D\u0442\u0430\u0440 \u0434\u043B\u044F \u043A\u0443\u0445\u043D\u0456 (\u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)" value="${esc(S.coms[t] || "")}" style="margin:6px 0 10px">
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:8px"><button class="btn red" data-a="cartClear">\u2715</button><button class="btn primary" data-a="send">\u0412\u0456\u0434\u043F\u0440\u0430\u0432\u0438\u0442\u0438 \xB7 ${money(cartSum)}</button></div></div>` : "";
+    const actions = b ? `<div class="actions"><button class="btn" data-a="pre">\u{1F5A8} \u041F\u0440\u0435\u0447\u0435\u043A</button><button class="btn" data-a="disc">% \u0417\u043D\u0438\u0436\u043A\u0430</button>
+      <button class="btn" data-a="move">\u2194\uFE0F \u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0442\u0438</button>${isAdmin() ? '<button class="btn red" data-a="delTable">\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438</button>' : '<button class="btn" data-a="mobileMenu">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438</button>'}
+      <button class="btn green wide" data-a="closeT">\u{1F4B0} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0440\u0430\u0445\u0443\u043D\u043E\u043A \xB7 ${money(b.pay2)}</button></div>` : "";
+    const keepBill = (_a = $("#shBill .scroll")) == null ? void 0 : _a.scrollTop, focusCom = ((_b = document.activeElement) == null ? void 0 : _b.id) === "cartCom";
+    setHTML($("#shBill"), `<div class="scroll"><h3>\u0420\u0430\u0445\u0443\u043D\u043E\u043A</h3>${billRows}${discRow}${comments}</div>${cartHTML}${actions}`);
+    if (keepBill) $("#shBill .scroll").scrollTop = keepBill;
     if (focusCom) {
       const s = $("#cartCom");
       s.focus();
       s.setSelectionRange(s.value.length, s.value.length);
     }
+    if (!S.menu) {
+      setHTML($("#shItems"), '<div class="muted" style="padding:20px">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F \u043C\u0435\u043D\u044E\u2026</div>');
+      return;
+    }
+    const g = curGrp(), q = S.q.trim(), cats = g === "fav" ? [] : grpCats(g), cur = (cats.find((x) => x.id === S.cat) || cats[0] || {}).id;
+    const focusSearch = ((_c = document.activeElement) == null ? void 0 : _c.id) === "search";
+    setHTML($("#shNav"), `<div class="seg">${grpList().map((x) => `<button class="${!q && x.id === g ? "on" : ""}" data-a="grp" data-g="${x.id}">${esc(x.name)}</button>`).join("")}</div>
+      ${cats.length > 1 && !q ? `<div class="cats">${cats.map((c) => `<button class="chip ${c.id === cur ? "on" : ""}" data-a="cat" data-c="${c.id}">${esc(c.name.uk)}</button>`).join("")}</div>` : ""}
+      <div class="srow"><input class="search" id="search" placeholder="\u{1F50E} \u041F\u043E\u0448\u0443\u043A \u0441\u0442\u0440\u0430\u0432\u0438" value="${esc(S.q)}"><button class="btn sm ghost" data-a="photos" title="\u0424\u043E\u0442\u043E">${S.photos ? "\u{1F5BC}" : "\u{1F4DD}"}</button></div>`);
+    if (focusSearch) {
+      const s = $("#search");
+      s.focus();
+      s.setSelectionRange(s.value.length, s.value.length);
+    }
+    const items = menuItems();
+    $("#shItems").classList.toggle("nophoto", !S.photos);
+    setHTML($("#shItems"), items.map((it) => `<div class="item ${it.hidden ? "off" : ""}" data-a="add" data-id="${it.id}" role="button"><span class="cnt" data-cnt="${it.id}" hidden></span>${S.photos && it.img ? `<img src="${esc(it.img)}" alt="" decoding="async">` : ""}<span class="nm">${esc(it.name.uk)}</span>${it.size && !it.variants ? `<span class="muted sz">${esc(it.size)}</span>` : ""}<span class="pr">${it.hidden ? "\u26D4 \u043D\u0435\u043C\u0430\u0454" : it.variants ? it.variants.map((v) => v.p).join(" / ") + " \u20B4" : it.price + " \u20B4"}</span><span class="star ${S.fav.includes(it.id) ? "on" : ""}" data-a="fav" data-id="${it.id}" title="\u041E\u0431\u0440\u0430\u043D\u0456">${S.fav.includes(it.id) ? "\u2605" : "\u2606"}</span></div>`).join("") || `<div class="muted" style="padding:10px">${g === "fav" && !q ? "\u041E\u0431\u0440\u0430\u043D\u0438\u0445 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454 \u2014 \u043D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \u2606 \u043D\u0430 \u0441\u0442\u0440\u0430\u0432\u0456, \u0449\u043E\u0431 \u0434\u043E\u0434\u0430\u0442\u0438" : "\u041D\u0456\u0447\u043E\u0433\u043E \u043D\u0435 \u0437\u043D\u0430\u0439\u0434\u0435\u043D\u043E"}</div>`);
+    paintCounts();
+  }
+  function paintCounts() {
+    const cart = cartOf(S.open), n = {};
+    Object.entries(cart).forEach(([k, x]) => {
+      const id = k.split("|")[0];
+      n[id] = (n[id] || 0) + x.q;
+    });
+    document.querySelectorAll("[data-cnt]").forEach((el) => {
+      const v = n[el.dataset.cnt] || 0;
+      el.hidden = !v;
+      el.textContent = v;
+    });
   }
   async function addItem(id) {
     var _a;
@@ -362,12 +424,12 @@ var __spreadValues = (a, b) => {
     if (it.hidden) return toast("\u26D4 " + it.name.uk + " \u2014 \u0443 \u0441\u0442\u043E\u043F-\u043B\u0438\u0441\u0442\u0456");
     let v = null;
     if (it.variants) {
-      v = await choose(it.name.uk, "\u041E\u0431\u0435\u0440\u0456\u0442\u044C \u0440\u043E\u0437\u043C\u0456\u0440", it.variants.map((x) => ({ label: "".concat(x.v, " ").concat(it.size || "", " \xB7 ").concat(x.p, " \u20B4"), val: x.v })));
+      v = await choose(it.name.uk, "\u041E\u0431\u0435\u0440\u0456\u0442\u044C \u0440\u043E\u0437\u043C\u0456\u0440", it.variants.map((x) => ({ label: `${x.v} ${it.size || ""} \xB7 ${x.p} \u20B4`, val: x.v })));
       if (v == null) return;
     }
     const vv = (_a = it.variants) == null ? void 0 : _a.find((x) => x.v === v);
     const key = it.id + (v ? "|" + v : ""), cart = cartOf(S.open);
-    cart[key] || (cart[key] = { id: it.id, v, name: it.name.uk + (vv ? " ".concat(vv.v, " ").concat(it.size || "").trimEnd() : ""), price: vv ? vv.p : it.price, q: 0 });
+    cart[key] || (cart[key] = { id: it.id, v, name: it.name.uk + (vv ? ` ${vv.v} ${it.size || ""}`.trimEnd() : ""), price: vv ? vv.p : it.price, q: 0 });
     cart[key].q++;
     saveCarts();
     renderSheet();
@@ -383,7 +445,7 @@ var __spreadValues = (a, b) => {
       S.coms[t] = "";
       saveCarts();
       S.mobileMenu = false;
-      toast("\u{1F5A8} \u0421\u0442\u0456\u043B ".concat(t, ": \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u043E \u043D\u0430 \u043A\u0443\u0445\u043D\u044E"));
+      toast(`\u{1F5A8} \u0421\u0442\u0456\u043B ${t}: \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u043E \u043D\u0430 \u043A\u0443\u0445\u043D\u044E`);
       await loadState().catch(() => {
       });
     } else if (btn) btn.disabled = false;
@@ -391,7 +453,7 @@ var __spreadValues = (a, b) => {
   async function closeFlow() {
     const t = S.open, b = S.tables[t];
     if (!b) return;
-    const v = await choose("\u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0441\u0442\u0456\u043B ".concat(t), "\u0414\u043E \u0441\u043F\u043B\u0430\u0442\u0438 ".concat(money(b.pay2)).concat(b.pay ? " \xB7 \u0433\u0456\u0441\u0442\u044C \u0445\u043E\u0447\u0435 ".concat(b.pay === "card" ? "\u{1F4B3} \u043A\u0430\u0440\u0442\u043A\u043E\u044E" : "\u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u043E\u044E") : ""), [
+    const v = await choose(`\u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0441\u0442\u0456\u043B ${t}`, `\u0414\u043E \u0441\u043F\u043B\u0430\u0442\u0438 ${money(b.pay2)}${b.pay ? ` \xB7 \u0433\u0456\u0441\u0442\u044C \u0445\u043E\u0447\u0435 ${b.pay === "card" ? "\u{1F4B3} \u043A\u0430\u0440\u0442\u043A\u043E\u044E" : "\u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u043E\u044E"}` : ""}`, [
       { label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 + \u{1F5A8} \u0447\u0435\u043A", val: "cash:1", cls: "green" },
       { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u0430 + \u{1F5A8} \u0447\u0435\u043A", val: "card:1", cls: "blue" },
       { label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430, \u0431\u0435\u0437 \u0447\u0435\u043A\u0430", val: "cash:0" },
@@ -401,7 +463,7 @@ var __spreadValues = (a, b) => {
     const [pay, pr] = v.split(":");
     const r = await act("close", { t, pay, print: pr === "1" });
     if (r == null ? void 0 : r.r) {
-      toast("\u2705 \u0421\u0442\u0456\u043B ".concat(t, " \u0437\u0430\u043A\u0440\u0438\u0442\u043E \xB7 ").concat(money(r.r.sum)));
+      toast(`\u2705 \u0421\u0442\u0456\u043B ${t} \u0437\u0430\u043A\u0440\u0438\u0442\u043E \xB7 ${money(r.r.sum)}`);
       closeSheet();
       loadState().catch(() => {
       });
@@ -410,22 +472,22 @@ var __spreadValues = (a, b) => {
   async function discFlow() {
     const t = S.open, b = S.tables[t];
     if (!b) return;
-    const v = await choose("\u0417\u043D\u0438\u0436\u043A\u0430 \u2014 \u0441\u0442\u0456\u043B ".concat(t), "\u0421\u0443\u043C\u0430 ".concat(money(b.total)).concat(b.disc ? " \xB7 \u0437\u0430\u0440\u0430\u0437 ".concat(b.disc, "%") : ""), [...[5, 10, 15, 20, 25, 30, 50].map((p2) => ({ label: "".concat(p2, "%  \u2192  ").concat(money(b.total - Math.round(b.total * p2 / 100))), val: String(p2) })), { label: "\u270F\uFE0F \u0421\u0432\u0456\u0439 \u0432\u0456\u0434\u0441\u043E\u0442\u043E\u043A", val: "own" }, { label: "\u0411\u0435\u0437 \u0437\u043D\u0438\u0436\u043A\u0438", val: "0", cls: "red" }]);
+    const v = await choose(`\u0417\u043D\u0438\u0436\u043A\u0430 \u2014 \u0441\u0442\u0456\u043B ${t}`, `\u0421\u0443\u043C\u0430 ${money(b.total)}${b.disc ? ` \xB7 \u0437\u0430\u0440\u0430\u0437 ${b.disc}%` : ""}`, [...[5, 10, 15, 20, 25, 30, 50].map((p2) => ({ label: `${p2}%  \u2192  ${money(b.total - Math.round(b.total * p2 / 100))}`, val: String(p2) })), { label: "\u270F\uFE0F \u0421\u0432\u0456\u0439 \u0432\u0456\u0434\u0441\u043E\u0442\u043E\u043A", val: "own" }, { label: "\u0411\u0435\u0437 \u0437\u043D\u0438\u0436\u043A\u0438", val: "0", cls: "red" }]);
     if (v == null) return;
     let p = v;
     if (v === "own") {
       p = await ask("\u0421\u0432\u0456\u0439 \u0432\u0456\u0434\u0441\u043E\u0442\u043E\u043A \u0437\u043D\u0438\u0436\u043A\u0438", "\u0427\u0438\u0441\u043B\u043E \u0432\u0456\u0434 0 \u0434\u043E 100", "number");
       if (p == null) return;
     }
-    await act("discount", { t, pct: +p }, +p ? "% \u0417\u043D\u0438\u0436\u043A\u0430 ".concat(p, "%") : "\u0417\u043D\u0438\u0436\u043A\u0443 \u043F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
+    await act("discount", { t, pct: +p }, +p ? `% \u0417\u043D\u0438\u0436\u043A\u0430 ${p}%` : "\u0417\u043D\u0438\u0436\u043A\u0443 \u043F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
   }
   async function moveFlow() {
     const t = S.open;
-    const to = await pickTable("\u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0442\u0438 \u0441\u0442\u0456\u043B ".concat(t), "\u041D\u0430 \u0437\u0430\u0439\u043D\u044F\u0442\u0438\u0439 \u0441\u0442\u0456\u043B (\u0436\u043E\u0432\u0442\u0438\u0439) \u2014 \u0440\u0430\u0445\u0443\u043D\u043A\u0438 \u043E\u0431\u02BC\u0454\u0434\u043D\u0430\u044E\u0442\u044C\u0441\u044F", t);
+    const to = await pickTable(`\u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0442\u0438 \u0441\u0442\u0456\u043B ${t}`, "\u041D\u0430 \u0437\u0430\u0439\u043D\u044F\u0442\u0438\u0439 \u0441\u0442\u0456\u043B (\u0436\u043E\u0432\u0442\u0438\u0439) \u2014 \u0440\u0430\u0445\u0443\u043D\u043A\u0438 \u043E\u0431\u02BC\u0454\u0434\u043D\u0430\u044E\u0442\u044C\u0441\u044F", t);
     if (!to) return;
     const r = await act("move", { t, to }, "");
     if (r == null ? void 0 : r.r) {
-      toast(r.r.merged ? "\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u043D\u043E \u0437\u0456 \u0441\u0442\u043E\u043B\u043E\u043C ".concat(to) : "\u2194\uFE0F \u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0435\u043D\u043E \u043D\u0430 \u0441\u0442\u0456\u043B ".concat(to));
+      toast(r.r.merged ? `\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u043D\u043E \u0437\u0456 \u0441\u0442\u043E\u043B\u043E\u043C ${to}` : `\u2194\uFE0F \u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0435\u043D\u043E \u043D\u0430 \u0441\u0442\u0456\u043B ${to}`);
       S.carts[to] = __spreadValues(__spreadValues({}, S.carts[to] || {}), cartOf(t));
       S.carts[t] = {};
       saveCarts();
@@ -434,10 +496,14 @@ var __spreadValues = (a, b) => {
       });
     }
   }
-  async function loadView() {
+  async function loadView(silent) {
     try {
+      if (S.view === "cash") S.data.shift = await api("shift");
+      if (S.view === "reports") {
+        if (!S.menu) await loadMenu();
+        await loadReport();
+      }
       if (S.view === "closed") S.data.closed = (await api("closed")).list;
-      if (S.view === "reports") S.data.rep = await api("reports");
       if (S.view === "settings") {
         S.data.staff = await api("staff");
         S.data.wifi = await api("wifi");
@@ -448,70 +514,278 @@ var __spreadValues = (a, b) => {
     renderMain();
   }
   function renderMain() {
+    var _a, _b, _c;
     const v = S.view, m = $("#main");
     m.classList.toggle("hall", v === "hall");
     if (v === "hall") {
       const cols = Math.ceil(Math.sqrt(S.n * 1.6));
       m.style.setProperty("--cols", cols);
       m.style.setProperty("--rows", Math.ceil(S.n / cols));
-      m.innerHTML = hallHTML();
-    } else if (v === "closed") m.innerHTML = closedHTML();
-    else if (v === "stop") m.innerHTML = stopHTML();
-    else if (v === "printer") m.innerHTML = printerHTML();
-    else if (v === "reports") m.innerHTML = reportsHTML();
-    else if (v === "menu") m.innerHTML = menuHTML();
-    else if (v === "settings") m.innerHTML = settingsHTML();
+    }
+    const html = (_b = (_a = { hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML })[v]) == null ? void 0 : _b.call(_a);
+    const fid = (_c = document.activeElement) == null ? void 0 : _c.id, keep = ["stopSearch", "rQ"].includes(fid);
+    setHTML(m, html || "");
+    if (keep) {
+      const el = $("#" + fid);
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+    }
   }
   const payL = (x) => x.card ? "\u{1F4B3} \u043A\u0430\u0440\u0442\u0430" : "\u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u0430";
   function closedHTML() {
     const l = S.data.closed;
     if (!l) return '<div class="head"><h1>\u0417\u0430\u043A\u0440\u0438\u0442\u0456 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</h1></div><div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
     const gone = (x) => x.del || x.rm, ok = l.filter((x) => !gone(x));
-    return '<div class="head"><h1>\u0417\u0430\u043A\u0440\u0438\u0442\u0456 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</h1><div class="stat">\u0420\u0430\u0445\u0443\u043D\u043A\u0456\u0432<b>'.concat(ok.length, '</b></div><div class="stat">\u0420\u0430\u0437\u043E\u043C<b class="money">').concat(money(ok.reduce((s, x) => s + x.sum, 0)), '</b></div>\n      <div class="stat">\u{1F4B5}<b class="money">').concat(money(ok.reduce((s, x) => {
+    return `<div class="head"><h1>\u0417\u0430\u043A\u0440\u0438\u0442\u0456 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</h1><div class="stat">\u0420\u0430\u0445\u0443\u043D\u043A\u0456\u0432<b>${ok.length}</b></div><div class="stat">\u0420\u0430\u0437\u043E\u043C<b class="money">${money(ok.reduce((s, x) => s + x.sum, 0))}</b></div>
+      <div class="stat">\u{1F4B5}<b class="money">${money(ok.reduce((s, x) => {
       var _a;
       return s + ((_a = x.cash) != null ? _a : x.sum);
-    }, 0)), '</b></div><div class="stat">\u{1F4B3}<b class="money">').concat(money(ok.reduce((s, x) => s + (x.card || 0), 0)), '</b></div></div>\n      <div class="cards">').concat([...l].reverse().map((x, i) => {
+    }, 0))}</b></div><div class="stat">\u{1F4B3}<b class="money">${money(ok.reduce((s, x) => s + (x.card || 0), 0))}</b></div></div>
+      <div class="cards">${[...l].reverse().map((x, i) => {
       var _a, _b;
       const ref = x.id || l.length - 1 - i;
-      return '<div class="card" style="'.concat(gone(x) ? "opacity:.45" : "", '"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">\n        <h3 style="margin:0;flex:1">').concat(x.at, " \xB7 \u0421\u0442\u0456\u043B ").concat(x.t, ' \xB7 <span class="money">').concat(money(x.sum), "</span> ").concat(gone(x) ? "\u{1F5D1} \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E" : payL(x)).concat(x.disc ? " \xB7 \u0437\u043D\u0438\u0436\u043A\u0430 ".concat(x.disc, "%") : "", '</h3><span class="muted">').concat(esc(x.by || ""), "</span>\n        ").concat(!gone(x) && ((_a = x.dishes) == null ? void 0 : _a.length) ? '<button class="btn sm" data-a="cPrint" data-ref="'.concat(ref, '">\u{1F5A8} \u0427\u0435\u043A</button>') : "").concat(!gone(x) && isAdmin() ? '<button class="btn sm red" data-a="cDel" data-ref="'.concat(ref, '">\u{1F5D1} \u0417 \u0432\u0438\u0440\u0443\u0447\u043A\u0438</button>') : "", "</div>\n        ").concat(((_b = x.dishes) == null ? void 0 : _b.length) ? '<div class="muted" style="margin-top:8px">'.concat(x.dishes.map(([n, q, s]) => "".concat(q, "\xD7 ").concat(esc(n), " \u2014 ").concat(s)).join(" \xB7 "), "</div>") : "", "</div>");
-    }).join("") || '<div class="muted">\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0437\u0430\u043A\u0440\u0438\u0442\u0438\u0445 \u0440\u0430\u0445\u0443\u043D\u043A\u0456\u0432 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454</div>', "</div>");
+      return `<div class="card" style="${gone(x) ? "opacity:.45" : ""}"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <h3 style="margin:0;flex:1">${x.at} \xB7 \u0421\u0442\u0456\u043B ${x.t} \xB7 <span class="money">${money(x.sum)}</span> ${gone(x) ? "\u{1F5D1} \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E" : payL(x)}${x.disc ? ` \xB7 \u0437\u043D\u0438\u0436\u043A\u0430 ${x.disc}%` : ""}</h3><span class="muted">${esc(x.by || "")}</span>
+        ${!gone(x) && ((_a = x.dishes) == null ? void 0 : _a.length) ? `<button class="btn sm" data-a="cPrint" data-ref="${ref}">\u{1F5A8} \u0427\u0435\u043A</button>` : ""}${!gone(x) && isAdmin() ? `<button class="btn sm red" data-a="cDel" data-ref="${ref}">\u{1F5D1} \u0417 \u0432\u0438\u0440\u0443\u0447\u043A\u0438</button>` : ""}</div>
+        ${((_b = x.dishes) == null ? void 0 : _b.length) ? `<div class="muted" style="margin-top:8px">${x.dishes.map(([n, q, s]) => `${q}\xD7 ${esc(n)} \u2014 ${s}`).join(" \xB7 ")}</div>` : ""}</div>`;
+    }).join("") || '<div class="muted">\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0437\u0430\u043A\u0440\u0438\u0442\u0438\u0445 \u0440\u0430\u0445\u0443\u043D\u043A\u0456\u0432 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454</div>'}</div>`;
   }
   function stopHTML() {
     if (!S.menu) return '<div class="head"><h1>\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442</h1></div><div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
     const q = S.q.trim().toLowerCase();
-    return '<div class="head"><h1>\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442</h1><span class="muted">\u0412\u0438\u043C\u043A\u043D\u0435\u043D\u0435 \u043D\u0435 \u043F\u043E\u043A\u0430\u0437\u0443\u0454\u0442\u044C\u0441\u044F \u0433\u043E\u0441\u0442\u044F\u043C \u0456 \u043D\u0435 \u043F\u0440\u043E\u0434\u0430\u0454\u0442\u044C\u0441\u044F</span></div>\n      <input id="stopSearch" placeholder="\u{1F50E} \u041F\u043E\u0448\u0443\u043A" value="'.concat(esc(S.q), '" style="max-width:420px;margin-bottom:14px">\n      ').concat(S.menu.categories.map((c) => {
+    return `<div class="head"><h1>\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442</h1><span class="muted">\u0412\u0438\u043C\u043A\u043D\u0435\u043D\u0435 \u043D\u0435 \u043F\u043E\u043A\u0430\u0437\u0443\u0454\u0442\u044C\u0441\u044F \u0433\u043E\u0441\u0442\u044F\u043C \u0456 \u043D\u0435 \u043F\u0440\u043E\u0434\u0430\u0454\u0442\u044C\u0441\u044F</span></div>
+      <input id="stopSearch" placeholder="\u{1F50E} \u041F\u043E\u0448\u0443\u043A" value="${esc(S.q)}" style="max-width:420px;margin-bottom:14px">
+      ${S.menu.categories.map((c) => {
       const its = c.items.filter((i) => !q || i.name.uk.toLowerCase().includes(q));
-      return its.length ? '<h3 class="muted" style="margin:18px 4px 8px">'.concat(esc(c.name.uk), '</h3><div class="grid2">').concat(its.map((i) => '<div class="list-row"><div class="grow">'.concat(esc(i.name.uk), '</div><button class="switch ').concat(i.hidden ? "" : "on", '" data-a="stopT" data-id="').concat(i.id, '" data-h="').concat(i.hidden ? 0 : 1, '"></button></div>')).join(""), "</div>") : "";
-    }).join(""));
+      return its.length ? `<h3 class="muted" style="margin:18px 4px 8px">${esc(c.name.uk)}</h3><div class="grid2">${its.map((i) => `<div class="list-row"><div class="grow">${esc(i.name.uk)}</div><button class="switch ${i.hidden ? "" : "on"}" data-a="stopT" data-id="${i.id}" data-h="${i.hidden ? 0 : 1}"></button></div>`).join("")}</div>` : "";
+    }).join("")}`;
   }
   function printerHTML() {
     var _a;
     const p = S.printer || {}, ok = p.seen && Date.now() - p.seen < 6e4;
-    return '<div class="head"><h1>\u041F\u0440\u0438\u043D\u0442\u0435\u0440</h1></div><div class="cards"><div class="card"><div class="big">'.concat(ok ? "\u2705 \u043D\u0430 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : p.seen ? "\u274C \u043D\u0435\u043C\u0430\u0454 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : "\u274C \u043F\u0440\u043E\u0433\u0440\u0430\u043C\u0430 \u0434\u0440\u0443\u043A\u0443 \u043D\u0435 \u0437\u0430\u043F\u0443\u0449\u0435\u043D\u0430", '</div>\n      <div class="muted">').concat(p.seen ? "\u041E\u0441\u0442\u0430\u043D\u043D\u0456\u0439 \u0437\u0432\u02BC\u044F\u0437\u043E\u043A: " + hhmm(p.seen) : "", " \xB7 \u0443 \u0447\u0435\u0440\u0437\u0456: ").concat((_a = p.q) != null ? _a : 0, '</div></div>\n      <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">\u{1F5A8} \u0422\u0435\u0441\u0442\u043E\u0432\u0438\u0439 \u0434\u0440\u0443\u043A</button><button class="btn" data-a="pQr">\u{1F533} QR \u043C\u0435\u043D\u044E \u0434\u043B\u044F \u0441\u0442\u043E\u043B\u0443</button></div></div>');
+    return `<div class="head"><h1>\u041F\u0440\u0438\u043D\u0442\u0435\u0440</h1></div><div class="cards"><div class="card"><div class="big">${ok ? "\u2705 \u043D\u0430 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : p.seen ? "\u274C \u043D\u0435\u043C\u0430\u0454 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : "\u274C \u043F\u0440\u043E\u0433\u0440\u0430\u043C\u0430 \u0434\u0440\u0443\u043A\u0443 \u043D\u0435 \u0437\u0430\u043F\u0443\u0449\u0435\u043D\u0430"}</div>
+      <div class="muted">${p.seen ? "\u041E\u0441\u0442\u0430\u043D\u043D\u0456\u0439 \u0437\u0432\u02BC\u044F\u0437\u043E\u043A: " + hhmm(p.seen) : ""} \xB7 \u0443 \u0447\u0435\u0440\u0437\u0456: ${(_a = p.q) != null ? _a : 0}</div></div>
+      <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">\u{1F5A8} \u0422\u0435\u0441\u0442\u043E\u0432\u0438\u0439 \u0434\u0440\u0443\u043A</button><button class="btn" data-a="pQr">\u{1F533} QR \u043C\u0435\u043D\u044E \u0434\u043B\u044F \u0441\u0442\u043E\u043B\u0443</button></div></div>`;
+  }
+  function cashHTML() {
+    const r = S.data.shift;
+    if (!r) return '<div class="head"><h1>\u041A\u0430\u0441\u0430</h1></div><div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
+    const d = r.d, dt = (t) => new Date(t).toLocaleString("uk-UA", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    const head = d.open ? `<div class="card shift on"><div class="big">\u{1F513} \u0417\u043C\u0456\u043D\u0430 \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u0430</div><div class="muted">\u0437 ${dt(d.opened)}${d.by ? " \xB7 " + esc(d.by) : ""}</div>
+          <button class="btn red" style="margin-top:12px" data-a="shClose">\u{1F512} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u043A\u0430\u0441\u0443 (Z-\u0437\u0432\u0456\u0442)</button></div>` : `<div class="card shift"><div class="big">\u{1F512} \u041A\u0430\u0441\u0430 \u0437\u0430\u043A\u0440\u0438\u0442\u0430</div><div class="muted">\u0412\u0456\u0434\u043A\u0440\u0438\u0439\u0442\u0435 \u0437\u043C\u0456\u043D\u0443 \u043D\u0430 \u043F\u043E\u0447\u0430\u0442\u043A\u0443 \u0434\u043D\u044F: \u0432\u043A\u0430\u0436\u0456\u0442\u044C \u0440\u043E\u0437\u043C\u0456\u043D \u0443 \u043A\u0430\u0441\u0456</div>
+          <button class="btn primary" style="margin-top:12px" data-a="shOpen">\u{1F513} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u043A\u0430\u0441\u0443</button></div>`;
+    return `<div class="head"><h1>\u041A\u0430\u0441\u0430</h1></div><div class="grid2" style="margin-bottom:14px">${head}
+      <div class="card"><h3>\u{1F4B0} ${d.open ? "\u0417\u0430 \u0437\u043C\u0456\u043D\u0443" : "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456"}</h3>
+        <div class="kv"><span>\u0420\u043E\u0437\u043C\u0456\u043D \u043D\u0430 \u043F\u043E\u0447\u0430\u0442\u043E\u043A</span><b class="money">${money(d.float)}</b></div><div class="kv"><span>+ \u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 \u0432\u0456\u0434 \u0433\u043E\u0441\u0442\u0435\u0439</span><b class="money">${money(d.cash)}</b></div>
+        <div class="kv"><span>\u2212 \u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438 \u0433\u043E\u0442\u0456\u0432\u043A\u043E\u044E</span><b class="money">${money(d.exCash)}</b></div><div class="kv"><span><b>\u041C\u0430\u0454 \u0431\u0443\u0442\u0438 \u0432 \u043A\u0430\u0441\u0456</b></span><b class="money" style="font-size:22px">${money(d.inBox)}</b></div>
+        <div class="kv"><span>\u{1F4B3} \u041A\u0430\u0440\u0442\u0430</span><b class="money">${money(d.card)}</b></div><div class="kv"><span>\u0427\u0435\u043A\u0456\u0432 \xB7 \u0432\u0438\u0440\u0443\u0447\u043A\u0430</span><b>${d.checks} \xB7 <span class="money">${money(d.total)}</span></b></div>
+        ${d.openTables ? `<div class="kv"><span>\u23F3 \u0429\u0435 \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u043E \u0441\u0442\u043E\u043B\u0456\u0432</span><b>${d.openTables} \xB7 <span class="money">${money(d.openSum)}</span></b></div>` : ""}
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn sm" data-a="float">\u{1F3E6} \u0420\u043E\u0437\u043C\u0456\u043D</button><button class="btn sm" data-a="expense">\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0430</button></div></div>
+      <div class="card"><h3>\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</h3>${r.exp.length ? r.exp.map((e, i) => `<div class="kv" style="${e.del ? "opacity:.4;text-decoration:line-through" : ""}"><span>${e.at} ${e.src === "card" ? "\u{1F4B3}" : "\u{1F4B5}"} ${esc(e.note || "")}</span><span><b class="money">${money(e.sum)}</b> ${e.del ? "" : `<button class="btn sm red" data-a="expDel" data-i="${i}">\u{1F5D1}</button>`}</span></div>`).join("") : '<div class="muted">\u041D\u0435\u043C\u0430\u0454</div>'}</div></div>`;
+  }
+  async function shOpen() {
+    const v = await ask("\u{1F513} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u043A\u0430\u0441\u0443", "\u0420\u043E\u0437\u043C\u0456\u043D \u0443 \u043A\u0430\u0441\u0456 \u043D\u0430 \u043F\u043E\u0447\u0430\u0442\u043E\u043A, \u20B4", "number");
+    if (v == null) return;
+    if (await act("shiftOpen", { float: +v.replace(",", ".") }, "\u{1F513} \u041A\u0430\u0441\u0443 \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u043E")) {
+      loadState().catch(() => {
+      });
+      if (S.view === "cash") loadView();
+    }
+  }
+  async function shClose() {
+    var _a;
+    const d = (_a = await api("shift").catch(() => null)) == null ? void 0 : _a.d;
+    if (!d) return;
+    const v = await modal({
+      title: "\u{1F512} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u043A\u0430\u0441\u0443",
+      text: `\u041C\u0430\u0454 \u0431\u0443\u0442\u0438 \u0432 \u043A\u0430\u0441\u0456: ${money(d.inBox)}${d.openTables ? ` \xB7 \u26A0\uFE0F \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u043E \u0441\u0442\u043E\u043B\u0456\u0432: ${d.openTables}` : ""}`,
+      body: '<div class="form"><input id="zCnt" inputmode="decimal" placeholder="\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u043F\u043E\u0440\u0430\u0445\u043E\u0432\u0430\u043D\u043E \u0433\u043E\u0442\u0456\u0432\u043A\u0438, \u20B4 (\u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)"></div>',
+      buttons: [{ label: "\u{1F5A8} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0456 \u043D\u0430\u0434\u0440\u0443\u043A\u0443\u0432\u0430\u0442\u0438 Z-\u0437\u0432\u0456\u0442", val: "p", cls: "red" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0431\u0435\u0437 \u0434\u0440\u0443\u043A\u0443", val: "n" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }],
+      keep: true
+    });
+    const c = v && $("#zCnt").value.trim().replace(",", ".");
+    closeModal();
+    if (!v) return;
+    const r = await act("shiftClose", { counted: c === "" ? null : +c, print: v === "p" });
+    if (r == null ? void 0 : r.z) {
+      const z = r.z;
+      await modal({ title: "\u{1F512} \u041A\u0430\u0441\u0443 \u0437\u0430\u043A\u0440\u0438\u0442\u043E", text: `\u0412\u0438\u0440\u0443\u0447\u043A\u0430 ${money(z.total)} \xB7 \u0447\u0435\u043A\u0456\u0432 ${z.checks} \xB7 \u{1F4B5} ${money(z.cash)} \xB7 \u{1F4B3} ${money(z.card)} \xB7 \u0432 \u043A\u0430\u0441\u0456 \u043C\u0430\u0454 \u0431\u0443\u0442\u0438 ${money(z.inBox)}${z.diff != null ? ` \xB7 \u0440\u0456\u0437\u043D\u0438\u0446\u044F ${z.diff > 0 ? "+" : ""}${money(z.diff)}` : ""}`, buttons: [{ label: "OK", val: 1, cls: "primary" }] });
+      loadState().catch(() => {
+      });
+      if (S.view === "cash") loadView();
+    }
+  }
+  const iso = (t) => {
+    const d = new Date(t);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const PER = [["d", "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456"], ["y", "\u0412\u0447\u043E\u0440\u0430"], ["w", "7 \u0434\u043D\u0456\u0432"], ["30", "30 \u0434\u043D\u0456\u0432"], ["m", "\u0426\u0435\u0439 \u043C\u0456\u0441\u044F\u0446\u044C"], ["pm", "\u041C\u0438\u043D. \u043C\u0456\u0441\u044F\u0446\u044C"], ["yr", "\u0420\u0456\u043A"], ["c", "\u0421\u0432\u0456\u0439 \u043F\u0435\u0440\u0456\u043E\u0434"]];
+  function perRange(p) {
+    const now = /* @__PURE__ */ new Date(), day = 864e5, y = now.getFullYear(), mo = now.getMonth();
+    if (p === "d") return [iso(now), iso(now)];
+    if (p === "y") return [iso(now - day), iso(now - day)];
+    if (p === "w") return [iso(now - 6 * day), iso(now)];
+    if (p === "30") return [iso(now - 29 * day), iso(now)];
+    if (p === "m") return [iso(new Date(y, mo, 1)), iso(now)];
+    if (p === "pm") return [iso(new Date(y, mo - 1, 1)), iso(new Date(y, mo, 0))];
+    if (p === "yr") return [iso(new Date(y, 0, 1)), iso(now)];
+    return [S.rep.from || iso(now - 6 * day), S.rep.to || iso(now)];
+  }
+  let resolver;
+  function dishOf(name) {
+    if (!S.menu) return null;
+    if (!resolver || resolver.menu !== S.menu) {
+      const all = S.menu.categories.flatMap((c) => c.items.map((it) => ({ n: it.name.uk, cat: c.id, cname: c.name.uk, grp: (S.groups.find((g) => g.cats.includes(c.id)) || {}).id }))).sort((a, b) => b.n.length - a.n.length);
+      resolver = { menu: S.menu, memo: /* @__PURE__ */ new Map(), all };
+    }
+    if (!resolver.memo.has(name)) resolver.memo.set(name, resolver.all.find((x) => name === x.n || name.startsWith(x.n + " ")) || null);
+    return resolver.memo.get(name);
+  }
+  async function loadReport() {
+    const [from, to] = perRange(S.rep.p), key = from + "|" + to;
+    if (S.data.rangeKey !== key) {
+      S.data.range = null;
+      S.data.rangeKey = key;
+      renderMain();
+    }
+    const res = await api("report", { from, to }).catch(() => null);
+    if (S.data.rangeKey === key) S.data.range = res || S.data.range || { checks: [], exp: [], z: [] };
   }
   function reportsHTML() {
-    const r = S.data.rep;
-    if (!r) return '<div class="head"><h1>\u0417\u0432\u0456\u0442\u0438 \u0456 \u043A\u0430\u0441\u0430</h1></div><div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
-    const c = r.cash;
-    const row = ([label, d]) => '<div class="card"><h3>'.concat(esc(label), '</h3><div class="big money">').concat(money(d.closed), '</div>\n      <div class="kv"><span>\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430</span><b class="money">').concat(money(d.cash), '</b></div><div class="kv"><span>\u{1F4B3} \u041A\u0430\u0440\u0442\u0430</span><b class="money">').concat(money(d.card), '</b></div>\n      <div class="kv"><span>\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438</span><b class="money">').concat(money(d.exp), '</b></div><div class="kv"><span>\u0427\u0438\u0441\u0442\u0438\u043C\u0438</span><b class="money">').concat(money(d.closed - d.exp), '</b></div>\n      <div class="kv"><span>\u0421\u0442\u043E\u043B\u0456\u0432 \xB7 \u0441\u0435\u0440. \u0447\u0435\u043A</span><b>').concat(d.tables, " \xB7 ").concat(d.tables ? money(d.closed / d.tables) : "\u2014", "</b></div>").concat(d.disc ? '<div class="kv"><span>\u{1F3F7} \u0417\u043D\u0438\u0436\u043A\u0438</span><b class="money">'.concat(money(d.disc), "</b></div>") : "", "</div>");
-    return '<div class="head"><h1>\u0417\u0432\u0456\u0442\u0438 \u0456 \u043A\u0430\u0441\u0430</h1><div class="stat">\u0429\u0435 \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u043E \u0432 \u0437\u0430\u043B\u0456<b class="money">'.concat(money(r.open), '</b></div></div>\n      <div class="grid2" style="margin-bottom:14px"><div class="card"><h3>\u{1F4B0} \u041A\u0430\u0441\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</h3>\n        <div class="kv"><span>\u0420\u043E\u0437\u043C\u0456\u043D \u043D\u0430 \u043F\u043E\u0447\u0430\u0442\u043E\u043A</span><b class="money">').concat(money(c.float), '</b></div><div class="kv"><span>+ \u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 \u0432\u0456\u0434 \u0433\u043E\u0441\u0442\u0435\u0439</span><b class="money">').concat(money(c.cash), '</b></div>\n        <div class="kv"><span>\u2212 \u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438 \u0433\u043E\u0442\u0456\u0432\u043A\u043E\u044E</span><b class="money">').concat(money(c.exCash), '</b></div><div class="kv"><span><b>\u041C\u0430\u0454 \u0431\u0443\u0442\u0438 \u0432 \u043A\u0430\u0441\u0456</b></span><b class="money big" style="font-size:22px">').concat(money(c.inBox), '</b></div>\n        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn sm" data-a="float">\u{1F3E6} \u0420\u043E\u0437\u043C\u0456\u043D</button><button class="btn sm" data-a="expense">\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0430</button></div></div>\n        <div class="card"><h3>\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</h3>').concat(c.exp.length ? c.exp.map((e, i) => '<div class="kv" style="'.concat(e.del ? "opacity:.4;text-decoration:line-through" : "", '"><span>').concat(e.at, " ").concat(e.src === "card" ? "\u{1F4B3}" : "\u{1F4B5}", " ").concat(esc(e.note || ""), '</span><span><b class="money">').concat(money(e.sum), "</b> ").concat(e.del ? "" : '<button class="btn sm red" data-a="expDel" data-i="'.concat(i, '">\u{1F5D1}</button>'), "</span></div>")).join("") : '<div class="muted">\u041D\u0435\u043C\u0430\u0454</div>', '</div></div>\n      <div class="grid2">').concat(r.rows.map(row).join(""), '</div>\n      <h2 style="margin:26px 0 10px">\u{1F3C6} \u0422\u043E\u043F \u0441\u0442\u0440\u0430\u0432 \u0437\u0430 \u043C\u0456\u0441\u044F\u0446\u044C</h2><div class="card">').concat(r.top.map((x, i) => '<div class="kv"><span>'.concat(i + 1, ". ").concat(esc(x.n), "</span><b>").concat(x.q, ' \u0448\u0442 \xB7 <span class="money">').concat(money(x.s), "</span></b></div>")).join("") || '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454 \u043F\u0440\u043E\u0434\u0430\u0436\u0456\u0432</div>', "</div>");
+    const R = S.rep, [from, to] = perRange(R.p), r = S.data.range;
+    const opt = (v, l, cur) => `<option value="${esc(v)}" ${v === cur ? "selected" : ""}>${esc(l)}</option>`;
+    const checks0 = r ? r.checks : [];
+    const waiters = [...new Set(checks0.map((c) => c.by).filter(Boolean))].sort(), tables = [...new Set(checks0.map((c) => c.t))].sort((a, b) => a - b);
+    const cats = S.menu ? S.menu.categories.filter((c) => !R.grp || (S.groups.find((g) => g.id === R.grp) || { cats: [] }).cats.includes(c.id)) : [];
+    const filters = `<div class="filters">
+      <div class="chips">${PER.map(([k, l]) => `<button class="chip ${R.p === k ? "on" : ""}" data-a="rp" data-p="${k}">${l}</button>`).join("")}</div>
+      ${R.p === "c" ? `<div class="frow"><label>\u0417<input type="date" id="rFrom" value="${from}"></label><label>\u041F\u043E<input type="date" id="rTo" value="${to}"></label></div>` : ""}
+      <div class="frow">
+        <label>\u041E\u043F\u043B\u0430\u0442\u0430<select data-f="pay">${opt("", "\u0423\u0441\u0456", R.pay)}${opt("cash", "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430", R.pay)}${opt("card", "\u{1F4B3} \u041A\u0430\u0440\u0442\u0430", R.pay)}</select></label>
+        <label>\u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442<select data-f="by">${opt("", "\u0423\u0441\u0456", R.by)}${waiters.map((w) => opt(w, w, R.by)).join("")}</select></label>
+        <label>\u0413\u0440\u0443\u043F\u0430<select data-f="grp">${opt("", "\u0423\u0441\u0435", R.grp)}${S.groups.map((g) => opt(g.id, g.name, R.grp)).join("")}</select></label>
+        <label>\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0456\u044F<select data-f="cat">${opt("", "\u0423\u0441\u0456", R.cat)}${cats.map((c) => opt(c.id, c.name.uk, R.cat)).join("")}</select></label>
+        <label>\u0421\u0442\u0456\u043B<select data-f="t">${opt("", "\u0423\u0441\u0456", R.t)}${tables.map((t) => opt(String(t), "\u0421\u0442\u0456\u043B " + t, R.t)).join("")}</select></label>
+        <label>\u0421\u0442\u0440\u0430\u0432\u0430<input id="rQ" placeholder="\u{1F50E} \u043D\u0430\u0437\u0432\u0430" value="${esc(R.q)}"></label>
+        ${R.pay || R.by || R.grp || R.cat || R.t || R.q ? '<button class="btn sm ghost" data-a="rReset" style="align-self:end">\u2715 \u0421\u043A\u0438\u043D\u0443\u0442\u0438</button>' : ""}
+      </div></div>`;
+    const head = `<div class="head"><h1>\u0417\u0432\u0456\u0442\u0438</h1><span class="muted">${from === to ? from : from + " \u2014 " + to}</span></div>`;
+    if (!r) return head + '<div class="muted" style="margin-bottom:14px">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>' + filters;
+    const dishF = R.grp || R.cat || R.q.trim(), q = R.q.trim().toLowerCase();
+    const dishOk = (n2) => {
+      if (!dishF) return true;
+      const x = dishOf(n2);
+      if (R.grp && (x == null ? void 0 : x.grp) !== R.grp) return false;
+      if (R.cat && (x == null ? void 0 : x.cat) !== R.cat) return false;
+      return !q || n2.toLowerCase().includes(q);
+    };
+    const checks = checks0.filter((c) => (!R.pay || (R.pay === "card" ? c.card > 0 : c.cash > 0)) && (!R.by || c.by === R.by) && (!R.t || String(c.t) === R.t)).map((c) => {
+      const ds = c.dishes.filter(([n2]) => dishOk(n2));
+      return __spreadProps(__spreadValues({}, c), { ds, val: dishF ? ds.reduce((a, [, , s]) => a + s, 0) : c.sum });
+    }).filter((c) => !dishF || c.ds.length);
+    const sum = (l, f) => l.reduce((a, x) => a + (f(x) || 0), 0);
+    const total = sum(checks, (c) => c.val), n = checks.length, qty = sum(checks, (c) => sum(c.ds, (d) => d[1]));
+    const exp = R.by || R.t || dishF || R.pay ? null : sum(r.exp, (e) => e.sum);
+    const W = [
+      ["\u0412\u0438\u0440\u0443\u0447\u043A\u0430", money(total), "accent"],
+      ["\u0427\u0435\u043A\u0456\u0432", n],
+      ["\u0421\u0435\u0440\u0435\u0434\u043D\u0456\u0439 \u0447\u0435\u043A", n ? money(total / n) : "\u2014"],
+      ["\u041F\u0440\u043E\u0434\u0430\u043D\u043E \u043F\u043E\u0437\u0438\u0446\u0456\u0439", qty],
+      ...!dishF ? [["\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430", money(sum(checks, (c) => c.cash))], ["\u{1F4B3} \u041A\u0430\u0440\u0442\u0430", money(sum(checks, (c) => c.card))], ["\u{1F3F7} \u0417\u043D\u0438\u0436\u043A\u0438", money(sum(checks, (c) => c.disc))]] : [],
+      ...exp != null ? [["\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438", money(exp)], ["\u0427\u0438\u0441\u0442\u0438\u043C\u0438", money(total - exp), "green"]] : []
+    ];
+    const widgets = `<div class="widgets">${W.map(([l, v, c]) => `<div class="widget ${c || ""}"><span>${l}</span><b class="money">${v}</b></div>`).join("")}</div>`;
+    const grpBy = (keyF, valF = (c) => c.val) => {
+      const m = /* @__PURE__ */ new Map();
+      checks.forEach((c) => {
+        const k = keyF(c);
+        const a = m.get(k) || [0, 0];
+        a[0]++;
+        a[1] += valF(c);
+        m.set(k, a);
+      });
+      return [...m];
+    };
+    const dishAgg = (keyF) => {
+      const m = /* @__PURE__ */ new Map();
+      checks.forEach((c) => c.ds.forEach(([nm, qq, ss]) => {
+        const k = keyF(nm);
+        const a = m.get(k) || [0, 0];
+        a[0] += qq;
+        a[1] += ss;
+        m.set(k, a);
+      }));
+      return [...m];
+    };
+    const TABS = { dishes: "\u{1F37D} \u0421\u0442\u0440\u0430\u0432\u0438", cats: "\u{1F4C2} \u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0456\u0457", groups: "\u{1F373} \u041A\u0443\u0445\u043D\u044F/\u0431\u0430\u0440", waiters: "\u{1F464} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0438", hours: "\u{1F550} \u0413\u043E\u0434\u0438\u043D\u0438", days: "\u{1F4C5} \u0414\u043D\u0456", tables: "\u{1FA91} \u0421\u0442\u043E\u043B\u0438", checks: "\u{1F9FE} \u0427\u0435\u043A\u0438", exp: "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438", z: "\u{1F512} Z-\u0437\u0432\u0456\u0442\u0438" };
+    let rows, unit = "\u0447\u0435\u043A.", sortable = false;
+    const T = R.tab;
+    if (T === "dishes") {
+      rows = dishAgg((nm) => nm);
+      unit = "\u0448\u0442";
+      sortable = true;
+    } else if (T === "cats") {
+      rows = dishAgg((nm) => {
+        var _a;
+        return ((_a = dishOf(nm)) == null ? void 0 : _a.cname) || "\u0406\u043D\u0448\u0435";
+      });
+      unit = "\u0448\u0442";
+      sortable = true;
+    } else if (T === "groups") {
+      rows = dishAgg((nm) => (S.groups.find((g) => {
+        var _a;
+        return g.id === ((_a = dishOf(nm)) == null ? void 0 : _a.grp);
+      }) || { name: "\u0406\u043D\u0448\u0435" }).name);
+      unit = "\u0448\u0442";
+    } else if (T === "waiters") rows = grpBy((c) => c.by || "\u2014");
+    else if (T === "hours") rows = grpBy((c) => String(c.at || "").slice(0, 2) + ":00").sort((a, b) => a[0].localeCompare(b[0]));
+    else if (T === "days") rows = grpBy((c) => c.d).sort((a, b) => a[0].localeCompare(b[0]));
+    else if (T === "tables") rows = grpBy((c) => "\u0421\u0442\u0456\u043B " + c.t).sort((a, b) => parseInt(a[0].slice(5)) - parseInt(b[0].slice(5)));
+    let body;
+    if (rows) {
+      if (!["hours", "days", "tables"].includes(T)) rows.sort((a, b) => R.sort === "q" && sortable ? b[1][0] - a[1][0] : b[1][1] - a[1][1]);
+      const max = Math.max(1, ...rows.map((x) => x[1][1]));
+      body = rows.length ? rows.map(([k, [qq, ss]]) => `<div class="bar"><div class="bl"><span>${esc(k)}</span><span class="muted">${qq} ${unit}</span><b class="money">${money(ss)}</b></div><i style="width:${Math.max(2, ss / max * 100)}%"></i></div>`).join("") : '<div class="muted">\u041D\u0435\u043C\u0430\u0454 \u0434\u0430\u043D\u0438\u0445 \u0437\u0430 \u0446\u0438\u043C\u0438 \u0444\u0456\u043B\u044C\u0442\u0440\u0430\u043C\u0438</div>';
+      if (sortable) body = `<div class="chips" style="margin-bottom:10px"><button class="chip ${R.sort !== "q" ? "on" : ""}" data-a="rSort" data-s="s">\u0417\u0430 \u0441\u0443\u043C\u043E\u044E</button><button class="chip ${R.sort === "q" ? "on" : ""}" data-a="rSort" data-s="q">\u0417\u0430 \u043A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044E</button></div>` + body;
+    } else if (T === "checks") body = checks.length ? [...checks].reverse().slice(0, 300).map((c) => `<div class="kv"><span>${c.d.slice(5)} ${c.at} \xB7 \u0441\u0442\u0456\u043B ${c.t} \xB7 ${esc(c.by)} ${c.card ? "\u{1F4B3}" : "\u{1F4B5}"}${c.disc ? " \u{1F3F7}" : ""}<br><small class="muted">${c.ds.map(([nm, qq]) => `${qq}\xD7 ${esc(nm)}`).join(", ")}</small></span><b class="money">${money(c.val)}</b></div>`).join("") : '<div class="muted">\u041D\u0435\u043C\u0430\u0454 \u0447\u0435\u043A\u0456\u0432</div>';
+    else if (T === "exp") body = r.exp.length ? r.exp.map((e) => `<div class="kv"><span>${e.d.slice(5)} ${e.at} ${e.src === "card" ? "\u{1F4B3}" : "\u{1F4B5}"} ${esc(e.note)} <span class="muted">${esc(e.by)}</span></span><b class="money">${money(e.sum)}</b></div>`).join("") : '<div class="muted">\u0412\u0438\u0442\u0440\u0430\u0442 \u043D\u0435\u043C\u0430\u0454</div>';
+    else if (T === "z") body = r.z.length ? [...r.z].reverse().map((z) => `<div class="kv"><span>${new Date(z.opened).toLocaleString("uk-UA", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} \u2014 ${new Date(z.closed).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })} \xB7 ${z.checks} \u0447\u0435\u043A. \xB7 ${esc(z.closedBy)}${z.diff ? ` \xB7 <b style="color:var(--red)">\u0440\u0456\u0437\u043D\u0438\u0446\u044F ${z.diff > 0 ? "+" : ""}${money(z.diff)}</b>` : ""}</span><b class="money">${money(z.total)}</b></div>`).join("") : '<div class="muted">\u0417\u0430\u043A\u0440\u0438\u0442\u0438\u0445 \u0437\u043C\u0456\u043D \u0437\u0430 \u043F\u0435\u0440\u0456\u043E\u0434 \u043D\u0435\u043C\u0430\u0454</div>';
+    return head + widgets + filters + `<div class="seg wrap" style="margin:14px 0 10px">${Object.entries(TABS).map(([k, l]) => `<button class="${T === k ? "on" : ""}" data-a="rTab" data-t="${k}">${l}</button>`).join("")}</div><div class="card">${body}</div>`;
   }
   function menuHTML() {
     if (!S.menu) return '<div class="head"><h1>\u041C\u0435\u043D\u044E</h1></div><div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
-    return '<div class="head"><h1>\u041C\u0435\u043D\u044E</h1><button class="btn" data-a="menuUndo">\u21A9\uFE0F \u0412\u0456\u0434\u043C\u0456\u043D\u0438\u0442\u0438 \u043E\u0441\u0442\u0430\u043D\u043D\u044E \u0437\u043C\u0456\u043D\u0443</button><button class="btn primary" data-a="menuEdit" data-id="">\u2795 \u041D\u043E\u0432\u0430 \u0441\u0442\u0440\u0430\u0432\u0430</button></div>\n      '.concat(S.menu.categories.map((c) => '<h3 class="muted" style="margin:18px 4px 8px">'.concat(esc(c.name.uk), '</h3><div class="grid2">').concat(c.items.map((i) => '<button class="list-row press" data-a="menuEdit" data-id="'.concat(i.id, '" style="text-align:left"><div class="grow"><b>').concat(esc(i.name.uk), "</b>").concat(i.hidden ? " \u26D4" : "", '<div class="muted" style="font-size:13px">').concat(i.variants ? i.variants.map((v) => "".concat(v.v, " \u2014 ").concat(v.p)).join(" / ") : i.price + " \u20B4").concat(i.size && !i.variants ? " \xB7 " + esc(i.size) : "", "</div></div>\u203A</button>")).join(""), "</div>")).join(""));
+    return `<div class="head"><h1>\u041C\u0435\u043D\u044E</h1><button class="btn" data-a="menuUndo">\u21A9\uFE0F \u0412\u0456\u0434\u043C\u0456\u043D\u0438\u0442\u0438 \u043E\u0441\u0442\u0430\u043D\u043D\u044E \u0437\u043C\u0456\u043D\u0443</button><button class="btn primary" data-a="menuEdit" data-id="">\u2795 \u041D\u043E\u0432\u0430 \u0441\u0442\u0440\u0430\u0432\u0430</button></div>
+      ${S.menu.categories.map((c) => `<h3 class="muted" style="margin:18px 4px 8px">${esc(c.name.uk)}</h3><div class="grid2">${c.items.map((i) => `<button class="list-row press" data-a="menuEdit" data-id="${i.id}" style="text-align:left"><div class="grow"><b>${esc(i.name.uk)}</b>${i.hidden ? " \u26D4" : ""}<div class="muted" style="font-size:13px">${i.variants ? i.variants.map((v) => `${v.v} \u2014 ${v.p}`).join(" / ") : i.price + " \u20B4"}${i.size && !i.variants ? " \xB7 " + esc(i.size) : ""}</div></div>\u203A</button>`).join("")}</div>`).join("")}`;
   }
   function settingsHTML() {
     const st = S.data.staff, wf = S.data.wifi;
-    return '<div class="head"><h1>\u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F</h1></div><div class="grid2">\n      <div class="card"><h3>\u{1F465} \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B (PIN \u0434\u043B\u044F \u043A\u0430\u0441\u0438)</h3>'.concat(st ? st.staff.map((s) => '<div class="kv"><span>'.concat(esc(s.name), " \xB7 ").concat(s.role === "admin" ? "\u{1F510} \u0430\u0434\u043C\u0456\u043D" : "\u{1F9D1}\u200D\u{1F373} \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442", '</span><button class="btn sm red" data-a="staffDel" data-id="').concat(s.id, '">\u{1F5D1}</button></div>')).join("") || '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454</div>' : "\u2026", '\n        <button class="btn sm primary" style="margin-top:10px" data-a="staffAdd">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430</button></div>\n      <div class="card"><h3>\u{1F916} \u0423\u0432\u0456\u0439\u0448\u043B\u0438 \u0432 Telegram-\u0431\u043E\u0442</h3>').concat(st ? st.waiters.map((w) => '<div class="kv"><span>'.concat(esc(w.name || w.uid), '</span><button class="btn sm red" data-a="wOut" data-uid="').concat(w.uid, '">\u0412\u0438\u0439\u0442\u0438</button></div>')).join("") || '<div class="muted">\u041D\u0456\u043A\u043E\u0433\u043E</div>' : "\u2026", '</div>\n      <div class="card"><h3>\u{1F511} \u041F\u0430\u0440\u043E\u043B\u0456</h3><div class="muted" style="margin-bottom:10px">\u041F\u0430\u0440\u043E\u043B\u044C \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430 \u2014 \u0432\u0445\u0456\u0434 \u0443 \u0431\u043E\u0442 \u0456 \u043A\u0430\u0441\u0443; \u043F\u0430\u0440\u043E\u043B\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \u2014 \u0430\u0434\u043C\u0456\u043D-\u0444\u0443\u043D\u043A\u0446\u0456\u0457.</div>\n        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-a="wPass">\u041F\u0430\u0440\u043E\u043B\u044C \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430</button><button class="btn sm" data-a="aPass">\u041F\u0430\u0440\u043E\u043B\u044C \u0430\u0434\u043C\u0456\u043D\u0430</button></div></div>\n      <div class="card"><h3>\u{1F4F6} Wi\u2011Fi \u0437\u0430\u043A\u043B\u0430\u0434\u0443</h3><div class="muted">\u0417\u0432\u0456\u0434\u0441\u0438 \u0433\u043E\u0441\u0442\u0456 \u043C\u043E\u0436\u0443\u0442\u044C \u0437\u0430\u043C\u043E\u0432\u043B\u044F\u0442\u0438. \u0412\u0430\u0448\u0430 \u043C\u0435\u0440\u0435\u0436\u0430 \u0437\u0430\u0440\u0430\u0437: ').concat(esc((wf == null ? void 0 : wf.current) || "\u2026"), "</div>\n        ").concat(wf ? wf.list.map((x) => '<div class="kv"><span>'.concat(esc(x.k), '</span><span class="muted">').concat(new Date(x.at).toLocaleDateString("uk-UA"), "</span></div>")).join("") || '<div class="muted">\u043D\u0435\u043C\u0430\u0454 \u2014 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043D\u0435 \u043F\u0440\u0438\u0439\u043C\u0430\u0442\u0438\u043C\u0443\u0442\u044C\u0441\u044F!</div>' : "", '\n        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn sm primary" data-a="wifiAdd">\u2795 \u0426\u0435 \u043D\u0430\u0448\u0430 \u043C\u0435\u0440\u0435\u0436\u0430</button><button class="btn sm red" data-a="wifiClear">\u0421\u043A\u0438\u043D\u0443\u0442\u0438 \u0432\u0441\u0456</button></div></div>\n      <div class="card"><h3>\u{1F9EA} \u0422\u0435\u0441\u0442</h3><div class="muted" style="margin-bottom:10px">\u0422\u0438\u043C\u0447\u0430\u0441\u043E\u0432\u043E, \u0434\u043E \u0437\u0430\u043F\u0443\u0441\u043A\u0443.</div><button class="btn sm red" data-a="reset">\u267B\uFE0F \u041E\u0431\u043D\u0443\u043B\u0438\u0442\u0438 \u0432\u0441\u0435</button></div></div>');
+    return `<div class="head"><h1>\u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F</h1></div><div class="grid2">
+      <div class="card"><h3>\u{1F465} \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B (PIN \u0434\u043B\u044F \u043A\u0430\u0441\u0438)</h3>${st ? st.staff.map((s) => `<div class="kv"><span>${esc(s.name)} \xB7 ${s.role === "admin" ? "\u{1F510} \u0430\u0434\u043C\u0456\u043D" : "\u{1F9D1}\u200D\u{1F373} \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"}</span><button class="btn sm red" data-a="staffDel" data-id="${s.id}">\u{1F5D1}</button></div>`).join("") || '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454</div>' : "\u2026"}
+        <button class="btn sm primary" style="margin-top:10px" data-a="staffAdd">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430</button></div>
+      <div class="card"><h3>\u{1F916} \u0423\u0432\u0456\u0439\u0448\u043B\u0438 \u0432 Telegram-\u0431\u043E\u0442</h3>${st ? st.waiters.map((w) => `<div class="kv"><span>${esc(w.name || w.uid)}</span><button class="btn sm red" data-a="wOut" data-uid="${w.uid}">\u0412\u0438\u0439\u0442\u0438</button></div>`).join("") || '<div class="muted">\u041D\u0456\u043A\u043E\u0433\u043E</div>' : "\u2026"}</div>
+      <div class="card"><h3>\u{1F511} \u041F\u0430\u0440\u043E\u043B\u0456</h3><div class="muted" style="margin-bottom:10px">\u041F\u0430\u0440\u043E\u043B\u044C \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430 \u2014 \u0432\u0445\u0456\u0434 \u0443 \u0431\u043E\u0442 \u0456 \u043A\u0430\u0441\u0443; \u043F\u0430\u0440\u043E\u043B\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \u2014 \u0430\u0434\u043C\u0456\u043D-\u0444\u0443\u043D\u043A\u0446\u0456\u0457.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-a="wPass">\u041F\u0430\u0440\u043E\u043B\u044C \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430</button><button class="btn sm" data-a="aPass">\u041F\u0430\u0440\u043E\u043B\u044C \u0430\u0434\u043C\u0456\u043D\u0430</button></div></div>
+      <div class="card"><h3>\u{1F4F6} Wi\u2011Fi \u0437\u0430\u043A\u043B\u0430\u0434\u0443</h3><div class="muted">\u0417\u0432\u0456\u0434\u0441\u0438 \u0433\u043E\u0441\u0442\u0456 \u043C\u043E\u0436\u0443\u0442\u044C \u0437\u0430\u043C\u043E\u0432\u043B\u044F\u0442\u0438. \u0412\u0430\u0448\u0430 \u043C\u0435\u0440\u0435\u0436\u0430 \u0437\u0430\u0440\u0430\u0437: ${esc((wf == null ? void 0 : wf.current) || "\u2026")}</div>
+        ${wf ? wf.list.map((x) => `<div class="kv"><span>${esc(x.k)}</span><span class="muted">${new Date(x.at).toLocaleDateString("uk-UA")}</span></div>`).join("") || '<div class="muted">\u043D\u0435\u043C\u0430\u0454 \u2014 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043D\u0435 \u043F\u0440\u0438\u0439\u043C\u0430\u0442\u0438\u043C\u0443\u0442\u044C\u0441\u044F!</div>' : ""}
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn sm primary" data-a="wifiAdd">\u2795 \u0426\u0435 \u043D\u0430\u0448\u0430 \u043C\u0435\u0440\u0435\u0436\u0430</button><button class="btn sm red" data-a="wifiClear">\u0421\u043A\u0438\u043D\u0443\u0442\u0438 \u0432\u0441\u0456</button></div></div>
+      <div class="card"><h3>\u{1F9EA} \u0422\u0435\u0441\u0442</h3><div class="muted" style="margin-bottom:10px">\u0422\u0438\u043C\u0447\u0430\u0441\u043E\u0432\u043E, \u0434\u043E \u0437\u0430\u043F\u0443\u0441\u043A\u0443.</div><button class="btn sm red" data-a="reset">\u267B\uFE0F \u041E\u0431\u043D\u0443\u043B\u0438\u0442\u0438 \u0432\u0441\u0435</button></div></div>`;
   }
   async function menuEdit(id) {
     var _a, _b, _c, _d;
     const it = itemsAll().find((i) => i.id === id) || null;
     const cat = it ? S.menu.categories.find((c) => c.items.includes(it)).id : S.menu.categories[0].id;
-    const body = '<div class="form">\n      <label>\u0420\u043E\u0437\u0434\u0456\u043B<select id="fCat">'.concat(S.menu.categories.map((c) => '<option value="'.concat(c.id, '" ').concat(c.id === cat ? "selected" : "", ">").concat(esc(c.name.uk), "</option>")).join(""), '</select></label>\n      <label>\u041D\u0430\u0437\u0432\u0430<input id="fName" value="').concat(esc((it == null ? void 0 : it.name.uk) || ""), '"></label>\n      <label>\u041D\u0430\u0437\u0432\u0430 \u0430\u043D\u0433\u043B\u0456\u0439\u0441\u044C\u043A\u043E\u044E (\u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)<input id="fEn" value="').concat(esc(it && it.name.en !== it.name.uk ? it.name.en : ""), '"></label>\n      <label>\u0426\u0456\u043D\u0430, \u20B4 ').concat((it == null ? void 0 : it.variants) ? "" : "", '<input id="fPrice" inputmode="numeric" value="').concat((_a = it == null ? void 0 : it.price) != null ? _a : "", '" placeholder="\u043D\u0430\u043F\u0440. 380"></label>\n      <label>\u0410\u0431\u043E \u0440\u043E\u0437\u043C\u0456\u0440\u0438 (\u0434\u043B\u044F \u043D\u0430\u043F\u043E\u0457\u0432): <span class="muted">0.33=60, 0.5=70</span><input id="fVar" value="').concat(esc((it == null ? void 0 : it.variants) ? it.variants.map((v2) => "".concat(v2.v, "=").concat(v2.p)).join(", ") : ""), '"></label>\n      <label>\u0412\u0430\u0433\u0430/\u043E\u0431\u02BC\u0454\u043C<input id="fSize" value="').concat(esc((it == null ? void 0 : it.size) || ""), '" placeholder="\u043D\u0430\u043F\u0440. 400 \u0433 \u0430\u0431\u043E \u043B"></label>\n      <label>\u0421\u043A\u043B\u0430\u0434<textarea id="fDesc" rows="3">').concat(esc(((_b = it == null ? void 0 : it.desc) == null ? void 0 : _b.uk) || ""), "</textarea></label>\n      ").concat(it ? '<label>\u0424\u043E\u0442\u043E<input id="fPhoto" type="file" accept="image/*"></label>' : "", "</div>");
+    const body = `<div class="form">
+      <label>\u0420\u043E\u0437\u0434\u0456\u043B<select id="fCat">${S.menu.categories.map((c) => `<option value="${c.id}" ${c.id === cat ? "selected" : ""}>${esc(c.name.uk)}</option>`).join("")}</select></label>
+      <label>\u041D\u0430\u0437\u0432\u0430<input id="fName" value="${esc((it == null ? void 0 : it.name.uk) || "")}"></label>
+      <label>\u041D\u0430\u0437\u0432\u0430 \u0430\u043D\u0433\u043B\u0456\u0439\u0441\u044C\u043A\u043E\u044E (\u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)<input id="fEn" value="${esc(it && it.name.en !== it.name.uk ? it.name.en : "")}"></label>
+      <label>\u0426\u0456\u043D\u0430, \u20B4 ${(it == null ? void 0 : it.variants) ? "" : ""}<input id="fPrice" inputmode="numeric" value="${(_a = it == null ? void 0 : it.price) != null ? _a : ""}" placeholder="\u043D\u0430\u043F\u0440. 380"></label>
+      <label>\u0410\u0431\u043E \u0440\u043E\u0437\u043C\u0456\u0440\u0438 (\u0434\u043B\u044F \u043D\u0430\u043F\u043E\u0457\u0432): <span class="muted">0.33=60, 0.5=70</span><input id="fVar" value="${esc((it == null ? void 0 : it.variants) ? it.variants.map((v2) => `${v2.v}=${v2.p}`).join(", ") : "")}"></label>
+      <label>\u0412\u0430\u0433\u0430/\u043E\u0431\u02BC\u0454\u043C<input id="fSize" value="${esc((it == null ? void 0 : it.size) || "")}" placeholder="\u043D\u0430\u043F\u0440. 400 \u0433 \u0430\u0431\u043E \u043B"></label>
+      <label>\u0421\u043A\u043B\u0430\u0434<textarea id="fDesc" rows="3">${esc(((_b = it == null ? void 0 : it.desc) == null ? void 0 : _b.uk) || "")}</textarea></label>
+      ${it ? `<label>\u0424\u043E\u0442\u043E<input id="fPhoto" type="file" accept="image/*"></label>` : ""}</div>`;
     const v = await modal({ title: it ? "\u0420\u0435\u0434\u0430\u0433\u0443\u0432\u0430\u0442\u0438 \u0441\u0442\u0440\u0430\u0432\u0443" : "\u041D\u043E\u0432\u0430 \u0441\u0442\u0440\u0430\u0432\u0430", body, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: "save", cls: "primary" }, ...it ? [{ label: "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0441\u0442\u0440\u0430\u0432\u0443", val: "del", cls: "red" }] : [], { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
     if (v === "del") {
-      if (await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \xAB".concat(it.name.uk, "\xBB \u0437 \u043C\u0435\u043D\u044E?"))) await act("menuDel", { id: it.id }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E");
+      if (await confirmBox(`\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \xAB${it.name.uk}\xBB \u0437 \u043C\u0435\u043D\u044E?`)) await act("menuDel", { id: it.id }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E");
       return;
     }
     if (v !== "save") return;
@@ -554,7 +828,7 @@ var __spreadValues = (a, b) => {
       const el = document.createElement("div");
       el.className = "modal-bg";
       el.id = "modal";
-      el.innerHTML = '<div class="modal"><h3>'.concat(esc(title), "</h3>").concat(text ? "<p>".concat(esc(text), "</p>") : "").concat(body, '<div class="btns" style="margin-top:14px">').concat(buttons.map((b, i) => '<button class="btn '.concat(b.cls || "", '" data-mi="').concat(i, '">').concat(esc(b.label), "</button>")).join(""), "</div></div>");
+      el.innerHTML = `<div class="modal"><h3>${esc(title)}</h3>${text ? `<p>${esc(text)}</p>` : ""}${body}<div class="btns" style="margin-top:14px">${buttons.map((b, i) => `<button class="btn ${b.cls || ""}" data-mi="${i}">${esc(b.label)}</button>`).join("")}</div></div>`;
       el.addEventListener("click", (e) => {
         var _a;
         if (e.target === el) return modalResolve(null);
@@ -571,7 +845,7 @@ var __spreadValues = (a, b) => {
   const choose = (title, text, opts) => modal({ title, text, buttons: [...opts, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }] });
   const confirmBox = (title, text = "") => modal({ title, text, buttons: [{ label: "\u0422\u0430\u043A", val: true, cls: "red" }, { label: "\u041D\u0456", val: null }] });
   async function ask(title, ph = "", type = "text") {
-    const v = await modal({ title, body: '<input id="askIn" type="'.concat(type, '" placeholder="').concat(esc(ph), '" ').concat(type === "number" ? 'inputmode="decimal"' : "", ">"), buttons: [{ label: "OK", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+    const v = await modal({ title, body: `<input id="askIn" type="${type}" placeholder="${esc(ph)}" ${type === "number" ? 'inputmode="decimal"' : ""}>`, buttons: [{ label: "OK", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
     const x = v === "ok" ? $("#askIn").value.trim() : null;
     closeModal();
     return x || null;
@@ -585,7 +859,7 @@ var __spreadValues = (a, b) => {
       const el = document.createElement("div");
       el.className = "modal-bg";
       el.id = "modal";
-      el.innerHTML = '<div class="modal"><h3>'.concat(esc(title), "</h3><p>").concat(esc(text), '</p><div class="grid">').concat(Array.from({ length: S.n }, (_, i) => i + 1).filter((n) => n !== skip).map((n) => '<button class="'.concat(S.tables[n] ? "busy" : "", '" data-t="').concat(n, '">').concat(n, "</button>")).join(""), '</div><div class="btns"><button class="btn" data-x>\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438</button></div></div>');
+      el.innerHTML = `<div class="modal"><h3>${esc(title)}</h3><p>${esc(text)}</p><div class="grid">${Array.from({ length: S.n }, (_, i) => i + 1).filter((n) => n !== skip).map((n) => `<button class="${S.tables[n] ? "busy" : ""}" data-t="${n}">${n}</button>`).join("")}</div><div class="btns"><button class="btn" data-x>\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438</button></div></div>`;
       el.addEventListener("click", (e) => {
         var _a;
         if (e.target === el || e.target.closest("[data-x]")) return modalResolve(null);
@@ -657,10 +931,52 @@ var __spreadValues = (a, b) => {
         renderSheet();
         break;
       case "cat":
-        S.cat = +el.dataset.i;
+        S.cat = el.dataset.c;
         S.q = "";
         renderSheet();
-        $(".items").scrollTop = 0;
+        $("#shItems").scrollTop = 0;
+        break;
+      case "grp":
+        S.grp = el.dataset.g;
+        S.cat = "";
+        S.q = "";
+        store.set("grp", S.grp);
+        renderSheet();
+        $("#shItems").scrollTop = 0;
+        break;
+      case "fav": {
+        const on = !S.fav.includes(el.dataset.id);
+        S.fav = on ? [...S.fav, el.dataset.id] : S.fav.filter((x) => x !== el.dataset.id);
+        renderSheet();
+        act("fav", { id: el.dataset.id, on }, on ? "\u2B50 \u0414\u043E\u0434\u0430\u043D\u043E \u0432 \u043E\u0431\u0440\u0430\u043D\u0456" : "\u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E \u0437 \u043E\u0431\u0440\u0430\u043D\u0438\u0445");
+        break;
+      }
+      case "photos":
+        S.photos = !S.photos;
+        store.set("photos", S.photos);
+        renderSheet();
+        break;
+      case "shOpen":
+        shOpen();
+        break;
+      case "shClose":
+        shClose();
+        break;
+      case "rp":
+        S.rep.p = el.dataset.p;
+        loadView();
+        break;
+      case "rTab":
+        S.rep.tab = el.dataset.t;
+        renderMain();
+        break;
+      case "rSort":
+        S.rep.sort = el.dataset.s;
+        renderMain();
+        break;
+      case "rReset":
+        Object.assign(S.rep, { pay: "", by: "", grp: "", cat: "", t: "", q: "" });
+        renderMain();
         break;
       case "add":
         addItem(el.dataset.id);
@@ -684,7 +1000,7 @@ var __spreadValues = (a, b) => {
         sendCart();
         break;
       case "rm":
-        if (await confirmBox("\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 1\xD7 ".concat(el.dataset.name, "?"))) act("remove", { t, name: el.dataset.name }, "\u270F\uFE0F \u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
+        if (await confirmBox(`\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 1\xD7 ${el.dataset.name}?`)) act("remove", { t, name: el.dataset.name }, "\u270F\uFE0F \u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
         break;
       case "pre":
         act("precheck", { t }, "\u{1F5A8} \u041F\u0440\u0435\u0447\u0435\u043A \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u043E");
@@ -702,8 +1018,8 @@ var __spreadValues = (a, b) => {
         closeFlow();
         break;
       case "delTable":
-        if (await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0441\u0442\u0456\u043B ".concat(t, "?"), "\u041F\u043E\u043C\u0438\u043B\u043A\u043E\u0432\u0438\u0439/\u0442\u0435\u0441\u0442\u043E\u0432\u0438\u0439 \u2014 \u0441\u0443\u043C\u0430 \u041D\u0415 \u043F\u0456\u0434\u0435 \u0443 \u0432\u0438\u0440\u0443\u0447\u043A\u0443")) {
-          const r = await act("delete", { t }, "\u{1F5D1} \u0421\u0442\u0456\u043B ".concat(t, " \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E"));
+        if (await confirmBox(`\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0441\u0442\u0456\u043B ${t}?`, "\u041F\u043E\u043C\u0438\u043B\u043A\u043E\u0432\u0438\u0439/\u0442\u0435\u0441\u0442\u043E\u0432\u0438\u0439 \u2014 \u0441\u0443\u043C\u0430 \u041D\u0415 \u043F\u0456\u0434\u0435 \u0443 \u0432\u0438\u0440\u0443\u0447\u043A\u0443")) {
+          const r = await act("delete", { t }, `\u{1F5D1} \u0421\u0442\u0456\u043B ${t} \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E`);
           if (r) closeSheet();
         }
         break;
@@ -725,13 +1041,13 @@ var __spreadValues = (a, b) => {
         break;
       case "pQr": {
         const n = await pickTable("QR \u043C\u0435\u043D\u044E", "\u041D\u043E\u043C\u0435\u0440 \u0441\u0442\u043E\u043B\u0443 \u043D\u0430\u0434\u0440\u0443\u043A\u0443\u0454\u0442\u044C\u0441\u044F \u043D\u0430\u0434 QR (QR \u043E\u0434\u043D\u0430\u043A\u043E\u0432\u0438\u0439)");
-        if (n) act("printQr", { t: n }, "\u{1F5A8} QR \u0441\u0442\u043E\u043B\u0443 ".concat(n));
+        if (n) act("printQr", { t: n }, `\u{1F5A8} QR \u0441\u0442\u043E\u043B\u0443 ${n}`);
         break;
       }
       case "float": {
         const v = await ask("\u0420\u043E\u0437\u043C\u0456\u043D \u043D\u0430 \u043F\u043E\u0447\u0430\u0442\u043E\u043A \u0434\u043D\u044F", "\u0421\u0443\u043C\u0430 \u0432 \u043A\u0430\u0441\u0456, \u20B4", "number");
         if (v != null) {
-          await act("float", { sum: +v }, "\u{1F3E6} \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E");
+          await act("float", { sum: +v.replace(",", ".") }, "\u{1F3E6} \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E");
           loadView();
         }
         break;
@@ -821,6 +1137,23 @@ var __spreadValues = (a, b) => {
       s.setSelectionRange(s.value.length, s.value.length);
     }
     if (e.target.id === "cartCom") S.coms[S.open] = e.target.value;
+    if (e.target.id === "rQ") {
+      S.rep.q = e.target.value;
+      renderMain();
+    }
+  });
+  document.addEventListener("change", (e) => {
+    var _a;
+    const f = (_a = e.target.dataset) == null ? void 0 : _a.f;
+    if (f) {
+      S.rep[f] = e.target.value;
+      if (f === "grp") S.rep.cat = "";
+      renderMain();
+    }
+    if (e.target.id === "rFrom" || e.target.id === "rTo") {
+      S.rep[e.target.id === "rFrom" ? "from" : "to"] = e.target.value;
+      loadView();
+    }
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {

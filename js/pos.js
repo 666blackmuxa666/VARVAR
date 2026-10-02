@@ -1,5 +1,5 @@
 // VARVAR POS — касова програма. Ті самі дані й дії, що в Telegram-боті (сервер: worker/src/pos.js → ops.js).
-// ⚠️ Після змін: npx esbuild js/pos.js --target=safari11,chrome61 --outfile=js/pos.build.js (pos.html підключає build — для старих планшетів).
+// ⚠️ Після змін: npx esbuild js/pos.js --target=es2017 --outfile=js/pos.build.js (pos.html підключає build — для старих планшетів).
 // Живе оновлення: WebSocket /api/pos/live — будь-яка зміна (з бота, сайту чи іншого планшета) з'являється одразу.
 (() => {
   const API = new URLSearchParams(location.search).get('api') || (/workers\.dev$/.test(location.hostname) ? location.origin : 'https://varvar-menu.varvar.workers.dev');
@@ -11,9 +11,10 @@
 
   const S = {
     token: store.get('token', ''), me: store.get('me', null), view: 'hall', n: 15, tables: {}, events: [], printer: {}, menu: null,
-    open: 0, carts: store.get('carts', {}), coms: {}, cat: 0, q: '', mobileMenu: false, data: {}, seen: new Set(), ready: false, live: false,
+    open: 0, carts: store.get('carts', {}), coms: {}, grp: store.get('grp', ''), cat: '', q: '', fav: [], groups: [], photos: store.get('photos', true), shift: null, shown: new Set(), rep: { p: 'd', pay: '', by: '', grp: '', cat: '', t: '', q: '', tab: 'dishes', sort: 's' }, mobileMenu: false, data: {}, seen: new Set(), ready: false, live: false,
   };
   const isAdmin = () => S.me?.role === 'admin';
+  const setHTML = (el, html) => { if (el && el._h !== html) { el._h = html; el.innerHTML = html; } };
 
   // ---------- API ----------
   async function api(op, data = {}) {
@@ -70,7 +71,7 @@
   // ---------- дані і живе оновлення ----------
   async function loadState() {
     const r = await api('state');
-    S.me = { ...S.me, ...r.me }; S.n = r.n; S.printer = r.printer;
+    S.me = { ...S.me, ...r.me }; S.n = r.n; S.printer = r.printer; S.shift = r.shift;
     S.tables = Object.fromEntries(r.tables.map(b => [b.t, b]));
     const fresh = r.events.filter(e => !S.seen.has(e.id));
     if (S.ready && fresh.some(e => e.k === 'guest' || e.k === 'check')) ding();
@@ -78,7 +79,7 @@
     S.events = r.events; S.ready = true;
     render();
   }
-  async function loadMenu() { S.menu = (await api('menu')).menu; if (S.open) renderSheet(); if (['stop', 'menu'].includes(S.view)) renderMain(); }
+  async function loadMenu() { const r = await api('menu'); S.menu = r.menu; S.fav = r.fav || []; S.groups = r.groups || []; if (S.open) renderSheet(); if (['stop', 'menu', 'reports'].includes(S.view)) renderMain(); }
   let ws, wsTimer, pingT, reloadT;
   function connect() {
     try { ws?.close(); } catch {}
@@ -91,8 +92,8 @@
       clearTimeout(reloadT);
       reloadT = setTimeout(() => {
         loadState().catch(() => {});
-        if (m.keys.includes('menu')) loadMenu().catch(() => {});
-        if (['closed', 'reports', 'settings'].includes(S.view) && m.keys.some(k => ['closed', 'day', 'exp', 'staff'].includes(k))) loadView();
+        if (m.keys.includes('menu') || m.keys.includes('fav')) loadMenu().catch(() => {});
+        if (['closed', 'reports', 'settings', 'cash'].includes(S.view) && m.keys.some(k => ['closed', 'day', 'exp', 'staff', 'shift', 'z'].includes(k))) loadView(true);
       }, 120);
     };
     ws.onclose = () => { S.live = false; liveDot(); clearInterval(pingT); clearTimeout(wsTimer); if (S.token) wsTimer = setTimeout(connect, 2000); };
@@ -110,14 +111,14 @@
   }
 
   // ---------- каркас ----------
-  const NAV = [['hall', '🪑', 'Зал'], ['closed', '📜', 'Закриті'], ['stop', '⛔', 'Стоп-лист'], ['printer', '🖨', 'Принтер'], ['reports', '📊', 'Звіти', 1], ['menu', '📖', 'Меню', 1], ['settings', '⚙️', 'Налашт.', 1]];
+  const NAV = [['hall', '🪑', 'Зал'], ['closed', '📜', 'Закриті'], ['stop', '⛔', 'Стоп-лист'], ['printer', '🖨', 'Принтер'], ['cash', '💰', 'Каса', 1], ['reports', '📊', 'Звіти', 1], ['menu', '📖', 'Меню', 1], ['settings', '⚙️', 'Налашт.', 1]];
   function renderNav() {
     const newCnt = S.events.filter(e => e.k === 'guest' && e.s !== 'acc').length;
-    $('#nav').innerHTML = `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` +
+    setHTML($('#nav'), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` +
       NAV.filter(n => !n[3] || isAdmin()).map(([v, ic, l]) => `<button class="${S.view === v ? 'on' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join('') +
       `<button class="feed-btn" data-a="feed"><span class="ic">🔔</span>Стрічка${newCnt ? `<span class="badge">${newCnt}</span>` : ''}</button>` +
       `<div class="grow"></div><div class="me">${esc(S.me?.name)}<br>${isAdmin() ? 'адмін' : 'офіціант'}</div>` +
-      `<button data-a="switch"><span class="ic">🔒</span>Вийти</button>`;
+      `<button data-a="switch"><span class="ic">🔒</span>Вийти</button>`);
   }
   function render() { renderNav(); renderFeed(); if (['hall', 'printer'].includes(S.view)) renderMain(); if (S.open) renderSheet(); }
 
@@ -132,7 +133,8 @@
       const tag = b.check ? `<span class="tag c">🧾 чек${b.pay ? (b.pay === 'card' ? ' 💳' : ' 💵') : ''}</span>` : pending.has(t) ? '<span class="tag g">нове</span>' : '';
       return `<button class="tbl ${cls}" data-a="table" data-t="${t}">${tag}<div class="n">${t}</div><div class="st">${b.orders} замовл.${b.disc ? ` · −${b.disc}%` : ''}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">з ${b.opened ? hhmm(b.opened) : '—'}</div></button>`;
     }).join('');
-    return `<div class="head"><h1>Зал</h1><div class="stat">Відкрито<b>${list.length}</b></div><div class="stat">У залі<b class="money">${money(sum)}</b></div>
+    const banner = S.shift ? '' : `<div class="banner"><span>🔒 <b>Каса закрита</b> — відкрийте зміну на початку дня</span>${isAdmin() ? '<button class="btn sm primary" data-a="shOpen">🔓 Відкрити касу</button>' : ''}</div>`;
+    return `${banner}<div class="head"><h1>Зал</h1><div class="stat">Відкрито<b>${list.length}</b></div><div class="stat">У залі<b class="money">${money(sum)}</b></div>
       <button class="btn primary" data-a="newOrder">➕ Замовлення</button></div><div class="tables">${tiles}</div>`;
   }
 
@@ -140,60 +142,84 @@
   const evTitle = e => ({
     guest: `🛎 Стіл ${e.t} — ${esc((e.kind || 'замовлення').toLowerCase())}`, check: `🧾 Стіл ${e.t} просить чек${e.pay ? (e.pay === 'card' ? ' · 💳 карта' : ' · 💵 готівка') : ''}`,
     waiter: `🧑‍🍳 Стіл ${e.t} — ${esc(e.by)}${e.src === 'каса' ? ' (каса)' : ''}`, close: `✅ Стіл ${e.t} закрито — ${money(e.sum)} ${e.pay === 'card' ? '💳' : '💵'}${e.print === false ? ' · без чека' : ''}`,
-    del: `🗑 Стіл ${e.t} видалено (${money(e.sum)})`, move: `↔️ ${esc(e.text)}`, disc: `% Стіл ${e.t}: ${esc(e.text)}`, rm: `✏️ Стіл ${e.t}: ${esc(e.text)}`, pre: `🖨 Пречек стіл ${e.t}`,
+    shift: esc(e.text), del: `🗑 Стіл ${e.t} видалено (${money(e.sum)})`, move: `↔️ ${esc(e.text)}`, disc: `% Стіл ${e.t}: ${esc(e.text)}`, rm: `✏️ Стіл ${e.t}: ${esc(e.text)}`, pre: `🖨 Пречек стіл ${e.t}`,
   })[e.k] || esc(e.text || e.k);
   function renderFeed() {
-    $('#events').innerHTML = S.events.length ? [...S.events].reverse().map(e => {
+    setHTML($('#events'), S.events.length ? [...S.events].reverse().map(e => {
       const lines = e.lines?.length ? `<div class="lines">${e.lines.map(esc).join('\n')}</div>` : '';
       const by = e.by && !['waiter'].includes(e.k) ? ` · ${esc(e.by)}` : '';
       const btns = e.k === 'guest' || e.k === 'check'
         ? `<div class="act">${e.s === 'acc' ? `<span class="muted">✅ ${esc(e.accBy || 'прийнято')}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">✅ Прийняв</button>`}<button class="btn sm" data-a="table" data-t="${e.t}">Стіл ${e.t}</button></div>` : '';
-      return `<div class="ev ${e.k}${e.s === 'acc' ? ' acc' : ''}"><div class="top"><b>${evTitle(e)}</b><span class="tm">${e.at}${by}</span></div>${lines}${e.comment ? `<div class="com">💬 ${esc(e.comment)}</div>` : ''}${e.sum && ['guest', 'waiter'].includes(e.k) ? `<div class="muted">Сума ${money(e.sum)}</div>` : ''}${btns}</div>`;
-    }).join('') : '<div class="muted" style="padding:12px">Сьогодні подій ще немає</div>';
+      const fresh = S.shown.size && !S.shown.has(e.id) ? ' fresh' : '';
+      return `<div class="ev ${e.k}${e.s === 'acc' ? ' acc' : ''}${fresh}"><div class="top"><b>${evTitle(e)}</b><span class="tm">${e.at}${by}</span></div>${lines}${e.comment ? `<div class="com">💬 ${esc(e.comment)}</div>` : ''}${e.sum && ['guest', 'waiter'].includes(e.k) ? `<div class="muted">Сума ${money(e.sum)}</div>` : ''}${btns}</div>`;
+    }).join('') : '<div class="muted" style="padding:12px">Сьогодні подій ще немає</div>');
+    S.events.forEach(e => S.shown.add(e.id));
   }
 
   // ---------- стіл (лист) ----------
   const cartOf = t => (S.carts[t] ||= {});
   const saveCarts = () => store.set('carts', S.carts);
   const itemsAll = () => S.menu ? S.menu.categories.flatMap(c => c.items) : [];
-  function openTable(t) { S.open = +t; S.mobileMenu = !S.tables[t]; S.q = ''; if (!S.menu) loadMenu(); renderSheet(); }
+  function openTable(t) {
+    S.open = +t; S.mobileMenu = !S.tables[t]; S.q = ''; if (!S.menu) loadMenu();
+    // каркас створюється один раз — далі оновлюються лише частини (без блимання і повторної анімації)
+    $('#layer').innerHTML = `<div class="sheet-bg" data-a="closeSheet"></div><div class="sheet"><div class="sheet-head" id="shHead"></div>
+      <div class="sheet-body" id="shBody"><div class="bill" id="shBill"></div><div class="menu-pane"><div id="shNav"></div><div class="items" id="shItems"></div></div></div></div>`;
+    renderSheet();
+  }
   function closeSheet() { S.open = 0; $('#layer').innerHTML = ''; }
+  // групи меню: ⭐ Обрані · 🍳 Кухня · 🍹 Бар · 💨 Кальян
+  const grpList = () => [{ id: 'fav', name: '⭐ Обрані' }, ...S.groups];
+  const curGrp = () => S.grp || (S.fav.length ? 'fav' : 'kitchen');
+  const grpCats = g => { const gg = S.groups.find(x => x.id === g); return gg ? S.menu.categories.filter(c => gg.cats.includes(c.id)) : []; };
+  function menuItems() {
+    const q = S.q.trim().toLowerCase();
+    if (q) return itemsAll().filter(i => i.name.uk.toLowerCase().includes(q) || (i.name.en || '').toLowerCase().includes(q));
+    const g = curGrp();
+    if (g === 'fav') return S.fav.map(id => itemsAll().find(i => i.id === id)).filter(Boolean);
+    const cats = grpCats(g), c = cats.find(x => x.id === S.cat) || cats[0];
+    return c ? c.items : [];
+  }
   function renderSheet() {
-    const t = S.open; if (!t) return;
+    const t = S.open; if (!t || !$('#shHead')) return;
     const b = S.tables[t], cart = cartOf(t), cartRows = Object.entries(cart);
     const cartSum = cartRows.reduce((s, [, x]) => s + x.price * x.q, 0);
+    setHTML($('#shHead'), `<h2>Стіл ${t}</h2>${b ? `<span class="total money">${money(b.pay2)}</span>${b.disc ? `<span class="chip">−${b.disc}%</span>` : ''}<span class="muted hide-s">з ${b.opened ? hhmm(b.opened) : '—'} · ${b.orders} замовл.</span>${b.check ? '<span class="chip" style="background:var(--orange);color:#000">🧾 чек</span>' : ''}` : '<span class="muted">новий</span>'}
+        <span class="sp"></span><div class="tabs2"><button class="${S.mobileMenu ? '' : 'on'}" data-a="tab" data-m="0">Рахунок${cartRows.length ? ` (${cartRows.reduce((s, [, x]) => s + x.q, 0)})` : ''}</button><button class="${S.mobileMenu ? 'on' : ''}" data-a="tab" data-m="1">Меню</button></div>
+        <button class="close-x" data-a="closeSheet">✕</button>`);
+    $('#shBody').className = 'sheet-body' + (S.mobileMenu ? ' show-menu' : '');
+    // рахунок
     const billRows = b ? b.items.map(it => `<div class="row"><div class="nm">${esc(it.name)}<small>${it.q} × ${Math.round(it.sum / it.q)} ₴</small></div><b class="money">${it.sum}</b><button class="rb minus" data-a="rm" data-name="${esc(it.name)}" title="Прибрати 1">−</button></div>`).join('') : '<div class="muted" style="padding:8px 4px">Рахунок порожній — оберіть страви в меню</div>';
     const discRow = b?.disc ? `<div class="row"><div class="nm">Знижка ${b.disc}%</div><b class="money" style="color:var(--green)">−${b.total - b.pay2}</b><button class="rb minus" data-a="discSet" data-p="0">×</button></div>` : '';
     const comments = b ? b.log.filter(o => o.comment).map(o => `<div class="muted" style="padding:2px 6px">💬 ${esc(o.comment)}</div>`).join('') : '';
     const cartHTML = cartRows.length ? `<div class="cart"><h3>Нове замовлення</h3><div class="rows">${cartRows.map(([k, x]) => `<div class="row"><div class="nm">${esc(x.name)}<small>${x.price} ₴</small></div><button class="rb minus" data-a="cq" data-k="${esc(k)}" data-d="-1">−</button><span class="q">${x.q}</span><button class="rb plus" data-a="cq" data-k="${esc(k)}" data-d="1">+</button></div>`).join('')}</div>
       <input id="cartCom" placeholder="💬 Коментар для кухні (необовʼязково)" value="${esc(S.coms[t] || '')}" style="margin:6px 0 10px">
-      <div style="display:grid;grid-template-columns:auto 1fr;gap:8px"><button class="btn red" data-a="cartClear">✕</button><button class="btn primary" data-a="send">Відправити на кухню · ${money(cartSum)}</button></div></div>` : '';
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:8px"><button class="btn red" data-a="cartClear">✕</button><button class="btn primary" data-a="send">Відправити · ${money(cartSum)}</button></div></div>` : '';
     const actions = b ? `<div class="actions"><button class="btn" data-a="pre">🖨 Пречек</button><button class="btn" data-a="disc">% Знижка</button>
       <button class="btn" data-a="move">↔️ Перенести</button>${isAdmin() ? '<button class="btn red" data-a="delTable">🗑 Видалити</button>' : '<button class="btn" data-a="mobileMenu">➕ Додати</button>'}
       <button class="btn green wide" data-a="closeT">💰 Закрити рахунок · ${money(b.pay2)}</button></div>` : '';
-    // меню
-    let menuHTML = '<div class="muted" style="padding:20px">Завантаження меню…</div>';
-    if (S.menu) {
-      const cats = S.menu.categories;
-      const q = S.q.trim().toLowerCase();
-      const items = q ? itemsAll().filter(i => i.name.uk.toLowerCase().includes(q) || (i.name.en || '').toLowerCase().includes(q)) : (cats[S.cat]?.items || []);
-      const inCart = id => cartRows.filter(([k]) => k.split('|')[0] === id).reduce((s, [, x]) => s + x.q, 0);
-      menuHTML = `<div class="cats">${cats.map((c, i) => `<button class="chip ${!q && i === S.cat ? 'on' : ''}" data-a="cat" data-i="${i}">${esc(c.name.uk)}</button>`).join('')}</div>
-        <input class="search" id="search" placeholder="🔎 Пошук страви" value="${esc(S.q)}">
-        <div class="items">${items.map(it => { const n = inCart(it.id); return `<button class="item ${it.hidden ? 'off' : ''}" data-a="add" data-id="${it.id}">${n ? `<span class="cnt">${n}</span>` : ''}${it.img ? `<img loading="lazy" src="${esc(it.img)}" alt="">` : ''}<span class="nm">${esc(it.name.uk)}</span>${it.size && !it.variants ? `<span class="muted" style="font-size:12px">${esc(it.size)}</span>` : ''}<span class="pr">${it.hidden ? '⛔ немає' : it.variants ? it.variants.map(v => v.p).join(' / ') + ' ₴' : it.price + ' ₴'}</span></button>`; }).join('') || '<div class="muted">Нічого не знайдено</div>'}</div>`;
-    }
-    const keepScroll = $('.items')?.scrollTop, keepBill = $('.bill .scroll')?.scrollTop, focusSearch = document.activeElement?.id === 'search', focusCom = document.activeElement?.id === 'cartCom';
-    $('#layer').innerHTML = `<div class="sheet-bg" data-a="closeSheet"></div><div class="sheet">
-      <div class="sheet-head"><h2>Стіл ${t}</h2>${b ? `<span class="total money">${money(b.pay2)}</span>${b.disc ? `<span class="chip">−${b.disc}%</span>` : ''}<span class="muted">з ${b.opened ? hhmm(b.opened) : '—'} · ${b.orders} замовл.</span>${b.check ? '<span class="chip" style="background:var(--orange);color:#000">🧾 просять чек</span>' : ''}` : '<span class="muted">новий рахунок</span>'}
-        <span class="sp"></span><div class="tabs2"><button class="${S.mobileMenu ? '' : 'on'}" data-a="tab" data-m="0">Рахунок${cartRows.length ? ` (${cartRows.length})` : ''}</button><button class="${S.mobileMenu ? 'on' : ''}" data-a="tab" data-m="1">Меню</button></div>
-        <button class="close-x" data-a="closeSheet">✕</button></div>
-      <div class="sheet-body ${S.mobileMenu ? 'show-menu' : ''}">
-        <div class="bill"><div class="scroll"><h3>Рахунок</h3>${billRows}${discRow}${comments}</div>${cartHTML}${actions}</div>
-        <div class="menu-pane">${menuHTML}</div></div></div>`;
-    if (keepScroll) $('.items') && ($('.items').scrollTop = keepScroll);
-    if (keepBill) $('.bill .scroll').scrollTop = keepBill;
-    if (focusSearch) { const s = $('#search'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
+    const keepBill = $('#shBill .scroll')?.scrollTop, focusCom = document.activeElement?.id === 'cartCom';
+    setHTML($('#shBill'), `<div class="scroll"><h3>Рахунок</h3>${billRows}${discRow}${comments}</div>${cartHTML}${actions}`);
+    if (keepBill) $('#shBill .scroll').scrollTop = keepBill;
     if (focusCom) { const s = $('#cartCom'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
+    // меню: групи → категорії → страви (кількість у кошику малюється окремо, щоб фото не перемальовувались)
+    if (!S.menu) { setHTML($('#shItems'), '<div class="muted" style="padding:20px">Завантаження меню…</div>'); return; }
+    const g = curGrp(), q = S.q.trim(), cats = g === 'fav' ? [] : grpCats(g), cur = (cats.find(x => x.id === S.cat) || cats[0] || {}).id;
+    const focusSearch = document.activeElement?.id === 'search';
+    setHTML($('#shNav'), `<div class="seg">${grpList().map(x => `<button class="${!q && x.id === g ? 'on' : ''}" data-a="grp" data-g="${x.id}">${esc(x.name)}</button>`).join('')}</div>
+      ${cats.length > 1 && !q ? `<div class="cats">${cats.map(c => `<button class="chip ${c.id === cur ? 'on' : ''}" data-a="cat" data-c="${c.id}">${esc(c.name.uk)}</button>`).join('')}</div>` : ''}
+      <div class="srow"><input class="search" id="search" placeholder="🔎 Пошук страви" value="${esc(S.q)}"><button class="btn sm ghost" data-a="photos" title="Фото">${S.photos ? '🖼' : '📝'}</button></div>`);
+    if (focusSearch) { const s = $('#search'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
+    const items = menuItems();
+    $('#shItems').classList.toggle('nophoto', !S.photos);
+    setHTML($('#shItems'), items.map(it => `<div class="item ${it.hidden ? 'off' : ''}" data-a="add" data-id="${it.id}" role="button"><span class="cnt" data-cnt="${it.id}" hidden></span>${S.photos && it.img ? `<img src="${esc(it.img)}" alt="" decoding="async">` : ''}<span class="nm">${esc(it.name.uk)}</span>${it.size && !it.variants ? `<span class="muted sz">${esc(it.size)}</span>` : ''}<span class="pr">${it.hidden ? '⛔ немає' : it.variants ? it.variants.map(v => v.p).join(' / ') + ' ₴' : it.price + ' ₴'}</span><span class="star ${S.fav.includes(it.id) ? 'on' : ''}" data-a="fav" data-id="${it.id}" title="Обрані">${S.fav.includes(it.id) ? '★' : '☆'}</span></div>`).join('')
+      || `<div class="muted" style="padding:10px">${g === 'fav' && !q ? 'Обраних ще немає — натисніть ☆ на страві, щоб додати' : 'Нічого не знайдено'}</div>`);
+    paintCounts();
+  }
+  function paintCounts() {
+    const cart = cartOf(S.open), n = {};
+    Object.entries(cart).forEach(([k, x]) => { const id = k.split('|')[0]; n[id] = (n[id] || 0) + x.q; });
+    document.querySelectorAll('[data-cnt]').forEach(el => { const v = n[el.dataset.cnt] || 0; el.hidden = !v; el.textContent = v; });
   }
   async function addItem(id) {
     const it = itemsAll().find(i => i.id === id); if (!it) return;
@@ -243,10 +269,11 @@
   }
 
   // ---------- інші екрани ----------
-  async function loadView() {
+  async function loadView(silent) {
     try {
+      if (S.view === 'cash') S.data.shift = await api('shift');
+      if (S.view === 'reports') { if (!S.menu) await loadMenu(); await loadReport(); }
       if (S.view === 'closed') S.data.closed = (await api('closed')).list;
-      if (S.view === 'reports') S.data.rep = await api('reports');
       if (S.view === 'settings') { S.data.staff = await api('staff'); S.data.wifi = await api('wifi'); }
       if (['stop', 'menu'].includes(S.view) && !S.menu) await loadMenu();
     } catch {}
@@ -255,13 +282,11 @@
   function renderMain() {
     const v = S.view, m = $('#main');
     m.classList.toggle('hall', v === 'hall');
-    if (v === 'hall') { const cols = Math.ceil(Math.sqrt(S.n * 1.6)); m.style.setProperty('--cols', cols); m.style.setProperty('--rows', Math.ceil(S.n / cols)); m.innerHTML = hallHTML(); }
-    else if (v === 'closed') m.innerHTML = closedHTML();
-    else if (v === 'stop') m.innerHTML = stopHTML();
-    else if (v === 'printer') m.innerHTML = printerHTML();
-    else if (v === 'reports') m.innerHTML = reportsHTML();
-    else if (v === 'menu') m.innerHTML = menuHTML();
-    else if (v === 'settings') m.innerHTML = settingsHTML();
+    if (v === 'hall') { const cols = Math.ceil(Math.sqrt(S.n * 1.6)); m.style.setProperty('--cols', cols); m.style.setProperty('--rows', Math.ceil(S.n / cols)); }
+    const html = { hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML }[v]?.();
+    const fid = document.activeElement?.id, keep = ['stopSearch', 'rQ'].includes(fid);
+    setHTML(m, html || '');
+    if (keep) { const el = $('#' + fid); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
   }
   const payL = x => x.card ? '💳 карта' : '💵 готівка';
   function closedHTML() {
@@ -287,21 +312,123 @@
       <div class="muted">${p.seen ? 'Останній звʼязок: ' + hhmm(p.seen) : ''} · у черзі: ${p.q ?? 0}</div></div>
       <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">🖨 Тестовий друк</button><button class="btn" data-a="pQr">🔳 QR меню для столу</button></div></div>`;
   }
-  function reportsHTML() {
-    const r = S.data.rep; if (!r) return '<div class="head"><h1>Звіти і каса</h1></div><div class="muted">Завантаження…</div>';
-    const c = r.cash;
-    const row = ([label, d]) => `<div class="card"><h3>${esc(label)}</h3><div class="big money">${money(d.closed)}</div>
-      <div class="kv"><span>💵 Готівка</span><b class="money">${money(d.cash)}</b></div><div class="kv"><span>💳 Карта</span><b class="money">${money(d.card)}</b></div>
-      <div class="kv"><span>💸 Витрати</span><b class="money">${money(d.exp)}</b></div><div class="kv"><span>Чистими</span><b class="money">${money(d.closed - d.exp)}</b></div>
-      <div class="kv"><span>Столів · сер. чек</span><b>${d.tables} · ${d.tables ? money(d.closed / d.tables) : '—'}</b></div>${d.disc ? `<div class="kv"><span>🏷 Знижки</span><b class="money">${money(d.disc)}</b></div>` : ''}</div>`;
-    return `<div class="head"><h1>Звіти і каса</h1><div class="stat">Ще відкрито в залі<b class="money">${money(r.open)}</b></div></div>
-      <div class="grid2" style="margin-bottom:14px"><div class="card"><h3>💰 Каса сьогодні</h3>
-        <div class="kv"><span>Розмін на початок</span><b class="money">${money(c.float)}</b></div><div class="kv"><span>+ 💵 Готівка від гостей</span><b class="money">${money(c.cash)}</b></div>
-        <div class="kv"><span>− 💸 Витрати готівкою</span><b class="money">${money(c.exCash)}</b></div><div class="kv"><span><b>Має бути в касі</b></span><b class="money big" style="font-size:22px">${money(c.inBox)}</b></div>
+  // ---------- каса (зміна) ----------
+  function cashHTML() {
+    const r = S.data.shift; if (!r) return '<div class="head"><h1>Каса</h1></div><div class="muted">Завантаження…</div>';
+    const d = r.d, dt = t => new Date(t).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const head = d.open
+      ? `<div class="card shift on"><div class="big">🔓 Зміна відкрита</div><div class="muted">з ${dt(d.opened)}${d.by ? ' · ' + esc(d.by) : ''}</div>
+          <button class="btn red" style="margin-top:12px" data-a="shClose">🔒 Закрити касу (Z-звіт)</button></div>`
+      : `<div class="card shift"><div class="big">🔒 Каса закрита</div><div class="muted">Відкрийте зміну на початку дня: вкажіть розмін у касі</div>
+          <button class="btn primary" style="margin-top:12px" data-a="shOpen">🔓 Відкрити касу</button></div>`;
+    return `<div class="head"><h1>Каса</h1></div><div class="grid2" style="margin-bottom:14px">${head}
+      <div class="card"><h3>💰 ${d.open ? 'За зміну' : 'Сьогодні'}</h3>
+        <div class="kv"><span>Розмін на початок</span><b class="money">${money(d.float)}</b></div><div class="kv"><span>+ 💵 Готівка від гостей</span><b class="money">${money(d.cash)}</b></div>
+        <div class="kv"><span>− 💸 Витрати готівкою</span><b class="money">${money(d.exCash)}</b></div><div class="kv"><span><b>Має бути в касі</b></span><b class="money" style="font-size:22px">${money(d.inBox)}</b></div>
+        <div class="kv"><span>💳 Карта</span><b class="money">${money(d.card)}</b></div><div class="kv"><span>Чеків · виручка</span><b>${d.checks} · <span class="money">${money(d.total)}</span></b></div>
+        ${d.openTables ? `<div class="kv"><span>⏳ Ще відкрито столів</span><b>${d.openTables} · <span class="money">${money(d.openSum)}</span></b></div>` : ''}
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn sm" data-a="float">🏦 Розмін</button><button class="btn sm" data-a="expense">💸 Витрата</button></div></div>
-        <div class="card"><h3>💸 Витрати сьогодні</h3>${c.exp.length ? c.exp.map((e, i) => `<div class="kv" style="${e.del ? 'opacity:.4;text-decoration:line-through' : ''}"><span>${e.at} ${e.src === 'card' ? '💳' : '💵'} ${esc(e.note || '')}</span><span><b class="money">${money(e.sum)}</b> ${e.del ? '' : `<button class="btn sm red" data-a="expDel" data-i="${i}">🗑</button>`}</span></div>`).join('') : '<div class="muted">Немає</div>'}</div></div>
-      <div class="grid2">${r.rows.map(row).join('')}</div>
-      <h2 style="margin:26px 0 10px">🏆 Топ страв за місяць</h2><div class="card">${r.top.map((x, i) => `<div class="kv"><span>${i + 1}. ${esc(x.n)}</span><b>${x.q} шт · <span class="money">${money(x.s)}</span></b></div>`).join('') || '<div class="muted">Ще немає продажів</div>'}</div>`;
+      <div class="card"><h3>💸 Витрати сьогодні</h3>${r.exp.length ? r.exp.map((e, i) => `<div class="kv" style="${e.del ? 'opacity:.4;text-decoration:line-through' : ''}"><span>${e.at} ${e.src === 'card' ? '💳' : '💵'} ${esc(e.note || '')}</span><span><b class="money">${money(e.sum)}</b> ${e.del ? '' : `<button class="btn sm red" data-a="expDel" data-i="${i}">🗑</button>`}</span></div>`).join('') : '<div class="muted">Немає</div>'}</div></div>`;
+  }
+  async function shOpen() {
+    const v = await ask('🔓 Відкрити касу', 'Розмін у касі на початок, ₴', 'number'); if (v == null) return;
+    if (await act('shiftOpen', { float: +v.replace(',', '.') }, '🔓 Касу відкрито')) { loadState().catch(() => {}); if (S.view === 'cash') loadView(); }
+  }
+  async function shClose() {
+    const d = (await api('shift').catch(() => null))?.d; if (!d) return;
+    const v = await modal({ title: '🔒 Закрити касу', text: `Має бути в касі: ${money(d.inBox)}${d.openTables ? ` · ⚠️ відкрито столів: ${d.openTables}` : ''}`,
+      body: '<div class="form"><input id="zCnt" inputmode="decimal" placeholder="Скільки пораховано готівки, ₴ (необовʼязково)"></div>',
+      buttons: [{ label: '🖨 Закрити і надрукувати Z-звіт', val: 'p', cls: 'red' }, { label: 'Закрити без друку', val: 'n' }, { label: 'Скасувати', val: null }], keep: true });
+    const c = v && $('#zCnt').value.trim().replace(',', '.'); closeModal(); if (!v) return;
+    const r = await act('shiftClose', { counted: c === '' ? null : +c, print: v === 'p' });
+    if (r?.z) { const z = r.z; await modal({ title: '🔒 Касу закрито', text: `Виручка ${money(z.total)} · чеків ${z.checks} · 💵 ${money(z.cash)} · 💳 ${money(z.card)} · в касі має бути ${money(z.inBox)}${z.diff != null ? ` · різниця ${z.diff > 0 ? '+' : ''}${money(z.diff)}` : ''}`, buttons: [{ label: 'OK', val: 1, cls: 'primary' }] }); loadState().catch(() => {}); if (S.view === 'cash') loadView(); }
+  }
+
+  // ---------- звіти: віджети + фільтри ----------
+  const iso = t => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const PER = [['d', 'Сьогодні'], ['y', 'Вчора'], ['w', '7 днів'], ['30', '30 днів'], ['m', 'Цей місяць'], ['pm', 'Мин. місяць'], ['yr', 'Рік'], ['c', 'Свій період']];
+  function perRange(p) {
+    const now = new Date(), day = 864e5, y = now.getFullYear(), mo = now.getMonth();
+    if (p === 'd') return [iso(now), iso(now)];
+    if (p === 'y') return [iso(now - day), iso(now - day)];
+    if (p === 'w') return [iso(now - 6 * day), iso(now)];
+    if (p === '30') return [iso(now - 29 * day), iso(now)];
+    if (p === 'm') return [iso(new Date(y, mo, 1)), iso(now)];
+    if (p === 'pm') return [iso(new Date(y, mo - 1, 1)), iso(new Date(y, mo, 0))];
+    if (p === 'yr') return [iso(new Date(y, 0, 1)), iso(now)];
+    return [S.rep.from || iso(now - 6 * day), S.rep.to || iso(now)];
+  }
+  let resolver;
+  function dishOf(name) { // «Pepsi 0.5 л» → страва меню з категорією і групою
+    if (!S.menu) return null;
+    if (!resolver || resolver.menu !== S.menu) {
+      const all = S.menu.categories.flatMap(c => c.items.map(it => ({ n: it.name.uk, cat: c.id, cname: c.name.uk, grp: (S.groups.find(g => g.cats.includes(c.id)) || {}).id }))).sort((a, b) => b.n.length - a.n.length);
+      resolver = { menu: S.menu, memo: new Map(), all };
+    }
+    if (!resolver.memo.has(name)) resolver.memo.set(name, resolver.all.find(x => name === x.n || name.startsWith(x.n + ' ')) || null);
+    return resolver.memo.get(name);
+  }
+  async function loadReport() {
+    const [from, to] = perRange(S.rep.p), key = from + '|' + to;
+    if (S.data.rangeKey !== key) { S.data.range = null; S.data.rangeKey = key; renderMain(); }
+    const res = await api('report', { from, to }).catch(() => null);
+    if (S.data.rangeKey === key) S.data.range = res || S.data.range || { checks: [], exp: [], z: [] };
+  }
+  function reportsHTML() {
+    const R = S.rep, [from, to] = perRange(R.p), r = S.data.range;
+    const opt = (v, l, cur) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(l)}</option>`;
+    const checks0 = r ? r.checks : [];
+    const waiters = [...new Set(checks0.map(c => c.by).filter(Boolean))].sort(), tables = [...new Set(checks0.map(c => c.t))].sort((a, b) => a - b);
+    const cats = S.menu ? S.menu.categories.filter(c => !R.grp || (S.groups.find(g => g.id === R.grp) || { cats: [] }).cats.includes(c.id)) : [];
+    const filters = `<div class="filters">
+      <div class="chips">${PER.map(([k, l]) => `<button class="chip ${R.p === k ? 'on' : ''}" data-a="rp" data-p="${k}">${l}</button>`).join('')}</div>
+      ${R.p === 'c' ? `<div class="frow"><label>З<input type="date" id="rFrom" value="${from}"></label><label>По<input type="date" id="rTo" value="${to}"></label></div>` : ''}
+      <div class="frow">
+        <label>Оплата<select data-f="pay">${opt('', 'Усі', R.pay)}${opt('cash', '💵 Готівка', R.pay)}${opt('card', '💳 Карта', R.pay)}</select></label>
+        <label>Офіціант<select data-f="by">${opt('', 'Усі', R.by)}${waiters.map(w => opt(w, w, R.by)).join('')}</select></label>
+        <label>Група<select data-f="grp">${opt('', 'Усе', R.grp)}${S.groups.map(g => opt(g.id, g.name, R.grp)).join('')}</select></label>
+        <label>Категорія<select data-f="cat">${opt('', 'Усі', R.cat)}${cats.map(c => opt(c.id, c.name.uk, R.cat)).join('')}</select></label>
+        <label>Стіл<select data-f="t">${opt('', 'Усі', R.t)}${tables.map(t => opt(String(t), 'Стіл ' + t, R.t)).join('')}</select></label>
+        <label>Страва<input id="rQ" placeholder="🔎 назва" value="${esc(R.q)}"></label>
+        ${R.pay || R.by || R.grp || R.cat || R.t || R.q ? '<button class="btn sm ghost" data-a="rReset" style="align-self:end">✕ Скинути</button>' : ''}
+      </div></div>`;
+    const head = `<div class="head"><h1>Звіти</h1><span class="muted">${from === to ? from : from + ' — ' + to}</span></div>`;
+    if (!r) return head + '<div class="muted" style="margin-bottom:14px">Завантаження…</div>' + filters;
+    // фільтрація
+    const dishF = R.grp || R.cat || R.q.trim(), q = R.q.trim().toLowerCase();
+    const dishOk = n => { if (!dishF) return true; const x = dishOf(n); if (R.grp && x?.grp !== R.grp) return false; if (R.cat && x?.cat !== R.cat) return false; return !q || n.toLowerCase().includes(q); };
+    const checks = checks0.filter(c => (!R.pay || (R.pay === 'card' ? c.card > 0 : c.cash > 0)) && (!R.by || c.by === R.by) && (!R.t || String(c.t) === R.t))
+      .map(c => { const ds = c.dishes.filter(([n]) => dishOk(n)); return { ...c, ds, val: dishF ? ds.reduce((a, [, , s]) => a + s, 0) : c.sum }; }).filter(c => !dishF || c.ds.length);
+    const sum = (l, f) => l.reduce((a, x) => a + (f(x) || 0), 0);
+    const total = sum(checks, c => c.val), n = checks.length, qty = sum(checks, c => sum(c.ds, d => d[1]));
+    const exp = R.by || R.t || dishF || R.pay ? null : sum(r.exp, e => e.sum);
+    const W = [['Виручка', money(total), 'accent'], ['Чеків', n], ['Середній чек', n ? money(total / n) : '—'], ['Продано позицій', qty],
+      ...(!dishF ? [['💵 Готівка', money(sum(checks, c => c.cash))], ['💳 Карта', money(sum(checks, c => c.card))], ['🏷 Знижки', money(sum(checks, c => c.disc))]] : []),
+      ...(exp != null ? [['💸 Витрати', money(exp)], ['Чистими', money(total - exp), 'green']] : [])];
+    const widgets = `<div class="widgets">${W.map(([l, v, c]) => `<div class="widget ${c || ''}"><span>${l}</span><b class="money">${v}</b></div>`).join('')}</div>`;
+    // розрізи
+    const grpBy = (keyF, valF = c => c.val) => { const m = new Map(); checks.forEach(c => { const k = keyF(c); const a = m.get(k) || [0, 0]; a[0]++; a[1] += valF(c); m.set(k, a); }); return [...m]; };
+    const dishAgg = keyF => { const m = new Map(); checks.forEach(c => c.ds.forEach(([nm, qq, ss]) => { const k = keyF(nm); const a = m.get(k) || [0, 0]; a[0] += qq; a[1] += ss; m.set(k, a); })); return [...m]; };
+    const TABS = { dishes: '🍽 Страви', cats: '📂 Категорії', groups: '🍳 Кухня/бар', waiters: '👤 Офіціанти', hours: '🕐 Години', days: '📅 Дні', tables: '🪑 Столи', checks: '🧾 Чеки', exp: '💸 Витрати', z: '🔒 Z-звіти' };
+    let rows, unit = 'чек.', sortable = false;
+    const T = R.tab;
+    if (T === 'dishes') { rows = dishAgg(nm => nm); unit = 'шт'; sortable = true; }
+    else if (T === 'cats') { rows = dishAgg(nm => dishOf(nm)?.cname || 'Інше'); unit = 'шт'; sortable = true; }
+    else if (T === 'groups') { rows = dishAgg(nm => (S.groups.find(g => g.id === dishOf(nm)?.grp) || { name: 'Інше' }).name); unit = 'шт'; }
+    else if (T === 'waiters') rows = grpBy(c => c.by || '—');
+    else if (T === 'hours') rows = grpBy(c => String(c.at || '').slice(0, 2) + ':00').sort((a, b) => a[0].localeCompare(b[0]));
+    else if (T === 'days') rows = grpBy(c => c.d).sort((a, b) => a[0].localeCompare(b[0]));
+    else if (T === 'tables') rows = grpBy(c => 'Стіл ' + c.t).sort((a, b) => parseInt(a[0].slice(5)) - parseInt(b[0].slice(5)));
+    let body;
+    if (rows) {
+      if (!['hours', 'days', 'tables'].includes(T)) rows.sort((a, b) => R.sort === 'q' && sortable ? b[1][0] - a[1][0] : b[1][1] - a[1][1]);
+      const max = Math.max(1, ...rows.map(x => x[1][1]));
+      body = rows.length ? rows.map(([k, [qq, ss]]) => `<div class="bar"><div class="bl"><span>${esc(k)}</span><span class="muted">${qq} ${unit}</span><b class="money">${money(ss)}</b></div><i style="width:${Math.max(2, ss / max * 100)}%"></i></div>`).join('') : '<div class="muted">Немає даних за цими фільтрами</div>';
+      if (sortable) body = `<div class="chips" style="margin-bottom:10px"><button class="chip ${R.sort !== 'q' ? 'on' : ''}" data-a="rSort" data-s="s">За сумою</button><button class="chip ${R.sort === 'q' ? 'on' : ''}" data-a="rSort" data-s="q">За кількістю</button></div>` + body;
+    } else if (T === 'checks') body = checks.length ? [...checks].reverse().slice(0, 300).map(c => `<div class="kv"><span>${c.d.slice(5)} ${c.at} · стіл ${c.t} · ${esc(c.by)} ${c.card ? '💳' : '💵'}${c.disc ? ' 🏷' : ''}<br><small class="muted">${c.ds.map(([nm, qq]) => `${qq}× ${esc(nm)}`).join(', ')}</small></span><b class="money">${money(c.val)}</b></div>`).join('') : '<div class="muted">Немає чеків</div>';
+    else if (T === 'exp') body = r.exp.length ? r.exp.map(e => `<div class="kv"><span>${e.d.slice(5)} ${e.at} ${e.src === 'card' ? '💳' : '💵'} ${esc(e.note)} <span class="muted">${esc(e.by)}</span></span><b class="money">${money(e.sum)}</b></div>`).join('') : '<div class="muted">Витрат немає</div>';
+    else if (T === 'z') body = r.z.length ? [...r.z].reverse().map(z => `<div class="kv"><span>${new Date(z.opened).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} — ${new Date(z.closed).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })} · ${z.checks} чек. · ${esc(z.closedBy)}${z.diff ? ` · <b style="color:var(--red)">різниця ${z.diff > 0 ? '+' : ''}${money(z.diff)}</b>` : ''}</span><b class="money">${money(z.total)}</b></div>`).join('') : '<div class="muted">Закритих змін за період немає</div>';
+    return head + widgets + filters + `<div class="seg wrap" style="margin:14px 0 10px">${Object.entries(TABS).map(([k, l]) => `<button class="${T === k ? 'on' : ''}" data-a="rTab" data-t="${k}">${l}</button>`).join('')}</div><div class="card">${body}</div>`;
   }
   function menuHTML() {
     if (!S.menu) return '<div class="head"><h1>Меню</h1></div><div class="muted">Завантаження…</div>';
@@ -393,7 +520,16 @@
       case 'closeSheet': closeSheet(); break;
       case 'tab': S.mobileMenu = el.dataset.m === '1'; renderSheet(); break;
       case 'mobileMenu': S.mobileMenu = true; renderSheet(); break;
-      case 'cat': S.cat = +el.dataset.i; S.q = ''; renderSheet(); $('.items').scrollTop = 0; break;
+      case 'cat': S.cat = el.dataset.c; S.q = ''; renderSheet(); $('#shItems').scrollTop = 0; break;
+      case 'grp': S.grp = el.dataset.g; S.cat = ''; S.q = ''; store.set('grp', S.grp); renderSheet(); $('#shItems').scrollTop = 0; break;
+      case 'fav': { const on = !S.fav.includes(el.dataset.id); S.fav = on ? [...S.fav, el.dataset.id] : S.fav.filter(x => x !== el.dataset.id); renderSheet(); act('fav', { id: el.dataset.id, on }, on ? '⭐ Додано в обрані' : 'Прибрано з обраних'); break; }
+      case 'photos': S.photos = !S.photos; store.set('photos', S.photos); renderSheet(); break;
+      case 'shOpen': shOpen(); break;
+      case 'shClose': shClose(); break;
+      case 'rp': S.rep.p = el.dataset.p; loadView(); break;
+      case 'rTab': S.rep.tab = el.dataset.t; renderMain(); break;
+      case 'rSort': S.rep.sort = el.dataset.s; renderMain(); break;
+      case 'rReset': Object.assign(S.rep, { pay: '', by: '', grp: '', cat: '', t: '', q: '' }); renderMain(); break;
       case 'add': addItem(el.dataset.id); break;
       case 'cq': { const c = cartOf(t), x = c[el.dataset.k]; if (x) { x.q += +el.dataset.d; if (x.q <= 0) delete c[el.dataset.k]; } saveCarts(); renderSheet(); break; }
       case 'cartClear': S.carts[t] = {}; saveCarts(); renderSheet(); break;
@@ -411,7 +547,7 @@
       case 'stopT': await act('stop', { id: el.dataset.id, hidden: el.dataset.h === '1' }); break;
       case 'pTest': act('printTest', {}, '🖨 Тест відправлено'); break;
       case 'pQr': { const n = await pickTable('QR меню', 'Номер столу надрукується над QR (QR однаковий)'); if (n) act('printQr', { t: n }, `🖨 QR столу ${n}`); break; }
-      case 'float': { const v = await ask('Розмін на початок дня', 'Сума в касі, ₴', 'number'); if (v != null) { await act('float', { sum: +v }, '🏦 Записано'); loadView(); } break; }
+      case 'float': { const v = await ask('Розмін на початок дня', 'Сума в касі, ₴', 'number'); if (v != null) { await act('float', { sum: +v.replace(',', '.') }, '🏦 Записано'); loadView(); } break; }
       case 'expense': {
         const v = await modal({ title: '💸 Витрата', body: '<div class="form"><input id="eSum" inputmode="decimal" placeholder="Сума, ₴"><input id="eNote" placeholder="На що (напр. овочі на ринку)"></div>', buttons: [{ label: '💵 З каси', val: 'cash', cls: 'primary' }, { label: '💳 З карти', val: 'card' }, { label: 'Скасувати', val: null }], keep: true });
         const sum = v && +$('#eSum').value.replace(',', '.'), note = v && $('#eNote').value; closeModal();
@@ -440,6 +576,11 @@
     if (e.target.id === 'search') { S.q = e.target.value; renderSheet(); }
     if (e.target.id === 'stopSearch') { S.q = e.target.value; renderMain(); const s = $('#stopSearch'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
     if (e.target.id === 'cartCom') S.coms[S.open] = e.target.value;
+    if (e.target.id === 'rQ') { S.rep.q = e.target.value; renderMain(); }
+  });
+  document.addEventListener('change', e => {
+    const f = e.target.dataset?.f; if (f) { S.rep[f] = e.target.value; if (f === 'grp') S.rep.cat = ''; renderMain(); }
+    if (e.target.id === 'rFrom' || e.target.id === 'rTo') { S.rep[e.target.id === 'rFrom' ? 'from' : 'to'] = e.target.value; loadView(); }
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { if ($('#modal')) modalResolve?.(null); else closeSheet(); } });
 

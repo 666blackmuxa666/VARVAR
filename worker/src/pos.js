@@ -7,7 +7,7 @@ import { storeStub } from './store.js';
 import {
   esc, money, hhmm, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
-  topData, setHidden, samePass, adminPass, waiterPass, pinHash, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
+  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, zText, reportRange, samePass, adminPass, waiterPass, pinHash, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
 } from './ops.js';
 
 const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400 };
@@ -34,10 +34,11 @@ export async function posApi(b, req, env) {
   switch (b.op) {
     case 'logout': await env.DB.delete('pos:' + token); return ok();
     case 'state': {
-      const [rows, events, pr] = await Promise.all([openTables(env), getEvents(env), printStatus(env)]);
-      return ok({ me, n: tablesCount(env), tables: rows.map(r => ({ t: r.t, ...r.b, items: billItems(r.b), pay2: payable(r.b) })), events: events.slice(-120), printer: pr, now: Date.now() });
+      const [rows, events, pr, shift] = await Promise.all([openTables(env), getEvents(env), printStatus(env), getShift(env)]);
+      return ok({ me, shift, n: tablesCount(env), tables: rows.map(r => ({ t: r.t, ...r.b, items: billItems(r.b), pay2: payable(r.b) })), events: events.slice(-120), printer: pr, now: Date.now() });
     }
-    case 'menu': return ok({ menu: await getMenu(env) });
+    case 'menu': { const menu = await getMenu(env); return ok({ menu, fav: await getFav(env), groups: GROUPS.map(g => ({ ...g, cats: menu.categories.filter(c => groupOf(c.id) === g.id).map(c => c.id) })) }); }
+    case 'fav': { const fav = await toggleFav(env, String(b.id), !!b.on); return ok({ fav }); }
 
     // ---- столи ----
     case 'order': {
@@ -79,6 +80,11 @@ export async function posApi(b, req, env) {
   // ---- далі лише адміністратор ----
   if (!admin) return needAdmin();
   switch (b.op) {
+    case 'shift': return ok({ d: await shiftData(env), exp: await getExp(env) });
+    case 'shiftOpen': { const r = await openShift(env, b.float, who); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 🔓 <b>Касу відкрито</b> — розмін ${money(r.s.float)} · ${esc(who)}`); return ok(); }
+    case 'shiftClose': { const r = await closeShift(env, b.counted, who, b.print !== false); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 ${zText(r.z)}
+— ${esc(who)}`); return ok({ z: r.z }); }
+    case 'report': { const r = await reportRange(env, String(b.from), String(b.to)); if (!r) return [{ error: 'Невірний період' }, 400]; return ok(r); }
     case 'reports': return ok({ ...(await reportsData(env)), cash: await cashData(env), top: await topData(env) });
     case 'float': await setFloat(env, +b.sum || 0); return ok();
     case 'expense': {
