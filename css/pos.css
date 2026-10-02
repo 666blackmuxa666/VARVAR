@@ -389,3 +389,10 @@ body { position: fixed; top: 0; right: 0; bottom: 0; left: 0; overscroll-behavio
 .tipbox b { font-size: 26px; color: #fff; letter-spacing: -.5px; line-height: 1.1; }
 .tipbox small { font-size: 11px; color: var(--muted); }
 @media (max-width: 600px) { .hello .hi { font-size: 17px; } .tipbox { padding: 8px 14px; } .tipbox b { font-size: 22px; } }
+
+.navtip { width: 70px; display: grid; justify-items: center; gap: 1px; padding: 8px 4px; margin: 2px 0 8px; border-radius: 16px; border: 1.5px solid #ff7aa880; background: linear-gradient(160deg, #3a0f24, #1c1c1f); box-shadow: 0 0 0 3px #c2185b1a; }
+.navtip span { font-size: 18px; line-height: 1; }
+.navtip b { font-size: 17px; color: #fff; letter-spacing: -.3px; }
+.navtip small { font-size: 9.5px; color: #ffb3cf; }
+.tipstat { display: none; border: 1px solid #ff7aa880; background: linear-gradient(135deg, #3a0f24, var(--card)); }
+@media (max-width: 980px) { .navtip { display: none; } .tipstat { display: block; } }
