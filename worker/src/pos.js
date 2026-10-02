@@ -80,10 +80,10 @@ export async function posApi(b, req, env) {
   // ---- далі лише адміністратор ----
   if (!admin) return needAdmin();
   switch (b.op) {
-    case 'shift': return ok({ d: await shiftData(env), exp: await getExp(env), mov: await getMov(env), last: await lastZ(env) });
+    case 'shift': { const day = await cashData(env); return ok({ d: await shiftData(env), day, exp: day.exp, mov: day.mov, last: await lastZ(env), closed: await getClosed(env) }); }
     case 'cashMove': { const e = await addMove(env, { type: b.type, sum: +b.sum, note: b.note, by: who }); if (!e) return [{ error: 'Потрібна сума' }, 400]; await notify(env, `🖥 ${MOVE[e.type]}: <b>${money(e.sum)}</b>${e.note ? ` — ${esc(e.note)}` : ''} · ${esc(who)}`); return ok(); }
     case 'moveDel': await delMove(env, +b.i); return ok();
-    case 'shiftOpen': { const r = await openShift(env, b.float, who); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 🔓 <b>Касу відкрито</b> — розмін ${money(r.s.float)} · ${esc(who)}`); return ok(); }
+    case 'shiftOpen': { const r = await openShift(env, b.float, who); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 🔓 <b>Касу відкрито</b> — на початок ${money(r.s.float)} · ${esc(who)}`); return ok(); }
     case 'shiftClose': { const r = await closeShift(env, b.counted, who, b.print !== false); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 ${zText(r.z)}
 — ${esc(who)}`); return ok({ z: r.z }); }
     case 'report': { const r = await reportRange(env, String(b.from), String(b.to)); if (!r) return [{ error: 'Невірний період' }, 400]; return ok(r); }

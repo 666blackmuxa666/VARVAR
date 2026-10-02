@@ -224,7 +224,7 @@ export async function cashData(env) {
   const exCash = ex.filter(e => e.src === 'cash').reduce((s, e) => s + e.sum, 0), exCard = ex.filter(e => e.src === 'card').reduce((s, e) => s + e.sum, 0);
   const open = (await openTables(env)).reduce((s, r) => s + payable(r.b), 0);
   const mov = await getMov(env), mvCash = mov.reduce((a, m) => a + moveCash(m), 0), mvCard = mov.reduce((a, m) => a + moveCard(m), 0);
-  return { day: dayKey(), float: d.float || 0, cash: d.cash || 0, card: d.card || 0, disc: d.disc || 0, exCash, exCard, mvCash, mvCard, inBox: (d.float || 0) + (d.cash || 0) - exCash + mvCash, open, exp, mov };
+  return { day: dayKey(), float: d.float || 0, cash: d.cash || 0, card: d.card || 0, disc: d.disc || 0, exCash, exCard, mvCash, mvCard, net: (d.cash || 0) + (d.card || 0) - exCash - exCard, open, exp, mov };
 }
 export async function sumDays(env, keys) {
   const days = await env.DB.getMany(keys.map(k => 'day:' + k), 'json'), exps = await env.DB.getMany(keys.map(k => 'exp:' + k), 'json');
@@ -280,7 +280,8 @@ export async function shiftData(env) {
   const from = s?.opened || dayStart();
   const days = dayList(dayKey(from), dayKey(now));
   const [cl, ex, mv] = await Promise.all([env.DB.getMany(days.map(d => 'closed:' + d), 'json'), env.DB.getMany(days.map(d => 'exp:' + d), 'json'), env.DB.getMany(days.map(d => 'mov:' + d), 'json')]);
-  const inShift = (x, d) => x.ts ? x.ts >= from : d >= dayKey(from);
+  const tsOf = (x, d) => x.ts || (/^\d\d:\d\d$/.test(x.at || '') ? dayStart(Date.parse(d + 'T12:00:00Z')) + (+x.at.slice(0, 2) * 60 + +x.at.slice(3)) * 60e3 : 0);
+  const inShift = (x, d) => tsOf(x, d) >= from;
   const recs = days.flatMap((d, i) => (cl[i] || []).filter(x => !x.del && !x.rm && inShift(x, d)));
   const exps = days.flatMap((d, i) => (ex[i] || []).filter(x => !x.del && inShift(x, d)));
   const movs = days.flatMap((d, i) => (mv[i] || []).filter(x => !x.del && inShift(x, d)));
@@ -289,7 +290,7 @@ export async function shiftData(env) {
   const cash = sum(recs, x => x.cash ?? x.sum), card = sum(recs, x => x.card), exCash = sum(exps.filter(e => e.src !== 'card'), e => e.sum), exCard = sum(exps.filter(e => e.src === 'card'), e => e.sum);
   const float = s ? s.float : ((await env.DB.get('day:' + dayKey(), 'json')) || {}).float || 0;
   const open = await openTables(env);
-  return { open: !!s, id: s?.id, opened: s?.opened || 0, by: s?.by || '', float, checks: recs.length, cash, card, total: cash + card, disc: sum(recs, x => x.discSum),
+  return { lastZ: s ? null : await lastZrec(env), open: !!s, id: s?.id, opened: s?.opened || 0, by: s?.by || '', float, checks: recs.length, cash, card, total: cash + card, disc: sum(recs, x => x.discSum),
     exCash, exCard, mvCash, mvCard, inBox: float + cash - exCash + mvCash, openTables: open.length, openSum: open.reduce((a, r) => a + payable(r.b), 0) };
 }
 // «Загальна сума» для відкриття каси: уся готівка за весь час (готівка від гостей − витрати готівкою)
@@ -305,11 +306,16 @@ export async function lastZ(env) {
   const mv = (mk.length ? await env.DB.getMany(mk, 'json') : []).reduce((a, l) => a + (l || []).reduce((b, m) => b + moveCash(m), 0), 0);
   return { sum: Math.max(0, cash + mv), cash, mv, ex, from };
 }
+export async function lastZrec(env) {
+  const days = [...Array(30)].map((_, i) => dayKey(Date.now() - i * 86400e3));
+  const l = (await env.DB.getMany(days.map(d => 'z:' + d), 'json')).find(x => x?.length);
+  return l ? l[l.length - 1] : null;
+}
 export async function openShift(env, float, who) {
   if (await getShift(env)) return { error: 'Зміна вже відкрита' };
   const s = { id: crypto.randomUUID().slice(0, 8), opened: Date.now(), by: who || '', float: Math.max(0, Math.round(+float || 0)) };
   await env.DB.put('shift', JSON.stringify(s)); await setFloat(env, s.float);
-  await logEvent(env, { k: 'shift', by: who, text: `🔓 Касу відкрито · розмін ${s.float} грн` });
+  await logEvent(env, { k: 'shift', by: who, text: `🔓 Касу відкрито · на початок ${s.float} грн` });
   return { s };
 }
 export async function closeShift(env, counted, who, print = true) {

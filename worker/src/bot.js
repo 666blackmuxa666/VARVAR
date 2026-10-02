@@ -132,18 +132,18 @@ async function pickTable(env, title, act) {
 }
 const fmtT = t => new Date(t).toLocaleString('uk-UA', { timeZone: TZ, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '');
 async function cashView(env) {
-  const c = await cashData(env), sh = await shiftData(env);
-  const shift = sh.open
-    ? [`🔓 <b>Зміна відкрита</b> з ${fmtT(sh.opened)}${sh.by ? ` (${esc(sh.by)})` : ''}`, `Чеків ${sh.checks} · ${money(sh.total)} · в касі має бути <b>${money(sh.inBox)}</b>`, '']
-    : ['🔒 <b>Каса закрита</b> — відкрийте зміну на початку дня', ''];
+  const c = await cashData(env), sh = await shiftData(env), z = sh.lastZ;
+  const ledger = sh.open ? [`🔓 <b>Зміна відкрита</b> з ${fmtT(sh.opened)}${sh.by ? ` (${esc(sh.by)})` : ''}`, '',
+    `На початок зміни: ${money(sh.float)}`, `+ 💵 Готівка від гостей: ${money(sh.cash)}`, `− 💸 Витрати готівкою: ${money(sh.exCash)}`,
+    ...(sh.mvCash ? [`${sh.mvCash > 0 ? '+' : '−'} 🔁 Рух коштів: ${money(Math.abs(sh.mvCash))}`] : []),
+    `= <b>Має бути в касі: ${money(sh.inBox)}</b>`, '', `За зміну: чеків ${sh.checks} · виручка ${money(sh.total)} (💳 ${money(sh.card + sh.mvCard)})`]
+    : ['🔒 <b>Каса закрита</b>', ...(z ? [`Останнє закриття ${fmtT(z.closed)}: в касі ${money(z.counted ?? z.inBox)}${z.counted != null ? ' (пораховано)' : ''}`] : [])];
   return {
-    text: [...shift, `💰 <b>Каса за ${c.day}</b>`, '',
-      `На початок зміни: ${money(c.float)}`, `+ 💵 Готівка від гостей: ${money(c.cash)}`, `− 💸 Витрати готівкою: ${money(c.exCash)}`, ...(c.mvCash ? [`${c.mvCash > 0 ? '+' : '−'} 🔁 Рух коштів: ${money(Math.abs(c.mvCash))}`] : []),
-      `= <b>Має бути в касі: ${money(c.inBox)}</b>`, '',
-      `💳 Карта: ${money(c.card)}${c.exCard ? ` · витрати з карти: ${money(c.exCard)}` : ''}`,
-      `📈 Виручка за день: <b>${money(c.cash + c.card)}</b> · витрати: ${money(c.exCash + c.exCard)} · чистими: <b>${money(c.cash + c.card - c.exCash - c.exCard)}</b>`,
-      c.disc ? `🏷 Знижки за день: ${money(c.disc)}` : '',
-      c.open ? `\n⏳ Ще відкрито в залі: ${money(c.open)} (не враховано)` : ''].filter(x => x !== '').join('\n'),
+    text: [...ledger, '', `📅 <b>Сьогодні (${c.day})</b>`,
+      `Виручка: <b>${money(c.cash + c.card)}</b> (💵 ${money(c.cash)} · 💳 ${money(c.card)})`,
+      `Витрати: ${money(c.exCash + c.exCard)} · чистими: <b>${money(c.net)}</b>`,
+      c.disc ? `🏷 Знижки: ${money(c.disc)}` : '',
+      c.open ? `⏳ Ще відкрито в залі: ${money(c.open)}` : ''].filter(x => x !== '').join('\n'),
     markup: { inline_keyboard: [[sh.open ? { text: '🔒 Закрити касу (Z-звіт)', callback_data: 'shcl' } : { text: '🔓 Відкрити касу', callback_data: 'shop' }], [{ text: '💸 Витрати сьогодні', callback_data: 'exlist' }], [{ text: '➕ Внести', callback_data: 'cmv:in' }, { text: '➖ Вилучити', callback_data: 'cmv:out' }, { text: '🔁 Обмін', callback_data: 'cmvx' }]] },
   };
 }
