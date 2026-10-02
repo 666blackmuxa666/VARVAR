@@ -299,3 +299,5 @@ main { overflow: auto; padding: 22px 24px 40px; }
   .card { padding: 12px 14px; }
   .big { font-size: 22px; }
 }
+
+.card.top { margin-bottom: 14px; }
