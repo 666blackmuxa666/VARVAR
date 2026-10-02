@@ -121,6 +121,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     $("#lErr").textContent = "\u041F\u0435\u0440\u0435\u0432\u0456\u0440\u044F\u044E\u2026";
     try {
       const r = await api("login", body);
+      if (r.register) return showReg(r.register, body.pin);
       S.token = r.token;
       S.me = r.me;
       store.set("token", r.token);
@@ -136,7 +137,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     }
   }
   document.addEventListener("keydown", (e) => {
-    if ($("#login").hidden || $("#pinView").hidden) return;
+    if ($("#login").hidden || $("#pinView").hidden || !$("#regView").hidden) return;
     if (/^\d$/.test(e.key)) pinKey(e.key);
     else if (e.key === "Backspace") pinKey("b");
     else if (e.key === "Escape") pinKey("c");
@@ -160,6 +161,57 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       tryLogin.t = setTimeout(() => tryLogin({ pin }), pin.length === 6 ? 0 : 700);
     }
   }
+  let regCodeV = "";
+  function showReg(role, code) {
+    regCodeV = code;
+    pin = "";
+    dots();
+    $("#pinView").hidden = true;
+    $("#passView").hidden = true;
+    $("#regView").hidden = false;
+    $("#loginSub").textContent = "\u0420\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u044F \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430";
+    $("#regRole").textContent = role === "admin" ? "\u{1F510} \u041D\u043E\u0432\u0438\u0439 \u0430\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440" : "\u{1F9D1}\u200D\u{1F373} \u041D\u043E\u0432\u0438\u0439 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442";
+    $("#lErr").textContent = "";
+    $("#rName").value = "";
+    $("#rPin").value = "";
+    $("#rPin2").value = "";
+    setTimeout(() => $("#rName").focus(), 50);
+  }
+  $("#regBack").onclick = () => {
+    $("#regView").hidden = true;
+    $("#pinView").hidden = false;
+    $("#loginSub").textContent = "\u0412\u0432\u0435\u0434\u0456\u0442\u044C \u0441\u0432\u0456\u0439 PIN";
+    $("#lErr").textContent = "";
+  };
+  $("#regView").onsubmit = async (e) => {
+    e.preventDefault();
+    const name = $("#rName").value.trim(), p1 = $("#rPin").value.trim(), p2 = $("#rPin2").value.trim();
+    if (!/^\d{4,6}$/.test(p1)) {
+      $("#lErr").textContent = "PIN \u2014 \u0432\u0456\u0434 4 \u0434\u043E 6 \u0446\u0438\u0444\u0440";
+      return;
+    }
+    if (p1 !== p2) {
+      $("#lErr").textContent = "PIN-\u0438 \u043D\u0435 \u0437\u0431\u0456\u0433\u0430\u044E\u0442\u044C\u0441\u044F";
+      return;
+    }
+    $("#lErr").style.color = "var(--muted)";
+    $("#lErr").textContent = "\u0420\u0435\u0454\u0441\u0442\u0440\u0443\u044E\u2026";
+    try {
+      const r = await api("register", { code: regCodeV, name, pin: p1 });
+      S.token = r.token;
+      S.me = r.me;
+      store.set("token", r.token);
+      store.set("me", r.me);
+      $("#regView").hidden = true;
+      $("#pinView").hidden = false;
+      $("#lErr").textContent = "";
+      start();
+      toast(`\u{1F44B} \u0412\u0456\u0442\u0430\u044E, ${r.me.name}! \u0412\u0430\u0448 PIN \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E`);
+    } catch (e2) {
+      $("#lErr").style.color = "";
+      $("#lErr").textContent = e2.message;
+    }
+  };
   $("#toPass").onclick = () => {
     $("#pinView").hidden = true;
     $("#passView").hidden = false;
@@ -876,6 +928,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     return `<div class="head"><h1>\u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F</h1></div><div class="grid2">
       <div class="card"><h3>\u{1F465} \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B (PIN \u0434\u043B\u044F \u043A\u0430\u0441\u0438)</h3>${st ? st.staff.map((s) => `<div class="kv"><span>${esc(s.name)} \xB7 ${s.role === "admin" ? "\u{1F510} \u0430\u0434\u043C\u0456\u043D" : "\u{1F9D1}\u200D\u{1F373} \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"}</span><button class="btn sm red" data-a="staffDel" data-id="${s.id}">\u{1F5D1}</button></div>`).join("") || '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454</div>' : "\u2026"}
         <button class="btn sm primary" style="margin-top:10px" data-a="staffAdd">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430</button></div>
+      <div class="card"><h3>\u{1F195} \u041A\u043E\u0434\u0438 \u0440\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u0457</h3><div class="muted" style="margin-bottom:8px">\u041D\u043E\u0432\u0438\u0439 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A \u0432\u0432\u043E\u0434\u0438\u0442\u044C \u043A\u043E\u0434 \u0437\u0430\u043C\u0456\u0441\u0442\u044C PIN \u2192 \u043F\u0438\u0448\u0435 \u0456\u043C\u02BC\u044F \u0456 \u043F\u0440\u0438\u0434\u0443\u043C\u0443\u0454 \u0441\u0432\u0456\u0439 PIN. \u0412\u0438\u0434\u043D\u043E, \u0445\u0442\u043E \u0449\u043E \u0440\u043E\u0431\u0438\u0442\u044C.</div>
+        ${(st == null ? void 0 : st.reg) ? `<div class="kv"><span>\u{1F510} \u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440</span><span><b>${esc(st.reg.admin)}</b> <button class="btn sm" data-a="regSet" data-r="admin">\u0437\u043C\u0456\u043D\u0438\u0442\u0438</button></span></div><div class="kv"><span>\u{1F9D1}\u200D\u{1F373} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442</span><span><b>${esc(st.reg.waiter)}</b> <button class="btn sm" data-a="regSet" data-r="waiter">\u0437\u043C\u0456\u043D\u0438\u0442\u0438</button></span></div>` : "\u2026"}</div>
       <div class="card"><h3>\u{1F916} \u0423\u0432\u0456\u0439\u0448\u043B\u0438 \u0432 Telegram-\u0431\u043E\u0442</h3>${st ? st.waiters.map((w) => `<div class="kv"><span>${esc(w.name || w.uid)}</span><button class="btn sm red" data-a="wOut" data-uid="${w.uid}">\u0412\u0438\u0439\u0442\u0438</button></div>`).join("") || '<div class="muted">\u041D\u0456\u043A\u043E\u0433\u043E</div>' : "\u2026"}</div>
       <div class="card"><h3>\u{1F511} \u041F\u0430\u0440\u043E\u043B\u0456</h3><div class="muted" style="margin-bottom:10px">\u041F\u0430\u0440\u043E\u043B\u044C \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430 \u2014 \u0432\u0445\u0456\u0434 \u0443 \u0431\u043E\u0442 \u0456 \u043A\u0430\u0441\u0443; \u043F\u0430\u0440\u043E\u043B\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \u2014 \u0430\u0434\u043C\u0456\u043D-\u0444\u0443\u043D\u043A\u0446\u0456\u0457.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-a="wPass">\u041F\u0430\u0440\u043E\u043B\u044C \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430</button><button class="btn sm" data-a="aPass">\u041F\u0430\u0440\u043E\u043B\u044C \u0430\u0434\u043C\u0456\u043D\u0430</button></div></div>
@@ -1263,8 +1317,16 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         }
         break;
       }
+      case "regSet": {
+        const v = await ask(`\u041D\u043E\u0432\u0438\u0439 \u043A\u043E\u0434 \u0440\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u0457 (${el.dataset.r === "admin" ? "\u0430\u0434\u043C\u0456\u043D" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"})`, "4\u20136 \u0446\u0438\u0444\u0440", "number");
+        if (v) {
+          await act("regCode", { role: el.dataset.r, code: v }, "\u{1F195} \u041A\u043E\u0434 \u0437\u043C\u0456\u043D\u0435\u043D\u043E");
+          loadView();
+        }
+        break;
+      }
       case "staffDel":
-        if (await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430?")) {
+        if (await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430?", "\u0419\u043E\u0433\u043E PIN \u043F\u0435\u0440\u0435\u0441\u0442\u0430\u043D\u0435 \u043F\u0440\u0430\u0446\u044E\u0432\u0430\u0442\u0438")) {
           await act("staffDel", { id: el.dataset.id });
           loadView();
         }

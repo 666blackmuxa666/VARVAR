@@ -440,12 +440,18 @@ export async function pinHash(pin) {
   const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('varvar:' + pin));
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
 }
+// коди реєстрації: адмін 1119, офіціант 1112 — ними не входять, а реєструються (імʼя + свій PIN)
+export const REG_DEF = { admin: '1119', waiter: '1112' };
+export const regCode = async (env, role) => (await env.DB.get('reg_' + role)) || REG_DEF[role];
+export async function regRole(env, code) { code = String(code || ''); if (code === await regCode(env, 'admin')) return 'admin'; if (code === await regCode(env, 'waiter')) return 'waiter'; return null; }
 export const getStaff = async env => (await env.DB.get('staff', 'json')) || [];
 export async function addStaff(env, name, pin, role = 'waiter') {
   name = String(name || '').trim().slice(0, 30); pin = String(pin || '').trim();
   if (!name || !/^\d{4,6}$/.test(pin)) return { error: 'Потрібні імʼя і PIN з 4–6 цифр.' };
   const list = await getStaff(env), h = await pinHash(pin);
   if (list.some(s => s.pin === h)) return { error: 'Такий PIN уже є — оберіть інший.' };
+  if (await regRole(env, pin)) return { error: 'Цей код — для реєстрації. Оберіть інший PIN.' };
+  if (list.some(s => s.name.toLowerCase() === name.toLowerCase())) return { error: 'Працівник з таким імʼям уже є — додайте прізвище або букву.' };
   const s = { id: crypto.randomUUID().slice(0, 6), name, pin: h, role: role === 'admin' ? 'admin' : 'waiter' };
   list.push(s); await env.DB.put('staff', JSON.stringify(list));
   return { ok: true, s };

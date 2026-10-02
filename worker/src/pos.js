@@ -7,7 +7,7 @@ import { storeStub } from './store.js';
 import {
   esc, money, hhmm, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
-  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, addMove, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
+  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, addMove, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
 } from './ops.js';
 
 const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400 };
@@ -24,6 +24,7 @@ export async function posLive(req, env, url) {
 export async function posApi(b, req, env) {
   const ip = req.headers.get('CF-Connecting-IP') || '';
   if (b.op === 'login') return login(b, env, ip);
+  if (b.op === 'register') return register(b, env);
   const token = tokenOf(req), me = await session(env, token);
   if (!me) return [{ error: 'auth' }, 401];
   const admin = me.role === 'admin', who = me.name;
@@ -130,7 +131,8 @@ export async function posApi(b, req, env) {
     case 'wifiClear': await env.DB.put('venue_ips', '[]'); await notify(env, `🖥 📶 Усі мережі закладу скинуто — ${esc(who)}`); return ok();
 
     // персонал і паролі
-    case 'staff': return ok({ staff: (await getStaff(env)).map(({ pin, ...s }) => s), waiters: await loggedWaiters(env) });
+    case 'staff': return ok({ staff: (await getStaff(env)).map(({ pin, ...s }) => s), waiters: await loggedWaiters(env), reg: { admin: await regCode(env, 'admin'), waiter: await regCode(env, 'waiter') } });
+    case 'regCode': { const c = String(b.code || '').trim(); if (!/^\d{4,6}$/.test(c)) return [{ error: 'Код — 4–6 цифр' }, 400]; await env.DB.put('reg_' + (b.role === 'admin' ? 'admin' : 'waiter'), c); return ok(); }
     case 'staffAdd': { const r = await addStaff(env, b.name, b.pin, b.role); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 👥 Додано працівника <b>${esc(r.s.name)}</b> (${r.s.role === 'admin' ? 'адмін' : 'офіціант'}) — ${esc(who)}`); return ok(); }
     case 'staffDel': await delStaff(env, String(b.id)); return ok();
     case 'waiterOut': await env.DB.delete('wlog:' + b.uid); await env.DB.delete('adm:' + b.uid); return ok();
@@ -140,9 +142,22 @@ export async function posApi(b, req, env) {
   return [{ error: 'unknown_op' }, 400];
 }
 
+// реєстрація працівника: код (1119 адмін / 1112 офіціант) + імʼя + свій PIN → одразу вхід
+async function register(b, env) {
+  const role = await regRole(env, b.code); if (!role) return [{ error: 'Невірний код реєстрації' }, 401];
+  const r = await addStaff(env, b.name, b.pin, role); if (r.error) return [{ error: r.error }, 400];
+  await notify(env, `👥 Новий працівник: <b>${esc(r.s.name)}</b> (${role === 'admin' ? 'адміністратор' : 'офіціант'}) — зареєструвався в касі`);
+  const me = { name: r.s.name, role, sid: r.s.id };
+  const token = [...crypto.getRandomValues(new Uint8Array(16))].map(x => x.toString(16).padStart(2, '0')).join('');
+  await env.DB.put('pos:' + token, JSON.stringify({ ...me, at: Date.now() }), { expirationTtl: SESSION_TTL[role] });
+  return [{ ok: true, token, me }, 200];
+}
 async function login(b, env, ip) {
   let me = null;
-  if (b.pin) { const h = await pinHash(String(b.pin)); const s = (await getStaff(env)).find(x => x.pin === h); if (s) me = { name: s.name, role: s.role, sid: s.id }; }
+  if (b.pin) {
+    const role = await regRole(env, b.pin); if (role) return [{ ok: true, register: role }, 200]; // код реєстрації → форма «імʼя + свій PIN»
+    const h = await pinHash(String(b.pin)); const s = (await getStaff(env)).find(x => x.pin === h); if (s) me = { name: s.name, role: s.role, sid: s.id };
+  }
   if (b.pass) {
     const p = String(b.pass);
     if (samePass(p, await adminPass(env))) me = { name: String(b.name || 'Адміністратор').slice(0, 30), role: 'admin' };

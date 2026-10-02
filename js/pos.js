@@ -40,6 +40,7 @@
     $('#lErr').style.color = 'var(--muted)'; $('#lErr').textContent = 'Перевіряю…';
     try {
       const r = await api('login', body);
+      if (r.register) return showReg(r.register, body.pin);
       S.token = r.token; S.me = r.me; store.set('token', r.token); store.set('me', r.me);
       start();
     } catch (e) {
@@ -49,7 +50,7 @@
   }
   // PIN з клавіатури комп'ютера: цифри, Backspace, Enter
   document.addEventListener('keydown', e => {
-    if ($('#login').hidden || $('#pinView').hidden) return;
+    if ($('#login').hidden || $('#pinView').hidden || !$('#regView').hidden) return;
     if (/^\d$/.test(e.key)) pinKey(e.key); else if (e.key === 'Backspace') pinKey('b'); else if (e.key === 'Escape') pinKey('c');
     else if (e.key === 'Enter' && pin.length >= 4) { clearTimeout(tryLogin.t); tryLogin({ pin }); }
   });
@@ -59,6 +60,29 @@
     dots();
     if (pin.length >= 4) { clearTimeout(tryLogin.t); tryLogin.t = setTimeout(() => tryLogin({ pin }), pin.length === 6 ? 0 : 700); }
   }
+  // реєстрація: код 1119 (адмін) / 1112 (офіціант) → імʼя + свій PIN
+  let regCodeV = '';
+  function showReg(role, code) {
+    regCodeV = code; pin = ''; dots();
+    $('#pinView').hidden = true; $('#passView').hidden = true; $('#regView').hidden = false;
+    $('#loginSub').textContent = 'Реєстрація працівника';
+    $('#regRole').textContent = role === 'admin' ? '🔐 Новий адміністратор' : '🧑‍🍳 Новий офіціант';
+    $('#lErr').textContent = ''; $('#rName').value = ''; $('#rPin').value = ''; $('#rPin2').value = ''; setTimeout(() => $('#rName').focus(), 50);
+  }
+  $('#regBack').onclick = () => { $('#regView').hidden = true; $('#pinView').hidden = false; $('#loginSub').textContent = 'Введіть свій PIN'; $('#lErr').textContent = ''; };
+  $('#regView').onsubmit = async e => {
+    e.preventDefault();
+    const name = $('#rName').value.trim(), p1 = $('#rPin').value.trim(), p2 = $('#rPin2').value.trim();
+    if (!/^\d{4,6}$/.test(p1)) { $('#lErr').textContent = 'PIN — від 4 до 6 цифр'; return; }
+    if (p1 !== p2) { $('#lErr').textContent = 'PIN-и не збігаються'; return; }
+    $('#lErr').style.color = 'var(--muted)'; $('#lErr').textContent = 'Реєструю…';
+    try {
+      const r = await api('register', { code: regCodeV, name, pin: p1 });
+      S.token = r.token; S.me = r.me; store.set('token', r.token); store.set('me', r.me);
+      $('#regView').hidden = true; $('#pinView').hidden = false; $('#lErr').textContent = '';
+      start(); toast(`👋 Вітаю, ${r.me.name}! Ваш PIN збережено`);
+    } catch (e2) { $('#lErr').style.color = ''; $('#lErr').textContent = e2.message; }
+  };
   $('#toPass').onclick = () => { $('#pinView').hidden = true; $('#passView').hidden = false; $('#loginSub').textContent = 'Вхід паролем'; $('#lName').focus(); };
   $('#toPin').onclick = () => { $('#pinView').hidden = false; $('#passView').hidden = true; $('#loginSub').textContent = 'Введіть свій PIN'; };
   $('#passView').onsubmit = e => { e.preventDefault(); tryLogin({ pass: $('#lPass').value, name: $('#lName').value }); };
@@ -500,6 +524,8 @@
     return `<div class="head"><h1>Налаштування</h1></div><div class="grid2">
       <div class="card"><h3>👥 Персонал (PIN для каси)</h3>${st ? st.staff.map(s => `<div class="kv"><span>${esc(s.name)} · ${s.role === 'admin' ? '🔐 адмін' : '🧑‍🍳 офіціант'}</span><button class="btn sm red" data-a="staffDel" data-id="${s.id}">🗑</button></div>`).join('') || '<div class="muted">Ще немає</div>' : '…'}
         <button class="btn sm primary" style="margin-top:10px" data-a="staffAdd">➕ Додати працівника</button></div>
+      <div class="card"><h3>🆕 Коди реєстрації</h3><div class="muted" style="margin-bottom:8px">Новий працівник вводить код замість PIN → пише імʼя і придумує свій PIN. Видно, хто що робить.</div>
+        ${st?.reg ? `<div class="kv"><span>🔐 Адміністратор</span><span><b>${esc(st.reg.admin)}</b> <button class="btn sm" data-a="regSet" data-r="admin">змінити</button></span></div><div class="kv"><span>🧑‍🍳 Офіціант</span><span><b>${esc(st.reg.waiter)}</b> <button class="btn sm" data-a="regSet" data-r="waiter">змінити</button></span></div>` : '…'}</div>
       <div class="card"><h3>🤖 Увійшли в Telegram-бот</h3>${st ? st.waiters.map(w => `<div class="kv"><span>${esc(w.name || w.uid)}</span><button class="btn sm red" data-a="wOut" data-uid="${w.uid}">Вийти</button></div>`).join('') || '<div class="muted">Нікого</div>' : '…'}</div>
       <div class="card"><h3>🔑 Паролі</h3><div class="muted" style="margin-bottom:10px">Пароль офіціанта — вхід у бот і касу; пароль адміна — адмін-функції.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-a="wPass">Пароль офіціанта</button><button class="btn sm" data-a="aPass">Пароль адміна</button></div></div>
@@ -637,7 +663,8 @@
         if (v) { await act('staffAdd', { name, pin: p, role: v }, '👥 Додано'); loadView(); }
         break;
       }
-      case 'staffDel': if (await confirmBox('Видалити працівника?')) { await act('staffDel', { id: el.dataset.id }); loadView(); } break;
+      case 'regSet': { const v = await ask(`Новий код реєстрації (${el.dataset.r === 'admin' ? 'адмін' : 'офіціант'})`, '4–6 цифр', 'number'); if (v) { await act('regCode', { role: el.dataset.r, code: v }, '🆕 Код змінено'); loadView(); } break; }
+      case 'staffDel': if (await confirmBox('Видалити працівника?', 'Його PIN перестане працювати')) { await act('staffDel', { id: el.dataset.id }); loadView(); } break;
       case 'wOut': await act('waiterOut', { uid: el.dataset.uid }, 'Вийшов із бота'); loadView(); break;
       case 'wPass': { const v = await ask('Новий пароль офіціанта', 'мінімум 3 символи'); if (v) act('waiterPass', { pass: v }, '🔑 Змінено'); break; }
       case 'aPass': { const v = await ask('Новий пароль адміністратора', 'мінімум 4 символи'); if (v) act('adminPass', { pass: v }, '🔑 Змінено'); break; }

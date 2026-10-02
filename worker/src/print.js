@@ -42,6 +42,7 @@ export function kitchenTicket({ table, kind, lines, comment, by }) {
   return [
     ['invb', `СТІЛ ${table}`],
     ['c', `${kind}  ·  ${hhmm()}`],
+    ...(by ? [['c', `Замовив: ${by}`]] : []),
     ['dbl'],
     ...lines.map(l => { const m = l.match(/^(\d+)× (.+?) — \d+$/); return ['k', m ? `${m[1]} × ${m[2]}` : l]; }),
     // «з собою» — окремою чорною плашкою, решта коментаря звичайним шрифтом з переносом
