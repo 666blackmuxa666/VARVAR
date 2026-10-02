@@ -422,21 +422,27 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     });
   }
   async function addItem(id) {
-    var _a2;
+    var _a2, _b, _c;
+    const wasKb = searching();
     const it = itemsAll().find((i) => i.id === id);
     if (!it) return;
     if (it.hidden) return toast("\u26D4 " + it.name.uk + " \u2014 \u0443 \u0441\u0442\u043E\u043F-\u043B\u0438\u0441\u0442\u0456");
     let v = null;
     if (it.variants) {
       v = await choose(it.name.uk, "\u041E\u0431\u0435\u0440\u0456\u0442\u044C \u0440\u043E\u0437\u043C\u0456\u0440", it.variants.map((x) => ({ label: `${x.v} ${it.size || ""} \xB7 ${x.p} \u20B4`, val: x.v })));
-      if (v == null) return;
+      if (v == null) {
+        if (wasKb) (_a2 = $("#search")) == null ? void 0 : _a2.focus();
+        return;
+      }
     }
-    const vv = (_a2 = it.variants) == null ? void 0 : _a2.find((x) => x.v === v);
+    const vv = (_b = it.variants) == null ? void 0 : _b.find((x) => x.v === v);
     const key = it.id + (v ? "|" + v : ""), cart = cartOf(S.open);
     cart[key] || (cart[key] = { id: it.id, v, name: it.name.uk + (vv ? ` ${vv.v} ${it.size || ""}`.trimEnd() : ""), price: vv ? vv.p : it.price, q: 0 });
+    const keepKb = wasKb || searching();
     cart[key].q++;
     saveCarts();
     renderSheet();
+    if (keepKb && !searching()) (_c = $("#search")) == null ? void 0 : _c.focus();
   }
   async function sendCart() {
     const t = S.open, cart = cartOf(t), items = Object.values(cart).map((x) => ({ id: x.id, v: x.v, q: x.q }));
@@ -1221,6 +1227,23 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       else closeSheet();
     }
   });
+  const searching = () => {
+    var _a2;
+    return ((_a2 = document.activeElement) == null ? void 0 : _a2.id) === "search";
+  };
+  document.addEventListener("mousedown", (e) => {
+    if (searching() && e.target.closest("#shItems .item, .cats, .seg")) e.preventDefault();
+  });
+  let kbY = null;
+  document.addEventListener("touchstart", (e) => {
+    kbY = searching() && e.target.closest("#shItems") ? e.touches[0].clientY : null;
+  }, { passive: true });
+  document.addEventListener("touchmove", (e) => {
+    if (kbY != null && e.touches[0].clientY - kbY > 40) {
+      document.activeElement.blur();
+      kbY = null;
+    }
+  }, { passive: true });
   function goBack() {
     if ($("#modal")) return modalResolve == null ? void 0 : modalResolve(null);
     if ($("#feed").classList.contains("open")) return $("#feed").classList.remove("open");

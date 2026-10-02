@@ -224,17 +224,18 @@
     document.querySelectorAll('[data-cnt]').forEach(el => { const v = n[el.dataset.cnt] || 0; el.hidden = !v; el.textContent = v; });
   }
   async function addItem(id) {
+    const wasKb = searching();
     const it = itemsAll().find(i => i.id === id); if (!it) return;
     if (it.hidden) return toast('⛔ ' + it.name.uk + ' — у стоп-листі');
     let v = null;
     if (it.variants) {
       v = await choose(it.name.uk, 'Оберіть розмір', it.variants.map(x => ({ label: `${x.v} ${it.size || ''} · ${x.p} ₴`, val: x.v })));
-      if (v == null) return;
+      if (v == null) { if (wasKb) $('#search')?.focus(); return; }
     }
     const vv = it.variants?.find(x => x.v === v);
     const key = it.id + (v ? '|' + v : ''), cart = cartOf(S.open);
     cart[key] ||= { id: it.id, v, name: it.name.uk + (vv ? ` ${vv.v} ${it.size || ''}`.trimEnd() : ''), price: vv ? vv.p : it.price, q: 0 };
-    cart[key].q++; saveCarts(); renderSheet();
+    const keepKb = wasKb || searching(); cart[key].q++; saveCarts(); renderSheet(); if (keepKb && !searching()) $('#search')?.focus();
   }
   async function sendCart() {
     const t = S.open, cart = cartOf(t), items = Object.values(cart).map(x => ({ id: x.id, v: x.v, q: x.q }));
@@ -609,6 +610,13 @@
     if (e.target.id === 'rFrom' || e.target.id === 'rTo') { S.rep[e.target.id === 'rFrom' ? 'from' : 'to'] = e.target.value; loadView(); }
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { if ($('#modal')) modalResolve?.(null); else closeSheet(); } });
+
+  // ---------- пошук: клавіатура не ховається при виборі страви; ховається свайпом вниз по списку ----------
+  const searching = () => document.activeElement?.id === 'search';
+  document.addEventListener('mousedown', e => { if (searching() && e.target.closest('#shItems .item, .cats, .seg')) e.preventDefault(); });
+  let kbY = null;
+  document.addEventListener('touchstart', e => { kbY = searching() && e.target.closest('#shItems') ? e.touches[0].clientY : null; }, { passive: true });
+  document.addEventListener('touchmove', e => { if (kbY != null && e.touches[0].clientY - kbY > 40) { document.activeElement.blur(); kbY = null; } }, { passive: true });
 
   // ---------- свайп від лівого краю — «назад» (як в iPhone) ----------
   function goBack() {
