@@ -7,7 +7,7 @@ import { storeStub } from './store.js';
 import {
   esc, money, hhmm, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
-  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, zText, reportRange, samePass, adminPass, waiterPass, pinHash, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
+  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, MOVE, addMove, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
 } from './ops.js';
 
 const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400 };
@@ -80,7 +80,9 @@ export async function posApi(b, req, env) {
   // ---- далі лише адміністратор ----
   if (!admin) return needAdmin();
   switch (b.op) {
-    case 'shift': return ok({ d: await shiftData(env), exp: await getExp(env), last: await lastZ(env) });
+    case 'shift': return ok({ d: await shiftData(env), exp: await getExp(env), mov: await getMov(env), last: await lastZ(env) });
+    case 'cashMove': { const e = await addMove(env, { type: b.type, sum: +b.sum, note: b.note, by: who }); if (!e) return [{ error: 'Потрібна сума' }, 400]; await notify(env, `🖥 ${MOVE[e.type]}: <b>${money(e.sum)}</b>${e.note ? ` — ${esc(e.note)}` : ''} · ${esc(who)}`); return ok(); }
+    case 'moveDel': await delMove(env, +b.i); return ok();
     case 'shiftOpen': { const r = await openShift(env, b.float, who); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 🔓 <b>Касу відкрито</b> — розмін ${money(r.s.float)} · ${esc(who)}`); return ok(); }
     case 'shiftClose': { const r = await closeShift(env, b.counted, who, b.print !== false); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 ${zText(r.z)}
 — ${esc(who)}`); return ok({ z: r.z }); }

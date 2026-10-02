@@ -203,13 +203,28 @@ export async function reprintClosed(env, ref, who) {
 export const getExp = async (env, day = dayKey()) => (await env.DB.get('exp:' + day, 'json')) || [];
 export async function addExpense(env, e) { const k = 'exp:' + dayKey(); const l = await getExp(env); l.push({ ts: Date.now(), ...e }); await env.DB.put(k, JSON.stringify(l)); }
 export async function delExpense(env, i) { const k = 'exp:' + dayKey(); const l = await getExp(env); if (!l[+i]) return false; l[+i].del = 1; await env.DB.put(k, JSON.stringify(l)); return true; }
+// ---------- рух коштів (не витрати): внесення / вилучення готівки, обмін картка ↔ готівка ----------
+// type: in (+готівка) · out (−готівка) · k2c (з картки в готівку) · c2k (з готівки на картку)
+export const MOVE = { in: '➕ Внесення готівки', out: '➖ Вилучення готівки', k2c: '🔁 Картка → готівка', c2k: '🔁 Готівка → картка' };
+export const moveCash = m => m.del ? 0 : ({ in: 1, out: -1, k2c: 1, c2k: -1 }[m.type] || 0) * m.sum;
+export const moveCard = m => m.del ? 0 : ({ k2c: -1, c2k: 1 }[m.type] || 0) * m.sum;
+export const getMov = async (env, day = dayKey()) => (await env.DB.get('mov:' + day, 'json')) || [];
+export async function addMove(env, m) {
+  if (!MOVE[m.type] || !(m.sum > 0)) return null;
+  const k = 'mov:' + dayKey(), l = await getMov(env); const e = { ts: Date.now(), at: hhmm(), type: m.type, sum: Math.round(m.sum), note: String(m.note || '').slice(0, 100), by: m.by || '' };
+  l.push(e); await env.DB.put(k, JSON.stringify(l));
+  await logEvent(env, { k: 'shift', by: e.by, text: `${MOVE[e.type]} ${e.sum} грн${e.note ? ' · ' + e.note : ''}` });
+  return e;
+}
+export async function delMove(env, i) { const k = 'mov:' + dayKey(); const l = await getMov(env); if (!l[+i] || l[+i].del) return false; l[+i].del = 1; await env.DB.put(k, JSON.stringify(l)); return true; }
 export const setFloat = (env, n) => bump(env, 'day:' + dayKey(), d => { d.float = Math.round(n); });
 export async function cashData(env) {
   const d = (await env.DB.get('day:' + dayKey(), 'json')) || {};
   const exp = await getExp(env); const ex = exp.filter(e => !e.del);
   const exCash = ex.filter(e => e.src === 'cash').reduce((s, e) => s + e.sum, 0), exCard = ex.filter(e => e.src === 'card').reduce((s, e) => s + e.sum, 0);
   const open = (await openTables(env)).reduce((s, r) => s + payable(r.b), 0);
-  return { day: dayKey(), float: d.float || 0, cash: d.cash || 0, card: d.card || 0, disc: d.disc || 0, exCash, exCard, inBox: (d.float || 0) + (d.cash || 0) - exCash, open, exp };
+  const mov = await getMov(env), mvCash = mov.reduce((a, m) => a + moveCash(m), 0), mvCard = mov.reduce((a, m) => a + moveCard(m), 0);
+  return { day: dayKey(), float: d.float || 0, cash: d.cash || 0, card: d.card || 0, disc: d.disc || 0, exCash, exCard, mvCash, mvCard, inBox: (d.float || 0) + (d.cash || 0) - exCash + mvCash, open, exp, mov };
 }
 export async function sumDays(env, keys) {
   const days = await env.DB.getMany(keys.map(k => 'day:' + k), 'json'), exps = await env.DB.getMany(keys.map(k => 'exp:' + k), 'json');
@@ -264,16 +279,18 @@ export async function shiftData(env) {
   const s = await getShift(env), now = Date.now();
   const from = s?.opened || dayStart();
   const days = dayList(dayKey(from), dayKey(now));
-  const [cl, ex] = await Promise.all([env.DB.getMany(days.map(d => 'closed:' + d), 'json'), env.DB.getMany(days.map(d => 'exp:' + d), 'json')]);
+  const [cl, ex, mv] = await Promise.all([env.DB.getMany(days.map(d => 'closed:' + d), 'json'), env.DB.getMany(days.map(d => 'exp:' + d), 'json'), env.DB.getMany(days.map(d => 'mov:' + d), 'json')]);
   const inShift = (x, d) => x.ts ? x.ts >= from : d >= dayKey(from);
   const recs = days.flatMap((d, i) => (cl[i] || []).filter(x => !x.del && !x.rm && inShift(x, d)));
   const exps = days.flatMap((d, i) => (ex[i] || []).filter(x => !x.del && inShift(x, d)));
+  const movs = days.flatMap((d, i) => (mv[i] || []).filter(x => !x.del && inShift(x, d)));
+  const mvCash = movs.reduce((a, m) => a + moveCash(m), 0), mvCard = movs.reduce((a, m) => a + moveCard(m), 0);
   const sum = (l, f) => l.reduce((a, x) => a + (f(x) || 0), 0);
   const cash = sum(recs, x => x.cash ?? x.sum), card = sum(recs, x => x.card), exCash = sum(exps.filter(e => e.src !== 'card'), e => e.sum), exCard = sum(exps.filter(e => e.src === 'card'), e => e.sum);
   const float = s ? s.float : ((await env.DB.get('day:' + dayKey(), 'json')) || {}).float || 0;
   const open = await openTables(env);
   return { open: !!s, id: s?.id, opened: s?.opened || 0, by: s?.by || '', float, checks: recs.length, cash, card, total: cash + card, disc: sum(recs, x => x.discSum),
-    exCash, exCard, inBox: float + cash - exCash, openTables: open.length, openSum: open.reduce((a, r) => a + payable(r.b), 0) };
+    exCash, exCard, mvCash, mvCard, inBox: float + cash - exCash + mvCash, openTables: open.length, openSum: open.reduce((a, r) => a + payable(r.b), 0) };
 }
 // «Загальна сума» для відкриття каси: уся готівка за весь час (готівка від гостей − витрати готівкою)
 export async function lastZ(env) {
@@ -283,8 +300,10 @@ export async function lastZ(env) {
   const cash = dd.reduce((a, d) => a + ((d && (d.cash ?? d.closed)) || 0), 0);
   const ex = ee.reduce((a, l) => a + (l || []).filter(e => !e.del && e.src !== 'card').reduce((b, e) => b + e.sum, 0), 0);
   const from = dn.map(k => k.slice(4)).sort()[0];
-  // сума на кнопці = уся готівка від гостей за весь час
-  return { sum: cash, cash, ex, from };
+  // сума на кнопці = уся готівка від гостей за весь час + рух коштів (внесення, обмін)
+  const mk = (await env.DB.list({ prefix: 'mov:' })).keys.map(k => k.name);
+  const mv = (mk.length ? await env.DB.getMany(mk, 'json') : []).reduce((a, l) => a + (l || []).reduce((b, m) => b + moveCash(m), 0), 0);
+  return { sum: Math.max(0, cash + mv), cash, mv, ex, from };
 }
 export async function openShift(env, float, who) {
   if (await getShift(env)) return { error: 'Зміна вже відкрита' };
@@ -307,7 +326,7 @@ export async function closeShift(env, counted, who, print = true) {
 const fmtDT = t => new Date(t).toLocaleString('uk-UA', { timeZone: TZ, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '');
 export const zText = z => [`🔒 <b>Касу закрито</b> (${fmtDT(z.opened)} — ${fmtDT(z.closed)})`, '',
   `Чеків: ${z.checks} · виручка <b>${money(z.total)}</b>`, `💵 ${money(z.cash)} · 💳 ${money(z.card)}${z.disc ? ` · знижки ${money(z.disc)}` : ''}`, '',
-  `Розмін ${money(z.float)} + готівка ${money(z.cash)} − витрати ${money(z.exCash)}`, `= <b>має бути в касі ${money(z.inBox)}</b>`,
+  `Розмін ${money(z.float)} + готівка ${money(z.cash)} − витрати ${money(z.exCash)}${z.mvCash ? ` ${z.mvCash > 0 ? '+' : '−'} рух коштів ${money(Math.abs(z.mvCash))}` : ''}`, `= <b>має бути в касі ${money(z.inBox)}</b>`,
   z.counted != null ? `Пораховано: ${money(z.counted)} · ${z.diff ? `<b>різниця ${z.diff > 0 ? '+' : ''}${money(z.diff)}</b>` : 'збігається ✅'}` : '',
   z.openTables ? `\n⚠️ Ще відкрито столів: ${z.openTables} (${money(z.openSum)})` : ''].filter(x => x !== '').join('\n');
 function zTicket(z) {
@@ -315,7 +334,7 @@ function zTicket(z) {
     ['lr', 'Відкрито', fmtDT(z.opened)], ['lr', 'Закрито', fmtDT(z.closed)], ['lr', 'Відкрив', z.by || '—'], ['lr', 'Закрив', z.closedBy || '—'], ['dbl'],
     ['lr', 'Чеків', String(z.checks)], ['lr', 'Готівка', `${z.cash} грн`], ['lr', 'Картка', `${z.card} грн`], ...(z.disc ? [['lr', 'Знижки', `${z.disc} грн`]] : []),
     ['total', 'ВИРУЧКА', `${z.total} грн`], ['dbl'],
-    ['lr', 'Розмін', `${z.float} грн`], ['lr', '+ Готівка', `${z.cash} грн`], ['lr', '− Витрати (готівка)', `${z.exCash} грн`], ...(z.exCard ? [['lr', 'Витрати з картки', `${z.exCard} грн`]] : []),
+    ['lr', 'Розмін', `${z.float} грн`], ['lr', '+ Готівка', `${z.cash} грн`], ['lr', '− Витрати (готівка)', `${z.exCash} грн`], ...(z.mvCash ? [['lr', 'Рух коштів (готівка)', `${z.mvCash > 0 ? '+' : ''}${z.mvCash} грн`]] : []), ...(z.exCard ? [['lr', 'Витрати з картки', `${z.exCard} грн`]] : []),
     ['total', 'В КАСІ', `${z.inBox} грн`],
     ...(z.counted != null ? [['lr', 'Пораховано', `${z.counted} грн`], ['lr', 'Різниця', `${z.diff > 0 ? '+' : ''}${z.diff} грн`]] : []),
     ...(z.openTables ? [['dbl'], ['b', `Увага: відкрито столів ${z.openTables} на ${z.openSum} грн`]] : []), ['gap']];
@@ -325,12 +344,13 @@ function zTicket(z) {
 export async function reportRange(env, from, to) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) return null;
   const days = dayList(from, to).slice(0, 5000);
-  const [cl, ex, zz] = await Promise.all(['closed:', 'exp:', 'z:'].map(p => env.DB.getMany(days.map(d => p + d), 'json')));
+  const [cl, ex, zz, mm] = await Promise.all(['closed:', 'exp:', 'z:', 'mov:'].map(p => env.DB.getMany(days.map(d => p + d), 'json')));
   return {
     from, to,
     checks: days.flatMap((d, i) => (cl[i] || []).filter(x => !x.del && !x.rm).map(x => ({ d, at: x.at, t: x.t, sum: x.sum, cash: x.cash ?? x.sum, card: x.card || 0, by: x.by || '', disc: x.discSum || 0, dishes: x.dishes || [] }))),
     exp: days.flatMap((d, i) => (ex[i] || []).filter(x => !x.del).map(x => ({ d, at: x.at, sum: x.sum, src: x.src, note: x.note || '', by: x.by || '' }))),
     z: days.flatMap((d, i) => zz[i] || []),
+    mov: days.flatMap((d, i) => (mm[i] || []).filter(x => !x.del).map(x => ({ d, ...x }))),
   };
 }
 // підсумки для бота: by = waiter | group | cat | hour | table
@@ -392,7 +412,7 @@ export const loggedWaiters = async env => {
 // ---------- тест (прибрати перед запуском — лише коли скаже власник) ----------
 export async function resetAll(env) {
   let n = 0;
-  for (const prefix of ['day:', 'closed:', 'dish:', 'bill:', 'ord:', 'rl:', 'exp:', 'ev:', 'z:', 'shift']) {
+  for (const prefix of ['day:', 'closed:', 'dish:', 'bill:', 'ord:', 'rl:', 'exp:', 'ev:', 'z:', 'shift', 'mov:']) {
     const keys = (await env.DB.list({ prefix })).keys.map(k => k.name);
     await env.DB.deleteMany(keys); n += keys.length;
   }

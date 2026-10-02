@@ -640,11 +640,32 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     return `<div class="head"><h1>\u041A\u0430\u0441\u0430</h1></div><div class="grid2" style="margin-bottom:14px">${head}
       <div class="card"><h3>\u{1F4B0} ${d.open ? "\u0417\u0430 \u0437\u043C\u0456\u043D\u0443" : "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456"}</h3>
         <div class="kv"><span>\u0420\u043E\u0437\u043C\u0456\u043D \u043D\u0430 \u043F\u043E\u0447\u0430\u0442\u043E\u043A</span><b class="money">${money(d.float)}</b></div><div class="kv"><span>+ \u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 \u0432\u0456\u0434 \u0433\u043E\u0441\u0442\u0435\u0439</span><b class="money">${money(d.cash)}</b></div>
-        <div class="kv"><span>\u2212 \u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438 \u0433\u043E\u0442\u0456\u0432\u043A\u043E\u044E</span><b class="money">${money(d.exCash)}</b></div><div class="kv"><span><b>\u041C\u0430\u0454 \u0431\u0443\u0442\u0438 \u0432 \u043A\u0430\u0441\u0456</b></span><b class="money" style="font-size:22px">${money(d.inBox)}</b></div>
-        <div class="kv"><span>\u{1F4B3} \u041A\u0430\u0440\u0442\u0430</span><b class="money">${money(d.card)}</b></div><div class="kv"><span>\u0427\u0435\u043A\u0456\u0432 \xB7 \u0432\u0438\u0440\u0443\u0447\u043A\u0430</span><b>${d.checks} \xB7 <span class="money">${money(d.total)}</span></b></div>
+        <div class="kv"><span>\u2212 \u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438 \u0433\u043E\u0442\u0456\u0432\u043A\u043E\u044E</span><b class="money">${money(d.exCash)}</b></div>${d.mvCash ? `<div class="kv"><span>${d.mvCash > 0 ? "+" : "\u2212"} \u{1F501} \u0420\u0443\u0445 \u043A\u043E\u0448\u0442\u0456\u0432</span><b class="money">${money(Math.abs(d.mvCash))}</b></div>` : ""}<div class="kv"><span><b>\u041C\u0430\u0454 \u0431\u0443\u0442\u0438 \u0432 \u043A\u0430\u0441\u0456</b></span><b class="money" style="font-size:22px">${money(d.inBox)}</b></div>
+        <div class="kv"><span>\u{1F4B3} \u041A\u0430\u0440\u0442\u0430</span><b class="money">${money(d.card + (d.mvCard || 0))}</b></div><div class="kv"><span>\u0427\u0435\u043A\u0456\u0432 \xB7 \u0432\u0438\u0440\u0443\u0447\u043A\u0430</span><b>${d.checks} \xB7 <span class="money">${money(d.total)}</span></b></div>
         ${d.openTables ? `<div class="kv"><span>\u23F3 \u0429\u0435 \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u043E \u0441\u0442\u043E\u043B\u0456\u0432</span><b>${d.openTables} \xB7 <span class="money">${money(d.openSum)}</span></b></div>` : ""}
-        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn sm" data-a="float">\u{1F3E6} \u0420\u043E\u0437\u043C\u0456\u043D</button><button class="btn sm" data-a="expense">\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0430</button></div></div>
-      <div class="card"><h3>\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</h3>${r.exp.length ? r.exp.map((e, i) => `<div class="kv" style="${e.del ? "opacity:.4;text-decoration:line-through" : ""}"><span>${e.at} ${e.src === "card" ? "\u{1F4B3}" : "\u{1F4B5}"} ${esc(e.note || "")}</span><span><b class="money">${money(e.sum)}</b> ${e.del ? "" : `<button class="btn sm red" data-a="expDel" data-i="${i}">\u{1F5D1}</button>`}</span></div>`).join("") : '<div class="muted">\u041D\u0435\u043C\u0430\u0454</div>'}</div></div>`;
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn sm" data-a="float">\u{1F3E6} \u0420\u043E\u0437\u043C\u0456\u043D</button><button class="btn sm" data-a="expense">\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0430</button><button class="btn sm" data-a="cMove" data-t="in">\u2795 \u0412\u043D\u0435\u0441\u0442\u0438</button><button class="btn sm" data-a="cMove" data-t="out">\u2796 \u0412\u0438\u043B\u0443\u0447\u0438\u0442\u0438</button><button class="btn sm" data-a="cMove" data-t="x">\u{1F501} \u041E\u0431\u043C\u0456\u043D</button></div></div>
+      <div class="card"><h3>\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</h3>${r.exp.length ? r.exp.map((e, i) => `<div class="kv" style="${e.del ? "opacity:.4;text-decoration:line-through" : ""}"><span>${e.at} ${e.src === "card" ? "\u{1F4B3}" : "\u{1F4B5}"} ${esc(e.note || "")}</span><span><b class="money">${money(e.sum)}</b> ${e.del ? "" : `<button class="btn sm red" data-a="expDel" data-i="${i}">\u{1F5D1}</button>`}</span></div>`).join("") : '<div class="muted">\u041D\u0435\u043C\u0430\u0454</div>'}</div>
+      <div class="card"><h3>\u{1F501} \u0420\u0443\u0445 \u043A\u043E\u0448\u0442\u0456\u0432 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</h3>${(r.mov || []).length ? r.mov.map((m, i) => `<div class="kv" style="${m.del ? "opacity:.4;text-decoration:line-through" : ""}"><span>${m.at} ${MOVE[m.type]} ${esc(m.note || "")}</span><span><b class="money">${money(m.sum)}</b> ${m.del ? "" : `<button class="btn sm red" data-a="movDel" data-i="${i}">\u{1F5D1}</button>`}</span></div>`).join("") : '<div class="muted">\u041D\u0435\u043C\u0430\u0454. \u0412\u043D\u0435\u0441\u0435\u043D\u043D\u044F, \u0432\u0438\u043B\u0443\u0447\u0435\u043D\u043D\u044F, \u043E\u0431\u043C\u0456\u043D \u043A\u0430\u0440\u0442\u043A\u0430 \u2194 \u0433\u043E\u0442\u0456\u0432\u043A\u0430</div>'}</div></div>`;
+  }
+  const MOVE = { in: "\u2795 \u0412\u043D\u0435\u0441\u0435\u043D\u043D\u044F", out: "\u2796 \u0412\u0438\u043B\u0443\u0447\u0435\u043D\u043D\u044F", k2c: "\u{1F501} \u041A\u0430\u0440\u0442\u043A\u0430 \u2192 \u0433\u043E\u0442\u0456\u0432\u043A\u0430", c2k: "\u{1F501} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 \u2192 \u043A\u0430\u0440\u0442\u043A\u0430" };
+  async function cashMove(t) {
+    if (t === "x") {
+      t = await choose("\u{1F501} \u041E\u0431\u043C\u0456\u043D", "\u0417\u0432\u0456\u0434\u043A\u0438 \u043A\u0443\u0434\u0438 \u043F\u0435\u0440\u0435\u0445\u043E\u0434\u044F\u0442\u044C \u0433\u0440\u043E\u0448\u0456?", [{ label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u043A\u0430 \u2192 \u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u0430", val: "k2c" }, { label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 \u2192 \u{1F4B3} \u043A\u0430\u0440\u0442\u043A\u0430", val: "c2k" }]);
+      if (!t) return;
+    }
+    const v = await modal({
+      title: MOVE[t],
+      text: t === "k2c" ? "\u0417\u043D\u044F\u043B\u0438 \u0437 \u043A\u0430\u0440\u0442\u043A\u0438 \u0439 \u043F\u043E\u043A\u043B\u0430\u043B\u0438 \u0432 \u043A\u0430\u0441\u0443" : t === "c2k" ? "\u0412\u0437\u044F\u043B\u0438 \u0437 \u043A\u0430\u0441\u0438 \u0439 \u043F\u043E\u043A\u043B\u0430\u043B\u0438 \u043D\u0430 \u043A\u0430\u0440\u0442\u043A\u0443" : t === "in" ? "\u041F\u043E\u043A\u043B\u0430\u043B\u0438 \u0433\u0440\u043E\u0448\u0456 \u0432 \u043A\u0430\u0441\u0443" : "\u0417\u0430\u0431\u0440\u0430\u043B\u0438 \u0433\u0440\u043E\u0448\u0456 \u0437 \u043A\u0430\u0441\u0438",
+      body: '<div class="form"><input id="mSum" inputmode="decimal" placeholder="\u0421\u0443\u043C\u0430, \u20B4"><input id="mNote" placeholder="\u041A\u043E\u043C\u0435\u043D\u0442\u0430\u0440 (\u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)"></div>',
+      buttons: [{ label: "\u0417\u0430\u043F\u0438\u0441\u0430\u0442\u0438", val: 1, cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }],
+      keep: true
+    });
+    const sum = v && +$("#mSum").value.replace(",", "."), note = v && $("#mNote").value;
+    closeModal();
+    if (v && sum > 0) {
+      await act("cashMove", { type: t, sum, note }, "\u{1F501} \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E");
+      loadView();
+    }
   }
   async function shOpen() {
     var _a2;
@@ -795,7 +816,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       }));
       return [...m];
     };
-    const TABS = { dishes: "\u{1F37D} \u0421\u0442\u0440\u0430\u0432\u0438", cats: "\u{1F4C2} \u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0456\u0457", groups: "\u{1F373} \u041A\u0443\u0445\u043D\u044F/\u0431\u0430\u0440", waiters: "\u{1F464} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0438", hours: "\u{1F550} \u0413\u043E\u0434\u0438\u043D\u0438", days: "\u{1F4C5} \u0414\u043D\u0456", tables: "\u{1FA91} \u0421\u0442\u043E\u043B\u0438", checks: "\u{1F9FE} \u0427\u0435\u043A\u0438", exp: "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438", z: "\u{1F512} Z-\u0437\u0432\u0456\u0442\u0438" };
+    const TABS = { dishes: "\u{1F37D} \u0421\u0442\u0440\u0430\u0432\u0438", cats: "\u{1F4C2} \u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0456\u0457", groups: "\u{1F373} \u041A\u0443\u0445\u043D\u044F/\u0431\u0430\u0440", waiters: "\u{1F464} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0438", hours: "\u{1F550} \u0413\u043E\u0434\u0438\u043D\u0438", days: "\u{1F4C5} \u0414\u043D\u0456", tables: "\u{1FA91} \u0421\u0442\u043E\u043B\u0438", checks: "\u{1F9FE} \u0427\u0435\u043A\u0438", exp: "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438", mov: "\u{1F501} \u0420\u0443\u0445 \u043A\u043E\u0448\u0442\u0456\u0432", z: "\u{1F512} Z-\u0437\u0432\u0456\u0442\u0438" };
     let rows, unit = "\u0447\u0435\u043A.", sortable = false;
     const T = R.tab;
     if (T === "dishes") {
@@ -827,6 +848,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       if (sortable) body = `<div class="chips" style="margin-bottom:10px"><button class="chip ${R.sort !== "q" ? "on" : ""}" data-a="rSort" data-s="s">\u0417\u0430 \u0441\u0443\u043C\u043E\u044E</button><button class="chip ${R.sort === "q" ? "on" : ""}" data-a="rSort" data-s="q">\u0417\u0430 \u043A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044E</button></div>` + body;
     } else if (T === "checks") body = checks.length ? [...checks].reverse().slice(0, 300).map((c) => `<div class="kv"><span>${c.d.slice(5)} ${c.at} \xB7 \u0441\u0442\u0456\u043B ${c.t} \xB7 ${esc(c.by)} ${c.card ? "\u{1F4B3}" : "\u{1F4B5}"}${c.disc ? " \u{1F3F7}" : ""}<br><small class="muted">${c.ds.map(([nm, qq]) => `${qq}\xD7 ${esc(nm)}`).join(", ")}</small></span><b class="money">${money(c.val)}</b></div>`).join("") : '<div class="muted">\u041D\u0435\u043C\u0430\u0454 \u0447\u0435\u043A\u0456\u0432</div>';
     else if (T === "exp") body = r.exp.length ? r.exp.map((e) => `<div class="kv"><span>${e.d.slice(5)} ${e.at} ${e.src === "card" ? "\u{1F4B3}" : "\u{1F4B5}"} ${esc(e.note)} <span class="muted">${esc(e.by)}</span></span><b class="money">${money(e.sum)}</b></div>`).join("") : '<div class="muted">\u0412\u0438\u0442\u0440\u0430\u0442 \u043D\u0435\u043C\u0430\u0454</div>';
+    else if (T === "mov") body = (r.mov || []).length ? r.mov.map((m) => `<div class="kv"><span>${m.d.slice(5)} ${m.at} ${MOVE[m.type]} ${esc(m.note)} <span class="muted">${esc(m.by)}</span></span><b class="money">${money(m.sum)}</b></div>`).join("") : '<div class="muted">\u0420\u0443\u0445\u0443 \u043A\u043E\u0448\u0442\u0456\u0432 \u043D\u0435\u043C\u0430\u0454</div>';
     else if (T === "z") body = r.z.length ? [...r.z].reverse().map((z) => `<div class="kv"><span>${new Date(z.opened).toLocaleString("uk-UA", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} \u2014 ${new Date(z.closed).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })} \xB7 ${z.checks} \u0447\u0435\u043A. \xB7 ${esc(z.closedBy)}${z.diff ? ` \xB7 <b style="color:var(--red)">\u0440\u0456\u0437\u043D\u0438\u0446\u044F ${z.diff > 0 ? "+" : ""}${money(z.diff)}</b>` : ""}</span><b class="money">${money(z.total)}</b></div>`).join("") : '<div class="muted">\u0417\u0430\u043A\u0440\u0438\u0442\u0438\u0445 \u0437\u043C\u0456\u043D \u0437\u0430 \u043F\u0435\u0440\u0456\u043E\u0434 \u043D\u0435\u043C\u0430\u0454</div>';
     const top = dishAgg((nm) => nm).sort((x, y) => y[1][0] - x[1][0] || y[1][1] - x[1][1]).slice(0, 10), tmax = Math.max(1, ...top.map((x) => x[1][0]));
     const topHTML = `<div class="card top"><h3>\u{1F3C6} \u0422\u043E\u043F \u0441\u0442\u0440\u0430\u0432</h3>${top.length ? top.map(([k, [qq, ss]], i) => `<div class="bar"><div class="bl"><span>${["\u{1F947}", "\u{1F948}", "\u{1F949}"][i] || `<span class="muted">${i + 1}.</span>`} ${esc(k)}</span><b>${qq} \u0448\u0442</b><span class="muted money">${money(ss)}</span></div><i style="width:${Math.max(2, qq / tmax * 100)}%"></i></div>`).join("") : '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454 \u043F\u0440\u043E\u0434\u0430\u0436\u0456\u0432 \u0437\u0430 \u0446\u0435\u0439 \u043F\u0435\u0440\u0456\u043E\u0434</div>'}</div>`;
@@ -1173,6 +1195,15 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         }
         break;
       }
+      case "cMove":
+        cashMove(el.dataset.t);
+        break;
+      case "movDel":
+        if (await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0437\u0430\u043F\u0438\u0441?")) {
+          await act("moveDel", { i: +el.dataset.i });
+          loadView();
+        }
+        break;
       case "expDel":
         if (await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0432\u0438\u0442\u0440\u0430\u0442\u0443?")) {
           await act("expenseDel", { i: +el.dataset.i });

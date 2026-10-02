@@ -5,7 +5,7 @@ import { DurableObject } from 'cloudflare:workers';
 
 const now = () => Date.now();
 // ключі, зміна яких оновлює екрани POS
-const WATCH = /^(bill:|closed:|day:|exp:|ev:|menu$|staff$|ord:|fav$|shift$|z:)/;
+const WATCH = /^(bill:|closed:|day:|exp:|ev:|menu$|staff$|ord:|fav$|shift$|z:|mov:)/;
 const alive = r => r && (!r.e || r.e > now());
 
 export class Store extends DurableObject {
@@ -33,7 +33,7 @@ export class Store extends DurableObject {
   }
   // історія більше не має терміну (раніше 400 днів) — знімаємо термін зі старих записів
   async keepHistory() {
-    for (const prefix of ['day:', 'closed:', 'exp:', 'dish:', 'rcpt:']) {
+    for (const prefix of ['day:', 'closed:', 'exp:', 'dish:', 'rcpt:', 'mov:']) {
       const m = await this.ctx.storage.list({ prefix });
       for (const [k, r] of m) if (r && r.e) await this.ctx.storage.put(k, { v: r.v, e: 0 });
     }

@@ -348,11 +348,20 @@
     return `<div class="head"><h1>Каса</h1></div><div class="grid2" style="margin-bottom:14px">${head}
       <div class="card"><h3>💰 ${d.open ? 'За зміну' : 'Сьогодні'}</h3>
         <div class="kv"><span>Розмін на початок</span><b class="money">${money(d.float)}</b></div><div class="kv"><span>+ 💵 Готівка від гостей</span><b class="money">${money(d.cash)}</b></div>
-        <div class="kv"><span>− 💸 Витрати готівкою</span><b class="money">${money(d.exCash)}</b></div><div class="kv"><span><b>Має бути в касі</b></span><b class="money" style="font-size:22px">${money(d.inBox)}</b></div>
-        <div class="kv"><span>💳 Карта</span><b class="money">${money(d.card)}</b></div><div class="kv"><span>Чеків · виручка</span><b>${d.checks} · <span class="money">${money(d.total)}</span></b></div>
+        <div class="kv"><span>− 💸 Витрати готівкою</span><b class="money">${money(d.exCash)}</b></div>${d.mvCash ? `<div class="kv"><span>${d.mvCash > 0 ? '+' : '−'} 🔁 Рух коштів</span><b class="money">${money(Math.abs(d.mvCash))}</b></div>` : ''}<div class="kv"><span><b>Має бути в касі</b></span><b class="money" style="font-size:22px">${money(d.inBox)}</b></div>
+        <div class="kv"><span>💳 Карта</span><b class="money">${money(d.card + (d.mvCard || 0))}</b></div><div class="kv"><span>Чеків · виручка</span><b>${d.checks} · <span class="money">${money(d.total)}</span></b></div>
         ${d.openTables ? `<div class="kv"><span>⏳ Ще відкрито столів</span><b>${d.openTables} · <span class="money">${money(d.openSum)}</span></b></div>` : ''}
-        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn sm" data-a="float">🏦 Розмін</button><button class="btn sm" data-a="expense">💸 Витрата</button></div></div>
-      <div class="card"><h3>💸 Витрати сьогодні</h3>${r.exp.length ? r.exp.map((e, i) => `<div class="kv" style="${e.del ? 'opacity:.4;text-decoration:line-through' : ''}"><span>${e.at} ${e.src === 'card' ? '💳' : '💵'} ${esc(e.note || '')}</span><span><b class="money">${money(e.sum)}</b> ${e.del ? '' : `<button class="btn sm red" data-a="expDel" data-i="${i}">🗑</button>`}</span></div>`).join('') : '<div class="muted">Немає</div>'}</div></div>`;
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn sm" data-a="float">🏦 Розмін</button><button class="btn sm" data-a="expense">💸 Витрата</button><button class="btn sm" data-a="cMove" data-t="in">➕ Внести</button><button class="btn sm" data-a="cMove" data-t="out">➖ Вилучити</button><button class="btn sm" data-a="cMove" data-t="x">🔁 Обмін</button></div></div>
+      <div class="card"><h3>💸 Витрати сьогодні</h3>${r.exp.length ? r.exp.map((e, i) => `<div class="kv" style="${e.del ? 'opacity:.4;text-decoration:line-through' : ''}"><span>${e.at} ${e.src === 'card' ? '💳' : '💵'} ${esc(e.note || '')}</span><span><b class="money">${money(e.sum)}</b> ${e.del ? '' : `<button class="btn sm red" data-a="expDel" data-i="${i}">🗑</button>`}</span></div>`).join('') : '<div class="muted">Немає</div>'}</div>
+      <div class="card"><h3>🔁 Рух коштів сьогодні</h3>${(r.mov || []).length ? r.mov.map((m, i) => `<div class="kv" style="${m.del ? 'opacity:.4;text-decoration:line-through' : ''}"><span>${m.at} ${MOVE[m.type]} ${esc(m.note || '')}</span><span><b class="money">${money(m.sum)}</b> ${m.del ? '' : `<button class="btn sm red" data-a="movDel" data-i="${i}">🗑</button>`}</span></div>`).join('') : '<div class="muted">Немає. Внесення, вилучення, обмін картка ↔ готівка</div>'}</div></div>`;
+  }
+  const MOVE = { in: '➕ Внесення', out: '➖ Вилучення', k2c: '🔁 Картка → готівка', c2k: '🔁 Готівка → картка' };
+  async function cashMove(t) {
+    if (t === 'x') { t = await choose('🔁 Обмін', 'Звідки куди переходять гроші?', [{ label: '💳 Картка → 💵 готівка', val: 'k2c' }, { label: '💵 Готівка → 💳 картка', val: 'c2k' }]); if (!t) return; }
+    const v = await modal({ title: MOVE[t], text: t === 'k2c' ? 'Зняли з картки й поклали в касу' : t === 'c2k' ? 'Взяли з каси й поклали на картку' : t === 'in' ? 'Поклали гроші в касу' : 'Забрали гроші з каси',
+      body: '<div class="form"><input id="mSum" inputmode="decimal" placeholder="Сума, ₴"><input id="mNote" placeholder="Коментар (необовʼязково)"></div>', buttons: [{ label: 'Записати', val: 1, cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
+    const sum = v && +$('#mSum').value.replace(',', '.'), note = v && $('#mNote').value; closeModal();
+    if (v && sum > 0) { await act('cashMove', { type: t, sum, note }, '🔁 Записано'); loadView(); }
   }
   async function shOpen() {
     const last = (await api('shift').catch(() => null))?.last; last0 = last ? String(last.sum) : 0;
@@ -441,7 +450,7 @@
     // розрізи
     const grpBy = (keyF, valF = c => c.val) => { const m = new Map(); checks.forEach(c => { const k = keyF(c); const a = m.get(k) || [0, 0]; a[0]++; a[1] += valF(c); m.set(k, a); }); return [...m]; };
     const dishAgg = keyF => { const m = new Map(); checks.forEach(c => c.ds.forEach(([nm, qq, ss]) => { const k = keyF(nm); const a = m.get(k) || [0, 0]; a[0] += qq; a[1] += ss; m.set(k, a); })); return [...m]; };
-    const TABS = { dishes: '🍽 Страви', cats: '📂 Категорії', groups: '🍳 Кухня/бар', waiters: '👤 Офіціанти', hours: '🕐 Години', days: '📅 Дні', tables: '🪑 Столи', checks: '🧾 Чеки', exp: '💸 Витрати', z: '🔒 Z-звіти' };
+    const TABS = { dishes: '🍽 Страви', cats: '📂 Категорії', groups: '🍳 Кухня/бар', waiters: '👤 Офіціанти', hours: '🕐 Години', days: '📅 Дні', tables: '🪑 Столи', checks: '🧾 Чеки', exp: '💸 Витрати', mov: '🔁 Рух коштів', z: '🔒 Z-звіти' };
     let rows, unit = 'чек.', sortable = false;
     const T = R.tab;
     if (T === 'dishes') { rows = dishAgg(nm => nm); unit = 'шт'; sortable = true; }
@@ -459,6 +468,7 @@
       if (sortable) body = `<div class="chips" style="margin-bottom:10px"><button class="chip ${R.sort !== 'q' ? 'on' : ''}" data-a="rSort" data-s="s">За сумою</button><button class="chip ${R.sort === 'q' ? 'on' : ''}" data-a="rSort" data-s="q">За кількістю</button></div>` + body;
     } else if (T === 'checks') body = checks.length ? [...checks].reverse().slice(0, 300).map(c => `<div class="kv"><span>${c.d.slice(5)} ${c.at} · стіл ${c.t} · ${esc(c.by)} ${c.card ? '💳' : '💵'}${c.disc ? ' 🏷' : ''}<br><small class="muted">${c.ds.map(([nm, qq]) => `${qq}× ${esc(nm)}`).join(', ')}</small></span><b class="money">${money(c.val)}</b></div>`).join('') : '<div class="muted">Немає чеків</div>';
     else if (T === 'exp') body = r.exp.length ? r.exp.map(e => `<div class="kv"><span>${e.d.slice(5)} ${e.at} ${e.src === 'card' ? '💳' : '💵'} ${esc(e.note)} <span class="muted">${esc(e.by)}</span></span><b class="money">${money(e.sum)}</b></div>`).join('') : '<div class="muted">Витрат немає</div>';
+    else if (T === 'mov') body = (r.mov || []).length ? r.mov.map(m => `<div class="kv"><span>${m.d.slice(5)} ${m.at} ${MOVE[m.type]} ${esc(m.note)} <span class="muted">${esc(m.by)}</span></span><b class="money">${money(m.sum)}</b></div>`).join('') : '<div class="muted">Руху коштів немає</div>';
     else if (T === 'z') body = r.z.length ? [...r.z].reverse().map(z => `<div class="kv"><span>${new Date(z.opened).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} — ${new Date(z.closed).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })} · ${z.checks} чек. · ${esc(z.closedBy)}${z.diff ? ` · <b style="color:var(--red)">різниця ${z.diff > 0 ? '+' : ''}${money(z.diff)}</b>` : ''}</span><b class="money">${money(z.total)}</b></div>`).join('') : '<div class="muted">Закритих змін за період немає</div>';
     // 🏆 топ страв за вибраний період (з урахуванням фільтрів)
     const top = dishAgg(nm => nm).sort((x, y) => y[1][0] - x[1][0] || y[1][1] - x[1][1]).slice(0, 10), tmax = Math.max(1, ...top.map(x => x[1][0]));
@@ -595,6 +605,8 @@
         if (v && sum) { await act('expense', { sum, note, src: v }, '💸 Витрату записано'); loadView(); }
         break;
       }
+      case 'cMove': cashMove(el.dataset.t); break;
+      case 'movDel': if (await confirmBox('Видалити запис?')) { await act('moveDel', { i: +el.dataset.i }); loadView(); } break;
       case 'expDel': if (await confirmBox('Видалити витрату?')) { await act('expenseDel', { i: +el.dataset.i }); loadView(); } break;
       case 'menuEdit': menuEdit(el.dataset.id); break;
       case 'catAdd': { const v = await ask('📂 Новий розділ меню', 'Назва, напр. Упакування'); if (v && await act('catAdd', { name: v }, '📂 Розділ додано в кінець меню')) loadMenu().catch(() => {}); break; }

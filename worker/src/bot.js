@@ -8,7 +8,7 @@ import { queuePrint, printStatus } from './print.js';
 import {
   tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
   precheck, setDiscount, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
-  reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
+  reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, MOVE, addMove, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
 } from './ops.js';
 export { tg, esc, hhmm, getBill } from './ops.js';
 export { addStat, addDishes } from './ops.js';
@@ -138,13 +138,13 @@ async function cashView(env) {
     : ['🔒 <b>Каса закрита</b> — відкрийте зміну на початку дня', ''];
   return {
     text: [...shift, `💰 <b>Каса за ${c.day}</b>`, '',
-      `Розмін на початок: ${money(c.float)}`, `+ 💵 Готівка від гостей: ${money(c.cash)}`, `− 💸 Витрати готівкою: ${money(c.exCash)}`,
+      `Розмін на початок: ${money(c.float)}`, `+ 💵 Готівка від гостей: ${money(c.cash)}`, `− 💸 Витрати готівкою: ${money(c.exCash)}`, ...(c.mvCash ? [`${c.mvCash > 0 ? '+' : '−'} 🔁 Рух коштів: ${money(Math.abs(c.mvCash))}`] : []),
       `= <b>Має бути в касі: ${money(c.inBox)}</b>`, '',
       `💳 Карта: ${money(c.card)}${c.exCard ? ` · витрати з карти: ${money(c.exCard)}` : ''}`,
       `📈 Виручка за день: <b>${money(c.cash + c.card)}</b> · витрати: ${money(c.exCash + c.exCard)} · чистими: <b>${money(c.cash + c.card - c.exCash - c.exCard)}</b>`,
       c.disc ? `🏷 Знижки за день: ${money(c.disc)}` : '',
       c.open ? `\n⏳ Ще відкрито в залі: ${money(c.open)} (не враховано)` : ''].filter(x => x !== '').join('\n'),
-    markup: { inline_keyboard: [[sh.open ? { text: '🔒 Закрити касу (Z-звіт)', callback_data: 'shcl' } : { text: '🔓 Відкрити касу', callback_data: 'shop' }], [{ text: '🏦 Вказати розмін', callback_data: 'float' }, { text: '💸 Витрати сьогодні', callback_data: 'exlist' }]] },
+    markup: { inline_keyboard: [[sh.open ? { text: '🔒 Закрити касу (Z-звіт)', callback_data: 'shcl' } : { text: '🔓 Відкрити касу', callback_data: 'shop' }], [{ text: '🏦 Вказати розмін', callback_data: 'float' }, { text: '💸 Витрати сьогодні', callback_data: 'exlist' }], [{ text: '➕ Внести', callback_data: 'cmv:in' }, { text: '➖ Вилучити', callback_data: 'cmv:out' }, { text: '🔁 Обмін', callback_data: 'cmvx' }]] },
   };
 }
 async function expListView(env) {
@@ -303,6 +303,13 @@ export async function handleUpdate(u, env) {
       await setDiscount(env, t, p, who); return send(await tableView(env, t));
     }
     const num = parseFloat(text.replace(',', '.').replace(/\s/g, ''));
+    if (state.startsWith('cmv:') && admin) { // рух коштів: «500 коментар»
+      const mm = text.match(/^(\d+(?:[.,]\d+)?)\s*(?:грн)?\s*[-–—:,]?\s*(.*)$/i);
+      if (!mm) return send({ text: 'Напишіть суму, наприклад: <code>500 розмін з банку</code>' });
+      const e = await addMove(env, { type: state.slice(4), sum: parseFloat(mm[1].replace(',', '.')), note: mm[2].trim(), by: who });
+      await env.DB.delete('st:' + uid);
+      return send(e ? { text: `✅ ${MOVE[e.type]}: <b>${money(e.sum)}</b>${e.note ? ` — ${esc(e.note)}` : ''}` } : { text: 'Не вдалось записати.' });
+    }
     if (state === 'shopen' && admin) {
       if (!(num >= 0)) return send({ text: 'Потрібне число — скільки грошей у касі (розмін). Натисніть «🔓 Відкрити касу» ще раз.' });
       const r = await openShift(env, num, who); if (r.error) return send({ text: r.error });
@@ -507,7 +514,7 @@ async function handleCallback(q, env) {
     const v = await stopView(env); await edit(v.text, v.markup); return answer(it ? `${it.name.uk} знову в меню` : 'Не знайдено');
   }
   // лише адміністратор
-  if (['del', 'delok', 'wifiask', 'wifiok', 'dc', 'dcok', 'cv', 'cvb', 'cvp', 'rst1', 'rst2', 'exs', 'exdel', 'exdelok', 'float', 'exlist', 'shop', 'shopl', 'shcl', 'rp', 'stfadd', 'stfdel', 'wout'].includes(act) && !admin) return answer('🔐 Лише для адміністратора');
+  if (['del', 'delok', 'wifiask', 'wifiok', 'dc', 'dcok', 'cv', 'cvb', 'cvp', 'rst1', 'rst2', 'exs', 'exdel', 'exdelok', 'float', 'exlist', 'shop', 'shopl', 'shcl', 'cmv', 'cmvx', 'rp', 'stfadd', 'stfdel', 'wout'].includes(act) && !admin) return answer('🔐 Лише для адміністратора');
   if (act === 'del') {
     const b = await getBill(env, arg);
     if (!b.total) return answer(`Стіл ${arg} вже порожній`);
@@ -533,6 +540,8 @@ async function handleCallback(q, env) {
   if (act === 'exlist') { await send(await expListView(env)); return answer(''); }
   if (act === 'exdel') { await confirm('🗑 Видалити цю витрату?', 'exdelok:' + arg); return answer(''); }
   if (act === 'exdelok') { await delExpense(env, +arg); await edit('🗑 Витрату видалено.'); return answer(''); }
+  if (act === 'cmvx') { await send({ text: '🔁 <b>Обмін</b> — звідки куди?', markup: { inline_keyboard: [[{ text: '💳 Картка → 💵 готівка', callback_data: 'cmv:k2c' }], [{ text: '💵 Готівка → 💳 картка', callback_data: 'cmv:c2k' }]] } }); return answer(''); }
+  if (act === 'cmv') { if (!MOVE[arg]) return answer(''); await env.DB.put('st:' + uid, 'cmv:' + arg, { expirationTtl: 600 }); await send({ text: `${MOVE[arg]}\nНапишіть суму і коментар, наприклад: <code>500 розмін</code>` }); return answer(''); }
   if (act === 'shop') { if (await getShift(env)) return answer('Зміна вже відкрита'); await env.DB.put('st:' + uid, 'shopen', { expirationTtl: 600 }); const lz = await lastZ(env);
     await send({ text: '🔓 <b>Відкриття каси</b>\nСкільки грошей у касі на початок (розмін)? Напишіть число' + (lz ? ' або натисніть «Загальна сума» — уся готівка від гостей за весь час:' : ':'), markup: lz ? { inline_keyboard: [[{ text: `💰 Загальна сума · ${money(lz.sum)}`, callback_data: 'shopl' }]] } : undefined }); return answer(''); }
   if (act === 'shopl') {
