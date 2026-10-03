@@ -392,14 +392,15 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     move: `\u2194\uFE0F ${esc(e.text)}`,
     disc: `% \u0421\u0442\u0456\u043B ${e.t}: ${esc(e.text)}`,
     rm: `\u270F\uFE0F \u0421\u0442\u0456\u043B ${e.t}: ${esc(e.text)}`,
-    pre: `\u{1F5A8} \u041F\u0440\u0435\u0447\u0435\u043A \u0441\u0442\u0456\u043B ${e.t}`
+    pre: `\u{1F5A8} \u041F\u0440\u0435\u0447\u0435\u043A \u0441\u0442\u0456\u043B ${e.t}`,
+    noscan: `\u{1F6A8}\u{1F4F5}\u{1F6AB} \u0421\u0422\u0406\u041B ${e.t} \u2014 \u041D\u0415 \u041C\u041E\u0416\u0415 \u0417\u0410\u041C\u041E\u0412\u0418\u0422\u0418 \u{1F6AB}\u{1F4F5}\u{1F6A8}<br><small>\u0413\u0456\u0441\u0442\u044C \u043D\u0435 \u0432\u0456\u0434\u0441\u043A\u0430\u043D\u0443\u0432\u0430\u0432 QR (\u0430\u0431\u043E \u043C\u0438\u043D\u0443\u043B\u0430 \u0433\u043E\u0434\u0438\u043D\u0430). \u041F\u0456\u0434\u0456\u0439\u0434\u0456\u0442\u044C: \u{1F4F7} \u043D\u0435\u0445\u0430\u0439 \u0432\u0456\u0434\u0441\u043A\u0430\u043D\u0443\u0454 QR \u043D\u0430 \u0441\u0442\u043E\u043B\u0456 \u{1F446}</small>`
   })[e.k] || esc(e.text || e.k);
   function renderFeed() {
     setHTML($("#events"), S.events.length ? [...S.events].reverse().map((e) => {
       var _a2;
       const lines = ((_a2 = e.lines) == null ? void 0 : _a2.length) ? `<div class="lines">${e.lines.map(esc).join("\n")}</div>` : "";
       const by = e.by && !["waiter"].includes(e.k) ? ` \xB7 ${esc(e.by)}` : "";
-      const btns = e.k === "guest" || e.k === "check" ? `<div class="act">${e.s === "acc" ? `<span class="muted">\u2705 ${esc(e.accBy || "\u043F\u0440\u0438\u0439\u043D\u044F\u0442\u043E")}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432</button>`}<button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${e.t}</button></div>` : "";
+      const btns = e.k === "noscan" ? `<div class="act"><button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${e.t}</button></div>` : e.k === "guest" || e.k === "check" ? `<div class="act">${e.s === "acc" ? `<span class="muted">\u2705 ${esc(e.accBy || "\u043F\u0440\u0438\u0439\u043D\u044F\u0442\u043E")}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432</button>`}<button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${e.t}</button></div>` : "";
       const fresh = S.shown.size && !S.shown.has(e.id) ? " fresh" : "";
       return `<div class="ev ${e.k}${e.s === "acc" ? " acc" : ""}${fresh}"><div class="top"><b>${evTitle(e)}</b><span class="tm">${e.at}${by}</span></div>${lines}${e.comment ? `<div class="com">\u{1F4AC} ${esc(e.comment)}</div>` : ""}${e.sum && ["guest", "waiter"].includes(e.k) ? `<div class="muted">\u0421\u0443\u043C\u0430 ${money(e.sum)}</div>` : ""}${btns}</div>`;
     }).join("") : '<div class="muted" style="padding:12px">\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u043F\u043E\u0434\u0456\u0439 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454</div>');

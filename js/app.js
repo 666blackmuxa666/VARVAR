@@ -214,7 +214,7 @@
       }
     } catch { inVenue = null; }
     $('#wifiBanner').hidden = inVenue !== false;
-    $('#wifiBanner').textContent = '📷 ' + t('wifiBanner');
+    $('#wifiBanner').textContent = t('wifiBanner');
     if (!$('#sheet').hidden) renderCart();
     renderFab();
   }
@@ -245,7 +245,6 @@
     finally { busy = false; }
   }
   function showWifi() { // тепер — «скануйте QR-код на столі»
-    $('#wifiCard').hidden = $('#copyPass').hidden = true;
     $('#wifiModal').hidden = false;
   }
 
@@ -302,7 +301,6 @@
     else if (el.id === 'wifiBanner') showWifi();
     else if (el.id === 'lang') { const p = $('#langs'); p.hidden = !p.hidden; }
     else if (el.dataset.lang) { lang = el.dataset.lang; store.set('lang', lang); $('#langs').hidden = true; renderMenu(); syncStatus(); }
-    else if (el.id === 'copyPass') navigator.clipboard?.writeText(C.wifi.password).then(() => el.textContent = t('copied'));
     else if (el.id === 'retry') { $('#wifiModal').hidden = true; syncStatus(); }
   });
   $('#table').addEventListener('change', e => { table = e.target.value; save(); syncStatus(); });

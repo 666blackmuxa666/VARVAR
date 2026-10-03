@@ -94,7 +94,7 @@ async function scanUntil(env, dev) { dev = String(dev || '').slice(0, 64); retur
 async function order(b, ip, env) {
   const table = tableNum(b.table, env), type = b.type;
   if (!table || !TYPES[type]) return [{ error: 'bad_request' }, 400];
-  if (!(await scanUntil(env, b.device) > Date.now()) && !(await inVenue(env, ip))) { await warnNotInVenue(env, table, ip); return [{ error: 'not_in_venue' }, 403]; }
+  if (!(await scanUntil(env, b.device) > Date.now()) && !(await inVenue(env, ip))) { await warnNotInVenue(env, table, ip, b.device); return [{ error: 'not_in_venue' }, 403]; }
 
   const dev = String(b.device || ip).slice(0, 64);
   const last = await env.DB.get('rl:' + dev);
@@ -161,10 +161,13 @@ async function order(b, ip, env) {
 }
 
 // не частіше ніж раз на 30 хв: підказка персоналу, якщо змінився IP роутера
-async function warnNotInVenue(env, table, ip) {
+async function warnNotInVenue(env, table, ip, dev = '') {
+  // у стрічку каси — кожна спроба (не частіше 1 разу на 5 хв з одного телефона)
+  const dk = 'nv:' + (String(dev).slice(0, 64) || ip);
+  if (!(await env.DB.get(dk))) { await env.DB.put(dk, '1', { expirationTtl: 300 }); await logEvent(env, { k: 'noscan', t: table }); }
   if (await env.DB.get('warned')) return;
   await env.DB.put('warned', '1', { expirationTtl: 1800 });
-  await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: `⚠️ Спроба замовлення (стіл ${table}) не з Wi‑Fi закладу. Якщо гість точно в залі — можливо, змінився IP роутера: відкрийте сторінку admin.html з телефону в Wi‑Fi закладу.` });
+  await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: `🚫📵 Стіл ${table}: гість пробує замовити, але не відсканував QR-код (або минула година). Підійдіть і підкажіть відсканувати QR на столі 📷` });
 }
 
 async function admin(b, ip, env) {

@@ -170,13 +170,13 @@
   const evTitle = e => ({
     guest: `🛎 Стіл ${e.t} — ${esc((e.kind || 'замовлення').toLowerCase())}`, check: `🧾 Стіл ${e.t} просить чек${e.pay ? (e.pay === 'card' ? ' · 💳 карта' : ' · 💵 готівка') : ''}${e.tip ? ` · 💝 ${money(e.tip)}` : ''}`,
     waiter: `🧑‍🍳 Стіл ${e.t} — ${esc(e.by)}${e.src === 'каса' ? ' (каса)' : ''}`, close: `✅ Стіл ${e.t} закрито — ${money(e.sum)} ${e.pay === 'card' ? '💳' : '💵'}${e.print === false ? ' · без чека' : ''}`,
-    shift: esc(e.text), del: `🗑 Стіл ${e.t} видалено (${money(e.sum)})`, move: `↔️ ${esc(e.text)}`, disc: `% Стіл ${e.t}: ${esc(e.text)}`, rm: `✏️ Стіл ${e.t}: ${esc(e.text)}`, pre: `🖨 Пречек стіл ${e.t}`,
+    shift: esc(e.text), del: `🗑 Стіл ${e.t} видалено (${money(e.sum)})`, move: `↔️ ${esc(e.text)}`, disc: `% Стіл ${e.t}: ${esc(e.text)}`, rm: `✏️ Стіл ${e.t}: ${esc(e.text)}`, pre: `🖨 Пречек стіл ${e.t}`, noscan: `🚨📵🚫 СТІЛ ${e.t} — НЕ МОЖЕ ЗАМОВИТИ 🚫📵🚨<br><small>Гість не відсканував QR (або минула година). Підійдіть: 📷 нехай відсканує QR на столі 👆</small>`,
   })[e.k] || esc(e.text || e.k);
   function renderFeed() {
     setHTML($('#events'), S.events.length ? [...S.events].reverse().map(e => {
       const lines = e.lines?.length ? `<div class="lines">${e.lines.map(esc).join('\n')}</div>` : '';
       const by = e.by && !['waiter'].includes(e.k) ? ` · ${esc(e.by)}` : '';
-      const btns = e.k === 'guest' || e.k === 'check'
+      const btns = e.k === 'noscan' ? `<div class="act"><button class="btn sm" data-a="table" data-t="${e.t}">Стіл ${e.t}</button></div>` : e.k === 'guest' || e.k === 'check'
         ? `<div class="act">${e.s === 'acc' ? `<span class="muted">✅ ${esc(e.accBy || 'прийнято')}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">✅ Прийняв</button>`}<button class="btn sm" data-a="table" data-t="${e.t}">Стіл ${e.t}</button></div>` : '';
       const fresh = S.shown.size && !S.shown.has(e.id) ? ' fresh' : '';
       return `<div class="ev ${e.k}${e.s === 'acc' ? ' acc' : ''}${fresh}"><div class="top"><b>${evTitle(e)}</b><span class="tm">${e.at}${by}</span></div>${lines}${e.comment ? `<div class="com">💬 ${esc(e.comment)}</div>` : ''}${e.sum && ['guest', 'waiter'].includes(e.k) ? `<div class="muted">Сума ${money(e.sum)}</div>` : ''}${btns}</div>`;
