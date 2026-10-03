@@ -255,11 +255,11 @@ export async function addExpense(env, e) { const k = 'exp:' + dayKey(); const l 
 export async function delExpense(env, i) { const k = 'exp:' + dayKey(); const l = await getExp(env); if (!l[+i]) return false; l[+i].del = 1; await env.DB.put(k, JSON.stringify(l)); return true; }
 // ---------- рух коштів (не витрати): внесення / вилучення готівки, обмін картка ↔ готівка ----------
 // type: in (+готівка) · out (−готівка) · k2c (з картки в готівку) · c2k (з готівки на картку)
-export const MOVE = { in: '➕ Внесення готівки', out: '➖ Вилучення готівки', k2c: '🔁 Картка → готівка', c2k: '🔁 Готівка → картка' };
+export const MOVE = { in: '➕ Внесення готівки', out: '➖ Вилучення готівки', k2c: '🔁 Картка → готівка', c2k: '🔁 Готівка → картка', kout: '➖ Вилучення з картки' };
 // службові рухи (не вводяться вручну): видача чайових
-export const MOVE_ALL = { ...MOVE, tipc: '💝 Чайові видано готівкою', tipk: '💝 Чайові видано з картки' };
-export const moveCash = m => m.del ? 0 : ({ in: 1, out: -1, k2c: 1, c2k: -1, tipc: -1 }[m.type] || 0) * m.sum;
-export const moveCard = m => m.del ? 0 : ({ k2c: -1, c2k: 1, tipk: -1 }[m.type] || 0) * m.sum;
+export const MOVE_ALL = { ...MOVE, tipc: '💝 Чайові видано готівкою', tipk: '💝 Чайові видано з картки', adjc: '✏️ Звірка готівки', adjk: '✏️ Звірка картки' };
+export const moveCash = m => m.del ? 0 : ({ in: 1, out: -1, k2c: 1, c2k: -1, tipc: -1, adjc: 1 }[m.type] || 0) * m.sum;
+export const moveCard = m => m.del ? 0 : ({ k2c: -1, c2k: 1, tipk: -1, kout: -1, adjk: 1 }[m.type] || 0) * m.sum;
 export const getMov = async (env, day = dayKey()) => (await env.DB.get('mov:' + day, 'json')) || [];
 export async function addMove(env, m) {
   if (!MOVE[m.type] || !(m.sum > 0)) return null;
@@ -267,6 +267,34 @@ export async function addMove(env, m) {
   l.push(e); await env.DB.put(k, JSON.stringify(l));
   await logEvent(env, { k: 'shift', by: e.by, text: `${MOVE[e.type]} ${e.sum} грн${e.note ? ' · ' + e.note : ''}` });
   return e;
+}
+// 💰 залишки за весь час (змін немає — усе переходить з дня в день):
+// готівка = продажі готівкою + рух готівки − витрати з каси; картка = продажі карткою + рух картки − витрати з картки
+export async function balances(env) {
+  const [dk, ek, mk] = await Promise.all(['day:', 'exp:', 'mov:'].map(p => env.DB.list({ prefix: p })));
+  const names = l => l.keys.map(k => k.name), get = async n => n.length ? env.DB.getMany(n, 'json') : [];
+  const [dd, ee, mm] = await Promise.all([get(names(dk)), get(names(ek)), get(names(mk))]);
+  const r = { saleCash: 0, saleCard: 0, exCash: 0, exCard: 0, mvCash: 0, mvCard: 0, tipCash: 0, tipCard: 0, adjCash: 0, adjCard: 0 };
+  dd.forEach(d => { if (!d) return; r.saleCash += d.cash ?? d.closed ?? 0; r.saleCard += d.card || 0; });
+  ee.forEach(l => (l || []).forEach(e => { if (e.del) return; if (e.src === 'card') r.exCard += e.sum; else r.exCash += e.sum; }));
+  mm.forEach(l => (l || []).forEach(m => { if (m.del) return;
+    if (m.type === 'tipc') r.tipCash += m.sum; else if (m.type === 'tipk') r.tipCard += m.sum;
+    else if (m.type === 'adjc') r.adjCash += m.sum; else if (m.type === 'adjk') r.adjCard += m.sum;
+    else { r.mvCash += moveCash(m); r.mvCard += moveCard(m); } }));
+  r.cash = r.saleCash + r.mvCash - r.exCash - r.tipCash + r.adjCash;
+  r.card = r.saleCard + r.mvCard - r.exCard - r.tipCard + r.adjCard;
+  r.total = r.cash + r.card; r.from = names(dk).map(k => k.slice(4)).sort()[0] || '';
+  return r;
+}
+// ✏️ звірка: вписали фактичний залишок — різниця записується коригуванням
+export async function reconcile(env, src, actual, who) {
+  actual = Math.round(+actual); if (!(actual >= 0)) return null;
+  const b = await balances(env), was = src === 'card' ? b.card : b.cash, diff = actual - was;
+  if (!diff) return { diff: 0, was, actual };
+  const k = 'mov:' + dayKey(), l = await getMov(env);
+  l.push({ ts: Date.now(), at: hhmm(), type: src === 'card' ? 'adjk' : 'adjc', sum: diff, note: `було ${was}, факт ${actual}`, by: who || '' }); await env.DB.put(k, JSON.stringify(l));
+  await logEvent(env, { k: 'shift', by: who, text: `✏️ Звірка ${src === 'card' ? 'картки' : 'готівки'}: факт ${actual} грн (${diff > 0 ? '+' : ''}${diff})` });
+  return { diff, was, actual };
 }
 export async function delMove(env, i) { const k = 'mov:' + dayKey(); const l = await getMov(env); if (!l[+i] || l[+i].del) return false; l[+i].del = 1; await env.DB.put(k, JSON.stringify(l)); return true; }
 export const setFloat = (env, n) => bump(env, 'day:' + dayKey(), d => { d.float = Math.round(n); });
