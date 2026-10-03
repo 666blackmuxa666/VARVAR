@@ -1,7 +1,22 @@
 // ✨ Помічник «Не знаю, що хочу»: Gemini ставить кілька питань і підбирає страви / сет із нашого меню
 import { getMenu } from './menu.js';
 
-const MODELS = ['gemini-flash-lite-latest', 'gemini-flash-lite-latest', 'gemini-flash-latest']; // lite — швидка; повтор, якщо зависла
+// безкоштовні ліміти — окремо на кожну модель: беремо всі доступні flash-моделі й перемикаємось, коли одна вичерпана
+const PREF = ['gemini-flash-lite-latest', 'gemini-flash-latest'];
+async function models(env) {
+  let l = await env.DB.get('ai_models', 'json');
+  if (!l) {
+    try {
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': env.GEMINI_API_KEY } });
+      const d = await r.json();
+      l = (d.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => m.name.replace('models/', ''))
+        .filter(n => /^gemini-.*flash/.test(n) && !/(image|tts|audio|live|thinking|exp|preview)/.test(n));
+    } catch { l = []; }
+    l = [...PREF, ...l.filter(n => !PREF.includes(n))].slice(0, 12);
+    await env.DB.put('ai_models', JSON.stringify(l), { expirationTtl: 86400 });
+  }
+  return l;
+}
 const MAX_Q = 4;
 const LANG = { uk: 'українською', en: 'in English', pl: 'po polsku', de: 'auf Deutsch', fr: 'en français', es: 'en español', it: 'in italiano', cs: 'česky', ro: 'în română', tr: 'Türkçe' };
 
@@ -34,16 +49,18 @@ function menuText(menu) {
 
 async function gemini(env, prompt) {
   let last;
-  for (const m of MODELS) try {
+  const busy = (await env.DB.get('ai_busy', 'json')) || {}, now = Date.now();
+  const list = (await models(env)).filter(m => !(busy[m] > now));
+  for (const m of list.length ? list : PREF) try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
       method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(8000),
       body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0.9 } }),
     });
-    if (!r.ok) console.log('gemini-fail', m, r.status);
+    if (r.status === 429 || r.status === 404) { busy[m] = now + (r.status === 404 ? 86400e3 : 60e3); await env.DB.put('ai_busy', JSON.stringify(busy), { expirationTtl: 86400 }); } // вичерпана — пропускаємо хвилину
     if (r.ok) { const d = await r.json(); return JSON.parse(d.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '{}'); }
     last = m + ' ' + r.status + ' ' + (await r.text()).replace(/\s+/g, ' ').slice(0, 400);
-  } catch (e) { last = m + ' ' + e.message; }
+  } catch (e) { last = m + ' ' + e.message; busy[m] = now + 60e3; await env.DB.put('ai_busy', JSON.stringify(busy), { expirationTtl: 86400 }); } // зависла — теж пропускаємо хвилину
   throw new Error(last);
 }
 
