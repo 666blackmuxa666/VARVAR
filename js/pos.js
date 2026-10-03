@@ -702,7 +702,7 @@
       case 'cDel': if (await confirmBox('Видалити рахунок з виручки?', 'Сума, страви й замовлення віднімуться зі звітів')) await act('closedDel', { ref: el.dataset.ref }, '🧹 Видалено з виручки'); loadView(); break;
       case 'stopT': await act('stop', { id: el.dataset.id, hidden: el.dataset.h === '1' }); break;
       case 'pTest': act('printTest', {}, '🖨 Тест відправлено'); break;
-      case 'pQr': { const n = await pickTable('QR меню', 'Номер столу надрукується над QR (QR однаковий)'); if (n) act('printQr', { t: n }, `🖨 QR столу ${n}`); break; }
+      case 'pQr': { const n = await pickTable('QR меню', 'У кожного столу свій QR — замовлення одразу на цей стіл'); if (n) act('printQr', { t: n }, `🖨 QR столу ${n}`); break; }
       case 'float': { const v = await ask('Розмін на початок дня', 'Сума в касі, ₴', 'number'); if (v != null) { await act('float', { sum: +v.replace(',', '.') }, '🏦 Записано'); loadView(); } break; }
       case 'expense': {
         const v = await modal({ title: '💸 Витрата', body: '<div class="form"><input id="eSum" inputmode="decimal" placeholder="Сума, ₴"><input id="eNote" placeholder="На що (напр. овочі на ринку)"></div>', buttons: [{ label: '💵 З каси', val: 'cash', cls: 'primary' }, { label: '💳 З карти', val: 'card' }, { label: 'Скасувати', val: null }], keep: true });
