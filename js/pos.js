@@ -146,7 +146,7 @@
     setHTML($('#nav'), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` +
       NAV.filter(n => !n[3] || isAdmin()).map(([v, ic, l]) => `<button class="${S.view === v ? 'on' : ''}${['printer', 'menu', 'settings', 'stop'].includes(v) ? ' more-i' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join('') +
       `<button class="feed-btn" data-a="feed"><span class="ic">🔔</span>Стрічка${newCnt ? `<span class="badge">${newCnt}</span>` : ''}</button>` +
-      `<button class="more-btn ${['printer', 'menu', 'settings', 'stop'].includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><div class="me">${esc(S.me?.name)}<br>${isAdmin() ? 'адмін' : 'офіціант'}</div>` +
+      `<button class="more-btn ${['printer', 'menu', 'settings', 'stop'].includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><div class="me">${esc(S.me?.name)}<br>${isAdmin() ? 'адмін' : 'офіціант'}</div>` +
       `<button data-a="switch"><span class="ic">🔒</span>Вийти</button>`);
   }
   function render() { renderNav(); renderFeed(); if (['hall', 'printer'].includes(S.view)) renderMain(); if (S.open) renderSheet(); }
@@ -656,6 +656,7 @@
     switch (a) {
       case 'view': S.view = el.dataset.v; S.q = ''; renderNav(); renderMain(); loadView(); $('#feed').classList.remove('open'); $('#main').scrollTop = 0; break;
       case 'feed': $('#feed').classList.toggle('open'); break;
+      case 'fs': { const on = !document.fullscreenElement; store.set('fs', on); on ? document.documentElement.requestFullscreen?.().catch(() => {}) : document.exitFullscreen?.(); break; }
       case 'more': { const v = await choose('Ще', '', NAV.filter(n => (!n[3] || isAdmin()) && ['stop', 'menu', 'printer', 'settings'].includes(n[0])).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: '🔒 Вийти', val: 'logout', cls: 'red' }]));
         if (v === 'logout') { if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); } else if (v) { S.view = v; S.q = ''; renderNav(); renderMain(); loadView(); $('#main').scrollTop = 0; } break; }
       case 'switch': if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); break;
@@ -748,6 +749,7 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { if ($('#modal')) modalResolve?.(null); else closeSheet(); } });
 
   // ---------- пошук: клавіатура не ховається при виборі страви; ховається свайпом вниз по списку ----------
+  document.addEventListener('pointerdown', () => { if (store.get('fs', false) && !document.fullscreenElement && matchMedia('(min-width: 900px)').matches) document.documentElement.requestFullscreen?.().catch(() => {}); }, true);
   const searching = () => document.activeElement?.id === 'search';
   document.addEventListener('mousedown', e => { if (searching() && e.target.closest('#shItems .item, .cats, .seg')) e.preventDefault(); });
   let kbY = null;

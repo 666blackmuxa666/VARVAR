@@ -360,7 +360,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   function renderNav() {
     var _a2;
     const newCnt = S.events.filter((e) => e.k === "guest" && e.s !== "acc").length;
-    setHTML($("#nav"), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` + NAV.filter((n) => !n[3] || isAdmin()).map(([v, ic, l]) => `<button class="${S.view === v ? "on" : ""}${["printer", "menu", "settings", "stop"].includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : ""}</button><button class="more-btn ${["printer", "menu", "settings", "stop"].includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><div class="me">${esc((_a2 = S.me) == null ? void 0 : _a2.name)}<br>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"}</div><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
+    setHTML($("#nav"), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` + NAV.filter((n) => !n[3] || isAdmin()).map(([v, ic, l]) => `<button class="${S.view === v ? "on" : ""}${["printer", "menu", "settings", "stop"].includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : ""}</button><button class="more-btn ${["printer", "menu", "settings", "stop"].includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><div class="me">${esc((_a2 = S.me) == null ? void 0 : _a2.name)}<br>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"}</div><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
   }
   function render() {
     renderNav();
@@ -1151,6 +1151,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     toastT = setTimeout(() => d.remove(), 2600);
   }
   document.addEventListener("click", async (e) => {
+    var _a2, _b, _c;
     const el = e.target.closest("[data-a]");
     if (!el) return;
     const a = el.dataset.a, t = S.open;
@@ -1167,6 +1168,13 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       case "feed":
         $("#feed").classList.toggle("open");
         break;
+      case "fs": {
+        const on = !document.fullscreenElement;
+        store.set("fs", on);
+        on ? (_b = (_a2 = document.documentElement).requestFullscreen) == null ? void 0 : _b.call(_a2).catch(() => {
+        }) : (_c = document.exitFullscreen) == null ? void 0 : _c.call(document);
+        break;
+      }
       case "more": {
         const v = await choose("\u0429\u0435", "", NAV.filter((n) => (!n[3] || isAdmin()) && ["stop", "menu", "printer", "settings"].includes(n[0])).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: "\u{1F512} \u0412\u0438\u0439\u0442\u0438", val: "logout", cls: "red" }]));
         if (v === "logout") {
@@ -1541,6 +1549,11 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       else closeSheet();
     }
   });
+  document.addEventListener("pointerdown", () => {
+    var _a2, _b;
+    if (store.get("fs", false) && !document.fullscreenElement && matchMedia("(min-width: 900px)").matches) (_b = (_a2 = document.documentElement).requestFullscreen) == null ? void 0 : _b.call(_a2).catch(() => {
+    });
+  }, true);
   const searching = () => {
     var _a2;
     return ((_a2 = document.activeElement) == null ? void 0 : _a2.id) === "search";
