@@ -128,9 +128,11 @@ export async function rejectOrder(env, oid, who, { editTg = true } = {}) {
   if (o.s !== 'new' || !o.lines?.length) return null;
   await env.DB.put('ord:' + oid, JSON.stringify({ ...o, s: 'rej', by: who, at: hhmm() }), { expirationTtl: BILL_TTL });
   const b = await getBill(env, o.t), i = (b.log || []).findIndex(x => x.oid === oid);
-  if (i >= 0) { b.log.splice(i, 1); b.total = Math.max(0, (b.total || 0) - (o.sum || 0)); b.orders = Math.max(0, (b.orders || 1) - 1); await putBill(env, o.t, b); }
-  if (o.sold?.length) await addDishes(env, o.sold.map(x => ({ n: x.n, q: -x.q, sum: -x.sum })));
-  await addStat(env, 'orders', -1);
+  if (i >= 0) { // ще на рахунку — прибрати і з рахунку, і зі статистики
+    b.log.splice(i, 1); b.total = Math.max(0, (b.total || 0) - (o.sum || 0)); b.orders = Math.max(0, (b.orders || 1) - 1); await putBill(env, o.t, b);
+    if (o.sold?.length) await addDishes(env, o.sold.map(x => ({ n: x.n, q: -x.q, sum: -x.sum })));
+    await addStat(env, 'orders', -1);
+  }
   const k = 'ev:' + dayKey(), list = (await env.DB.get(k, 'json')) || [];
   for (const e of list) if (e.oid === oid) { e.s = 'rej'; e.accBy = who; }
   await env.DB.put(k, JSON.stringify(list), { expirationTtl: 3 * 86400 });
@@ -174,15 +176,16 @@ export async function closeTable(env, t, who, pay = 'cash', print = true) {
   const bill = await getBill(env, t);
   if (!bill.total) return null;
   // чайові входять у виручку тим способом, яким заплатив гість; при видачі списуються з готівки або картки
-  const tip = bill.tip || 0, sum = payable(bill) + tip, disc = discAmt(bill);
+  const tip = (bill.tip || 0) + (bill.ktip || 0), sum = payable(bill) + tip, disc = discAmt(bill);
   const card = pay === 'card' ? sum : 0, cash = sum - card;
   if (print) await queuePrint(env, 'receipt', await receipt(env, { table: t, bill, final: true, pay, by: who }));
   await env.DB.delete('bill:' + t);
   await bump(env, 'day:' + dayKey(), d => { d.closed = (d.closed || 0) + sum; d.tables = (d.tables || 0) + 1; d.cash = (d.cash || 0) + cash; d.card = (d.card || 0) + card; if (disc) d.disc = (d.disc || 0) + disc; if (tip) d.tip = (d.tip || 0) + tip; });
   // страви рахунку — щоб при видаленні закритого рахунку відняти їх і з «топ страв»
   const dishes = []; for (const o of bill.log || []) for (const l of o.lines) { const x = l.match(LINE); if (x) dishes.push([x[2], +x[1], +x[3]]); }
-  if (tip) await addTipBal(env, who, tip);
-  await logClosed(env, { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), t, sum, cash, card, at: hhmm(), by: who || '', orders: bill.orders || 0, dishes, ...(tip ? { tip } : {}), ...(bill.voids?.length ? { voids: bill.voids } : {}), ...(disc ? { gross: bill.total, disc: bill.disc, discSum: disc } : {}) });
+  const tipSplit = tip ? await splitTip(env, who, bill.tip || 0, bill.ktip || 0) : null;
+  if (tipSplit) for (const [n, v] of Object.entries(tipSplit)) await addTipBal(env, n, v);
+  await logClosed(env, { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), t, sum, cash, card, at: hhmm(), by: who || '', orders: bill.orders || 0, dishes, ...(tip ? { tip, tipSplit, ...(bill.ktip ? { ktip: bill.ktip } : {}) } : {}), ...(bill.voids?.length ? { voids: bill.voids } : {}), ...(disc ? { gross: bill.total, disc: bill.disc, discSum: disc } : {}) });
   await logEvent(env, { k: 'close', t, by: who, sum, pay, print });
   return { t, sum, cash, card, disc, tip };
 }
@@ -215,6 +218,19 @@ export async function setTip(env, t, sum, who) {
   await logEvent(env, { k: 'disc', t, by: who, text: sum ? `чайові ${sum} грн` : 'чайові прибрано' });
   return b;
 }
+// 👨‍🍳 чайові кухні: частка % від чайових офіціанта + «подяка кухні» від гостя — порівну між кухарями, що сьогодні працюють
+export const kitchenPct = async env => { const v = await env.DB.get('kitchen_pct'); return v == null ? 20 : +v; };
+export const KITCHEN_POOL = '👨‍🍳 Кухня';
+export async function markCook(env, name) { const k = 'cooks:' + dayKey(), l = (await env.DB.get(k, 'json')) || []; if (!l.includes(name)) { l.push(name); await env.DB.put(k, JSON.stringify(l), { expirationTtl: 3 * 86400 }); } }
+export async function splitTip(env, waiter, tipW, ktip) {
+  const out = {}, add = (n, v) => { if (v) out[n || '—'] = (out[n || '—'] || 0) + v; };
+  const kpart = Math.round(tipW * (await kitchenPct(env)) / 100), kitchen = kpart + ktip;
+  add(waiter, tipW - kpart);
+  const names = new Set((await getStaff(env)).map(s => s.name)), cooks = ((await env.DB.get('cooks:' + dayKey(), 'json')) || []).filter(n => names.has(n)); // лише ті, хто ще в персоналі
+  if (kitchen) { if (!cooks.length) add(KITCHEN_POOL, kitchen); else { const each = Math.floor(kitchen / cooks.length); cooks.forEach((c, i) => add(c, each + (i === 0 ? kitchen - each * cooks.length : 0))); } }
+  return out;
+}
+export const tipSplitOf = x => x.tipSplit || (x.tip ? { [x.by || '—']: x.tip } : {});
 // ---------- рахунок чайових офіціанта: накопичуються, поки адмін не натисне «Видано» ----------
 export async function tipBalances(env) {
   let b = await env.DB.get('tipbal', 'json');
@@ -248,7 +264,7 @@ export async function moveTable(env, a, b, who) {
     B.total += A.total; B.orders = (B.orders || 0) + (A.orders || 0);
     B.opened = Math.min(B.opened || Date.now(), A.opened || Date.now());
     B.log = [...(B.log || []), ...(A.log || []).map(o => ({ ...o, kind: `${o.kind} (зі столу ${a})` }))].slice(-60);
-    B.check = B.check || A.check; if (!B.disc && A.disc) B.disc = A.disc; if (A.voids) B.voids = [...(B.voids || []), ...A.voids]; if (!B.tip && A.tip) B.tip = A.tip;
+    B.check = B.check || A.check; if (!B.disc && A.disc) B.disc = A.disc; if (A.voids) B.voids = [...(B.voids || []), ...A.voids]; if (!B.tip && A.tip) B.tip = A.tip; if (!B.ktip && A.ktip) B.ktip = A.ktip;
     await putBill(env, b, B);
   } else await putBill(env, b, A);
   await env.DB.delete('bill:' + a);
@@ -282,7 +298,7 @@ export async function delClosed(env, ref) {
     d.cash = Math.max(0, (d.cash || 0) - (x.cash ?? x.sum)); d.card = Math.max(0, (d.card || 0) - (x.card || 0)); d.orders = Math.max(0, (d.orders || 0) - (x.orders || 0));
     if (x.discSum) d.disc = Math.max(0, (d.disc || 0) - x.discSum); if (x.tip) d.tip = Math.max(0, (d.tip || 0) - x.tip); });
   if (x.dishes?.length) await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q: -q, sum: -sum })));
-  if (x.tip) await addTipBal(env, x.by, -x.tip);
+  for (const [n, v] of Object.entries(tipSplitOf(x))) await addTipBal(env, n, -v);
   return x;
 }
 // ↩️ повернути закритий рахунок у виручку (скасувати «видалити з виручки»)
@@ -294,7 +310,7 @@ export async function restoreClosed(env, ref, who) {
     d.cash = (d.cash || 0) + (x.cash ?? x.sum); d.card = (d.card || 0) + (x.card || 0); d.orders = (d.orders || 0) + (x.orders || 0);
     if (x.discSum) d.disc = (d.disc || 0) + x.discSum; if (x.tip) d.tip = (d.tip || 0) + x.tip; });
   if (x.dishes?.length) await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q, sum })));
-  if (x.tip) await addTipBal(env, x.by, x.tip);
+  for (const [n, v] of Object.entries(tipSplitOf(x))) await addTipBal(env, n, v);
   await logEvent(env, { k: 'shift', by: who, text: `↩️ Рахунок стола ${x.t} (${x.sum} грн) повернуто у виручку` });
   return x;
 }
@@ -304,7 +320,7 @@ async function billBack(env, t, x, kind) {
   const b = await getBill(env, t), sum = x.dishes.reduce((a, d) => a + d[2], 0);
   b.total = (b.total || 0) + sum; b.orders = (b.orders || 0) + 1; b.opened = b.opened || Date.now();
   b.log = [...(b.log || []), { at: hhmm(), kind, lines }].slice(-60);
-  if (x.disc && !b.disc) b.disc = x.disc; if (x.tip && !b.tip) b.tip = x.tip; if (x.voids?.length) b.voids = [...(b.voids || []), ...x.voids];
+  if (x.disc && !b.disc) b.disc = x.disc; if (x.tip && !b.tip) b.tip = x.tip - (x.ktip || 0); if (x.ktip && !b.ktip) b.ktip = x.ktip; if (x.voids?.length) b.voids = [...(b.voids || []), ...x.voids];
   await putBill(env, t, b); return true;
 }
 // ↩️ відкрити закритий рахунок знову: знімається з виручки і повертається на стіл (щоб виправити й закрити заново)
@@ -332,7 +348,7 @@ export async function restoreTable(env, ref, who) {
 export async function reprintClosed(env, ref, who) {
   const x = await closedRec(env, ref);
   if (!x?.dishes?.length) return false;
-  const bill = { total: x.gross || (x.sum - (x.tip || 0)), disc: x.disc, tip: x.tip, log: [{ lines: x.dishes.map(([n, q, sum]) => `${q}× ${n} — ${sum}`) }] };
+  const bill = { total: x.gross || (x.sum - (x.tip || 0)), disc: x.disc, tip: (x.tip || 0) - (x.ktip || 0), ktip: x.ktip, log: [{ lines: x.dishes.map(([n, q, sum]) => `${q}× ${n} — ${sum}`) }] };
   await queuePrint(env, 'receipt', await receipt(env, { table: x.t, bill, final: true, pay: x.card ? 'card' : 'cash', by: who }));
   return true;
 }
@@ -527,7 +543,7 @@ export async function dayZData(env, day = dayKey()) {
   const exCash = sum(exps.filter(e => e.src !== 'card'), e => e.sum), exCard = sum(exps.filter(e => e.src === 'card'), e => e.sum);
   const mvCash = sum(movs, moveCash), mvCard = sum(movs, moveCard);
   const open = day === dayKey() ? await openTables(env) : [];
-  const tipBy = {}; recs.filter(x => x.tip).forEach(x => { tipBy[x.by || '—'] = (tipBy[x.by || '—'] || 0) + x.tip; });
+  const tipBy = {}; recs.forEach(x => Object.entries(tipSplitOf(x)).forEach(([n, v]) => { tipBy[n] = (tipBy[n] || 0) + v; }));
   return { day, tipBy, checks: recs.length, cash, card, total: cash + card, disc: sum(recs, x => x.discSum), tip: sum(recs, x => x.tip), exCash, exCard, mvCash, mvCard,
     tipOut: sum(movs.filter(m => m.type === 'tipc' || m.type === 'tipk'), m => m.sum),
     net: cash + card - exCash - exCard - sum(movs.filter(m => m.type === 'tipc' || m.type === 'tipk'), m => m.sum), orders: (d || {}).orders || 0, dels: cl.filter(x => x.del || x.rm).length,
@@ -562,7 +578,7 @@ export async function reportRange(env, from, to) {
   const [cl, ex, zz, mm, vv] = await Promise.all(['closed:', 'exp:', 'z:', 'mov:', 'void:'].map(p => env.DB.getMany(days.map(d => p + d), 'json')));
   return {
     from, to,
-    checks: days.flatMap((d, i) => (cl[i] || []).filter(x => !x.del && !x.rm).map(x => ({ d, at: x.at, t: x.t, sum: x.sum, cash: x.cash ?? x.sum, card: x.card || 0, by: x.by || '', disc: x.discSum || 0, pct: x.disc || 0, tip: x.tip || 0, dishes: x.dishes || [], voids: x.voids || [] }))),
+    checks: days.flatMap((d, i) => (cl[i] || []).filter(x => !x.del && !x.rm).map(x => ({ d, at: x.at, t: x.t, sum: x.sum, cash: x.cash ?? x.sum, card: x.card || 0, by: x.by || '', disc: x.discSum || 0, pct: x.disc || 0, tip: x.tip || 0, tipSplit: tipSplitOf(x), dishes: x.dishes || [], voids: x.voids || [] }))),
     voids: days.flatMap((d, i) => (vv[i] || []).map(x => ({ d, ...x }))),
     removed: days.flatMap((d, i) => (cl[i] || []).filter(x => x.rm).map(x => ({ d, at: x.at, t: x.t, sum: x.sum, by: x.by || '' }))),
     exp: days.flatMap((d, i) => (ex[i] || []).filter(x => !x.del).map(x => ({ d, at: x.at, sum: x.sum, src: x.src, note: x.note || '', by: x.by || '' }))),
@@ -578,7 +594,7 @@ export async function reportBreakdown(env, from, to, by) {
   for (const c of r.checks) {
     if (by === 'ctrl') continue;
     if (by === 'waiter') add(c.by || '—', 1, c.sum);
-    else if (by === 'tips') { if (c.tip) add(c.by || '—', 1, c.tip); }
+    else if (by === 'tips') { for (const [n, v] of Object.entries(c.tipSplit || {})) add(n, 1, v); }
     else if (by === 'hour') add(String(c.at || '').slice(0, 2) + ':00', 1, c.sum);
     else if (by === 'table') add('Стіл ' + c.t, 1, c.sum);
     else for (const [n, q, s] of c.dishes) { const x = res(n); add(by === 'group' ? (GROUPS.find(g => g.id === groupOf(x?.cat)) || {}).name : (x?.cname || 'Інше'), q, s); }
@@ -591,7 +607,7 @@ export async function reportBreakdown(env, from, to, by) {
 // 🕵️ контроль по офіціантах: чеки, виручка, скасування, знижки, чайові
 export function controlData(r) {
   const m = {}, W = n => m[n || '—'] = m[n || '—'] || { name: n || '—', checks: 0, sum: 0, voidN: 0, voidSum: 0, discN: 0, discSum: 0, discMax: 0, tip: 0, tipN: 0, tables: 0, tableSum: 0 };
-  for (const c of r.checks) { const w = W(c.by); w.checks++; w.sum += c.sum; if (c.disc) { w.discN++; w.discSum += c.disc; w.discMax = Math.max(w.discMax, c.pct || 0); } if (c.tip) { w.tip += c.tip; w.tipN++; } }
+  for (const c of r.checks) { const w = W(c.by); w.checks++; w.sum += c.sum; if (c.disc) { w.discN++; w.discSum += c.disc; w.discMax = Math.max(w.discMax, c.pct || 0); } { const v = (c.tipSplit || {})[c.by || '—'] || 0; if (v) { w.tip += v; w.tipN++; } } }
   for (const v of r.voids || []) { const w = W(v.by); if (v.table) { w.tables++; w.tableSum += v.sum; } else { w.voidN++; w.voidSum += v.sum; } }
   return Object.values(m).map(w => ({ ...w, voidPct: w.sum ? Math.round(w.voidSum / (w.sum + w.voidSum) * 1000) / 10 : 0 })).sort((a, b) => b.voidSum + b.discSum - a.voidSum - a.discSum);
 }

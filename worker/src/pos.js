@@ -5,9 +5,9 @@ import { queuePrint, printStatus } from './print.js';
 import { QR_PRINT, TEST_JOB } from './bot.js';
 import { storeStub } from './store.js';
 import {
-  esc, money, hhmm, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
+  esc, money, hhmm, dayKey, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
-  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
+  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, markCook, kitchenPct, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
 } from './ops.js';
 
 const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400, cook: 30 * 86400 };
@@ -39,6 +39,7 @@ export async function posApi(b, req, env) {
   switch (b.op) {
     case 'logout': await env.DB.delete('pos:' + token); return ok();
     case 'state': {
+      if (me.role === 'cook') await markCook(env, me.name); // кухар на зміні — отримує частку чайових кухні
       const [rows, events, pr, shift, cl] = await Promise.all([openTables(env), getEvents(env), printStatus(env), getShift(env), getClosed(env)]);
       const mine = cl.filter(x => !x.del && !x.rm && x.by === me.name);
       const myTip = { sum: (await tipBalances(env))[me.name] || 0, today: mine.reduce((a, x) => a + (x.tip || 0), 0) }; // накопичені, ще не видані
@@ -153,9 +154,10 @@ export async function posApi(b, req, env) {
     case 'wifiClear': await env.DB.put('venue_ips', '[]'); await notify(env, `🖥 📶 Усі мережі закладу скинуто — ${esc(who)}`); return ok();
 
     // персонал і паролі
-    case 'staff': return ok({ staff: (await getStaff(env)).map(({ pin, ...s }) => s), waiters: await loggedWaiters(env), reg: { admin: await regCode(env, 'admin'), waiter: await regCode(env, 'waiter'), cook: await regCode(env, 'cook') } });
+    case 'staff': return ok({ staff: (await getStaff(env)).map(({ pin, ...s }) => s), waiters: await loggedWaiters(env), reg: { admin: await regCode(env, 'admin'), waiter: await regCode(env, 'waiter'), cook: await regCode(env, 'cook') }, kpct: await kitchenPct(env), cooks: (await env.DB.get('cooks:' + dayKey(), 'json')) || [] });
     case 'regCode': { const c = String(b.code || '').trim(); if (!/^\d{4}$/.test(c)) return [{ error: 'Код — 4 цифри' }, 400]; await env.DB.put('reg_' + (['admin', 'cook'].includes(b.role) ? b.role : 'waiter'), c); return ok(); }
     case 'staffAdd': { const r = await addStaff(env, b.name, b.pin, b.role); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 👥 Додано працівника <b>${esc(r.s.name)}</b> (${r.s.role === 'admin' ? 'адмін' : 'офіціант'}) — ${esc(who)}`); return ok(); }
+    case 'kitchenPct': { const v = Math.round(+b.pct); if (!(v >= 0 && v <= 100)) return [{ error: 'Від 0 до 100' }, 400]; await env.DB.put('kitchen_pct', String(v)); await notify(env, `🖥 👨‍🍳 Частка кухні від чайових: <b>${v}%</b> — ${esc(who)}`); return ok(); }
     case 'staffDel': await delStaff(env, String(b.id)); return ok();
     case 'waiterOut': await env.DB.delete('wlog:' + b.uid); await env.DB.delete('adm:' + b.uid); return ok();
     case 'adminPass': if (String(b.pass || '').length < 4) return [{ error: 'Мінімум 4 символи' }, 400]; await env.DB.put('admin_pass', String(b.pass)); return ok();

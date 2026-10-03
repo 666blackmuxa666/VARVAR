@@ -409,7 +409,7 @@
         <div class="ki">${e.items.map((x, i) => `<button class="kit${x.done ? ' done' : ''}${x.cancel ? ' canc' : ''}" data-a="kItem" data-id="${e.id}" data-i="${i}" ${x.cancel ? 'disabled' : ''}><b>${x.q}×</b> ${esc(x.n)}${x.cancel ? ' <em>СКАСОВАНО</em>' : x.canc ? ` <em>−${x.canc} скас.</em>` : ''}</button>`).join('')}</div>
         ${(e.msgs || []).map(x => `<div class="kmsg">📨 ${x.at} ${esc(x.text)}</div>`).join('')}
         <div class="kb">${e.start ? '' : `<button class="btn" data-a="kStart" data-id="${e.id}">🔥 Готую</button>`}<button class="btn" data-a="kMsg" data-id="${e.id}">💬</button><button class="btn green" data-a="kAll" data-id="${e.id}">✅ ВСЕ ГОТОВО</button></div></div>`; };
-    return `<div class="khead"><h1>👨‍🍳 Черга <span class="muted">${act0.length}</span></h1><button class="btn" data-a="view" data-v="stop">⛔ Стоп-лист</button><button class="btn" data-a="kFont">A${'+'.repeat(S.kFont - 1)}</button></div>
+    return `<div class="khead"><h1>👨‍🍳 Черга <span class="muted">${act0.length}</span></h1>${isCook() ? `<div class="stat tipstat">💝 Мої чайові<b class="money">${money(S.myTip?.sum || 0)}</b></div>` : ''}<button class="btn" data-a="view" data-v="stop">⛔ Стоп-лист</button><button class="btn" data-a="kFont">A${'+'.repeat(S.kFont - 1)}</button></div>
       <div class="kq f${S.kFont}">${act0.length ? act0.map(card).join('') : '<div class="kempty">✅ Черга порожня</div>'}</div>
       ${done.length ? `<h3 class="muted" style="margin:18px 0 8px">Останні готові</h3><div class="kdone">${done.map(e => `<div class="kd">Стіл ${e.t} · ${e.items.filter(x => !x.cancel).map(x => `${x.q}× ${esc(x.n)}`).join(', ')}${e.cancelled ? ' · ❌ скасовано' : ` · ${Math.round((e.doneAt - e.ts) / 60000)} хв`} <button class="btn sm" data-a="kUndo" data-id="${e.id}">↩️</button></div>`).join('')}</div>` : ''}`;
   }
@@ -586,7 +586,7 @@
     else if (T === 'cats') { rows = dishAgg(nm => dishOf(nm)?.cname || 'Інше'); unit = 'шт'; sortable = true; }
     else if (T === 'groups') { rows = dishAgg(nm => (S.groups.find(g => g.id === dishOf(nm)?.grp) || { name: 'Інше' }).name); unit = 'шт'; }
     else if (T === 'waiters') rows = grpBy(c => c.by || '—');
-    else if (T === 'tips') { rows = grpBy(c => c.by || '—', c => c.tip || 0).filter(x => x[1][1] > 0); unit = 'чек.'; }
+    else if (T === 'tips') { const m = new Map(); checks.forEach(c => Object.entries(c.tipSplit || (c.tip ? { [c.by || '—']: c.tip } : {})).forEach(([n, v]) => { const a = m.get(n) || [0, 0]; a[0]++; a[1] += v; m.set(n, a); })); rows = [...m].filter(x => x[1][1] > 0); unit = 'чек.'; }
     else if (T === 'hours') rows = grpBy(c => String(c.at || '').slice(0, 2) + ':00').sort((a, b) => a[0].localeCompare(b[0]));
     else if (T === 'days') rows = grpBy(c => c.d).sort((a, b) => a[0].localeCompare(b[0]));
     else if (T === 'tables') rows = grpBy(c => 'Стіл ' + c.t).sort((a, b) => parseInt(a[0].slice(5)) - parseInt(b[0].slice(5)));
@@ -636,8 +636,9 @@
   function settingsHTML() {
     const st = S.data.staff, wf = S.data.wifi;
     return `<div class="head"><h1>Налаштування</h1></div><div class="grid2">
-      <div class="card"><h3>👥 Персонал (PIN для каси)</h3>${st ? st.staff.map(s => `<div class="kv"><span>${esc(s.name)} · ${s.role === 'admin' ? '🔐 адмін' : '🧑‍🍳 офіціант'}</span><button class="btn sm red" data-a="staffDel" data-id="${s.id}">🗑</button></div>`).join('') || '<div class="muted">Ще немає</div>' : '…'}
+      <div class="card"><h3>👥 Персонал (PIN для каси)</h3>${st ? st.staff.map(s => `<div class="kv"><span>${esc(s.name)} · ${s.role === 'admin' ? '🔐 адмін' : s.role === 'cook' ? '👨‍🍳 кухар' : '🧑‍🍳 офіціант'}</span><button class="btn sm red" data-a="staffDel" data-id="${s.id}">🗑</button></div>`).join('') || '<div class="muted">Ще немає</div>' : '…'}
         <button class="btn sm primary" style="margin-top:10px" data-a="staffAdd">➕ Додати працівника</button></div>
+      <div class="card"><h3>👨‍🍳 Чайові кухні</h3><div class="kv"><span>Частка кухні від чайових офіціанта</span><span><b>${st?.kpct ?? 20}%</b> <button class="btn sm" data-a="kpct">змінити</button></span></div><div class="muted" style="font-size:12px;margin-top:6px">Плюс «подяка кухні» від гостя на сайті. Ділиться порівну між кухарями, які сьогодні заходили в касу${st?.cooks?.length ? ` (зараз: ${st.cooks.map(esc).join(', ')})` : ' (сьогодні ще нікого — накопичиться в «👨‍🍳 Кухня»)'}.</div></div>
       <div class="card"><h3>🆕 Коди реєстрації</h3><div class="muted" style="margin-bottom:8px">Новий працівник вводить код замість PIN → пише імʼя і придумує свій PIN. Видно, хто що робить.</div>
         ${st?.reg ? `<div class="kv"><span>🔐 Адміністратор</span><span><b>${esc(st.reg.admin)}</b> <button class="btn sm" data-a="regSet" data-r="admin">змінити</button></span></div><div class="kv"><span>🧑‍🍳 Офіціант</span><span><b>${esc(st.reg.waiter)}</b> <button class="btn sm" data-a="regSet" data-r="waiter">змінити</button></span></div><div class="kv"><span>👨‍🍳 Кухар</span><span><b>${esc(st.reg.cook || '1113')}</b> <button class="btn sm" data-a="regSet" data-r="cook">змінити</button></span></div>` : '…'}</div>
       <div class="card"><h3>🤖 Увійшли в Telegram-бот</h3>${st ? st.waiters.map(w => `<div class="kv"><span>${esc(w.name || w.uid)}</span><button class="btn sm red" data-a="wOut" data-uid="${w.uid}">Вийти</button></div>`).join('') || '<div class="muted">Нікого</div>' : '…'}</div>
@@ -796,6 +797,7 @@
         if (v) { await act('staffAdd', { name, pin: p, role: v }, '👥 Додано'); loadView(); }
         break;
       }
+      case 'kpct': { const v = await ask('Частка кухні від чайових, %', 'Напр. 20', 'number'); if (v != null) { await act('kitchenPct', { pct: +v }, '👨‍🍳 Збережено'); loadView(); } break; }
       case 'regSet': { const v = await ask(`Новий код реєстрації (${el.dataset.r === 'admin' ? 'адмін' : el.dataset.r === 'cook' ? 'кухар' : 'офіціант'})`, '4 цифри', 'number'); if (v) { await act('regCode', { role: el.dataset.r, code: v }, '🆕 Код змінено'); loadView(); } break; }
       case 'staffDel': if (await confirmBox('Видалити працівника?', 'Його PIN перестане працювати')) { await act('staffDel', { id: el.dataset.id }); loadView(); } break;
       case 'wOut': await act('waiterOut', { uid: el.dataset.uid }, 'Вийшов із бота'); loadView(); break;

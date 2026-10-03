@@ -215,7 +215,11 @@
       + `<button class="tip ${tip.own ? 'on' : ''}" data-tip="own">✏️<small>${t('tipOwnBtn')}</small></button>`;
     $('#tipOwn').hidden = !tip.own;
     const a = tipAmount(); $('#tipSum').textContent = a ? '+' + money(a) : '';
+    // 👨‍🍳 окрема подяка кухні
+    $('#ktipRow').innerHTML = [0, 50, 100, 200].map(v => `<button class="tip ${ktip === v ? 'on' : ''}" data-ktip="${v}">${v ? money(v) : t('tipNo')}</button>`).join('');
+    $('#ktipSum').textContent = ktip ? '+' + money(ktip) : '';
   }
+  let ktip = 0;
   $('#tipOwn').addEventListener('input', () => { const a = tipAmount(); $('#tipSum').textContent = a ? '+' + money(a) : ''; });
 
   // ---------- сервер ----------
@@ -245,12 +249,12 @@
     table = lockOn() ? String(lockT) : $('#table').value; save();
     if (!table) { $('#msg').textContent = t('chooseTable'); $('#table').focus(); return; }
     // запит чека — спершу питаємо спосіб оплати
-    if ((type === 'check' || type === 'order_check') && !pay) { pendingType = type; tip = { p: 0, own: false }; $('#tipOwn').value = ''; renderTips(); $('#payModal').hidden = false; return; }
+    if ((type === 'check' || type === 'order_check') && !pay) { pendingType = type; tip = { p: 0, own: false }; ktip = 0; $('#tipOwn').value = ''; renderTips(); $('#payModal').hidden = false; return; }
     const items = type === 'check' ? [] : cartEntries();
     busy = true; $('#msg').textContent = '…';
     try {
       const { status, data } = await api('/api/order', {
-        table: +table, type, pay, device, tip: pay ? tipAmount() : 0, comment: [items.length && tw ? 'З СОБОЮ' : '', $('#comment').value].filter(Boolean).join(' · ').slice(0, 300),
+        table: +table, type, pay, device, tip: pay ? tipAmount() : 0, ktip: pay ? ktip : 0, comment: [items.length && tw ? 'З СОБОЮ' : '', $('#comment').value].filter(Boolean).join(' · ').slice(0, 300),
         items: [...items.map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; }), ...(items.length && packId && packQty() ? [{ id: packId, q: packQty() }] : [])],
       });
       if (status === 403 && data.error === 'wrong_table') { $('#msg').textContent = `📷 ${t('table')} ${data.t}`; return; }
@@ -318,6 +322,7 @@
     else if (el.dataset.inc) change(el.dataset.inc, 1);
     else if (el.dataset.dec) change(el.dataset.dec, -1);
     else if (el.dataset.send) send(el.dataset.send);
+    else if (el.dataset.ktip != null) { ktip = +el.dataset.ktip; renderTips(); }
     else if (el.dataset.tip) { tip = el.dataset.tip === 'own' ? { p: 0, own: true } : { p: +el.dataset.tip, own: false }; renderTips(); if (tip.own) $('#tipOwn').focus(); }
     else if (el.dataset.pay) { $('#payModal').hidden = true; send(pendingType, el.dataset.pay); }
     else if ('close' in el.dataset) el.closest('.modal') ? (el.closest('.modal').hidden = true) : closeAll();

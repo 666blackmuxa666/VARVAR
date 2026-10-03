@@ -27,7 +27,7 @@ export default {
         // bill — актуальний рахунок (з урахуванням змін офіціанта: прибрані позиції, знижка, перенос)
         const si = await scanInfo(env, url.searchParams.get('device')), sc = si?.until || 0;
         return json({ inVenue: sc > Date.now() || await inVenue(env, ip), scanUntil: sc, scanT: sc > Date.now() ? si.t || 0 : 0, tableTotal: bill ? payable(bill) : undefined,
-          bill: bill && bill.total ? { items: billItems(bill).map(x => [x.name, x.q, x.sum]), gross: bill.total, disc: bill.disc || 0, pay: payable(bill), tip: bill.tip || 0 } : null });
+          bill: bill && bill.total ? { items: billItems(bill).map(x => [x.name, x.q, x.sum]), gross: bill.total, disc: bill.disc || 0, pay: payable(bill), tip: bill.tip || 0, ktip: bill.ktip || 0 } : null });
       }
       if (url.pathname === '/api/scan' && req.method === 'POST') { // QR на столі → 1 година на замовлення
         const b = await req.json(); const dev = String(b.device || '').slice(0, 64);
@@ -153,8 +153,8 @@ async function order(b, ip, env) {
     bill.log = [...(bill.log || []), { at: hhmm(), kind: TYPES[type].toLowerCase(), lines, comment, oid }].slice(-40);
   }
   const pay = ['cash', 'card'].includes(b.pay) ? b.pay : null;
-  const tip = Math.max(0, Math.min(10000, Math.round(+b.tip || 0)));
-  if (wantsCheck) { bill.check = true; if (pay) bill.pay = pay; if (tip) bill.tip = tip; }
+  const tip = Math.max(0, Math.min(10000, Math.round(+b.tip || 0))), ktip = Math.max(0, Math.min(10000, Math.round(+b.ktip || 0)));
+  if (wantsCheck) { bill.check = true; if (pay) bill.pay = pay; if (tip) bill.tip = tip; if (ktip) bill.ktip = ktip; }
 
   // усе по столу в одному повідомленні: нове зверху, раніше замовлене — нижче
   const prev = (bill.log || []).slice(0, lines.length ? -1 : undefined);
@@ -170,7 +170,8 @@ async function order(b, ip, env) {
     '',
     `💰 Разом за стіл: <b>${bill.total} грн</b>`,
     wantsCheck ? `🧾 <b>Хоче чек</b>${pay ? (pay === 'card' ? ' · 💳 <b>карта</b> (несіть термінал)' : ' · 💵 <b>готівка</b>') : ''}` : '',
-    wantsCheck && tip ? `💝 <b>Чайові: ${tip} грн</b> → разом до сплати <b>${payable(bill) + tip} грн</b>` : '',
+    wantsCheck && tip ? `💝 <b>Чайові: ${tip} грн</b>` : '', wantsCheck && ktip ? `👨‍🍳 <b>Подяка кухні: ${ktip} грн</b>` : '',
+    wantsCheck && (tip || ktip) ? `→ разом до сплати <b>${payable(bill) + tip + ktip} грн</b>` : '',
   ].filter((x, i, arr) => x !== '' || (arr[i - 1] !== '' && i > 0)).join('\n').trim();
 
   const r = await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: msg, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[
