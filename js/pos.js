@@ -269,7 +269,9 @@
     const vv = it.variants?.find(x => x.v === v);
     const key = it.id + (v ? '|' + v : ''), cart = cartOf(S.open);
     cart[key] ||= { id: it.id, v, name: it.name.uk + (vv ? ` ${vv.v} ${it.size || ''}`.trimEnd() : ''), price: vv ? vv.p : it.price, q: 0 };
-    const keepKb = wasKb || searching(); cart[key].q++; saveCarts(); renderSheet(); if (keepKb && !searching()) $('#search')?.focus();
+    const keepKb = wasKb || searching(); cart[key].q++; saveCarts();
+    if (S.q) { S.q = ''; const se = $('#search'); if (se) se.value = ''; } // знайшли й додали — пошук очищується, можна одразу писати нове
+    renderSheet(); if (keepKb && !searching()) $('#search')?.focus();
   }
   async function sendCart() {
     const t = S.open, cart = cartOf(t), pk = packItem(), pq = pk ? packQ(t) : 0, items = [...Object.values(cart).map(x => ({ id: x.id, v: x.v, q: x.q })), ...(pq ? [{ id: pk.id, q: pq }] : [])];

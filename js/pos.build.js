@@ -531,6 +531,11 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const keepKb = wasKb || searching();
     cart[key].q++;
     saveCarts();
+    if (S.q) {
+      S.q = "";
+      const se = $("#search");
+      if (se) se.value = "";
+    }
     renderSheet();
     if (keepKb && !searching()) (_c = $("#search")) == null ? void 0 : _c.focus();
   }
