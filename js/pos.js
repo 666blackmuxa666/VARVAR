@@ -121,7 +121,7 @@
       reloadT = setTimeout(() => {
         loadState().catch(() => {});
         if (m.keys.includes('menu') || m.keys.includes('fav')) loadMenu().catch(() => {});
-        if (['closed', 'reports', 'settings', 'cash'].includes(S.view) && m.keys.some(k => ['closed', 'day', 'exp', 'staff', 'shift', 'z', 'mov', 'tipbal', 'tippay'].includes(k))) loadView(true);
+        if (['closed', 'reports', 'settings', 'cash'].includes(S.view) && m.keys.some(k => ['closed', 'day', 'exp', 'staff', 'shift', 'z', 'mov', 'tipbal', 'tippay', 'void'].includes(k))) loadView(true);
       }, 120);
     };
     ws.onclose = () => { S.live = false; liveDot(); clearInterval(pingT); clearTimeout(wsTimer); if (S.token) wsTimer = setTimeout(connect, 2000); };
@@ -520,9 +520,10 @@
     const sum = (l, f) => l.reduce((a, x) => a + (f(x) || 0), 0);
     const total = sum(checks, c => c.val), n = checks.length, qty = sum(checks, c => sum(c.ds, d => d[1]));
     const exp = R.by || R.t || dishF || R.pay ? null : sum(r.exp, e => e.sum);
+    const tipOut = sum((r.mov || []).filter(m => m.type === 'tipc' || m.type === 'tipk'), m => m.sum); // як у касі: видані чайові теж зменшують «чистими»
     const W = [['Виручка', money(total), 'accent'], ['Чеків', n], ['Середній чек', n ? money(total / n) : '—'], ['Продано позицій', qty],
       ...(!dishF ? [['💵 Готівка', money(sum(checks, c => c.cash))], ['💳 Карта', money(sum(checks, c => c.card))], ['🏷 Знижки', money(sum(checks, c => c.disc))], ['💝 Чайові', money(sum(checks, c => c.tip))]] : []),
-      ...(exp != null ? [['💸 Витрати', money(exp)], ['Чистими', money(total - exp), 'green']] : [])];
+      ...(exp != null ? [['💸 Витрати', money(exp)], ...(tipOut ? [['💝 Чайові видано', money(tipOut)]] : []), ['Чистими', money(total - exp - tipOut), 'green']] : [])];
     const widgets = `<div class="widgets">${W.map(([l, v, c]) => `<div class="widget ${c || ''}"><span>${l}</span><b class="money">${v}</b></div>`).join('')}</div>`;
     // розрізи
     const grpBy = (keyF, valF = c => c.val) => { const m = new Map(); checks.forEach(c => { const k = keyF(c); const a = m.get(k) || [0, 0]; a[0]++; a[1] += valF(c); m.set(k, a); }); return [...m]; };

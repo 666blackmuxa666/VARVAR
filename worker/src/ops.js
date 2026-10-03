@@ -51,7 +51,25 @@ export async function logEvent(env, ev) {
   list.push(e); await env.DB.put(k, JSON.stringify(list.slice(-200)), { expirationTtl: 3 * 86400 });
   return e;
 }
-export const getEvents = async (env, day = dayKey()) => (await env.DB.get('ev:' + day, 'json')) || [];
+export const getEvents = async (env, day = dayKey()) => {
+  const l = (await env.DB.get('ev:' + day, 'json')) || [];
+  if (day === dayKey() && !(await env.DB.get('bfprev:' + day))) { await env.DB.put('bfprev:' + day, '1', { expirationTtl: 2 * 86400 }); await backfillPrev(env, day, l); }
+  return l;
+};
+// старі події дня без «вже на столі»: відтворюємо стіл з попередніх подій (закриття/видалення — обнуляють, перенос — переносить)
+async function backfillPrev(env, day, l) {
+  const T = {}, add = (t, lines) => { const m = (T[t] ||= new Map()); for (const s of lines || []) { const x = s.match(LINE); if (x) m.set(x[2], (m.get(x[2]) || 0) + +x[1]); } };
+  let ch = false;
+  for (const e of l) {
+    const t = +e.t;
+    if ((e.k === 'waiter' || e.k === 'guest') && e.lines?.length) {
+      if (!e.prev && T[t]?.size) { e.prev = [...T[t]].filter(([, q]) => q > 0).map(([n, q]) => `${q}× ${n}`); ch = true; }
+      add(t, e.lines);
+    } else if (e.k === 'close' || e.k === 'del') delete T[t];
+    else if (e.k === 'move' && e.from) { const a = T[+e.from]; delete T[+e.from]; if (a) { const m = (T[t] ||= new Map()); for (const [n, q] of a) m.set(n, (m.get(n) || 0) + q); } }
+  }
+  if (ch) await env.DB.put('ev:' + day, JSON.stringify(l), { expirationTtl: 3 * 86400 });
+}
 
 // ✅ Прийняв: статус для гостя + подія + (з POS) оновлення повідомлення в Telegram
 export async function acceptOrder(env, oid, who, { editTg = true } = {}) {

@@ -311,7 +311,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         });
         if (m.keys.includes("menu") || m.keys.includes("fav")) loadMenu().catch(() => {
         });
-        if (["closed", "reports", "settings", "cash"].includes(S.view) && m.keys.some((k) => ["closed", "day", "exp", "staff", "shift", "z", "mov", "tipbal", "tippay"].includes(k))) loadView(true);
+        if (["closed", "reports", "settings", "cash"].includes(S.view) && m.keys.some((k) => ["closed", "day", "exp", "staff", "shift", "z", "mov", "tipbal", "tippay", "void"].includes(k))) loadView(true);
       }, 120);
     };
     ws.onclose = () => {
@@ -902,13 +902,14 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const sum = (l, f) => l.reduce((a, x) => a + (f(x) || 0), 0);
     const total = sum(checks, (c) => c.val), n = checks.length, qty = sum(checks, (c) => sum(c.ds, (d) => d[1]));
     const exp = R.by || R.t || dishF || R.pay ? null : sum(r.exp, (e) => e.sum);
+    const tipOut = sum((r.mov || []).filter((m) => m.type === "tipc" || m.type === "tipk"), (m) => m.sum);
     const W = [
       ["\u0412\u0438\u0440\u0443\u0447\u043A\u0430", money(total), "accent"],
       ["\u0427\u0435\u043A\u0456\u0432", n],
       ["\u0421\u0435\u0440\u0435\u0434\u043D\u0456\u0439 \u0447\u0435\u043A", n ? money(total / n) : "\u2014"],
       ["\u041F\u0440\u043E\u0434\u0430\u043D\u043E \u043F\u043E\u0437\u0438\u0446\u0456\u0439", qty],
       ...!dishF ? [["\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430", money(sum(checks, (c) => c.cash))], ["\u{1F4B3} \u041A\u0430\u0440\u0442\u0430", money(sum(checks, (c) => c.card))], ["\u{1F3F7} \u0417\u043D\u0438\u0436\u043A\u0438", money(sum(checks, (c) => c.disc))], ["\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456", money(sum(checks, (c) => c.tip))]] : [],
-      ...exp != null ? [["\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438", money(exp)], ["\u0427\u0438\u0441\u0442\u0438\u043C\u0438", money(total - exp), "green"]] : []
+      ...exp != null ? [["\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438", money(exp)], ...tipOut ? [["\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456 \u0432\u0438\u0434\u0430\u043D\u043E", money(tipOut)]] : [], ["\u0427\u0438\u0441\u0442\u0438\u043C\u0438", money(total - exp - tipOut), "green"]] : []
     ];
     const widgets = `<div class="widgets">${W.map(([l, v, c]) => `<div class="widget ${c || ""}"><span>${l}</span><b class="money">${v}</b></div>`).join("")}</div>`;
     const grpBy = (keyF, valF = (c) => c.val) => {
