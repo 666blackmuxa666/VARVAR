@@ -3,18 +3,31 @@ import DEFAULT_MENU from '../../data/menu.json';
 
 export async function getMenu(env) {
   const m = (await env.DB.get('menu', 'json')) || DEFAULT_MENU;
-  if (!m.categories.some(c => c.id === 'inshe')) { m.categories.push(INSHE); await env.DB.put('menu', JSON.stringify(m)); } // одноразово: технічний розділ
-  for (const c of m.categories) if (['inshe', 'upakuvannia'].includes(c.id)) c.tech = true; // не показується гостям
+  if (!m.categories.some(c => c.id === 'inshe-food')) { // одноразово: технічні розділи «Інше»
+    const old = m.categories.find(c => c.id === 'inshe'), known = new Set(INSHE.flatMap(c => c.items.map(i => i.id)));
+    const cats = INSHE.map(c => ({ ...c, items: [...c.items] }));
+    if (old) old.items.filter(i => !known.has(i.id)).forEach(i => cats[0].items.push(i)); // додане вручну — у «Страви поза меню»
+    m.categories = m.categories.filter(c => c.id !== 'inshe');
+    const pi = m.categories.findIndex(c => c.id === 'upakuvannia');
+    m.categories.splice(pi < 0 ? m.categories.length : pi, 0, ...cats);
+    await env.DB.put('menu', JSON.stringify(m));
+  }
+  for (const c of m.categories) if (c.id === 'upakuvannia' || c.id.startsWith('inshe')) c.tech = true; // не показується гостям
   return m;
 }
 const it = (id, uk, en, price) => ({ id: 'x-' + id, name: { uk, en }, price });
-const INSHE = { id: 'inshe', tech: true, name: { uk: 'Інше', en: 'Other' }, items: [
-  it('glass', 'Розбитий стакан', 'Broken glass', 100), it('wglass', 'Розбитий келих', 'Broken wine glass', 150), it('plate', 'Розбита тарілка', 'Broken plate', 200),
-  it('ashtray', 'Розбита попільничка', 'Broken ashtray', 150), it('hookah', 'Пошкоджений кальян / колба', 'Damaged hookah', 1000),
-  it('cork', 'Пробковий збір (свій алкоголь)', 'Corkage fee', 200), it('cake', 'Подача торта гостей', 'Cake service', 100),
-  it('icecream', 'Морозиво', 'Ice cream', 80), it('fruit', 'Фруктова тарілка', 'Fruit plate', 400), it('cheese', 'Сирна тарілка', 'Cheese plate', 450),
-  it('banquet', 'Банкетне обслуговування', 'Banquet service', 500), it('music', 'Замовлення пісні / музики', 'Music request', 100),
-  it('extra', 'Додаткова позиція', 'Extra item', 50)] };
+const INSHE = [
+  { id: 'inshe-food', tech: true, name: { uk: '🍨 Страви поза меню', en: 'Off-menu dishes' }, items: [
+    it('icecream', 'Морозиво', 'Ice cream', 80), it('fruit', 'Фруктова тарілка', 'Fruit plate', 400), it('cheese', 'Сирна тарілка', 'Cheese plate', 450),
+    it('meat', 'Мʼясна тарілка', 'Meat plate', 500), it('extra', 'Додаткова позиція', 'Extra item', 50)] },
+  { id: 'inshe-posud', tech: true, name: { uk: '🍷 Посуд (бій)', en: 'Broken dishes' }, items: [
+    it('glass', 'Розбитий стакан', 'Broken glass', 100), it('wglass', 'Розбитий келих', 'Broken wine glass', 150), it('shot', 'Розбита стопка', 'Broken shot glass', 80),
+    it('mug', 'Розбита чашка', 'Broken cup', 100), it('plate', 'Розбита тарілка', 'Broken plate', 200), it('ashtray', 'Розбита попільничка', 'Broken ashtray', 150),
+    it('hookah', 'Пошкоджений кальян / колба', 'Damaged hookah', 1000)] },
+  { id: 'inshe-serv', tech: true, name: { uk: '🎉 Послуги', en: 'Services' }, items: [
+    it('banquet', 'Банкетне обслуговування', 'Banquet service', 500), it('cork', 'Пробковий збір (свій алкоголь)', 'Corkage fee', 200),
+    it('cake', 'Подача торта гостей', 'Cake service', 100), it('music', 'Замовлення пісні / музики', 'Music request', 100), it('deco', 'Оформлення столу / декор', 'Table decoration', 300)] },
+];
 export async function saveMenu(env, menu) {
   const cur = await env.DB.get('menu');
   if (cur) await env.DB.put('menu_prev', cur);           // для «відмінити»

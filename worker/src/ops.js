@@ -401,9 +401,9 @@ export async function topData(env) {
 // ---------- групи меню (кухня / бар / кальян) — однаково в боті й POS ----------
 const KITCHEN = ['minimax', 'pasta', 'burgers', 'salads', 'snacks', 'soups', 'pans', 'extras'];
 // 🧩 Інше — технічні позиції лише для каси/бота (гості їх не бачать): бій посуду, упаковка, позиції поза меню
-export const TECH = ['inshe', 'upakuvannia'];
+export const TECH = ['inshe-food', 'inshe-posud', 'inshe-serv', 'inshe', 'upakuvannia'];
 export const GROUPS = [{ id: 'kitchen', name: '🍳 Кухня' }, { id: 'bar', name: '🍹 Бар' }, { id: 'hookah', name: '💨 Кальян' }, { id: 'other', name: '🧩 Інше' }];
-export const groupOf = cat => TECH.includes(cat) ? 'other' : cat === 'hookah' ? 'hookah' : KITCHEN.includes(cat) ? 'kitchen' : 'bar';
+export const groupOf = cat => TECH.includes(cat) || String(cat).startsWith('inshe') ? 'other' : cat === 'hookah' ? 'hookah' : KITCHEN.includes(cat) ? 'kitchen' : 'bar';
 // ⭐ обрані страви — спільний список для всіх офіціантів
 export const getFav = async env => (await env.DB.get('fav', 'json')) || [];
 export async function toggleFav(env, id, on) {
