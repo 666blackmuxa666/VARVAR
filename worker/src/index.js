@@ -117,7 +117,8 @@ async function callWaiter(b, ip, env) {
   return [{ ok: true, id: oid }, 200];
 }
 
-async function order(b, ip, env) {
+async function order(b, ip, env) { return env.DB.locked('bills', () => orderRaw(b, ip, env)); } // 🔒 рахунки — по одному
+async function orderRaw(b, ip, env) {
   const table = tableNum(b.table, env), type = b.type;
   if (!table || !TYPES[type]) return [{ error: 'bad_request' }, 400];
   const sc = await scanInfo(env, b.device);

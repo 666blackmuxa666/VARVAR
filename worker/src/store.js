@@ -62,6 +62,16 @@ export class Store extends DurableObject {
   async put(k, v, ttl) { await this.ctx.storage.put(k, { v, e: ttl ? now() + ttl * 1000 : 0 }); this.changed([k]); }
   async del(k) { await this.ctx.storage.delete(k); this.changed([k]); }
   async delMany(ks) { for (let i = 0; i < ks.length; i += 128) await this.ctx.storage.delete(ks.slice(i, i + 128)); this.changed(ks); }
+  // 🔒 черга на ключ: дії «прочитав → змінив → записав» з різних запитів ідуть строго по одній (без загублених змін)
+  async lock(k) {
+    this.q ||= new Map(); const prev = this.q.get(k) || Promise.resolve();
+    let rel; const mine = new Promise(r => { rel = r; }); const tail = prev.then(() => mine);
+    this.q.set(k, tail); await prev;
+    const id = crypto.randomUUID(); (this.rel ||= new Map()).set(id, () => { rel(); if (this.q.get(k) === tail) this.q.delete(k); });
+    setTimeout(() => this.unlock(id), 8000); // запобіжник: запит упав — черга не зависає
+    return id;
+  }
+  unlock(id) { const f = this.rel?.get(id); if (f) { this.rel.delete(id); f(); } }
   async list(prefix) { const m = await this.ctx.storage.list({ prefix }); return [...m].filter(([, r]) => alive(r)).map(([name]) => name); }
   // раз на годину прибираємо прострочене
   async alarm() {
@@ -75,6 +85,7 @@ export const storeStub = env => env.STORE.get(env.STORE.idFromName('main'));
 export function storeDB(kv, ns) {
   const s = ns.get(ns.idFromName('main'));
   const img = k => k.startsWith('img:');
+  const held = new Set(); // ключі, які цей запит уже тримає (повторний вхід без самоблокування)
   const parse = (v, type) => v == null ? null : type === 'json' ? JSON.parse(v) : v;
   return {
     get: async (k, type) => img(k) ? kv.get(k, type) : parse(await s.get(k), type),
@@ -82,6 +93,12 @@ export function storeDB(kv, ns) {
     put: (k, v, o) => img(k) ? kv.put(k, v, o) : s.put(k, String(v), o?.expirationTtl),
     delete: k => img(k) ? kv.delete(k) : s.del(k),
     deleteMany: ks => s.delMany(ks),
+    // виконати fn під замком ключа(ів); вкладені однакові ключі в одному запиті не блокуються
+    locked: async (keys, fn) => {
+      keys = [...new Set([].concat(keys))].sort(); const mine = keys.filter(k => !held.has(k));
+      const ids = []; try { for (const k of mine) { ids.push(await s.lock(k)); held.add(k); } return await fn(); }
+      finally { mine.forEach(k => held.delete(k)); for (const id of ids) try { await s.unlock(id); } catch {} }
+    },
     list: async ({ prefix } = {}) => ({ keys: (await s.list(prefix)).map(name => ({ name })), list_complete: true }),
   };
 }

@@ -34,18 +34,23 @@ export function billItems(b) {
 
 // ---------- статистика ----------
 // історія (day: closed: exp: dish: z:) зберігається безстроково — роки звітів
-export async function bump(env, key, fn) { const d = (await env.DB.get(key, 'json')) || {}; fn(d); await env.DB.put(key, JSON.stringify(d)); }
+async function _bump(env, key, fn) { const d = (await env.DB.get(key, 'json')) || {}; fn(d); await env.DB.put(key, JSON.stringify(d)); }
 export const addStat = (env, field, n) => bump(env, 'day:' + dayKey(), d => { d[field] = (d[field] || 0) + n; });
 // продажі страв за місяць: { назва: [кількість, сума] }
 export const addDishes = (env, items) => bump(env, 'dish:' + dayKey().slice(0, 7), d => { for (const { n, q, sum } of items) { const x = d[n] || [0, 0]; d[n] = [x[0] + q, x[1] + sum]; } });
-async function logClosed(env, rec) {
+async function _logClosed(env, rec) {
   const k = 'closed:' + dayKey(); const list = (await env.DB.get(k, 'json')) || [];
   list.push(rec); await env.DB.put(k, JSON.stringify(list.slice(-500)));
 }
 
+// ---------- 🔒 замки: «прочитав → змінив → записав» з різних запитів не губить зміни одне одного ----------
+export const L = (env, keys, fn) => env.DB.locked ? env.DB.locked(keys, fn) : fn();
+const editEv = (env, fn) => L(env, 'ev:' + dayKey(), async () => { const k = 'ev:' + dayKey(), l = (await env.DB.get(k, 'json')) || []; fn(l); await env.DB.put(k, JSON.stringify(l), { expirationTtl: 3 * 86400 }); });
+const kqMut = (env, fn) => L(env, 'kq:' + dayKey(), async () => { const l = await getKq(env); const r = await fn(l); if (r !== false) await putKq(env, l); return r; });
+
 // ---------- стрічка подій (панель POS) ----------
 // kind: guest · check · waiter · acc · close · del · move · disc · rm · pre
-export async function logEvent(env, ev) {
+async function _logEvent(env, ev) {
   const k = 'ev:' + dayKey(); const list = (await env.DB.get(k, 'json')) || [];
   const e = { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), at: hhmm(), ...ev };
   list.push(e); await env.DB.put(k, JSON.stringify(list.slice(-200)), { expirationTtl: 3 * 86400 });
@@ -72,7 +77,7 @@ async function backfillPrev(env, day, l) {
 }
 
 // ✅ Прийняв: статус для гостя + подія + (з POS) оновлення повідомлення в Telegram
-export async function acceptOrder(env, oid, who, { editTg = true } = {}) {
+async function _acceptOrder(env, oid, who, { editTg = true } = {}) {
   if (!/^[a-z0-9]{6,12}$/.test(oid || '')) return false;
   const o = (await env.DB.get('ord:' + oid, 'json')) || {};
   if (o.s === 'acc') return false;
@@ -82,16 +87,14 @@ export async function acceptOrder(env, oid, who, { editTg = true } = {}) {
     await queuePrint(env, 'kitchen', kitchenTicket({ table: o.t, kind: o.kind || 'ЗАМОВЛЕННЯ ГОСТЯ', lines: o.lines, comment: o.comment, by: `гість · прийняв ${who}` }));
     await addKitchen(env, { t: o.t, by: 'гість', src: 'гість', comment: o.comment, lines: o.lines });
   }
-  const k = 'ev:' + dayKey(); const list = (await env.DB.get(k, 'json')) || [];
-  for (const e of list) if (e.oid === oid) { e.s = 'acc'; e.accBy = who; }
-  await env.DB.put(k, JSON.stringify(list), { expirationTtl: 3 * 86400 });
+  await editEv(env, list => { for (const e of list) if (e.oid === oid) { e.s = 'acc'; e.accBy = who; } });
   if (editTg && o.mid && o.html) await tg(env, 'editMessageText', { chat_id: env.CHAT_ID, message_id: o.mid, text: `${o.html}\n\n✅ Прийняв: <b>${esc(who)}</b> о ${hhmm()}`, parse_mode: 'HTML',
     reply_markup: { inline_keyboard: [[{ text: '🧾 Закрити стіл ' + o.t, callback_data: 'cls:' + o.t }]] } });
   return true;
 }
 
 // ---------- замовлення персоналу (бот кнопками/текстом і POS) ----------
-export async function addWaiterOrder(env, d, who, comment = '', src = 'бот', urgent = false) {
+async function _addWaiterOrder(env, d, who, comment = '', src = 'бот', urgent = false) {
   const ok = d.items.filter(i => !i.hidden);
   if (!ok.length) return null;
   const lines = ok.map(i => `${i.q}× ${i.name} — ${i.price * i.q}`), sum = ok.reduce((s, i) => s + i.price * i.q, 0);
@@ -122,7 +125,7 @@ export async function itemsFromMenu(env, list) {
 }
 
 // ❌ відхилити замовлення гостя (ще не прийняте): прибрати з рахунку і статистики, гість бачить «відхилено»
-export async function rejectOrder(env, oid, who, { editTg = true } = {}) {
+async function _rejectOrder(env, oid, who, { editTg = true } = {}) {
   if (!/^[a-z0-9]{6,12}$/.test(oid || '')) return null;
   const o = (await env.DB.get('ord:' + oid, 'json')) || {};
   if (o.s !== 'new' || !o.lines?.length) return null;
@@ -133,15 +136,13 @@ export async function rejectOrder(env, oid, who, { editTg = true } = {}) {
     if (o.sold?.length) await addDishes(env, o.sold.map(x => ({ n: x.n, q: -x.q, sum: -x.sum })));
     await addStat(env, 'orders', -1);
   }
-  const k = 'ev:' + dayKey(), list = (await env.DB.get(k, 'json')) || [];
-  for (const e of list) if (e.oid === oid) { e.s = 'rej'; e.accBy = who; }
-  await env.DB.put(k, JSON.stringify(list), { expirationTtl: 3 * 86400 });
+  await editEv(env, list => { for (const e of list) if (e.oid === oid) { e.s = 'rej'; e.accBy = who; } });
   if (editTg && o.mid && o.html) await tg(env, 'editMessageText', { chat_id: env.CHAT_ID, message_id: o.mid, text: `${o.html}\n\n❌ Відхилив: <b>${esc(who)}</b> о ${hhmm()}`, parse_mode: 'HTML' });
   return o;
 }
 
 // прибрати 1 шт позиції (за назвою) з останнього замовлення, де вона є
-export async function removeOne(env, t, name, who = '', reason = '') {
+async function _removeOne(env, t, name, who = '', reason = '') {
   reason = String(reason || '').trim().slice(0, 120);
   if (!reason) return { error: 'Вкажіть причину скасування' };
   const b = await getBill(env, t);
@@ -167,12 +168,12 @@ export async function removeOne(env, t, name, who = '', reason = '') {
 
 // 🕵️ журнал скасувань за день (для контролю): { ts, at, t, by, name, sum, reason }
 export const getVoids = async (env, day = dayKey()) => (await env.DB.get('void:' + day, 'json')) || [];
-async function addVoid(env, v) { const k = 'void:' + dayKey(), l = await getVoids(env); l.push(v); await env.DB.put(k, JSON.stringify(l.slice(-1000))); }
+async function _addVoid(env, v) { const k = 'void:' + dayKey(), l = await getVoids(env); l.push(v); await env.DB.put(k, JSON.stringify(l.slice(-1000))); }
 // максимальна знижка для офіціанта (адмін — будь-яка)
 export const WAITER_DISC_MAX = 20;
 
 // pay: 'cash' | 'card'; print — друкувати фінальний чек
-export async function closeTable(env, t, who, pay = 'cash', print = true) {
+async function _closeTable(env, t, who, pay = 'cash', print = true) {
   const bill = await getBill(env, t);
   if (!bill.total) return null;
   // чайові входять у виручку тим способом, яким заплатив гість; при видачі списуються з готівки або картки
@@ -199,7 +200,7 @@ export async function precheck(env, t, who) {
   return true;
 }
 
-export async function setDiscount(env, t, pct, who, admin = true) {
+async function _setDiscount(env, t, pct, who, admin = true) {
   const b = await getBill(env, t); if (!b.total) return null;
   pct = Math.max(0, Math.min(100, Math.round(+pct || 0)));
   if (!admin && pct > WAITER_DISC_MAX) return { error: `Офіціант може дати знижку до ${WAITER_DISC_MAX}%. Більше — лише адміністратор.` };
@@ -211,7 +212,7 @@ export async function setDiscount(env, t, pct, who, admin = true) {
 }
 
 // 💝 чайові (від гостя з сайту або вручну) — входять у виручку, окремий рядок у чеку; офіціанту накопичуються на рахунку
-export async function setTip(env, t, sum, who) {
+async function _setTip(env, t, sum, who) {
   const b = await getBill(env, t); if (!b.total) return null;
   sum = Math.max(0, Math.min(10000, Math.round(+sum || 0)));
   if (sum) b.tip = sum; else delete b.tip;
@@ -222,7 +223,7 @@ export async function setTip(env, t, sum, who) {
 // 👨‍🍳 чайові кухні: частка % від чайових офіціанта + «подяка кухні» від гостя — порівну між кухарями, що сьогодні працюють
 export const kitchenPct = async env => { const v = await env.DB.get('kitchen_pct'); return v == null ? 20 : +v; };
 export const KITCHEN_POOL = '👨‍🍳 Кухня';
-export async function markCook(env, name) { const k = 'cooks:' + dayKey(), l = (await env.DB.get(k, 'json')) || []; if (!l.includes(name)) { l.push(name); await env.DB.put(k, JSON.stringify(l), { expirationTtl: 3 * 86400 }); } }
+async function _markCook(env, name) { const k = 'cooks:' + dayKey(), l = (await env.DB.get(k, 'json')) || []; if (!l.includes(name)) { l.push(name); await env.DB.put(k, JSON.stringify(l), { expirationTtl: 3 * 86400 }); } }
 export async function splitTip(env, waiter, tipW, ktip) {
   const out = {}, add = (n, v) => { if (v) out[n || '—'] = (out[n || '—'] || 0) + v; };
   const kpart = Math.round(tipW * (await kitchenPct(env)) / 100), kitchen = kpart + ktip;
@@ -233,7 +234,7 @@ export async function splitTip(env, waiter, tipW, ktip) {
 }
 export const tipSplitOf = x => x.tipSplit || (x.tip ? { [x.by || '—']: x.tip } : {});
 // ---------- рахунок чайових офіціанта: накопичуються, поки адмін не натисне «Видано» ----------
-export async function tipBalances(env) {
+async function _tipBalances(env) {
   let b = await env.DB.get('tipbal', 'json');
   if (!b) { // перший раз — рахуємо з усіх закритих рахунків
     b = {}; const keys = (await env.DB.list({ prefix: 'closed:' })).keys.map(k => k.name);
@@ -243,9 +244,9 @@ export async function tipBalances(env) {
   }
   return b;
 }
-export async function addTipBal(env, name, n) { if (!n) return; const b = await tipBalances(env); const k = name || '—'; b[k] = Math.max(0, (b[k] || 0) + n); if (!b[k]) delete b[k]; await env.DB.put('tipbal', JSON.stringify(b)); }
+async function _addTipBal(env, name, n) { if (!n) return; const b = await tipBalances(env); const k = name || '—'; b[k] = Math.max(0, (b[k] || 0) + n); if (!b[k]) delete b[k]; await env.DB.put('tipbal', JSON.stringify(b)); }
 // src: cash | card — звідки видали: сума списується з готівки або з картки (як рух коштів)
-export async function payTips(env, name, who, src = 'cash') {
+async function _payTips(env, name, who, src = 'cash') {
   const b = await tipBalances(env), sum = b[name] || 0; if (!sum) return null;
   src = src === 'card' ? 'card' : 'cash';
   delete b[name]; await env.DB.put('tipbal', JSON.stringify(b));
@@ -255,7 +256,7 @@ export async function payTips(env, name, who, src = 'cash') {
   return sum;
 }
 // перенос: стіл a → b. Якщо b зайнятий — об'єднання (рахунок a додається до b)
-export async function moveTable(env, a, b, who) {
+async function _moveTable(env, a, b, who) {
   a = +a; b = +b; if (!a || !b || a === b) return null;
   const A = await getBill(env, a); if (!A.total) return null;
   const B = await getBill(env, b);
@@ -269,13 +270,13 @@ export async function moveTable(env, a, b, who) {
     await putBill(env, b, B);
   } else await putBill(env, b, A);
   await env.DB.delete('bill:' + a);
-  { const l = await getKq(env); let ch = false; for (const e of l) if (!e.done && e.t === a) { e.t = b; ch = true; } if (ch) await putKq(env, l); } // кухня бачить новий номер стола
+  await kqMut(env, l => { for (const e of l) if (!e.done && e.t === a) e.t = b; }); // кухня бачить новий номер стола
   // статуси замовлень гостей переходять на новий стіл
   await logEvent(env, { k: 'move', t: b, from: a, by: who, text: merged ? `стіл ${a} об'єднано зі столом ${b}` : `стіл ${a} → ${b}` });
   return { merged };
 }
 
-export async function deleteTable(env, t, who, reason = '') {
+async function _deleteTable(env, t, who, reason = '') {
   const bill = await getBill(env, t);
   if (!bill.total) return null;
   await env.DB.delete('bill:' + t);
@@ -291,7 +292,7 @@ export async function deleteTable(env, t, who, reason = '') {
 export const getClosed = async (env, day = dayKey()) => (await env.DB.get('closed:' + day, 'json')) || [];
 const findClosed = (list, ref) => list.find(e => e.id === ref) || (/^\d+$/.test(String(ref)) ? list[+ref] : null);
 export async function closedRec(env, ref) { return findClosed(await getClosed(env), ref); }
-export async function delClosed(env, ref) {
+async function _delClosed(env, ref) {
   const k = 'closed:' + dayKey(); const list = await getClosed(env);
   const x = findClosed(list, ref);
   if (!x || x.del || x.rm) return null;
@@ -304,7 +305,7 @@ export async function delClosed(env, ref) {
   return x;
 }
 // ↩️ повернути закритий рахунок у виручку (скасувати «видалити з виручки»)
-export async function restoreClosed(env, ref, who) {
+async function _restoreClosed(env, ref, who) {
   const k = 'closed:' + dayKey(), list = await getClosed(env), x = findClosed(list, ref);
   if (!x || !x.rm || x.reopen || x.del) return null;
   delete x.rm; await env.DB.put(k, JSON.stringify(list));
@@ -317,7 +318,7 @@ export async function restoreClosed(env, ref, who) {
   return x;
 }
 // відновити страви на стіл (якщо стіл зайнятий — додаються до його рахунку)
-async function billBack(env, t, x, kind) {
+async function _billBack(env, t, x, kind) {
   const lines = (x.dishes || []).map(([n, q, sum]) => `${q}× ${n} — ${sum}`); if (!lines.length) return false;
   const b = await getBill(env, t), sum = x.dishes.reduce((a, d) => a + d[2], 0);
   b.total = (b.total || 0) + sum; b.orders = (b.orders || 0) + 1; b.opened = b.opened || Date.now();
@@ -326,7 +327,7 @@ async function billBack(env, t, x, kind) {
   await putBill(env, t, b); return true;
 }
 // ↩️ відкрити закритий рахунок знову: знімається з виручки і повертається на стіл (щоб виправити й закрити заново)
-export async function reopenClosed(env, ref, who) {
+async function _reopenClosed(env, ref, who) {
   const x0 = await closedRec(env, ref); if (!x0 || x0.del || x0.reopen || !x0.dishes?.length) return null;
   if (!x0.rm) await delClosed(env, ref);
   const k = 'closed:' + dayKey(), list = await getClosed(env), x = findClosed(list, ref);
@@ -337,7 +338,7 @@ export async function reopenClosed(env, ref, who) {
   return x;
 }
 // ↩️ відновити видалений стіл (сьогоднішній)
-export async function restoreTable(env, ref, who) {
+async function _restoreTable(env, ref, who) {
   const k = 'closed:' + dayKey(), list = await getClosed(env), x = findClosed(list, ref);
   if (!x || !x.del || x.restored || !x.dishes?.length) return null;
   x.restored = 1; await env.DB.put(k, JSON.stringify(list));
@@ -357,9 +358,9 @@ export async function reprintClosed(env, ref, who) {
 
 // ---------- фінанси ----------
 export const getExp = async (env, day = dayKey()) => (await env.DB.get('exp:' + day, 'json')) || [];
-export async function addExpense(env, e) { const k = 'exp:' + dayKey(); const l = await getExp(env); l.push({ ts: Date.now(), ...e }); await env.DB.put(k, JSON.stringify(l)); }
-export async function delExpense(env, i) { const k = 'exp:' + dayKey(); const l = await getExp(env); if (!l[+i]) return false; l[+i].del = 1; await env.DB.put(k, JSON.stringify(l)); return true; }
-export async function restoreExpense(env, i) { const k = 'exp:' + dayKey(); const l = await getExp(env); if (!l[+i]?.del) return false; delete l[+i].del; await env.DB.put(k, JSON.stringify(l)); return true; }
+async function _addExpense(env, e) { const k = 'exp:' + dayKey(); const l = await getExp(env); l.push({ ts: Date.now(), ...e }); await env.DB.put(k, JSON.stringify(l)); }
+async function _delExpense(env, i) { const k = 'exp:' + dayKey(); const l = await getExp(env); if (!l[+i]) return false; l[+i].del = 1; await env.DB.put(k, JSON.stringify(l)); return true; }
+async function _restoreExpense(env, i) { const k = 'exp:' + dayKey(); const l = await getExp(env); if (!l[+i]?.del) return false; delete l[+i].del; await env.DB.put(k, JSON.stringify(l)); return true; }
 // ---------- рух коштів (не витрати): внесення / вилучення готівки, обмін картка ↔ готівка ----------
 // type: in (+готівка) · out (−готівка) · k2c (з картки в готівку) · c2k (з готівки на картку)
 export const MOVE = { in: '➕ Внесення готівки', out: '➖ Вилучення готівки', k2c: '🔁 Картка → готівка', c2k: '🔁 Готівка → картка', kout: '➖ Вилучення з картки' };
@@ -368,7 +369,7 @@ export const MOVE_ALL = { ...MOVE, tipc: '💝 Чайові видано гот�
 export const moveCash = m => m.del ? 0 : ({ in: 1, out: -1, k2c: 1, c2k: -1, tipc: -1, adjc: 1 }[m.type] || 0) * m.sum;
 export const moveCard = m => m.del ? 0 : ({ k2c: -1, c2k: 1, tipk: -1, kout: -1, adjk: 1 }[m.type] || 0) * m.sum;
 export const getMov = async (env, day = dayKey()) => (await env.DB.get('mov:' + day, 'json')) || [];
-export async function addMove(env, m) {
+async function _addMove(env, m) {
   if (!MOVE[m.type] || !(m.sum > 0)) return null;
   const k = 'mov:' + dayKey(), l = await getMov(env); const e = { ts: Date.now(), at: hhmm(), type: m.type, sum: Math.round(m.sum), note: String(m.note || '').slice(0, 100), by: m.by || '' };
   l.push(e); await env.DB.put(k, JSON.stringify(l));
@@ -394,7 +395,7 @@ export async function balances(env) {
   return r;
 }
 // ✏️ звірка: вписали фактичний залишок — різниця записується коригуванням
-export async function reconcile(env, src, actual, who) {
+async function _reconcile(env, src, actual, who) {
   actual = Math.round(+actual); if (!(actual >= 0)) return null;
   const b = await balances(env), was = src === 'card' ? b.card : b.cash, diff = actual - was;
   if (!diff) return { diff: 0, was, actual };
@@ -403,8 +404,8 @@ export async function reconcile(env, src, actual, who) {
   await logEvent(env, { k: 'shift', by: who, text: `✏️ Звірка ${src === 'card' ? 'картки' : 'готівки'}: факт ${actual} грн (${diff > 0 ? '+' : ''}${diff})` });
   return { diff, was, actual };
 }
-export async function restoreMove(env, i) { const k = 'mov:' + dayKey(); const l = await getMov(env); if (!l[+i]?.del) return false; delete l[+i].del; await env.DB.put(k, JSON.stringify(l)); return true; }
-export async function delMove(env, i) { const k = 'mov:' + dayKey(); const l = await getMov(env); if (!l[+i] || l[+i].del) return false; l[+i].del = 1; await env.DB.put(k, JSON.stringify(l)); return true; }
+async function _restoreMove(env, i) { const k = 'mov:' + dayKey(); const l = await getMov(env); if (!l[+i]?.del) return false; delete l[+i].del; await env.DB.put(k, JSON.stringify(l)); return true; }
+async function _delMove(env, i) { const k = 'mov:' + dayKey(); const l = await getMov(env); if (!l[+i] || l[+i].del) return false; l[+i].del = 1; await env.DB.put(k, JSON.stringify(l)); return true; }
 export const setFloat = (env, n) => bump(env, 'day:' + dayKey(), d => { d.float = Math.round(n); });
 export async function cashData(env) {
   const d = (await env.DB.get('day:' + dayKey(), 'json')) || {};
@@ -449,7 +450,7 @@ export const GROUPS = [{ id: 'kitchen', name: '🍳 Кухня' }, { id: 'bar', 
 export const groupOf = cat => TECH.includes(cat) || String(cat).startsWith('inshe') ? 'other' : cat === 'hookah' ? 'hookah' : KITCHEN.includes(cat) ? 'kitchen' : 'bar';
 // ⭐ обрані страви — спільний список для всіх офіціантів
 export const getFav = async env => (await env.DB.get('fav', 'json')) || [];
-export async function toggleFav(env, id, on) {
+async function _toggleFav(env, id, on) {
   const l = (await getFav(env)).filter(x => x !== id); if (on) l.push(id);
   await env.DB.put('fav', JSON.stringify(l)); return l;
 }
@@ -619,14 +620,14 @@ export function controlData(r) {
 const KQ_CATS = c => groupOf(c) === 'kitchen' || c === 'inshe-food';
 export const getKq = async (env, day = dayKey()) => (await env.DB.get('kq:' + day, 'json')) || [];
 const putKq = (env, l, day = dayKey()) => env.DB.put('kq:' + day, JSON.stringify(l.slice(-400)));
-export async function addKitchen(env, { t, by, src, comment = '', lines, urgent = false }) {
+async function _addKitchen(env, { t, by, src, comment = '', lines, urgent = false }) {
   const res = dishResolver(await getMenu(env)), items = [];
   for (const l of lines || []) { const x = l.match(LINE); if (!x) continue; const d = res(x[2]); if (d && KQ_CATS(d.cat)) items.push({ n: x[2], q: +x[1] }); }
   if (!items.length) return null;
   const l = await getKq(env), e = { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), at: hhmm(), t: +t, by: by || '', src, tw: /З СОБОЮ/.test(comment || ''), urgent: !!urgent, comment: String(comment || '').replace(/З СОБОЮ\s*·?\s*/, '').trim(), items };
   l.push(e); await putKq(env, l); return e;
 }
-async function kqEdit(env, id, fn) { const l = await getKq(env), e = l.find(x => x.id === id); if (!e) return null; const r = fn(e); await putKq(env, l); return r === false ? null : e; }
+async function _kqEdit(env, id, fn) { const l = await getKq(env), e = l.find(x => x.id === id); if (!e) return null; const r = fn(e); await putKq(env, l); return r === false ? null : e; }
 // i — номер страви або null (усе замовлення)
 export async function kitchenDone(env, id, i, who) {
   const e = await kqEdit(env, id, e => { if (e.done) return false; if (i == null) e.items.forEach(x => { x.done = 1; }); else if (e.items[+i]) e.items[+i].done = e.items[+i].done ? 0 : 1; else return false;
@@ -640,7 +641,7 @@ export async function kitchenDone(env, id, i, who) {
 export const kitchenStart = (env, id, who) => kqEdit(env, id, e => { if (e.done || e.start) return false; e.start = Date.now(); }).then(async e => { if (e) await logEvent(env, { k: 'cooking', t: e.t, by: who }); return e; });
 export const kitchenUndo = (env, id) => kqEdit(env, id, e => { if (!e.done || Date.now() - e.doneAt > 30 * 60e3) return false; e.done = 0; delete e.doneAt; e.items.forEach(x => { x.done = 0; }); })
   .then(async e => { if (e) await dropEvents(env, x => x.k === 'ready' && x.kid === id); return e; });
-async function dropEvents(env, fn) { const k = 'ev:' + dayKey(), l = (await env.DB.get(k, 'json')) || [], n = l.filter(x => !fn(x)); if (n.length !== l.length) await env.DB.put(k, JSON.stringify(n), { expirationTtl: 3 * 86400 }); }
+const dropEvents = (env, fn) => editEv(env, l => { const n = l.filter(x => !fn(x)); l.length = 0; l.push(...n); });
 export async function kitchenMsg(env, id, text, who) {
   text = String(text || '').trim().slice(0, 120); if (!text) return null;
   const e = await kqEdit(env, id, e => { (e.msgs ||= []).push({ at: hhmm(), text }); });
@@ -648,13 +649,13 @@ export async function kitchenMsg(env, id, text, who) {
   return e;
 }
 // стіл закрито/звільнено — активні картки кухні цих столів знімаються з черги (без «готово» у стрічку)
-export async function kitchenClosed(env, tables) {
+async function _kitchenClosed(env, tables) {
   const l = await getKq(env); let ch = false;
   for (const e of l) if (!e.done && tables.includes(e.t)) { e.done = 1; e.doneAt = Date.now(); e.closed = 1; ch = true; }
   if (ch) await putKq(env, l);
 }
 // скасування з рахунку → на кухні страва червона «СКАСОВАНО» (name=null — увесь стіл)
-async function kitchenCancel(env, t, name) {
+async function _kitchenCancel(env, t, name) {
   const l = await getKq(env); let ch = false;
   for (let k = l.length - 1; k >= 0; k--) { const e = l[k]; if (e.t !== t || e.done) continue;
     for (const x of e.items) if (!x.cancel && (name == null || x.n === name)) { if (name != null && x.q > 1) { x.q--; x.canc = (x.canc || 0) + 1; } else x.cancel = 1; ch = true; if (name != null) break; }
@@ -694,7 +695,7 @@ export const REG_DEF = { admin: '1119', waiter: '1112', cook: '1113' };
 export const regCode = async (env, role) => (await env.DB.get('reg_' + role)) || REG_DEF[role];
 export async function regRole(env, code) { code = String(code || ''); for (const r of ['admin', 'waiter', 'cook']) if (code === await regCode(env, r)) return r; return null; }
 export const getStaff = async env => (await env.DB.get('staff', 'json')) || [];
-export async function addStaff(env, name, pin, role = 'waiter') {
+async function _addStaff(env, name, pin, role = 'waiter') {
   name = String(name || '').trim().slice(0, 30); pin = String(pin || '').trim();
   if (!name || !/^\d{4}$/.test(pin)) return { error: 'Потрібні імʼя і PIN з 4 цифр.' };
   const list = await getStaff(env), h = await pinHash(pin);
@@ -705,7 +706,7 @@ export async function addStaff(env, name, pin, role = 'waiter') {
   list.push(s); await env.DB.put('staff', JSON.stringify(list));
   return { ok: true, s };
 }
-export async function delStaff(env, id) {
+async function _delStaff(env, id) {
   const list = await getStaff(env); const n = list.filter(s => s.id !== id);
   await env.DB.put('staff', JSON.stringify(n)); return n.length !== list.length;
 }
@@ -724,3 +725,41 @@ export async function resetAll(env) {
   }
   return n;
 }
+
+// ---------- обгортки із замками (див. L) ----------
+export async function bump(env, ...a) { return L(env, a[0], () => _bump(env, ...a)); }
+async function logClosed(env, ...a) { return L(env, 'closed:' + dayKey(), () => _logClosed(env, ...a)); }
+export async function logEvent(env, ...a) { return L(env, 'ev:' + dayKey(), () => _logEvent(env, ...a)); }
+export async function acceptOrder(env, ...a) { return L(env, 'ord:' + a[0], () => _acceptOrder(env, ...a)); }
+export async function rejectOrder(env, ...a) { return L(env, ['ord:' + a[0], 'bills'], () => _rejectOrder(env, ...a)); }
+export async function addWaiterOrder(env, ...a) { return L(env, 'bills', () => _addWaiterOrder(env, ...a)); }
+export async function removeOne(env, ...a) { return L(env, 'bills', () => _removeOne(env, ...a)); }
+export async function closeTable(env, ...a) { return L(env, 'bills', () => _closeTable(env, ...a)); }
+export async function setDiscount(env, ...a) { return L(env, 'bills', () => _setDiscount(env, ...a)); }
+export async function setTip(env, ...a) { return L(env, 'bills', () => _setTip(env, ...a)); }
+export async function moveTable(env, ...a) { return L(env, 'bills', () => _moveTable(env, ...a)); }
+export async function deleteTable(env, ...a) { return L(env, 'bills', () => _deleteTable(env, ...a)); }
+async function billBack(env, ...a) { return L(env, 'bills', () => _billBack(env, ...a)); }
+async function addVoid(env, ...a) { return L(env, 'void:' + dayKey(), () => _addVoid(env, ...a)); }
+export async function markCook(env, ...a) { return L(env, 'cooks:' + dayKey(), () => _markCook(env, ...a)); }
+export async function tipBalances(env, ...a) { return L(env, 'tipbal', () => _tipBalances(env, ...a)); }
+export async function addTipBal(env, ...a) { return L(env, 'tipbal', () => _addTipBal(env, ...a)); }
+export async function payTips(env, ...a) { return L(env, ['tipbal', 'tippay:' + dayKey(), 'mov:' + dayKey()], () => _payTips(env, ...a)); }
+export async function delClosed(env, ...a) { return L(env, 'closed:' + dayKey(), () => _delClosed(env, ...a)); }
+export async function restoreClosed(env, ...a) { return L(env, 'closed:' + dayKey(), () => _restoreClosed(env, ...a)); }
+export async function reopenClosed(env, ...a) { return L(env, ['bills', 'closed:' + dayKey()], () => _reopenClosed(env, ...a)); }
+export async function restoreTable(env, ...a) { return L(env, ['bills', 'closed:' + dayKey()], () => _restoreTable(env, ...a)); }
+export async function addExpense(env, ...a) { return L(env, 'exp:' + dayKey(), () => _addExpense(env, ...a)); }
+export async function delExpense(env, ...a) { return L(env, 'exp:' + dayKey(), () => _delExpense(env, ...a)); }
+export async function restoreExpense(env, ...a) { return L(env, 'exp:' + dayKey(), () => _restoreExpense(env, ...a)); }
+export async function addMove(env, ...a) { return L(env, 'mov:' + dayKey(), () => _addMove(env, ...a)); }
+export async function delMove(env, ...a) { return L(env, 'mov:' + dayKey(), () => _delMove(env, ...a)); }
+export async function restoreMove(env, ...a) { return L(env, 'mov:' + dayKey(), () => _restoreMove(env, ...a)); }
+export async function reconcile(env, ...a) { return L(env, 'mov:' + dayKey(), () => _reconcile(env, ...a)); }
+export async function addKitchen(env, ...a) { return L(env, 'kq:' + dayKey(), () => _addKitchen(env, ...a)); }
+async function kqEdit(env, ...a) { return L(env, 'kq:' + dayKey(), () => _kqEdit(env, ...a)); }
+export async function kitchenClosed(env, ...a) { return L(env, 'kq:' + dayKey(), () => _kitchenClosed(env, ...a)); }
+async function kitchenCancel(env, ...a) { return L(env, 'kq:' + dayKey(), () => _kitchenCancel(env, ...a)); }
+export async function toggleFav(env, ...a) { return L(env, 'fav', () => _toggleFav(env, ...a)); }
+export async function addStaff(env, ...a) { return L(env, 'staff', () => _addStaff(env, ...a)); }
+export async function delStaff(env, ...a) { return L(env, 'staff', () => _delStaff(env, ...a)); }
