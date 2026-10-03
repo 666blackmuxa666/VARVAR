@@ -104,7 +104,7 @@ async function tableView(env, t) {
     markup: { inline_keyboard: [
       [{ text: '🖨 Пречек', callback_data: 'pre:' + t }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + t }],
       [{ text: '➕ Дозамовити', callback_data: 'o:t:' + t }, { text: '✏️ Редагувати чек', callback_data: 'ed:' + t }],
-      [{ text: '% Знижка', callback_data: 'dsc:' + t }, { text: '💝 Чайові', callback_data: 'tip:' + t }], [{ text: '↔️ Перенести / об\'єднати', callback_data: 'mv:' + t }]] },
+      [{ text: '% Знижка', callback_data: 'dsc:' + t }, ...(b.tip ? [{ text: '✖ Прибрати чайові', callback_data: 'tipx:' + t }] : [])], [{ text: '↔️ Перенести / об\'єднати', callback_data: 'mv:' + t }]] },
   };
 }
 const VOID_R = ['Гість передумав', 'Помилка офіціанта', 'Довго чекали', 'Не сподобалось', 'Немає продукту', 'Брак / зіпсовано'];
@@ -307,7 +307,7 @@ export async function handleUpdate(u, env) {
       const r = await removeOne(env, +t, it.name, who, text);
       return send(await editView(env, +t, r && !r.error ? `🗑 Скасовано: 1× ${esc(r.name)} (−${r.unit} грн) · ${esc(r.reason)}` : (r?.error || '')));
     }
-    if (state.startsWith('tip:') && waiter) {
+    if (false) {
       const t = +state.slice(4), n = parseInt(text, 10);
       if (!(n >= 0)) return send({ text: 'Потрібне число, наприклад 100.' });
       await setTip(env, t, n, who); return send(await tableView(env, t));
@@ -503,7 +503,8 @@ async function handleCallback(q, env) {
     return answer('');
   }
   if (act === 'dscs') { const b = await setDiscount(env, +arg, +oid, who, admin); if (!b) return answer('Стіл порожній'); if (b.error) return answer(`⛔ Офіціант — до ${WAITER_DISC_MAX}%. Більше — лише адмін`); const v = await tableView(env, +arg); await edit(v.text, v.markup); return answer(+oid ? `Знижка ${oid}%` : 'Знижку прибрано'); }
-  if (act === 'tip') { await env.DB.put('st:' + uid, 'tip:' + arg, { expirationTtl: 300 }); return answer('💝 Напишіть суму чайових числом (0 — прибрати)'); }
+  // чайові додає лише гість (на сайті); прибрати помилкові — лише адмін
+  if (act === 'tipx') { if (!admin) return answer('🔐 Лише адміністратор'); await setTip(env, +arg, 0, who); const v = await tableView(env, +arg); await edit(v.text, v.markup); return answer('Чайові прибрано'); }
   if (act === 'dscc') { await env.DB.put('st:' + uid, 'dscc:' + arg, { expirationTtl: 300 }); return answer('Напишіть відсоток знижки числом'); }
   if (act === 'mv') { // перенос / об'єднання
     const b = await getBill(env, arg); if (!b.total) return answer(`Стіл ${arg} порожній`);
