@@ -481,7 +481,7 @@ async function handleCallback(q, env) {
       const com = [r.send.tw ? 'З СОБОЮ' : '', r.send.com || ''].filter(Boolean).join(' · ');
       const res = await addWaiterOrder(env, { table: r.send.table, items: r.send.items }, who, com);
       if (!res) { await edit('Нічого додати.'); return answer(''); }
-      await edit(`✅ <b>Стіл ${r.send.table}</b> — ${res.prev?.length ? '<b>➕ ДОЗАМОВЛЕННЯ</b> відправлено' : 'замовлення відправлено'} (${esc(who)}, ${hhmm()})\n${res.lines.map(x => '🟠 ' + esc(x)).join('\n')}${res.prev?.length ? `\n\n<i>Вже на столі: ${res.prev.map(esc).join(', ')}</i>` : ''}${com ? `\n💬 ${esc(com)}` : ''}\nСума: <b>${money(res.sum)}</b>\n\n💰 Разом за стіл: <b>${money(res.total)}</b>`,
+      await edit(`✅ <b>Стіл ${r.send.table}</b> — ${res.prev?.length ? '<b>➕ ДОЗАМОВЛЕННЯ</b> відправлено' : 'замовлення відправлено'} (${esc(who)}, ${hhmm()})\n${res.lines.map(x => '🟠 ' + esc(x)).join('\n')}${com ? `\n💬 ${esc(com)}` : ''}\nСума: <b>${money(res.sum)}</b>\n\n💰 Разом за стіл: <b>${money(res.total)}</b>`,
         { inline_keyboard: [[{ text: '➕ Дозамовити', callback_data: 'o:t:' + r.send.table }, { text: `🪑 Стіл ${r.send.table}`, callback_data: 'tbl:' + r.send.table }], [{ text: '🧾 Закрити стіл', callback_data: 'cls:' + r.send.table }]] });
       return answer('🖨 Відправлено на кухню');
     }
@@ -495,7 +495,7 @@ async function handleCallback(q, env) {
     await env.DB.delete('draft:' + arg);
     const r = await addWaiterOrder(env, d, who);
     if (!r) { await edit('Нічого додати.'); return answer(''); }
-    await edit(`✅ <b>${r.prev?.length ? '➕ ДОЗАМОВЛЕННЯ до столу' : 'Додано до столу'} ${d.table}</b> (${esc(who)}, ${hhmm()})\n${r.lines.map(x => '🟠 ' + esc(x)).join('\n')}${r.prev?.length ? `\n\n<i>Вже на столі: ${r.prev.map(esc).join(', ')}</i>` : ''}\nСума: <b>${money(r.sum)}</b>\n\n💰 Разом за стіл: <b>${money(r.total)}</b>`,
+    await edit(`✅ <b>${r.prev?.length ? '➕ ДОЗАМОВЛЕННЯ до столу' : 'Додано до столу'} ${d.table}</b> (${esc(who)}, ${hhmm()})\n${r.lines.map(x => '🟠 ' + esc(x)).join('\n')}\nСума: <b>${money(r.sum)}</b>\n\n💰 Разом за стіл: <b>${money(r.total)}</b>`,
       { inline_keyboard: [[{ text: `🪑 Стіл ${d.table}`, callback_data: 'tbl:' + d.table }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + d.table }]] });
     return answer('Додано');
   }
