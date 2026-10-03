@@ -629,6 +629,8 @@ async function kqEdit(env, id, fn) { const l = await getKq(env), e = l.find(x =>
 export async function kitchenDone(env, id, i, who) {
   const e = await kqEdit(env, id, e => { if (e.done) return false; if (i == null) e.items.forEach(x => { x.done = 1; }); else if (e.items[+i]) e.items[+i].done = e.items[+i].done ? 0 : 1; else return false;
     if (e.items.every(x => x.done || x.cancel)) { e.done = 1; e.doneAt = Date.now(); } });
+  const it = i != null && e?.items[+i];
+  if (it && it.done && !e.done) await logEvent(env, { k: 'ready', part: 1, t: e.t, by: who, text: `${it.q}× ${it.n}` }); // одна страва готова
   if (e?.done) await logEvent(env, { k: 'ready', t: e.t, by: who, text: e.items.filter(x => !x.cancel).map(x => `${x.q}× ${x.n}`).join(', '), mins: Math.round((e.doneAt - e.ts) / 60000) });
   return e;
 }
