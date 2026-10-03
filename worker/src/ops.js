@@ -630,12 +630,15 @@ export async function kitchenDone(env, id, i, who) {
   const e = await kqEdit(env, id, e => { if (e.done) return false; if (i == null) e.items.forEach(x => { x.done = 1; }); else if (e.items[+i]) e.items[+i].done = e.items[+i].done ? 0 : 1; else return false;
     if (e.items.every(x => x.done || x.cancel)) { e.done = 1; e.doneAt = Date.now(); } });
   const it = i != null && e?.items[+i];
-  if (it && it.done && !e.done) await logEvent(env, { k: 'ready', part: 1, t: e.t, by: who, text: `${it.q}× ${it.n}` }); // одна страва готова
-  if (e?.done) await logEvent(env, { k: 'ready', t: e.t, by: who, text: e.items.filter(x => !x.cancel).map(x => `${x.q}× ${x.n}`).join(', '), mins: Math.round((e.doneAt - e.ts) / 60000) });
+  if (it && it.done && !e.done) await logEvent(env, { k: 'ready', part: 1, kid: e.id, ki: +i, t: e.t, by: who, text: `${it.q}× ${it.n}` }); // одна страва готова
+  if (it && !it.done) await dropEvents(env, x => x.k === 'ready' && x.kid === e.id && x.ki === +i); // випадково натиснув — прибрати «готово» зі стрічки
+  if (e?.done) await logEvent(env, { k: 'ready', kid: e.id, t: e.t, by: who, text: e.items.filter(x => !x.cancel).map(x => `${x.q}× ${x.n}`).join(', '), mins: Math.round((e.doneAt - e.ts) / 60000) });
   return e;
 }
 export const kitchenStart = (env, id, who) => kqEdit(env, id, e => { if (e.done || e.start) return false; e.start = Date.now(); }).then(async e => { if (e) await logEvent(env, { k: 'cooking', t: e.t, by: who }); return e; });
-export const kitchenUndo = (env, id) => kqEdit(env, id, e => { if (!e.done || Date.now() - e.doneAt > 30 * 60e3) return false; e.done = 0; delete e.doneAt; e.items.forEach(x => { x.done = 0; }); });
+export const kitchenUndo = (env, id) => kqEdit(env, id, e => { if (!e.done || Date.now() - e.doneAt > 30 * 60e3) return false; e.done = 0; delete e.doneAt; e.items.forEach(x => { x.done = 0; }); })
+  .then(async e => { if (e) await dropEvents(env, x => x.k === 'ready' && x.kid === id); return e; });
+async function dropEvents(env, fn) { const k = 'ev:' + dayKey(), l = (await env.DB.get(k, 'json')) || [], n = l.filter(x => !fn(x)); if (n.length !== l.length) await env.DB.put(k, JSON.stringify(n), { expirationTtl: 3 * 86400 }); }
 export async function kitchenMsg(env, id, text, who) {
   text = String(text || '').trim().slice(0, 120); if (!text) return null;
   const e = await kqEdit(env, id, e => { (e.msgs ||= []).push({ at: hhmm(), text }); });
