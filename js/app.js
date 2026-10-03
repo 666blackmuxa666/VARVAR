@@ -20,11 +20,13 @@
   const device = store.get('device', null) || (() => { const d = crypto.randomUUID(); store.set('device', d); return d; })();
 
   // QR на столі: ?k=… → 1 година на замовлення; ключ одразу прибираємо з адреси
-  let scanUntil = store.get('scan', 0);
-  const qk = new URLSearchParams(location.search).get('k');
-  const scanP = qk ? fetch(C.api + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ k: qk, device }) })
-    .then(r => r.json()).then(d => { if (d.until) { scanUntil = d.until; store.set('scan', d.until); } }).catch(() => {}) : Promise.resolve();
-  if (qk) { const u = new URL(location.href); u.searchParams.delete('k'); history.replaceState(null, '', u.pathname + u.search + u.hash); }
+  // QR столу (?k=…&t=N) — стіл закріплений на годину, вибрати інший не можна
+  let scanUntil = store.get('scan', 0), lockT = store.get('lockT', 0);
+  const lockOn = () => lockT && scanUntil > Date.now();
+  const qs = new URLSearchParams(location.search), qk = qs.get('k'), qt = qs.get('t');
+  const scanP = qk ? fetch(C.api + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ k: qk, t: qt, device }) })
+    .then(r => r.json()).then(d => { if (d.until) { scanUntil = d.until; lockT = d.t || 0; store.set('scan', d.until); store.set('lockT', lockT); if (lockT) { table = String(lockT); store.set('table', table); } } }).catch(() => {}) : Promise.resolve();
+  if (qk) { const u = new URL(location.href); u.searchParams.delete('k'); u.searchParams.delete('t'); history.replaceState(null, '', u.pathname + u.search + u.hash); }
 
   const t = k => I18N[lang][k] ?? I18N.en[k] ?? k;
   // назви і склад: uk/en — з меню; інші мови — з js/menu-i18n.js (склад по словах), інакше англійською
@@ -124,7 +126,9 @@
       + `<div class="line sum"><span>${t('total')}</span><b>${money(cartSum())}</b></div>`
       : `<p class="empty">🛒 ${t('empty')}</p>`;
     $('#twBox').innerHTML = rows.length ? `<button class="tw ${tw ? 'on' : ''}" data-tw><span class="tw-ic">🥡</span><span class="tw-t"><b>${t('takeaway')}</b><small>${t('takeawayNote')}</small></span><span class="sw"></span></button>` : '';
-    $('#table').innerHTML = `<option value="">—</option>` + Array.from({ length: C.tables }, (_, i) => `<option ${String(i + 1) === String(table) ? 'selected' : ''}>${i + 1}</option>`).join('');
+    if (lockOn()) table = String(lockT);
+    $('#table').innerHTML = (lockOn() ? '' : `<option value="">—</option>`) + Array.from({ length: C.tables }, (_, i) => i + 1).filter(n => !lockOn() || n === lockT).map(n => `<option ${String(n) === String(table) ? 'selected' : ''}>${n}</option>`).join('');
+    $('#table').disabled = !!lockOn(); $('#table').closest('.table-row').classList.toggle('locked', !!lockOn());
     // рахунок столу — з сервера, тож зміни офіціанта (прибрав страву, знижка) видно одразу
     const pend = hist.orders.filter(o => o.id);
     $('#history').innerHTML = bill || pend.length ? `
@@ -205,7 +209,7 @@
     try {
       await scanP;
       const { data } = await api('/api/status?device=' + device + (table ? '&table=' + table : ''));
-      inVenue = !!data.inVenue; if (data.scanUntil) { scanUntil = data.scanUntil; store.set('scan', scanUntil); }
+      inVenue = !!data.inVenue; if (data.scanUntil) { scanUntil = data.scanUntil; store.set('scan', scanUntil); } lockT = data.scanT || 0; store.set('lockT', lockT); if (lockT) { table = String(lockT); save(); }
       if (table && typeof data.tableTotal === 'number') {
         // стіл закрили (/close) — сесія скінчилась
         if (data.tableTotal === 0 && hist.orders.length) { hist = { ts: 0, orders: [] }; save(); renderStatus(); }
@@ -220,7 +224,7 @@
   }
   async function send(type, pay) {
     if (busy) return;
-    table = $('#table').value; save();
+    table = lockOn() ? String(lockT) : $('#table').value; save();
     if (!table) { $('#msg').textContent = t('chooseTable'); $('#table').focus(); return; }
     // запит чека — спершу питаємо спосіб оплати
     if ((type === 'check' || type === 'order_check') && !pay) { pendingType = type; tip = { p: 0, own: false }; $('#tipOwn').value = ''; renderTips(); $('#payModal').hidden = false; return; }
@@ -231,6 +235,7 @@
         table: +table, type, pay, device, tip: pay ? tipAmount() : 0, comment: [items.length && tw ? 'З СОБОЮ' : '', $('#comment').value].filter(Boolean).join(' · ').slice(0, 300),
         items: [...items.map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; }), ...(items.length && packId && packQty() ? [{ id: packId, q: packQty() }] : [])],
       });
+      if (status === 403 && data.error === 'wrong_table') { $('#msg').textContent = `📷 ${t('table')} ${data.t}`; return; }
       if (status === 403) { inVenue = false; $('#wifiBanner').hidden = false; showWifi(); $('#msg').textContent = ''; return; }
       if (status === 429) { $('#msg').textContent = t('wait'); return; }
       if (status !== 200) throw 0;

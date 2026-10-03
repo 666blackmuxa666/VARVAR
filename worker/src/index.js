@@ -25,15 +25,18 @@ export default {
         const table = tableNum(url.searchParams.get('table'), env);
         const bill = table ? await getBill(env, table) : null;
         // bill — актуальний рахунок (з урахуванням змін офіціанта: прибрані позиції, знижка, перенос)
-        const sc = await scanUntil(env, url.searchParams.get('device'));
-        return json({ inVenue: sc > Date.now() || await inVenue(env, ip), scanUntil: sc || 0, tableTotal: bill ? payable(bill) : undefined,
+        const si = await scanInfo(env, url.searchParams.get('device')), sc = si?.until || 0;
+        return json({ inVenue: sc > Date.now() || await inVenue(env, ip), scanUntil: sc, scanT: sc > Date.now() ? si.t || 0 : 0, tableTotal: bill ? payable(bill) : undefined,
           bill: bill && bill.total ? { items: billItems(bill).map(x => [x.name, x.q, x.sum]), gross: bill.total, disc: bill.disc || 0, pay: payable(bill), tip: bill.tip || 0 } : null });
       }
       if (url.pathname === '/api/scan' && req.method === 'POST') { // QR на столі → 1 година на замовлення
         const b = await req.json(); const dev = String(b.device || '').slice(0, 64);
-        if (!dev || String(b.k || '') !== await qrKey(env)) return json({ error: 'bad_qr' }, 403);
-        const until = Date.now() + SCAN_MS; await env.DB.put('scan:' + dev, String(until), { expirationTtl: SCAN_MS / 1000 + 60 });
-        return json({ ok: true, until });
+        // QR столу: ?k=<ключ столу>&t=N — стіл закріплений; загальний QR (без столу) — стіл обирає гість
+        const t = tableNum(b.t, env), k = String(b.k || '');
+        const ok = t ? k === await tableKey(env, t) : k === await qrKey(env);
+        if (!dev || !ok) return json({ error: 'bad_qr' }, 403);
+        const until = Date.now() + SCAN_MS; await env.DB.put('scan:' + dev, JSON.stringify({ until, t: t || 0 }), { expirationTtl: SCAN_MS / 1000 + 60 });
+        return json({ ok: true, until, t: t || 0 });
       }
       if (url.pathname === '/api/ai' && req.method === 'POST') return json(...await aiHelp(await req.json(), env));
       if (url.pathname === '/api/menu') return new Response(JSON.stringify(await getMenu(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'no-cache' } });
@@ -89,12 +92,20 @@ async function inVenue(env, ip) { const k = ipKey(ip); return (await venueIps(en
 // доступ до замовлення: скан QR-коду закладу дає 1 годину (потім — сканувати заново)
 const SCAN_MS = 3600e3;
 const qrKey = async env => (await env.DB.get('qr_key')) || 'f5431c32';
-async function scanUntil(env, dev) { dev = String(dev || '').slice(0, 64); return dev ? +(await env.DB.get('scan:' + dev)) || 0 : 0; }
+async function scanInfo(env, dev) { dev = String(dev || '').slice(0, 64); if (!dev) return null; const v = await env.DB.get('scan:' + dev); if (!v) return null; try { const o = JSON.parse(v); return typeof o === 'number' ? { until: o, t: 0 } : o; } catch { return null; } }
+async function scanUntil(env, dev) { return (await scanInfo(env, dev))?.until || 0; }
+// ключ QR конкретного столу (не вгадати, змінивши номер у посиланні)
+export async function tableKey(env, t) {
+  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${await qrKey(env)}:${t}`));
+  return [...new Uint8Array(h)].slice(0, 4).map(x => x.toString(16).padStart(2, '0')).join('');
+}
 
 async function order(b, ip, env) {
   const table = tableNum(b.table, env), type = b.type;
   if (!table || !TYPES[type]) return [{ error: 'bad_request' }, 400];
-  if (!(await scanUntil(env, b.device) > Date.now()) && !(await inVenue(env, ip))) { await warnNotInVenue(env, table, ip, b.device); return [{ error: 'not_in_venue' }, 403]; }
+  const sc = await scanInfo(env, b.device);
+  if (sc?.t && sc.until > Date.now() && sc.t !== table) return [{ error: 'wrong_table', t: sc.t }, 403]; // стіл закріплений QR-кодом
+  if (!(sc?.until > Date.now()) && !(await inVenue(env, ip))) { await warnNotInVenue(env, table, ip, b.device); return [{ error: 'not_in_venue' }, 403]; }
 
   const dev = String(b.device || ip).slice(0, 64);
   const last = await env.DB.get('rl:' + dev);

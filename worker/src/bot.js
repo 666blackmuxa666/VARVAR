@@ -244,7 +244,7 @@ async function staffView(env) {
   };
 }
 const TEST_PRINT = () => [['logo'], ['big', 'ТЕСТ ДРУКУ'], ['c', 'VARVAR · ' + hhmm()], ['hr'], ['l', 'Українські літери: Іі Її Єє Ґґ'], ['lr', '2 × Мєско', '760'], ['lr2', 'Всього', '760 грн'], ['hr'], ['gap']];
-export const QR_PRINT = t => [['logo'], ...(t ? [['invb', `СТІЛ ${t}`]] : []), ['inv', 'МЕНЮ ТА ЗАМОВЛЕННЯ'], ['gap'], ['img', 'qr2', 220], ['c', 'Скануйте камерою телефона'], ...(t ? [['b', `При замовленні оберіть стіл ${t}`]] : []), ['s', 'Замовлення доступне 1 годину після сканування'], ['gap']];
+export const QR_PRINT = t => [['logo'], ...(t ? [['invb', `СТІЛ ${t}`]] : []), ['inv', 'МЕНЮ ТА ЗАМОВЛЕННЯ'], ['gap'], ['img', t ? 'qr-t' + t : 'qr2', 220], ['c', 'Скануйте камерою телефона'], ...(t ? [['b', `Замовлення одразу на стіл ${t}`]] : []), ['s', 'Замовлення доступне 1 годину після сканування'], ['gap']];
 export const TEST_JOB = TEST_PRINT;
 const tablesGrid = (env, act, skip) => chunk(Array.from({ length: tablesCount(env) }, (_, i) => i + 1).filter(n => n !== skip).map(n => ({ text: String(n), callback_data: `${act}:${n}` })), 5);
 
