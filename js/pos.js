@@ -402,7 +402,6 @@
   function kitchenGate() { if ($('#kGate')) return; const g = document.createElement('div'); g.id = 'kGate'; g.innerHTML = '<button class="btn primary" data-a="kGo">🔊 Почати зміну<small>увімкне звук сирени й повний екран</small></button>'; document.body.appendChild(g); }
   function kqHTML() {
     const now = Date.now(), act0 = S.kq.filter(e => !e.done).sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0) || a.ts - b.ts), done = S.kq.filter(e => e.done).slice(-6).reverse();
-    const sum = new Map(); act0.forEach(e => e.items.forEach(x => { if (!x.done && !x.cancel) sum.set(x.n, (sum.get(x.n) || 0) + x.q); }));
     const card = e => { const m = Math.floor((now - e.ts) / 60000), tc = m >= 15 ? 'red' : m >= 10 ? 'yel' : '';
       return `<div class="kc${e.urgent ? ' urg' : ''}${e.start ? ' cook' : ' new'}"><div class="kh"><b>Стіл ${e.t}</b><span class="tm ${tc}">⏱ ${m} хв</span></div>
         <div class="km">${e.at} · ${esc(e.by)}${e.src === 'гість' ? ' · 📱 сайт' : ''}</div>
@@ -411,7 +410,6 @@
         ${(e.msgs || []).map(x => `<div class="kmsg">📨 ${x.at} ${esc(x.text)}</div>`).join('')}
         <div class="kb">${e.start ? '' : `<button class="btn" data-a="kStart" data-id="${e.id}">🔥 Готую</button>`}<button class="btn" data-a="kMsg" data-id="${e.id}">💬</button><button class="btn green" data-a="kAll" data-id="${e.id}">✅ ВСЕ ГОТОВО</button></div></div>`; };
     return `<div class="khead"><h1>👨‍🍳 Черга <span class="muted">${act0.length}</span></h1><button class="btn" data-a="view" data-v="stop">⛔ Стоп-лист</button><button class="btn" data-a="kFont">A${'+'.repeat(S.kFont - 1)}</button></div>
-      ${sum.size ? `<div class="ksum">У роботі: ${[...sum].map(([n, q]) => `<b>${esc(n)} ×${q}</b>`).join(' · ')}</div>` : ''}
       <div class="kq f${S.kFont}">${act0.length ? act0.map(card).join('') : '<div class="kempty">✅ Черга порожня</div>'}</div>
       ${done.length ? `<h3 class="muted" style="margin:18px 0 8px">Останні готові</h3><div class="kdone">${done.map(e => `<div class="kd">Стіл ${e.t} · ${e.items.filter(x => !x.cancel).map(x => `${x.q}× ${esc(x.n)}`).join(', ')}${e.cancelled ? ' · ❌ скасовано' : ` · ${Math.round((e.doneAt - e.ts) / 60000)} хв`} <button class="btn sm" data-a="kUndo" data-id="${e.id}">↩️</button></div>`).join('')}</div>` : ''}`;
   }
