@@ -226,7 +226,7 @@
     // рахунок
     const billRows = b ? b.items.map(it => `<div class="row"><div class="nm">${esc(it.name)}<small>${it.q} × ${Math.round(it.sum / it.q)} ₴</small></div><b class="money">${it.sum}</b><button class="rb minus" data-a="rm" data-name="${esc(it.name)}" title="Прибрати 1">−</button></div>`).join('') : '<div class="muted" style="padding:8px 4px">Рахунок порожній — оберіть страви в меню</div>';
     const discRow = b?.disc ? `<div class="row"><div class="nm">Знижка ${b.disc}%</div><b class="money" style="color:var(--green)">−${b.total - b.pay2}</b><button class="rb minus" data-a="discSet" data-p="0">×</button></div>` : '';
-    const tipRow = b?.tip ? `<div class="row"><div class="nm">💝 Чайові<small>окремо, не виручка</small></div><b class="money" style="color:#ff7aa8">+${b.tip}</b><button class="rb minus" data-a="tipSet" data-v="0">×</button></div>` : '';
+    const tipRow = b?.tip ? `<div class="row"><div class="nm">💝 Чайові<small>входять у виручку</small></div><b class="money" style="color:#ff7aa8">+${b.tip}</b><button class="rb minus" data-a="tipSet" data-v="0">×</button></div>` : '';
     const comments = b ? b.log.filter(o => o.comment).map(o => `<div class="muted" style="padding:2px 6px">💬 ${esc(o.comment)}</div>`).join('') : '';
     const cartHTML = cartRows.length ? `<div class="cart"><h3>Нове замовлення</h3><div class="rows">${cartRows.map(([k, x]) => `<div class="row"><div class="nm">${esc(x.name)}<small>${x.price} ₴</small></div><button class="rb minus" data-a="cq" data-k="${esc(k)}" data-d="-1">−</button><span class="q">${x.q}</span><button class="rb plus" data-a="cq" data-k="${esc(k)}" data-d="1">+</button></div>`).join('')}${pq ? `<div class="row auto"><div class="nm">🥡 ${esc(pk.name.uk)}<small>${pk.price} ₴ × ${pq}${S.packAdj[t] ? '' : ' · автоматично'}</small></div><button class="rb minus" data-a="pk" data-d="-1">−</button><span class="q">${pq}</span><button class="rb plus" data-a="pk" data-d="1">+</button></div>` : ''}</div>
       <div class="srow" style="margin:6px 0 10px"><input id="cartCom" placeholder="💬 Коментар для кухні" value="${esc(S.coms[t] || '')}"><button class="btn sm ${S.tw[t] ? 'primary' : 'ghost'}" data-a="tw">🥡 З собою</button></div>
@@ -289,12 +289,20 @@
     const r = await act('close', { t, pay, print: pr === '1' });
     if (r?.r) { toast(`✅ Стіл ${t} закрито · ${money(r.r.sum)}`); closeSheet(); loadState().catch(() => {}); }
   }
+  // причина скасування — обовʼязкова, видно у звітах і в закритому рахунку
+  const VOID_R = ['Гість передумав', 'Помилка офіціанта', 'Довго чекали', 'Не сподобалось', 'Немає продукту', 'Брак / зіпсовано'];
+  async function voidReason(title) {
+    const v = await choose(title, '❓ Чому? Причину побачить адміністратор у звітах', [...VOID_R.map(r => ({ label: r, val: r })), { label: '✏️ Своя причина', val: 'own' }]);
+    if (v !== 'own') return v || null;
+    return await ask('Причина скасування', 'Напр.: гість пролив, замінили на іншу');
+  }
   async function discFlow() {
     const t = S.open, b = S.tables[t]; if (!b) return;
-    const v = await choose(`Знижка — стіл ${t}`, `Сума ${money(b.total)}${b.disc ? ` · зараз ${b.disc}%` : ''}`, [...[5, 10, 15, 20, 25, 30, 50].map(p => ({ label: `${p}%  →  ${money(b.total - Math.round(b.total * p / 100))}`, val: String(p) })), { label: '✏️ Свій відсоток', val: 'own' }, { label: 'Без знижки', val: '0', cls: 'red' }]);
+    const max = isAdmin() ? 100 : 20; // офіціант — до 20%, адмін — будь-яка
+    const v = await choose(`Знижка — стіл ${t}`, `Сума ${money(b.total)}${b.disc ? ` · зараз ${b.disc}%` : ''}${isAdmin() ? '' : ' · офіціант — до 20%'}`, [...[5, 10, 15, 20, 25, 30, 50].filter(p => p <= max).map(p => ({ label: `${p}%  →  ${money(b.total - Math.round(b.total * p / 100))}`, val: String(p) })), { label: '✏️ Свій відсоток', val: 'own' }, { label: 'Без знижки', val: '0', cls: 'red' }]);
     if (v == null) return;
     let p = v;
-    if (v === 'own') { p = await ask('Свій відсоток знижки', 'Число від 0 до 100', 'number'); if (p == null) return; }
+    if (v === 'own') { p = await ask('Свій відсоток знижки', `Число від 0 до ${max}`, 'number'); if (p == null) return; if (+p > max) return toast(`⛔ Офіціант може дати знижку до ${max}%`); }
     await act('discount', { t, pct: +p }, +p ? `% Знижка ${p}%` : 'Знижку прибрано');
   }
   async function moveFlow() {
@@ -346,7 +354,8 @@
       <div class="cards">${[...l].reverse().map((x, i) => { const ref = x.id || (l.length - 1 - i); return `<div class="card" style="${gone(x) ? 'opacity:.45' : ''}"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
         <h3 style="margin:0;flex:1">${x.at} · Стіл ${x.t} · <span class="money">${money(x.sum)}</span> ${gone(x) ? '🗑 видалено' : payL(x)}${x.disc ? ` · знижка ${x.disc}%` : ''}</h3><span class="muted">${esc(x.by || '')}</span>
         ${!gone(x) && x.dishes?.length ? `<button class="btn sm" data-a="cPrint" data-ref="${ref}">🖨 Чек</button>` : ''}${!gone(x) && isAdmin() ? `<button class="btn sm red" data-a="cDel" data-ref="${ref}">🗑 З виручки</button>` : ''}</div>
-        ${x.dishes?.length ? `<div class="muted" style="margin-top:8px">${x.dishes.map(([n, q, s]) => `${q}× ${esc(n)} — ${s}`).join(' · ')}</div>` : ''}</div>`; }).join('') || '<div class="muted">Сьогодні закритих рахунків ще немає</div>'}</div>`;
+        ${x.dishes?.length ? `<div class="muted" style="margin-top:8px">${x.dishes.map(([n, q, s]) => `${q}× ${esc(n)} — ${s}`).join(' · ')}</div>` : ''}${x.tip ? `<div class="muted" style="margin-top:4px">💝 в т.ч. чайові ${money(x.tip)}</div>` : ''}
+        ${x.voids?.length ? `<div class="voids">🚫 Скасовано:${x.voids.map(v => `<div>${v.at} · −${money(v.sum)} ${esc(v.name)} — <i>${esc(v.reason)}</i> <span class="muted">(${esc(v.by)})</span></div>`).join('')}</div>` : ''}</div>`; }).join('') || '<div class="muted">Сьогодні закритих рахунків ще немає</div>'}</div>`;
   }
   function stopHTML() {
     if (!S.menu) return '<div class="head"><h1>Стоп-лист</h1></div><div class="muted">Завантаження…</div>';
@@ -384,7 +393,7 @@
     // рахунки чайових: накопичено → «Видано» обнуляє (не виручка)
     const tb = Object.entries(r.tipbal || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
     const tipsH = `<div class="card"><h3>💝 Чайові до видачі</h3>${tb.length ? tb.map(([n, v]) => `<div class="kv"><span>👤 ${esc(n)}</span><span><b class="money">${money(v)}</b> <button class="btn sm green" data-a="tipPay" data-n="${esc(n)}">Видано</button></span></div>`).join('') : '<div class="muted">Нічого не накопичено</div>'}
-      ${(r.tippay || []).length ? `<div class="muted" style="font-size:12px;margin-top:8px">Сьогодні видано: ${r.tippay.map(x => `${x.at} ${esc(x.name)} ${money(x.sum)}`).join(' · ')}</div>` : ''}<div class="muted" style="font-size:12px;margin-top:6px">Чайові не йдуть у виручку закладу.</div></div>`;
+      ${(r.tippay || []).length ? `<div class="muted" style="font-size:12px;margin-top:8px">Сьогодні видано: ${r.tippay.map(x => `${x.at} ${esc(x.name)} ${money(x.sum)}`).join(' · ')}</div>` : ''}<div class="muted" style="font-size:12px;margin-top:6px">Чайові входять у виручку; при видачі списуються з готівки або картки.</div></div>`;
     // 6. журнал за сьогодні
     const J = [...(r.closed || []).filter(x => !x.del && !x.rm).map(x => ({ at: x.at, ic: x.card ? '💳' : '💵', t: `Стіл ${x.t}${x.by ? ' · ' + esc(x.by) : ''}${x.disc ? ` · −${x.disc}%` : ''}${x.tip ? ` · 💝 ${money(x.tip)}` : ''}`, v: '+' + money(x.sum), cls: 'in' })),
       ...r.exp.map((e, i) => ({ at: e.at, ic: '💸', t: esc(e.note || 'Витрата') + (e.src === 'card' ? ' (картка)' : ''), v: '−' + money(e.sum), cls: 'out', del: e.del, btn: `<button class="xb" data-a="expDel" data-i="${i}">✕</button>` })),
@@ -393,7 +402,7 @@
     const journal = `<div class="card"><h3>📒 Журнал за сьогодні <span class="muted" style="font-weight:400;font-size:13px">· ${J.length}</span></h3>${J.length ? J.map(x => `<div class="jr ${x.cls}${x.del ? ' del' : ''}"><span class="muted">${x.at}</span><span>${x.ic}</span><span class="jt">${x.t}</span><b class="money">${x.v}</b>${!x.del && x.btn ? x.btn : '<i></i>'}</div>`).join('') : '<div class="muted">Поки порожньо</div>'}</div>`;
     return `<div class="head"><h1>Каса</h1></div>${hero}${tilesH}<div class="cash-grid"><div class="col">${journal}</div><div class="col">${tipsH}${ops}${mvH}${all}</div></div>`;
   }
-  const MOVE = { in: '➕ Внесення', out: '➖ Вилучення', k2c: '🔁 Картка → готівка', c2k: '🔁 Готівка → картка' };
+  const MOVE = { in: '➕ Внесення', out: '➖ Вилучення', k2c: '🔁 Картка → готівка', c2k: '🔁 Готівка → картка', tipc: '💝 Чайові (готівка)', tipk: '💝 Чайові (картка)' };
   async function cashMove(t) {
     if (t === 'x') { t = await choose('🔁 Обмін', 'Звідки куди переходять гроші?', [{ label: '💳 Картка → 💵 готівка', val: 'k2c' }, { label: '💵 Готівка → 💳 картка', val: 'c2k' }]); if (!t) return; }
     const v = await modal({ title: MOVE[t], text: t === 'k2c' ? 'Зняли з картки й поклали в касу' : t === 'c2k' ? 'Взяли з каси й поклали на картку' : t === 'in' ? 'Поклали гроші в касу' : 'Забрали гроші з каси',
@@ -494,7 +503,7 @@
     // розрізи
     const grpBy = (keyF, valF = c => c.val) => { const m = new Map(); checks.forEach(c => { const k = keyF(c); const a = m.get(k) || [0, 0]; a[0]++; a[1] += valF(c); m.set(k, a); }); return [...m]; };
     const dishAgg = keyF => { const m = new Map(); checks.forEach(c => c.ds.forEach(([nm, qq, ss]) => { const k = keyF(nm); const a = m.get(k) || [0, 0]; a[0] += qq; a[1] += ss; m.set(k, a); })); return [...m]; };
-    const TABS = { dishes: '🍽 Страви', cats: '📂 Категорії', groups: '🍳 Кухня/бар', waiters: '👤 Офіціанти', tips: '💝 Чайові', hours: '🕐 Години', days: '📅 Дні', tables: '🪑 Столи', checks: '🧾 Чеки', exp: '💸 Витрати', mov: '🔁 Рух коштів', z: '🔒 Z-звіти' };
+    const TABS = { dishes: '🍽 Страви', cats: '📂 Категорії', groups: '🍳 Кухня/бар', waiters: '👤 Офіціанти', tips: '💝 Чайові', hours: '🕐 Години', days: '📅 Дні', tables: '🪑 Столи', checks: '🧾 Чеки', exp: '💸 Витрати', mov: '🔁 Рух коштів', z: '🔒 Z-звіти', ctrl: '🕵️ Контроль' };
     let rows, unit = 'чек.', sortable = false;
     const T = R.tab;
     if (T === 'dishes') { rows = dishAgg(nm => nm); unit = 'шт'; sortable = true; }
@@ -515,6 +524,20 @@
     else if (T === 'exp') body = r.exp.length ? r.exp.map(e => `<div class="kv"><span>${e.d.slice(5)} ${e.at} ${e.src === 'card' ? '💳' : '💵'} ${esc(e.note)} <span class="muted">${esc(e.by)}</span></span><b class="money">${money(e.sum)}</b></div>`).join('') : '<div class="muted">Витрат немає</div>';
     else if (T === 'mov') body = (r.mov || []).length ? r.mov.map(m => `<div class="kv"><span>${m.d.slice(5)} ${m.at} ${MOVE[m.type]} ${esc(m.note)} <span class="muted">${esc(m.by)}</span></span><b class="money">${money(m.sum)}</b></div>`).join('') : '<div class="muted">Руху коштів немає</div>';
     else if (T === 'z') body = r.z.length ? [...r.z].reverse().map(z => `<div class="kv"><span>${new Date(z.opened).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} — ${new Date(z.closed).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })} · ${z.checks} чек. · ${esc(z.closedBy)}${z.diff ? ` · <b style="color:var(--red)">різниця ${z.diff > 0 ? '+' : ''}${money(z.diff)}</b>` : ''}</span><b class="money">${money(z.total)}</b></div>`).join('') : '<div class="muted">Z-звітів за період немає</div>';
+    else if (T === 'ctrl') { // 🕵️ контроль по офіціантах
+      const vs = (r.voids || []).filter(v => (!R.by || v.by === R.by) && (!R.t || String(v.t) === R.t)), W = {};
+      const w = nm => W[nm || '—'] = W[nm || '—'] || { name: nm || '—', n: 0, s: 0, vN: 0, vS: 0, tN: 0, tS: 0, dN: 0, dS: 0, dMax: 0, tip: 0 };
+      checks.forEach(c => { const x = w(c.by); x.n++; x.s += c.sum; if (c.disc) { x.dN++; x.dS += c.disc; x.dMax = Math.max(x.dMax, c.pct || 0); } x.tip += c.tip || 0; });
+      vs.forEach(v => { const x = w(v.by); if (v.table) { x.tN++; x.tS += v.sum; } else { x.vN++; x.vS += v.sum; } });
+      const ws = Object.values(W).sort((a, b) => b.vS + b.dS + b.tS - a.vS - a.dS - a.tS);
+      const rm = (r.removed || []).filter(x => !R.t || String(x.t) === R.t);
+      body = (ws.length ? `<div class="ctrl">${ws.map(x => { const pct = x.s + x.vS ? Math.round(x.vS / (x.s + x.vS) * 1000) / 10 : 0, bad = pct >= 5 || x.dMax > 20 || x.tN;
+        return `<div class="ctrl-w ${bad ? 'bad' : ''}"><div class="ctrl-h"><b>👤 ${esc(x.name)}</b><span class="muted">${x.n} чек. · ${money(x.s)}</span></div>
+          <div class="ctrl-g"><span>🚫 Скасування<b>${x.vN} · ${money(x.vS)}</b><small>${pct}% від продажів</small></span><span>🗑 Видалені столи<b>${x.tN} · ${money(x.tS)}</b></span>
+          <span>🏷 Знижки<b>${x.dN} · ${money(x.dS)}</b><small>${x.dMax ? 'макс ' + x.dMax + '%' : '—'}</small></span><span>💝 Чайові<b>${money(x.tip)}</b></span></div></div>`; }).join('')}</div>` : '<div class="muted">Немає даних</div>') +
+        `<h3 style="margin:18px 0 8px">🚫 Журнал скасувань</h3>` + (vs.length ? [...vs].reverse().slice(0, 300).map(v => `<div class="kv"><span>${v.d.slice(5)} ${v.at} · стіл ${v.t} · <b>${esc(v.by)}</b> · ${esc(v.name)}<br><small class="muted">❓ ${esc(v.reason)}</small></span><b class="money" style="color:var(--red)">−${money(v.sum)}</b></div>`).join('') : '<div class="muted">Скасувань немає 👍</div>') +
+        (rm.length ? `<h3 style="margin:18px 0 8px">🧹 Видалені з виручки</h3>` + rm.map(x => `<div class="kv"><span>${x.d.slice(5)} ${x.at} · стіл ${x.t} · ${esc(x.by)}</span><b class="money">${money(x.sum)}</b></div>`).join('') : '');
+    }
     // 🏆 топ страв за вибраний період (з урахуванням фільтрів)
     const top = dishAgg(nm => nm).sort((x, y) => y[1][0] - x[1][0] || y[1][1] - x[1][1]).slice(0, 10), tmax = Math.max(1, ...top.map(x => x[1][0]));
     const topHTML = `<div class="card top"><h3>🏆 Топ страв</h3>${top.length ? top.map(([k, [qq, ss]], i) => `<div class="bar"><div class="bl"><span>${['🥇', '🥈', '🥉'][i] || `<span class="muted">${i + 1}.</span>`} ${esc(k)}</span><b>${qq} шт</b><span class="muted money">${money(ss)}</span></div><i style="width:${Math.max(2, qq / tmax * 100)}%"></i></div>`).join('') : '<div class="muted">Ще немає продажів за цей період</div>'}</div>`;
@@ -633,7 +656,7 @@
       case 'cq': { const c = cartOf(t), x = c[el.dataset.k]; if (x) { x.q += +el.dataset.d; if (x.q <= 0) delete c[el.dataset.k]; } saveCarts(); renderSheet(); break; }
       case 'cartClear': S.carts[t] = {}; saveCarts(); renderSheet(); break;
       case 'send': sendCart(); break;
-      case 'rm': if (await confirmBox(`Прибрати 1× ${el.dataset.name}?`)) act('remove', { t, name: el.dataset.name }, '✏️ Прибрано'); break;
+      case 'rm': { const reason = await voidReason(`Скасувати 1× ${el.dataset.name}?`); if (reason) act('remove', { t, name: el.dataset.name, reason }, '✏️ Скасовано'); break; }
       case 'pre': act('precheck', { t }, '🖨 Пречек відправлено'); break;
       case 'disc': discFlow(); break;
       case 'tip': { const b = S.tables[t]; if (!b) break; const v = await choose(`💝 Чайові — стіл ${t}`, `До сплати ${money(b.pay2)}`, [...[5, 10, 15].map(p => ({ label: `${p}% · ${money(Math.round(b.pay2 * p / 100))}`, val: String(Math.round(b.pay2 * p / 100)) })), { label: '✏️ Своя сума', val: 'own' }, ...(b.tip ? [{ label: 'Прибрати чайові', val: '0', cls: 'red' }] : [])]);
@@ -643,7 +666,7 @@
       case 'discSet': act('discount', { t, pct: 0 }, 'Знижку прибрано'); break;
       case 'move': moveFlow(); break;
       case 'closeT': closeFlow(); break;
-      case 'delTable': if (await confirmBox(`Видалити стіл ${t}?`, 'Помилковий/тестовий — сума НЕ піде у виручку')) { const r = await act('delete', { t }, `🗑 Стіл ${t} видалено`); if (r) closeSheet(); } break;
+      case 'delTable': { const reason = await voidReason(`Видалити весь стіл ${t}? Сума НЕ піде у виручку`); if (reason) { const r = await act('delete', { t, reason }, `🗑 Стіл ${t} видалено`); if (r) closeSheet(); } break; }
       case 'accept': act('accept', { oid: el.dataset.oid }, '✅ Прийнято — гість бачить статус'); break;
       case 'cPrint': act('closedPrint', { ref: el.dataset.ref }, '🖨 Чек відправлено'); break;
       case 'cDel': if (await confirmBox('Видалити рахунок з виручки?', 'Сума, страви й замовлення віднімуться зі звітів')) await act('closedDel', { ref: el.dataset.ref }, '🧹 Видалено з виручки'); loadView(); break;
@@ -657,7 +680,8 @@
         if (v && sum) { await act('expense', { sum, note, src: v }, '💸 Витрату записано'); loadView(); }
         break;
       }
-      case 'tipPay': if (await confirmBox(`Видати чайові: ${el.dataset.n}?`, 'Рахунок чайових обнулиться')) { await act('tipPay', { name: el.dataset.n }, '💝 Видано'); loadView(); loadState().catch(() => {}); } break;
+      case 'tipPay': { const src = await choose(`💝 Видати чайові: ${el.dataset.n}`, 'Звідки списати? Сума відніметься з готівки або картки', [{ label: '💵 Готівкою з каси', val: 'cash', cls: 'green' }, { label: '💳 З картки', val: 'card', cls: 'blue' }]);
+        if (src) { await act('tipPay', { name: el.dataset.n, src }, '💝 Видано'); loadView(); loadState().catch(() => {}); } break; }
       case 'cMove': cashMove(el.dataset.t); break;
       case 'movDel': if (await confirmBox('Видалити запис?')) { await act('moveDel', { i: +el.dataset.i }); loadView(); } break;
       case 'expDel': if (await confirmBox('Видалити витрату?')) { await act('expenseDel', { i: +el.dataset.i }); loadView(); } break;

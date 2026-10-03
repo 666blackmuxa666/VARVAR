@@ -7,7 +7,7 @@ import { storeStub } from './store.js';
 import {
   esc, money, hhmm, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
-  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, addMove, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
+  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
 } from './ops.js';
 
 const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400 };
@@ -27,6 +27,8 @@ export async function posApi(b, req, env) {
   if (b.op === 'register') return register(b, env);
   const token = tokenOf(req), me = await session(env, token);
   if (!me) return [{ error: 'auth' }, 401];
+  // видаленого працівника одразу викидає з каси (сесія більше не діє)
+  if (me.sid && !(await getStaff(env)).some(x => x.id === me.sid)) { await env.DB.delete('pos:' + token); return [{ error: 'auth' }, 401]; }
   const admin = me.role === 'admin', who = me.name;
   const t = +b.t || 0;
   const needAdmin = () => [{ error: 'admin' }, 403];
@@ -53,20 +55,20 @@ export async function posApi(b, req, env) {
       await notify(env, `🖥 <b>Стіл ${t}</b> — замовлення з каси (${esc(who)})\n${r.lines.map(esc).join('\n')}${comment ? `\n💬 ${esc(comment)}` : ''}\nСума: <b>${money(r.sum)}</b> · разом за стіл: <b>${money(r.total)}</b>`, tgBtns(t));
       return ok(r);
     }
-    case 'remove': { const r = await removeOne(env, t, String(b.name), who); if (r) await notify(env, `🖥 ✏️ Стіл ${t}: прибрано 1× ${esc(r.name)} (−${r.unit} грн) — ${esc(who)}`); return ok({ r }); }
+    case 'remove': { const r = await removeOne(env, t, String(b.name), who, b.reason); if (r?.error) return [{ error: r.error }, 400]; if (r) await notify(env, `🖥 ✏️ Стіл ${t}: скасовано 1× ${esc(r.name)} (−${r.unit} грн)\n❓ Причина: <i>${esc(r.reason)}</i> — ${esc(who)}`); return ok({ r }); }
     case 'precheck': return ok({ done: await precheck(env, t, who) });
     case 'close': {
       const r = await closeTable(env, t, who, b.pay === 'card' ? 'card' : 'cash', b.print !== false);
       if (r) await notify(env, `🖥 ✅ <b>Стіл ${t} закрито</b> — ${money(r.sum)}${r.disc ? ` (знижка ${money(r.disc)})` : ''} · ${payLabel(r.cash, r.card)}${b.print === false ? ' · без чека' : ''} — ${esc(who)}`);
       return ok({ r });
     }
-    case 'discount': { const r = await setDiscount(env, t, b.pct, who); if (r) await notify(env, `🖥 % Стіл ${t}: ${r.disc ? `знижка ${r.disc}% — до сплати ${money(payable(r))}` : 'знижку прибрано'} — ${esc(who)}`); return ok(); }
+    case 'discount': { const r = await setDiscount(env, t, b.pct, who, admin); if (r?.error) return [{ error: r.error }, 400]; if (r) await notify(env, `🖥 % Стіл ${t}: ${r.disc ? `знижка ${r.disc}% — до сплати ${money(payable(r))}` : 'знижку прибрано'} — ${esc(who)}`); return ok(); }
     case 'tip': { const r = await setTip(env, t, b.sum, who); if (r) await notify(env, `🖥 💝 Стіл ${t}: ${r.tip ? `чайові ${money(r.tip)}` : 'чайові прибрано'} — ${esc(who)}`); return ok(); }
     case 'move': { const r = await moveTable(env, t, +b.to, who); if (r) await notify(env, `🖥 ${r.merged ? `🔗 Стіл ${t} об'єднано зі столом ${b.to}` : `↔️ Стіл ${t} перенесено на стіл ${b.to}`} — ${esc(who)}`, tgBtns(+b.to)); return ok({ r }); }
     case 'accept': return ok({ done: await acceptOrder(env, String(b.oid), who) });
     case 'delete': {
       if (!admin) return needAdmin();
-      const r = await deleteTable(env, t, who); if (r) await notify(env, `🖥 🗑 <b>Стіл ${t} видалено</b> (${money(r.sum)}) — у виручку не піде · ${esc(who)}`);
+      const r = await deleteTable(env, t, who, b.reason); if (r) await notify(env, `🖥 🗑 <b>Стіл ${t} видалено</b> (${money(r.sum)}) — у виручку не піде · ${esc(who)}`);
       return ok({ r });
     }
 
@@ -86,8 +88,8 @@ export async function posApi(b, req, env) {
   switch (b.op) {
     case 'shift': { const day = await cashData(env); return ok({ tipbal: await tipBalances(env), tippay: (await env.DB.get('tippay:' + day.day, 'json')) || [], z: await dayZData(env), day, exp: day.exp, mov: day.mov, last: await lastZ(env), closed: await getClosed(env) }); }
     case 'zDay': { const z = await dayZ(env, who, b.print !== false); await notify(env, `🖥 ${zDayText(z)}\n— ${esc(who)}`); return ok({ z }); }
-    case 'tipPay': { const s = await payTips(env, String(b.name), who); if (!s) return [{ error: 'Нема що видавати' }, 400]; await notify(env, `🖥 💝 Видано чайові: <b>${esc(b.name)}</b> — ${money(s)} · ${esc(who)}`); return ok({ sum: s }); }
-    case 'cashMove': { const e = await addMove(env, { type: b.type, sum: +b.sum, note: b.note, by: who }); if (!e) return [{ error: 'Потрібна сума' }, 400]; await notify(env, `🖥 ${MOVE[e.type]}: <b>${money(e.sum)}</b>${e.note ? ` — ${esc(e.note)}` : ''} · ${esc(who)}`); return ok(); }
+    case 'tipPay': { const s = await payTips(env, String(b.name), who, b.src); if (!s) return [{ error: 'Нема що видавати' }, 400]; await notify(env, `🖥 💝 Видано чайові: <b>${esc(b.name)}</b> — ${money(s)} ${b.src === 'card' ? '💳 з картки' : '💵 готівкою'} · ${esc(who)}`); return ok({ sum: s }); }
+    case 'cashMove': { const e = await addMove(env, { type: b.type, sum: +b.sum, note: b.note, by: who }); if (!e) return [{ error: 'Потрібна сума' }, 400]; await notify(env, `🖥 ${MOVE_ALL[e.type]}: <b>${money(e.sum)}</b>${e.note ? ` — ${esc(e.note)}` : ''} · ${esc(who)}`); return ok(); }
     case 'moveDel': await delMove(env, +b.i); return ok();
     case 'shiftOpen': { const r = await openShift(env, b.float, who); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 🔓 <b>Касу відкрито</b> — на початок ${money(r.s.float)} · ${esc(who)}`); return ok(); }
     case 'shiftClose': { const r = await closeShift(env, b.counted, who, b.print !== false); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 ${zText(r.z)}
