@@ -86,7 +86,7 @@ export async function acceptOrder(env, oid, who, { editTg = true } = {}) {
 }
 
 // ---------- замовлення персоналу (бот кнопками/текстом і POS) ----------
-export async function addWaiterOrder(env, d, who, comment = '', src = 'бот') {
+export async function addWaiterOrder(env, d, who, comment = '', src = 'бот', urgent = false) {
   const ok = d.items.filter(i => !i.hidden);
   if (!ok.length) return null;
   const lines = ok.map(i => `${i.q}× ${i.name} — ${i.price * i.q}`), sum = ok.reduce((s, i) => s + i.price * i.q, 0);
@@ -97,7 +97,8 @@ export async function addWaiterOrder(env, d, who, comment = '', src = 'бот') 
   await putBill(env, d.table, bill);
   await addStat(env, 'orders', 1);
   await addDishes(env, ok.map(i => ({ n: i.name, q: i.q, sum: i.price * i.q })));
-  await queuePrint(env, 'kitchen', kitchenTicket({ table: d.table, kind: 'ВІД ОФІЦІАНТА', lines, comment, by: who }));
+  await queuePrint(env, 'kitchen', kitchenTicket({ table: d.table, kind: 'ВІД ОФІЦІАНТА', lines, comment, by: who, urgent }));
+  await addKitchen(env, { t: d.table, by: who, src: 'офіціант', comment, lines, urgent });
   await logEvent(env, { k: 'waiter', t: d.table, by: who, src, lines, comment, sum, ...(prev.length ? { prev } : {}) });
   return { sum, total: bill.total, lines, prev };
 }
@@ -133,6 +134,7 @@ export async function removeOne(env, t, name, who = '', reason = '') {
     if (!(b.total > 0)) await logClosed(env, { ts: Date.now(), t: +t, sum: 0, at: hhmm(), by: who || '', del: 1, voids: b.voids }); // стіл спорожнів — скасування лишаються в історії
     await addDishes(env, [{ n: name, q: -1, sum: -unit }]);
     await addVoid(env, v);
+    await kitchenCancel(env, +t, name);
     await logEvent(env, { k: 'rm', t, by: who, text: `−1× ${name} (−${unit}) · ${reason}` });
     return { name, unit, reason };
   }
@@ -237,6 +239,7 @@ export async function deleteTable(env, t, who, reason = '') {
   const bill = await getBill(env, t);
   if (!bill.total) return null;
   await env.DB.delete('bill:' + t);
+  await kitchenCancel(env, +t, null);
   const dishes = []; for (const o of bill.log || []) for (const l of o.lines) { const x = l.match(LINE); if (x) dishes.push([x[2], +x[1], +x[3]]); }
   await addVoid(env, { ts: Date.now(), at: hhmm(), t: +t, by: who || '', name: `🗑 Весь стіл (${dishes.length} поз.)`, sum: bill.total, reason: String(reason || 'стіл видалено').slice(0, 120), table: 1 });
   await logClosed(env, { ts: Date.now(), t, sum: bill.total, at: hhmm(), by: who || '', del: 1, dishes, ...(bill.voids?.length ? { voids: bill.voids } : {}) });
@@ -571,6 +574,49 @@ export function controlData(r) {
   return Object.values(m).map(w => ({ ...w, voidPct: w.sum ? Math.round(w.voidSum / (w.sum + w.voidSum) * 1000) / 10 : 0 })).sort((a, b) => b.voidSum + b.discSum - a.voidSum - a.discSum);
 }
 
+// ---------- 👨‍🍳 кухонний екран: черга замовлень кухні ----------
+// kq:день = [{ id, ts, at, t, by, src, tw, urgent, comment, items:[{n,q,done,cancel}], start, done, doneAt, msgs:[{at,text}] }]
+const KQ_CATS = c => groupOf(c) === 'kitchen' || c === 'inshe-food';
+export const getKq = async (env, day = dayKey()) => (await env.DB.get('kq:' + day, 'json')) || [];
+const putKq = (env, l, day = dayKey()) => env.DB.put('kq:' + day, JSON.stringify(l.slice(-400)));
+export async function addKitchen(env, { t, by, src, comment = '', lines, urgent = false }) {
+  const res = dishResolver(await getMenu(env)), items = [];
+  for (const l of lines || []) { const x = l.match(LINE); if (!x) continue; const d = res(x[2]); if (d && KQ_CATS(d.cat)) items.push({ n: x[2], q: +x[1] }); }
+  if (!items.length) return null;
+  const l = await getKq(env), e = { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), at: hhmm(), t: +t, by: by || '', src, tw: /З СОБОЮ/.test(comment || ''), urgent: !!urgent, comment: String(comment || '').replace(/З СОБОЮ\s*·?\s*/, '').trim(), items };
+  l.push(e); await putKq(env, l); return e;
+}
+async function kqEdit(env, id, fn) { const l = await getKq(env), e = l.find(x => x.id === id); if (!e) return null; const r = fn(e); await putKq(env, l); return r === false ? null : e; }
+// i — номер страви або null (усе замовлення)
+export async function kitchenDone(env, id, i, who) {
+  const e = await kqEdit(env, id, e => { if (e.done) return false; if (i == null) e.items.forEach(x => { x.done = 1; }); else if (e.items[+i]) e.items[+i].done = e.items[+i].done ? 0 : 1; else return false;
+    if (e.items.every(x => x.done || x.cancel)) { e.done = 1; e.doneAt = Date.now(); } });
+  if (e?.done) await logEvent(env, { k: 'ready', t: e.t, by: who, text: e.items.filter(x => !x.cancel).map(x => `${x.q}× ${x.n}`).join(', '), mins: Math.round((e.doneAt - e.ts) / 60000) });
+  return e;
+}
+export const kitchenStart = (env, id, who) => kqEdit(env, id, e => { if (e.done || e.start) return false; e.start = Date.now(); }).then(async e => { if (e) await logEvent(env, { k: 'cooking', t: e.t, by: who }); return e; });
+export const kitchenUndo = (env, id) => kqEdit(env, id, e => { if (!e.done || Date.now() - e.doneAt > 30 * 60e3) return false; e.done = 0; delete e.doneAt; e.items.forEach(x => { x.done = 0; }); });
+export async function kitchenMsg(env, id, text, who) {
+  text = String(text || '').trim().slice(0, 120); if (!text) return null;
+  const e = await kqEdit(env, id, e => { (e.msgs ||= []).push({ at: hhmm(), text }); });
+  if (e) await logEvent(env, { k: 'kmsg', t: e.t, by: who, text });
+  return e;
+}
+// скасування з рахунку → на кухні страва червона «СКАСОВАНО» (name=null — увесь стіл)
+async function kitchenCancel(env, t, name) {
+  const l = await getKq(env); let ch = false;
+  for (let k = l.length - 1; k >= 0; k--) { const e = l[k]; if (e.t !== t || e.done) continue;
+    for (const x of e.items) if (!x.cancel && (name == null || x.n === name)) { if (name != null && x.q > 1) { x.q--; x.canc = (x.canc || 0) + 1; } else x.cancel = 1; ch = true; if (name != null) break; }
+    if (e.items.every(x => x.done || x.cancel)) { e.done = 1; e.doneAt = Date.now(); e.cancelled = 1; }
+    if (ch && name != null) break; }
+  if (ch) await putKq(env, l);
+}
+// ⏱ статистика кухні: час від замовлення до «готово»
+export async function kitchenStats(env, from, to) {
+  const days = dayList(from, to).slice(0, 400), ll = await env.DB.getMany(days.map(d => 'kq:' + d), 'json');
+  return days.flatMap((d, i) => (ll[i] || []).filter(e => e.done && !e.cancelled && e.doneAt).map(e => ({ d, at: e.at, t: e.t, mins: (e.doneAt - e.ts) / 60000, items: e.items.filter(x => !x.cancel).map(x => [x.n, x.q]) })));
+}
+
 // ---------- стоп-лист ----------
 export async function setHidden(env, id, hidden) {
   const menu = await getMenu(env); const it = menu.categories.flatMap(c => c.items).find(i => i.id === id);
@@ -593,9 +639,9 @@ export async function pinHash(pin) {
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
 }
 // коди реєстрації: адмін 1119, офіціант 1112 — ними не входять, а реєструються (імʼя + свій PIN)
-export const REG_DEF = { admin: '1119', waiter: '1112' };
+export const REG_DEF = { admin: '1119', waiter: '1112', cook: '1113' };
 export const regCode = async (env, role) => (await env.DB.get('reg_' + role)) || REG_DEF[role];
-export async function regRole(env, code) { code = String(code || ''); if (code === await regCode(env, 'admin')) return 'admin'; if (code === await regCode(env, 'waiter')) return 'waiter'; return null; }
+export async function regRole(env, code) { code = String(code || ''); for (const r of ['admin', 'waiter', 'cook']) if (code === await regCode(env, r)) return r; return null; }
 export const getStaff = async env => (await env.DB.get('staff', 'json')) || [];
 export async function addStaff(env, name, pin, role = 'waiter') {
   name = String(name || '').trim().slice(0, 30); pin = String(pin || '').trim();
@@ -604,7 +650,7 @@ export async function addStaff(env, name, pin, role = 'waiter') {
   if (list.some(s => s.pin === h)) return { error: 'Такий PIN уже є — оберіть інший.' };
   if (await regRole(env, pin)) return { error: 'Цей код — для реєстрації. Оберіть інший PIN.' };
   if (list.some(s => s.name.toLowerCase() === name.toLowerCase())) return { error: 'Працівник з таким імʼям уже є — додайте прізвище або букву.' };
-  const s = { id: crypto.randomUUID().slice(0, 6), name, pin: h, role: role === 'admin' ? 'admin' : 'waiter' };
+  const s = { id: crypto.randomUUID().slice(0, 6), name, pin: h, role: ['admin', 'cook'].includes(role) ? role : 'waiter' };
   list.push(s); await env.DB.put('staff', JSON.stringify(list));
   return { ok: true, s };
 }
@@ -621,7 +667,7 @@ export const loggedWaiters = async env => {
 // ---------- тест (прибрати перед запуском — лише коли скаже власник) ----------
 export async function resetAll(env) {
   let n = 0;
-  for (const prefix of ['day:', 'closed:', 'dish:', 'bill:', 'ord:', 'rl:', 'exp:', 'ev:', 'z:', 'shift', 'mov:', 'tipbal', 'tippay:', 'void:']) {
+  for (const prefix of ['day:', 'closed:', 'dish:', 'bill:', 'ord:', 'rl:', 'exp:', 'ev:', 'z:', 'shift', 'mov:', 'tipbal', 'tippay:', 'void:', 'kq:']) {
     const keys = (await env.DB.list({ prefix })).keys.map(k => k.name);
     await env.DB.deleteMany(keys); n += keys.length;
   }

@@ -8,7 +8,7 @@ import { queuePrint, printStatus } from './print.js';
 import {
   tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
   precheck, setDiscount, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
-  reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, tipBalances, payTips, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, restoreClosed, reopenClosed, restoreTable, restoreExpense, balances, reconcile, WAITER_DISC_MAX, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
+  reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, tipBalances, payTips, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenStats, getKq, kitchenDone, kitchenStart, restoreClosed, reopenClosed, restoreTable, restoreExpense, balances, reconcile, WAITER_DISC_MAX, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
 } from './ops.js';
 export { tg, esc, hhmm, getBill } from './ops.js';
 export { addStat, addDishes } from './ops.js';
@@ -16,13 +16,13 @@ export { addStat, addDishes } from './ops.js';
 const ADMIN_TTL = 12 * 3600;
 
 // ---------- клавіатури ----------
-const W = { order: '➕ Замовлення', tables: '📋 Столи', close: '🧾 Закрити стіл', stop: '⛔ Стоп-лист', help: '❓ Допомога', admin: '🔐 Адмін' };
+const W = { order: '➕ Замовлення', kitchen: '👨‍🍳 Кухня', tables: '📋 Столи', close: '🧾 Закрити стіл', stop: '⛔ Стоп-лист', help: '❓ Допомога', admin: '🔐 Адмін' };
 const A = { cash: '💰 Каса', expense: '💸 Витрата', reports: '📊 Звіти', closed: '📜 Закриті сьогодні', top: '🏆 Топ страв', del: '🗑 Видалити стіл', menu: '📖 Редагувати меню', wifi: '📶 Wi‑Fi',
   staff: '👥 Персонал', pass: '🔑 Змінити пароль', wpass: '🔑 Пароль офіціанта', waiter: '⬅️ Режим офіціанта', logout: '🚪 Вийти',
   delClosed: '🧹 Видалити закритий', reset: '♻️ Обнулити все' }; // ТЕСТ: delClosed і reset — прибрати, коли скаже власник
 const kb = rows => ({ keyboard: rows.map(r => r.map(text => ({ text }))), resize_keyboard: true, is_persistent: true });
-export const KEYBOARD = kb([[W.order], [W.tables, W.close], [W.stop, W.help], [W.admin]]);
-const ADMIN_KB = kb([[W.order], [A.cash, A.expense], [A.reports, A.closed], [A.top, A.del], [W.tables, W.stop], [A.menu, A.wifi], [A.staff, A.wpass], [A.delClosed, A.reset], [A.pass, A.waiter, A.logout]]);
+export const KEYBOARD = kb([[W.order], [W.tables, W.close], [W.kitchen], [W.stop, W.help], [W.admin]]);
+const ADMIN_KB = kb([[W.order], [A.cash, A.expense], [A.reports, A.closed], [A.top, A.del], [W.tables, W.stop], [W.kitchen], [A.menu, A.wifi], [A.staff, A.wpass], [A.delClosed, A.reset], [A.pass, A.waiter, A.logout]]);
 
 export const COMMANDS = [
   ['tables', 'Відкриті столи і рахунки'], ['table', 'Деталі столу: /table 5'], ['close', 'Закрити рахунок столу'],
@@ -181,7 +181,7 @@ function repRange(p) {
 async function repView(env, p, by) {
   const [from, to] = repRange(p);
   if (by === 'x') { const r = await reportBreakdown(env, from, to, 'waiter'); const ex = r.r.exp.reduce((a, e) => a + e.sum, 0), n = r.r.checks.length;
-    return { text: `📊 <b>${REP_P[p]}</b> (${from} — ${to})\n\nВиручка: <b>${money(r.total)}</b> · чеків ${n}${n ? ` · сер. чек ${money(r.total / n)}` : ''}\n💵 ${money(r.r.checks.reduce((a, c) => a + c.cash, 0))} · 💳 ${money(r.r.checks.reduce((a, c) => a + c.card, 0))}\nВитрати ${money(ex)} · чистими <b>${money(r.total - ex)}</b>\n\nОберіть розріз:`, markup: repMarkup(p) }; }
+    return { text: `📊 <b>${REP_P[p]}</b> (${from} — ${to})\n\nВиручка: <b>${money(r.total)}</b> · чеків ${n}${n ? ` · сер. чек ${money(r.total / n)}` : ''}\n💵 ${money(r.r.checks.reduce((a, c) => a + c.cash, 0))} · 💳 ${money(r.r.checks.reduce((a, c) => a + c.card, 0))}\nВитрати ${money(ex)} · чистими <b>${money(r.total - ex)}</b>${await (async () => { const k = await kitchenStats(env, from, to); return k.length ? `\n⏱ Кухня: ${k.length} замовл. · сер. час <b>${Math.round(k.reduce((a, x) => a + x.mins, 0) / k.length)} хв</b> · понад 15 хв: ${k.filter(x => x.mins > 15).length}` : ''; })()}\n\nОберіть розріз:`, markup: repMarkup(p) }; }
   const r = await reportBreakdown(env, from, to, by);
   if (by === 'ctrl') { const v = r.r.voids;
     return { text: `🕵️ <b>Контроль · ${REP_P[p]}</b> (${from} — ${to})\n\n` + (r.ctrl.length ? r.ctrl.map(w => `👤 <b>${esc(w.name)}</b> — ${w.checks} чек. · ${money(w.sum)}\n   🚫 скасувань ${w.voidN} на ${money(w.voidSum)}${w.voidPct ? ` (${w.voidPct}%)` : ''}${w.tables ? ` · 🗑 столів ${w.tables} на ${money(w.tableSum)}` : ''}\n   🏷 знижок ${w.discN} на ${money(w.discSum)}${w.discMax ? ` (макс ${w.discMax}%)` : ''} · 💝 ${money(w.tip)}`).join('\n\n') : 'Немає даних') +
@@ -189,6 +189,16 @@ async function repView(env, p, by) {
       (r.r.removed.length ? `\n\n🧹 Видалено з виручки: ${r.r.removed.length} на ${money(r.r.removed.reduce((a, x) => a + x.sum, 0))}` : ''), markup: repMarkup(p) }; }
   const unit = ['group', 'cat'].includes(by) ? 'шт' : 'чек.';
   return { text: `📊 <b>${REP_P[p]} · ${REP_BY[by]}</b> (${from} — ${to})\n\n` + (r.rows.length ? r.rows.slice(0, 40).map(([k, [q, sm]]) => `${esc(k)} — <b>${money(sm)}</b> · ${q} ${unit}`).join('\n') : 'Немає даних') + `\n\nВиручка за період: <b>${money(r.total)}</b>`, markup: repMarkup(p) };
+}
+// 👨‍🍳 черга кухні (те саме, що на планшеті кухні)
+async function kitchenView(env, note = '') {
+  const l = (await getKq(env)).filter(e => !e.done);
+  if (!l.length) return { text: (note ? note + '\n\n' : '') + '👨‍🍳 <b>Кухня</b>: черга порожня ✅' };
+  l.sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0) || a.ts - b.ts);
+  const min = e => Math.round((Date.now() - e.ts) / 60000);
+  return { text: (note ? note + '\n\n' : '') + `👨‍🍳 <b>Кухня — у черзі ${l.length}</b>\n\n` + l.map(e => `${e.urgent ? '⚡ ' : ''}<b>Стіл ${e.t}</b> · ${e.at} · ⏱ ${min(e)} хв${e.start ? ' · 🔥 готується' : ''}${e.tw ? ' · 🥡' : ''} · ${esc(e.by)}\n` +
+      e.items.map(x => `${x.cancel ? '❌ <s>' : x.done ? '✅ ' : '▫️ '}${x.q}× ${esc(x.n)}${x.cancel ? '</s> СКАСОВАНО' : ''}`).join('\n') + (e.comment ? `\n💬 ${esc(e.comment)}` : '')).join('\n\n'),
+    markup: { inline_keyboard: [...l.slice(0, 12).map(e => [...(e.start ? [] : [{ text: `🔥 Готую ${e.t}`, callback_data: 'kst:' + e.id }]), { text: `✅ Стіл ${e.t} — все готово`, callback_data: 'kdn:' + e.id }]), [{ text: '🔄 Оновити', callback_data: 'kv' }]] } };
 }
 async function closedView(env, day = dayKey()) {
   const list = await getClosed(env, day);
@@ -403,6 +413,7 @@ export async function handleUpdate(u, env) {
     const ok = Date.now() - seen < 60e3;
     return send({ text: `🖨 <b>Принтер</b>: ${ok ? '✅ на звʼязку' : seen ? `❌ немає звʼязку з ${hhmm(seen)}` : '❌ програма друку ще не запускалась'}\nУ черзі: ${q}`, markup: { inline_keyboard: [[{ text: '🖨 Тестовий друк', callback_data: 'ptest' }, { text: '🔳 QR меню', callback_data: 'pqr' }]] } });
   }
+  if (text === W.kitchen || low === '/kitchen') return send(await kitchenView(env));
   if (low === '/stoplist' || text === W.stop || low === 'стоп-лист' || low === 'стоп лист') return send(await stopView(env));
 
   // --- адміністратор ---
@@ -479,7 +490,7 @@ async function handleCallback(q, env) {
     }
     if (r.send) {
       const com = [r.send.tw ? 'З СОБОЮ' : '', r.send.com || ''].filter(Boolean).join(' · ');
-      const res = await addWaiterOrder(env, { table: r.send.table, items: r.send.items }, who, com);
+      const res = await addWaiterOrder(env, { table: r.send.table, items: r.send.items }, who, com, 'бот', !!r.send.ur);
       if (!res) { await edit('Нічого додати.'); return answer(''); }
       await edit(`✅ <b>Стіл ${r.send.table}</b> — ${res.prev?.length ? '<b>➕ ДОЗАМОВЛЕННЯ</b> відправлено' : 'замовлення відправлено'} (${esc(who)}, ${hhmm()})\n${res.lines.map(x => '🟠 ' + esc(x)).join('\n')}${com ? `\n💬 ${esc(com)}` : ''}\nСума: <b>${money(res.sum)}</b>\n\n💰 Разом за стіл: <b>${money(res.total)}</b>`,
         { inline_keyboard: [[{ text: '➕ Дозамовити', callback_data: 'o:t:' + r.send.table }, { text: `🪑 Стіл ${r.send.table}`, callback_data: 'tbl:' + r.send.table }], [{ text: '🧾 Закрити стіл', callback_data: 'cls:' + r.send.table }]] });
@@ -488,6 +499,9 @@ async function handleCallback(q, env) {
     if (r.view) await edit(r.view.text, r.view.markup);
     return answer(r.toast || '');
   }
+  if (act === 'kv') { const v = await kitchenView(env); await edit(v.text, v.markup); return answer(''); }
+  if (act === 'kst') { const e = await kitchenStart(env, arg, who); const v = await kitchenView(env); await edit(v.text, v.markup); return answer(e ? '🔥 Готується' : ''); }
+  if (act === 'kdn') { const e = await kitchenDone(env, arg, null, who); const v = await kitchenView(env, e ? `🍽 Стіл ${e.t} — готово` : ''); await edit(v.text, v.markup); return answer(e ? 'Готово' : ''); }
   if (act === 'cls') { await send(await closeAsk(env, arg)); return answer(''); }
   if (act === 'wok') { // підтвердження замовлення офіціанта (текстом)
     const d = await env.DB.get('draft:' + arg, 'json');

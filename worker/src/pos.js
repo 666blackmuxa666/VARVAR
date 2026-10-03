@@ -7,10 +7,10 @@ import { storeStub } from './store.js';
 import {
   esc, money, hhmm, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
-  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
+  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
 } from './ops.js';
 
-const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400 };
+const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400, cook: 30 * 86400 };
 const tokenOf = req => (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
 async function session(env, token) { return /^[a-f0-9]{32}$/.test(token || '') ? env.DB.get('pos:' + token, 'json') : null; }
 const ipKey = ip => ip.includes(':') ? ip.split(':').slice(0, 4).join(':') + '::/64' : ip;
@@ -33,6 +33,8 @@ export async function posApi(b, req, env) {
   const t = +b.t || 0;
   const needAdmin = () => [{ error: 'admin' }, 403];
   const ok = (x = {}) => [{ ok: true, ...x }, 200];
+  // 👨‍🍳 кухар: черга кухні + вибити замовлення + стоп-лист; решта — ні
+  if (me.role === 'cook' && !['logout', 'state', 'menu', 'fav', 'order', 'accept', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'printTest'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
 
   switch (b.op) {
     case 'logout': await env.DB.delete('pos:' + token); return ok();
@@ -50,7 +52,7 @@ export async function posApi(b, req, env) {
       const items = await itemsFromMenu(env, b.items);
       const comment = String(b.comment || '').trim().slice(0, 200);
       if (!t || t > tablesCount(env)) return [{ error: 'table' }, 400];
-      const r = await addWaiterOrder(env, { table: t, items }, who, comment, 'каса');
+      const r = await addWaiterOrder(env, { table: t, items }, who, comment, 'каса', !!b.urgent);
       if (!r) return [{ error: 'empty' }, 400];
       await notify(env, `🖥 <b>Стіл ${t}</b> — ${r.prev?.length ? '<b>➕ ДОЗАМОВЛЕННЯ</b>' : 'замовлення'} з каси (${esc(who)})\n${r.lines.map(esc).join('\n')}${comment ? `\n💬 ${esc(comment)}` : ''}\nСума: <b>${money(r.sum)}</b> · разом за стіл: <b>${money(r.total)}</b>`, tgBtns(t));
       return ok(r);
@@ -71,6 +73,14 @@ export async function posApi(b, req, env) {
       const r = await deleteTable(env, t, who, b.reason); if (r) await notify(env, `🖥 🗑 <b>Стіл ${t} видалено</b> (${money(r.sum)}) — у виручку не піде · ${esc(who)}`);
       return ok({ r });
     }
+
+    // ---- 👨‍🍳 кухня ----
+    case 'kitchen': { const l = await getKq(env); return ok({ list: l.filter(e => !e.done).concat(l.filter(e => e.done && !e.cancelled).slice(-10)) }); }
+    case 'kDone': return ok({ e: await kitchenDone(env, String(b.id), b.i == null ? null : +b.i, who) });
+    case 'kStart': return ok({ e: await kitchenStart(env, String(b.id), who) });
+    case 'kUndo': return ok({ e: await kitchenUndo(env, String(b.id)) });
+    case 'kMsg': { const e = await kitchenMsg(env, String(b.id), b.text, who); return e ? ok() : [{ error: 'Порожнє повідомлення' }, 400]; }
+    case 'kStats': { if (!/^\d{4}-\d{2}-\d{2}$/.test(String(b.from)) || !/^\d{4}-\d{2}-\d{2}$/.test(String(b.to))) return [{ error: 'Невірний період' }, 400]; return ok({ list: await kitchenStats(env, String(b.from), String(b.to)) }); }
 
     // ---- стоп-лист і принтер (усім) ----
     case 'stop': { const it = await setHidden(env, String(b.id), !!b.hidden); if (it) await notify(env, `🖥 ${b.hidden ? '⛔' : '✅'} <b>${esc(it.name.uk)}</b> ${b.hidden ? 'у стоп-листі' : 'знову в меню'} — ${esc(who)}`); return ok(); }
@@ -142,8 +152,8 @@ export async function posApi(b, req, env) {
     case 'wifiClear': await env.DB.put('venue_ips', '[]'); await notify(env, `🖥 📶 Усі мережі закладу скинуто — ${esc(who)}`); return ok();
 
     // персонал і паролі
-    case 'staff': return ok({ staff: (await getStaff(env)).map(({ pin, ...s }) => s), waiters: await loggedWaiters(env), reg: { admin: await regCode(env, 'admin'), waiter: await regCode(env, 'waiter') } });
-    case 'regCode': { const c = String(b.code || '').trim(); if (!/^\d{4}$/.test(c)) return [{ error: 'Код — 4 цифри' }, 400]; await env.DB.put('reg_' + (b.role === 'admin' ? 'admin' : 'waiter'), c); return ok(); }
+    case 'staff': return ok({ staff: (await getStaff(env)).map(({ pin, ...s }) => s), waiters: await loggedWaiters(env), reg: { admin: await regCode(env, 'admin'), waiter: await regCode(env, 'waiter'), cook: await regCode(env, 'cook') } });
+    case 'regCode': { const c = String(b.code || '').trim(); if (!/^\d{4}$/.test(c)) return [{ error: 'Код — 4 цифри' }, 400]; await env.DB.put('reg_' + (['admin', 'cook'].includes(b.role) ? b.role : 'waiter'), c); return ok(); }
     case 'staffAdd': { const r = await addStaff(env, b.name, b.pin, b.role); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 👥 Додано працівника <b>${esc(r.s.name)}</b> (${r.s.role === 'admin' ? 'адмін' : 'офіціант'}) — ${esc(who)}`); return ok(); }
     case 'staffDel': await delStaff(env, String(b.id)); return ok();
     case 'waiterOut': await env.DB.delete('wlog:' + b.uid); await env.DB.delete('adm:' + b.uid); return ok();
@@ -157,7 +167,7 @@ export async function posApi(b, req, env) {
 async function register(b, env) {
   const role = await regRole(env, b.code); if (!role) return [{ error: 'Невірний код реєстрації' }, 401];
   const r = await addStaff(env, b.name, b.pin, role); if (r.error) return [{ error: r.error }, 400];
-  await notify(env, `👥 Новий працівник: <b>${esc(r.s.name)}</b> (${role === 'admin' ? 'адміністратор' : 'офіціант'}) — зареєструвався в касі`);
+  await notify(env, `👥 Новий працівник: <b>${esc(r.s.name)}</b> (${role === 'admin' ? 'адміністратор' : role === 'cook' ? 'кухар' : 'офіціант'}) — зареєструвався в касі`);
   const me = { name: r.s.name, role, sid: r.s.id };
   const token = [...crypto.getRandomValues(new Uint8Array(16))].map(x => x.toString(16).padStart(2, '0')).join('');
   await env.DB.put('pos:' + token, JSON.stringify({ ...me, at: Date.now() }), { expirationTtl: SESSION_TTL[role] });

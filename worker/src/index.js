@@ -3,7 +3,7 @@ import { aiHelp } from './ai.js';
 // Secrets: BOT_TOKEN, CHAT_ID, ADMIN_PIN, TG_SECRET   Vars: ALLOWED_ORIGIN, TABLES, SELF_URL   KV: DB
 import { getMenu, priceMap } from './menu.js';
 import { handleUpdate } from './bot.js';
-import { tg, esc, getBill, putBill, addStat, addDishes, hhmm, logEvent, billItems, payable } from './ops.js';
+import { tg, esc, getBill, putBill, addStat, addDishes, hhmm, logEvent, billItems, payable, addKitchen } from './ops.js';
 import { posApi, posLive } from './pos.js';
 import { queuePrint, kitchenTicket, printApi } from './print.js';
 export { PrintQ } from './print.js';
@@ -183,6 +183,7 @@ async function order(b, ip, env) {
   if (lines.length) {
     await addStat(env, 'orders', 1); await addDishes(env, sold);
     await queuePrint(env, 'kitchen', kitchenTicket({ table, kind: TYPES[type], lines, comment, by: 'гість (сайт)' })); // бігунок
+    await addKitchen(env, { t: table, by: 'гість', src: 'гість', comment, lines });
   }
   await putBill(env, table, bill);
   await env.DB.put('rl:' + dev, String(Date.now()), { expirationTtl: 60 });

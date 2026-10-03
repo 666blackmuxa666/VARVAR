@@ -14,7 +14,7 @@ const sum = ob => ob.items.reduce((s, i) => s + i.price * i.q, 0);
 
 function head(ob) {
   const list = ob.items.length ? ob.items.map(i => `${i.q}× ${esc(i.name)} — ${i.price * i.q}`).join('\n') : '<i>поки порожньо — оберіть категорію</i>';
-  return `🧾 <b>Стіл ${ob.table}</b> — нове замовлення${ob.tw ? ' · 🥡 <b>З СОБОЮ</b>' : ''}\n\n${list}${ob.com ? `\n💬 ${esc(ob.com)}` : ''}${ob.items.length ? `\n\nСума: <b>${sum(ob)} грн</b>` : ''}`;
+  return `🧾 <b>Стіл ${ob.table}</b> — нове замовлення${ob.tw ? ' · 🥡 <b>З СОБОЮ</b>' : ''}${ob.ur ? ' · ⚡ <b>ТЕРМІНОВО</b>' : ''}\n\n${list}${ob.com ? `\n💬 ${esc(ob.com)}` : ''}${ob.items.length ? `\n\nСума: <b>${sum(ob)} грн</b>` : ''}`;
 }
 
 export async function tablePick(env, openTables, tables) {
@@ -27,9 +27,9 @@ export async function tablePick(env, openTables, tables) {
 export async function catsView(env, ob) {
   const cats = [b('⭐ Обрані', 'f'), ...GROUPS.map(g => b(g.name, 'g:' + g.id))];
   const n = ob.items.reduce((s, i) => s + i.q, 0);
-  const tw = b(ob.tw ? '🥡 З собою ✅ (+упаковка)' : '🥡 З собою', 'tw');
+  const tw = b(ob.tw ? '🥡 З собою ✅ (+упаковка)' : '🥡 З собою', 'tw'), ur = b(ob.ur ? '⚡ Терміново ✅' : '⚡ Терміново', 'ur');
   const foot = ob.items.length
-    ? [[b(`✅ Відправити · ${sum(ob)} грн`, 'send')], [b(`✏️ Кошик (${n})`, 'cart'), b(ob.com ? '💬 Змінити коментар' : '💬 Коментар', 'com')], [tw, b('🪑 Інший стіл', 'tp')], [b('✖ Скасувати', 'x')]]
+    ? [[b(`✅ Відправити · ${sum(ob)} грн`, 'send')], [b(`✏️ Кошик (${n})`, 'cart'), b(ob.com ? '💬 Змінити коментар' : '💬 Коментар', 'com')], [tw, ur], [b('🪑 Інший стіл', 'tp'), b('✖ Скасувати', 'x')]]
     : [[b('💬 Коментар', 'com'), tw], [b('🪑 Інший стіл', 'tp'), b('✖ Скасувати', 'x')]];
   return { text: head(ob), markup: { inline_keyboard: [...chunk(cats, 2), ...foot] } };
 }
@@ -78,6 +78,7 @@ export async function obCallback(env, uid, p) {
   if (a === 'x') { await env.DB.delete('ob:' + uid); return { cancel: true }; }
   if (a === 'tp') return { tablePick: true };
   if (a === 'back') return { view: await catsView(env, ob) };
+  if (a === 'ur') { ob.ur = !ob.ur; await putOb(env, uid, ob); return { view: await catsView(env, ob), toast: ob.ur ? '⚡ Терміново' : 'Звичайно' }; }
   if (a === 'tw') { ob.tw = !ob.tw; await putOb(env, uid, ob); return { view: await catsView(env, ob), toast: ob.tw ? '🥡 З собою' : 'В залі' }; }
   if (a === 'f') return { view: await favView(env, ob) };
   if (a === 'g') return { view: await groupView(env, ob, x) };

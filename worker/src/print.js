@@ -38,8 +38,9 @@ export class PrintQ {
 }
 
 // бігунок на кухню/бар — без цін, стіл на чорній плашці
-export function kitchenTicket({ table, kind, lines, comment, by }) {
+export function kitchenTicket({ table, kind, lines, comment, by, urgent }) {
   return [
+    ...(urgent ? [['invb', '!!! ТЕРМІНОВО !!!']] : []),
     ['invb', `СТІЛ ${table}`],
     ['c', `${kind}  ·  ${hhmm()}`],
     ...(by ? [['c', `Замовив: ${by}`]] : []),
