@@ -67,7 +67,7 @@
       <section class="cat ${c.id === 'extras' ? 'compact' : DRINKS.has(c.id) ? 'drinks' : ''}" id="c-${c.id}">
         <h2>${esc(catName(c))}</h2>
         <div class="grid">${c.items.map(card).join('')}</div>
-      </section>`).join('');
+      </section>${c.id === 'extras' ? `<button class="ai-card" data-ai><b>✨ ${esc(t('aiBtn'))}</b><span>${esc(t('aiSub'))}</span></button>` : ''}`).join('');
     observeCats();
     renderFab();
   }
@@ -249,12 +249,47 @@
     $('#wifiModal').hidden = false;
   }
 
+  // ---------- ✨ помічник Gemini ----------
+  let ai = { hist: [], q: null, res: null };
+  const aiNm = key => { const [id, v] = key.split('|'); const it = byId[id]; return it ? itemName(it) + (v ? ` ${unit(v + ' л')}` : '') : key; };
+  function aiRender(html) { $('#aiBody').innerHTML = html; }
+  async function aiAsk(now) {
+    aiRender(`<div class="ai-think"><i></i><i></i><i></i></div>`);
+    try {
+      const r = await fetch(C.api + '/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lang, device, hist: ai.hist, now }) });
+      const d = await r.json(); if (!r.ok) throw d;
+      if (d.question) { ai.q = d.question;
+        aiRender(`<p class="ai-q">${esc(d.question)}</p><div class="ai-opts">${d.options.map(o => `<button class="btn ghost" data-ai-a="${esc(o)}">${esc(o)}</button>`).join('')}</div>
+          <div class="ai-own"><input id="aiOwn" placeholder="${esc(t('aiOwn'))}"><button class="btn" data-ai-a="">→</button></div>${ai.hist.length ? `<button class="ai-skip" data-ai-a="__now">${esc(t('aiNow'))}</button>` : ''}`);
+      } else { ai.res = d;
+        aiRender(`<p class="ai-q">${esc(d.intro)}</p>${d.picks.map((p, i) => `<div class="ai-pick"><h3>${esc(p.title)}</h3><p>${esc(p.why)}</p>
+          <ul>${p.items.map(x => `<li>${x.q > 1 ? x.q + '× ' : ''}${esc(aiNm(x.key))}<span>${money(x.price * x.q)}</span></li>`).join('')}</ul>
+          <button class="btn" data-ai-pick="${i}">🛒 ${esc(t('aiAdd'))} · ${money(p.sum)}</button></div>`).join('')}<button class="ai-skip" data-ai-again>🔄 ${esc(t('aiAgain'))}</button>`);
+      }
+    } catch (e) { aiRender(`<p class="ai-q">${esc(t(e?.error === 'limit' ? 'aiLimit' : 'aiErr'))}</p><button class="btn" data-ai-again>🔄 ${esc(t('aiAgain'))}</button>`); }
+  }
+  function aiOpen() { ai = { hist: [], q: null, res: null }; $('#aiModal').hidden = false; aiAsk(); }
+  function aiStep(a) {
+    if (a === '__now') return aiAsk(true);
+    if (!a) { a = ($('#aiOwn')?.value || '').trim(); if (!a) return; }
+    ai.hist.push({ q: ai.q, a }); aiAsk();
+  }
+  function aiTake(i) {
+    const p = ai.res?.picks[i]; if (!p) return;
+    p.items.forEach(x => { if (byId[x.key.split('|')[0]]) cart[x.key] = (cart[x.key] || 0) + x.q; });
+    save(); refreshButtons(); renderFab(); $('#aiModal').hidden = true; openSheet();
+  }
+
   // ---------- події ----------
   document.addEventListener('click', e => {
     const el = e.target.closest('button, [data-close], #wifiBanner, #orderStatus');
     if (!el || (el.id !== 'lang' && !el.dataset.lang)) $('#langs').hidden = true;
     if (!el) return;
-    if (el.dataset.add) change(el.dataset.add, 1);
+    if ('ai' in el.dataset) aiOpen();
+    else if (el.dataset.aiA != null) aiStep(el.dataset.aiA);
+    else if (el.dataset.aiPick != null) aiTake(+el.dataset.aiPick);
+    else if ('aiAgain' in el.dataset) aiOpen();
+    else if (el.dataset.add) change(el.dataset.add, 1);
     else if (el.dataset.pk) { if (packQty() + +el.dataset.pk >= 0) packAdj += +el.dataset.pk; renderCart(); renderFab(); }
     else if ('tw' in el.dataset) { packAdj = 0; tw = !tw; store.set('tw', tw); renderCart(); renderFab(); }
     else if (el.dataset.inc) change(el.dataset.inc, 1);

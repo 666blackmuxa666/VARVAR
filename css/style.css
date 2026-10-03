@@ -197,3 +197,24 @@ textarea { border-radius: 14px; }
 .tip.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .tip.on small { color: var(--accent-ink); }
 .tips input { width: 100%; background: #0003; color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 10px; font: inherit; }
+/* ✨ помічник */
+.ai-card { display: flex; flex-direction: column; gap: 4px; width: 100%; margin: 22px 0 6px; padding: 18px 20px; border: 1px solid #f2c14e66; border-radius: var(--r); text-align: left; color: var(--text);
+  background: linear-gradient(120deg, #2b2412, #1d1d1d 60%, #2a1d2b); cursor: pointer; box-shadow: 0 0 24px #f2c14e1f; }
+.ai-card b { font-size: 19px; color: var(--accent); }
+.ai-card span { color: var(--muted); font-size: 14px; }
+.ai-modal { max-height: 88vh; overflow: auto; }
+.ai-q { font-size: 17px; margin: 6px 0 14px; }
+.ai-opts { display: grid; gap: 8px; }
+.ai-own { display: flex; gap: 8px; margin-top: 10px; }
+.ai-own input { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; color: var(--text); padding: 10px 12px; font: inherit; }
+.ai-own .btn { width: auto; padding: 0 16px; }
+.ai-skip { background: none; border: 0; color: var(--muted); text-decoration: underline; margin-top: 14px; font: inherit; cursor: pointer; }
+.ai-pick { background: var(--bg); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; margin-bottom: 12px; }
+.ai-pick h3 { margin: 0 0 4px; color: var(--accent); }
+.ai-pick p { margin: 0 0 8px; color: var(--muted); font-size: 14px; }
+.ai-pick ul { list-style: none; padding: 0; margin: 0 0 12px; }
+.ai-pick li { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-bottom: 1px dashed var(--line); }
+.ai-think { display: flex; gap: 8px; justify-content: center; padding: 30px; }
+.ai-think i { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: aib 1s infinite alternate; }
+.ai-think i:nth-child(2) { animation-delay: .2s } .ai-think i:nth-child(3) { animation-delay: .4s }
+@keyframes aib { to { opacity: .2; transform: translateY(-6px); } }
