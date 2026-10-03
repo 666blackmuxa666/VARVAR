@@ -168,8 +168,8 @@
     const bar = $('#orderStatus');
     if (!last || (last.s === 'acc' && Date.now() - (last.accAt || 0) > 3000)) { bar.hidden = true; return; }
     bar.hidden = false;
-    bar.className = 'order-status ' + (last.s === 'acc' ? 'ok' : 'wait');
-    bar.textContent = last.s === 'acc'
+    bar.className = 'order-status ' + (last.rej ? 'wait' : last.s === 'acc' ? 'ok' : 'wait');
+    bar.textContent = last.rej ? t('rejOrder') : last.s === 'acc'
       ? (last.type === 'call' ? t('accCall') : last.type === 'check' ? t('accCheck') : t('accOrder')) + (last.by ? ` · ${last.by}` : '')
       : (last.type === 'call' ? t('waitCall') : last.type === 'check' ? t('waitCheck') : t('waitOrder'));
   }
@@ -181,7 +181,10 @@
       let changed = false;
       for (const r of pending) {
         const st = data[r.id];
-        if (st && st.s === 'acc') {
+        if (st && st.s === 'rej') { // офіціант відхилив
+          Object.assign(r, { s: 'acc', rej: 1, by: st.by, accAt: Date.now() + 9000 }); changed = true;
+          hist.orders = hist.orders.filter(x => x.id !== r.id); navigator.vibrate?.([80, 60, 80]);
+        } else if (st && st.s === 'acc') {
           Object.assign(r, { s: 'acc', by: st.by, accAt: Date.now() }); changed = true;
           const o = hist.orders.find(x => x.id === r.id); if (o) o.s = 'acc';
           navigator.vibrate?.(80);

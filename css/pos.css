@@ -449,3 +449,4 @@ body.cook .more-btn { display: none !important; }
 .ev.ready { background: linear-gradient(135deg, #0f3a1c, #0d2614); border: 2px solid #30d158; } .ev.ready .top b { color: #7ee29a; font-size: 15px; }
 .ev.kmsg { background: linear-gradient(135deg, #3a1450, #22102e); border: 2px solid #bf5af2; } .ev.kmsg .top b { color: #e0aaff; }
 .ev.cooking .top b { color: #ff9f0a; }
+.ev.rej .lines{text-decoration:line-through;opacity:.5}

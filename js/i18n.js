@@ -1,5 +1,6 @@
 window.I18N = {
   uk: {
+    rejOrder: '❌ Офіціант відхилив замовлення — уточніть у нього, будь ласка',
     callBtn: 'Офіціант', callWait: 'Вже кличемо — хвилинку 🙏', waitCall: '🔔 Кличемо офіціанта…', accCall: '✅ Офіціант уже йде', 
     aiBtn: 'Не знаю, що хочу', aiSub: 'Відповідайте на кілька питань — підберемо страви за вас', aiOwn: 'Або напишіть своє…', aiNow: 'Досить питань — радь уже!', aiAdd: 'Додати все в кошик', aiAgain: 'Ще раз', aiErr: 'Помічник зараз не відповідає. Спробуйте трохи згодом 🙏', aiLimit: 'Забагато запитів — спробуйте за годину', 
     tipTitle: '💝 Чайові офіціанту', tipNo: 'Без', tipOwnBtn: 'Своя сума', tipOwn: 'Сума чайових, грн', tipLbl: 'Чайові',
@@ -18,6 +19,7 @@ window.I18N = {
     add: 'Додати', cur: 'грн', thanks: 'Дякуємо за відвідування! Ваша підтримка цінна для нас.',
   },
   en: {
+    rejOrder: '❌ The waiter declined the order — please ask them',
     callBtn: 'Waiter', callWait: 'Already calling — one moment 🙏', waitCall: '🔔 Calling the waiter…', accCall: '✅ The waiter is coming', 
     aiBtn: 'Not sure what I want', aiSub: 'Answer a few questions — we\'ll pick dishes for you', aiOwn: 'Or type your own…', aiNow: 'Enough questions — just recommend!', aiAdd: 'Add all to cart', aiAgain: 'Try again', aiErr: 'The helper is not responding right now. Please try later 🙏', aiLimit: 'Too many requests — try in an hour', 
     tipTitle: '💝 Tip for the waiter', tipNo: 'No', tipOwnBtn: 'Custom', tipOwn: 'Tip amount, UAH', tipLbl: 'Tip',

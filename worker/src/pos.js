@@ -7,7 +7,7 @@ import { storeStub } from './store.js';
 import {
   esc, money, hhmm, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
-  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
+  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
 } from './ops.js';
 
 const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400, cook: 30 * 86400 };
@@ -34,7 +34,7 @@ export async function posApi(b, req, env) {
   const needAdmin = () => [{ error: 'admin' }, 403];
   const ok = (x = {}) => [{ ok: true, ...x }, 200];
   // 👨‍🍳 кухар: черга кухні + вибити замовлення + стоп-лист; решта — ні
-  if (me.role === 'cook' && !['logout', 'state', 'menu', 'fav', 'order', 'accept', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'printTest'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
+  if (me.role === 'cook' && !['logout', 'state', 'menu', 'fav', 'order', 'accept', 'reject', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'printTest'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
 
   switch (b.op) {
     case 'logout': await env.DB.delete('pos:' + token); return ok();
@@ -68,6 +68,7 @@ export async function posApi(b, req, env) {
     case 'tip': { if (+b.sum || !admin) return [{ error: 'Чайові додає лише гість. Прибрати може адміністратор.' }, 403]; const r = await setTip(env, t, b.sum, who); if (r) await notify(env, `🖥 💝 Стіл ${t}: ${r.tip ? `чайові ${money(r.tip)}` : 'чайові прибрано'} — ${esc(who)}`); return ok(); }
     case 'move': { const r = await moveTable(env, t, +b.to, who); if (r) await notify(env, `🖥 ${r.merged ? `🔗 Стіл ${t} об'єднано зі столом ${b.to}` : `↔️ Стіл ${t} перенесено на стіл ${b.to}`} — ${esc(who)}`, tgBtns(+b.to)); return ok({ r }); }
     case 'accept': return ok({ done: await acceptOrder(env, String(b.oid), who) });
+    case 'reject': { const o = await rejectOrder(env, String(b.oid), who); return o ? ok() : [{ error: 'Вже прийнято або відхилено' }, 400]; }
     case 'delete': {
       if (!admin) return needAdmin();
       const r = await deleteTable(env, t, who, b.reason); if (r) await notify(env, `🖥 🗑 <b>Стіл ${t} видалено</b> (${money(r.sum)}) — у виручку не піде · ${esc(who)}`);

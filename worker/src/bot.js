@@ -8,7 +8,7 @@ import { queuePrint, printStatus } from './print.js';
 import {
   tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
   precheck, setDiscount, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
-  reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, tipBalances, payTips, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenStats, getKq, kitchenDone, kitchenStart, restoreClosed, reopenClosed, restoreTable, restoreExpense, balances, reconcile, WAITER_DISC_MAX, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
+  reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, tipBalances, payTips, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, rejectOrder, kitchenStats, getKq, kitchenDone, kitchenStart, restoreClosed, reopenClosed, restoreTable, restoreExpense, balances, reconcile, WAITER_DISC_MAX, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
 } from './ops.js';
 export { tg, esc, hhmm, getBill } from './ops.js';
 export { addStat, addDishes } from './ops.js';
@@ -472,6 +472,12 @@ async function handleCallback(q, env) {
   const who = q.from?.first_name || '';
   const confirm = (text, yes) => send({ text, markup: { inline_keyboard: [[{ text: '✅ Так', callback_data: yes }, { text: 'Ні', callback_data: 'no' }]] } });
 
+  if (act === 'rej') { // ❌ відхилити замовлення гостя
+    const o = await rejectOrder(env, oid, who, { editTg: false });
+    const html = q.message.text ? esc(q.message.text) : '';
+    if (o) await edit(`${html}\n\n❌ Відхилив: <b>${esc(who)}</b> о ${hhmm()}`);
+    return answer(o ? 'Відхилено' : 'Вже прийнято');
+  }
   if (act === 'acc') { // ✅ Прийняв — гість бачить статус на сайті, POS — у стрічці
     const html = q.message.text ? esc(q.message.text) : '';
     await acceptOrder(env, oid, who, { editTg: false });

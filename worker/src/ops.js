@@ -76,7 +76,12 @@ export async function acceptOrder(env, oid, who, { editTg = true } = {}) {
   if (!/^[a-z0-9]{6,12}$/.test(oid || '')) return false;
   const o = (await env.DB.get('ord:' + oid, 'json')) || {};
   if (o.s === 'acc') return false;
+  if (o.s === 'rej') return false;
   await env.DB.put('ord:' + oid, JSON.stringify({ ...o, s: 'acc', by: who, at: hhmm() }), { expirationTtl: BILL_TTL });
+  if (o.lines?.length) { // замовлення гостя підтверджене → на кухню: бігунок + екран кухні
+    await queuePrint(env, 'kitchen', kitchenTicket({ table: o.t, kind: o.kind || 'ЗАМОВЛЕННЯ ГОСТЯ', lines: o.lines, comment: o.comment, by: `гість · прийняв ${who}` }));
+    await addKitchen(env, { t: o.t, by: 'гість', src: 'гість', comment: o.comment, lines: o.lines });
+  }
   const k = 'ev:' + dayKey(); const list = (await env.DB.get(k, 'json')) || [];
   for (const e of list) if (e.oid === oid) { e.s = 'acc'; e.accBy = who; }
   await env.DB.put(k, JSON.stringify(list), { expirationTtl: 3 * 86400 });
@@ -114,6 +119,23 @@ export async function itemsFromMenu(env, list) {
     out.push({ name: it.name.uk + (v ? ` ${v.v} ${it.size || 'л'}`.trimEnd() : ''), price: v ? v.p : it.price, q, hidden: !!it.hidden });
   }
   return out;
+}
+
+// ❌ відхилити замовлення гостя (ще не прийняте): прибрати з рахунку і статистики, гість бачить «відхилено»
+export async function rejectOrder(env, oid, who, { editTg = true } = {}) {
+  if (!/^[a-z0-9]{6,12}$/.test(oid || '')) return null;
+  const o = (await env.DB.get('ord:' + oid, 'json')) || {};
+  if (o.s !== 'new' || !o.lines?.length) return null;
+  await env.DB.put('ord:' + oid, JSON.stringify({ ...o, s: 'rej', by: who, at: hhmm() }), { expirationTtl: BILL_TTL });
+  const b = await getBill(env, o.t), i = (b.log || []).findIndex(x => x.oid === oid);
+  if (i >= 0) { b.log.splice(i, 1); b.total = Math.max(0, (b.total || 0) - (o.sum || 0)); b.orders = Math.max(0, (b.orders || 1) - 1); await putBill(env, o.t, b); }
+  if (o.sold?.length) await addDishes(env, o.sold.map(x => ({ n: x.n, q: -x.q, sum: -x.sum })));
+  await addStat(env, 'orders', -1);
+  const k = 'ev:' + dayKey(), list = (await env.DB.get(k, 'json')) || [];
+  for (const e of list) if (e.oid === oid) { e.s = 'rej'; e.accBy = who; }
+  await env.DB.put(k, JSON.stringify(list), { expirationTtl: 3 * 86400 });
+  if (editTg && o.mid && o.html) await tg(env, 'editMessageText', { chat_id: env.CHAT_ID, message_id: o.mid, text: `${o.html}\n\n❌ Відхилив: <b>${esc(who)}</b> о ${hhmm()}`, parse_mode: 'HTML' });
+  return o;
 }
 
 // прибрати 1 шт позиції (за назвою) з останнього замовлення, де вона є

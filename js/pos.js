@@ -145,7 +145,7 @@
   const navList = () => isCook() ? NAV_COOK : NAV.filter(n => !n[3] || isAdmin());
   const NAV = [['hall', '🪑', 'Зал'], ['closed', '📜', 'Закриті'], ['stop', '⛔', 'Стоп-лист'], ['cash', '💰', 'Каса', 1], ['reports', '📊', 'Звіти', 1], ['kq', '👨‍🍳', 'Кухня', 1], ['menu', '📖', 'Меню', 1], ['printer', '🖨', 'Принтер'], ['settings', '⚙️', 'Налашт.', 1]];
   function renderNav() {
-    const newCnt = S.events.filter(e => e.k === 'guest' && e.s !== 'acc').length;
+    const newCnt = S.events.filter(e => e.k === 'guest' && e.s === 'new').length;
     setHTML($('#nav'), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` +
       navList().map(([v, ic, l]) => `<button class="${S.view === v ? 'on' : ''}${!isCook() && ['printer', 'menu', 'settings', 'stop', 'kq'].includes(v) ? ' more-i' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join('') +
       `<button class="feed-btn" data-a="feed"><span class="ic">🔔</span>Стрічка${newCnt ? `<span class="badge">${newCnt}</span>` : ''}</button>` +
@@ -157,7 +157,7 @@
   // ---------- зал ----------
   function hallHTML() {
     const list = Object.values(S.tables), sum = list.reduce((s, b) => s + b.pay2, 0);
-    const pending = new Set(S.events.filter(e => e.k === 'guest' && e.s !== 'acc').map(e => e.t));
+    const pending = new Set(S.events.filter(e => e.k === 'guest' && e.s === 'new').map(e => e.t));
     const tiles = Array.from({ length: S.n }, (_, i) => i + 1).map(t => {
       const b = S.tables[t];
       if (!b) return `<button class="tbl" data-a="table" data-t="${t}"><div class="n">${t}</div><div class="st">вільний</div></button>`;
@@ -182,9 +182,9 @@
       const lines = rdy || (e.lines?.length ? `${add ? '<div class="addtag">➕ ДОЗАМОВЛЕННЯ</div>' : ''}<div class="lines${add ? ' add' : ''}">${e.lines.map(esc).join('\n')}</div>` : '');
       const by = e.by && !['waiter'].includes(e.k) ? ` · ${esc(e.by)}` : '';
       const btns = e.k === 'noscan' ? `<div class="act"><button class="btn sm" data-a="table" data-t="${e.t}">Стіл ${e.t}</button></div>` : e.k === 'guest' || e.k === 'check' || e.k === 'call'
-        ? `<div class="act">${e.s === 'acc' ? `<span class="muted">✅ ${esc(e.accBy || 'прийнято')}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">✅ Прийняв</button>`}<button class="btn sm" data-a="table" data-t="${e.t}">Стіл ${e.t}</button></div>` : '';
+        ? `<div class="act">${e.s === 'acc' ? `<span class="muted">✅ ${esc(e.accBy || 'прийнято')}</span>` : e.s === 'rej' ? `<span style="color:var(--red,#ff453a)">❌ відхилено · ${esc(e.accBy || '')}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">✅ Прийняв</button>${e.k === 'guest' ? `<button class="btn sm red" data-a="reject" data-oid="${e.oid}">❌ Відхилити</button>` : ''}`}<button class="btn sm" data-a="table" data-t="${e.t}">Стіл ${e.t}</button></div>` : '';
       const fresh = S.shown.size && !S.shown.has(e.id) ? ' fresh' : '';
-      return `<div class="ev ${e.k}${e.s === 'acc' ? ' acc' : ''}${fresh}"><div class="top"><b>${evTitle(e)}</b><span class="tm">${e.at}${by}</span></div>${lines}${e.comment ? `<div class="com">💬 ${esc(e.comment)}</div>` : ''}${e.sum && ['guest', 'waiter'].includes(e.k) ? `<div class="muted">Сума ${money(e.sum)}</div>` : ''}${btns}</div>`;
+      return `<div class="ev ${e.k}${e.s === 'acc' || e.s === 'rej' ? ' acc' : ''}${e.s === 'rej' ? ' rej' : ''}${fresh}"><div class="top"><b>${evTitle(e)}</b><span class="tm">${e.at}${by}</span></div>${lines}${e.comment ? `<div class="com">💬 ${esc(e.comment)}</div>` : ''}${e.sum && ['guest', 'waiter'].includes(e.k) ? `<div class="muted">Сума ${money(e.sum)}</div>` : ''}${btns}</div>`;
     }).join('') : '<div class="muted" style="padding:12px">Сьогодні подій ще немає</div>');
     S.events.forEach(e => S.shown.add(e.id));
   }
@@ -225,7 +225,7 @@
     setHTML($('#shHead'), `<h2>Стіл ${t}</h2>${b ? `<span class="total money">${money(b.pay2)}</span>${b.disc ? `<span class="chip">−${b.disc}%</span>` : ''}${b.tip ? `<span class="chip tipc">💝 ${money(b.tip)}</span>` : ''}<span class="muted hide-s">з ${b.opened ? hhmm(b.opened) : '—'} · ${b.orders} замовл.</span>${b.check ? '<span class="chip" style="background:var(--orange);color:#000">🧾 чек</span>' : ''}` : '<span class="muted">новий</span>'}
         <span class="sp"></span><div class="tabs2"><button class="${S.mobileMenu ? '' : 'on'}" data-a="tab" data-m="0">Рахунок${cartRows.length ? ` (${cartRows.reduce((s, [, x]) => s + x.q, 0)})` : ''}</button><button class="${S.mobileMenu ? 'on' : ''}" data-a="tab" data-m="1">Меню</button></div>
         <button class="close-x" data-a="closeSheet">✕</button>`);
-    const pend = S.events.filter(e => e.k === 'guest' && e.s !== 'acc' && +e.t === t);
+    const pend = S.events.filter(e => e.k === 'guest' && e.s === 'new' && +e.t === t);
     setHTML($('#shPend'), pend.map(e => `<div class="pend"><div><b>🛎 Нове замовлення гостя · ${e.at}</b><div class="lines">${(e.lines || []).map(esc).join('<br>')}</div>${e.comment ? `<div class="com">💬 ${esc(e.comment)}</div>` : ''}</div><button class="btn green" data-a="accept" data-oid="${e.oid}">✅ Прийняв</button></div>`).join(''));
     $('#shBody').className = 'sheet-body' + (S.mobileMenu ? ' show-menu' : '');
     // рахунок
@@ -764,7 +764,8 @@
       case 'move': moveFlow(); break;
       case 'closeT': closeFlow(); break;
       case 'delTable': { const reason = await voidReason(`Видалити весь стіл ${t}? Сума НЕ піде у виручку`); if (reason) { const r = await act('delete', { t, reason }, `🗑 Стіл ${t} видалено`); if (r) closeSheet(); } break; }
-      case 'accept': act('accept', { oid: el.dataset.oid }, '✅ Прийнято — гість бачить статус'); break;
+      case 'accept': act('accept', { oid: el.dataset.oid }, '✅ Прийнято — пішло на кухню'); break;
+      case 'reject': if (await confirmBox('Відхилити замовлення гостя?', 'Позиції приберуться з рахунку, на кухню не піде, гість побачить «відхилено»')) { await act('reject', { oid: el.dataset.oid }, '❌ Відхилено'); loadState().catch(() => {}); } break;
       case 'cBack': if (await confirmBox('Повернути рахунок у виручку?', 'Сума, страви й чайові знову зарахуються')) { await act('closedBack', { ref: el.dataset.ref }, '↩️ Повернуто у виручку'); loadView(); } break;
       case 'cReopen': if (await confirmBox('Відкрити рахунок знову?', 'Він зніметься з виручки й повернеться на стіл — виправите й закриєте заново')) { const r = await act('closedReopen', { ref: el.dataset.ref }, '↩️ Рахунок знову на столі'); loadView(); loadState().catch(() => {}); if (r?.x) openTable(r.x.t); } break;
       case 'tBack': if (await confirmBox('Відновити видалений стіл?', 'Страви повернуться на стіл')) { const r = await act('tableBack', { ref: el.dataset.ref }, '↩️ Стіл відновлено'); loadView(); loadState().catch(() => {}); if (r?.x) openTable(r.x.t); } break;

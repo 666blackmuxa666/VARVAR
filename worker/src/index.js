@@ -147,9 +147,10 @@ async function order(b, ip, env) {
   const prevItems = billItems(bill).map(x => `${x.q}× ${x.name}`);
   const wantsCheck = type === 'check' || type === 'order_check';
   const comment = String(b.comment || '').trim().slice(0, 300);
+  const oid = crypto.randomUUID().replace(/-/g, '').slice(0, 10); // номер замовлення — за ним гість бачить, чи прийняв офіціант
   if (lines.length) {
     bill.total += sum; bill.orders++; bill.opened = bill.opened || Date.now();
-    bill.log = [...(bill.log || []), { at: hhmm(), kind: TYPES[type].toLowerCase(), lines, comment }].slice(-40);
+    bill.log = [...(bill.log || []), { at: hhmm(), kind: TYPES[type].toLowerCase(), lines, comment, oid }].slice(-40);
   }
   const pay = ['cash', 'card'].includes(b.pay) ? b.pay : null;
   const tip = Math.max(0, Math.min(10000, Math.round(+b.tip || 0)));
@@ -172,18 +173,15 @@ async function order(b, ip, env) {
     wantsCheck && tip ? `💝 <b>Чайові: ${tip} грн</b> → разом до сплати <b>${payable(bill) + tip} грн</b>` : '',
   ].filter((x, i, arr) => x !== '' || (arr[i - 1] !== '' && i > 0)).join('\n').trim();
 
-  // номер замовлення — за ним гість бачить, чи прийняв офіціант
-  const oid = crypto.randomUUID().replace(/-/g, '').slice(0, 10);
   const r = await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: msg, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[
-    { text: '✅ Прийняв', callback_data: `acc:${table}:${oid}` }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + table }]] } });
+    { text: '✅ Прийняв', callback_data: `acc:${table}:${oid}` }, ...(lines.length ? [{ text: '❌ Відхилити', callback_data: `rej:${table}:${oid}` }] : [])], [{ text: '🧾 Закрити стіл', callback_data: 'cls:' + table }]] } });
   const mid = await r.json().then(j => j.result?.message_id).catch(() => null);
   // mid/html — щоб «Прийняв» з каси (POS) оновив і повідомлення в Telegram
-  await env.DB.put('ord:' + oid, JSON.stringify({ s: 'new', t: table, mid, html: msg }), { expirationTtl: BILL_TTL });
+  // на кухню (екран і бігунок) — лише після «✅ Прийняв» (acceptOrder); sold — щоб «❌ Відхилити» відняв продажі
+  await env.DB.put('ord:' + oid, JSON.stringify({ s: 'new', t: table, mid, html: msg, ...(lines.length ? { lines, comment, kind: TYPES[type], sum, sold } : {}) }), { expirationTtl: BILL_TTL });
   await logEvent(env, { k: lines.length ? 'guest' : 'check', t: table, oid, s: 'new', kind: TYPES[type], lines, comment, sum, check: wantsCheck, pay, tip, ...(lines.length && prevItems.length ? { prev: prevItems } : {}) });
   if (lines.length) {
     await addStat(env, 'orders', 1); await addDishes(env, sold);
-    await queuePrint(env, 'kitchen', kitchenTicket({ table, kind: TYPES[type], lines, comment, by: 'гість (сайт)' })); // бігунок
-    await addKitchen(env, { t: table, by: 'гість', src: 'гість', comment, lines });
   }
   await putBill(env, table, bill);
   await env.DB.put('rl:' + dev, String(Date.now()), { expirationTtl: 60 });
