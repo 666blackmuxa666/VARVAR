@@ -143,13 +143,13 @@
   // ---------- каркас ----------
   const NAV_COOK = [['kq', '👨‍🍳', 'Черга'], ['hall', '🪑', 'Зал'], ['stop', '⛔', 'Стоп-лист']];
   const navList = () => isCook() ? NAV_COOK : NAV.filter(n => !n[3] || isAdmin());
-  const NAV = [['hall', '🪑', 'Зал'], ['closed', '📜', 'Закриті'], ['stop', '⛔', 'Стоп-лист'], ['cash', '💰', 'Каса', 1], ['reports', '📊', 'Звіти', 1], ['menu', '📖', 'Меню', 1], ['printer', '🖨', 'Принтер'], ['settings', '⚙️', 'Налашт.', 1]];
+  const NAV = [['hall', '🪑', 'Зал'], ['closed', '📜', 'Закриті'], ['stop', '⛔', 'Стоп-лист'], ['cash', '💰', 'Каса', 1], ['reports', '📊', 'Звіти', 1], ['kq', '👨‍🍳', 'Кухня', 1], ['menu', '📖', 'Меню', 1], ['printer', '🖨', 'Принтер'], ['settings', '⚙️', 'Налашт.', 1]];
   function renderNav() {
     const newCnt = S.events.filter(e => e.k === 'guest' && e.s !== 'acc').length;
     setHTML($('#nav'), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` +
-      navList().map(([v, ic, l]) => `<button class="${S.view === v ? 'on' : ''}${!isCook() && ['printer', 'menu', 'settings', 'stop'].includes(v) ? ' more-i' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join('') +
+      navList().map(([v, ic, l]) => `<button class="${S.view === v ? 'on' : ''}${!isCook() && ['printer', 'menu', 'settings', 'stop', 'kq'].includes(v) ? ' more-i' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join('') +
       `<button class="feed-btn" data-a="feed"><span class="ic">🔔</span>Стрічка${newCnt ? `<span class="badge">${newCnt}</span>` : ''}</button>` +
-      `<button class="more-btn ${['printer', 'menu', 'settings', 'stop'].includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><div class="me">${esc(S.me?.name)}<br>${isAdmin() ? 'адмін' : isCook() ? 'кухар' : 'офіціант'}</div>` +
+      `<button class="more-btn ${['printer', 'menu', 'settings', 'stop', 'kq'].includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><div class="me">${esc(S.me?.name)}<br>${isAdmin() ? 'адмін' : isCook() ? 'кухар' : 'офіціант'}</div>` +
       `<button data-a="switch"><span class="ic">🔒</span>Вийти</button>`);
   }
   function render() { renderNav(); renderFeed(); if (['hall', 'printer', 'kq'].includes(S.view)) renderMain(); if (S.open) renderSheet(); }
@@ -323,6 +323,7 @@
   // ---------- інші екрани ----------
   async function loadView(silent) {
     try {
+      if (S.view === 'kq') await loadKq();
       if (S.view === 'cash') S.data.shift = await api('shift');
       if (S.view === 'reports') { if (!S.menu) await loadMenu(); await loadReport(); }
       if (S.view === 'closed') S.data.closed = (await api('closed')).list;
@@ -707,7 +708,7 @@
       case 'view': S.view = el.dataset.v; S.q = ''; renderNav(); renderMain(); loadView(); $('#feed').classList.remove('open'); $('#main').scrollTop = 0; break;
       case 'feed': $('#feed').classList.toggle('open'); break;
       case 'fs': { const on = !document.fullscreenElement; store.set('fs', on); on ? document.documentElement.requestFullscreen?.().catch(() => {}) : document.exitFullscreen?.(); break; }
-      case 'more': { const v = await choose('Ще', '', NAV.filter(n => (!n[3] || isAdmin()) && ['stop', 'menu', 'printer', 'settings'].includes(n[0])).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: '🔒 Вийти', val: 'logout', cls: 'red' }]));
+      case 'more': { const v = await choose('Ще', '', NAV.filter(n => (!n[3] || isAdmin()) && ['stop', 'kq', 'menu', 'printer', 'settings'].includes(n[0])).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: '🔒 Вийти', val: 'logout', cls: 'red' }]));
         if (v === 'logout') { if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); } else if (v) { S.view = v; S.q = ''; renderNav(); renderMain(); loadView(); $('#main').scrollTop = 0; } break; }
       case 'switch': if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); break;
       case 'table': $('#feed').classList.remove('open'); openTable(el.dataset.t); break;

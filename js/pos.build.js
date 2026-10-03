@@ -368,11 +368,11 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   }
   const NAV_COOK = [["kq", "\u{1F468}\u200D\u{1F373}", "\u0427\u0435\u0440\u0433\u0430"], ["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"]];
   const navList = () => isCook() ? NAV_COOK : NAV.filter((n) => !n[3] || isAdmin());
-  const NAV = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["closed", "\u{1F4DC}", "\u0417\u0430\u043A\u0440\u0438\u0442\u0456"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["cash", "\u{1F4B0}", "\u041A\u0430\u0441\u0430", 1], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438", 1], ["menu", "\u{1F4D6}", "\u041C\u0435\u043D\u044E", 1], ["printer", "\u{1F5A8}", "\u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442.", 1]];
+  const NAV = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["closed", "\u{1F4DC}", "\u0417\u0430\u043A\u0440\u0438\u0442\u0456"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["cash", "\u{1F4B0}", "\u041A\u0430\u0441\u0430", 1], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438", 1], ["kq", "\u{1F468}\u200D\u{1F373}", "\u041A\u0443\u0445\u043D\u044F", 1], ["menu", "\u{1F4D6}", "\u041C\u0435\u043D\u044E", 1], ["printer", "\u{1F5A8}", "\u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442.", 1]];
   function renderNav() {
     var _a2;
     const newCnt = S.events.filter((e) => e.k === "guest" && e.s !== "acc").length;
-    setHTML($("#nav"), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` + navList().map(([v, ic, l]) => `<button class="${S.view === v ? "on" : ""}${!isCook() && ["printer", "menu", "settings", "stop"].includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : ""}</button><button class="more-btn ${["printer", "menu", "settings", "stop"].includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><div class="me">${esc((_a2 = S.me) == null ? void 0 : _a2.name)}<br>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"}</div><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
+    setHTML($("#nav"), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` + navList().map(([v, ic, l]) => `<button class="${S.view === v ? "on" : ""}${!isCook() && ["printer", "menu", "settings", "stop", "kq"].includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : ""}</button><button class="more-btn ${["printer", "menu", "settings", "stop", "kq"].includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><div class="me">${esc((_a2 = S.me) == null ? void 0 : _a2.name)}<br>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"}</div><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
   }
   function render() {
     renderNav();
@@ -632,6 +632,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   }
   async function loadView(silent) {
     try {
+      if (S.view === "kq") await loadKq();
       if (S.view === "cash") S.data.shift = await api("shift");
       if (S.view === "reports") {
         if (!S.menu) await loadMenu();
@@ -1304,7 +1305,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         break;
       }
       case "more": {
-        const v = await choose("\u0429\u0435", "", NAV.filter((n) => (!n[3] || isAdmin()) && ["stop", "menu", "printer", "settings"].includes(n[0])).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: "\u{1F512} \u0412\u0438\u0439\u0442\u0438", val: "logout", cls: "red" }]));
+        const v = await choose("\u0429\u0435", "", NAV.filter((n) => (!n[3] || isAdmin()) && ["stop", "kq", "menu", "printer", "settings"].includes(n[0])).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: "\u{1F512} \u0412\u0438\u0439\u0442\u0438", val: "logout", cls: "red" }]));
         if (v === "logout") {
           if (await confirmBox("\u0412\u0438\u0439\u0442\u0438?", "\u041D\u0430\u0441\u0442\u0443\u043F\u043D\u0438\u0439 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A \u0443\u0432\u0456\u0439\u0434\u0435 \u0441\u0432\u043E\u0457\u043C PIN")) logout();
         } else if (v) {
