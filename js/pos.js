@@ -379,7 +379,18 @@
   setInterval(() => { if (S.view === 'kq') renderMain(); }, 30000); // таймери
   function tone(freqs, dur, vol = .6) { try { actx ||= new (window.AudioContext || window.webkitAudioContext)(); actx.resume?.(); let d = 0; for (const f of freqs) { const o = actx.createOscillator(), g = actx.createGain(); o.type = 'square'; o.frequency.value = f; g.gain.setValueAtTime(vol, actx.currentTime + d); g.gain.setValueAtTime(.0001, actx.currentTime + d + dur); o.connect(g).connect(actx.destination); o.start(actx.currentTime + d); o.stop(actx.currentTime + d + dur); d += dur; } } catch {} }
   // сирена: один гучний сигнал ~2 с (терміново — двічі)
-  const siren = urgent => { const s = [880, 1175, 880, 1175, 880, 1175, 880, 1175]; tone(urgent ? s.concat(s) : s, .25); };
+  // 🚨 сигналізація 4 с: виючий звук (частота гойдається вгору-вниз), терміново — швидше
+  function siren(urgent) {
+    try {
+      actx ||= new (window.AudioContext || window.webkitAudioContext)(); actx.resume?.();
+      const t0 = actx.currentTime, dur = 4, per = urgent ? .25 : .5;
+      const o = actx.createOscillator(), o2 = actx.createOscillator(), g = actx.createGain();
+      o.type = 'sawtooth'; o2.type = 'square';
+      for (let t = 0; t < dur; t += per) { [o, o2].forEach((x, k) => { x.frequency.setValueAtTime(k ? 650 : 600, t0 + t); x.frequency.linearRampToValueAtTime(k ? 1450 : 1400, t0 + t + per / 2); x.frequency.linearRampToValueAtTime(k ? 650 : 600, t0 + t + per); }); }
+      g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(.7, t0 + .05); g.gain.setValueAtTime(.7, t0 + dur - .1); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+      o.connect(g); o2.connect(g); g.connect(actx.destination); o.start(t0); o2.start(t0); o.stop(t0 + dur); o2.stop(t0 + dur);
+    } catch {}
+  }
   const beep = () => tone([440, 330], .2, .4);
   let wakeLock;
   async function kitchenStart() {
