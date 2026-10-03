@@ -116,6 +116,7 @@ async function order(b, ip, env) {
   if (sum > MAX_ORDER) return [{ error: 'too_big' }, 400];
 
   const bill = await getBill(env, table);
+  const prevItems = billItems(bill).map(x => `${x.q}× ${x.name}`);
   const wantsCheck = type === 'check' || type === 'order_check';
   const comment = String(b.comment || '').trim().slice(0, 300);
   if (lines.length) {
@@ -150,7 +151,7 @@ async function order(b, ip, env) {
   const mid = await r.json().then(j => j.result?.message_id).catch(() => null);
   // mid/html — щоб «Прийняв» з каси (POS) оновив і повідомлення в Telegram
   await env.DB.put('ord:' + oid, JSON.stringify({ s: 'new', t: table, mid, html: msg }), { expirationTtl: BILL_TTL });
-  await logEvent(env, { k: lines.length ? 'guest' : 'check', t: table, oid, s: 'new', kind: TYPES[type], lines, comment, sum, check: wantsCheck, pay, tip });
+  await logEvent(env, { k: lines.length ? 'guest' : 'check', t: table, oid, s: 'new', kind: TYPES[type], lines, comment, sum, check: wantsCheck, pay, tip, ...(lines.length && prevItems.length ? { prev: prevItems } : {}) });
   if (lines.length) {
     await addStat(env, 'orders', 1); await addDishes(env, sold);
     await queuePrint(env, 'kitchen', kitchenTicket({ table, kind: TYPES[type], lines, comment, by: 'гість (сайт)' })); // бігунок

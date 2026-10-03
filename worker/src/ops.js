@@ -73,14 +73,15 @@ export async function addWaiterOrder(env, d, who, comment = '', src = 'бот') 
   if (!ok.length) return null;
   const lines = ok.map(i => `${i.q}× ${i.name} — ${i.price * i.q}`), sum = ok.reduce((s, i) => s + i.price * i.q, 0);
   const bill = await getBill(env, d.table);
+  const prev = billItems(bill).map(x => `${x.q}× ${x.name}`); // що вже було на столі — у стрічці видно окремо від дозамовлення
   bill.total += sum; bill.orders = (bill.orders || 0) + 1; bill.opened = bill.opened || Date.now();
   bill.log = [...(bill.log || []), { at: hhmm(), kind: `від офіціанта (${who})`, lines, ...(comment ? { comment } : {}) }].slice(-40);
   await putBill(env, d.table, bill);
   await addStat(env, 'orders', 1);
   await addDishes(env, ok.map(i => ({ n: i.name, q: i.q, sum: i.price * i.q })));
   await queuePrint(env, 'kitchen', kitchenTicket({ table: d.table, kind: 'ВІД ОФІЦІАНТА', lines, comment, by: who }));
-  await logEvent(env, { k: 'waiter', t: d.table, by: who, src, lines, comment, sum });
-  return { sum, total: bill.total, lines };
+  await logEvent(env, { k: 'waiter', t: d.table, by: who, src, lines, comment, sum, ...(prev.length ? { prev } : {}) });
+  return { sum, total: bill.total, lines, prev };
 }
 // позиції з меню за id → рядки замовлення (ціни — лише з меню)
 export async function itemsFromMenu(env, list) {

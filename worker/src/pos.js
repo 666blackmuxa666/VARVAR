@@ -52,7 +52,7 @@ export async function posApi(b, req, env) {
       if (!t || t > tablesCount(env)) return [{ error: 'table' }, 400];
       const r = await addWaiterOrder(env, { table: t, items }, who, comment, 'каса');
       if (!r) return [{ error: 'empty' }, 400];
-      await notify(env, `🖥 <b>Стіл ${t}</b> — замовлення з каси (${esc(who)})\n${r.lines.map(esc).join('\n')}${comment ? `\n💬 ${esc(comment)}` : ''}\nСума: <b>${money(r.sum)}</b> · разом за стіл: <b>${money(r.total)}</b>`, tgBtns(t));
+      await notify(env, `🖥 <b>Стіл ${t}</b> — ${r.prev?.length ? '<b>➕ ДОЗАМОВЛЕННЯ</b>' : 'замовлення'} з каси (${esc(who)})\n${r.lines.map(esc).join('\n')}${r.prev?.length ? `\n\n<i>Вже на столі: ${r.prev.map(esc).join(', ')}</i>` : ''}${comment ? `\n💬 ${esc(comment)}` : ''}\nСума: <b>${money(r.sum)}</b> · разом за стіл: <b>${money(r.total)}</b>`, tgBtns(t));
       return ok(r);
     }
     case 'remove': { const r = await removeOne(env, t, String(b.name), who, b.reason); if (r?.error) return [{ error: r.error }, 400]; if (r) await notify(env, `🖥 ✏️ Стіл ${t}: скасовано 1× ${esc(r.name)} (−${r.unit} грн)\n❓ Причина: <i>${esc(r.reason)}</i> — ${esc(who)}`); return ok({ r }); }

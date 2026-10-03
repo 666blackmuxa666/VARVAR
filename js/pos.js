@@ -174,7 +174,8 @@
   })[e.k] || esc(e.text || e.k);
   function renderFeed() {
     setHTML($('#events'), S.events.length ? [...S.events].reverse().map(e => {
-      const lines = e.lines?.length ? `<div class="lines">${e.lines.map(esc).join('\n')}</div>` : '';
+      const add = e.prev?.length && e.lines?.length; // дозамовлення — яскраво, а що вже було на столі — сіро нижче
+      const lines = e.lines?.length ? `${add ? '<div class="addtag">➕ ДОЗАМОВЛЕННЯ</div>' : ''}<div class="lines${add ? ' add' : ''}">${e.lines.map(esc).join('\n')}</div>${add ? `<div class="prev"><span>Вже на столі:</span> ${e.prev.map(esc).join(' · ')}</div>` : ''}` : '';
       const by = e.by && !['waiter'].includes(e.k) ? ` · ${esc(e.by)}` : '';
       const btns = e.k === 'noscan' ? `<div class="act"><button class="btn sm" data-a="table" data-t="${e.t}">Стіл ${e.t}</button></div>` : e.k === 'guest' || e.k === 'check'
         ? `<div class="act">${e.s === 'acc' ? `<span class="muted">✅ ${esc(e.accBy || 'прийнято')}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">✅ Прийняв</button>`}<button class="btn sm" data-a="table" data-t="${e.t}">Стіл ${e.t}</button></div>` : '';
