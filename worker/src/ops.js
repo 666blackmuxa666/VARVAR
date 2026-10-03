@@ -180,6 +180,7 @@ export async function closeTable(env, t, who, pay = 'cash', print = true) {
   const card = pay === 'card' ? sum : 0, cash = sum - card;
   if (print) await queuePrint(env, 'receipt', await receipt(env, { table: t, bill, final: true, pay, by: who }));
   await env.DB.delete('bill:' + t);
+  await kitchenClosed(env, [+t]); // стіл закрили — його замовлення зникають з черги кухні
   await bump(env, 'day:' + dayKey(), d => { d.closed = (d.closed || 0) + sum; d.tables = (d.tables || 0) + 1; d.cash = (d.cash || 0) + cash; d.card = (d.card || 0) + card; if (disc) d.disc = (d.disc || 0) + disc; if (tip) d.tip = (d.tip || 0) + tip; });
   // страви рахунку — щоб при видаленні закритого рахунку відняти їх і з «топ страв»
   const dishes = []; for (const o of bill.log || []) for (const l of o.lines) { const x = l.match(LINE); if (x) dishes.push([x[2], +x[1], +x[3]]); }
@@ -268,6 +269,7 @@ export async function moveTable(env, a, b, who) {
     await putBill(env, b, B);
   } else await putBill(env, b, A);
   await env.DB.delete('bill:' + a);
+  { const l = await getKq(env); let ch = false; for (const e of l) if (!e.done && e.t === a) { e.t = b; ch = true; } if (ch) await putKq(env, l); } // кухня бачить новий номер стола
   // статуси замовлень гостей переходять на новий стіл
   await logEvent(env, { k: 'move', t: b, from: a, by: who, text: merged ? `стіл ${a} об'єднано зі столом ${b}` : `стіл ${a} → ${b}` });
   return { merged };
@@ -645,6 +647,12 @@ export async function kitchenMsg(env, id, text, who) {
   if (e) await logEvent(env, { k: 'kmsg', t: e.t, by: who, text });
   return e;
 }
+// стіл закрито/звільнено — активні картки кухні цих столів знімаються з черги (без «готово» у стрічку)
+export async function kitchenClosed(env, tables) {
+  const l = await getKq(env); let ch = false;
+  for (const e of l) if (!e.done && tables.includes(e.t)) { e.done = 1; e.doneAt = Date.now(); e.closed = 1; ch = true; }
+  if (ch) await putKq(env, l);
+}
 // скасування з рахунку → на кухні страва червона «СКАСОВАНО» (name=null — увесь стіл)
 async function kitchenCancel(env, t, name) {
   const l = await getKq(env); let ch = false;
@@ -657,7 +665,7 @@ async function kitchenCancel(env, t, name) {
 // ⏱ статистика кухні: час від замовлення до «готово»
 export async function kitchenStats(env, from, to) {
   const days = dayList(from, to).slice(0, 400), ll = await env.DB.getMany(days.map(d => 'kq:' + d), 'json');
-  return days.flatMap((d, i) => (ll[i] || []).filter(e => e.done && !e.cancelled && e.doneAt).map(e => ({ d, at: e.at, t: e.t, mins: (e.doneAt - e.ts) / 60000, items: e.items.filter(x => !x.cancel).map(x => [x.n, x.q]) })));
+  return days.flatMap((d, i) => (ll[i] || []).filter(e => e.done && !e.cancelled && !e.closed && e.doneAt).map(e => ({ d, at: e.at, t: e.t, mins: (e.doneAt - e.ts) / 60000, items: e.items.filter(x => !x.cancel).map(x => [x.n, x.q]) })));
 }
 
 // ---------- стоп-лист ----------

@@ -7,7 +7,7 @@ import { storeStub } from './store.js';
 import {
   esc, money, hhmm, dayKey, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
-  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, markCook, kitchenPct, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
+  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenClosed, markCook, kitchenPct, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
 } from './ops.js';
 
 const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400, cook: 30 * 86400 };
@@ -77,7 +77,10 @@ export async function posApi(b, req, env) {
     }
 
     // ---- 👨‍🍳 кухня ----
-    case 'kitchen': { const l = await getKq(env); return ok({ list: l.filter(e => !e.done).concat(l.filter(e => e.done && !e.cancelled).slice(-10)) }); }
+    case 'kitchen': {
+      const open = new Set((await openTables(env)).map(r => r.t)), stale = [...new Set((await getKq(env)).filter(e => !e.done && !open.has(e.t)).map(e => e.t))];
+      if (stale.length) await kitchenClosed(env, stale); // стіл уже закритий, а картка висить
+      const l = await getKq(env); return ok({ list: l.filter(e => !e.done).concat(l.filter(e => e.done && !e.cancelled && !e.closed).slice(-10)) }); }
     case 'kDone': return ok({ e: await kitchenDone(env, String(b.id), b.i == null ? null : +b.i, who) });
     case 'kStart': return ok({ e: await kitchenStart(env, String(b.id), who) });
     case 'kUndo': return ok({ e: await kitchenUndo(env, String(b.id)) });
