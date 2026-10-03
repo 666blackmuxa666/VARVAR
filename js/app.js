@@ -216,10 +216,15 @@
     $('#tipOwn').hidden = !tip.own;
     const a = tipAmount(); $('#tipSum').textContent = a ? '+' + money(a) : '';
     // 👨‍🍳 окрема подяка кухні
-    $('#ktipRow').innerHTML = [0, 50, 100, 200].map(v => `<button class="tip ${ktip === v ? 'on' : ''}" data-ktip="${v}">${v ? money(v) : t('tipNo')}</button>`).join('');
-    $('#ktipSum').textContent = ktip ? '+' + money(ktip) : '';
+    // 👨‍🍳 подяка кухні — так само, як чайові офіціанту: % або своя сума
+    $('#ktipRow').innerHTML = [0, 5, 10, 15].map(p => `<button class="tip ${!kt.own && kt.p === p ? 'on' : ''}" data-ktip="${p}">${p ? p + '%' : t('tipNo')}${p && tipBase() ? `<small>${money(Math.round(tipBase() * p / 100))}</small>` : ''}</button>`).join('')
+      + `<button class="tip ${kt.own ? 'on' : ''}" data-ktip="own">✏️<small>${t('tipOwnBtn')}</small></button>`;
+    $('#ktipOwn').hidden = !kt.own;
+    const k = ktipAmount(); $('#ktipSum').textContent = k ? '+' + money(k) : '';
   }
-  let ktip = 0;
+  let kt = { p: 0, own: false };
+  const ktipAmount = () => kt.own ? Math.max(0, Math.round(+$('#ktipOwn').value || 0)) : Math.round(tipBase() * kt.p / 100);
+  $('#ktipOwn').addEventListener('input', () => { const k = ktipAmount(); $('#ktipSum').textContent = k ? '+' + money(k) : ''; });
   $('#tipOwn').addEventListener('input', () => { const a = tipAmount(); $('#tipSum').textContent = a ? '+' + money(a) : ''; });
 
   // ---------- сервер ----------
@@ -249,12 +254,12 @@
     table = lockOn() ? String(lockT) : $('#table').value; save();
     if (!table) { $('#msg').textContent = t('chooseTable'); $('#table').focus(); return; }
     // запит чека — спершу питаємо спосіб оплати
-    if ((type === 'check' || type === 'order_check') && !pay) { pendingType = type; tip = { p: 0, own: false }; ktip = 0; $('#tipOwn').value = ''; renderTips(); $('#payModal').hidden = false; return; }
+    if ((type === 'check' || type === 'order_check') && !pay) { pendingType = type; tip = { p: 0, own: false }; kt = { p: 0, own: false }; $('#tipOwn').value = ''; $('#ktipOwn').value = ''; renderTips(); $('#payModal').hidden = false; return; }
     const items = type === 'check' ? [] : cartEntries();
     busy = true; $('#msg').textContent = '…';
     try {
       const { status, data } = await api('/api/order', {
-        table: +table, type, pay, device, tip: pay ? tipAmount() : 0, ktip: pay ? ktip : 0, comment: [items.length && tw ? 'З СОБОЮ' : '', $('#comment').value].filter(Boolean).join(' · ').slice(0, 300),
+        table: +table, type, pay, device, tip: pay ? tipAmount() : 0, ktip: pay ? ktipAmount() : 0, comment: [items.length && tw ? 'З СОБОЮ' : '', $('#comment').value].filter(Boolean).join(' · ').slice(0, 300),
         items: [...items.map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; }), ...(items.length && packId && packQty() ? [{ id: packId, q: packQty() }] : [])],
       });
       if (status === 403 && data.error === 'wrong_table') { $('#msg').textContent = `📷 ${t('table')} ${data.t}`; return; }
@@ -322,7 +327,7 @@
     else if (el.dataset.inc) change(el.dataset.inc, 1);
     else if (el.dataset.dec) change(el.dataset.dec, -1);
     else if (el.dataset.send) send(el.dataset.send);
-    else if (el.dataset.ktip != null) { ktip = +el.dataset.ktip; renderTips(); }
+    else if (el.dataset.ktip != null) { kt = el.dataset.ktip === 'own' ? { p: 0, own: true } : { p: +el.dataset.ktip, own: false }; renderTips(); if (kt.own) $('#ktipOwn').focus(); }
     else if (el.dataset.tip) { tip = el.dataset.tip === 'own' ? { p: 0, own: true } : { p: +el.dataset.tip, own: false }; renderTips(); if (tip.own) $('#tipOwn').focus(); }
     else if (el.dataset.pay) { $('#payModal').hidden = true; send(pendingType, el.dataset.pay); }
     else if ('close' in el.dataset) el.closest('.modal') ? (el.closest('.modal').hidden = true) : closeAll();
