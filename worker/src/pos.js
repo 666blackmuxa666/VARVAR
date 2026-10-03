@@ -7,7 +7,7 @@ import { storeStub } from './store.js';
 import {
   esc, money, hhmm, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
-  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
+  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
 } from './ops.js';
 
 const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400 };
@@ -80,6 +80,9 @@ export async function posApi(b, req, env) {
     // ---- закриті ----
     case 'closed': return ok({ list: await getClosed(env) });
     case 'closedPrint': return ok({ done: await reprintClosed(env, String(b.ref), who) });
+    case 'closedBack': { if (!admin) return needAdmin(); const x = await restoreClosed(env, String(b.ref), who); if (x) await notify(env, `🖥 ↩️ Рахунок стола ${x.t} (${money(x.sum)}, ${x.at}) повернуто у виручку — ${esc(who)}`); return ok({ x }); }
+    case 'closedReopen': { if (!admin) return needAdmin(); const x = await reopenClosed(env, String(b.ref), who); if (x) await notify(env, `🖥 ↩️ <b>Стіл ${x.t}</b>: закритий рахунок (${money(x.sum)}, ${x.at}) відкрито знову — ${esc(who)}`, tgBtns(x.t)); return ok({ x }); }
+    case 'tableBack': { if (!admin) return needAdmin(); const x = await restoreTable(env, String(b.ref), who); if (x) await notify(env, `🖥 ↩️ <b>Стіл ${x.t}</b> відновлено (${money(x.sum)}) — ${esc(who)}`, tgBtns(x.t)); return ok({ x }); }
     case 'closedDel': { if (!admin) return needAdmin(); const x = await delClosed(env, String(b.ref)); if (x) await notify(env, `🖥 🧹 Закритий рахунок стола ${x.t} (${money(x.sum)}, ${x.at}) видалено з виручки — ${esc(who)}`); return ok({ x }); }
   }
 
@@ -92,6 +95,8 @@ export async function posApi(b, req, env) {
     case 'cashMove': { const e = await addMove(env, { type: b.type, sum: +b.sum, note: b.note, by: who }); if (!e) return [{ error: 'Потрібна сума' }, 400]; await notify(env, `🖥 ${MOVE_ALL[e.type]}: <b>${money(e.sum)}</b>${e.note ? ` — ${esc(e.note)}` : ''} · ${esc(who)}`); return ok(); }
     case 'reconcile': { const r = await reconcile(env, b.src === 'card' ? 'card' : 'cash', b.actual, who); if (!r) return [{ error: 'Потрібна сума' }, 400]; if (r.diff) await notify(env, `🖥 ✏️ Звірка ${b.src === 'card' ? '💳 картки' : '💵 готівки'}: було ${money(r.was)}, факт <b>${money(r.actual)}</b> (${r.diff > 0 ? '+' : ''}${money(r.diff)}) · ${esc(who)}`); return ok(r); }
     case 'moveDel': await delMove(env, +b.i); return ok();
+    case 'moveBack': await restoreMove(env, +b.i); return ok();
+    case 'expenseBack': await restoreExpense(env, +b.i); return ok();
     case 'shiftOpen': { const r = await openShift(env, b.float, who); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 🔓 <b>Касу відкрито</b> — на початок ${money(r.s.float)} · ${esc(who)}`); return ok(); }
     case 'shiftClose': { const r = await closeShift(env, b.counted, who, b.print !== false); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 ${zText(r.z)}
 — ${esc(who)}`); return ok({ z: r.z }); }
