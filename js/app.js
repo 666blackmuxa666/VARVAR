@@ -63,11 +63,11 @@
     document.querySelectorAll('[data-i18n]').forEach(e => e.textContent = t(e.dataset.i18n));
     document.querySelectorAll('[data-i18n-ph]').forEach(e => e.placeholder = t(e.dataset.i18nPh));
     $('#cats').innerHTML = menu.categories.map(c => `<a href="#c-${c.id}" data-cat="${c.id}">${esc(catName(c))}</a>`).join('');
-    $('#menu').innerHTML = menu.categories.map(c => `
+    $('#menu').innerHTML = menu.categories.map(c => `${c.id === 'extras' ? `<button class="ai-card" data-ai><b>✨ ${esc(t('aiBtn'))}</b><span>${esc(t('aiSub'))}</span></button>` : ''}
       <section class="cat ${c.id === 'extras' ? 'compact' : DRINKS.has(c.id) ? 'drinks' : ''}" id="c-${c.id}">
         <h2>${esc(catName(c))}</h2>
         <div class="grid">${c.items.map(card).join('')}</div>
-      </section>${c.id === 'extras' ? `<button class="ai-card" data-ai><b>✨ ${esc(t('aiBtn'))}</b><span>${esc(t('aiSub'))}</span></button>` : ''}`).join('');
+      </section>`).join('');
     observeCats();
     renderFab();
   }
