@@ -149,6 +149,20 @@
   }
   // ---------- статус замовлення (офіціант натиснув «Прийняв» у Telegram) ----------
   const badge = o => !o.id ? '' : o.s === 'acc' ? `<span class="st ok">✅ ${t('accShort')}</span>` : `<span class="st wait">⏳ ${t('waitShort')}</span>`;
+  // 🔔 покликати офіціанта
+  async function callWaiter() {
+    if (lockOn()) table = String(lockT);
+    if (!table) { openSheet(); $('#msg').textContent = t('chooseTable'); return; }
+    const b = $('#callBtn'); b.disabled = true;
+    try {
+      const { status, data } = await api('/api/call', { table: +table, device });
+      if (status === 403) { if (data.error === 'wrong_table') return; inVenue = false; $('#wifiBanner').hidden = false; showWifi(); return; }
+      if (status === 429) { toastG(t('callWait')); return; }
+      if (status !== 200) throw 0;
+      hist.reqs = [...(hist.reqs || []), { id: data.id, type: 'call', s: 'new' }].slice(-20); save(); renderStatus();
+    } catch { toastG(t('error')); } finally { setTimeout(() => { b.disabled = false; }, 3000); }
+  }
+  function toastG(m) { const bar = $('#orderStatus'); bar.hidden = false; bar.className = 'order-status wait'; bar.textContent = m; setTimeout(renderStatus, 3000); }
   function renderStatus() {
     const last = hist.reqs && hist.reqs[hist.reqs.length - 1];
     const bar = $('#orderStatus');
@@ -156,8 +170,8 @@
     bar.hidden = false;
     bar.className = 'order-status ' + (last.s === 'acc' ? 'ok' : 'wait');
     bar.textContent = last.s === 'acc'
-      ? (last.type === 'check' ? t('accCheck') : t('accOrder')) + (last.by ? ` · ${last.by}` : '')
-      : (last.type === 'check' ? t('waitCheck') : t('waitOrder'));
+      ? (last.type === 'call' ? t('accCall') : last.type === 'check' ? t('accCheck') : t('accOrder')) + (last.by ? ` · ${last.by}` : '')
+      : (last.type === 'call' ? t('waitCall') : last.type === 'check' ? t('waitCheck') : t('waitOrder'));
   }
   async function pollOrders() {
     const pending = (hist.reqs || []).filter(r => r.s !== 'acc');
@@ -290,7 +304,8 @@
     const el = e.target.closest('button, [data-close], #wifiBanner, #orderStatus');
     if (!el || (el.id !== 'lang' && !el.dataset.lang)) $('#langs').hidden = true;
     if (!el) return;
-    if ('ai' in el.dataset) aiOpen();
+    if (el.id === 'callBtn') callWaiter();
+    else if ('ai' in el.dataset) aiOpen();
     else if (el.dataset.aiA != null) aiStep(el.dataset.aiA);
     else if (el.dataset.aiPick != null) aiTake(+el.dataset.aiPick);
     else if ('aiAgain' in el.dataset) aiOpen();

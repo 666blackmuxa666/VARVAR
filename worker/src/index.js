@@ -60,6 +60,7 @@ export default {
       }
       if (url.pathname === '/api/pos/live') return posLive(req, env, url);
       if (url.pathname === '/api/pos' && req.method === 'POST') return json(...await posApi(await req.json(), req, env));
+      if (url.pathname === '/api/call' && req.method === 'POST') return json(...await callWaiter(await req.json(), ip, env));
       if (url.pathname === '/api/order' && req.method === 'POST') return json(...await order(await req.json(), ip, env));
       if (url.pathname === '/api/admin' && req.method === 'POST') return json(...await admin(await req.json(), ip, env));
       if (url.pathname === '/tg' && req.method === 'POST') {
@@ -98,6 +99,22 @@ async function scanUntil(env, dev) { return (await scanInfo(env, dev))?.until ||
 export async function tableKey(env, t) {
   const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${await qrKey(env)}:${t}`));
   return [...new Uint8Array(h)].slice(0, 4).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+// 🔔 гість кличе офіціанта: стрічка каси + Telegram з кнопкою «✅ Іду»
+async function callWaiter(b, ip, env) {
+  const table = tableNum(b.table, env); if (!table) return [{ error: 'bad_request' }, 400];
+  const sc = await scanInfo(env, b.device);
+  if (sc?.t && sc.until > Date.now() && sc.t !== table) return [{ error: 'wrong_table', t: sc.t }, 403];
+  if (!(sc?.until > Date.now()) && !(await inVenue(env, ip))) return [{ error: 'not_in_venue' }, 403];
+  const rk = 'callrl:' + String(b.device || ip).slice(0, 64); if (await env.DB.get(rk)) return [{ error: 'wait' }, 429];
+  await env.DB.put(rk, '1', { expirationTtl: 60 });
+  const oid = crypto.randomUUID().replace(/-/g, '').slice(0, 10), html = `🔔🔔 <b>Стіл ${table} кличе офіціанта</b>`;
+  const r = await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: html, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '✅ Іду', callback_data: `acc:${table}:${oid}` }]] } });
+  const mid = (await r.json().catch(() => ({})))?.result?.message_id;
+  await env.DB.put('ord:' + oid, JSON.stringify({ s: 'new', t: table, mid, html }), { expirationTtl: BILL_TTL });
+  await logEvent(env, { k: 'call', t: table, oid, s: 'new' });
+  return [{ ok: true, id: oid }, 200];
 }
 
 async function order(b, ip, env) {

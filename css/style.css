@@ -220,3 +220,5 @@ textarea { border-radius: 14px; }
 @keyframes aib { to { opacity: .2; transform: translateY(-6px); } }
 .table-row.locked select { appearance: none; -webkit-appearance: none; background: var(--accent); color: var(--accent-ink); opacity: 1; border: 0; padding: 6px 14px; }
 .table-row.locked::after { content: '🔒'; }
+.call-btn { margin-left: auto; margin-right: 8px; border: 1px solid #f2c14e88; background: #2b2412; color: var(--accent); font: 700 14px Rubik, system-ui, sans-serif; padding: 7px 14px; border-radius: 99px; cursor: pointer; }
+.call-btn:disabled { opacity: .5; }
