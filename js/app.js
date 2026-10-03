@@ -19,6 +19,13 @@
   if (Date.now() - hist.ts > SESSION_MS) hist = { ts: 0, orders: [] };
   const device = store.get('device', null) || (() => { const d = crypto.randomUUID(); store.set('device', d); return d; })();
 
+  // QR на столі: ?k=… → 1 година на замовлення; ключ одразу прибираємо з адреси
+  let scanUntil = store.get('scan', 0);
+  const qk = new URLSearchParams(location.search).get('k');
+  const scanP = qk ? fetch(C.api + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ k: qk, device }) })
+    .then(r => r.json()).then(d => { if (d.until) { scanUntil = d.until; store.set('scan', d.until); } }).catch(() => {}) : Promise.resolve();
+  if (qk) { const u = new URL(location.href); u.searchParams.delete('k'); history.replaceState(null, '', u.pathname + u.search + u.hash); }
+
   const t = k => I18N[lang][k] ?? I18N.en[k] ?? k;
   // назви і склад: uk/en — з меню; інші мови — з js/menu-i18n.js (склад по словах), інакше англійською
   const MI = () => (window.MENU_I18N || {})[lang];
@@ -196,8 +203,9 @@
   }
   async function syncStatus() {
     try {
-      const { data } = await api('/api/status' + (table ? '?table=' + table : ''));
-      inVenue = !!data.inVenue;
+      await scanP;
+      const { data } = await api('/api/status?device=' + device + (table ? '&table=' + table : ''));
+      inVenue = !!data.inVenue; if (data.scanUntil) { scanUntil = data.scanUntil; store.set('scan', scanUntil); }
       if (table && typeof data.tableTotal === 'number') {
         // стіл закрили (/close) — сесія скінчилась
         if (data.tableTotal === 0 && hist.orders.length) { hist = { ts: 0, orders: [] }; save(); renderStatus(); }
@@ -206,7 +214,7 @@
       }
     } catch { inVenue = null; }
     $('#wifiBanner').hidden = inVenue !== false;
-    $('#wifiBanner').textContent = '📶 ' + t('wifiBanner');
+    $('#wifiBanner').textContent = '📷 ' + t('wifiBanner');
     if (!$('#sheet').hidden) renderCart();
     renderFab();
   }
@@ -223,7 +231,7 @@
         table: +table, type, pay, device, tip: pay ? tipAmount() : 0, comment: [items.length && tw ? 'З СОБОЮ' : '', $('#comment').value].filter(Boolean).join(' · ').slice(0, 300),
         items: [...items.map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; }), ...(items.length && packId && packQty() ? [{ id: packId, q: packQty() }] : [])],
       });
-      if (status === 403) { showWifi(); $('#msg').textContent = ''; return; }
+      if (status === 403) { inVenue = false; $('#wifiBanner').hidden = false; showWifi(); $('#msg').textContent = ''; return; }
       if (status === 429) { $('#msg').textContent = t('wait'); return; }
       if (status !== 200) throw 0;
       if (items.length) { hist.orders.push({ items, total: data.orderTotal, id: data.id, s: 'new', at: new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' }) }); }
@@ -236,9 +244,8 @@
     } catch { $('#msg').textContent = t('error'); }
     finally { busy = false; }
   }
-  function showWifi() {
-    $('#wSsid').textContent = C.wifi.ssid; $('#wPass').textContent = C.wifi.password;
-    $('#wPassRow').hidden = $('#copyPass').hidden = !C.wifi.password;
+  function showWifi() { // тепер — «скануйте QR-код на столі»
+    $('#wifiCard').hidden = $('#copyPass').hidden = true;
     $('#wifiModal').hidden = false;
   }
 

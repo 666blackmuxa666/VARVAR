@@ -24,8 +24,15 @@ export default {
         const table = tableNum(url.searchParams.get('table'), env);
         const bill = table ? await getBill(env, table) : null;
         // bill — актуальний рахунок (з урахуванням змін офіціанта: прибрані позиції, знижка, перенос)
-        return json({ inVenue: await inVenue(env, ip), tableTotal: bill ? payable(bill) : undefined,
+        const sc = await scanUntil(env, url.searchParams.get('device'));
+        return json({ inVenue: sc > Date.now() || await inVenue(env, ip), scanUntil: sc || 0, tableTotal: bill ? payable(bill) : undefined,
           bill: bill && bill.total ? { items: billItems(bill).map(x => [x.name, x.q, x.sum]), gross: bill.total, disc: bill.disc || 0, pay: payable(bill), tip: bill.tip || 0 } : null });
+      }
+      if (url.pathname === '/api/scan' && req.method === 'POST') { // QR на столі → 1 година на замовлення
+        const b = await req.json(); const dev = String(b.device || '').slice(0, 64);
+        if (!dev || String(b.k || '') !== await qrKey(env)) return json({ error: 'bad_qr' }, 403);
+        const until = Date.now() + SCAN_MS; await env.DB.put('scan:' + dev, String(until), { expirationTtl: SCAN_MS / 1000 + 60 });
+        return json({ ok: true, until });
       }
       if (url.pathname === '/api/menu') return new Response(JSON.stringify(await getMenu(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'no-cache' } });
       if (url.pathname.startsWith('/img/')) {
@@ -77,10 +84,15 @@ async function venueIps(env) { return (await env.DB.get('venue_ips', 'json')) ||
 async function inVenue(env, ip) { const k = ipKey(ip); return (await venueIps(env)).some(x => x.k === k); }
 
 
+// доступ до замовлення: скан QR-коду закладу дає 1 годину (потім — сканувати заново)
+const SCAN_MS = 3600e3;
+const qrKey = async env => (await env.DB.get('qr_key')) || 'f5431c32';
+async function scanUntil(env, dev) { dev = String(dev || '').slice(0, 64); return dev ? +(await env.DB.get('scan:' + dev)) || 0 : 0; }
+
 async function order(b, ip, env) {
   const table = tableNum(b.table, env), type = b.type;
   if (!table || !TYPES[type]) return [{ error: 'bad_request' }, 400];
-  if (!(await inVenue(env, ip))) { await warnNotInVenue(env, table, ip); return [{ error: 'not_in_venue' }, 403]; }
+  if (!(await scanUntil(env, b.device) > Date.now()) && !(await inVenue(env, ip))) { await warnNotInVenue(env, table, ip); return [{ error: 'not_in_venue' }, 403]; }
 
   const dev = String(b.device || ip).slice(0, 64);
   const last = await env.DB.get('rl:' + dev);
