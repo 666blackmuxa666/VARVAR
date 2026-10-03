@@ -1,7 +1,20 @@
 // Меню в KV + редагування через Telegram звичайними фразами.
 import DEFAULT_MENU from '../../data/menu.json';
 
-export async function getMenu(env) { return (await env.DB.get('menu', 'json')) || DEFAULT_MENU; }
+export async function getMenu(env) {
+  const m = (await env.DB.get('menu', 'json')) || DEFAULT_MENU;
+  if (!m.categories.some(c => c.id === 'inshe')) { m.categories.push(INSHE); await env.DB.put('menu', JSON.stringify(m)); } // одноразово: технічний розділ
+  for (const c of m.categories) if (['inshe', 'upakuvannia'].includes(c.id)) c.tech = true; // не показується гостям
+  return m;
+}
+const it = (id, uk, en, price) => ({ id: 'x-' + id, name: { uk, en }, price });
+const INSHE = { id: 'inshe', tech: true, name: { uk: 'Інше', en: 'Other' }, items: [
+  it('glass', 'Розбитий стакан', 'Broken glass', 100), it('wglass', 'Розбитий келих', 'Broken wine glass', 150), it('plate', 'Розбита тарілка', 'Broken plate', 200),
+  it('ashtray', 'Розбита попільничка', 'Broken ashtray', 150), it('hookah', 'Пошкоджений кальян / колба', 'Damaged hookah', 1000),
+  it('cork', 'Пробковий збір (свій алкоголь)', 'Corkage fee', 200), it('cake', 'Подача торта гостей', 'Cake service', 100),
+  it('icecream', 'Морозиво', 'Ice cream', 80), it('fruit', 'Фруктова тарілка', 'Fruit plate', 400), it('cheese', 'Сирна тарілка', 'Cheese plate', 450),
+  it('banquet', 'Банкетне обслуговування', 'Banquet service', 500), it('music', 'Замовлення пісні / музики', 'Music request', 100),
+  it('extra', 'Додаткова позиція', 'Extra item', 50)] };
 export async function saveMenu(env, menu) {
   const cur = await env.DB.get('menu');
   if (cur) await env.DB.put('menu_prev', cur);           // для «відмінити»

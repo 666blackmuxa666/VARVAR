@@ -35,7 +35,7 @@ const SCHEMA = {
 function menuText(menu) {
   const out = [], byId = {};
   for (const c of menu.categories) {
-    if (c.id === 'upakuvannia') continue;
+    if (c.tech || c.id === 'upakuvannia') continue;
     const its = c.items.filter(i => !i.hidden); if (!its.length) continue;
     out.push(`## ${c.name.uk} [${c.id}]`);
     for (const i of its) {
