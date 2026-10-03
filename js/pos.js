@@ -140,7 +140,7 @@
   }
 
   // ---------- каркас ----------
-  const NAV = [['hall', '🪑', 'Зал'], ['closed', '📜', 'Закриті'], ['stop', '⛔', 'Стоп-лист'], ['printer', '🖨', 'Принтер'], ['cash', '💰', 'Каса', 1], ['reports', '📊', 'Звіти', 1], ['menu', '📖', 'Меню', 1], ['settings', '⚙️', 'Налашт.', 1]];
+  const NAV = [['hall', '🪑', 'Зал'], ['closed', '📜', 'Закриті'], ['stop', '⛔', 'Стоп-лист'], ['cash', '💰', 'Каса', 1], ['reports', '📊', 'Звіти', 1], ['menu', '📖', 'Меню', 1], ['printer', '🖨', 'Принтер'], ['settings', '⚙️', 'Налашт.', 1]];
   function renderNav() {
     const newCnt = S.events.filter(e => e.k === 'guest' && e.s !== 'acc').length;
     setHTML($('#nav'), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` +
@@ -651,7 +651,7 @@
     switch (a) {
       case 'view': S.view = el.dataset.v; S.q = ''; renderNav(); renderMain(); loadView(); $('#feed').classList.remove('open'); $('#main').scrollTop = 0; break;
       case 'feed': $('#feed').classList.toggle('open'); break;
-      case 'more': { const v = await choose('Ще', '', NAV.filter(n => (!n[3] || isAdmin()) && ['stop', 'printer', 'menu', 'settings'].includes(n[0])).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: '🔒 Вийти', val: 'logout', cls: 'red' }]));
+      case 'more': { const v = await choose('Ще', '', NAV.filter(n => (!n[3] || isAdmin()) && ['stop', 'menu', 'printer', 'settings'].includes(n[0])).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: '🔒 Вийти', val: 'logout', cls: 'red' }]));
         if (v === 'logout') { if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); } else if (v) { S.view = v; S.q = ''; renderNav(); renderMain(); loadView(); $('#main').scrollTop = 0; } break; }
       case 'switch': if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); break;
       case 'table': $('#feed').classList.remove('open'); openTable(el.dataset.t); break;
