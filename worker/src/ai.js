@@ -1,7 +1,7 @@
 // ✨ Помічник «Не знаю, що хочу»: Gemini ставить кілька питань і підбирає страви / сет із нашого меню
 import { getMenu } from './menu.js';
 
-const MODELS = ['gemini-flash-lite-latest', 'gemini-flash-latest', 'gemini-3.8-flash'];
+const MODELS = ['gemini-flash-lite-latest', 'gemini-flash-lite-latest', 'gemini-flash-latest']; // lite — швидка; повтор, якщо зависла
 const MAX_Q = 4;
 const LANG = { uk: 'українською', en: 'in English', pl: 'po polsku', de: 'auf Deutsch', fr: 'en français', es: 'en español', it: 'in italiano', cs: 'česky', ro: 'în română', tr: 'Türkçe' };
 
@@ -37,7 +37,7 @@ async function gemini(env, prompt) {
   for (const m of MODELS) try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
       method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(12000),
       body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0.9 } }),
     });
     if (!r.ok) console.log('gemini-fail', m, r.status);
