@@ -596,7 +596,7 @@
     S.data.range = res || S.data.range || { checks: [], exp: [], z: [] };
   }
   // ---------- 📊 звіти: розділи · порівняння з попереднім періодом · графіки ----------
-  const SECS = [['overview', '📈 Огляд', ['overview']], ['sales', '🍽 Продажі', ['dishes', 'cats', 'groups', 'tables', 'days', 'wd']], ['staff', '👥 Персонал', ['waiters', 'tips', 'ctrl', 'kitchen']], ['money', '💰 Гроші', ['checks', 'exp', 'mov', 'z']], ['plus', '🧮 Плюси / мінуси', ['plus']]];
+  const SECS = [['overview', '📈 Огляд', ['overview']], ['sales', '🍽 Продажі', ['dishes', 'cats', 'groups', 'tables', 'days', 'wd']], ['staff', '👥 Персонал', ['waiters', 'tips', 'ctrl', 'kitchen']], ['money', '💰 Гроші', ['checks', 'exp', 'mov', 'z']]];
   const TABS = { dishes: '🍽 Страви', cats: '📂 Категорії', groups: '🍳 Кухня/бар', tables: '🪑 Столи', days: '📅 Дні', wd: '🗓 Дні тижня', waiters: '👤 Офіціанти', tips: '💝 Чайові', ctrl: '🕵️ Контроль', kitchen: '⏱ Кухня', checks: '🧾 Чеки', exp: '💸 Витрати', mov: '🔁 Рух коштів', z: '🔒 Z-звіти' };
   const WD = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'], wdOf = d => (new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7;
   const hOrd = h => { const n = parseInt(h, 10) || 0; return n < 3 ? n + 24 : n; }; // робочий день — з 03:00: 00–02 год ідуть після 23
@@ -832,7 +832,7 @@
   const parseQ = (s, u) => { const m = String(s ?? '').trim().replace(',', '.').match(/^(-?\d*\.?\d+)\s*(г|гр|мл|кг|л|шт)?\.?$/i); if (!m) return NaN; let v = +m[1]; const su = (m[2] || '').toLowerCase(); if ((su === 'г' || su === 'гр') && u === 'кг') v /= 1000; if (su === 'мл' && u === 'л') v /= 1000; return r3(v); };
   const small = u => u === 'кг' ? 'г' : u === 'л' ? 'мл' : u; // грамовка в техкарті — у г / мл
   const SK_TABS = () => isCook() ? [['stock', '📦 Склад'], ['inv', '🧾 Накладні'], ['prod', '🍳 Заготовки'], ['count', '📝 Інвентаризація'], ['tech', '📋 Техкарти']]
-    : [['stock', '📦 Залишки'], ['inv', '🧾 Накладні'], ['buy', '🛒 Закупівля'], ['cards', '📋 Техкарти'], ['prod', '🍳 Заготовки'], ['count', '📝 Інвентаризація'], ['menu', '📖 Меню'], ['stop', '⛔ Стоп-лист']];
+    : [['stock', '📦 Залишки'], ['inv', '🧾 Накладні'], ['buy', '🛒 Закупівля'], ['cards', '📋 Техкарти'], ['prod', '🍳 Заготовки'], ['count', '📝 Інвентаризація'], ['rep', '📊 Плюси / мінуси'], ['menu', '📖 Меню'], ['stop', '⛔ Стоп-лист']];
   S.sk = { tab: 'stock', q: '', q2: '', cq: '', wh: '', cat: '', flt: '', cf: {}, cwh: 'k', p: 'w', draft: null, card: null };
   const skBusy = () => S.sk.draft || S.sk.card || (document.activeElement?.closest?.('#main') && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName));
   async function loadCalc() {
@@ -844,6 +844,7 @@
     if (t === 'tech') S.data.skTech = await api('skTech');
     if (t === 'count') { const [c, l] = await Promise.all([api('skCount', { wh: K.cwh }), api('skCountList')]); S.data.skCount = c; S.data.skCnts = l.list; K.cf = Object.fromEntries(Object.entries(c.draft.f || {}).map(([k, v]) => [k, String(v)])); }
     if ((t === 'menu' || t === 'stop') && !S.menu) await loadMenu();
+    if (t === 'rep') { const [from, to] = perRange(K.p); S.data.skRep = null; renderMain(); S.data.skRep = await api('skReport', { from, to }, 30000); }
   }
   function calcHTML() {
     const K = S.sk, tabs = SK_TABS(); if (!tabs.some(x => x[0] === K.tab)) K.tab = tabs[0][0];
@@ -923,14 +924,14 @@
     if (r) { S.data.sk = await api('skData').catch(() => S.data.sk); renderMain(); }
   }
   // вибір продукту зі списку (пошук)
-  function skPick(title, filter = () => true) {
+  function skPick(title, filter = () => true, allowNew = false) {
     return new Promise(async res => {
       if (!S.data.sk) S.data.sk = await api('skData').catch(() => null); if (!S.data.sk) return res(null);
       const all = S.data.sk.ing.filter(x => !x.off && filter(x)).sort((a, b) => a.n.localeCompare(b.n));
       const draw = q => all.filter(x => !q || x.n.toLowerCase().includes(q.toLowerCase())).slice(0, 60).map(x => `<button class="pk-i" data-pk="${x.id}">${x.semi ? '🍳 ' : ''}${esc(x.n)} <span class="muted">${fq(totQ(x), x.u)}</span></button>`).join('') || '<div class="muted">Нічого не знайдено</div>';
       modalResolve = v => { closeModal(); res(v); };
       const el = document.createElement('div'); el.className = 'modal-bg'; el.id = 'modal';
-      el.innerHTML = `<div class="modal"><h3>${esc(title)}</h3><input id="pkQ" placeholder="🔎 Почніть вводити назву" autocomplete="off"><div class="pk-l" id="pkL">${draw('')}</div><div class="btns"><button class="btn" data-x>Скасувати</button></div></div>`;
+      el.innerHTML = `<div class="modal"><h3>${esc(title)}</h3><input id="pkQ" placeholder="🔎 Почніть вводити назву" autocomplete="off">${allowNew ? '<button class="pk-i pk-new" data-pk="__new">➕ Новий продукт…</button>' : ''}<div class="pk-l" id="pkL">${draw('')}</div><div class="btns"><button class="btn" data-x>Скасувати</button></div></div>`;
       el.addEventListener('click', e => { if (e.target === el || e.target.closest('[data-x]')) return modalResolve(null); const p = e.target.closest('[data-pk]')?.dataset.pk; if (p) modalResolve(p); });
       el.querySelector('#pkQ').addEventListener('input', e => { el.querySelector('#pkL').innerHTML = draw(e.target.value); });
       document.body.append(el); setTimeout(() => el.querySelector('#pkQ')?.focus(), 60);
@@ -977,7 +978,7 @@
     const pkOpt = l => { const x = im.get(l.id), u = x?.u || l.add?.u || 'од.', pks = [{ n: u, f: 1 }, ...(x?.pk || [])]; if (l.f && !pks.some(p => p.f === +l.f)) pks.push({ n: '×' + l.f, f: +l.f }); return pks.map(p => `<option value="${p.f}" ${(+l.f || 1) === p.f ? 'selected' : ''}>${esc(p.n)}${p.f !== 1 ? ` (${p.f} ${u})` : ''}</option>`).join('') + '<option value="?">інша…</option>'; };
     const rows = d.lines.map((l, i) => { const st = l.add ? 'new' : !l.id ? 'none' : l.ok === 'guess' ? 'guess' : 'ok', x = im.get(l.id);
       return `<div class="dl ${st}"><div class="dl-src">${i + 1}. ${l.n ? esc(l.n) : '<i class="muted">новий рядок</i>'}${l.u || l.price ? ` <span class="muted">· ${esc(l.q0 ?? l.q)} ${esc(l.u || '')}${l.price ? ' × ' + l.price : ''}</span>` : ''}${st === 'guess' ? ' <span class="warn">перевірте продукт</span>' : st === 'none' ? ' <span class="warn">оберіть продукт</span>' : ''}</div>
-        <div class="dl-f"><select data-dl="${i}" data-k="id">${opt(l)}</select><input data-dl="${i}" data-k="q" inputmode="decimal" value="${l.q ?? ''}" placeholder="К-сть"><select data-dl="${i}" data-k="f">${pkOpt(l)}</select><input data-dl="${i}" data-k="sum" inputmode="decimal" value="${l.sum ?? ''}" placeholder="Сума ₴"><button class="xb" data-a="skDlDel" data-i="${i}" title="Прибрати рядок">✕</button></div>
+        <div class="dl-f"><button class="pk-b ${l.id || l.add ? '' : 'empty'}" data-a="skDlPick" data-i="${i}">${x ? esc(x.n) + ` <span class="muted">${x.u}</span>` : l.add ? `➕ ${esc(l.add.n)} <span class="muted">${l.add.u}</span>` : '🔎 Оберіть продукт…'}</button><input data-dl="${i}" data-k="q" inputmode="decimal" value="${l.q ?? ''}" placeholder="К-сть"><select data-dl="${i}" data-k="f">${pkOpt(l)}</select><input data-dl="${i}" data-k="sum" inputmode="decimal" value="${l.sum ?? ''}" placeholder="Сума ₴"><button class="xb" data-a="skDlDel" data-i="${i}" title="Прибрати рядок">✕</button></div>
         <div class="dl-h muted" id="dlh${i}">${lineHint(l, x, adm)}</div></div>`; }).join('');
     const sups = Object.keys(S.data.skInv?.sups || {});
     return `<div class="card"><div class="rhead"><h3 style="margin:0">🧾 ${d.src === 'photo' ? 'Розпізнана накладна — перевірте' : 'Нова накладна'}</h3><button class="btn sm" data-a="skDraftX">✕ Скасувати</button></div>
@@ -1111,7 +1112,7 @@
     const cost = c.items.reduce((a, l) => a + (l.id ? (+l.q || 0) * skUnitCost(l.id) : 0), 0), fc = c.price ? Math.round(cost / c.price * 1000) / 10 : null, rec = cost ? Math.ceil(cost / (tgt / 100) / 5) * 5 : 0;
     const per = c.semi && +c.yield > 0 ? cost / +c.yield : null;
     const rows = c.items.map((l, i) => { const x = im.get(l.id), u = x?.u || l.add?.u || 'кг', k = u === 'шт' ? 1 : 1000, loss = l.loss ?? x?.loss ?? 0, net = (+l.q || 0) * (1 - loss / 100);
-      return `<div class="cl"><select data-cl="${i}" data-k="id"><option value="">— продукт —</option><option value="__new">${l.add ? `➕ Новий: ${esc(l.add.n)}` : '➕ Новий продукт…'}</option>${ing.map(y => `<option value="${y.id}" ${l.id === y.id ? 'selected' : ''}>${y.semi ? '🍳 ' : ''}${esc(y.n)}</option>`).join('')}</select>
+      return `<div class="cl"><button class="pk-b ${l.id || l.add ? '' : 'empty'}" data-a="skClPick" data-i="${i}">${x ? (x.semi ? '🍳 ' : '') + esc(x.n) : l.add ? `➕ ${esc(l.add.n)}` : '🔎 Продукт…'}</button>
         <label>брутто, ${small(u)}<input data-cl="${i}" data-k="q" inputmode="decimal" value="${l.q ? r3(l.q * k) : ''}"></label><label>втрати %<input data-cl="${i}" data-k="loss" inputmode="numeric" value="${loss || ''}" placeholder="0"></label>
         <label>нетто, ${small(u)}<input data-cl="${i}" data-k="net" inputmode="decimal" value="${net ? r3(net * k) : ''}" id="cln${i}"></label>
         <span class="cl-c muted money" id="clc${i}">${x ? money((+l.q || 0) * skUnitCost(x.id)) : ''}</span><button class="xb" data-a="skClDel" data-i="${i}">✕</button></div>`; }).join('');
@@ -1578,6 +1579,12 @@
       case 'skBcBind': { const c = el.dataset.c; if (!isAdmin()) { toast('Привʼязати штрихкод може адміністратор'); break; } camStop?.(); camStop = null; modalResolve?.('ok'); await new Promise(z => setTimeout(z, 50));
         const id = await skPick(`Штрихкод ${c} — який це продукт?`); if (!id) break; const x = S.data.sk.ing.find(y => y.id === id);
         const r = await act('skIngSave', { x: { ...x, bc: [...(x.bc || []), c] } }, '🔗 Штрихкод привʼязано'); if (r) { Object.assign(x, r.x); skDraftAdd(x); renderMain(); } break; }
+      case 'skDlPick': case 'skClPick': {
+        const dl = a === 'skDlPick', i = +el.dataset.i, l = dl ? K.draft.lines[i] : K.card.items[i]; if (!l) break;
+        const id = await skPick(dl && l.n ? `Що це: «${l.n}»?` : 'Оберіть продукт', () => true, true); if (!id) break;
+        if (id === '__new') { const nw = await skNewIng(l.n || '', l.u || 'кг', 'k'); if (nw) { l.add = nw; l.id = null; } }
+        else { l.id = id; delete l.add; const x = S.data.sk.ing.find(y => y.id === id); if (dl) { l.ok = 'ok'; l.f = skAutoF(l); } else if (x && l.loss == null && x.loss) l.loss = x.loss; }
+        renderMain(); break; }
       case 'skDlDel': K.draft.lines.splice(+el.dataset.i, 1); renderMain(); break;
       case 'skDlAdd': K.draft.lines.push({ id: null, n: '', q: '', f: 1, sum: '' }); renderMain(); break;
       case 'skDraftX': if (await confirmBox('Скасувати накладну?', 'Внесене не збережеться')) { K.draft = null; renderMain(); loadView(); } break;
