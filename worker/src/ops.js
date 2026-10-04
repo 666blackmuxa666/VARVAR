@@ -869,7 +869,7 @@ export async function deleteTable(env, ...a) { return L(env, 'bills', () => _del
 async function billBack(env, ...a) { return L(env, 'bills', () => _billBack(env, ...a)); }
 async function addVoid(env, ...a) { return L(env, 'void:' + dayKey(), () => _addVoid(env, ...a)); }
 export async function markCook(env, ...a) { return L(env, 'cooks:' + dayKey(), () => _markCook(env, ...a)); }
-export async function tipBalances(env, ...a) { return L(env, 'tipbal', () => _tipBalances(env, ...a)); }
+export async function tipBalances(env, ...a) { const b = await env.DB.get('tipbal', 'json'); return b || L(env, 'tipbal', () => _tipBalances(env, ...a)); } // читання — без черги
 export async function addTipBal(env, ...a) { return L(env, 'tipbal', () => _addTipBal(env, ...a)); }
 export async function payTips(env, ...a) { return L(env, ['tipbal', 'tippay:' + dayKey(), 'mov:' + dayKey()], () => _payTips(env, ...a)); }
 const cDay = d => isDay(d) && d <= dayKey() ? d : dayKey();

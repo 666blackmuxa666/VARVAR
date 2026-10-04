@@ -66,7 +66,7 @@ export class Store extends DurableObject {
   async lock(k) {
     this.q ||= new Map(); const prev = this.q.get(k) || Promise.resolve();
     let rel; const mine = new Promise(r => { rel = r; }); const tail = prev.then(() => mine);
-    this.q.set(k, tail); await prev;
+    this.q.set(k, tail); await Promise.race([prev, new Promise(r => setTimeout(r, 8000))]); // попередній завис — не чекаємо вічно
     const id = crypto.randomUUID(); (this.rel ||= new Map()).set(id, () => { rel(); if (this.q.get(k) === tail) this.q.delete(k); });
     setTimeout(() => this.unlock(id), 8000); // запобіжник: запит упав — черга не зависає
     return id;
