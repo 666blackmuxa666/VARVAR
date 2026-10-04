@@ -107,7 +107,7 @@
     S.events = r.events; S.ready = true;
     render();
   }
-  async function loadMenu() { const r = await api('menu'); S.menu = r.menu; S.fav = r.fav || []; S.groups = r.groups || []; if (S.open) renderSheet(); if (['stop', 'menu', 'reports'].includes(S.view)) renderMain(); }
+  async function loadMenu() { const r = await api('menu'); S.menu = r.menu; S.fav = r.fav || []; S.groups = r.groups || []; if (S.open) renderSheet(); if (['stop', 'menu', 'reports', 'calc'].includes(S.view)) renderMain(); }
   let ws, wsTimer, pingT, reloadT, lastMsg = 0; const pendKeys = new Set();
   // iPhone «на головному екрані» присипляє застосунок: зʼєднання тихо вмирає — перепідключаємось і перечитуємо стан
   function revive() { if (!S.token) return; S.live = false; liveDot(); try { ws.onclose = null; ws.close(); } catch {} clearInterval(pingT); connect(); }
@@ -128,7 +128,7 @@
         loadState().catch(() => {});
         if (m.keys.includes('menu') || m.keys.includes('fav')) loadMenu().catch(() => {});
         if (m.keys.includes('kq') && (isCook() || S.view === 'kq')) loadKq().catch(() => {});
-        if (S.view === 'settings' && S.setTab === 'pay' && m.keys.some(k => ['att', 'plan', 'pay', 'swaps', 'staff'].includes(k)) && !$('#modal')) loadView(true);
+        if (S.view === 'team' && m.keys.some(k => ['att', 'plan', 'pay', 'swaps', 'staff'].includes(k)) && !$('#modal')) loadView(true);
         if (S.view === 'calc' && m.keys.some(k => ['ing', 'cards', 'stk', 'invl', 'sups', 'cntl', 'cnt'].includes(k)) && !skBusy()) loadView(true);
         if (['closed', 'reports', 'settings', 'cash'].includes(S.view) && m.keys.some(k => ['closed', 'day', 'exp', 'staff', 'shift', 'z', 'mov', 'tipbal', 'tippay', 'void', 'kq'].includes(k) || (k === 'bill' && S.view === 'cash'))) loadView(true);
       }, 120);
@@ -149,16 +149,18 @@
   }
 
   // ---------- каркас ----------
-  const NAV_COOK = [['kq', '👨‍🍳', 'Черга'], ['hall', '🪑', 'Зал'], ['stop', '⛔', 'Стоп-лист'], ['calc', '🧮', 'Склад']];
-  const navList = () => isCook() ? NAV_COOK : NAV.filter(n => !n[3] || isAdmin());
+  const NAV_COOK = [['kq', '👨‍🍳', 'Черга'], ['calc', '📦', 'Склад'], ['stop', '⛔', 'Стоп-лист'], ['hall', '🪑', 'Зал']];
+  const NAV_A = [['hall', '🪑', 'Зал'], ['kq', '👨‍🍳', 'Кухня'], ['cash', '💰', 'Каса'], ['reports', '📊', 'Звіти'], ['calc', '📦', 'Склад'], ['team', '👥', 'Персонал'], ['settings', '⚙️', 'Налашт.']];
+  const NAV_W = [['hall', '🪑', 'Зал'], ['closed', '🧾', 'Чеки'], ['stop', '⛔', 'Стоп-лист']];
+  const navList = () => isCook() ? NAV_COOK : isAdmin() ? NAV_A : NAV_W;
   const NAV = [['hall', '🪑', 'Зал'], ['closed', '📜', 'Закриті'], ['stop', '⛔', 'Стоп-лист'], ['cash', '💰', 'Каса', 1], ['reports', '📊', 'Звіти', 1], ['kq', '👨‍🍳', 'Кухня', 1], ['calc', '🧮', 'Розрахунок', 1], ['settings', '⚙️', 'Налашт.', 1]];
   function renderNav() {
     const newCnt = S.events.filter(e => e.k === 'guest' && e.s === 'new').length;
+    const attNew = isAdmin() ? S.events.filter(e => e.k === 'att' && e.s === 'new').length : 0;
     setHTML($('#nav'), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` +
-      navList().map(([v, ic, l]) => `<button class="${S.view === v ? 'on' : ''}${!isCook() && ['calc', 'menu', 'settings', 'stop', 'kq'].includes(v) ? ' more-i' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join('') +
-      `<button class="${isAdmin() ? 'more-i ' : ''}cab-btn" data-a="zpMy"><span class="ic">👤${onShift() ? '<i class="sh-dot"></i>' : ''}</span>Кабінет</button>` +
+      navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? 'on' : ''}${!isCook() && ['calc', 'menu', 'settings', 'stop', 'kq'].includes(v) ? ' more-i' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === 'team' && attNew ? `<span class="badge">${attNew}</span>` : ''}</button>`).join('') +
       `<button class="feed-btn" data-a="feed"><span class="ic">🔔</span>Стрічка${newCnt ? `<span class="badge">${newCnt}</span>` : ''}</button>` +
-      `<button class="more-btn ${['calc', 'menu', 'settings', 'stop', 'kq'].includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><div class="me" title="${esc(S.me?.name)}"><i>${esc((S.me?.name || '?').slice(0, 1).toUpperCase())}</i><b>${esc(S.me?.name)}</b><small>${isAdmin() ? 'адмін' : isCook() ? 'кухар' : 'офіціант'}</small></div>` +
+      `<button class="more-btn ${['calc', 'menu', 'settings', 'stop', 'kq'].includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><button class="me" data-a="zpMy" title="Мій кабінет"><i>${esc((S.me?.name || '?').slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ''}</i><b>${esc(S.me?.name)}</b><small>${isAdmin() ? 'адмін' : isCook() ? 'кухар' : 'офіціант'} · кабінет</small></button>` +
       `<button data-a="switch"><span class="ic">🔒</span>Вийти</button>`);
   }
   function render() { renderNav(); renderFeed(); if (['hall', 'printer', 'kq'].includes(S.view) || (S.view === 'settings' && S.setTab === 'printer')) renderMain(); if (S.open) renderSheet(); }
@@ -356,12 +358,11 @@
   async function loadView(silent) {
     try {
       if (S.view === 'kq') await loadKq();
-      if (S.view === 'cash') S.data.shift = await api('shift');
-      if (S.view === 'reports') { if (!S.menu) await loadMenu(); await loadReport(); }
-      if (S.view === 'closed') { const r = await api('closed', { day: S.cday || '' }); S.data.closed = r.list; S.data.cvoids = r.voids || []; S.data.cday = r.day; S.data.ctoday = r.today; }
+      if (S.view === 'cash' && S.cashTab !== 'checks') S.data.shift = await api('shift');
+      if (S.view === 'closed' || (S.view === 'cash' && S.cashTab === 'checks')) { const r = await api('closed', { day: S.cday || '' }); S.data.closed = r.list; S.data.cvoids = r.voids || []; S.data.cday = r.day; S.data.ctoday = r.today; }
+      if (S.view === 'reports') { if (!S.menu) await loadMenu(); if (S.rep.tab === 'plus') { const [from, to] = perRange(S.sk.p); S.data.skRep = await api('skReport', { from, to }, 30000); } else await loadReport(); }
       if (S.view === 'calc') await loadCalc();
-      if (S.view === 'settings' && S.setTab === 'pay') await loadPay();
-      if (S.view === 'settings' && S.setTab === 'menu' && !S.menu) await loadMenu();
+      if (S.view === 'team') { await loadPay(); S.data.staff = await api('staff'); }
       if (S.view === 'settings') { S.data.staff = await api('staff'); S.data.wifi = await api('wifi'); }
       if (['stop', 'menu'].includes(S.view) && !S.menu) await loadMenu();
     } catch {}
@@ -371,7 +372,7 @@
     const v = S.view, m = $('#main');
     m.classList.toggle('hall', v === 'hall');
     if (v === 'hall') { const [c, r] = hallGrid(m); m.style.setProperty('--cols', c); m.style.setProperty('--rows', r); }
-    const html = { kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML }[v]?.();
+    const html = { kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, team: teamHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML }[v]?.();
     const fid = document.activeElement?.id, keep = ['stopSearch', 'rQ', 'skQ', 'skQ2', 'skCq'].includes(fid);
     setHTML(m, html || '');
     if (keep) { const el = $('#' + fid); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
@@ -469,6 +470,11 @@
   }
   // ---------- каса (зміна) ----------
   function cashHTML() {
+    const ctab = S.cashTab || 'day', cseg = `<div class="seg rsec cseg">${[['day', '💰 Сьогодні'], ['checks', '🧾 Чеки']].map(([k, l]) => `<button class="${ctab === k ? 'on' : ''}" data-a="cashTab" data-t="${k}">${l}</button>`).join('')}</div>`;
+    if (ctab === 'checks') return cseg + closedHTML();
+    return cseg + cashHTML0();
+  }
+  function cashHTML0() {
     const r = S.data.shift; if (!r) return '<div class="head"><h1>Каса</h1></div><div class="muted">Завантаження…</div>';
     const z = r.z, pc = z.total ? Math.round(z.cash / z.total * 100) : 0;
     const today = new Date().toLocaleDateString('uk-UA', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -588,7 +594,7 @@
     S.data.range = res || S.data.range || { checks: [], exp: [], z: [] };
   }
   // ---------- 📊 звіти: розділи · порівняння з попереднім періодом · графіки ----------
-  const SECS = [['overview', '📈 Огляд', ['overview']], ['sales', '🍽 Продажі', ['dishes', 'cats', 'groups', 'tables', 'days', 'wd']], ['staff', '👥 Персонал', ['waiters', 'tips', 'ctrl', 'kitchen']], ['money', '💰 Гроші', ['checks', 'exp', 'mov', 'z']]];
+  const SECS = [['overview', '📈 Огляд', ['overview']], ['sales', '🍽 Продажі', ['dishes', 'cats', 'groups', 'tables', 'days', 'wd']], ['staff', '👥 Персонал', ['waiters', 'tips', 'ctrl', 'kitchen']], ['money', '💰 Гроші', ['checks', 'exp', 'mov', 'z']], ['plus', '🧮 Плюси / мінуси', ['plus']]];
   const TABS = { dishes: '🍽 Страви', cats: '📂 Категорії', groups: '🍳 Кухня/бар', tables: '🪑 Столи', days: '📅 Дні', wd: '🗓 Дні тижня', waiters: '👤 Офіціанти', tips: '💝 Чайові', ctrl: '🕵️ Контроль', kitchen: '⏱ Кухня', checks: '🧾 Чеки', exp: '💸 Витрати', mov: '🔁 Рух коштів', z: '🔒 Z-звіти' };
   const WD = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'], wdOf = d => (new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7;
   const hOrd = h => { const n = parseInt(h, 10) || 0; return n < 3 ? n + 24 : n; }; // робочий день — з 03:00: 00–02 год ідуть після 23
@@ -623,6 +629,7 @@
     const R = S.rep, [from, to] = perRange(R.p), r = S.data.range;
     if (!SECS.some(s => s[2].includes(R.tab))) R.tab = 'overview';
     const sec = SECS.find(s => s[2].includes(R.tab));
+    if (R.tab === 'plus') return `<div class="rhead"><div><h1>Звіти</h1><span class="muted">фудкост, прибуток страв, нестачі й списання</span></div></div><div class="seg rsec">${SECS.map(([k, l]) => `<button class="${sec[0] === k ? 'on' : ''}" data-a="rSec" data-s="${k}">${l}</button>`).join('')}</div><div class="sk" style="margin-top:12px">${skRepHTML()}</div>`;
     const opt = (v, l, cur) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(l)}</option>`;
     const checks0 = r ? r.checks : [];
     const waiters = [...new Set(checks0.flatMap(c => [c.w, c.by]).filter(Boolean))].sort(), tables = [...new Set(checks0.map(c => c.t))].sort((a, b) => a - b);
@@ -748,13 +755,13 @@
     return `<div class="head"><h1>Меню</h1><button class="btn" data-a="menuUndo">↩️ Відмінити останню зміну</button><button class="btn" data-a="catAdd">📂 Новий розділ</button><button class="btn primary" data-a="menuEdit" data-id="">➕ Нова страва</button></div>
       ${S.menu.categories.map(c => `<h3 class="muted" style="margin:18px 4px 8px">${esc(c.name.uk)}</h3><div class="grid2">${c.items.map(i => `<button class="list-row press" data-a="menuEdit" data-id="${i.id}" style="text-align:left"><div class="grow"><b>${esc(i.name.uk)}</b>${i.hidden ? ' ⛔' : ''}<div class="muted" style="font-size:13px">${i.variants ? i.variants.map(v => `${v.v} — ${v.p}`).join(' / ') : i.price + ' ₴'}${i.size && !i.variants ? ' · ' + esc(i.size) : ''}</div></div>›</button>`).join('')}</div>`).join('')}`;
   }
-  function settingsHTML() {
+  function settingsHTML(only) {
     const st = S.data.staff, wf = S.data.wifi, c = st?.cfg || {};
     const ROLE = { admin: '🔐 адмін', cook: '👨‍🍳 кухар', waiter: '🧑‍🍳 офіціант' };
     const row = (l, v, btn, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ''}</span><span class="kv-r"><b>${v}</b>${btn}</span></div>`;
     const ch = (a, extra = '') => `<button class="btn sm" data-a="${a}"${extra}>змінити</button>`;
     const staff = st ? [...st.staff].sort((a, b) => (a.role || '').localeCompare(b.role || '') || a.name.localeCompare(b.name)) : null;
-    const SS = [['people', '👥 Люди'], ['rules', '⚙️ Правила роботи'], ['pay', '👷 Зарплата'], ['menu', '📖 Меню'], ['printer', '🖨 Принтер'], ['test', '🧪 Тест']], cur = S.setTab || 'people';
+    const SS = [['rules', '⚙️ Правила роботи'], ['printer', '🖨 Принтер'], ['test', '🧪 Тест']], cur = only || (SS0 => SS0.includes(S.setTab) ? S.setTab : 'rules')(['rules', 'printer', 'test']);
     const part = {};
     part.people = `<div class="grid2 set">
       <div class="card"><h3>👥 Персонал <span class="muted">· ${staff ? staff.length : '…'}</span></h3>
@@ -781,10 +788,9 @@
         <div class="scrollbox sm">${wf ? wf.list.map(x => `<div class="kv"><span>${esc(x.k)}</span><span class="muted">${new Date(x.at).toLocaleDateString('uk-UA')}</span></div>`).join('') || '<div class="muted">немає збережених адрес</div>' : ''}</div>
         <div class="btnrow"><button class="btn sm primary" data-a="wifiAdd">➕ Це наша мережа</button><button class="btn sm red" data-a="wifiClear">Скинути всі</button></div></div></div>`;
     part.printer = printerCards();
-    if (cur === 'pay') part.pay = payHTML();
-    if (cur === 'menu') part.menu = menuHTML();
     part.test = `<div class="grid2 set"><div class="card"><h3>🧪 Тест</h3><div class="muted set-note">Тимчасово, до запуску.</div><button class="btn sm red" data-a="reset">♻️ Обнулити все</button></div></div>`;
-    return `<div class="rhead"><div><h1>Налаштування</h1><span class="muted">персонал, коди, паролі, правила</span></div></div>
+    if (only) return part[only];
+    return `<div class="rhead"><div><h1>Налаштування</h1><span class="muted">правила роботи, принтер</span></div></div>
       <div class="seg rsec">${SS.map(([k, l]) => `<button class="${cur === k ? 'on' : ''}" data-a="setTab" data-s="${k}">${l}</button>`).join('')}</div>${part[cur]}`;
   }
   async function menuEdit(id) {
@@ -824,7 +830,7 @@
   const parseQ = (s, u) => { const m = String(s ?? '').trim().replace(',', '.').match(/^(-?\d*\.?\d+)\s*(г|гр|мл|кг|л|шт)?\.?$/i); if (!m) return NaN; let v = +m[1]; const su = (m[2] || '').toLowerCase(); if ((su === 'г' || su === 'гр') && u === 'кг') v /= 1000; if (su === 'мл' && u === 'л') v /= 1000; return r3(v); };
   const small = u => u === 'кг' ? 'г' : u === 'л' ? 'мл' : u; // грамовка в техкарті — у г / мл
   const SK_TABS = () => isCook() ? [['stock', '📦 Склад'], ['inv', '🧾 Накладні'], ['prod', '🍳 Заготовки'], ['count', '📝 Інвентаризація'], ['tech', '📋 Техкарти']]
-    : [['stock', '📦 Склад'], ['buy', '🛒 Закупівля'], ['inv', '🧾 Накладні'], ['cards', '📋 Техкарти'], ['prod', '🍳 Заготовки'], ['count', '📝 Інвентаризація'], ['rep', '📊 Плюси / мінуси']];
+    : [['stock', '📦 Залишки'], ['inv', '🧾 Накладні'], ['buy', '🛒 Закупівля'], ['cards', '📋 Техкарти'], ['prod', '🍳 Заготовки'], ['count', '📝 Інвентаризація'], ['menu', '📖 Меню'], ['stop', '⛔ Стоп-лист']];
   S.sk = { tab: 'stock', q: '', q2: '', cq: '', wh: '', cat: '', flt: '', cf: {}, cwh: 'k', p: 'w', draft: null, card: null };
   const skBusy = () => S.sk.draft || S.sk.card || (document.activeElement?.closest?.('#main') && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName));
   async function loadCalc() {
@@ -835,15 +841,17 @@
     if ((t === 'cards' || t === 'prod') && isAdmin()) { if (!S.menu) await loadMenu(); S.data.skCost = await api('skCost'); }
     if (t === 'tech') S.data.skTech = await api('skTech');
     if (t === 'count') { const [c, l] = await Promise.all([api('skCount', { wh: K.cwh }), api('skCountList')]); S.data.skCount = c; S.data.skCnts = l.list; K.cf = Object.fromEntries(Object.entries(c.draft.f || {}).map(([k, v]) => [k, String(v)])); }
-    if (t === 'rep') { const [from, to] = perRange(K.p); S.data.skRep = null; renderMain(); S.data.skRep = await api('skReport', { from, to }, 30000); }
+    if ((t === 'menu' || t === 'stop') && !S.menu) await loadMenu();
   }
   function calcHTML() {
     const K = S.sk, tabs = SK_TABS(); if (!tabs.some(x => x[0] === K.tab)) K.tab = tabs[0][0];
-    const sub = { stock: 'залишки на складах Кухня і Бар', buy: 'що докупити — по постачальниках', inv: 'прихід товару: фото, код або вручну', cards: 'калькуляційні карти й собівартість страв', tech: 'склад і грамовка страв', prod: 'напівфабрикати: соуси, тісто, заготовки', count: 'перерахунок фактичних залишків', rep: 'фудкост, прибуток страв, нестачі й списання' }[K.tab];
-    const head = `<div class="rhead"><div><h1>${isCook() ? '🧮 Склад' : '🧮 Розрахунок'}</h1><span class="muted">${sub}</span></div></div>
+    const sub = { stock: 'залишки на складах Кухня і Бар', buy: 'що докупити — по постачальниках', inv: 'прихід товару: фото, код або вручну', cards: 'калькуляційні карти й собівартість страв', tech: 'склад і грамовка страв', prod: 'напівфабрикати: соуси, тісто, заготовки', count: 'перерахунок фактичних залишків', menu: 'страви, ціни, фото', stop: 'що зараз не продається', rep: 'фудкост, прибуток страв, нестачі й списання' }[K.tab];
+    const head = `<div class="rhead"><div><h1>Склад</h1><span class="muted">${sub}</span></div></div>
       <div class="seg rsec">${tabs.map(([k, l]) => `<button class="${K.tab === k ? 'on' : ''}" data-a="skTab" data-t="${k}">${l}</button>`).join('')}</div>`;
     if (!S.data.sk) return head + '<div class="muted" style="margin:16px 4px">Завантаження…</div>';
     if (K.card && (K.tab === 'cards' || K.tab === 'prod')) return head + `<div class="sk">${skCardEdHTML()}</div>`;
+    if (K.tab === 'menu') return head + `<div class="sk sk-emb">${menuHTML()}</div>`;
+    if (K.tab === 'stop') return head + `<div class="sk sk-emb">${stopHTML()}</div>`;
     return head + `<div class="sk">${{ stock: skStockHTML, buy: skBuyHTML, inv: skInvHTML, cards: skCardsHTML, tech: skTechHTML, prod: skProdHTML, count: skCountHTML, rep: skRepHTML }[K.tab]()}</div>`;
   }
   // 📦 склад
@@ -1246,7 +1254,7 @@
       <div class="pills"><div class="pill"><span>🗑 Списано</span><b class="money">${money(R.offSum)}</b></div><div class="pill"><span>📝 Інвентаризацій</span><b>${R.cnt.n}</b>${R.cnt.n ? `<small><span class="neg">${money(R.cnt.short)}</span> · <span class="good">+${money(R.cnt.over)}</span></small>` : ''}</div>
       ${R.noCard ? `<div class="pill wide"><span>⚠️ Без техкарти</span><b>${R.noCard} страв</b><small class="press" data-a="skTab" data-t="cards">їхня собівартість не врахована — заповнити →</small></div>` : ''}</div>`;
     const ME = { star: ['⭐ Зірки', 'популярні й вигідні — тримайте якість і ціну'], horse: ['🐴 Конячки', 'популярні, але мало заробляють — підніміть ціну на 5–10% або здешевіть техкарту'], puzzle: ['❓ Загадки', 'вигідні, але беруть рідко — краще місце в меню, фото, хай офіціанти радять'], dog: ['🐶 Собаки', 'і непопулярні, і невигідні — приберіть або переробіть'] };
-    const me = R.rows.filter(x => x.me), meH = me.length ? `<div class="me-g">${Object.entries(ME).map(([k, [t, tip]]) => { const l = me.filter(x => x.me === k).sort((a, b) => b.q - a.q); return `<div class="card me ${k}"><h3>${t} <span class="muted">· ${l.length}</span></h3><div class="muted" style="font-size:12px;margin-bottom:6px">${tip}</div>${l.slice(0, 8).map(x => `<div class="kv"><span>${esc(x.n)}</span><span class="muted">${x.q} шт · ${money(x.cm)}/шт</span></div>`).join('') || '<div class="muted">—</div>'}</div>`; }).join('')}</div>` : '';
+    const me = R.rows.filter(x => x.me), meH = me.length ? `<div class="me-g">${Object.entries(ME).map(([k, [t, tip]]) => { const l = me.filter(x => x.me === k).sort((a, b) => b.q - a.q); return `<div class="card me me-${k}"><h3>${t} <span class="muted">· ${l.length}</span></h3><div class="muted" style="font-size:12px;margin-bottom:6px">${tip}</div>${l.slice(0, 8).map(x => `<div class="kv"><span>${esc(x.n)}</span><span class="muted">${x.q} шт · ${money(x.cm)}/шт</span></div>`).join('') || '<div class="muted">—</div>'}</div>`; }).join('')}</div>` : '';
     const tbl = `<div class="card"><h3>🍽 Прибуток по стравах</h3><div class="sk-tbl"><div class="th"><span>Страва</span><span>Продано</span><span>Виручка</span><span>Собів./шт</span><span>Маржа</span><span>Фудкост</span></div>
       ${R.rows.slice(0, 120).map(x => `<div class="tr"><span>${esc(x.n)}${x.rec && x.fc > tgt ? `<br><small class="warn">реком. ціна ${money(x.rec)}</small>` : ''}</span><span>${x.q}</span><span class="money">${money(x.rev)}</span><span class="money">${x.unit == null ? '—' : money(x.unit)}</span><span class="money">${x.cm == null ? '—' : money(x.cm * x.q)}</span><b class="${cls(x.fc)}">${x.fc == null ? '—' : x.fc + '%'}</b></div>`).join('')}</div></div>`;
     const off = R.off.length ? `<div class="grid2"><div class="card"><h3>🗑 Списання за причинами</h3>${R.off.map(([k, v]) => `<div class="kv"><span>${esc(k)}</span><b class="money">${money(v)}</b></div>`).join('')}</div><div class="card"><h3>Що списуємо найбільше</h3>${R.offIng.map(([k, v]) => `<div class="kv"><span>${esc(k)}</span><b class="money">${money(v)}</b></div>`).join('')}</div></div>` : '';
@@ -1266,11 +1274,12 @@
   const attIc = (a, p, d) => a?.ok === 1 ? (a.late ? '⏰' : a.auto ? '⚠️' : '✅') : a?.ok === 0 ? '🕓' : a?.ok === -1 ? '❌' : p && d < todayK() ? '🚫' : '';
   const hrs = a => a?.in && a?.out ? Math.round((a.out - a.in) / 360e4 * 10) / 10 : null;
   async function loadPay() { S.zpM ||= curMon(); S.data.zp = await api('zpGrid', { m: S.zpM }, 20000); }
+  function teamHTML() { return `<div class="rhead"><div><h1>Персонал</h1><span class="muted">графік змін, зарплата, працівники</span></div></div>${payHTML()}`; }
   function payHTML() {
     const G = S.data.zp; if (!G) return '<div class="muted">Завантаження…</div>';
     const people = G.staff.filter(s => !(G.hide || []).includes(s.name) && (s.pay?.rate || s.pay?.pct || (G.seen || []).includes(s.name) || G.days.some(d => G.att[d]?.[s.name] || G.plan[d]?.[s.name]))).map(s => s.name); // зі ставкою — завжди в графіку
     const rows = G.rows.filter(r => people.includes(r.n) || r.paid || r.adv || r.bonus || r.fine), due = rows.reduce((a, r) => a + Math.max(0, r.due), 0), pend = rows.reduce((a, r) => a + r.pending, 0);
-    const tab = S.zpTab || 'grid', TABS = [['grid', '📅 Графік'], ['pay', '💰 Відомість'], ['ops', '🧾 Операції'], ['eff', '📊 Ефективність']];
+    const tab = S.zpTab || 'grid', TABS = [['grid', '📅 Графік'], ['pay', '💰 Зарплата'], ['ops', '🧾 Операції'], ['eff', '📊 Ефективність'], ['people', '👥 Працівники']];
     const top = `<div class="zp-top"><button class="btn sm" data-a="zpM" data-d="-1">◀</button><b>${monName(G.m)}</b><button class="btn sm" data-a="zpM" data-d="1">▶</button></div>
       <div class="kpis"><div class="kpi accent"><span>До виплати</span><b class="money">${money(due)}</b></div><div class="kpi"><span>Фонд оплати</span><b class="money">${money(G.fund)}</b><small class="muted">${G.fundPct}% від виручки</small></div>
         <div class="kpi"><span>Виручка місяця</span><b class="money">${money(G.revenue)}</b></div><div class="kpi ${pend ? 'red' : ''}"><span>Чекає ✅</span><b>${pend}</b><small class="muted">${pend ? 'підтвердіть у графіку або стрічці' : 'усе підтверджено'}</small></div></div>
@@ -1291,6 +1300,7 @@
               ${r.toMon ? `<div class="muted" style="font-size:12px">🎯 до місячного бонусу ще ${money(r.toMon)}</div>` : ''}${r.tips ? `<div class="muted" style="font-size:12px">💝 чайові окремо: ${money(r.tips)}</div>` : ''}${r.late || r.absent ? `<div class="warn" style="font-size:12px">${r.late ? `⏰ запізнень ${r.late}` : ''}${r.late && r.absent ? ' · ' : ''}${r.absent ? `🚫 прогулів ${r.absent}` : ''}</div>` : ''}</div>
               <div class="zp-det-b"><button class="btn sm" data-a="zpOpN" data-t="bonus" data-n="${esc(r.n)}">➕ Премія</button><button class="btn sm" data-a="zpOpN" data-t="fine" data-n="${esc(r.n)}">➖ Штраф</button><button class="btn sm" data-a="zpOpN" data-t="adv" data-n="${esc(r.n)}">💵 Аванс</button><button class="btn sm" data-a="zpSet" data-id="${r.id}">⚙️ Ставка</button></div></div>` : ''}`; }).join('') || '<div class="muted">Немає працівників у графіку</div>'}
         <div class="muted" style="font-size:12px;margin-top:8px">Натисніть на рядок — деталі, премія, штраф, аванс, ставка. 💸 — видати весь залишок (з каси або картки).</div></div>`;
+    } else if (tab === 'people') { body = settingsHTML('people');
     } else if (tab === 'ops') {
       const OPN = { bonus: '➕ Премія', fine: '➖ Штраф', adv: '💵 Аванс', paid: '💸 Виплата' };
       body = `<div class="card">${G.ops.map(o => `<div class="kv rrow${o.del ? ' del' : ''}"><span>${o.day.slice(8)}.${o.day.slice(5, 7)} ${OPN[o.t]} · <b>${esc(o.n)}</b>${o.src ? (o.src === 'card' ? ' 💳' : ' 💵') : ''}${o.note ? ` <span class="muted">· ${esc(o.note)}</span>` : ''}<br><small class="muted">${esc(o.by || '')}</small></span><span class="kv-r"><b class="money">${money(o.sum)}</b><button class="xb" data-a="zpOpDel" data-id="${o.id}" data-b="${o.del ? 1 : ''}">${o.del ? '↩️' : '🗑'}</button></span></div>`).join('') || '<div class="muted">Операцій цього місяця ще не було</div>'}</div>`;
@@ -1430,7 +1440,7 @@
       case 'shClose': shClose(); break;
       case 'rp': S.rep.p = el.dataset.p; loadView(); break;
       case 'rTab': S.rep.tab = el.dataset.t; (S.rep.last ||= {})[SECS.find(x => x[2].includes(el.dataset.t))[0]] = el.dataset.t; renderMain(); break;
-      case 'rSec': { const sc = SECS.find(x => x[0] === el.dataset.s); S.rep.tab = (S.rep.last || {})[sc[0]] || sc[2][0]; renderMain(); break; }
+      case 'rSec': { const sc = SECS.find(x => x[0] === el.dataset.s); S.rep.tab = (S.rep.last || {})[sc[0]] || sc[2][0]; renderMain(); if (S.rep.tab === 'plus' || !S.data.range) loadView(); break; }
       case 'rFo': S.rep.fo = !S.rep.fo; renderMain(); break;
       case 'rDay': Object.assign(S.rep, { p: 'c', from: el.dataset.d, to: el.dataset.d }); loadView(); $('#main').scrollTop = 0; break;
       case 'rSort': S.rep.sort = el.dataset.s; renderMain(); break;
@@ -1454,7 +1464,8 @@
         if (await act(op, k === 'checks' ? { ref: i, day: d } : { i: +i, day: d }, del ? '🗑 Видалено' : '↩️ Повернуто')) { S.data.rangeKey = ''; loadView(); }
         break; }
       case 'vBack': if (await confirmBox('Повернути страву на стіл? Вона знову буде в рахунку.')) { if (await act('voidBack', { ts: +el.dataset.ts }, '↩️ Повернуто на стіл')) loadView(); } break;
-      case 'setTab': S.setTab = el.dataset.s; renderMain(); if (S.setTab === 'pay' || (S.setTab === 'menu' && !S.menu)) loadView(); break;
+      case 'setTab': S.setTab = el.dataset.s; renderMain(); break;
+      case 'cashTab': S.cashTab = el.dataset.t; renderMain(); loadView(); break;
       case 'move': moveFlow(); break;
       case 'split': splitFlow(); break;
       case 'spq': { const i = +el.dataset.i, it = S.spl.items[i]; S.spl.q[i] = Math.max(0, Math.min(it.q, (S.spl.q[i] || 0) + +el.dataset.d)); splitRender(); break; }
@@ -1587,7 +1598,7 @@
       case 'skCwh': K.cwh = el.dataset.w; K.cf = {}; S.data.skCount = null; renderMain(); loadView(); break;
       case 'skCntFin': skCntFinish(); break;
       case 'skCntView': { const r = await act('skCountDoc', { id: el.dataset.id }); if (r) skCntShow(r.doc); break; }
-      case 'skP': K.p = el.dataset.p; loadView(); break;
+      case 'skP': K.p = el.dataset.p; S.data.skRep = null; renderMain(); loadView(); break;
       case 'skTechAll': skTechAll(); break;
       case 'skKStock': { const v = await choose('📦 Склад', '', [{ label: '🗑 Списати продукт', val: 'off', cls: 'primary' }, { label: '📝 Інвентаризація', val: 'cnt' }, { label: '📋 Техкарти', val: 'tech' }]);
         if (v === 'off') { const id = await skPick('🗑 Що списати?'); if (id) skQty('off', id); } else if (v === 'tech') skTechAll(); else if (v === 'cnt') { K.tab = 'count'; K.card = null; S.view = 'calc'; renderNav(); renderMain(); loadView(); } break; }
