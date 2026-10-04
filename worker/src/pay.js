@@ -153,7 +153,10 @@ export async function payroll(env, m = mon()) {
 export async function myPay(env, name, m = mon()) {
   const p = await payroll(env, m), row = p.rows.find(r => r.n === name) || null, days = p.days.map(d => ({ d, plan: p.plan[d]?.[name] || '', att: p.att[d]?.[name] || null })).filter(x => x.plan || x.att);
   const swaps = ((await env.DB.get('swaps', 'json')) || []).filter(s => (s.from === name || s.to === name) && s.st !== 'done' && s.st !== 'no');
-  return { m, row, days, ops: p.ops.filter(o => o.n === name), swaps };
+  // спільний графік (без грошей): хто коли запланований і був
+  const names = (await getStaff(env)).map(s => s.name).filter(n => p.seen.includes(n) || p.days.some(d => p.att[d]?.[n] || p.plan[d]?.[n]));
+  const att = {}; for (const d of p.days) for (const [n, x] of Object.entries(p.att[d] || {})) (att[d] ||= {})[n] = { ok: x.ok, late: x.late ? 1 : 0, auto: x.auto ? 1 : 0, in: x.in, out: x.out };
+  return { m, row, days, ops: p.ops.filter(o => o.n === name), swaps, grid: { days: p.days, att, plan: p.plan, people: names } };
 }
 
 // ---------- 🔁 обмін змінами: попросив → колега погодився → адмін підтвердив → план змінився ----------

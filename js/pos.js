@@ -156,6 +156,7 @@
     const newCnt = S.events.filter(e => e.k === 'guest' && e.s === 'new').length;
     setHTML($('#nav'), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` +
       navList().map(([v, ic, l]) => `<button class="${S.view === v ? 'on' : ''}${!isCook() && ['calc', 'menu', 'settings', 'stop', 'kq'].includes(v) ? ' more-i' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join('') +
+      `<button class="${isAdmin() ? 'more-i ' : ''}cab-btn" data-a="zpMy"><span class="ic">👤${onShift() ? '<i class="sh-dot"></i>' : ''}</span>Кабінет</button>` +
       `<button class="feed-btn" data-a="feed"><span class="ic">🔔</span>Стрічка${newCnt ? `<span class="badge">${newCnt}</span>` : ''}</button>` +
       `<button class="more-btn ${['calc', 'menu', 'settings', 'stop', 'kq'].includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><div class="me">${esc(S.me?.name)}<br>${isAdmin() ? 'адмін' : isCook() ? 'кухар' : 'офіціант'}</div>` +
       `<button data-a="switch"><span class="ic">🔒</span>Вийти</button>`);
@@ -173,7 +174,7 @@
       const tag = b.check ? `<span class="tag c">🧾 рахунок</span>${b.pay ? `<i class="pay" title="${b.pay === 'card' ? 'карта' : 'готівка'}">${b.pay === 'card' ? '💳' : '💵'}</i>` : ''}` : pending.has(t) ? '<span class="tag g">нове</span>' : '';
       return `<button class="tbl ${cls}" data-a="table" data-t="${t}">${tag}<div class="n">${t}</div><div class="st">${b.orders} замовл.${b.disc ? ` · −${b.disc}%` : ''}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">з ${b.opened ? hhmm(b.opened) : '—'}</div></button>`;
     }).join('');
-    return `<div class="head"><h1>Зал</h1><div class="stat">Відкрито<b>${list.length}</b></div><div class="stat tipstat" title="Накопичено, ще не видано">💝 Мої чайові<b class="money">${money(S.myTip?.sum || 0)}</b></div><div class="zp-sh">${shiftBtns()}</div><div class="stat">У залі<b class="money">${money(sum)}</b></div>
+    return `<div class="head"><h1>Зал</h1><div class="stat">Відкрито<b>${list.length}</b></div><div class="stat tipstat" title="Накопичено, ще не видано">💝 Мої чайові<b class="money">${money(S.myTip?.sum || 0)}</b></div><div class="stat">У залі<b class="money">${money(sum)}</b></div>
       <button class="btn primary" data-a="newOrder">➕ Замовлення</button></div><div class="tables">${tiles}</div>`;
   }
 
@@ -445,7 +446,7 @@
         <div class="ki">${e.items.map((x, i) => `<div class="kit-w"><button class="kit${x.done ? ' done' : ''}${x.cancel ? ' canc' : ''}" data-a="kItem" data-id="${e.id}" data-i="${i}" ${x.cancel ? 'disabled' : ''}><b>${x.q}×</b> ${esc(x.n)}${x.cancel ? ' <em>СКАСОВАНО</em>' : x.canc ? ` <em>−${x.canc} скас.</em>` : ''}</button><button class="kinfo" data-a="skTechOne" data-n="${esc(x.n)}" title="Техкарта">ⓘ</button></div>`).join('')}</div>
         ${(e.msgs || []).map(x => `<div class="kmsg">📨 ${x.at} ${esc(x.text)}</div>`).join('')}
         <div class="kb">${e.start ? '' : `<button class="btn" data-a="kStart" data-id="${e.id}">🔥 Готую</button>`}<button class="btn" data-a="kMsg" data-id="${e.id}">💬</button><button class="btn green" data-a="kAll" data-id="${e.id}">✅ ВСЕ ГОТОВО</button></div></div>`; };
-    return `<div class="khead"><h1>👨‍🍳 Черга <span class="muted">${act0.length}</span></h1>${isCook() ? `<div class="stat tipstat">💝 Мої чайові<b class="money">${money(S.myTip?.sum || 0)}</b></div>` : ''}<div class="zp-sh">${shiftBtns()}</div><button class="btn" data-a="skTechAll">📋 Техкарти</button><button class="btn" data-a="skOffPick">🗑 Списати</button><button class="btn" data-a="view" data-v="stop">⛔ Стоп-лист</button></div>
+    return `<div class="khead"><h1>👨‍🍳 Черга <span class="muted">${act0.length}</span></h1>${isCook() ? `<div class="stat tipstat">💝 Мої чайові<b class="money">${money(S.myTip?.sum || 0)}</b></div>` : ''}<button class="btn" data-a="skTechAll">📋 Техкарти</button><button class="btn" data-a="skOffPick">🗑 Списати</button><button class="btn" data-a="view" data-v="stop">⛔ Стоп-лист</button></div>
       <div class="kq f${S.kFont}">${act0.length ? act0.map(card).join('') : '<div class="kempty">✅ Черга порожня</div>'}</div>
       ${done.length ? `<h3 class="muted" style="margin:18px 0 8px">Останні готові</h3><div class="kdone">${done.map(e => `<div class="kd">Стіл ${e.t} · ${e.items.filter(x => !x.cancel).map(x => `${x.q}× ${esc(x.n)}`).join(', ')}${e.cancelled ? ' · ❌ скасовано' : ` · ${Math.round((e.doneAt - e.ts) / 60000)} хв`} <button class="btn sm" data-a="kUndo" data-id="${e.id}">↩️</button></div>`).join('')}</div>` : ''}`;
   }
@@ -1270,7 +1271,8 @@
     const today = todayK(), people = G.staff.map(s => s.name).filter(n => (G.seen || []).includes(n) || G.days.some(d => G.att[d]?.[n] || G.plan[d]?.[n])); // хто цього місяця не заходив — не в графіку
     const head = `<div class="zp-top"><button class="btn sm" data-a="zpM" data-d="-1">◀</button><b>${monName(G.m)}</b><button class="btn sm" data-a="zpM" data-d="1">▶</button>
       <span class="muted">✅ був · ⏰ запізнився · 🕓 чекає підтвердження · ❌ відхилено · 🚫 прогул · ⚠️ зміну закрито автоматично · ● — заплановано · тап: майбутнє — запланувати, сьогодні й раніше — був на зміні, ще раз — скасувати</span></div>`;
-    const grid = `<div class="zp-grid"><table><thead><tr><th></th>${G.days.map(d => { const w = new Date(d + 'T12:00:00Z').getUTCDay(); return `<th class="${d === today ? 'td' : ''}${w === 0 || w === 6 ? ' we' : ''}">${+d.slice(8)}<small>${WDL[w]}</small></th>`; }).join('')}</tr></thead>
+    const grid = gridHTML(G, people, true) + `<div class="btnrow"><button class="btn sm" data-a="zpCopy">📋 План: скопіювати минулий тиждень на цей</button></div>`;
+    const grid0 = `<div class="zp-grid"><table><thead><tr><th></th>${G.days.map(d => { const w = new Date(d + 'T12:00:00Z').getUTCDay(); return `<th class="${d === today ? 'td' : ''}${w === 0 || w === 6 ? ' we' : ''}">${+d.slice(8)}<small>${WDL[w]}</small></th>`; }).join('')}</tr></thead>
       <tbody>${people.map(n => `<tr><th>${esc(n)}</th>${G.days.map(d => { const a = G.att[d]?.[n], p = G.plan[d]?.[n], h = hrs(a); return `<td class="press${d === today ? ' td' : ''}" data-a="zpCell" data-d="${d}" data-n="${esc(n)}"><i>${attIc(a, p, d)}</i>${p ? (p === '+' ? (a ? '' : '<i class="pl">●</i>') : `<small>${p}</small>`) : ''}${h ? `<small class="h">${h}г</small>` : ''}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>
       <div class="btnrow"><button class="btn sm" data-a="zpCopy">📋 План: скопіювати минулий тиждень на цей</button></div>`;
     const due = G.rows.reduce((a, r) => a + Math.max(0, r.due), 0);
@@ -1289,6 +1291,11 @@
     const ops = G.ops.slice(0, 40).map(o => `<div class="kv rrow${o.del ? ' del' : ''}"><span>${o.day.slice(8)}.${o.day.slice(5, 7)} ${OPN[o.t]} · <b>${esc(o.n)}</b>${o.src ? (o.src === 'card' ? ' 💳' : ' 💵') : ''}${o.note ? ` <span class="muted">· ${esc(o.note)}</span>` : ''}</span><span class="kv-r"><b class="money">${money(o.sum)}</b><button class="xb" data-a="zpOpDel" data-id="${o.id}" data-b="${o.del ? 1 : ''}">${o.del ? '↩️' : '🗑'}</button></span></div>`).join('');
     const eff = `<div class="card"><h3>📊 Ефективність</h3><div class="sk-tbl"><div class="th zp-eff"><span>Хто</span><span>Змін</span><span>Годин</span><span>Виручка за зміну</span><span>За годину</span></div>${G.rows.filter(r => r.shifts).sort((a, b) => b.revPerShift - a.revPerShift).map(r => `<div class="tr zp-eff"><span>${esc(r.n)}</span><span>${r.shifts}</span><span>${r.hours || '—'}</span><span class="money">${money(r.revPerShift)}</span><span class="money">${r.revPerHour ? money(r.revPerHour) : '—'}</span></div>`).join('') || '<div class="muted">Ще немає підтверджених змін</div>'}</div><div class="muted" style="font-size:12px;margin-top:6px">Середня виручка закладу в дні, коли людина працювала.</div></div>`;
     return head + pills + `<div class="card">${grid}</div>` + (sw ? `<div class="card"><h3>🔁 Обміни змінами</h3>${sw}</div>` : '') + `<div class="grid2 set">${cards || '<div class="card muted">Немає персоналу</div>'}</div>` + eff + (ops ? `<div class="card"><h3>Операції за місяць</h3>${ops}</div>` : '');
+  }
+  function gridHTML(G, people, edit, me) {
+    const today = todayK();
+    return `<div class="zp-grid"><table><thead><tr><th></th>${G.days.map(d => { const w = new Date(d + 'T12:00:00Z').getUTCDay(); return `<th class="${d === today ? 'td' : ''}${w === 0 || w === 6 ? ' we' : ''}">${+d.slice(8)}<small>${WDL[w]}</small></th>`; }).join('')}</tr></thead>
+      <tbody>${people.map(n => `<tr class="${n === me ? 'me' : ''}"><th>${esc(n)}</th>${G.days.map(d => { const a = G.att[d]?.[n], p = G.plan[d]?.[n], h = hrs(a); return `<td class="${edit ? 'press' : ''}${d === today ? ' td' : ''}"${edit ? ` data-a="zpCell" data-d="${d}" data-n="${esc(n)}"` : ''}><i>${attIc(a, p, d)}</i>${p ? (p === '+' ? (a ? '' : '<i class="pl">●</i>') : `<small>${p}</small>`) : ''}${h ? `<small class="h">${h}г</small>` : ''}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>`;
   }
   async function zpCell(d, n) {
     const G = S.data.zp, a = G.att[d]?.[n], p = G.plan[d]?.[n], fine = G.cfg?.lateFine;
@@ -1329,11 +1336,12 @@
     const r = await act('zpMy', {}); if (!r) return; const w = r.row, me = S.me?.name;
     const lnx = (l, v) => `<div class="kv"><span>${l}</span><b class="money">${v}</b></div>`;
     const asks = r.swaps.filter(s => s.to === me && s.st === 'ask');
-    const body = `${w ? `<div class="pills zp-my"><div class="pill"><span>Змін</span><b>${w.shifts}</b><small>${w.hours ? w.hours + ' год' : ''}</small></div><div class="pill"><span>Зароблено</span><b class="money">${money(w.earned)}</b></div><div class="pill"><span>До виплати</span><b class="money">${money(w.due)}</b></div>${w.tips ? `<div class="pill"><span>💝 Чайові</span><b class="money">${money(w.tips)}</b></div>` : ''}</div>
+    const shiftH = `<div class="zp-shift">${onShift() ? `<button class="btn red" data-a="zpOut">🔴 Закінчити зміну</button><span class="muted">на зміні з ${hhK(S.myAtt.in)}${S.myAtt.ok === 0 ? ' · 🕓 чекає підтвердження' : ' · ✅'}</span>` : `<button class="btn green" data-a="zpIn">🟢 Почати зміну</button>${S.myAtt?.out ? `<span class="muted">сьогодні ${hhK(S.myAtt.in)}–${hhK(S.myAtt.out)}</span>` : ''}`}</div>`;
+    const body = shiftH + `${w ? `<div class="pills zp-my"><div class="pill"><span>Змін</span><b>${w.shifts}</b><small>${w.hours ? w.hours + ' год' : ''}</small></div><div class="pill"><span>Зароблено</span><b class="money">${money(w.earned)}</b></div><div class="pill"><span>До виплати</span><b class="money">${money(w.due)}</b></div>${w.tips ? `<div class="pill"><span>💝 Чайові</span><b class="money">${money(w.tips)}</b></div>` : ''}</div>
       ${lnx(`Ставка × ${w.shifts}`, money(w.rate))}${w.pct ? lnx('% від виручки', money(w.pct)) : ''}${w.dayB || w.monB ? lnx('🎯 Бонус за план', money(w.dayB + w.monB)) : ''}${w.bonus ? lnx('➕ Премії', money(w.bonus)) : ''}${w.fine ? lnx('➖ Штрафи', '−' + money(w.fine)) : ''}${w.adv ? lnx('💵 Аванси', '−' + money(w.adv)) : ''}${w.paid ? lnx('💸 Виплачено', '−' + money(w.paid)) : ''}
       ${w.toMon ? `<div class="muted" style="font-size:13px;margin-top:6px">🎯 До місячного бонусу ще ${money(w.toMon)}</div>` : ''}` : '<div class="muted">Ставку ще не задано</div>'}
       ${asks.map(s => `<div class="card zp-ask">🔁 <b>${esc(s.from)}</b> просить вийти за нього ${s.day.slice(8)}.${s.day.slice(5, 7)} о ${s.time}<div class="btnrow"><button class="btn sm green" data-a="zpSw" data-id="${s.id}" data-s="agree">Погоджуюсь</button><button class="btn sm red" data-a="zpSw" data-id="${s.id}" data-s="no">Ні</button></div></div>`).join('')}
-      <h3 style="margin:14px 0 6px">Мій графік · ${monName(r.m)}</h3><div class="sk-jr">${r.days.map(x => `<div class="kv"><span>${x.d.slice(8)}.${x.d.slice(5, 7)} ${WDL[new Date(x.d + 'T12:00:00Z').getUTCDay()]}${x.plan ? ` <span class="muted">план ${x.plan}</span>` : ''}</span><span>${attIc(x.att, x.plan, x.d)} ${x.att?.in ? hhK(x.att.in) : ''}${x.att?.out ? '–' + hhK(x.att.out) : ''}</span></div>`).join('') || '<div class="muted">Змін ще немає</div>'}</div>
+      <h3 style="margin:14px 0 6px">Графік · ${monName(r.m)}</h3>${gridHTML(r.grid, r.grid.people, false, me)}<div class="muted" style="font-size:11px;margin-top:4px">✅ був · ● заплановано · 🕓 чекає · ⏰ запізнення · 🚫 прогул</div>
       ${r.swaps.filter(s => s.from === me).map(s => `<div class="muted" style="font-size:12px">🔁 ${s.day.slice(8)}.${s.day.slice(5, 7)} → ${esc(s.to)}: ${s.st === 'ask' ? 'чекає згоди' : 'чекає адміна'}</div>`).join('')}`;
     const v = await modal({ title: `👤 ${me}`, body, buttons: [{ label: '🔁 Попросити обмін', val: 'swap' }, { label: 'Закрити', val: null }] });
     if (v === 'swap') {
@@ -1507,8 +1515,8 @@
     const el = e.target.closest('[data-a]'); if (!el || !/^zp/.test(el.dataset.a)) return;
     const a = el.dataset.a, D = el.dataset;
     switch (a) {
-      case 'zpIn': if (await act('zpIn', {}, '🟢 Зміну почато — адмін підтвердить')) loadState().catch(() => {}); break;
-      case 'zpOut': if (await confirmBox('🔴 Закінчити зміну?')) { if (await act('zpOut', {}, '🔴 Зміну закінчено')) loadState().catch(() => {}); } break;
+      case 'zpIn': closeModal(); if (await act('zpIn', {}, '🟢 Зміну почато — адмін підтвердить')) { await loadState().catch(() => {}); renderNav(); } break;
+      case 'zpOut': closeModal(); if (await confirmBox('🔴 Закінчити зміну?')) { if (await act('zpOut', {}, '🔴 Зміну закінчено')) { await loadState().catch(() => {}); renderNav(); } } break;
       case 'zpMy': zpMy(); break;
       case 'zpM': S.zpM = monAdd(S.zpM || curMon(), +D.d); S.data.zp = null; renderMain(); loadView(); break;
       case 'zpCell': zpCell(D.d, D.n); break;
