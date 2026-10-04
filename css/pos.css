@@ -590,3 +590,4 @@ body { position: fixed; top: 0; right: 0; bottom: 0; left: 0; overscroll-behavio
 .zp-det { display: grid; grid-template-columns: 1fr auto; gap: 14px; padding: 8px 10px 14px; border-bottom: 1px solid var(--line); background: #ffffff06; border-radius: 0 0 12px 12px; }
 .zp-det-b { display: grid; gap: 6px; align-content: start; }
 @media (max-width: 700px) { .zp-pr { grid-template-columns: 1fr 70px 76px; } .zp-pr > :nth-child(2), .zp-pr > :nth-child(4) { display: none; } .zp-pr.th > :nth-child(3) { display: none; } .zp-pr > :nth-child(3) { display: none; } .zp-det { grid-template-columns: 1fr; } .zp-det-b { grid-template-columns: 1fr 1fr; } }
+.sk-new .sk-scan { flex: 2 1 240px; font-size: 18px; padding: 16px; }

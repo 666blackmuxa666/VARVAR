@@ -949,8 +949,8 @@
   function skInvHTML() {
     const K = S.sk; if (K.draft) return skDraftHTML();
     const I = S.data.skInv, adm = isAdmin();
-    const top = `<div class="card"><h3>Нова накладна</h3>${K.busy ? '<div class="sk-busy">🔎 Розпізнаю накладну… зазвичай 10–30 секунд</div>' : `<div class="sk-new"><label class="btn primary">📷 Фото накладної<input type="file" id="skPhoto" accept="image/*" multiple hidden></label><button class="btn" data-a="skScan">🔎 Код / штрихкод</button><button class="btn" data-a="skHand">✏️ Вручну</button></div>`}
-      <div class="muted" style="font-size:12px;margin-top:8px">Фото: до 3 сторінок, рівно, при гарному світлі. Розпізнає Gemini — ви перевіряєте й підтверджуєте. Фото ніде не зберігається.</div></div>`;
+    const top = `<div class="card"><h3>Нова накладна</h3>${K.busy ? '<div class="sk-busy">🔎 Розпізнаю накладну… зазвичай 10–30 секунд</div>' : `<div class="sk-new"><label class="btn primary sk-scan">📷 Сканувати накладну<input type="file" id="skPhoto" accept="image/*" capture="environment" hidden></label><label class="btn">🖼 З галереї<input type="file" id="skPhoto2" accept="image/*" multiple hidden></label><button class="btn" data-a="skHand">✏️ Вручну</button></div>`}
+      <div class="muted" style="font-size:12px;margin-top:8px">«Сканувати» одразу відкриває камеру — сфотографуйте накладну рівно, при гарному світлі. Кілька сторінок — «З галереї». Розпізнає Gemini — ви перевіряєте й підтверджуєте. Фото ніде не зберігається.</div></div>`;
     if (!I) return top + '<div class="muted">Завантаження…</div>';
     const debts = Object.entries(I.sups || {}).filter(([, s]) => s.debt > 0);
     const dH = adm && debts.length ? `<div class="card"><h3>💸 Борги постачальникам <span class="muted">· ${money(debts.reduce((a, [, s]) => a + s.debt, 0))}</span></h3>${debts.map(([n, s]) => `<div class="kv"><span>${esc(n)}</span><b class="money" style="color:var(--red)">${money(s.debt)}</b></div>`).join('')}</div>` : '';
@@ -1613,7 +1613,7 @@
   document.addEventListener('change', async e => {
     const t = e.target, K = S.sk, d = t.dataset || {};
     if (t.id === 'skCat') { K.cat = t.value; renderMain(); }
-    if (t.id === 'skPhoto') { skPhotos(t.files); t.value = ''; }
+    if (t.id === 'skPhoto' || t.id === 'skPhoto2') { skPhotos(t.files); t.value = ''; }
     if (d.dl != null && K.draft && t.tagName === 'SELECT') {
       const l = K.draft.lines[+d.dl]; if (!l) return;
       if (d.k === 'id') { if (t.value === '__new') { const a = await skNewIng(l.n, l.u, 'k'); if (a) { l.add = a; l.id = null; } } else { l.id = t.value || null; delete l.add; if (l.id) { l.ok = 'ok'; l.f = skAutoF(l); } } renderMain(); }
