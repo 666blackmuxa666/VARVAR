@@ -853,13 +853,13 @@
     const low = live.filter(x => x.min > 0 && totQ(x) < x.min);
     const val = w => live.reduce((a, x) => a + Math.max(0, w ? x.st?.[w] || 0 : totQ(x)) * (x.cost || 0), 0);
     const cats = [...new Set(live.map(x => x.cat || 'Інше'))].sort();
-    const tools = `<div class="sk-tools"><input id="skQ" placeholder="🔎 Пошук продукту" value="${esc(K.q)}">
-      <div class="chips">${[['', 'Усі'], ['k', WHN.k], ['b', WHN.b]].map(([k, l]) => `<button class="chip ${K.wh === k ? 'on' : ''}" data-a="skWh" data-w="${k}">${l}</button>`).join('')}
-      <select id="skCat"><option value="">Усі категорії</option>${cats.map(c => `<option ${K.cat === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}${D.ing.some(x => x.off) ? `<option value="🗑" ${K.cat === '🗑' ? 'selected' : ''}>🗑 Сховані</option>` : ''}</select></div>
-      <div class="btnrow">${adm ? '<button class="btn sm primary" data-a="skIng">➕ Продукт</button>' : ''}<button class="btn sm" data-a="skOffPick">🗑 Списати</button><button class="btn sm" data-a="skJr">📜 Рух за сьогодні</button></div></div>`;
-    const pills = adm ? `<div class="pills sk-pills"><div class="pill"><span>📦 Товару на складах</span><b class="money">${money(val())}</b><small>${WHN.k} ${money(val('k'))} · ${WHN.b} ${money(val('b'))}</small></div>
-      <div class="pill ${low.length ? 'bad' : ''}"><span>⚠️ Нижче мінімуму</span><b>${low.length}</b>${low.length ? '<small class="press" data-a="skTab" data-t="buy">🛒 відкрити закупівлю →</small>' : '<small>усього вистачає</small>'}</div>
-      <div class="pill"><span>🧾 Продуктів</span><b>${live.length}</b><small>${live.filter(x => !x.cost).length ? `без ціни: ${live.filter(x => !x.cost).length}` : 'у всіх є ціна'}</small></div></div>`
+    const tools = `<div class="sk-bar"><input id="skQ" placeholder="🔎 Пошук продукту" value="${esc(K.q)}">
+      <div class="seg wrap sk-wh">${[['', 'Усі'], ['k', WHN.k], ['b', WHN.b]].map(([k, l]) => `<button class="${K.wh === k ? 'on' : ''}" data-a="skWh" data-w="${k}">${l}</button>`).join('')}</div>
+      <select id="skCat"><option value="">Усі категорії</option>${cats.map(c => `<option ${K.cat === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}${D.ing.some(x => x.off) ? `<option value="🗑" ${K.cat === '🗑' ? 'selected' : ''}>🗑 Сховані</option>` : ''}</select>
+      <span class="grow"></span>${adm ? '<button class="btn sm primary" data-a="skIng">➕ Продукт</button>' : ''}<button class="btn sm" data-a="skOffPick">🗑 Списати</button><button class="btn sm" data-a="skJr">📜 Рух</button></div>`;
+    const pills = adm ? `<div class="kpis sk-kpis"><div class="kpi accent"><span>Товару на складах</span><b class="money">${money(val())}</b><small class="muted">${WHN.k} ${money(val('k'))} · ${WHN.b} ${money(val('b'))}</small></div>
+      <div class="kpi ${low.length ? 'red' : ''}${low.length ? ' press' : ''}" ${low.length ? 'data-a="skTab" data-t="buy"' : ''}><span>Нижче мінімуму</span><b>${low.length}</b><small class="muted">${low.length ? '🛒 відкрити закупівлю →' : 'усього вистачає'}</small></div>
+      <div class="kpi"><span>Продуктів</span><b>${live.length}</b><small class="muted">${live.filter(x => !x.cost).length ? `без ціни: ${live.filter(x => !x.cost).length}` : 'у всіх є ціна'}</small></div></div>`
       : low.length ? `<div class="card sk-low">⚠️ Нижче мінімуму: ${low.map(x => esc(x.n)).join(', ')}</div>` : '';
     const rowH = x => { const t = totQ(x), lo = x.min > 0 && t < x.min, both = (x.st?.k || 0) && (x.st?.b || 0);
       return `<div class="sk-row${lo ? ' low' : ''}${x.off ? ' off' : ''}"><div class="sk-n${adm ? ' press' : ''}" ${adm ? `data-a="skIng" data-id="${x.id}"` : ''}><b>${x.semi ? '🍳 ' : ''}${esc(x.n)}</b><small class="muted">${x.min ? `мін ${fq(x.min, x.u)}` : ''}${adm && x.cost ? `${x.min ? ' · ' : ''}${money(x.cost)} / ${x.u}` : ''}${adm && !x.cost ? `${x.min ? ' · ' : ''}<span class="warn">немає ціни</span>` : ''}</small></div>
@@ -868,7 +868,7 @@
     const groups = {}; list.forEach(x => (groups[x.cat || 'Інше'] ||= []).push(x));
     const body = list.length ? Object.keys(groups).sort().map(c => `<div class="card"><h3>${esc(c)} <span class="muted">· ${groups[c].length}</span></h3>${groups[c].sort((a, b) => a.n.localeCompare(b.n)).map(rowH).join('')}</div>`).join('')
       : `<div class="card"><div class="muted">${D.ing.length ? 'Нічого не знайдено' : adm ? 'Склад порожній. Додайте продукти кнопкою «➕ Продукт» — або просто внесіть першу накладну (🧾 Накладні → 📷 Фото): продукти створяться самі.' : 'Склад ще порожній.'}</div></div>`;
-    return tools + pills + `<div class="sk-list">${body}</div>`;
+    return pills + tools + `<div class="sk-list">${body}</div>`;
   }
   async function skIngEdit(id, preset = {}) {
     const D = S.data.sk, x = D.ing.find(y => y.id === id) || { n: '', u: 'кг', cat: 'Інше', home: 'k', min: 0, par: 0, loss: 0, pk: [], bc: [], ...preset };

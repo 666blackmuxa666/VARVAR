@@ -624,3 +624,16 @@ body.cook .more-btn { display: none !important; }
   .nav .cab-btn { margin-left: 6px; } .nav .cab-btn::after { content: ''; position: absolute; left: -4px; top: 22%; bottom: 22%; width: 1px; background: var(--line); }
   .nav [data-a="switch"] { color: #ff8a80; } .nav [data-a="switch"] .ic { filter: none; }
 }
+/* ---------- 🧮 Розрахунок — у стилі звітів ---------- */
+.sk { margin-top: 12px; }
+.sk-kpis { grid-template-columns: repeat(3, 1fr); margin: 0 0 12px; } .sk-kpis .kpi b { font-size: 24px; } .sk-kpis small { font-size: 11px; }
+.sk-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; padding: 10px; background: var(--card); border-radius: 16px; }
+.sk-bar input { flex: 1 1 220px; max-width: 320px; padding: 9px 12px; } .sk-bar select { width: auto; padding: 8px 10px; } .sk-bar .grow { flex: 1; }
+.sk-wh { margin: 0; padding: 3px; background: var(--card2); } .sk-wh button { padding: 6px 10px; font-size: 13px; }
+.sk-list { columns: 2 420px; column-gap: 12px; } .sk-list .card { break-inside: avoid; display: inline-block; width: 100%; padding: 12px 14px; }
+.sk-list .card h3 { font-size: 14px; color: var(--muted); margin: 0 0 4px; text-transform: uppercase; letter-spacing: .04em; }
+.sk-row { padding: 7px 0; } .sk-n b { font-weight: 600; } .sk-q b { font-size: 16px; }
+.sk-act { gap: 4px; } .sk-act .rb { width: 30px; height: 30px; font-size: 16px; }
+.sk-row.low { background: linear-gradient(90deg, #ff453a14, transparent); border-radius: 8px; }
+.sk .card > .rhead h3 { font-size: 17px; }
+@media (max-width: 700px) { .sk-kpis { grid-template-columns: 1fr 1fr; } .sk-kpis .kpi:first-child { grid-column: 1 / -1; } .sk-bar input { max-width: none; } .sk-bar .grow { display: none; } }
