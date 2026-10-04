@@ -84,7 +84,7 @@ export async function planSet(env, day, name, time) {
   if (!isDay(day)) return null; const m = mon(day);
   return L(env, 'plan:' + m, async () => {
     const p = await getPlan(env, m);
-    if (time && /^\d{1,2}:\d{2}$/.test(time)) (p[day] ||= {})[name] = time.padStart(5, '0'); else if (time === '+') (p[day] ||= {})[name] = '+'; // у графіку без часу else if (p[day]) { delete p[day][name]; if (!Object.keys(p[day]).length) delete p[day]; }
+    if (time && /^\d{1,2}:\d{2}$/.test(time)) (p[day] ||= {})[name] = time.padStart(5, '0'); else if (time === '+') (p[day] ||= {})[name] = '+'; /* у графіку без часу */ else if (p[day]) { delete p[day][name]; if (!Object.keys(p[day]).length) delete p[day]; }
     await env.DB.put('plan:' + m, JSON.stringify(p)); return p[day] || {};
   });
 }
