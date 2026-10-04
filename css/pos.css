@@ -593,3 +593,23 @@ body.cook .more-btn { display: none !important; }
 .zp-det-b { display: grid; gap: 6px; align-content: start; }
 @media (max-width: 700px) { .zp-pr { grid-template-columns: 1fr 70px 76px; } .zp-pr > :nth-child(2), .zp-pr > :nth-child(4) { display: none; } .zp-pr.th > :nth-child(3) { display: none; } .zp-pr > :nth-child(3) { display: none; } .zp-det { grid-template-columns: 1fr; } .zp-det-b { grid-template-columns: 1fr 1fr; } }
 .sk-new .sk-scan { flex: 2 1 240px; font-size: 18px; padding: 16px; }
+/* ---------- бічна панель (компʼютер / планшет) ---------- */
+@media (min-width: 981px) {
+  .nav { padding: 12px 0 10px; gap: 2px; overflow-y: auto; scrollbar-width: none; background: linear-gradient(180deg, #121214, var(--bg2)); }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav .brand { margin: 0 0 12px; } .nav .brand img { width: 54px; }
+  .nav button { width: 70px; padding: 8px 0 6px; border-radius: 14px; font-size: 10.5px; letter-spacing: .1px; transition: background .15s, color .15s; flex: none; }
+  .nav button:hover { background: #ffffff0a; color: var(--text); }
+  .nav button .ic { font-size: 21px; transition: filter .15s, transform .15s; }
+  .nav button:hover .ic { filter: grayscale(.3) brightness(1.2); }
+  .nav button.on { background: linear-gradient(160deg, #f2c14e24, #f2c14e0d); color: var(--accent); box-shadow: inset 0 0 0 1px #f2c14e33; }
+  .nav button.on::before { content: ''; position: absolute; left: -7px; top: 22%; bottom: 22%; width: 3px; border-radius: 3px; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  .nav button.on .ic { transform: scale(1.06); }
+  .nav .cab-btn { margin-top: 6px; position: relative; } .nav .cab-btn::after { content: ''; position: absolute; top: -5px; left: 18px; right: 18px; height: 1px; background: var(--line); }
+  .nav .grow { min-height: 10px; }
+  .nav .fs-btn { width: 70px; padding: 5px 0; font-size: 10px; opacity: .7; } .nav .fs-btn:hover { opacity: 1; }
+  .nav .me { display: grid; justify-items: center; gap: 2px; margin: 6px 0 4px; padding: 8px 4px; width: 70px; border-radius: 14px; background: #ffffff08; }
+  .nav .me i { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 14px; color: var(--accent-ink); background: linear-gradient(135deg, #f2c14e, #d99a2b); }
+  .nav .me b { font-size: 11px; color: var(--text); max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .nav .me small { font-size: 9.5px; }
+  .nav [data-a="switch"] { color: #ff8a80; } .nav [data-a="switch"] .ic { filter: none; font-size: 18px; }
+}

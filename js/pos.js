@@ -158,7 +158,7 @@
       navList().map(([v, ic, l]) => `<button class="${S.view === v ? 'on' : ''}${!isCook() && ['calc', 'menu', 'settings', 'stop', 'kq'].includes(v) ? ' more-i' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join('') +
       `<button class="${isAdmin() ? 'more-i ' : ''}cab-btn" data-a="zpMy"><span class="ic">👤${onShift() ? '<i class="sh-dot"></i>' : ''}</span>Кабінет</button>` +
       `<button class="feed-btn" data-a="feed"><span class="ic">🔔</span>Стрічка${newCnt ? `<span class="badge">${newCnt}</span>` : ''}</button>` +
-      `<button class="more-btn ${['calc', 'menu', 'settings', 'stop', 'kq'].includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><div class="me">${esc(S.me?.name)}<br>${isAdmin() ? 'адмін' : isCook() ? 'кухар' : 'офіціант'}</div>` +
+      `<button class="more-btn ${['calc', 'menu', 'settings', 'stop', 'kq'].includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><div class="me" title="${esc(S.me?.name)}"><i>${esc((S.me?.name || '?').slice(0, 1).toUpperCase())}</i><b>${esc(S.me?.name)}</b><small>${isAdmin() ? 'адмін' : isCook() ? 'кухар' : 'офіціант'}</small></div>` +
       `<button data-a="switch"><span class="ic">🔒</span>Вийти</button>`);
   }
   function render() { renderNav(); renderFeed(); if (['hall', 'printer', 'kq'].includes(S.view) || (S.view === 'settings' && S.setTab === 'printer')) renderMain(); if (S.open) renderSheet(); }
