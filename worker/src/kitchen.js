@@ -23,7 +23,7 @@ export const KITCHEN_HTML = `<!doctype html><html lang="uk"><head><meta charset=
 #gate{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.85);text-align:center;padding-top:30%}#err{color:#ff453a;margin:10px}
 </style></head><body>
 <div id="login" style="display:none"><h1>👨‍🍳 VARVAR кухня</h1><p>Введіть свій PIN</p><input id="pin" type="tel" maxlength="4"><br><button class="btn g" id="go" style="margin-top:14px">Увійти</button><div id="err"></div></div>
-<div id="app" style="display:none"><div class="top"><h1 id="ttl">👨‍🍳 Черга</h1><span id="st" style="color:#8e8e93;font-size:13px"></span><button class="btn" id="out">Вийти</button></div><div class="tabs"><button data-tab="q" class="on">👨‍🍳 Черга <span id="n"></span></button><button data-tab="f">🔔 Стрічка</button><button data-tab="o">📝 Замовлення</button><button data-tab="s">⛔ Стоп-лист</button></div><div class="q" id="q"></div><div id="f" class="pg" style="display:none"></div><div id="o" class="pg" style="display:none"></div><div id="s" class="pg" style="display:none"></div></div>
+<div id="app" style="display:none"><div class="top"><h1 id="ttl">👨‍🍳 Черга</h1><span id="st" style="color:#8e8e93;font-size:13px"></span><button class="btn" id="out">Вийти</button></div><div class="tabs"><button data-tab="q" class="on">👨‍🍳 Черга <span id="n"></span></button><button data-tab="f">🔔 Стрічка</button><button data-tab="o">📝 Замовлення</button><button data-tab="s">⛔ Стоп-лист</button><button data-tab="w">🗑 Списати</button></div><div class="q" id="q"></div><div id="f" class="pg" style="display:none"></div><div id="o" class="pg" style="display:none"></div><div id="s" class="pg" style="display:none"></div><div id="w" class="pg" style="display:none"></div></div>
 <div id="gate" style="display:none"><button class="btn g" id="start" style="font-size:28px;padding:24px 34px">🔊 Почати зміну</button><p style="color:#8e8e93">увімкне звук нових замовлень</p></div>
 <script>
 var T=localStorage.getItem('ktok')||'',seen=null,ctx=null,list=[];
@@ -50,7 +50,7 @@ $('go').onclick=function(){api('login',{pin:$('pin').value},function(j){if(j.tok
 $('out').onclick=function(){if(confirm('Вийти?')){api('logout',{});T='';localStorage.removeItem('ktok');show()}};
 $('start').onclick=function(){try{var A=window.AudioContext||window.webkitAudioContext;ctx=new A();beep(1)}catch(e){}$('gate').style.display='none'};
 var tab='q',menu=null,ot=0,ocat='',cart={};
-function tabs(t){tab=t;var b=document.querySelectorAll('.tabs button');for(var i=0;i<b.length;i++)b[i].className=b[i].getAttribute('data-tab')===t?'on':'';['q','f','o','s'].forEach(function(k){$(k).style.display=k===t?(k==='q'?'':'block'):'none'});$('ttl').textContent={q:'👨‍🍳 Черга',f:'🔔 Стрічка',o:'📝 Замовлення',s:'⛔ Стоп-лист'}[t];if(t==='f')feed();if((t==='o'||t==='s')&&!menu)api('menu',{},function(j){menu=j.menu;draw2()});else draw2()}
+function tabs(t){tab=t;var b=document.querySelectorAll('.tabs button');for(var i=0;i<b.length;i++)b[i].className=b[i].getAttribute('data-tab')===t?'on':'';['q','f','o','s','w'].forEach(function(k){$(k).style.display=k===t?(k==='q'?'':'block'):'none'});$('ttl').textContent={q:'👨‍🍳 Черга',f:'🔔 Стрічка',o:'📝 Замовлення',s:'⛔ Стоп-лист',w:'🗑 Списання'}[t];if(t==='w')wload();if(t==='f')feed();if((t==='o'||t==='s')&&!menu)api('menu',{},function(j){menu=j.menu;draw2()});else draw2()}
 function feed(){api('state',{},function(j){var e=(j.events||[]).slice().reverse(),h='';for(var i=0;i<e.length&&i<60;i++){var x=e[i];h+='<div class="ev '+esc(x.k)+'"><b>'+(x.t?'Стіл '+x.t+' · ':'')+esc(x.text||{guest:'🛎 замовлення гостя',waiter:'🧑‍🍳 замовлення',close:'✅ стіл закрито',ready:'🍽 готово',call:'🔔 кличуть офіціанта',check:'🧾 просять чек'}[x.k]||x.k)+'</b> <span style="color:#8e8e93;font-size:13px">'+esc(x.at)+(x.by?' · '+esc(x.by):'')+'</span>'+(x.lines&&x.lines.length?'<pre>'+esc(x.lines.join('\\n'))+'</pre>':'')+'</div>'}$('f').innerHTML=h||'<div class="e">Подій ще немає</div>'})}
 function items(c){return c.items.filter(function(i){return tab==='s'||!i.hidden})}
 function draw2(){if(!menu)return;var cats=menu.categories.filter(function(c){return!c.tech}),h='';
@@ -70,6 +70,26 @@ document.addEventListener('click',function(ev){var t=ev.target,a;
  if((a=t.getAttribute('data-cq'))){cart[a]=Math.max(0,(cart[a]||0)+(+t.getAttribute('data-d')));if(!cart[a])delete cart[a];return draw2()}
  if((a=t.getAttribute('data-stop'))){var h=t.getAttribute('data-h')==='1';api('stop',{id:a,hidden:h},function(){menu.categories.forEach(function(c){c.items.forEach(function(i){if(i.id===a)i.hidden=h})});draw2()});return}
  if(t.id==='send'){var it=[];for(var k in cart){var p=k.split('|');it.push({id:p[0],v:p[1]||undefined,q:cart[k]})}t.disabled=true;api('order',{t:ot,items:it},function(j,s){if(s===200){alert('✅ Відправлено на стіл '+ot);cart={};ot=0;tabs('q')}else{alert('⚠️ '+(j.error||'помилка'));t.disabled=false}})}});
+var ing=null,offR=[],wq='',wsel=null;
+function fq(q,u){q=Math.round(q*1000)/1000;if((u==='кг'||u==='л')&&q&&Math.abs(q)<1)return Math.round(q*1000)+(u==='кг'?' г':' мл');return String(q).replace('.',',')+' '+u}
+function wload(){api('skData',{},function(j){if(!j.ing)return;ing=j.ing.filter(function(x){return!x.off}).sort(function(a,b){return a.n<b.n?-1:1});offR=j.offR||[];wdraw()})}
+function wdraw(){if(!ing){$('w').innerHTML='<div class="e">Завантаження…</div>';return}var h='';
+ if(wsel){var x=wsel;h='<h2>🗑 '+esc(x.n)+'</h2><p style="color:#8e8e93">На складі: '+fq((x.st.k||0)+(x.st.b||0),x.u)+'</p><p>Скільки списати ('+(x.u==='кг'?'кг або «250 г»':x.u==='л'?'л або «500 мл»':'шт')+'):</p><input id="wq" type="text" style="font-size:28px;width:220px;padding:10px;border-radius:10px;border:0"><p>Причина:</p><div>';
+  for(var i=0;i<offR.length;i++)h+='<button class="cat" data-wr="'+esc(offR[i])+'">'+esc(offR[i])+'</button>';
+  h+='</div><input id="wn" placeholder="Причина" style="font-size:20px;width:90%;padding:10px;border-radius:10px;border:0;margin-top:8px"><div class="b" style="margin-top:14px"><button class="btn" id="wx">← Назад</button><button class="btn r" id="wgo">🗑 Списати</button></div>';
+  $('w').innerHTML=h;return}
+ h='<input id="ws" placeholder="🔎 Пошук продукту" value="'+esc(wq)+'" style="font-size:20px;width:100%;padding:12px;border-radius:10px;border:0;margin-bottom:8px">';
+ var l=ing.filter(function(x){return!wq||x.n.toLowerCase().indexOf(wq.toLowerCase())>=0});
+ for(var j=0;j<l.length&&j<80;j++)h+='<div class="it" data-wi="'+l[j].id+'"><span data-wi="'+l[j].id+'">'+esc(l[j].n)+' <small style="color:#8e8e93">'+fq((l[j].st.k||0)+(l[j].st.b||0),l[j].u)+'</small></span><button data-wi="'+l[j].id+'" style="background:#ff453a">−</button></div>';
+ $('w').innerHTML=h+(l.length?'':'<div class="e">Нічого не знайдено</div>')}
+function pq(s,u){var m=String(s).replace(',','.').match(/^\s*(\d*\.?\d+)\s*(г|гр|мл|кг|л|шт)?/i);if(!m)return NaN;var v=+m[1],su=(m[2]||'').toLowerCase();if((su==='г'||su==='гр')&&u==='кг')v/=1000;if(su==='мл'&&u==='л')v/=1000;return v}
+document.addEventListener('input',function(ev){if(ev.target.id==='ws'){wq=ev.target.value;var p=ev.target.selectionStart;wdraw();var i=$('ws');i.focus();try{i.setSelectionRange(p,p)}catch(e){}}});
+document.addEventListener('click',function(ev){var t=ev.target,a;
+ if((a=t.getAttribute('data-wi'))){wsel=ing.filter(function(x){return x.id===a})[0];wdraw();return}
+ if((a=t.getAttribute('data-wr'))){$('wn').value=a;return}
+ if(t.id==='wx'){wsel=null;wdraw();return}
+ if(t.id==='wgo'){var q=pq($('wq').value,wsel.u),n=$('wn').value.replace(/^\s+|\s+$/g,'');if(!(q>0))return alert('Вкажіть кількість');if(!n)return alert('Вкажіть причину');
+  var w=(wsel.st.b||0)>0&&!((wsel.st.k||0)>0)?'b':'k';t.disabled=true;api('skAdj',{id:wsel.id,wh:w,q:-q,note:n},function(j,s){if(s===200){alert('🗑 Списано: '+wsel.n+' '+fq(q,wsel.u));wsel=null;wload()}else{alert('⚠️ '+(j.error||'помилка'));t.disabled=false}})}});
 setInterval(function(){if(T&&tab==='f')feed()},8000);
 $('gate').style.display='block';show();setInterval(function(){if(T)load()},4000);setInterval(function(){if(T)draw()},30000);
 </script></body></html>`;
