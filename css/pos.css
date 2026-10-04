@@ -313,11 +313,13 @@ main { overflow: auto; padding: 22px 24px 40px; }
 #swArrow.go { background: var(--accent); color: var(--accent-ink); transform: scale(1.1); }
 
 .more-btn { display: none !important; }
+/* телефон: усі розділи в нижній панелі, гортаються пальцем вбік (без «Ще») */
 @media (max-width: 980px) {
-  .nav { overflow-x: visible; justify-content: stretch; gap: 2px; }
-  .nav button { flex: 1; min-width: 0; }
-  .nav .more-i, .nav [data-a="switch"] { display: none; }
-  .more-btn { display: grid !important; }
+  .nav { overflow-x: auto; overflow-y: hidden; justify-content: flex-start; gap: 2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav button { flex: 0 0 auto; min-width: 64px; scroll-snap-align: start; }
+  .nav .more-i, .nav [data-a="switch"] { display: grid; }
+  .more-btn, .nav .fs-btn { display: none !important; }
 }
 @media (max-width: 600px) { main.hall .tables { gap: 8px; } main.hall .tbl { aspect-ratio: auto; } }
 .srow .btn { white-space: nowrap; flex: none; }
@@ -418,7 +420,7 @@ body { position: fixed; top: 0; right: 0; bottom: 0; left: 0; overscroll-behavio
 .fs-btn{display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:0;color:var(--muted,#999);font:inherit;font-size:11px;cursor:pointer;padding:6px}.fs-btn .ic{font-size:20px}@media(max-width:899px){.fs-btn{display:none}}
 .ev.call{background:linear-gradient(135deg,#4a3a08,#2a2205);border:2px solid #ffd60a}.ev.call:not(.acc){animation:callp 1.2s ease-in-out infinite alternate}.ev.call .top b{color:#ffe066;font-size:15px}@keyframes callp{to{box-shadow:0 0 20px #ffd60a88}}
 /* 👨‍🍳 кухонний екран */
-@media (min-width: 981px) { body.cook .more-btn { display: none !important; } } /* на телефоні «Ще» лишається — там «Вийти» */
+body.cook .more-btn { display: none !important; }
 #kGate { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.92); display: grid; place-items: center; }
 #kGate .btn { font-size: 30px; padding: 28px 40px; display: flex; flex-direction: column; gap: 8px; }
 #kGate small { font-size: 15px; font-weight: 400; opacity: .8; }
