@@ -374,7 +374,9 @@
     if (v === 'hall') { const [c, r] = hallGrid(m); m.style.setProperty('--cols', c); m.style.setProperty('--rows', r); }
     const html = { kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, team: teamHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML }[v]?.();
     const fid = document.activeElement?.id, keep = ['stopSearch', 'rQ', 'skQ', 'skQ2', 'skCq'].includes(fid);
+    const sx = [...m.querySelectorAll('.zp-grid, .sk-tbl, .chips.scroll, .seg')].map(e => e.scrollLeft); // таблиці, що гортаються вбік, — лишаються на місці
     setHTML(m, html || '');
+    m.querySelectorAll('.zp-grid, .sk-tbl, .chips.scroll, .seg').forEach((e, i) => { if (sx[i]) e.scrollLeft = sx[i]; });
     if (keep) { const el = $('#' + fid); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
   }
   // сітка залу: столи рівномірно на всю робочу зону, без порожніх клітинок, плитки близькі до квадрата

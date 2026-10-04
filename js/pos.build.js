@@ -717,7 +717,11 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     }
     const html = (_b = (_a2 = { kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, team: teamHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML })[v]) == null ? void 0 : _b.call(_a2);
     const fid = (_c = document.activeElement) == null ? void 0 : _c.id, keep = ["stopSearch", "rQ", "skQ", "skQ2", "skCq"].includes(fid);
+    const sx = [...m.querySelectorAll(".zp-grid, .sk-tbl, .chips.scroll, .seg")].map((e) => e.scrollLeft);
     setHTML(m, html || "");
+    m.querySelectorAll(".zp-grid, .sk-tbl, .chips.scroll, .seg").forEach((e, i) => {
+      if (sx[i]) e.scrollLeft = sx[i];
+    });
     if (keep) {
       const el = $("#" + fid);
       el.focus();
