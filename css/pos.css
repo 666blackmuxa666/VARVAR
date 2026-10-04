@@ -575,7 +575,7 @@ body.cook .more-btn { display: none !important; }
 .st-b { break-inside: avoid; background: var(--card); border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; display: inline-block; width: 100%; }
 .st-b h3 { margin: 0 0 8px; font-size: 14px; color: var(--muted); }
 .st-g { display: flex; flex-wrap: wrap; gap: 6px; }
-.st-i { padding: 7px 10px; border-radius: 10px; background: var(--card2); font-size: 13px; font-weight: 600; border: 1px solid #30d15855; color: var(--text); }
+.st-i { padding: 7px 10px; border-radius: 10px; background: var(--card2); font-size: 13px; font-weight: 600; border: 1px solid transparent; color: var(--text); }
 .st-i.off { background: #3d1210; border-color: var(--red); color: #ff8a80; text-decoration: line-through; }
 .cab-btn .ic { position: relative; } .sh-dot { position: absolute; right: -4px; top: -2px; width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
 .zp-shift { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; } .zp-shift .btn { flex: 1 1 200px; padding: 14px; font-size: 17px; }
