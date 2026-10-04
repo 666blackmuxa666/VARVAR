@@ -500,3 +500,56 @@ body.cook .more-btn { display: none !important; }
 .btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 /* телефон: кнопки «На весь екран» немає (браузер телефона й так на весь екран) */
 @media (max-width: 980px), (pointer: coarse) and (max-width: 1100px) { .fs-btn { display: none !important; } }
+/* ---------- 🧮 Розрахунок ---------- */
+.sk { margin-top: 14px; }
+.sk .card { margin-bottom: 12px; }
+.good { color: var(--green); } .mid { color: var(--orange); } .bad, .neg { color: var(--red); } .warn { color: var(--orange); font-weight: 600; }
+.sk-tools { display: grid; gap: 10px; margin-bottom: 12px; }
+.sk-tools input { max-width: 460px; }
+.sk-tools .chips select { width: auto; padding: 7px 10px; border-radius: 99px; }
+.sk-pills { grid-template-columns: repeat(3, minmax(0, 260px)); }
+.pill.bad b { color: var(--red); }
+.sk-low { color: var(--orange); }
+.sk-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.sk-row:last-child { border: 0; }
+.sk-row.low .sk-q b { color: var(--red); } .sk-row.off { opacity: .5; }
+.sk-n { display: grid; gap: 2px; min-width: 0; cursor: pointer; } .sk-n small { font-size: 12px; }
+.sk-q { display: grid; gap: 2px; text-align: right; } .sk-q b { font-size: 17px; } .sk-q small { font-size: 11px; }
+.sk-act { display: flex; gap: 6px; }
+.badge-d { font-size: 11px; font-weight: 700; background: #bf5af233; color: #d8a5ff; padding: 2px 7px; border-radius: 99px; }
+.pk-l { display: grid; gap: 6px; max-height: 50vh; overflow-y: auto; margin-top: 10px; }
+.pk-i { text-align: left; padding: 11px 12px; border-radius: 12px; background: var(--card2); display: flex; justify-content: space-between; gap: 10px; font-weight: 600; }
+.sk-jr { max-height: 60vh; overflow-y: auto; }
+.sk-new { display: flex; gap: 8px; flex-wrap: wrap; } .sk-new .btn { flex: 1 1 160px; justify-content: center; text-align: center; }
+.sk-busy { padding: 18px; text-align: center; font-weight: 700; color: var(--accent); animation: pulse 1.6s infinite; }
+/* накладна: рядки */
+.dl { border-left: 4px solid var(--line2); padding: 8px 0 8px 10px; margin: 0 0 8px; }
+.dl.ok { border-color: var(--green); } .dl.guess { border-color: var(--orange); } .dl.none { border-color: var(--red); } .dl.new { border-color: var(--blue); }
+.dl-src { font-size: 13px; margin-bottom: 6px; }
+.dl-f { display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(70px, .8fr) minmax(80px, 1fr) minmax(80px, 1fr) auto; gap: 6px; align-items: center; }
+.dl-f select, .dl-f input { padding: 8px 9px; min-width: 0; }
+.dl-h { font-size: 12px; margin-top: 4px; }
+@media (max-width: 700px) { .dl-f { grid-template-columns: 1fr 1fr; } .dl-f select:first-child { grid-column: 1 / -1; } }
+/* техкарта: рядки */
+.cl { display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(70px, .7fr)) 70px auto; gap: 6px; align-items: end; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.cl label { display: grid; gap: 2px; font-size: 11px; color: var(--muted); } .cl input, .cl select { padding: 8px 9px; min-width: 0; }
+.cl-c { text-align: right; font-size: 13px; padding-bottom: 9px; }
+@media (max-width: 700px) { .cl { grid-template-columns: 1fr 1fr 1fr; } .cl select { grid-column: 1 / -1; } }
+.chk { display: flex !important; align-items: center; gap: 8px; font-size: 13px; color: var(--text) !important; } .chk input { width: auto; }
+/* інвентаризація */
+.cnt-cat { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 14px 0 4px; }
+.cnt-r { display: grid; grid-template-columns: 1fr 120px 130px; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.cnt-r input { padding: 9px 10px; text-align: right; } .cnt-d { text-align: right; font-size: 13px; font-weight: 600; }
+@media (max-width: 600px) { .cnt-r { grid-template-columns: 1fr 96px; } .cnt-d { grid-column: 1 / -1; text-align: left; } }
+/* плюси / мінуси */
+.me-g { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.me-g .card { margin: 0; } .me.star { border-top: 3px solid var(--accent); } .me.horse { border-top: 3px solid var(--blue); } .me.puzzle { border-top: 3px solid var(--purple); } .me.dog { border-top: 3px solid var(--red); }
+@media (max-width: 1100px) { .me-g { grid-template-columns: 1fr 1fr; } } @media (max-width: 600px) { .me-g { grid-template-columns: 1fr; } }
+.sk-tbl { overflow-x: auto; } .sk-tbl .th, .sk-tbl .tr { display: grid; grid-template-columns: minmax(150px, 2.2fr) 60px 1fr 1fr 1fr 70px; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); align-items: center; min-width: 560px; }
+.sk-tbl .th { font-size: 12px; color: var(--muted); font-weight: 700; } .sk-tbl .tr > :not(:first-child) { text-align: right; } .sk-tbl .th > :not(:first-child) { text-align: right; }
+/* техкарти для кухні */
+.tech-g { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; } .tech-g .card { margin: 0; }
+.tech-m { max-height: 62vh; overflow-y: auto; display: grid; gap: 10px; margin-top: 10px; } .tech-m .card { margin: 0; background: var(--card2); }
+.kit-w { display: flex; gap: 6px; } .kit-w .kit { flex: 1; }
+.kinfo { flex: none; width: 44px; border-radius: 12px; background: #2c2c2e; color: #8e8e93; font-size: 1.1em; }
+.sc-cam video { width: 100%; max-height: 40vh; border-radius: 12px; background: #000; object-fit: cover; }

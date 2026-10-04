@@ -47,15 +47,18 @@ function menuText(menu) {
   return { text: out.join('\n'), byId };
 }
 
-async function gemini(env, prompt) {
+// prompt — текст або масив parts (текст + фото inline_data); o: { schema, timeout, temperature, prefer }
+async function gemini(env, prompt, o = {}) {
   let last;
   const busy = (await env.DB.get('ai_busy', 'json')) || {}, now = Date.now();
-  const list = (await models(env)).filter(m => !(busy[m] > now));
+  let list = (await models(env)).filter(m => !(busy[m] > now));
+  if (o.prefer) list = [...o.prefer.filter(m => list.includes(m)), ...list.filter(m => !o.prefer.includes(m))]; // для фото — спершу сильніша модель
+  const parts = typeof prompt === 'string' ? [{ text: prompt }] : prompt;
   for (const m of list.length ? list : PREF) try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
       method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-      signal: AbortSignal.timeout(8000),
-      body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0.9 } }),
+      signal: AbortSignal.timeout(o.timeout || 8000),
+      body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', responseSchema: o.schema || SCHEMA, temperature: o.temperature ?? 0.9 } }),
     });
     if (r.status === 429 || r.status === 404) { busy[m] = now + (r.status === 404 ? 86400e3 : 60e3); await env.DB.put('ai_busy', JSON.stringify(busy), { expirationTtl: 86400 }); } // вичерпана — пропускаємо хвилину
     if (r.ok) { const d = await r.json(); return JSON.parse(d.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '{}'); }
@@ -107,4 +110,50 @@ ${final ? `ЗАРАЗ дай фінальну пораду: поле "intro" (1 
   }
   if (r.question && !final) return [{ question: String(r.question).slice(0, 200), options: (r.options || []).slice(0, 5).map(o => String(o).slice(0, 40)) }, 200];
   return [{ error: 'ai' }, 502];
+}
+
+// 🧾 накладна з фото (або текст QR-коду) → постачальник, №, дата, рядки. Фото лише передається в запиті — ніде не зберігається.
+const INV = { type: 'OBJECT', properties: { sup: { type: 'STRING' }, no: { type: 'STRING' }, date: { type: 'STRING' }, total: { type: 'NUMBER' },
+  lines: { type: 'ARRAY', items: { type: 'OBJECT', properties: { n: { type: 'STRING' }, q: { type: 'NUMBER' }, u: { type: 'STRING' }, price: { type: 'NUMBER' }, sum: { type: 'NUMBER' } }, required: ['n', 'q'] } } }, required: ['lines'] };
+export async function aiInvoice(env, { images = [], text = '' }) {
+  if (!env.GEMINI_API_KEY) return { error: 'AI вимкнено' };
+  const prompt = `Це ${images.length ? 'фото накладної / чека / рахунку постачальника' : 'вміст QR-коду накладної або чека'} українського ресторану. Витягни дані документа:
+- sup: постачальник (назва продавця / ФОП / магазину), коротко;
+- no: номер документа; date: дата (ДД.ММ.РРРР);
+- total: загальна сума до сплати (з ПДВ);
+- lines: КОЖЕН товарний рядок по порядку: n — назва товару як у документі (без артикулів), q — кількість, u — одиниця як у документі (кг, г, л, мл, шт, уп, ящ, пач, пл…), price — ціна за одиницю, sum — сума рядка.
+Якщо є колонки з ПДВ і без ПДВ — бери з ПДВ. Числа — з крапкою. Не вигадуй рядків, не пропускай. Знижку/доставку — окремим рядком, якщо є. Відповідь — JSON.${text ? '\n\nВміст коду:\n' + text : ''}`;
+  try {
+    const r = await gemini(env, [{ text: prompt }, ...images.map(d => ({ inline_data: { mime_type: 'image/jpeg', data: d } }))], { schema: INV, timeout: 45000, temperature: 0.1, prefer: ['gemini-flash-latest', 'gemini-2.5-flash'] });
+    const num = v => Math.round((+String(v ?? '').replace(',', '.') || 0) * 1000) / 1000;
+    const lines = (r.lines || []).map(l => ({ n: String(l.n || '').trim().slice(0, 80), q: num(l.q), u: String(l.u || '').trim().slice(0, 10), price: num(l.price), sum: num(l.sum) || Math.round(num(l.price) * num(l.q) * 100) / 100 })).filter(l => l.n && l.q > 0).slice(0, 120);
+    if (!lines.length) return { error: 'Не вдалось прочитати рядки — сфотографуйте рівніше й ближче' };
+    return { sup: String(r.sup || '').trim().slice(0, 60), no: String(r.no || '').trim().slice(0, 30), date: String(r.date || '').trim().slice(0, 20), total: num(r.total), lines };
+  } catch (e) { console.log('aiInvoice', e.message); return { error: 'Помічник зараз не відповідає — спробуйте ще раз за хвилину' }; }
+}
+
+// 📋 чернетка техкарти з назви, складу й ваги страви
+const CARD = { type: 'OBJECT', properties: { out: { type: 'NUMBER' }, items: { type: 'ARRAY', items: { type: 'OBJECT', properties: { n: { type: 'STRING' }, q: { type: 'NUMBER' }, u: { type: 'STRING' }, loss: { type: 'NUMBER' } }, required: ['n', 'q', 'u'] } } }, required: ['items'] };
+export async function aiCard(env, b) {
+  if (!env.GEMINI_API_KEY) return { error: 'AI вимкнено' };
+  const { getIng, norm } = await import('./stock.js');
+  const menu = await getMenu(env), key = String(b.key || ''), [id, v] = key.replace(/^semi:/, '').split('|');
+  const it = menu.categories.flatMap(c => c.items.map(i => ({ ...i, cname: c.name.uk }))).find(i => i.id === id);
+  const ing = (await getIng(env)).filter(x => !x.off);
+  const semi = key.startsWith('semi:') ? ing.find(x => x.id === id) : null;
+  if (!it && !semi) return { error: 'Страву не знайдено' };
+  const name = semi ? semi.n : it.name.uk + (v ? ` ${v} ${it.size || 'л'}` : '');
+  const prompt = `Ти — шеф-кухар і технолог ресторану в Україні. Склади техкарту (калькуляційну карту) на ${semi ? `заготовку «${name}» на партію ${b.yield || 1} ${semi.u}` : `1 порцію страви «${name}» (розділ меню: ${it.cname}${it.size ? ', вихід/обʼєм: ' + it.size : ''})`}.
+${it?.desc?.uk ? 'Склад з меню: ' + it.desc.uk : ''}
+Для кожного інгредієнта: n — назва продукту (як закуповують, напр. «Куряче філе», «Сир фета», «Олія соняшникова»); q — кількість БРУТТО на ${semi ? 'партію' : 'порцію'}; u — одиниця: «г», «мл» або «шт»; loss — % втрат при обробці (очищення, варіння, смаження), 0 якщо нема.
+out — вихід готової ${semi ? 'партії' : 'страви'} в г або мл. Реалістичні ресторанні грамовки. ${ing.length ? 'Якщо продукт уже є в списку — назви ТОЧНО як у списку: ' + ing.slice(0, 250).map(x => x.n).join('; ') : ''}
+Відповідь — JSON.`;
+  let r; try { r = await gemini(env, prompt, { schema: CARD, timeout: 25000, temperature: 0.3 }); } catch (e) { console.log('aiCard', e.message); return { error: 'Помічник зараз не відповідає — спробуйте ще раз за хвилину' }; }
+  const base = u => /^(мл|ml|л|l)$/i.test(u) ? 'л' : /^(шт|pcs?)$/i.test(u) ? 'шт' : 'кг';
+  const items = (r.items || []).slice(0, 30).map(l => {
+    const u = String(l.u || 'г').toLowerCase(), k = /^(г|мл|g|ml)$/.test(u) ? 0.001 : 1, q = Math.round((+l.q || 0) * k * 1000) / 1000, x = ing.find(y => norm(y.n) === norm(l.n));
+    return q > 0 ? { id: x?.id || null, n: x?.n || String(l.n).slice(0, 60), u: x?.u || base(u), q, loss: Math.max(0, Math.min(90, Math.round(+l.loss || 0))), ...(x ? {} : { add: 1 }) } : null;
+  }).filter(Boolean);
+  if (!items.length) return { error: 'Не вийшло — спробуйте ще раз' };
+  return { name, out: Math.round(+r.out || 0), items };
 }

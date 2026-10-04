@@ -5,6 +5,7 @@ import { getMenu, handleMenuText, handleMenuPhoto, HELP as MENU_HELP } from './m
 import { parseWaiterOrder, draftText } from './waiter.js';
 import { tablePick, catsView, obCallback, getOb, putOb } from './orderui.js';
 import { queuePrint, printStatus } from './print.js';
+import { calcView, stockCmd, invPhoto, stockCallback, stockCallbackW } from './stockbot.js';
 import {
   tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
   precheck, setDiscount, splitTable, restoreVoid, getVoids, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
@@ -19,10 +20,10 @@ const ADMIN_TTL = 12 * 3600;
 const W = { order: '➕ Замовлення', kitchen: '👨‍🍳 Кухня', tables: '📋 Столи', close: '🧾 Закрити стіл', stop: '⛔ Стоп-лист', help: '❓ Допомога', admin: '🔐 Адмін' };
 const A = { cash: '💰 Каса', expense: '💸 Витрата', reports: '📊 Звіти', closed: '📜 Закриті сьогодні', top: '🏆 Топ страв', del: '🗑 Видалити стіл', menu: '📖 Редагувати меню', wifi: '📶 Wi‑Fi',
   staff: '👥 Персонал', pass: '🔑 Змінити пароль', wpass: '🔑 Пароль офіціанта', waiter: '⬅️ Режим офіціанта', logout: '🚪 Вийти',
-  delClosed: '🧹 Видалити закритий', reset: '♻️ Обнулити все' }; // ТЕСТ: delClosed і reset — прибрати, коли скаже власник
+  calc: '🧮 Розрахунок', delClosed: '🧹 Видалити закритий', reset: '♻️ Обнулити все' }; // ТЕСТ: delClosed і reset — прибрати, коли скаже власник
 const kb = rows => ({ keyboard: rows.map(r => r.map(text => ({ text }))), resize_keyboard: true, is_persistent: true });
 export const KEYBOARD = kb([[W.order], [W.tables, W.close], [W.kitchen], [W.stop, W.help], [W.admin]]);
-const ADMIN_KB = kb([[W.order], [A.cash, A.expense], [A.reports, A.closed], [A.top, A.del], [W.tables, W.stop], [W.kitchen], [A.menu, A.wifi], [A.staff, A.wpass], [A.delClosed, A.reset], [A.pass, A.waiter, A.logout]]);
+const ADMIN_KB = kb([[W.order], [A.cash, A.expense], [A.reports, A.closed], [A.calc], [A.top, A.del], [W.tables, W.stop], [W.kitchen], [A.menu, A.wifi], [A.staff, A.wpass], [A.delClosed, A.reset], [A.pass, A.waiter, A.logout]]);
 
 export const COMMANDS = [
   ['tables', 'Відкриті столи і рахунки'], ['table', 'Деталі столу: /table 5'], ['close', 'Закрити рахунок столу'],
@@ -403,6 +404,8 @@ export async function handleUpdate(u, env) {
     return send({ text: '🔑 Цей бот — для персоналу VARVAR.\nВведіть пароль офіціанта (повідомлення одразу видалиться):' }, { remove_keyboard: true });
   }
 
+  // 🧮 фото накладної → розпізнати (Gemini) → чернетка з кнопками «Записати»
+  if (m.photo && admin && /^накладн/i.test((m.caption || '').trim())) { await send({ text: '🔎 Розпізнаю накладну… 10–30 с' }); return send(await invPhoto(m, env, uid)); }
   if (m.photo) return send({ text: admin ? await handleMenuPhoto(m, env, tg) : '🔐 Змінювати фото може лише адміністратор.' });
   if (!text) return;
   let x;
@@ -422,7 +425,7 @@ export async function handleUpdate(u, env) {
   if (low === '/stoplist' || text === W.stop || low === 'стоп-лист' || low === 'стоп лист') return send(await stopView(env));
 
   // --- адміністратор ---
-  const ADM = [A.cash, A.expense, A.reports, A.closed, A.top, A.del, A.menu, A.wifi, A.staff, A.pass, A.wpass, A.waiter, A.logout, A.delClosed, A.reset];
+  const ADM = [A.calc, A.cash, A.expense, A.reports, A.closed, A.top, A.del, A.menu, A.wifi, A.staff, A.pass, A.wpass, A.waiter, A.logout, A.delClosed, A.reset];
   const admOnly = ADM.includes(text) || /^(\/revenue|\/wifi|\/menu|виручка|каса|звіти|витрата|видалити стіл)/.test(low);
   if (admOnly && !admin) return send({ text: `🔐 Це доступно лише адміністратору. Натисніть «${W.admin}».` });
   if (text === A.cash || low === 'каса') return send(await cashView(env));
@@ -443,6 +446,10 @@ export async function handleUpdate(u, env) {
     await remember(env, uid, chat, [m.message_id]); await purgeAdminChat(env, uid); track = false;
     return send({ text: '🚪 Ви вийшли з режиму адміністратора. Переписку адмін-режиму видалено з чату.' }, KEYBOARD);
   }
+
+  // --- 🧮 розрахунок: склад, списання, заготовки, інвентаризація, техкарти ---
+  if (text === A.calc) return send(await calcView(env));
+  if (admin) { const r = await stockCmd(text, env, who); if (r) return send(r); }
 
   // --- замовлення від офіціанта текстом: «номер столу» + рядки «страва кількість» ---
   if (text.includes('\n')) {
@@ -477,6 +484,12 @@ async function handleCallback(q, env) {
   const who = q.from?.first_name || '';
   const confirm = (text, yes) => send({ text, markup: { inline_keyboard: [[{ text: '✅ Так', callback_data: yes }, { text: 'Ні', callback_data: 'no' }]] } });
 
+  if (/^sk/.test(act)) { // 🧮 розрахунок
+    if (!admin) return answer('🔐 Лише для адміністратора');
+    const r = (await stockCallback(act, arg, env, uid, who)) || (await stockCallbackW(act, arg, oid, env, uid, who));
+    if (r) { if (['skis', 'skix', 'skipp'].includes(act)) await edit(r.text, r.markup); else await send(r); }
+    return answer('');
+  }
   if (act === 'rej') { // ❌ відхилити замовлення гостя
     const o = await rejectOrder(env, oid, who, { editTg: false });
     const html = q.message.text ? esc(q.message.text) : '';

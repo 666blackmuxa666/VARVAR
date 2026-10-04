@@ -2,6 +2,7 @@
 // Усе, що змінює столи/звіти/касу, — тут, щоб бот і POS завжди робили одне й те саме.
 import { getMenu, saveMenu, menuLock } from './menu.js';
 import { queuePrint, kitchenTicket, receipt } from './print.js';
+import { consume, wasteDish } from './stock.js';
 
 export const tg = (env, method, body) => fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 export const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -41,7 +42,11 @@ export function billItems(b) {
 async function _bump(env, key, fn) { const d = (await env.DB.get(key, 'json')) || {}; fn(d); await env.DB.put(key, JSON.stringify(d)); }
 export const addStat = (env, field, n) => bump(env, 'day:' + dayKey(), d => { d[field] = (d[field] || 0) + n; });
 // продажі страв за місяць: { назва: [кількість, сума] }
-export const addDishes = (env, items, day = dayKey()) => bump(env, 'dish:' + day.slice(0, 7), d => { for (const { n, q, sum } of items) { const x = d[n] || [0, 0]; d[n] = [x[0] + q, x[1] + sum]; } });
+// продажі страв за місяць + 🧮 склад: списання продуктів за техкартами (stock: false — склад не чіпаємо: чек знято/повернуто у виручку)
+export async function addDishes(env, items, day = dayKey(), { stock = true } = {}) {
+  await bump(env, 'dish:' + day.slice(0, 7), d => { for (const { n, q, sum } of items) { const x = d[n] || [0, 0]; d[n] = [x[0] + q, x[1] + sum]; } });
+  if (stock) await consume(env, items).catch(e => console.log('stock', e.message)); // склад не має ламати замовлення
+}
 async function _logClosed(env, rec) {
   const k = 'closed:' + dayKey(); const list = (await env.DB.get(k, 'json')) || [];
   list.push(rec); await env.DB.put(k, JSON.stringify(list.slice(-500)));
@@ -169,9 +174,12 @@ async function _removeOne(env, t, name, who = '', reason = '') {
     (b.voids = b.voids || []).push(v);
     await putBill(env, t, b);
     if (!(b.total > 0)) await logClosed(env, { ts: Date.now(), t: +t, sum: 0, at: hhmm(), by: who || '', del: 1, voids: b.voids }); // стіл спорожнів — скасування лишаються в історії
+    // уже готували (кухня: «Готую»/«Готово») або причина «не сподобалось / брак» → продукти списуються як брак, інакше повертаються на склад
+    const kc = await kitchenCancel(env, +t, name, b.opened), cooked = kc.length ? kc[0].cooked : WASTE_R.test(reason);
+    if (cooked) v.w = 1;
     await addDishes(env, [{ n: name, q: -1, sum: -unit }]);
+    if (cooked) await wasteDish(env, [{ n: name, q: 1 }], reason, who).catch(() => {});
     await addVoid(env, v);
-    await kitchenCancel(env, +t, name);
     await logEvent(env, { k: 'rm', t, by: who, text: `−1× ${name} (−${unit}) · ${reason}` });
     return { name, unit, reason };
   }
@@ -188,19 +196,20 @@ async function _restoreVoid(env, ts, who) {
   b.log = [...(b.log || []), { at: hhmm(), kind: `↩️ повернуто після скасування (${who})`, lines: [line] }].slice(-60);
   if (b.voids) { const j = b.voids.findIndex(x => x.ts === v.ts); if (j >= 0) b.voids.splice(j, 1); }
   await putBill(env, v.t, b);
-  await addDishes(env, [{ n: v.name, q: 1, sum: v.sum }]);
+  await addDishes(env, [{ n: v.name, q: 1, sum: v.sum }], dayKey(), { stock: !v.w }); // брак уже списано — вдруге не списуємо
   await logEvent(env, { k: 'shift', t: v.t, by: who, text: `↩️ Стіл ${v.t}: повернуто ${v.name} (${v.sum} грн), скасоване о ${v.at}` });
   return v;
 }
 
+const WASTE_R = /не сподоб|брак|зіпсов|розбил|впал/i;
 // 🕵️ журнал скасувань за день (для контролю): { ts, at, t, by, name, sum, reason }
 export const getVoids = async (env, day = dayKey()) => (await env.DB.get('void:' + day, 'json')) || [];
 async function _addVoid(env, v) { const k = 'void:' + dayKey(), l = await getVoids(env); l.push(v); await env.DB.put(k, JSON.stringify(l.slice(-1000))); }
 // максимальна знижка для офіціанта (адмін — будь-яка)
 export const WAITER_DISC_MAX = 20;
 // ⚙️ налаштування системи (змінюються в касі «Налаштування» і в боті)
-export const CFG_DEF = { discMax: WAITER_DISC_MAX, scanMin: 60 };
-export const CFG_LIM = { discMax: [0, 100], scanMin: [10, 600] };
+export const CFG_DEF = { discMax: WAITER_DISC_MAX, scanMin: 60, foodCost: 30, priceAlert: 5 };
+export const CFG_LIM = { discMax: [0, 100], scanMin: [10, 600], foodCost: [5, 90], priceAlert: [1, 100] };
 export const getCfg = async env => ({ ...CFG_DEF, ...((await env.DB.get('cfg', 'json')) || {}) });
 export async function setCfg(env, k, v) {
   if (!CFG_LIM[k]) return { error: 'Невідоме налаштування' };
@@ -360,12 +369,13 @@ async function _deleteTable(env, t, who, reason = '') {
   const bill = await getBill(env, t);
   if (!bill.total) return null;
   await env.DB.delete('bill:' + t);
-  await kitchenCancel(env, +t, null);
+  const kc = await kitchenCancel(env, +t, null, bill.opened);
   const dishes = []; for (const o of bill.log || []) for (const l of o.lines) { const x = l.match(LINE); if (x) dishes.push([x[2], +x[1], +x[3]]); }
   await addVoid(env, { ts: Date.now(), at: hhmm(), t: +t, by: who || '', name: `🗑 Весь стіл (${dishes.length} поз.)`, sum: bill.total, reason: String(reason || 'стіл видалено').slice(0, 120), table: 1 });
   await logClosed(env, { ts: Date.now(), t, sum: bill.total, at: hhmm(), by: who || '', del: 1, dishes, orders: bill.orders || 0, ...(bill.voids?.length ? { voids: bill.voids } : {}) });
   // видалений стіл — не продаж: прибрати його страви з «топ страв» і замовлення з лічильника (↩️ відновлення поверне)
   if (dishes.length) await addDishes(env, dishes.map(([n, q, sum]) => ({ n, q: -q, sum: -sum })));
+  const cooked = kc.filter(x => x.cooked); if (cooked.length) await wasteDish(env, cooked, reason || 'стіл видалено', who).catch(() => {}); // уже приготоване — брак
   if (bill.orders) await addStat(env, 'orders', -bill.orders);
   await logEvent(env, { k: 'del', t, by: who, sum: bill.total });
   return { sum: bill.total };
@@ -384,7 +394,7 @@ async function _delClosed(env, ref, day = dayKey()) {
   await bump(env, 'day:' + day, d => { d.closed = Math.max(0, (d.closed || 0) - x.sum); d.tables = Math.max(0, (d.tables || 0) - 1);
     d.cash = Math.max(0, (d.cash || 0) - (x.cash ?? x.sum)); d.card = Math.max(0, (d.card || 0) - (x.card || 0)); d.orders = Math.max(0, (d.orders || 0) - (x.orders || 0));
     if (x.discSum) d.disc = Math.max(0, (d.disc || 0) - x.discSum); if (x.tip) d.tip = Math.max(0, (d.tip || 0) - x.tip); });
-  if (x.dishes?.length) await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q: -q, sum: -sum })), day);
+  if (x.dishes?.length) await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q: -q, sum: -sum })), day, { stock: false }); // страву віддали — продукти витрачені
   for (const [n, v] of Object.entries(tipSplitOf(x))) await addTipBal(env, n, -v);
   return x;
 }
@@ -396,7 +406,7 @@ async function _restoreClosed(env, ref, who, day = dayKey()) {
   await bump(env, 'day:' + day, d => { d.closed = (d.closed || 0) + x.sum; d.tables = (d.tables || 0) + 1;
     d.cash = (d.cash || 0) + (x.cash ?? x.sum); d.card = (d.card || 0) + (x.card || 0); d.orders = (d.orders || 0) + (x.orders || 0);
     if (x.discSum) d.disc = (d.disc || 0) + x.discSum; if (x.tip) d.tip = (d.tip || 0) + x.tip; });
-  if (x.dishes?.length) await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q, sum })), day);
+  if (x.dishes?.length) await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q, sum })), day, { stock: false });
   for (const [n, v] of Object.entries(tipSplitOf(x))) await addTipBal(env, n, v);
   await logEvent(env, { k: 'shift', by: who, text: `↩️ Рахунок стола ${x.t} (${x.sum} грн${day !== dayKey() ? ', ' + day : ''}) повернуто у виручку` });
   return x;
@@ -417,7 +427,7 @@ async function _reopenClosed(env, ref, who, day = dayKey()) {
   const k = 'closed:' + day, list = await getClosed(env, day), x = findClosed(list, ref);
   x.rm = 1; x.reopen = 1; await env.DB.put(k, JSON.stringify(list));
   if (x.orders) await bump(env, 'day:' + day, d => { d.orders = (d.orders || 0) + x.orders; }); // замовлення не скасовані — лише рахунок відкрито знову
-  await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q, sum }))); // страви знову на столі — у продажі сьогоднішнього дня (закриють заново сьогодні) (продажі страв рахуються при замовленні, delClosed їх відняв)
+  await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q, sum })), dayKey(), { stock: false }); // страви знову на столі — у продажі сьогоднішнього дня (закриють заново сьогодні) (продажі страв рахуються при замовленні, delClosed їх відняв)
   await billBack(env, x.t, x, `↩️ відкрито знову (${who})`);
   await logEvent(env, { k: 'shift', t: x.t, by: who, text: `↩️ Стіл ${x.t}: закритий рахунок відкрито знову (${x.sum} грн)` });
   return x;
@@ -444,7 +454,7 @@ export async function reprintClosed(env, ref, who, day = dayKey()) {
 
 // ---------- фінанси ----------
 export const getExp = async (env, day = dayKey()) => (await env.DB.get('exp:' + day, 'json')) || [];
-async function _addExpense(env, e) { const k = 'exp:' + dayKey(); const l = await getExp(env); l.push({ ts: Date.now(), ...e }); await env.DB.put(k, JSON.stringify(l)); }
+async function _addExpense(env, e) { const k = 'exp:' + dayKey(); const l = await getExp(env); l.push({ ts: Date.now(), ...e }); await env.DB.put(k, JSON.stringify(l)); return l.length - 1; }
 // 🗑/↩️ запис дня (витрата / рух коштів / Z-звіт): прапорець del, будь-який день
 async function _flagRec(env, pfx, day, i, del) { const k = pfx + day, l = (await env.DB.get(k, 'json')) || []; const x = l[+i]; if (!x || !!x.del === del) return false; if (del) x.del = 1; else delete x.del; await env.DB.put(k, JSON.stringify(l)); return true; }
 // ---------- рух коштів (не витрати): внесення / вилучення готівки, обмін картка ↔ готівка ----------
@@ -751,13 +761,19 @@ async function _kitchenClosed(env, tables) {
   if (ch) await putKq(env, l);
 }
 // скасування з рахунку → на кухні страва червона «СКАСОВАНО» (name=null — увесь стіл)
-async function _kitchenCancel(env, t, name) {
-  const l = await getKq(env); let ch = false;
+async function _kitchenCancel(env, t, name, since = 0) {
+  const l = await getKq(env), out = []; let ch = false;
   for (let k = l.length - 1; k >= 0; k--) { const e = l[k]; if (e.t !== t || e.done) continue;
-    for (const x of e.items) if (!x.cancel && (name == null || x.n === name)) { if (name != null && x.q > 1) { x.q--; x.canc = (x.canc || 0) + 1; } else x.cancel = 1; ch = true; if (name != null) break; }
+    for (const x of e.items) if (!x.cancel && (name == null || x.n === name)) {
+      const cooked = !!(x.done || e.start); // кухня вже взяла в роботу або зробила
+      if (name != null && x.q > 1) { x.q--; x.canc = (x.canc || 0) + 1; out.push({ n: x.n, q: 1, cooked }); } else { out.push({ n: x.n, q: name != null ? 1 : x.q, cooked }); x.cancel = 1; }
+      ch = true; if (name != null) break; }
     if (e.items.every(x => x.done || x.cancel)) { e.done = 1; e.doneAt = Date.now(); e.cancelled = 1; }
     if (ch && name != null) break; }
+  // уже видані з кухні (картка закрита «готово») цього стола — точно приготовані
+  if (since) for (const e of l) if (e.t === t && e.done && !e.closed && !e.cancelled && e.ts >= since) for (const x of e.items) if (!x.cancel && (name == null ? true : x.n === name && !out.length)) out.push({ n: x.n, q: name != null ? 1 : x.q, cooked: true });
   if (ch) await putKq(env, l);
+  return out;
 }
 // ⏱ статистика кухні: час від замовлення до «готово»
 export async function kitchenStats(env, from, to) {

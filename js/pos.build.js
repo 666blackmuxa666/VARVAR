@@ -84,8 +84,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       el.innerHTML = html;
     }
   };
-  async function api(op, data = {}) {
-    const r = await withTimeout(fetch(API + "/api/pos", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + S.token }, body: JSON.stringify(__spreadValues({ op }, data)) }), 12e3);
+  async function api(op, data = {}, ms = 12e3) {
+    const r = await withTimeout(fetch(API + "/api/pos", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + S.token }, body: JSON.stringify(__spreadValues({ op }, data)) }), ms);
     const j = await r.json().catch(() => ({}));
     if (r.status === 401 && op !== "login") {
       logout(true);
@@ -329,6 +329,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         });
         if (m.keys.includes("kq") && (isCook() || S.view === "kq")) loadKq().catch(() => {
         });
+        if (S.view === "calc" && m.keys.some((k) => ["ing", "cards", "stk", "invl", "sups", "cntl", "cnt"].includes(k)) && !skBusy()) loadView(true);
         if (["closed", "reports", "settings", "cash"].includes(S.view) && m.keys.some((k) => ["closed", "day", "exp", "staff", "shift", "z", "mov", "tipbal", "tippay", "void", "kq"].includes(k) || k === "bill" && S.view === "cash")) loadView(true);
       }, 120);
     };
@@ -374,18 +375,18 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     } catch (e) {
     }
   }
-  const NAV_COOK = [["kq", "\u{1F468}\u200D\u{1F373}", "\u0427\u0435\u0440\u0433\u0430"], ["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"]];
+  const NAV_COOK = [["kq", "\u{1F468}\u200D\u{1F373}", "\u0427\u0435\u0440\u0433\u0430"], ["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["calc", "\u{1F9EE}", "\u0421\u043A\u043B\u0430\u0434"]];
   const navList = () => isCook() ? NAV_COOK : NAV.filter((n) => !n[3] || isAdmin());
-  const NAV = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["closed", "\u{1F4DC}", "\u0417\u0430\u043A\u0440\u0438\u0442\u0456"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["cash", "\u{1F4B0}", "\u041A\u0430\u0441\u0430", 1], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438", 1], ["kq", "\u{1F468}\u200D\u{1F373}", "\u041A\u0443\u0445\u043D\u044F", 1], ["menu", "\u{1F4D6}", "\u041C\u0435\u043D\u044E", 1], ["printer", "\u{1F5A8}", "\u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442.", 1]];
+  const NAV = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["closed", "\u{1F4DC}", "\u0417\u0430\u043A\u0440\u0438\u0442\u0456"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["cash", "\u{1F4B0}", "\u041A\u0430\u0441\u0430", 1], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438", 1], ["kq", "\u{1F468}\u200D\u{1F373}", "\u041A\u0443\u0445\u043D\u044F", 1], ["menu", "\u{1F4D6}", "\u041C\u0435\u043D\u044E", 1], ["calc", "\u{1F9EE}", "\u0420\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043E\u043A", 1], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442.", 1]];
   function renderNav() {
     var _a2;
     const newCnt = S.events.filter((e) => e.k === "guest" && e.s === "new").length;
-    setHTML($("#nav"), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` + navList().map(([v, ic, l]) => `<button class="${S.view === v ? "on" : ""}${!isCook() && ["printer", "menu", "settings", "stop", "kq"].includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : ""}</button><button class="more-btn ${["printer", "menu", "settings", "stop", "kq"].includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><div class="me">${esc((_a2 = S.me) == null ? void 0 : _a2.name)}<br>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"}</div><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
+    setHTML($("#nav"), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` + navList().map(([v, ic, l]) => `<button class="${S.view === v ? "on" : ""}${!isCook() && ["calc", "menu", "settings", "stop", "kq"].includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : ""}</button><button class="more-btn ${["calc", "menu", "settings", "stop", "kq"].includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><div class="me">${esc((_a2 = S.me) == null ? void 0 : _a2.name)}<br>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"}</div><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
   }
   function render() {
     renderNav();
     renderFeed();
-    if (["hall", "printer", "kq"].includes(S.view)) renderMain();
+    if (["hall", "printer", "kq"].includes(S.view) || S.view === "settings" && S.setTab === "printer") renderMain();
     if (S.open) renderSheet();
   }
   function hallHTML() {
@@ -680,6 +681,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         S.data.cday = r.day;
         S.data.ctoday = r.today;
       }
+      if (S.view === "calc") await loadCalc();
       if (S.view === "settings") {
         S.data.staff = await api("staff");
         S.data.wifi = await api("wifi");
@@ -698,8 +700,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       m.style.setProperty("--cols", c);
       m.style.setProperty("--rows", r);
     }
-    const html = (_b = (_a2 = { kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML })[v]) == null ? void 0 : _b.call(_a2);
-    const fid = (_c = document.activeElement) == null ? void 0 : _c.id, keep = ["stopSearch", "rQ"].includes(fid);
+    const html = (_b = (_a2 = { kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML })[v]) == null ? void 0 : _b.call(_a2);
+    const fid = (_c = document.activeElement) == null ? void 0 : _c.id, keep = ["stopSearch", "rQ", "skQ", "skQ2", "skCq"].includes(fid);
     setHTML(m, html || "");
     if (keep) {
       const el = $("#" + fid);
@@ -855,11 +857,11 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       return `<div class="kc${e.urgent ? " urg" : ""}${e.start ? " cook" : " new"}"><div class="kh"><b>\u0421\u0442\u0456\u043B ${e.t}</b><span class="tm ${tc}">\u23F1 ${m} \u0445\u0432</span></div>
         <div class="km">${e.at} \xB7 ${esc(e.by)}${e.src === "\u0433\u0456\u0441\u0442\u044C" ? " \xB7 \u{1F4F1} \u0441\u0430\u0439\u0442" : ""}</div>
         ${e.urgent ? '<div class="ktag urg">\u26A1 \u0422\u0415\u0420\u041C\u0406\u041D\u041E\u0412\u041E</div>' : ""}${e.tw ? '<div class="ktag">\u{1F961} \u0417 \u0421\u041E\u0411\u041E\u042E</div>' : ""}${e.comment ? `<div class="kcom">\u{1F4AC} ${esc(e.comment)}</div>` : ""}
-        <div class="ki">${e.items.map((x, i) => `<button class="kit${x.done ? " done" : ""}${x.cancel ? " canc" : ""}" data-a="kItem" data-id="${e.id}" data-i="${i}" ${x.cancel ? "disabled" : ""}><b>${x.q}\xD7</b> ${esc(x.n)}${x.cancel ? " <em>\u0421\u041A\u0410\u0421\u041E\u0412\u0410\u041D\u041E</em>" : x.canc ? ` <em>\u2212${x.canc} \u0441\u043A\u0430\u0441.</em>` : ""}</button>`).join("")}</div>
+        <div class="ki">${e.items.map((x, i) => `<div class="kit-w"><button class="kit${x.done ? " done" : ""}${x.cancel ? " canc" : ""}" data-a="kItem" data-id="${e.id}" data-i="${i}" ${x.cancel ? "disabled" : ""}><b>${x.q}\xD7</b> ${esc(x.n)}${x.cancel ? " <em>\u0421\u041A\u0410\u0421\u041E\u0412\u0410\u041D\u041E</em>" : x.canc ? ` <em>\u2212${x.canc} \u0441\u043A\u0430\u0441.</em>` : ""}</button><button class="kinfo" data-a="skTechOne" data-n="${esc(x.n)}" title="\u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0430">\u24D8</button></div>`).join("")}</div>
         ${(e.msgs || []).map((x) => `<div class="kmsg">\u{1F4E8} ${x.at} ${esc(x.text)}</div>`).join("")}
         <div class="kb">${e.start ? "" : `<button class="btn" data-a="kStart" data-id="${e.id}">\u{1F525} \u0413\u043E\u0442\u0443\u044E</button>`}<button class="btn" data-a="kMsg" data-id="${e.id}">\u{1F4AC}</button><button class="btn green" data-a="kAll" data-id="${e.id}">\u2705 \u0412\u0421\u0415 \u0413\u041E\u0422\u041E\u0412\u041E</button></div></div>`;
     };
-    return `<div class="khead"><h1>\u{1F468}\u200D\u{1F373} \u0427\u0435\u0440\u0433\u0430 <span class="muted">${act0.length}</span></h1>${isCook() ? `<div class="stat tipstat">\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456<b class="money">${money(((_a2 = S.myTip) == null ? void 0 : _a2.sum) || 0)}</b></div>` : ""}<button class="btn" data-a="view" data-v="stop">\u26D4 \u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442</button><button class="btn" data-a="kFont">A${"+".repeat(S.kFont - 1)}</button></div>
+    return `<div class="khead"><h1>\u{1F468}\u200D\u{1F373} \u0427\u0435\u0440\u0433\u0430 <span class="muted">${act0.length}</span></h1>${isCook() ? `<div class="stat tipstat">\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456<b class="money">${money(((_a2 = S.myTip) == null ? void 0 : _a2.sum) || 0)}</b></div>` : ""}<button class="btn" data-a="skTechAll">\u{1F4CB} \u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0438</button><button class="btn" data-a="skOffPick">\u{1F5D1} \u0421\u043F\u0438\u0441\u0430\u0442\u0438</button><button class="btn" data-a="view" data-v="stop">\u26D4 \u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442</button><button class="btn" data-a="kFont">A${"+".repeat(S.kFont - 1)}</button></div>
       <div class="kq f${S.kFont}">${act0.length ? act0.map(card).join("") : '<div class="kempty">\u2705 \u0427\u0435\u0440\u0433\u0430 \u043F\u043E\u0440\u043E\u0436\u043D\u044F</div>'}</div>
       ${done.length ? `<h3 class="muted" style="margin:18px 0 8px">\u041E\u0441\u0442\u0430\u043D\u043D\u0456 \u0433\u043E\u0442\u043E\u0432\u0456</h3><div class="kdone">${done.map((e) => `<div class="kd">\u0421\u0442\u0456\u043B ${e.t} \xB7 ${e.items.filter((x) => !x.cancel).map((x) => `${x.q}\xD7 ${esc(x.n)}`).join(", ")}${e.cancelled ? " \xB7 \u274C \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E" : ` \xB7 ${Math.round((e.doneAt - e.ts) / 6e4)} \u0445\u0432`} <button class="btn sm" data-a="kUndo" data-id="${e.id}">\u21A9\uFE0F</button></div>`).join("")}</div>` : ""}`;
   }
@@ -874,9 +876,12 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     }).join("")}`;
   }
   function printerHTML() {
+    return `<div class="head"><h1>\u041F\u0440\u0438\u043D\u0442\u0435\u0440</h1></div>${printerCards()}`;
+  }
+  function printerCards() {
     var _a2;
     const p = S.printer || {}, ok = p.seen && Date.now() - p.seen < 6e4;
-    return `<div class="head"><h1>\u041F\u0440\u0438\u043D\u0442\u0435\u0440</h1></div><div class="cards"><div class="card"><div class="big">${ok ? "\u2705 \u043D\u0430 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : p.seen ? "\u274C \u043D\u0435\u043C\u0430\u0454 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : "\u274C \u043F\u0440\u043E\u0433\u0440\u0430\u043C\u0430 \u0434\u0440\u0443\u043A\u0443 \u043D\u0435 \u0437\u0430\u043F\u0443\u0449\u0435\u043D\u0430"}</div>
+    return `<div class="cards"><div class="card"><div class="big">${ok ? "\u2705 \u043D\u0430 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : p.seen ? "\u274C \u043D\u0435\u043C\u0430\u0454 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : "\u274C \u043F\u0440\u043E\u0433\u0440\u0430\u043C\u0430 \u0434\u0440\u0443\u043A\u0443 \u043D\u0435 \u0437\u0430\u043F\u0443\u0449\u0435\u043D\u0430"}</div>
       <div class="muted">${p.seen ? "\u041E\u0441\u0442\u0430\u043D\u043D\u0456\u0439 \u0437\u0432\u02BC\u044F\u0437\u043E\u043A: " + hhmm(p.seen) : ""} \xB7 \u0443 \u0447\u0435\u0440\u0437\u0456: ${(_a2 = p.q) != null ? _a2 : 0}</div></div>
       <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">\u{1F5A8} \u0422\u0435\u0441\u0442\u043E\u0432\u0438\u0439 \u0434\u0440\u0443\u043A</button><button class="btn" data-a="pQr">\u{1F533} QR \u043C\u0435\u043D\u044E \u0434\u043B\u044F \u0441\u0442\u043E\u043B\u0443</button></div></div>`;
   }
@@ -1348,13 +1353,13 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       ${S.menu.categories.map((c) => `<h3 class="muted" style="margin:18px 4px 8px">${esc(c.name.uk)}</h3><div class="grid2">${c.items.map((i) => `<button class="list-row press" data-a="menuEdit" data-id="${i.id}" style="text-align:left"><div class="grow"><b>${esc(i.name.uk)}</b>${i.hidden ? " \u26D4" : ""}<div class="muted" style="font-size:13px">${i.variants ? i.variants.map((v) => `${v.v} \u2014 ${v.p}`).join(" / ") : i.price + " \u20B4"}${i.size && !i.variants ? " \xB7 " + esc(i.size) : ""}</div></div>\u203A</button>`).join("")}</div>`).join("")}`;
   }
   function settingsHTML() {
-    var _a2, _b, _c, _d;
+    var _a2, _b, _c, _d, _e, _f;
     const st = S.data.staff, wf = S.data.wifi, c = (st == null ? void 0 : st.cfg) || {};
     const ROLE = { admin: "\u{1F510} \u0430\u0434\u043C\u0456\u043D", cook: "\u{1F468}\u200D\u{1F373} \u043A\u0443\u0445\u0430\u0440", waiter: "\u{1F9D1}\u200D\u{1F373} \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442" };
     const row = (l, v, btn, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ""}</span><span class="kv-r"><b>${v}</b>${btn}</span></div>`;
     const ch = (a, extra = "") => `<button class="btn sm" data-a="${a}"${extra}>\u0437\u043C\u0456\u043D\u0438\u0442\u0438</button>`;
     const staff = st ? [...st.staff].sort((a, b) => (a.role || "").localeCompare(b.role || "") || a.name.localeCompare(b.name)) : null;
-    const SS = [["people", "\u{1F465} \u041B\u044E\u0434\u0438"], ["rules", "\u2699\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438"], ["test", "\u{1F9EA} \u0422\u0435\u0441\u0442"]], cur = S.setTab || "people";
+    const SS = [["people", "\u{1F465} \u041B\u044E\u0434\u0438"], ["rules", "\u2699\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438"], ["printer", "\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["test", "\u{1F9EA} \u0422\u0435\u0441\u0442"]], cur = S.setTab || "people";
     const part = {};
     part.people = `<div class="grid2 set">
       <div class="card"><h3>\u{1F465} \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B <span class="muted">\xB7 ${staff ? staff.length : "\u2026"}</span></h3>
@@ -1369,11 +1374,15 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       <div class="card"><h3>\u{1F4B0} \u0413\u0440\u043E\u0448\u0456</h3>
         ${row("\u{1F3F7} \u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430", ((_a2 = c.discMax) != null ? _a2 : 20) + "%", ch("cfg", ' data-k="discMax"'), "\u0411\u0456\u043B\u044C\u0448\u0443 \u0437\u043D\u0438\u0436\u043A\u0443 \u0434\u0430\u0454 \u043B\u0438\u0448\u0435 \u0430\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440")}
         ${row("\u{1F468}\u200D\u{1F373} \u0427\u0430\u0441\u0442\u043A\u0430 \u043A\u0443\u0445\u043D\u0456 \u0432\u0456\u0434 \u0447\u0430\u0439\u043E\u0432\u0438\u0445", ((_b = st == null ? void 0 : st.kpct) != null ? _b : 20) + "%", ch("kpct"), `\u041F\u043B\u044E\u0441 \xAB\u043F\u043E\u0434\u044F\u043A\u0430 \u043A\u0443\u0445\u043D\u0456\xBB \u0432\u0456\u0434 \u0433\u043E\u0441\u0442\u044F; \u043F\u043E\u0440\u0456\u0432\u043D\u0443 \u043C\u0456\u0436 \u043A\u0443\u0445\u0430\u0440\u044F\u043C\u0438 \u043D\u0430 \u0437\u043C\u0456\u043D\u0456${((_c = st == null ? void 0 : st.cooks) == null ? void 0 : _c.length) ? ` (\u0437\u0430\u0440\u0430\u0437: ${st.cooks.map(esc).join(", ")})` : " (\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0449\u0435 \u043D\u0456\u043A\u043E\u0433\u043E \u2014 \u043F\u0456\u0434\u0435 \u0432 \xAB\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u043D\u044F\xBB)"}`)}</div>
+      <div class="card"><h3>\u{1F9EE} \u0420\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043E\u043A</h3>
+        ${row("\u{1F3AF} \u0426\u0456\u043B\u044C\u043E\u0432\u0438\u0439 \u0444\u0443\u0434\u043A\u043E\u0441\u0442", ((_d = c.foodCost) != null ? _d : 30) + "%", ch("cfg", ' data-k="foodCost"'), "\u0421\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C \xF7 \u0446\u0456\u043D\u0430. \u0417\u0430 \u043D\u0438\u043C \u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F \u0440\u0435\u043A\u043E\u043C\u0435\u043D\u0434\u043E\u0432\u0430\u043D\u0430 \u0446\u0456\u043D\u0430 \u0441\u0442\u0440\u0430\u0432")}
+        ${row("\u{1F53A} \u0421\u043F\u043E\u0432\u0456\u0449\u0430\u0442\u0438 \u043F\u0440\u043E \u043F\u043E\u0434\u043E\u0440\u043E\u0436\u0447\u0430\u043D\u043D\u044F \u0432\u0456\u0434", ((_e = c.priceAlert) != null ? _e : 5) + "%", ch("cfg", ' data-k="priceAlert"'), "\u042F\u043A\u0449\u043E \u0432 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0456\u0439 \u0446\u0456\u043D\u0430 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0443 \u0432\u0438\u0449\u0430 \u0437\u0430 \u043C\u0438\u043D\u0443\u043B\u0443")}</div>
       <div class="card"><h3>\u{1F4F1} \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0433\u043E\u0441\u0442\u0435\u0439</h3>
-        ${row("\u23F1 \u0427\u0430\u0441 \u043D\u0430 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0441\u043B\u044F QR", ((_d = c.scanMin) != null ? _d : 60) + " \u0445\u0432", ch("cfg", ' data-k="scanMin"'), "\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u0433\u0456\u0441\u0442\u044C \u043C\u043E\u0436\u0435 \u0437\u0430\u043C\u043E\u0432\u043B\u044F\u0442\u0438 \u043F\u0456\u0441\u043B\u044F \u0441\u043A\u0430\u043D\u0443\u0432\u0430\u043D\u043D\u044F QR \u043D\u0430 \u0441\u0442\u043E\u043B\u0456")}
+        ${row("\u23F1 \u0427\u0430\u0441 \u043D\u0430 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0441\u043B\u044F QR", ((_f = c.scanMin) != null ? _f : 60) + " \u0445\u0432", ch("cfg", ' data-k="scanMin"'), "\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u0433\u0456\u0441\u0442\u044C \u043C\u043E\u0436\u0435 \u0437\u0430\u043C\u043E\u0432\u043B\u044F\u0442\u0438 \u043F\u0456\u0441\u043B\u044F \u0441\u043A\u0430\u043D\u0443\u0432\u0430\u043D\u043D\u044F QR \u043D\u0430 \u0441\u0442\u043E\u043B\u0456")}
         <div class="muted set-note" style="margin-top:10px">\u{1F4F6} Wi\u2011Fi \u0437\u0430\u043A\u043B\u0430\u0434\u0443 (\u0437\u0430\u043F\u0430\u0441\u043D\u0438\u0439 \u0441\u043F\u043E\u0441\u0456\u0431) \xB7 \u0432\u0430\u0448\u0430 \u043C\u0435\u0440\u0435\u0436\u0430: ${esc((wf == null ? void 0 : wf.current) || "\u2026")}</div>
         <div class="scrollbox sm">${wf ? wf.list.map((x) => `<div class="kv"><span>${esc(x.k)}</span><span class="muted">${new Date(x.at).toLocaleDateString("uk-UA")}</span></div>`).join("") || '<div class="muted">\u043D\u0435\u043C\u0430\u0454 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u0438\u0445 \u0430\u0434\u0440\u0435\u0441</div>' : ""}</div>
         <div class="btnrow"><button class="btn sm primary" data-a="wifiAdd">\u2795 \u0426\u0435 \u043D\u0430\u0448\u0430 \u043C\u0435\u0440\u0435\u0436\u0430</button><button class="btn sm red" data-a="wifiClear">\u0421\u043A\u0438\u043D\u0443\u0442\u0438 \u0432\u0441\u0456</button></div></div></div>`;
+    part.printer = printerCards();
     part.test = `<div class="grid2 set"><div class="card"><h3>\u{1F9EA} \u0422\u0435\u0441\u0442</h3><div class="muted set-note">\u0422\u0438\u043C\u0447\u0430\u0441\u043E\u0432\u043E, \u0434\u043E \u0437\u0430\u043F\u0443\u0441\u043A\u0443.</div><button class="btn sm red" data-a="reset">\u267B\uFE0F \u041E\u0431\u043D\u0443\u043B\u0438\u0442\u0438 \u0432\u0441\u0435</button></div></div>`;
     return `<div class="rhead"><div><h1>\u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F</h1><span class="muted">\u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B, \u043A\u043E\u0434\u0438, \u043F\u0430\u0440\u043E\u043B\u0456, \u043F\u0440\u0430\u0432\u0438\u043B\u0430</span></div></div>
       <div class="seg rsec">${SS.map(([k, l]) => `<button class="${cur === k ? "on" : ""}" data-a="setTab" data-s="${k}">${l}</button>`).join("")}</div>${part[cur]}`;
@@ -1412,19 +1421,807 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     loadMenu().catch(() => {
     });
   }
-  function shrink(file) {
+  function shrink(file, max = 1200, qq = 0.85) {
     return new Promise((res) => {
       const img = new Image();
       img.onload = () => {
-        const k = Math.min(1, 1200 / Math.max(img.width, img.height));
+        const k = Math.min(1, max / Math.max(img.width, img.height));
         const c = document.createElement("canvas");
         c.width = img.width * k;
         c.height = img.height * k;
         c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-        res(c.toDataURL("image/jpeg", 0.85));
+        res(c.toDataURL("image/jpeg", qq));
       };
       img.src = URL.createObjectURL(file);
     });
+  }
+  const WHN = { k: "\u{1F373} \u041A\u0443\u0445\u043D\u044F", b: "\u{1F379} \u0411\u0430\u0440" };
+  const r3 = (x) => Math.round((+x || 0) * 1e3) / 1e3;
+  const fq = (q, u) => {
+    q = r3(q);
+    if ((u === "\u043A\u0433" || u === "\u043B") && q && Math.abs(q) < 1) return `${Math.round(q * 1e3)} ${u === "\u043A\u0433" ? "\u0433" : "\u043C\u043B"}`;
+    return `${String(q).replace(".", ",")} ${u}`;
+  };
+  const totQ = (x) => {
+    var _a2, _b;
+    return r3((((_a2 = x.st) == null ? void 0 : _a2.k) || 0) + (((_b = x.st) == null ? void 0 : _b.b) || 0));
+  };
+  const nrm = (s) => String(s || "").toLowerCase().replace(/ё/g, "\u0435").replace(/[ʼ'’`"«»().,;:!?*_/\\+-]+/g, " ").replace(/\s+/g, " ").trim();
+  const parseQ = (s, u) => {
+    const m = String(s != null ? s : "").trim().replace(",", ".").match(/^(-?\d*\.?\d+)\s*(г|гр|мл|кг|л|шт)?\.?$/i);
+    if (!m) return NaN;
+    let v = +m[1];
+    const su = (m[2] || "").toLowerCase();
+    if ((su === "\u0433" || su === "\u0433\u0440") && u === "\u043A\u0433") v /= 1e3;
+    if (su === "\u043C\u043B" && u === "\u043B") v /= 1e3;
+    return r3(v);
+  };
+  const small = (u) => u === "\u043A\u0433" ? "\u0433" : u === "\u043B" ? "\u043C\u043B" : u;
+  const SK_TABS = () => isCook() ? [["stock", "\u{1F4E6} \u0421\u043A\u043B\u0430\u0434"], ["inv", "\u{1F9FE} \u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0456"], ["prod", "\u{1F373} \u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438"], ["count", "\u{1F4DD} \u0406\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u044F"], ["tech", "\u{1F4CB} \u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0438"]] : [["stock", "\u{1F4E6} \u0421\u043A\u043B\u0430\u0434"], ["buy", "\u{1F6D2} \u0417\u0430\u043A\u0443\u043F\u0456\u0432\u043B\u044F"], ["inv", "\u{1F9FE} \u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0456"], ["cards", "\u{1F4CB} \u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0438"], ["prod", "\u{1F373} \u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438"], ["count", "\u{1F4DD} \u0406\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u044F"], ["rep", "\u{1F4CA} \u041F\u043B\u044E\u0441\u0438 / \u043C\u0456\u043D\u0443\u0441\u0438"]];
+  S.sk = { tab: "stock", q: "", q2: "", cq: "", wh: "", cat: "", flt: "", cf: {}, cwh: "k", p: "w", draft: null, card: null };
+  const skBusy = () => {
+    var _a2, _b;
+    return S.sk.draft || S.sk.card || ((_b = (_a2 = document.activeElement) == null ? void 0 : _a2.closest) == null ? void 0 : _b.call(_a2, "#main")) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+  };
+  async function loadCalc() {
+    const K = S.sk, t = K.tab;
+    if (!S.data.sk || ["stock", "prod", "inv", "cards"].includes(t)) S.data.sk = await api("skData");
+    if (t === "buy") S.data.skBuy = await api("skBuy");
+    if (t === "inv" && !K.draft) S.data.skInv = await api("skInvList");
+    if ((t === "cards" || t === "prod") && isAdmin()) {
+      if (!S.menu) await loadMenu();
+      S.data.skCost = await api("skCost");
+    }
+    if (t === "tech") S.data.skTech = await api("skTech");
+    if (t === "count") {
+      const [c, l] = await Promise.all([api("skCount", { wh: K.cwh }), api("skCountList")]);
+      S.data.skCount = c;
+      S.data.skCnts = l.list;
+      K.cf = Object.fromEntries(Object.entries(c.draft.f || {}).map(([k, v]) => [k, String(v)]));
+    }
+    if (t === "rep") {
+      const [from, to] = perRange(K.p);
+      S.data.skRep = null;
+      renderMain();
+      S.data.skRep = await api("skReport", { from, to }, 3e4);
+    }
+  }
+  function calcHTML() {
+    const K = S.sk, tabs = SK_TABS();
+    if (!tabs.some((x) => x[0] === K.tab)) K.tab = tabs[0][0];
+    const sub = { stock: "\u0437\u0430\u043B\u0438\u0448\u043A\u0438 \u043D\u0430 \u0441\u043A\u043B\u0430\u0434\u0430\u0445 \u041A\u0443\u0445\u043D\u044F \u0456 \u0411\u0430\u0440", buy: "\u0449\u043E \u0434\u043E\u043A\u0443\u043F\u0438\u0442\u0438 \u2014 \u043F\u043E \u043F\u043E\u0441\u0442\u0430\u0447\u0430\u043B\u044C\u043D\u0438\u043A\u0430\u0445", inv: "\u043F\u0440\u0438\u0445\u0456\u0434 \u0442\u043E\u0432\u0430\u0440\u0443: \u0444\u043E\u0442\u043E, \u043A\u043E\u0434 \u0430\u0431\u043E \u0432\u0440\u0443\u0447\u043D\u0443", cards: "\u043A\u0430\u043B\u044C\u043A\u0443\u043B\u044F\u0446\u0456\u0439\u043D\u0456 \u043A\u0430\u0440\u0442\u0438 \u0439 \u0441\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C \u0441\u0442\u0440\u0430\u0432", tech: "\u0441\u043A\u043B\u0430\u0434 \u0456 \u0433\u0440\u0430\u043C\u043E\u0432\u043A\u0430 \u0441\u0442\u0440\u0430\u0432", prod: "\u043D\u0430\u043F\u0456\u0432\u0444\u0430\u0431\u0440\u0438\u043A\u0430\u0442\u0438: \u0441\u043E\u0443\u0441\u0438, \u0442\u0456\u0441\u0442\u043E, \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", count: "\u043F\u0435\u0440\u0435\u0440\u0430\u0445\u0443\u043D\u043E\u043A \u0444\u0430\u043A\u0442\u0438\u0447\u043D\u0438\u0445 \u0437\u0430\u043B\u0438\u0448\u043A\u0456\u0432", rep: "\u0444\u0443\u0434\u043A\u043E\u0441\u0442, \u043F\u0440\u0438\u0431\u0443\u0442\u043E\u043A \u0441\u0442\u0440\u0430\u0432, \u043D\u0435\u0441\u0442\u0430\u0447\u0456 \u0439 \u0441\u043F\u0438\u0441\u0430\u043D\u043D\u044F" }[K.tab];
+    const head = `<div class="rhead"><div><h1>${isCook() ? "\u{1F9EE} \u0421\u043A\u043B\u0430\u0434" : "\u{1F9EE} \u0420\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043E\u043A"}</h1><span class="muted">${sub}</span></div></div>
+      <div class="seg rsec">${tabs.map(([k, l]) => `<button class="${K.tab === k ? "on" : ""}" data-a="skTab" data-t="${k}">${l}</button>`).join("")}</div>`;
+    if (!S.data.sk) return head + '<div class="muted" style="margin:16px 4px">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
+    if (K.card && (K.tab === "cards" || K.tab === "prod")) return head + `<div class="sk">${skCardEdHTML()}</div>`;
+    return head + `<div class="sk">${{ stock: skStockHTML, buy: skBuyHTML, inv: skInvHTML, cards: skCardsHTML, tech: skTechHTML, prod: skProdHTML, count: skCountHTML, rep: skRepHTML }[K.tab]()}</div>`;
+  }
+  function skStockHTML() {
+    const K = S.sk, D = S.data.sk, adm = isAdmin(), q = K.q.trim().toLowerCase(), live = D.ing.filter((x) => !x.off);
+    const list = D.ing.filter((x) => {
+      var _a2;
+      return (K.cat === "\u{1F5D1}" ? x.off : !x.off) && (!q || x.n.toLowerCase().includes(q)) && (!K.cat || K.cat === "\u{1F5D1}" || x.cat === K.cat) && (!K.wh || x.home === K.wh || (((_a2 = x.st) == null ? void 0 : _a2[K.wh]) || 0) !== 0);
+    });
+    const low = live.filter((x) => x.min > 0 && totQ(x) < x.min);
+    const val = (w) => live.reduce((a, x) => {
+      var _a2;
+      return a + Math.max(0, w ? ((_a2 = x.st) == null ? void 0 : _a2[w]) || 0 : totQ(x)) * (x.cost || 0);
+    }, 0);
+    const cats = [...new Set(live.map((x) => x.cat || "\u0406\u043D\u0448\u0435"))].sort();
+    const tools = `<div class="sk-tools"><input id="skQ" placeholder="\u{1F50E} \u041F\u043E\u0448\u0443\u043A \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0443" value="${esc(K.q)}">
+      <div class="chips">${[["", "\u0423\u0441\u0456"], ["k", WHN.k], ["b", WHN.b]].map(([k, l]) => `<button class="chip ${K.wh === k ? "on" : ""}" data-a="skWh" data-w="${k}">${l}</button>`).join("")}
+      <select id="skCat"><option value="">\u0423\u0441\u0456 \u043A\u0430\u0442\u0435\u0433\u043E\u0440\u0456\u0457</option>${cats.map((c) => `<option ${K.cat === c ? "selected" : ""}>${esc(c)}</option>`).join("")}${D.ing.some((x) => x.off) ? `<option value="\u{1F5D1}" ${K.cat === "\u{1F5D1}" ? "selected" : ""}>\u{1F5D1} \u0421\u0445\u043E\u0432\u0430\u043D\u0456</option>` : ""}</select></div>
+      <div class="btnrow">${adm ? '<button class="btn sm primary" data-a="skIng">\u2795 \u041F\u0440\u043E\u0434\u0443\u043A\u0442</button>' : ""}<button class="btn sm" data-a="skOffPick">\u{1F5D1} \u0421\u043F\u0438\u0441\u0430\u0442\u0438</button><button class="btn sm" data-a="skJr">\u{1F4DC} \u0420\u0443\u0445 \u0437\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</button></div></div>`;
+    const pills = adm ? `<div class="pills sk-pills"><div class="pill"><span>\u{1F4E6} \u0422\u043E\u0432\u0430\u0440\u0443 \u043D\u0430 \u0441\u043A\u043B\u0430\u0434\u0430\u0445</span><b class="money">${money(val())}</b><small>${WHN.k} ${money(val("k"))} \xB7 ${WHN.b} ${money(val("b"))}</small></div>
+      <div class="pill ${low.length ? "bad" : ""}"><span>\u26A0\uFE0F \u041D\u0438\u0436\u0447\u0435 \u043C\u0456\u043D\u0456\u043C\u0443\u043C\u0443</span><b>${low.length}</b>${low.length ? '<small class="press" data-a="skTab" data-t="buy">\u{1F6D2} \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u0437\u0430\u043A\u0443\u043F\u0456\u0432\u043B\u044E \u2192</small>' : "<small>\u0443\u0441\u044C\u043E\u0433\u043E \u0432\u0438\u0441\u0442\u0430\u0447\u0430\u0454</small>"}</div>
+      <div class="pill"><span>\u{1F9FE} \u041F\u0440\u043E\u0434\u0443\u043A\u0442\u0456\u0432</span><b>${live.length}</b><small>${live.filter((x) => !x.cost).length ? `\u0431\u0435\u0437 \u0446\u0456\u043D\u0438: ${live.filter((x) => !x.cost).length}` : "\u0443 \u0432\u0441\u0456\u0445 \u0454 \u0446\u0456\u043D\u0430"}</small></div></div>` : low.length ? `<div class="card sk-low">\u26A0\uFE0F \u041D\u0438\u0436\u0447\u0435 \u043C\u0456\u043D\u0456\u043C\u0443\u043C\u0443: ${low.map((x) => esc(x.n)).join(", ")}</div>` : "";
+    const rowH = (x) => {
+      var _a2, _b, _c;
+      const t = totQ(x), lo = x.min > 0 && t < x.min, both = (((_a2 = x.st) == null ? void 0 : _a2.k) || 0) && (((_b = x.st) == null ? void 0 : _b.b) || 0);
+      return `<div class="sk-row${lo ? " low" : ""}${x.off ? " off" : ""}"><div class="sk-n${adm ? " press" : ""}" ${adm ? `data-a="skIng" data-id="${x.id}"` : ""}><b>${x.semi ? "\u{1F373} " : ""}${esc(x.n)}</b><small class="muted">${x.min ? `\u043C\u0456\u043D ${fq(x.min, x.u)}` : ""}${adm && x.cost ? `${x.min ? " \xB7 " : ""}${money(x.cost)} / ${x.u}` : ""}${adm && !x.cost ? `${x.min ? " \xB7 " : ""}<span class="warn">\u043D\u0435\u043C\u0430\u0454 \u0446\u0456\u043D\u0438</span>` : ""}</small></div>
+        <div class="sk-q"><b class="${t < 0 ? "neg" : ""}">${fq(t, x.u)}</b><small class="muted">${both ? `\u041A ${fq(x.st.k, x.u)} \xB7 \u0411 ${fq(x.st.b, x.u)}` : ((_c = x.st) == null ? void 0 : _c.b) ? WHN.b : WHN.k}</small></div>
+        <div class="sk-act">${adm ? `<button class="rb plus" data-a="skAdd" data-id="${x.id}" title="\u041E\u043F\u0440\u0438\u0431\u0443\u0442\u043A\u0443\u0432\u0430\u0442\u0438">+</button>` : ""}<button class="rb minus" data-a="skOff" data-id="${x.id}" title="\u0421\u043F\u0438\u0441\u0430\u0442\u0438">\u2212</button><button class="rb" data-a="skMv" data-id="${x.id}" title="\u041F\u0435\u0440\u0435\u043C\u0456\u0441\u0442\u0438\u0442\u0438 \u043C\u0456\u0436 \u0441\u043A\u043B\u0430\u0434\u0430\u043C\u0438">\u21C4</button></div></div>`;
+    };
+    const groups = {};
+    list.forEach((x) => {
+      var _a2;
+      return (groups[_a2 = x.cat || "\u0406\u043D\u0448\u0435"] || (groups[_a2] = [])).push(x);
+    });
+    const body = list.length ? Object.keys(groups).sort().map((c) => `<div class="card"><h3>${esc(c)} <span class="muted">\xB7 ${groups[c].length}</span></h3>${groups[c].sort((a, b) => a.n.localeCompare(b.n)).map(rowH).join("")}</div>`).join("") : `<div class="card"><div class="muted">${D.ing.length ? "\u041D\u0456\u0447\u043E\u0433\u043E \u043D\u0435 \u0437\u043D\u0430\u0439\u0434\u0435\u043D\u043E" : adm ? "\u0421\u043A\u043B\u0430\u0434 \u043F\u043E\u0440\u043E\u0436\u043D\u0456\u0439. \u0414\u043E\u0434\u0430\u0439\u0442\u0435 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0438 \u043A\u043D\u043E\u043F\u043A\u043E\u044E \xAB\u2795 \u041F\u0440\u043E\u0434\u0443\u043A\u0442\xBB \u2014 \u0430\u0431\u043E \u043F\u0440\u043E\u0441\u0442\u043E \u0432\u043D\u0435\u0441\u0456\u0442\u044C \u043F\u0435\u0440\u0448\u0443 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0443 (\u{1F9FE} \u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0456 \u2192 \u{1F4F7} \u0424\u043E\u0442\u043E): \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0438 \u0441\u0442\u0432\u043E\u0440\u044F\u0442\u044C\u0441\u044F \u0441\u0430\u043C\u0456." : "\u0421\u043A\u043B\u0430\u0434 \u0449\u0435 \u043F\u043E\u0440\u043E\u0436\u043D\u0456\u0439."}</div></div>`;
+    return tools + pills + `<div class="sk-list">${body}</div>`;
+  }
+  async function skIngEdit(id, preset = {}) {
+    const D = S.data.sk, x = D.ing.find((y) => y.id === id) || __spreadValues({ n: "", u: "\u043A\u0433", cat: "\u0406\u043D\u0448\u0435", home: "k", min: 0, par: 0, loss: 0, pk: [], bc: [] }, preset);
+    const body = `<div class="form">
+      <label>\u041D\u0430\u0437\u0432\u0430<input id="iN" value="${esc(x.n)}" placeholder="\u043D\u0430\u043F\u0440. \u041A\u0443\u0440\u044F\u0447\u0435 \u0444\u0456\u043B\u0435"></label>
+      <div class="frow"><label>\u041E\u0434\u0438\u043D\u0438\u0446\u044F \u043E\u0431\u043B\u0456\u043A\u0443<select id="iU">${D.units.map((u) => `<option ${x.u === u ? "selected" : ""}>${u}</option>`).join("")}</select></label>
+        <label>\u0414\u0435 \u0437\u0431\u0435\u0440\u0456\u0433\u0430\u0454\u0442\u044C\u0441\u044F<select id="iH"><option value="k" ${x.home !== "b" ? "selected" : ""}>${WHN.k}</option><option value="b" ${x.home === "b" ? "selected" : ""}>${WHN.b}</option></select></label></div>
+      <label>\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0456\u044F<select id="iC">${[.../* @__PURE__ */ new Set([...D.cats, x.cat || "\u0406\u043D\u0448\u0435"])].map((c) => `<option ${x.cat === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></label>
+      <div class="frow"><label>\u041C\u0456\u043D\u0456\u043C\u0443\u043C <small>(\u043D\u0438\u0436\u0447\u0435 \u2014 \u0441\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F)</small><input id="iMin" inputmode="decimal" value="${x.min || ""}" placeholder="0"></label><label>\u041D\u043E\u0440\u043C\u0430 <small>(\u0434\u043E\u043A\u0443\u043F\u0438\u0442\u0438 \u0434\u043E)</small><input id="iPar" inputmode="decimal" value="${x.par || ""}" placeholder="0"></label></div>
+      <div class="frow"><label>% \u0432\u0442\u0440\u0430\u0442 \u043F\u0440\u0438 \u043E\u0431\u0440\u043E\u0431\u0446\u0456 <small>(\u0447\u0438\u0441\u0442\u043A\u0430, \u0432\u0430\u0440\u043A\u0430\u2026)</small><input id="iL" inputmode="numeric" value="${x.loss || ""}" placeholder="0"></label>
+        ${x.lp ? `<label>\u0426\u0456\u043D\u0430 (\u0437 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0438\u0445)<input disabled value="${money(x.cost)} / ${x.u}"></label>` : `<label>\u0426\u0456\u043D\u0430 \u0437\u0430 ${x.u}, \u20B4 <small>(\u043F\u043E\u043A\u0438 \u0431\u0435\u0437 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0438\u0445)</small><input id="iCost" inputmode="decimal" value="${x.cost || ""}"></label>`}</div>
+      <label>\u041E\u0434\u0438\u043D\u0438\u0446\u0456 \u0437\u0430\u043A\u0443\u043F\u0456\u0432\u043B\u0456 <small>\u043D\u0430\u043F\u0440.: \u044F\u0449\u0438\u043A=12, \u0443\u043F=2.5 (\u0441\u043A\u0456\u043B\u044C\u043A\u0438 ${x.u} \u0432 \u043E\u0434\u043D\u0456\u0439)</small><input id="iPk" value="${esc((x.pk || []).map((p) => `${p.n}=${p.f}`).join(", "))}" placeholder="\u044F\u0449\u0438\u043A=12"></label>
+      <label>\u0428\u0442\u0440\u0438\u0445\u043A\u043E\u0434\u0438 <small>\u0447\u0435\u0440\u0435\u0437 \u043A\u043E\u043C\u0443 \u2014 \u0430\u0431\u043E \u0432\u0456\u0434\u0441\u043A\u0430\u043D\u0443\u0439\u0442\u0435 \u0441\u043A\u0430\u043D\u0435\u0440\u043E\u043C \u0443 \u0446\u0435 \u043F\u043E\u043B\u0435</small><input id="iBc" value="${esc((x.bc || []).join(", "))}"></label>
+      <label class="chk"><input type="checkbox" id="iS" ${x.semi ? "checked" : ""}> \u{1F373} \u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \u2014 \u0433\u043E\u0442\u0443\u0454\u043C\u043E \u0441\u0430\u043C\u0456 (\u0441\u043E\u0443\u0441, \u0442\u0456\u0441\u0442\u043E\u2026), \u043C\u0430\u0454 \u0441\u0432\u043E\u044E \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0443</label></div>`;
+    const v = await modal({ title: x.id ? "\u{1F4E6} " + x.n : "\u2795 \u041D\u043E\u0432\u0438\u0439 \u043F\u0440\u043E\u0434\u0443\u043A\u0442", body, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: "save", cls: "primary" }, ...x.id ? [{ label: x.off ? "\u21A9\uFE0F \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438" : "\u{1F5D1} \u0421\u0445\u043E\u0432\u0430\u0442\u0438", val: "del", cls: x.off ? "" : "red" }] : [], { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+    if (v === "del") {
+      closeModal();
+      if (await act("skIngDel", { id: x.id, back: !!x.off }, x.off ? "\u21A9\uFE0F \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E" : "\u{1F5D1} \u0421\u0445\u043E\u0432\u0430\u043D\u043E")) loadView();
+      return null;
+    }
+    if (v !== "save") return null;
+    const num = (i) => {
+      var _a2;
+      return +String(((_a2 = $("#" + i)) == null ? void 0 : _a2.value) || "").replace(",", ".") || 0;
+    };
+    const d = __spreadValues({
+      id: x.id,
+      n: $("#iN").value,
+      u: $("#iU").value,
+      home: $("#iH").value,
+      cat: $("#iC").value,
+      min: num("iMin"),
+      par: num("iPar"),
+      loss: num("iL"),
+      semi: $("#iS").checked,
+      pk: $("#iPk").value.split(",").map((s) => s.split(/[=:]/).map((z) => z.trim())).filter((p) => p[0] && +String(p[1] || "").replace(",", ".") > 0).map(([n, f]) => ({ n, f: +f.replace(",", ".") })),
+      bc: $("#iBc").value.split(/[,\s]+/).filter(Boolean)
+    }, $("#iCost") ? { cost: num("iCost"), setCost: 1 } : {});
+    closeModal();
+    const r = await act("skIngSave", { x: d }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
+    if (!r) return null;
+    S.data.sk = await api("skData").catch(() => S.data.sk);
+    renderMain();
+    return r.x;
+  }
+  async function skQty(kind, id) {
+    var _a2, _b, _c, _d, _e;
+    const x = S.data.sk.ing.find((y) => y.id === id);
+    if (!x) return;
+    const ttl = { add: "\u2795 \u041E\u043F\u0440\u0438\u0431\u0443\u0442\u043A\u0443\u0432\u0430\u0442\u0438", off: "\u2796 \u0421\u043F\u0438\u0441\u0430\u0442\u0438", mv: "\u21C4 \u041F\u0435\u0440\u0435\u043C\u0456\u0441\u0442\u0438\u0442\u0438" }[kind] + " \xB7 " + x.n;
+    const dw = (((_a2 = x.st) == null ? void 0 : _a2.b) || 0) > 0 && !((((_b = x.st) == null ? void 0 : _b.k) || 0) > 0) ? "b" : x.home || "k";
+    const body = `<div class="form"><label>\u041A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044C <small>${x.u === "\u043A\u0433" ? "\u043D\u0430\u043F\u0440. 0.5 \u0430\u0431\u043E 500 \u0433" : x.u === "\u043B" ? "\u043D\u0430\u043F\u0440. 0.5 \u0430\u0431\u043E 500 \u043C\u043B" : "\u0448\u0442\u0443\u043A"}</small><input id="aQ" inputmode="decimal" placeholder="${x.u}"></label>
+      ${kind === "mv" ? `<label>\u041A\u0443\u0434\u0438<select id="aW"><option value="k" ${dw === "k" ? "selected" : ""}>${WHN.k} \u2192 ${WHN.b}</option><option value="b" ${dw === "b" ? "selected" : ""}>${WHN.b} \u2192 ${WHN.k}</option></select></label>` : `<label>\u0421\u043A\u043B\u0430\u0434<select id="aW">${["k", "b"].map((w) => {
+      var _a3;
+      return `<option value="${w}" ${dw === w ? "selected" : ""}>${WHN[w]} \u2014 \u0454 ${fq(((_a3 = x.st) == null ? void 0 : _a3[w]) || 0, x.u)}</option>`;
+    }).join("")}</select></label>`}
+      ${kind === "off" ? `<div class="chips">${S.data.sk.offR.map((r2) => `<button class="chip" data-a="skReason" data-r="${esc(r2)}">${esc(r2)}</button>`).join("")}</div><input id="aN" placeholder="\u041F\u0440\u0438\u0447\u0438\u043D\u0430 \u0441\u043F\u0438\u0441\u0430\u043D\u043D\u044F">` : kind === "add" ? '<input id="aN" placeholder="\u041A\u043E\u043C\u0435\u043D\u0442\u0430\u0440 (\u043D\u0430\u043F\u0440. \u043F\u0440\u0438\u043D\u0435\u0441\u043B\u0438 \u0431\u0435\u0437 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u043E\u0457)">' : ""}</div>`;
+    const pm = modal({ title: ttl, body, buttons: [{ label: "OK", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+    setTimeout(() => {
+      var _a3;
+      return (_a3 = $("#aQ")) == null ? void 0 : _a3.focus();
+    }, 60);
+    if (await pm !== "ok") return;
+    const q = parseQ($("#aQ").value, x.u), wh = (_c = $("#aW")) == null ? void 0 : _c.value, note = ((_e = (_d = $("#aN")) == null ? void 0 : _d.value) == null ? void 0 : _e.trim()) || "";
+    closeModal();
+    if (!(q > 0)) return toast("\u26A0\uFE0F \u0412\u043A\u0430\u0436\u0456\u0442\u044C \u043A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044C");
+    if (kind === "off" && !note) return toast("\u26A0\uFE0F \u0412\u043A\u0430\u0436\u0456\u0442\u044C \u043F\u0440\u0438\u0447\u0438\u043D\u0443 \u0441\u043F\u0438\u0441\u0430\u043D\u043D\u044F");
+    const r = kind === "mv" ? await act("skMove", { id, from: wh, q }, "\u21C4 \u041F\u0435\u0440\u0435\u043C\u0456\u0449\u0435\u043D\u043E") : await act("skAdj", { id, wh, q: kind === "off" ? -q : q, note }, kind === "off" ? "\u2796 \u0421\u043F\u0438\u0441\u0430\u043D\u043E" : "\u2795 \u041E\u043F\u0440\u0438\u0431\u0443\u0442\u043A\u043E\u0432\u0430\u043D\u043E");
+    if (r) {
+      S.data.sk = await api("skData").catch(() => S.data.sk);
+      renderMain();
+    }
+  }
+  function skPick(title, filter = () => true) {
+    return new Promise(async (res) => {
+      if (!S.data.sk) S.data.sk = await api("skData").catch(() => null);
+      if (!S.data.sk) return res(null);
+      const all = S.data.sk.ing.filter((x) => !x.off && filter(x)).sort((a, b) => a.n.localeCompare(b.n));
+      const draw = (q) => all.filter((x) => !q || x.n.toLowerCase().includes(q.toLowerCase())).slice(0, 60).map((x) => `<button class="pk-i" data-pk="${x.id}">${x.semi ? "\u{1F373} " : ""}${esc(x.n)} <span class="muted">${fq(totQ(x), x.u)}</span></button>`).join("") || '<div class="muted">\u041D\u0456\u0447\u043E\u0433\u043E \u043D\u0435 \u0437\u043D\u0430\u0439\u0434\u0435\u043D\u043E</div>';
+      modalResolve = (v) => {
+        closeModal();
+        res(v);
+      };
+      const el = document.createElement("div");
+      el.className = "modal-bg";
+      el.id = "modal";
+      el.innerHTML = `<div class="modal"><h3>${esc(title)}</h3><input id="pkQ" placeholder="\u{1F50E} \u041F\u043E\u0447\u043D\u0456\u0442\u044C \u0432\u0432\u043E\u0434\u0438\u0442\u0438 \u043D\u0430\u0437\u0432\u0443" autocomplete="off"><div class="pk-l" id="pkL">${draw("")}</div><div class="btns"><button class="btn" data-x>\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438</button></div></div>`;
+      el.addEventListener("click", (e) => {
+        var _a2;
+        if (e.target === el || e.target.closest("[data-x]")) return modalResolve(null);
+        const p = (_a2 = e.target.closest("[data-pk]")) == null ? void 0 : _a2.dataset.pk;
+        if (p) modalResolve(p);
+      });
+      el.querySelector("#pkQ").addEventListener("input", (e) => {
+        el.querySelector("#pkL").innerHTML = draw(e.target.value);
+      });
+      document.body.append(el);
+      setTimeout(() => {
+        var _a2;
+        return (_a2 = el.querySelector("#pkQ")) == null ? void 0 : _a2.focus();
+      }, 60);
+    });
+  }
+  async function skJournal() {
+    const r = await act("skJournal", {});
+    if (!r) return;
+    const T = { in: "\u{1F9FE}", add: "\u2795", off: "\u{1F5D1}", mv: "\u21C4", prod: "\u{1F373}", cnt: "\u{1F4DD}" };
+    const rows = [...r.list].reverse().map((x) => `<div class="kv"><span>${x.at} ${T[x.t] || "\u2022"} <b>${esc(x.n)}</b> ${x.q > 0 ? "+" : ""}${fq(x.q, x.u)} <span class="muted">\xB7 ${WHN[x.wh] || ""}${x.note ? " \xB7 " + esc(x.note) : ""}${x.by ? " \xB7 " + esc(x.by) : ""}</span></span>${isAdmin() && x.sum ? `<b class="money">${money(x.sum)}</b>` : ""}</div>`).join("");
+    await modal({ title: "\u{1F4DC} \u0420\u0443\u0445 \u0441\u043A\u043B\u0430\u0434\u0443 \u0437\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456", body: `<div class="sk-jr">${rows || '<div class="muted">\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0440\u0443\u0445\u0456\u0432 \u0449\u0435 \u043D\u0435 \u0431\u0443\u043B\u043E (\u043F\u0440\u043E\u0434\u0430\u0436\u0456 \u0437\u0430 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0430\u043C\u0438 \u2014 \u0443 \xAB\u{1F4CA} \u041F\u043B\u044E\u0441\u0438 / \u043C\u0456\u043D\u0443\u0441\u0438\xBB)</div>'}</div>`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+  }
+  function skBuyHTML() {
+    const B = S.data.skBuy;
+    if (!B) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
+    if (!B.list.length) return `<div class="card"><div class="big">\u2705 \u0423\u0441\u044C\u043E\u0433\u043E \u0432\u0438\u0441\u0442\u0430\u0447\u0430\u0454</div><div class="muted" style="margin-top:6px">\u0422\u0443\u0442 \u0437'\u044F\u0432\u043B\u044F\u0442\u044C\u0441\u044F \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0438, \u044F\u043A\u0438\u0445 \u043C\u0435\u043D\u0448\u0435 \u0437\u0430 \u043C\u0456\u043D\u0456\u043C\u0443\u043C. \u041C\u0456\u043D\u0456\u043C\u0443\u043C \u0456 \u043D\u043E\u0440\u043C\u0430 \u0437\u0430\u0434\u0430\u044E\u0442\u044C\u0441\u044F \u0432 \u043A\u0430\u0440\u0442\u0446\u0456 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0443 (\u{1F4E6} \u0421\u043A\u043B\u0430\u0434 \u2192 \u043D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \u043D\u0430 \u043D\u0430\u0437\u0432\u0443).</div></div>`;
+    return `<div class="btnrow" style="margin:0 0 12px"><button class="btn sm primary" data-a="skShare">\u{1F4E4} \u041F\u043E\u0434\u0456\u043B\u0438\u0442\u0438\u0441\u044F \u0432\u0441\u0456\u043C \u0441\u043F\u0438\u0441\u043A\u043E\u043C</button></div>` + B.list.map((g, gi) => `<div class="card"><h3>\u{1F69A} ${esc(g.sup)} ${g.sum ? `<span class="muted">\xB7 ~${money(g.sum)}</span>` : ""}</h3>
+      ${g.items.map((i) => `<div class="kv"><span>${esc(i.n)}<br><small class="muted">\u0454 ${fq(i.have, i.u)} \xB7 \u043C\u0456\u043D\u0456\u043C\u0443\u043C ${fq(i.min, i.u)}</small></span><span class="kv-r"><b>${fq(i.need, i.u)}</b>${i.price ? `<span class="muted money">~${money(i.sum)}</span>` : ""}</span></div>`).join("")}
+      <div class="btnrow"><button class="btn sm" data-a="skShare" data-g="${gi}">\u{1F4E4} \u041D\u0430\u0434\u0456\u0441\u043B\u0430\u0442\u0438 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F</button></div></div>`).join("");
+  }
+  async function skShare(gi) {
+    const B = S.data.skBuy, gs = gi === "" || gi == null ? B.list : [B.list[+gi]];
+    const text = `\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F VARVAR:
+${gs.map((g) => `${gs.length > 1 ? `
+${g.sup}:
+` : ""}${g.items.map((i) => `\u2022 ${i.n} \u2014 ${fq(i.need, i.u)}`).join("\n")}`).join("\n")}`;
+    try {
+      if (navigator.share) await navigator.share({ text });
+      else {
+        await navigator.clipboard.writeText(text);
+        toast("\u{1F4CB} \u0421\u043A\u043E\u043F\u0456\u0439\u043E\u0432\u0430\u043D\u043E \u2014 \u0432\u0441\u0442\u0430\u0432\u0442\u0435 \u0432 \u043C\u0435\u0441\u0435\u043D\u0434\u0436\u0435\u0440 \u043F\u043E\u0441\u0442\u0430\u0447\u0430\u043B\u044C\u043D\u0438\u043A\u0443");
+      }
+    } catch (e) {
+    }
+  }
+  function skInvHTML() {
+    const K = S.sk;
+    if (K.draft) return skDraftHTML();
+    const I = S.data.skInv, adm = isAdmin();
+    const top = `<div class="card"><h3>\u041D\u043E\u0432\u0430 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0430</h3>${K.busy ? '<div class="sk-busy">\u{1F50E} \u0420\u043E\u0437\u043F\u0456\u0437\u043D\u0430\u044E \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0443\u2026 \u0437\u0430\u0437\u0432\u0438\u0447\u0430\u0439 10\u201330 \u0441\u0435\u043A\u0443\u043D\u0434</div>' : `<div class="sk-new"><label class="btn primary">\u{1F4F7} \u0424\u043E\u0442\u043E \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u043E\u0457<input type="file" id="skPhoto" accept="image/*" multiple hidden></label><button class="btn" data-a="skScan">\u{1F50E} \u041A\u043E\u0434 / \u0448\u0442\u0440\u0438\u0445\u043A\u043E\u0434</button><button class="btn" data-a="skHand">\u270F\uFE0F \u0412\u0440\u0443\u0447\u043D\u0443</button></div>`}
+      <div class="muted" style="font-size:12px;margin-top:8px">\u0424\u043E\u0442\u043E: \u0434\u043E 3 \u0441\u0442\u043E\u0440\u0456\u043D\u043E\u043A, \u0440\u0456\u0432\u043D\u043E, \u043F\u0440\u0438 \u0433\u0430\u0440\u043D\u043E\u043C\u0443 \u0441\u0432\u0456\u0442\u043B\u0456. \u0420\u043E\u0437\u043F\u0456\u0437\u043D\u0430\u0454 Gemini \u2014 \u0432\u0438 \u043F\u0435\u0440\u0435\u0432\u0456\u0440\u044F\u0454\u0442\u0435 \u0439 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0443\u0454\u0442\u0435. \u0424\u043E\u0442\u043E \u043D\u0456\u0434\u0435 \u043D\u0435 \u0437\u0431\u0435\u0440\u0456\u0433\u0430\u0454\u0442\u044C\u0441\u044F.</div></div>`;
+    if (!I) return top + '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
+    const debts = Object.entries(I.sups || {}).filter(([, s]) => s.debt > 0);
+    const dH = adm && debts.length ? `<div class="card"><h3>\u{1F4B8} \u0411\u043E\u0440\u0433\u0438 \u043F\u043E\u0441\u0442\u0430\u0447\u0430\u043B\u044C\u043D\u0438\u043A\u0430\u043C <span class="muted">\xB7 ${money(debts.reduce((a, [, s]) => a + s.debt, 0))}</span></h3>${debts.map(([n, s]) => `<div class="kv"><span>${esc(n)}</span><b class="money" style="color:var(--red)">${money(s.debt)}</b></div>`).join("")}</div>` : "";
+    const rows = I.list.map((x) => `<div class="kv rrow${x.del ? " del" : ""}"><span class="press" data-a="skInvView" data-id="${x.id}">${x.day.slice(8)}.${x.day.slice(5, 7)} \xB7 <b>${esc(x.sup)}</b>${x.no ? " \u2116" + esc(x.no) : ""}<br><small class="muted">${x.n} \u043F\u043E\u0437. \xB7 ${esc(x.by)}</small></span>
+      <span class="kv-r">${adm && x.total != null ? `<b class="money">${money(x.total)}</b>` : ""}${x.del ? "" : x.pay === "debt" && !x.paid ? adm ? `<button class="btn sm red" data-a="skInvPay" data-id="${x.id}">\u23F3 \u041E\u043F\u043B\u0430\u0442\u0438\u0442\u0438</button>` : '<span class="muted">\u23F3 \u043D\u0435 \u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E</span>' : `<span title="\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E">${x.pay === "card" ? "\u{1F4B3}" : x.pay === "cash" ? "\u{1F4B5}" : "\u2705"}</span>`}${adm ? `<button class="xb" data-a="skInvDel" data-id="${x.id}" data-b="${x.del ? 1 : ""}" title="${x.del ? "\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438" : "\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438"}">${x.del ? "\u21A9\uFE0F" : "\u{1F5D1}"}</button>` : ""}</span></div>`).join("");
+    return top + dH + `<div class="card"><h3>\u{1F9FE} \u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0456 <span class="muted">\xB7 ${I.list.length}</span></h3>${rows || '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0438\u0445</div>'}</div>`;
+  }
+  const lineHint = (l, x, adm) => {
+    var _a2;
+    if (!x && !l.add) return "";
+    const u = (x == null ? void 0 : x.u) || ((_a2 = l.add) == null ? void 0 : _a2.u) || "", bq = r3((+l.q || 0) * (+l.f || 1)), up = bq && +l.sum ? +l.sum / bq : 0;
+    return `= ${fq(bq, u)}${up ? ` \xB7 ${money(up)}/${u}` : ""}${adm && (x == null ? void 0 : x.lp) && up ? up > x.lp * 1.01 ? ` <b class="warn">\u2191${Math.round((up / x.lp - 1) * 100)}%</b>` : up < x.lp * 0.99 ? ` <span class="good">\u2193${Math.round((1 - up / x.lp) * 100)}%</span>` : "" : ""}`;
+  };
+  function skDraftHTML() {
+    var _a2;
+    const d = S.sk.draft, D = S.data.sk, adm = isAdmin(), ing = D.ing.filter((x) => !x.off).sort((a, b) => a.n.localeCompare(b.n)), im = new Map(ing.map((x) => [x.id, x]));
+    const sum = d.lines.reduce((a, l) => a + (+l.sum || 0), 0), diff = d.total ? Math.round((d.total - sum) * 100) / 100 : 0;
+    const opt = (l) => `<option value="">\u2014 \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u043F\u0440\u043E\u0434\u0443\u043A\u0442 \u2014</option><option value="__new">${l.add ? `\u2795 \u041D\u043E\u0432\u0438\u0439: ${esc(l.add.n)} (${l.add.u})` : "\u2795 \u0421\u0442\u0432\u043E\u0440\u0438\u0442\u0438 \u043D\u043E\u0432\u0438\u0439 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u2026"}</option>${ing.map((x) => `<option value="${x.id}" ${l.id === x.id ? "selected" : ""}>${esc(x.n)} (${x.u})</option>`).join("")}`;
+    const pkOpt = (l) => {
+      var _a3;
+      const x = im.get(l.id), u = (x == null ? void 0 : x.u) || ((_a3 = l.add) == null ? void 0 : _a3.u) || "\u043E\u0434.", pks = [{ n: u, f: 1 }, ...(x == null ? void 0 : x.pk) || []];
+      if (l.f && !pks.some((p) => p.f === +l.f)) pks.push({ n: "\xD7" + l.f, f: +l.f });
+      return pks.map((p) => `<option value="${p.f}" ${(+l.f || 1) === p.f ? "selected" : ""}>${esc(p.n)}${p.f !== 1 ? ` (${p.f} ${u})` : ""}</option>`).join("") + '<option value="?">\u0456\u043D\u0448\u0430\u2026</option>';
+    };
+    const rows = d.lines.map((l, i) => {
+      var _a3, _b, _c;
+      const st = l.add ? "new" : !l.id ? "none" : l.ok === "guess" ? "guess" : "ok", x = im.get(l.id);
+      return `<div class="dl ${st}"><div class="dl-src">${i + 1}. ${l.n ? esc(l.n) : '<i class="muted">\u043D\u043E\u0432\u0438\u0439 \u0440\u044F\u0434\u043E\u043A</i>'}${l.u || l.price ? ` <span class="muted">\xB7 ${esc((_a3 = l.q0) != null ? _a3 : l.q)} ${esc(l.u || "")}${l.price ? " \xD7 " + l.price : ""}</span>` : ""}${st === "guess" ? ' <span class="warn">\u043F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435 \u043F\u0440\u043E\u0434\u0443\u043A\u0442</span>' : st === "none" ? ' <span class="warn">\u043E\u0431\u0435\u0440\u0456\u0442\u044C \u043F\u0440\u043E\u0434\u0443\u043A\u0442</span>' : ""}</div>
+        <div class="dl-f"><select data-dl="${i}" data-k="id">${opt(l)}</select><input data-dl="${i}" data-k="q" inputmode="decimal" value="${(_b = l.q) != null ? _b : ""}" placeholder="\u041A-\u0441\u0442\u044C"><select data-dl="${i}" data-k="f">${pkOpt(l)}</select><input data-dl="${i}" data-k="sum" inputmode="decimal" value="${(_c = l.sum) != null ? _c : ""}" placeholder="\u0421\u0443\u043C\u0430 \u20B4"><button class="xb" data-a="skDlDel" data-i="${i}" title="\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0440\u044F\u0434\u043E\u043A">\u2715</button></div>
+        <div class="dl-h muted" id="dlh${i}">${lineHint(l, x, adm)}</div></div>`;
+    }).join("");
+    const sups = Object.keys(((_a2 = S.data.skInv) == null ? void 0 : _a2.sups) || {});
+    return `<div class="card"><div class="rhead"><h3 style="margin:0">\u{1F9FE} ${d.src === "photo" ? "\u0420\u043E\u0437\u043F\u0456\u0437\u043D\u0430\u043D\u0430 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0430 \u2014 \u043F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435" : "\u041D\u043E\u0432\u0430 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0430"}</h3><button class="btn sm" data-a="skDraftX">\u2715 \u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438</button></div>
+      <div class="frow"><label>\u041F\u043E\u0441\u0442\u0430\u0447\u0430\u043B\u044C\u043D\u0438\u043A<input id="dSup" list="supL" value="${esc(d.sup || "")}" data-dh="sup" placeholder="\u043D\u0430\u043F\u0440. \u041C\u0435\u0442\u0440\u043E"><datalist id="supL">${sups.map((s) => `<option value="${esc(s)}">`).join("")}</datalist></label><label>\u2116 \u0434\u043E\u043A\u0443\u043C\u0435\u043D\u0442\u0430<input id="dNo" value="${esc(d.no || "")}" data-dh="no"></label><label>\u0414\u0430\u0442\u0430<input id="dDate" value="${esc(d.date || "")}" data-dh="date" placeholder="\u0414\u0414.\u041C\u041C.\u0420\u0420\u0420\u0420"></label></div></div>
+      <div class="card"><h3>\u041F\u043E\u0437\u0438\u0446\u0456\u0457 <span class="muted">\xB7 ${d.lines.length}</span> <span class="muted" style="font-weight:400;font-size:12px">\u{1F7E2} \u0432\u043F\u0456\u0437\u043D\u0430\u043D\u043E \xB7 \u{1F7E1} \u043F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435 \xB7 \u{1F534} \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u043F\u0440\u043E\u0434\u0443\u043A\u0442 \xB7 \u{1F535} \u043D\u043E\u0432\u0438\u0439</span></h3>${rows || '<div class="muted">\u0414\u043E\u0434\u0430\u0439\u0442\u0435 \u043F\u043E\u0437\u0438\u0446\u0456\u0457</div>'}
+        <div class="btnrow"><button class="btn sm" data-a="skDlAdd">\u2795 \u0420\u044F\u0434\u043E\u043A</button><button class="btn sm" data-a="skScan">\u{1F50E} \u0421\u043A\u0430\u043D\u0443\u0432\u0430\u0442\u0438 \u0448\u0442\u0440\u0438\u0445\u043A\u043E\u0434</button></div></div>
+      <div class="card"><div class="kv tot"><span>\u0420\u0430\u0437\u043E\u043C \u0437\u0430 \u043F\u043E\u0437\u0438\u0446\u0456\u044F\u043C\u0438</span><b class="money" id="dSum">${money(sum)}</b></div>${d.total ? `<div class="kv ${Math.abs(diff) > 1 ? "bad" : ""}" id="dTot"><span>\u0423 \u0434\u043E\u043A\u0443\u043C\u0435\u043D\u0442\u0456</span><b class="money">${money(d.total)}${Math.abs(diff) > 1 ? ` \xB7 \u0440\u0456\u0437\u043D\u0438\u0446\u044F ${money(diff)}` : " \u2705"}</b></div>` : ""}
+        <div class="muted" style="font-size:12px;margin:10px 0 6px">\u041E\u043F\u043B\u0430\u0442\u0430:</div>
+        <div class="btnrow">${isCook() ? '<button class="btn primary" data-a="skDraftSave" data-p="debt">\u2705 \u0417\u0430\u043F\u0438\u0441\u0430\u0442\u0438 (\u043E\u043F\u043B\u0430\u0442\u0438\u0442\u044C \u0430\u0434\u043C\u0456\u043D)</button>' : '<button class="btn primary" data-a="skDraftSave" data-p="cash">\u{1F4B5} \u041E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u0437 \u043A\u0430\u0441\u0438</button><button class="btn primary" data-a="skDraftSave" data-p="card">\u{1F4B3} \u041E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u0437 \u043A\u0430\u0440\u0442\u043A\u0438</button><button class="btn" data-a="skDraftSave" data-p="debt">\u23F3 \u0412 \u0431\u043E\u0440\u0433</button>'}</div>
+        <div class="muted" style="font-size:12px;margin-top:8px">\u041E\u043F\u043B\u0430\u0447\u0435\u043D\u0430 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0430 \u0441\u0430\u043C\u0430 \u0441\u0442\u0430\u043D\u0435 \u0432\u0438\u0442\u0440\u0430\u0442\u043E\u044E \u0432 \xAB\u041A\u0430\u0441\u0456\xBB. \u0421\u043A\u043B\u0430\u0434 \u043F\u043E\u043F\u043E\u0432\u043D\u0438\u0442\u044C\u0441\u044F, \u0446\u0456\u043D\u0438 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0456\u0432 \u043E\u043D\u043E\u0432\u043B\u044F\u0442\u044C\u0441\u044F (\u0441\u0435\u0440\u0435\u0434\u043D\u044F \u0446\u0456\u043D\u0430).</div></div>`;
+  }
+  const skDraftUpd = (i) => {
+    const d = S.sk.draft, l = d.lines[i], x = S.data.sk.ing.find((y) => y.id === (l == null ? void 0 : l.id));
+    if (l && $("#dlh" + i)) $("#dlh" + i).innerHTML = lineHint(l, x, isAdmin());
+    const s = d.lines.reduce((a, z) => a + (+z.sum || 0), 0);
+    if ($("#dSum")) $("#dSum").textContent = money(s);
+  };
+  async function skNewIng(n, u, home) {
+    const D = S.data.sk, uu = /^(л|мл|l|ml)$/i.test(u || "") ? "\u043B" : /^(шт|уп|ящ|пач|пл|бут|бан|pcs?)\.?$/i.test(u || "") ? "\u0448\u0442" : D.units.includes(u) ? u : "\u043A\u0433";
+    const body = `<div class="form"><label>\u041D\u0430\u0437\u0432\u0430 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0443<input id="nN" value="${esc(String(n || "").replace(/\s+\d+([.,]\d+)?\s*(кг|г|л|мл|шт)\.?$/i, "").trim())}"></label>
+      <div class="frow"><label>\u041E\u0434\u0438\u043D\u0438\u0446\u044F \u043E\u0431\u043B\u0456\u043A\u0443<select id="nU">${D.units.map((x) => `<option ${x === uu ? "selected" : ""}>${x}</option>`).join("")}</select></label><label>\u0421\u043A\u043B\u0430\u0434<select id="nH"><option value="k" ${home !== "b" ? "selected" : ""}>${WHN.k}</option><option value="b" ${home === "b" ? "selected" : ""}>${WHN.b}</option></select></label></div>
+      <label>\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0456\u044F<select id="nC">${D.cats.map((c) => `<option>${esc(c)}</option>`).join("")}</select></label></div>`;
+    const v = await modal({ title: "\u2795 \u041D\u043E\u0432\u0438\u0439 \u043F\u0440\u043E\u0434\u0443\u043A\u0442", body, buttons: [{ label: "\u0414\u043E\u0434\u0430\u0442\u0438", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+    const r = v === "ok" ? { n: $("#nN").value.trim(), u: $("#nU").value, home: $("#nH").value, cat: $("#nC").value } : null;
+    closeModal();
+    return (r == null ? void 0 : r.n) ? r : null;
+  }
+  async function skDraftSave(pay) {
+    var _a2, _b, _c, _d;
+    const d = S.sk.draft, bad = d.lines.findIndex((l) => !(+l.q > 0) || !l.id && !l.add);
+    if (!d.lines.length) return toast("\u26A0\uFE0F \u041D\u0435\u043C\u0430\u0454 \u043F\u043E\u0437\u0438\u0446\u0456\u0439");
+    if (bad >= 0) return toast(`\u26A0\uFE0F \u0420\u044F\u0434\u043E\u043A ${bad + 1}: \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u043F\u0440\u043E\u0434\u0443\u043A\u0442 \u0456 \u043A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044C (\u0430\u0431\u043E \u043F\u0440\u0438\u0431\u0435\u0440\u0456\u0442\u044C \u0440\u044F\u0434\u043E\u043A \u2715)`);
+    const inv = { sup: ((_a2 = $("#dSup")) == null ? void 0 : _a2.value.trim()) || d.sup, no: ((_b = $("#dNo")) == null ? void 0 : _b.value.trim()) || d.no, date: ((_c = $("#dDate")) == null ? void 0 : _c.value.trim()) || d.date, pay, src: d.src, lines: d.lines.map((l) => __spreadValues({ id: l.id || null, q: +l.q, f: +l.f || 1, sum: +l.sum || 0, src: l.n || "" }, l.add ? { add: l.add } : {})) };
+    const r = await act("skInvSave", { inv }, "\u{1F9FE} \u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0443 \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u043E");
+    if (!r) return;
+    S.sk.draft = null;
+    S.data.sk = null;
+    if ((_d = r.alerts) == null ? void 0 : _d.length) modal({ title: "\u{1F53A} \u041F\u043E\u0434\u043E\u0440\u043E\u0436\u0447\u0430\u043D\u043D\u044F", text: r.alerts.map((a) => `${a.n}: ${money(a.from)} \u2192 ${money(a.to)} / ${a.u} (+${a.pct}%)`).join(" \xB7 "), buttons: [{ label: "\u0417\u0440\u043E\u0437\u0443\u043C\u0456\u043B\u043E", val: 1, cls: "primary" }] });
+    loadView();
+  }
+  function skAutoF(l) {
+    const x = S.data.sk.ing.find((y) => y.id === l.id);
+    if (!x) return l.f || 1;
+    if (l.ok === "mem" && l.f) return l.f;
+    const u = nrm(l.u || "");
+    if (x.u === "\u043A\u0433" && /^(г|гр)$/.test(u)) return 1e-3;
+    if (x.u === "\u043B" && u === "\u043C\u043B") return 1e-3;
+    const p = u && (x.pk || []).find((p2) => nrm(p2.n).slice(0, 2) === u.slice(0, 2));
+    return p ? p.f : 1;
+  }
+  async function skPhotos(files) {
+    files = [...files].slice(0, 3);
+    if (!files.length) return;
+    S.sk.busy = true;
+    renderMain();
+    try {
+      const images = await Promise.all(files.map((f) => shrink(f, 1800, 0.82)));
+      const r = await api("skInvParse", { images }, 75e3);
+      if (!S.data.sk) S.data.sk = await api("skData");
+      S.sk.draft = { sup: r.sup, no: r.no, date: r.date, total: r.total, src: "photo", lines: r.lines.map((l) => __spreadProps(__spreadValues({}, l), { q0: l.q, f: skAutoF(l) })) };
+      if (!S.data.skInv) S.data.skInv = await api("skInvList").catch(() => null);
+    } catch (e) {
+      toast("\u26A0\uFE0F " + errText(e.message));
+    }
+    S.sk.busy = false;
+    renderMain();
+  }
+  let camStop = null;
+  async function skScan() {
+    const pm = modal({ title: "\u{1F50E} \u041A\u043E\u0434 / \u0448\u0442\u0440\u0438\u0445\u043A\u043E\u0434", body: `<div class="form"><input id="scIn" placeholder="\u0412\u0456\u0434\u0441\u043A\u0430\u043D\u0443\u0439\u0442\u0435 \u0441\u043A\u0430\u043D\u0435\u0440\u043E\u043C \u0430\u0431\u043E \u0432\u0432\u0435\u0434\u0456\u0442\u044C \u043A\u043E\u0434 \u0456 Enter" autocomplete="off"><div id="scRes" class="muted"></div>
+      <button class="btn" data-a="skCam">\u{1F4F7} \u0421\u043A\u0430\u043D\u0443\u0432\u0430\u0442\u0438 \u043A\u0430\u043C\u0435\u0440\u043E\u044E</button><div id="scCam" class="sc-cam" hidden><video id="scV" playsinline muted></video></div></div>
+      <div class="muted" style="font-size:12px;margin-top:8px">\u0428\u0442\u0440\u0438\u0445\u043A\u043E\u0434 \u0442\u043E\u0432\u0430\u0440\u0443 \u2014 \u0434\u043E\u0434\u0430\u0454 \u043F\u0440\u043E\u0434\u0443\u043A\u0442 \u0443 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0443 (\u043C\u043E\u0436\u043D\u0430 \u0441\u043A\u0430\u043D\u0443\u0432\u0430\u0442\u0438 \u043F\u0456\u0434\u0440\u044F\u0434). QR-\u043A\u043E\u0434 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u043E\u0457 \u2014 \u0440\u043E\u0437\u043F\u0456\u0437\u043D\u0430\u044E \u0457\u0457 \u0432\u043C\u0456\u0441\u0442.</div>`, buttons: [{ label: "\u0413\u043E\u0442\u043E\u0432\u043E", val: "ok", cls: "primary" }], keep: true });
+    setTimeout(() => {
+      var _a2;
+      return (_a2 = $("#scIn")) == null ? void 0 : _a2.focus();
+    }, 60);
+    await pm;
+    camStop == null ? void 0 : camStop();
+    camStop = null;
+    closeModal();
+    renderMain();
+  }
+  async function skCode(code) {
+    var _a2;
+    code = String(code || "").trim();
+    if (!code) return;
+    const res = (m) => {
+      const el = $("#scRes");
+      if (el) el.innerHTML = m;
+    };
+    if (/^\d{6,14}$/.test(code)) {
+      if (!S.data.sk) S.data.sk = await api("skData");
+      const x = S.data.sk.ing.find((y) => (y.bc || []).includes(code));
+      if (!x) {
+        res(`\u2753 \u041D\u0435\u0432\u0456\u0434\u043E\u043C\u0438\u0439 \u0448\u0442\u0440\u0438\u0445\u043A\u043E\u0434 <b>${code}</b> <button class="btn sm" data-a="skBcBind" data-c="${code}">\u041F\u0440\u0438\u0432\u02BC\u044F\u0437\u0430\u0442\u0438 \u0434\u043E \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0443</button>`);
+        return;
+      }
+      skDraftAdd(x);
+      res(`\u2705 +1 <b>${esc(x.n)}</b> (${code})`);
+      try {
+        (_a2 = navigator.vibrate) == null ? void 0 : _a2.call(navigator, 60);
+      } catch (e) {
+      }
+      return;
+    }
+    camStop == null ? void 0 : camStop();
+    camStop = null;
+    closeModal();
+    S.sk.tab = "inv";
+    S.sk.busy = true;
+    renderMain();
+    try {
+      const r = await api("skInvParse", { text: code }, 6e4);
+      S.sk.draft = { sup: r.sup, no: r.no, date: r.date, total: r.total, src: "code", lines: r.lines.map((l) => __spreadProps(__spreadValues({}, l), { q0: l.q, f: l.f || 1 })) };
+    } catch (e) {
+      toast("\u26A0\uFE0F " + errText(e.message));
+    }
+    S.sk.busy = false;
+    renderMain();
+  }
+  function skDraftAdd(x) {
+    const K = S.sk;
+    K.tab = "inv";
+    K.draft || (K.draft = { sup: "", no: "", date: "", total: 0, src: "code", lines: [] });
+    const l = K.draft.lines.find((z) => z.id === x.id);
+    if (l) l.q = r3((+l.q || 0) + 1);
+    else K.draft.lines.push({ id: x.id, n: x.n, q: 1, f: 1, sum: "", ok: "ok" });
+    if (!$("#modal")) renderMain();
+  }
+  const loadScript = (src) => new Promise((res, rej) => {
+    if (document.querySelector(`script[src="${src}"]`)) return res();
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = res;
+    s.onerror = () => rej(new Error("\u0441\u043A\u0430\u043D\u0435\u0440 \u043D\u0435 \u0437\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0438\u0432\u0441\u044F"));
+    document.head.append(s);
+  });
+  async function skCam() {
+    const box = $("#scCam"), v = $("#scV");
+    if (!box || camStop) return;
+    box.hidden = false;
+    try {
+      if ("BarcodeDetector" in window) {
+        const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        v.srcObject = st;
+        await v.play();
+        const bd = new BarcodeDetector();
+        let on = true, last = "", lt = 0;
+        camStop = () => {
+          on = false;
+          st.getTracks().forEach((t) => t.stop());
+        };
+        const loop = async () => {
+          var _a2;
+          if (!on) return;
+          if (!$("#scV")) return camStop == null ? void 0 : camStop();
+          try {
+            const r = await bd.detect(v);
+            const t = (_a2 = r[0]) == null ? void 0 : _a2.rawValue;
+            if (t && (t !== last || Date.now() - lt > 2500)) {
+              last = t;
+              lt = Date.now();
+              skCode(t);
+            }
+          } catch (e) {
+          }
+          setTimeout(loop, 250);
+        };
+        loop();
+      } else {
+        await loadScript("https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/zxing-browser.min.js");
+        const rd = new ZXingBrowser.BrowserMultiFormatReader();
+        let last = "", lt = 0;
+        const c = await rd.decodeFromVideoDevice(void 0, v, (r) => {
+          if (!r) return;
+          const t = r.getText();
+          if (t !== last || Date.now() - lt > 2500) {
+            last = t;
+            lt = Date.now();
+            skCode(t);
+          }
+        });
+        camStop = () => {
+          try {
+            c.stop();
+          } catch (e) {
+          }
+        };
+      }
+    } catch (e) {
+      toast("\u26A0\uFE0F \u041A\u0430\u043C\u0435\u0440\u0430 \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u0430: " + (e.message || e));
+      box.hidden = true;
+      camStop = null;
+    }
+  }
+  async function skInvView(id) {
+    const r = await act("skInvGet", { id });
+    if (!r) return;
+    const x = r.inv, adm = isAdmin();
+    const body = `<div class="sk-jr">${x.lines.map((l) => `<div class="kv"><span>${esc(l.n)}${l.src && l.src !== l.n ? `<br><small class="muted">${esc(l.src)}</small>` : ""}</span><span class="kv-r"><b>${l.f !== 1 ? `${l.q} \xD7 ${l.f} = ` : ""}${fq(l.bq, l.u)}</b>${adm && l.sum != null ? `<span class="muted money">${money(l.sum)}</span>` : ""}</span></div>`).join("")}
+      ${adm ? `<div class="kv tot"><span>\u0420\u0430\u0437\u043E\u043C</span><b class="money">${money(x.total)}</b></div>` : ""}</div>
+      <div class="muted" style="font-size:12px;margin-top:8px">${x.day} ${x.at} \xB7 ${esc(x.by)} \xB7 ${{ photo: "\u{1F4F7} \u0437 \u0444\u043E\u0442\u043E", code: "\u{1F50E} \u0437 \u043A\u043E\u0434\u0443", hand: "\u270F\uFE0F \u0432\u0440\u0443\u0447\u043D\u0443" }[x.src] || ""} \xB7 ${x.pay === "debt" ? x.paid ? `\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E ${x.paid.src === "card" ? "\u0437 \u043A\u0430\u0440\u0442\u043A\u0438" : "\u0437 \u043A\u0430\u0441\u0438"}` : "\u23F3 \u043D\u0435 \u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E" : x.pay === "card" ? "\u{1F4B3} \u0437 \u043A\u0430\u0440\u0442\u043A\u0438" : "\u{1F4B5} \u0437 \u043A\u0430\u0441\u0438"}${x.del ? " \xB7 \u{1F5D1} \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u0430" : ""}</div>`;
+    await modal({ title: `\u{1F9FE} ${x.sup}${x.no ? " \u2116" + x.no : ""}`, body, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+  }
+  function skUnitCost(id, depth = 0) {
+    var _a2, _b;
+    const x = S.data.sk.ing.find((y) => y.id === id);
+    if (!x) return 0;
+    const sc = x.semi && ((_b = (_a2 = S.data.skCost) == null ? void 0 : _a2.cards) == null ? void 0 : _b["semi:" + id]);
+    if (sc && depth < 3 && sc.yield > 0) {
+      const c = sc.items.reduce((a, l) => a + l.q * skUnitCost(l.id, depth + 1), 0);
+      if (c > 0) return c / sc.yield;
+    }
+    return x.cost || 0;
+  }
+  function skCardsHTML() {
+    const K = S.sk;
+    if (K.card) return skCardEdHTML();
+    const C = S.data.skCost;
+    if (!C) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
+    const tgt = C.cfg.foodCost, list = C.list.filter((x) => !x.tech), q = K.q2.trim().toLowerCase();
+    const nNo = list.filter((x) => x.cost == null).length, nHi = list.filter((x) => x.fc > tgt).length, nDr = list.filter((x) => x.draft).length;
+    const shown = list.filter((x) => (!q || x.name.toLowerCase().includes(q)) && (K.flt === "none" ? x.cost == null : K.flt === "hi" ? x.fc > tgt : K.flt === "draft" ? x.draft : true));
+    const wc = list.filter((x) => x.cost != null && !x.draft && x.price), avg = wc.length ? Math.round(wc.reduce((a, x) => a + x.fc, 0) / wc.length * 10) / 10 : null;
+    const fcc = (f) => f == null ? "" : f <= tgt ? "good" : f <= tgt + 10 ? "mid" : "bad";
+    const tools = `<div class="sk-tools"><input id="skQ2" placeholder="\u{1F50E} \u041F\u043E\u0448\u0443\u043A \u0441\u0442\u0440\u0430\u0432\u0438" value="${esc(K.q2)}">
+      <div class="chips">${[["", `\u0423\u0441\u0456 \xB7 ${list.length}`], ["none", `\u0411\u0435\u0437 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0438 \xB7 ${nNo}`], ["hi", `\u0424\u0443\u0434\u043A\u043E\u0441\u0442 > ${tgt}% \xB7 ${nHi}`], ["draft", `\u0427\u0435\u0440\u043D\u0435\u0442\u043A\u0438 AI \xB7 ${nDr}`]].map(([k, l]) => `<button class="chip ${K.flt === k ? "on" : ""}" data-a="skFlt" data-fl="${k}">${l}</button>`).join("")}</div>
+      <div class="btnrow">${nNo ? `<button class="btn sm" data-a="skAiAll">${K.aiRun ? `\u23F9 \u0417\u0443\u043F\u0438\u043D\u0438\u0442\u0438 (${K.aiRun})` : `\u2728 AI-\u0447\u0435\u0440\u043D\u0435\u0442\u043A\u0438 \u0434\u043B\u044F ${nNo} \u0441\u0442\u0440\u0430\u0432 \u0431\u0435\u0437 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0438`}</button>` : ""}</div></div>
+      <div class="pills sk-pills"><div class="pill"><span>\u{1F4CB} \u0417 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u043E\u044E</span><b>${list.length - nNo} / ${list.length}</b><small>${nDr ? `\u0447\u0435\u0440\u043D\u0435\u0442\u043E\u043A: ${nDr}` : "\u0441\u0442\u0440\u0430\u0432 \u0456 \u043D\u0430\u043F\u043E\u0457\u0432"}</small></div><div class="pill"><span>\u{1F3AF} \u0421\u0435\u0440\u0435\u0434\u043D\u0456\u0439 \u0444\u0443\u0434\u043A\u043E\u0441\u0442</span><b class="${fcc(avg)}">${avg == null ? "\u2014" : avg + "%"}</b><small>\u0446\u0456\u043B\u044C ${tgt}%</small></div></div>`;
+    const groups = {};
+    shown.forEach((x) => {
+      var _a2;
+      return (groups[_a2 = x.cname] || (groups[_a2] = [])).push(x);
+    });
+    const body = Object.entries(groups).map(([c, xs]) => `<div class="card"><h3>${esc(c)}</h3>${xs.map((x) => {
+      var _a2, _b;
+      return `<div class="kv press sk-cr" data-a="skCard" data-k="${esc(x.key)}"><span>${esc(x.name)}${x.draft ? ' <span class="badge-d">\u2728 \u0447\u0435\u0440\u043D\u0435\u0442\u043A\u0430</span>' : ""}${((_a2 = x.miss) == null ? void 0 : _a2.length) ? `<br><small class="warn">\u043D\u0435\u043C\u0430\u0454 \u0446\u0456\u043D\u0438: ${esc(x.miss.join(", "))}</small>` : ""}</span>
+      <span class="kv-r">${x.cost == null ? '<span class="muted">\u043D\u0435\u043C\u0430\u0454 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0438</span>' : `<span class="muted money">${money(x.cost)}</span><b class="${fcc(x.fc)}">${(_b = x.fc) != null ? _b : "\u2014"}%</b>`}<span class="money" style="min-width:64px;text-align:right">${money(x.price)}</span></span></div>`;
+    }).join("")}</div>`).join("") || '<div class="card muted">\u041D\u0456\u0447\u043E\u0433\u043E \u043D\u0435 \u0437\u043D\u0430\u0439\u0434\u0435\u043D\u043E</div>';
+    return tools + body;
+  }
+  function skCardOpen(key) {
+    var _a2;
+    const C = S.data.skCost, c = (_a2 = C == null ? void 0 : C.cards) == null ? void 0 : _a2[key], semi = key.startsWith("semi:");
+    const it = semi ? null : C.list.find((x2) => x2.key === key), x = semi ? S.data.sk.ing.find((y) => y.id === key.slice(5)) : null;
+    S.sk.card = { key, name: semi ? x == null ? void 0 : x.n : it == null ? void 0 : it.name, price: (it == null ? void 0 : it.price) || 0, semi, u: x == null ? void 0 : x.u, out: (c == null ? void 0 : c.out) || "", yield: (c == null ? void 0 : c.yield) || (semi ? 1 : ""), wh: (c == null ? void 0 : c.wh) || "", perL: !!(c == null ? void 0 : c.perL), draft: !!(c == null ? void 0 : c.draft), note: (c == null ? void 0 : c.note) || "", items: ((c == null ? void 0 : c.items) || []).map((l) => __spreadValues({}, l)), isNew: !c, variant: key.includes("|") };
+    S.sk.tab = semi ? S.sk.tab : "cards";
+    renderMain();
+    $("#main").scrollTop = 0;
+  }
+  function skCardEdHTML() {
+    var _a2, _b;
+    const c = S.sk.card, D = S.data.sk, ing = D.ing.filter((x) => !x.off).sort((a, b) => a.n.localeCompare(b.n)), im = new Map(D.ing.map((x) => [x.id, x])), tgt = ((_b = (_a2 = S.data.skCost) == null ? void 0 : _a2.cfg) == null ? void 0 : _b.foodCost) || 30;
+    const cost = c.items.reduce((a, l) => a + (l.id ? (+l.q || 0) * skUnitCost(l.id) : 0), 0), fc = c.price ? Math.round(cost / c.price * 1e3) / 10 : null, rec = cost ? Math.ceil(cost / (tgt / 100) / 5) * 5 : 0;
+    const per = c.semi && +c.yield > 0 ? cost / +c.yield : null;
+    const rows = c.items.map((l, i) => {
+      var _a3, _b2, _c;
+      const x = im.get(l.id), u = (x == null ? void 0 : x.u) || ((_a3 = l.add) == null ? void 0 : _a3.u) || "\u043A\u0433", k = u === "\u0448\u0442" ? 1 : 1e3, loss = (_c = (_b2 = l.loss) != null ? _b2 : x == null ? void 0 : x.loss) != null ? _c : 0, net = (+l.q || 0) * (1 - loss / 100);
+      return `<div class="cl"><select data-cl="${i}" data-k="id"><option value="">\u2014 \u043F\u0440\u043E\u0434\u0443\u043A\u0442 \u2014</option><option value="__new">${l.add ? `\u2795 \u041D\u043E\u0432\u0438\u0439: ${esc(l.add.n)}` : "\u2795 \u041D\u043E\u0432\u0438\u0439 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u2026"}</option>${ing.map((y) => `<option value="${y.id}" ${l.id === y.id ? "selected" : ""}>${y.semi ? "\u{1F373} " : ""}${esc(y.n)}</option>`).join("")}</select>
+        <label>\u0431\u0440\u0443\u0442\u0442\u043E, ${small(u)}<input data-cl="${i}" data-k="q" inputmode="decimal" value="${l.q ? r3(l.q * k) : ""}"></label><label>\u0432\u0442\u0440\u0430\u0442\u0438 %<input data-cl="${i}" data-k="loss" inputmode="numeric" value="${loss || ""}" placeholder="0"></label>
+        <label>\u043D\u0435\u0442\u0442\u043E, ${small(u)}<input data-cl="${i}" data-k="net" inputmode="decimal" value="${net ? r3(net * k) : ""}" id="cln${i}"></label>
+        <span class="cl-c muted money" id="clc${i}">${x ? money((+l.q || 0) * skUnitCost(x.id)) : ""}</span><button class="xb" data-a="skClDel" data-i="${i}">\u2715</button></div>`;
+    }).join("");
+    return `<div class="card"><div class="rhead"><div><h3 style="margin:0">\u{1F4CB} ${esc(c.name || "")}</h3><span class="muted">${c.semi ? `\u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \xB7 \u043F\u0430\u0440\u0442\u0456\u044F ${c.yield || 1} ${c.u || ""}` : `\u0446\u0456\u043D\u0430 ${money(c.price)}`}${c.draft ? " \xB7 \u2728 \u0447\u0435\u0440\u043D\u0435\u0442\u043A\u0430 \u0432\u0456\u0434 AI \u2014 \u043F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435 \u0433\u0440\u0430\u043C\u043E\u0432\u043A\u0438" : ""}</span></div><button class="btn sm" data-a="skCardX">\u2190 \u041D\u0430\u0437\u0430\u0434</button></div>
+      <div class="frow">${c.semi ? `<label>\u0412\u0438\u0445\u0456\u0434 \u043F\u0430\u0440\u0442\u0456\u0457, ${esc(c.u || "")}<input data-ch="yield" inputmode="decimal" value="${c.yield || ""}"></label>` : `<label>\u0412\u0438\u0445\u0456\u0434, \u0433 / \u043C\u043B<input data-ch="out" inputmode="numeric" value="${c.out || ""}" placeholder="\u043D\u0430\u043F\u0440. 400"></label>`}
+        <label>\u0421\u043F\u0438\u0441\u0443\u0432\u0430\u0442\u0438 \u0437\u0456 \u0441\u043A\u043B\u0430\u0434\u0443<select data-ch="wh"><option value="">\u0430\u0432\u0442\u043E (${c.semi ? "\u0434\u0435 \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430" : "\u043A\u0443\u0445\u043D\u044F \u2014 \u0437 \u043A\u0443\u0445\u043D\u0456, \u0431\u0430\u0440 \u2014 \u0437 \u0431\u0430\u0440\u0443"})</option><option value="k" ${c.wh === "k" ? "selected" : ""}>${WHN.k}</option><option value="b" ${c.wh === "b" ? "selected" : ""}>${WHN.b}</option></select></label>
+        ${c.variant && !c.semi ? `<label class="chk"><input type="checkbox" data-ch="perL" ${c.perL ? "checked" : ""}> \u043D\u0430 1 \u043B \u2014 \u043C\u043D\u043E\u0436\u0438\u0442\u0438 \u043D\u0430 \u043E\u0431\u02BC\u0454\u043C (\u0440\u043E\u0437\u043B\u0438\u0432\u043D\u0435)</label>` : ""}</div></div>
+      <div class="card"><h3>\u0421\u043A\u043B\u0430\u0434 <span class="muted">\xB7 ${c.items.length}</span></h3>${rows || '<div class="muted">\u0414\u043E\u0434\u0430\u0439\u0442\u0435 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0438 \u0430\u0431\u043E \u043D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \xAB\u2728 \u0417\u0430\u043F\u043E\u0432\u043D\u0438\u0442\u0438 \u0437 AI\xBB</div>'}
+        <div class="btnrow"><button class="btn sm" data-a="skClAdd">\u2795 \u041F\u0440\u043E\u0434\u0443\u043A\u0442</button><button class="btn sm" data-a="skCardAi">${S.sk.aiBusy ? "\u23F3 AI \u0434\u0443\u043C\u0430\u0454\u2026" : "\u2728 \u0417\u0430\u043F\u043E\u0432\u043D\u0438\u0442\u0438 \u0437 AI"}</button></div></div>
+      <div class="card"><div class="kv tot"><span>\u0421\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C ${c.semi ? "\u043F\u0430\u0440\u0442\u0456\u0457" : "\u043F\u043E\u0440\u0446\u0456\u0457"}</span><b class="money" id="cCost">${money(cost)}</b></div>
+        ${c.semi ? `<div class="kv"><span>\u0417\u0430 1 ${esc(c.u || "")}</span><b class="money" id="cPer">${per != null ? money(per) : "\u2014"}</b></div>` : `<div class="kv"><span>\u0424\u0443\u0434\u043A\u043E\u0441\u0442</span><b id="cFc" class="${fc == null ? "" : fc <= tgt ? "good" : fc <= tgt + 10 ? "mid" : "bad"}">${fc != null ? fc : "\u2014"}%</b></div><div class="kv"><span>\u041C\u0430\u0440\u0436\u0430 \u0437 \u043F\u043E\u0440\u0446\u0456\u0457</span><b class="money" id="cM">${money(c.price - cost)}</b></div>
+        <div class="kv"><span>\u0420\u0435\u043A\u043E\u043C\u0435\u043D\u0434\u043E\u0432\u0430\u043D\u0430 \u0446\u0456\u043D\u0430 \u043F\u0440\u0438 \u0444\u0443\u0434\u043A\u043E\u0441\u0442\u0456 ${tgt}%</span><b class="money" id="cRec">${rec ? money(rec) : "\u2014"}</b></div>`}
+        <div class="btnrow"><button class="btn primary" data-a="skCardSave">\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438</button>${c.isNew ? "" : '<button class="btn red" data-a="skCardDel">\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0443</button>'}</div>
+        <div class="muted" style="font-size:12px;margin-top:8px">\u0411\u0440\u0443\u0442\u0442\u043E \u2014 \u0441\u043A\u0456\u043B\u044C\u043A\u0438 \u0431\u0435\u0440\u0435\u0442\u044C\u0441\u044F \u0437\u0456 \u0441\u043A\u043B\u0430\u0434\u0443; \u043D\u0435\u0442\u0442\u043E \u2014 \u043F\u0456\u0441\u043B\u044F \u0447\u0438\u0441\u0442\u043A\u0438 / \u0432\u0430\u0440\u043A\u0438. \u041F\u0440\u043E\u0434\u0430\u0436 \u0441\u0442\u0440\u0430\u0432\u0438 \u0441\u043F\u0438\u0441\u0443\u0454 \u0431\u0440\u0443\u0442\u0442\u043E \u0437\u0456 \u0441\u043A\u043B\u0430\u0434\u0443. \u0427\u0435\u0440\u043D\u0435\u0442\u043A\u0430 AI \u043D\u0435 \u0441\u043F\u0438\u0441\u0443\u0454, \u043F\u043E\u043A\u0438 \u0432\u0438 \u043D\u0435 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u0442\u0435.</div></div>`;
+  }
+  const skCardCalc = () => {
+    var _a2, _b;
+    const c = S.sk.card;
+    if (!c) return;
+    const tgt = ((_b = (_a2 = S.data.skCost) == null ? void 0 : _a2.cfg) == null ? void 0 : _b.foodCost) || 30, cost = c.items.reduce((a, l) => a + (l.id ? (+l.q || 0) * skUnitCost(l.id) : 0), 0);
+    c.items.forEach((l, i) => {
+      const el = $("#clc" + i);
+      if (el && l.id) el.textContent = money((+l.q || 0) * skUnitCost(l.id));
+    });
+    const set = (id, v) => {
+      const el = $("#" + id);
+      if (el) el.textContent = v;
+    };
+    set("cCost", money(cost));
+    if (c.semi) set("cPer", +c.yield > 0 ? money(cost / +c.yield) : "\u2014");
+    else {
+      const fc = c.price ? Math.round(cost / c.price * 1e3) / 10 : null;
+      set("cFc", (fc != null ? fc : "\u2014") + "%");
+      const el = $("#cFc");
+      if (el) el.className = fc == null ? "" : fc <= tgt ? "good" : fc <= tgt + 10 ? "mid" : "bad";
+      set("cM", money(c.price - cost));
+      set("cRec", cost ? money(Math.ceil(cost / (tgt / 100) / 5) * 5) : "\u2014");
+    }
+  };
+  async function skMakeIngs(lines) {
+    for (const l of lines) {
+      if (l.id || !l.add) continue;
+      const ex = S.data.sk.ing.find((x) => !x.off && nrm(x.n) === nrm(l.add.n));
+      if (ex) {
+        l.id = ex.id;
+        delete l.add;
+        continue;
+      }
+      const r = await api("skIngSave", { x: { n: l.add.n, u: l.add.u, home: l.add.home || "k", cat: l.add.cat || "\u0406\u043D\u0448\u0435", loss: l.loss || 0 } }).catch((e) => ({ error: e.message }));
+      if (r.x) {
+        S.data.sk.ing.push(r.x);
+        l.id = r.x.id;
+        delete l.add;
+      } else throw new Error(`\xAB${l.add.n}\xBB: ${r.error}`);
+    }
+  }
+  async function skCardSave(draft = false) {
+    const c = S.sk.card;
+    try {
+      await skMakeIngs(c.items);
+    } catch (e) {
+      return toast("\u26A0\uFE0F " + e.message);
+    }
+    const items = c.items.filter((l) => l.id && +l.q > 0).map((l) => __spreadValues({ id: l.id, q: r3(l.q) }, l.loss != null && l.loss !== "" ? { loss: +l.loss } : {}));
+    if (!items.length) return toast("\u26A0\uFE0F \u0414\u043E\u0434\u0430\u0439\u0442\u0435 \u0445\u043E\u0447\u0430 \u0431 \u043E\u0434\u0438\u043D \u043F\u0440\u043E\u0434\u0443\u043A\u0442 \u0437 \u043A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044E");
+    const card = { items, out: +c.out || 0, yield: +c.yield || 0, wh: c.wh, perL: c.perL, draft, note: c.note };
+    const r = await act("skCardSave", { key: c.key, name: c.name, card }, draft ? "\u2728 \u0427\u0435\u0440\u043D\u0435\u0442\u043A\u0443 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E" : "\u{1F4BE} \u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0443 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
+    if (!r) return;
+    S.sk.card = null;
+    S.data.sk = null;
+    loadView();
+  }
+  async function skCardAi() {
+    const c = S.sk.card;
+    if (S.sk.aiBusy) return;
+    S.sk.aiBusy = true;
+    renderMain();
+    try {
+      const r = await api("skCardAi", { key: c.key, yield: c.yield }, 45e3);
+      c.items = r.items.map((l) => {
+        var _a2;
+        return __spreadValues({ id: l.id, q: l.q, loss: l.loss }, l.id ? {} : { add: { n: l.n, u: l.u, home: ((_a2 = S.data.sk.ing.find((x) => x.id === c.key.slice(5))) == null ? void 0 : _a2.home) || "k" } });
+      });
+      if (!c.semi && r.out && !c.out) c.out = r.out;
+      c.draft = true;
+      toast("\u2728 \u0413\u043E\u0442\u043E\u0432\u043E \u2014 \u043F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435 \u0433\u0440\u0430\u043C\u043E\u0432\u043A\u0438 \u0456 \u0437\u0431\u0435\u0440\u0435\u0436\u0456\u0442\u044C");
+    } catch (e) {
+      toast("\u26A0\uFE0F " + errText(e.message));
+    }
+    S.sk.aiBusy = false;
+    renderMain();
+  }
+  async function skAiAll() {
+    const K = S.sk;
+    if (K.aiRun) {
+      K.aiStop = true;
+      return;
+    }
+    const todo = S.data.skCost.list.filter((x) => !x.tech && x.cost == null);
+    if (!todo.length) return;
+    if (!await confirmBox(`\u2728 \u0421\u043A\u043B\u0430\u0441\u0442\u0438 \u0447\u0435\u0440\u043D\u0435\u0442\u043A\u0438 \u0442\u0435\u0445\u043A\u0430\u0440\u0442 \u0434\u043B\u044F ${todo.length} \u0441\u0442\u0440\u0430\u0432?`, "AI \u0437\u0430\u043F\u0440\u043E\u043F\u043E\u043D\u0443\u0454 \u0441\u043A\u043B\u0430\u0434 \u0456 \u0433\u0440\u0430\u043C\u043E\u0432\u043A\u0438, \u043D\u043E\u0432\u0456 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0438 \u0441\u0442\u0432\u043E\u0440\u044F\u0442\u044C\u0441\u044F \u0441\u0430\u043C\u0456. \u0427\u0435\u0440\u043D\u0435\u0442\u043A\u0438 \u043D\u0435 \u0441\u043F\u0438\u0441\u0443\u044E\u0442\u044C \u0441\u043A\u043B\u0430\u0434, \u043F\u043E\u043A\u0438 \u0432\u0438 \u0457\u0445 \u043D\u0435 \u043F\u0435\u0440\u0435\u0432\u0456\u0440\u0438\u0442\u0435 \u0439 \u043D\u0435 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u0442\u0435. \u0417\u0430\u0439\u043C\u0435 \u043A\u0456\u043B\u044C\u043A\u0430 \u0445\u0432\u0438\u043B\u0438\u043D.")) return;
+    K.aiStop = false;
+    let done = 0, fail = 0;
+    for (const x of todo) {
+      if (K.aiStop) break;
+      K.aiRun = `${done + fail + 1}/${todo.length}`;
+      if (S.view === "calc") renderMain();
+      try {
+        const r = await api("skCardAi", { key: x.key }, 45e3), items = r.items.map((l) => __spreadValues({ id: l.id, q: l.q, loss: l.loss }, l.id ? {} : { add: { n: l.n, u: l.u, home: ["bar", "hookah"].includes(((S.groups || []).find((g) => g.cats.includes(x.cat)) || {}).id) ? "b" : "k" } }));
+        await skMakeIngs(items);
+        await api("skCardSave", { key: x.key, name: x.name, card: { items: items.filter((l) => l.id).map((l) => __spreadValues({ id: l.id, q: l.q }, l.loss ? { loss: l.loss } : {})), out: r.out || 0, draft: true } });
+        done++;
+      } catch (e) {
+        fail++;
+        await new Promise((z) => setTimeout(z, 4e3));
+      }
+    }
+    K.aiRun = null;
+    toast(`\u2728 \u0427\u0435\u0440\u043D\u0435\u0442\u043E\u043A: ${done}${fail ? ` \xB7 \u043D\u0435 \u0432\u0434\u0430\u043B\u043E\u0441\u044C: ${fail}` : ""}`);
+    S.data.sk = null;
+    if (S.view === "calc") loadView();
+  }
+  const techCard = (x) => `<div class="card tech"><h3>${esc(x.name)}${x.draft ? ' <span class="badge-d">\u0447\u0435\u0440\u043D\u0435\u0442\u043A\u0430</span>' : ""}</h3>${x.out || x.size ? `<div class="muted">\u0432\u0438\u0445\u0456\u0434 ${x.out ? x.out + " \u0433" : esc(x.size)}${x.yield ? ` \xB7 \u043F\u0430\u0440\u0442\u0456\u044F ${x.yield}` : ""}</div>` : ""}
+    ${x.items.map((l) => {
+    const net = l.q * (1 - (l.loss || 0) / 100);
+    return `<div class="kv"><span>${esc(l.n)}</span><b>${fq(l.q, l.u)}${l.loss ? ` <small class="muted">\u2192 ${fq(net, l.u)} \u043D\u0435\u0442\u0442\u043E</small>` : ""}</b></div>`;
+  }).join("")}${x.desc ? `<div class="muted" style="font-size:12px;margin-top:6px">${esc(x.desc)}</div>` : ""}</div>`;
+  function skTechHTML() {
+    const T = S.data.skTech;
+    if (!T) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
+    const q = S.sk.q2.trim().toLowerCase(), l = T.list.filter((x) => !q || x.name.toLowerCase().includes(q));
+    return `<div class="sk-tools"><input id="skQ2" placeholder="\u{1F50E} \u041F\u043E\u0448\u0443\u043A \u0441\u0442\u0440\u0430\u0432\u0438" value="${esc(S.sk.q2)}"></div><div class="tech-g">${l.map(techCard).join("") || '<div class="card muted">\u0422\u0435\u0445\u043A\u0430\u0440\u0442 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454 \u2014 \u0457\u0445 \u0437\u0430\u043F\u043E\u0432\u043D\u044E\u0454 \u0430\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440</div>'}</div>`;
+  }
+  async function skTechOne(name) {
+    var _a2;
+    const r = await act("skTech", { name });
+    const x = (_a2 = r == null ? void 0 : r.list) == null ? void 0 : _a2[0];
+    if (!x) return toast("\u0414\u043B\u044F \u0446\u0456\u0454\u0457 \u0441\u0442\u0440\u0430\u0432\u0438 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0438");
+    await modal({ title: "\u{1F4CB} \u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0430", body: techCard(x), buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+  }
+  async function skTechAll() {
+    const r = await act("skTech", {});
+    if (!r) return;
+    const pm = modal({ title: "\u{1F4CB} \u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0438", body: `<input id="tqQ" placeholder="\u{1F50E} \u041F\u043E\u0448\u0443\u043A \u0441\u0442\u0440\u0430\u0432\u0438" autocomplete="off"><div class="tech-m" id="tqL">${r.list.map(techCard).join("") || '<div class="muted">\u0422\u0435\u0445\u043A\u0430\u0440\u0442 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454</div>'}</div>`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+    setTimeout(() => {
+      const i = $("#tqQ");
+      i == null ? void 0 : i.addEventListener("input", () => {
+        const q = i.value.toLowerCase();
+        $("#tqL").innerHTML = r.list.filter((x) => x.name.toLowerCase().includes(q)).map(techCard).join("");
+      });
+    }, 30);
+    await pm;
+  }
+  function skProdHTML() {
+    var _a2;
+    const D = S.data.sk, adm = isAdmin(), cards = ((_a2 = S.data.skCost) == null ? void 0 : _a2.cards) || {}, semis = D.ing.filter((x) => x.semi && !x.off);
+    return `<div class="btnrow" style="margin:0 0 12px">${adm ? '<button class="btn sm primary" data-a="skSemiNew">\u2795 \u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430</button>' : ""}</div>` + (semis.length ? `<div class="grid2">${semis.map((x) => {
+      const c = cards["semi:" + x.id];
+      return `<div class="card"><h3>\u{1F373} ${esc(x.n)}</h3><div class="kv"><span>\u041D\u0430 \u0441\u043A\u043B\u0430\u0434\u0456</span><b>${fq(totQ(x), x.u)}</b></div>${adm ? `<div class="kv"><span>\u0421\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C</span><b class="money">${skUnitCost(x.id) ? money(skUnitCost(x.id)) + " / " + x.u : "\u2014"}</b></div><div class="kv"><span>\u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0430</span><span class="${c ? "" : "warn"}">${c ? `${c.items.length} \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0456\u0432 \xB7 \u043F\u0430\u0440\u0442\u0456\u044F ${c.yield} ${x.u}` : "\u043D\u0435 \u0437\u0430\u043F\u043E\u0432\u043D\u0435\u043D\u0430"}</span></div>` : ""}
+        <div class="btnrow"><button class="btn sm primary" data-a="skProd" data-id="${x.id}">\u{1F373} \u041F\u0440\u0438\u0433\u043E\u0442\u0443\u0432\u0430\u043B\u0438</button>${adm ? `<button class="btn sm" data-a="skCardSemi" data-id="${x.id}">\u{1F4CB} \u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0430</button>` : ""}</div></div>`;
+    }).join("")}</div>` : `<div class="card muted">\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043E\u043A \u0449\u0435 \u043D\u0435\u043C\u0430\u0454. ${adm ? "\u041D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \xAB\u2795 \u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430\xBB (\u043D\u0430\u043F\u0440. \xAB\u0421\u043E\u0443\u0441 \u0437\u0435\u043B\u0435\u043D\u0438\u0439\xBB, \u043B) \u0456 \u0437\u0430\u043F\u043E\u0432\u043D\u0456\u0442\u044C \u0457\u0457 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0443: \u0437 \u0447\u043E\u0433\u043E \u0439 \u0441\u043A\u0456\u043B\u044C\u043A\u0438 \u0432\u0438\u0445\u043E\u0434\u0438\u0442\u044C. \u041F\u043E\u0442\u0456\u043C \xAB\u{1F373} \u041F\u0440\u0438\u0433\u043E\u0442\u0443\u0432\u0430\u043B\u0438\xBB \u0441\u043F\u0438\u0448\u0435 \u0441\u0438\u0440\u043E\u0432\u0438\u043D\u0443 \u0439 \u0434\u043E\u0434\u0430\u0441\u0442\u044C \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0443 \u043D\u0430 \u0441\u043A\u043B\u0430\u0434, \u0430 \u0441\u0442\u0440\u0430\u0432\u0438 \u0441\u043F\u0438\u0441\u0443\u0432\u0430\u0442\u0438\u043C\u0443\u0442\u044C \u0443\u0436\u0435 \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0443." : "\u0407\u0445 \u0434\u043E\u0434\u0430\u0454 \u0430\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440."}</div>`);
+  }
+  async function skProduce(id) {
+    const x = S.data.sk.ing.find((y) => y.id === id);
+    if (!x) return;
+    const v = await ask(`\u{1F373} ${x.n}: \u0441\u043A\u0456\u043B\u044C\u043A\u0438 \u043F\u0440\u0438\u0433\u043E\u0442\u0443\u0432\u0430\u043B\u0438?`, `\u043D\u0430\u043F\u0440. 3 (${x.u})`);
+    if (!v) return;
+    const q = parseQ(v, x.u);
+    if (!(q > 0)) return toast("\u26A0\uFE0F \u0412\u043A\u0430\u0436\u0456\u0442\u044C \u043A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044C");
+    const r = await act("skProduce", { id, q }, `\u{1F373} +${fq(q, x.u)} ${x.n}`);
+    if (r) {
+      S.data.sk = null;
+      loadView();
+    }
+  }
+  function skCountHTML() {
+    const K = S.sk, C = S.data.skCount, adm = isAdmin();
+    if (!C) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
+    const wh = K.cwh, all = C.ing.filter((x) => {
+      var _a2;
+      return !x.off && (x.home === wh || (((_a2 = x.st) == null ? void 0 : _a2[wh]) || 0) !== 0);
+    }).sort((a, b) => (a.cat || "").localeCompare(b.cat || "") || a.n.localeCompare(b.n));
+    const q = K.cq.trim().toLowerCase(), shown = all.filter((x) => !q || x.n.toLowerCase().includes(q)), n = Object.values(K.cf).filter((v) => v !== "").length;
+    const diffH = (x) => {
+      var _a2;
+      const raw = K.cf[x.id];
+      if (raw == null || raw === "") return "";
+      const f = parseQ(raw, x.u);
+      if (isNaN(f)) return '<span class="warn">?</span>';
+      const d = r3(f - (((_a2 = x.st) == null ? void 0 : _a2[wh]) || 0));
+      return d ? `<span class="${d < 0 ? "neg" : "good"}">${d > 0 ? "+" : ""}${fq(d, x.u)}${adm && x.cost ? ` \xB7 ${d > 0 ? "+" : ""}${money(d * x.cost)}` : ""}</span>` : '<span class="good">\u2713</span>';
+    };
+    let cat = "";
+    const rows = shown.map((x) => {
+      var _a2, _b;
+      const h = x.cat !== cat ? `<div class="cnt-cat">${esc(cat = x.cat || "\u0406\u043D\u0448\u0435")}</div>` : "";
+      return h + `<div class="cnt-r"><span>${x.semi ? "\u{1F373} " : ""}${esc(x.n)}<br><small class="muted">\u0441\u0438\u0441\u0442\u0435\u043C\u0430: ${fq(((_a2 = x.st) == null ? void 0 : _a2[wh]) || 0, x.u)}</small></span><input data-cf="${x.id}" inputmode="decimal" value="${esc((_b = K.cf[x.id]) != null ? _b : "")}" placeholder="\u0444\u0430\u043A\u0442, ${x.u}"><span class="cnt-d" id="cfd${x.id}">${diffH(x)}</span></div>`;
+    }).join("");
+    const hist = (S.data.skCnts || []).slice(0, 15).map((c) => `<div class="kv press" data-a="skCntView" data-id="${c.id}"><span>${c.day.slice(8)}.${c.day.slice(5, 7)} \xB7 ${WHN[c.wh]} \xB7 ${esc(c.by)} <span class="muted">\xB7 ${c.n} \u043F\u043E\u0437.</span></span>${adm ? `<span class="kv-r"><b class="neg">${money(c.short)}</b><b class="good">+${money(c.over)}</b></span>` : ""}</div>`).join("");
+    return `<div class="sk-tools">${adm ? `<div class="chips">${["k", "b"].map((w) => `<button class="chip ${wh === w ? "on" : ""}" data-a="skCwh" data-w="${w}">${WHN[w]}</button>`).join("")}</div>` : ""}<input id="skCq" placeholder="\u{1F50E} \u041F\u043E\u0448\u0443\u043A \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0443" value="${esc(K.cq)}"></div>
+      <div class="card"><div class="rhead"><div><h3 style="margin:0">\u{1F4DD} ${WHN[wh]}: \u0432\u043D\u0435\u0441\u0435\u043D\u043E ${n} \u0437 ${all.length}</h3><span class="muted">\u041F\u0438\u0448\u0456\u0442\u044C \u0444\u0430\u043A\u0442\u0438\u0447\u043D\u0438\u0439 \u0437\u0430\u043B\u0438\u0448\u043E\u043A (\u043C\u043E\u0436\u043D\u0430 \xAB250 \u0433\xBB). \u0427\u0435\u0440\u043D\u0435\u0442\u043A\u0430 \u0437\u0431\u0435\u0440\u0456\u0433\u0430\u0454\u0442\u044C\u0441\u044F \u0441\u0430\u043C\u0430 \u2014 \u043C\u043E\u0436\u043D\u0430 \u0440\u0430\u0445\u0443\u0432\u0430\u0442\u0438 \u0437 \u043F\u043B\u0430\u043D\u0448\u0435\u0442\u0430 \u0447\u0430\u0441\u0442\u0438\u043D\u0430\u043C\u0438. \u041F\u043E\u0440\u043E\u0436\u043D\u0456 \u0440\u044F\u0434\u043A\u0438 \u043D\u0435 \u0437\u043C\u0456\u043D\u044E\u044E\u0442\u044C\u0441\u044F.</span></div>
+        <button class="btn primary" data-a="skCntFin" ${n ? "" : "disabled"}>\u2705 \u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u0438</button></div>${rows || '<div class="muted">\u041D\u0430 \u0446\u044C\u043E\u043C\u0443 \u0441\u043A\u043B\u0430\u0434\u0456 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0456\u0432</div>'}</div>
+      ${hist ? `<div class="card"><h3>\u0406\u0441\u0442\u043E\u0440\u0456\u044F</h3>${hist}</div>` : ""}`;
+  }
+  let cfT = null;
+  const cfPend = {};
+  function skCfInput(id, v) {
+    var _a2;
+    const K = S.sk, C = S.data.skCount, x = C.ing.find((y) => y.id === id);
+    K.cf[id] = v;
+    const el = $("#cfd" + id);
+    if (el && x) {
+      const f = parseQ(v, x.u), d = r3(f - (((_a2 = x.st) == null ? void 0 : _a2[K.cwh]) || 0));
+      el.innerHTML = v === "" ? "" : isNaN(f) ? '<span class="warn">?</span>' : d ? `<span class="${d < 0 ? "neg" : "good"}">${d > 0 ? "+" : ""}${fq(d, x.u)}${isAdmin() && x.cost ? ` \xB7 ${d > 0 ? "+" : ""}${money(d * x.cost)}` : ""}</span>` : '<span class="good">\u2713</span>';
+    }
+    cfPend[id] = v === "" ? "" : parseQ(v, x == null ? void 0 : x.u);
+    clearTimeout(cfT);
+    cfT = setTimeout(async () => {
+      const f = __spreadValues({}, cfPend);
+      Object.keys(cfPend).forEach((k) => delete cfPend[k]);
+      Object.keys(f).forEach((k) => {
+        if (Number.isNaN(f[k])) delete f[k];
+      });
+      if (Object.keys(f).length) await api("skCountSave", { wh: K.cwh, f }).catch(() => toast("\u26A0\uFE0F \u0427\u0435\u0440\u043D\u0435\u0442\u043A\u0443 \u043D\u0435 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E \u2014 \u043F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435 \u0456\u043D\u0442\u0435\u0440\u043D\u0435\u0442"));
+    }, 1200);
+  }
+  async function skCntFinish() {
+    const K = S.sk;
+    clearTimeout(cfT);
+    const f = __spreadValues({}, cfPend);
+    Object.keys(cfPend).forEach((k) => delete cfPend[k]);
+    if (Object.keys(f).length) await api("skCountSave", { wh: K.cwh, f }).catch(() => {
+    });
+    if (!await confirmBox(`\u2705 \u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u0438 \u0456\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u044E (${WHN[K.cwh]})?`, "\u0417\u0430\u043B\u0438\u0448\u043A\u0438 \u0441\u0442\u0430\u043D\u0443\u0442\u044C \u0442\u0430\u043A\u0438\u043C\u0438, \u044F\u043A \u0432\u0438 \u0432\u043D\u0435\u0441\u043B\u0438. \u041D\u0435\u0441\u0442\u0430\u0447\u0456 \u0439 \u043D\u0430\u0434\u043B\u0438\u0448\u043A\u0438 \u0437\u0430\u043F\u0438\u0448\u0443\u0442\u044C\u0441\u044F \u0432 \u0456\u0441\u0442\u043E\u0440\u0456\u044E.")) return;
+    const r = await act("skCountFinish", { wh: K.cwh }, "\u{1F4DD} \u0406\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u044E \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E");
+    if (!r) return;
+    K.cf = {};
+    await skCntShow(r.doc);
+    loadView();
+  }
+  async function skCntShow(d) {
+    const adm = isAdmin(), ch = d.lines.filter((x) => x.diff);
+    await modal({ title: `\u{1F4DD} ${WHN[d.wh]} \xB7 ${d.day}`, body: `${adm ? `<div class="kv tot"><span>\u{1F53B} \u041D\u0435\u0441\u0442\u0430\u0447\u0430</span><b class="money neg">${money(d.short)}</b></div><div class="kv"><span>\u{1F53A} \u041D\u0430\u0434\u043B\u0438\u0448\u043E\u043A</span><b class="money good">+${money(d.over)}</b></div>` : ""}
+      <div class="sk-jr">${ch.map((x) => `<div class="kv"><span>${esc(x.n)}<br><small class="muted">\u0431\u0443\u043B\u043E ${fq(x.sys, x.u)} \u2192 \u0444\u0430\u043A\u0442 ${fq(x.fact, x.u)}</small></span><b class="${x.diff < 0 ? "neg" : "good"}">${x.diff > 0 ? "+" : ""}${fq(x.diff, x.u)}${adm && x.sum != null ? ` \xB7 ${money(x.sum)}` : ""}</b></div>`).join("") || '<div class="muted">\u0423\u0441\u0435 \u0437\u0431\u0456\u0433\u043B\u043E\u0441\u044F \u2705</div>'}</div>
+      <div class="muted" style="font-size:12px;margin-top:8px">\u041F\u043E\u0440\u0430\u0445\u043E\u0432\u0430\u043D\u043E \u043F\u043E\u0437\u0438\u0446\u0456\u0439: ${d.lines.length} \xB7 ${esc(d.by)}</div>`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+  }
+  function skRepHTML() {
+    const K = S.sk, R = S.data.skRep, P = [["d", "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456"], ["w", "7 \u0434\u043D\u0456\u0432"], ["30", "30 \u0434\u043D\u0456\u0432"], ["m", "\u0426\u0435\u0439 \u043C\u0456\u0441\u044F\u0446\u044C"], ["pm", "\u041C\u0438\u043D. \u043C\u0456\u0441\u044F\u0446\u044C"]];
+    const head = `<div class="chips scroll" style="margin-bottom:12px">${P.map(([k, l]) => `<button class="chip ${K.p === k ? "on" : ""}" data-a="skP" data-p="${k}">${l}</button>`).join("")}</div>`;
+    if (!R) return head + '<div class="muted">\u0420\u0430\u0445\u0443\u044E\u2026</div>';
+    const tgt = R.foodCost, fc = R.revKnown ? Math.round(R.cogs / R.revKnown * 1e3) / 10 : null, gp = R.revKnown - R.cogs, cls = (f) => f == null ? "" : f <= tgt ? "good" : f <= tgt + 10 ? "mid" : "bad";
+    const kpis = `<div class="kpis"><div class="kpi accent"><span>\u0412\u0438\u0440\u0443\u0447\u043A\u0430</span><b class="money">${money(R.revenue)}</b></div><div class="kpi"><span>\u0421\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C \u043F\u0440\u043E\u0434\u0430\u043D\u043E\u0433\u043E</span><b class="money">${money(R.cogs)}</b>${R.revKnown < R.revenue ? `<small class="muted">\u0437 ${money(R.revKnown)} \u0432\u0438\u0440\u0443\u0447\u043A\u0438 \u0441\u0442\u0440\u0430\u0432 \u0437 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0430\u043C\u0438</small>` : ""}</div>
+      <div class="kpi"><span>\u0424\u0443\u0434\u043A\u043E\u0441\u0442 <small class="muted">(\u0446\u0456\u043B\u044C ${tgt}%)</small></span><b class="${cls(fc)}">${fc == null ? "\u2014" : fc + "%"}</b></div><div class="kpi green"><span>\u0412\u0430\u043B\u043E\u0432\u0438\u0439 \u043F\u0440\u0438\u0431\u0443\u0442\u043E\u043A <small class="muted">(\u0441\u0442\u0440\u0430\u0432\u0438 \u0437 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0430\u043C\u0438)</small></span><b class="money">${money(gp)}</b></div></div>
+      <div class="pills"><div class="pill"><span>\u{1F5D1} \u0421\u043F\u0438\u0441\u0430\u043D\u043E</span><b class="money">${money(R.offSum)}</b></div><div class="pill"><span>\u{1F4DD} \u0406\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u0439</span><b>${R.cnt.n}</b>${R.cnt.n ? `<small><span class="neg">${money(R.cnt.short)}</span> \xB7 <span class="good">+${money(R.cnt.over)}</span></small>` : ""}</div>
+      ${R.noCard ? `<div class="pill wide"><span>\u26A0\uFE0F \u0411\u0435\u0437 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0438</span><b>${R.noCard} \u0441\u0442\u0440\u0430\u0432</b><small class="press" data-a="skTab" data-t="cards">\u0457\u0445\u043D\u044F \u0441\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C \u043D\u0435 \u0432\u0440\u0430\u0445\u043E\u0432\u0430\u043D\u0430 \u2014 \u0437\u0430\u043F\u043E\u0432\u043D\u0438\u0442\u0438 \u2192</small></div>` : ""}</div>`;
+    const ME = { star: ["\u2B50 \u0417\u0456\u0440\u043A\u0438", "\u043F\u043E\u043F\u0443\u043B\u044F\u0440\u043D\u0456 \u0439 \u0432\u0438\u0433\u0456\u0434\u043D\u0456 \u2014 \u0442\u0440\u0438\u043C\u0430\u0439\u0442\u0435 \u044F\u043A\u0456\u0441\u0442\u044C \u0456 \u0446\u0456\u043D\u0443"], horse: ["\u{1F434} \u041A\u043E\u043D\u044F\u0447\u043A\u0438", "\u043F\u043E\u043F\u0443\u043B\u044F\u0440\u043D\u0456, \u0430\u043B\u0435 \u043C\u0430\u043B\u043E \u0437\u0430\u0440\u043E\u0431\u043B\u044F\u044E\u0442\u044C \u2014 \u043F\u0456\u0434\u043D\u0456\u043C\u0456\u0442\u044C \u0446\u0456\u043D\u0443 \u043D\u0430 5\u201310% \u0430\u0431\u043E \u0437\u0434\u0435\u0448\u0435\u0432\u0456\u0442\u044C \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0443"], puzzle: ["\u2753 \u0417\u0430\u0433\u0430\u0434\u043A\u0438", "\u0432\u0438\u0433\u0456\u0434\u043D\u0456, \u0430\u043B\u0435 \u0431\u0435\u0440\u0443\u0442\u044C \u0440\u0456\u0434\u043A\u043E \u2014 \u043A\u0440\u0430\u0449\u0435 \u043C\u0456\u0441\u0446\u0435 \u0432 \u043C\u0435\u043D\u044E, \u0444\u043E\u0442\u043E, \u0445\u0430\u0439 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0438 \u0440\u0430\u0434\u044F\u0442\u044C"], dog: ["\u{1F436} \u0421\u043E\u0431\u0430\u043A\u0438", "\u0456 \u043D\u0435\u043F\u043E\u043F\u0443\u043B\u044F\u0440\u043D\u0456, \u0456 \u043D\u0435\u0432\u0438\u0433\u0456\u0434\u043D\u0456 \u2014 \u043F\u0440\u0438\u0431\u0435\u0440\u0456\u0442\u044C \u0430\u0431\u043E \u043F\u0435\u0440\u0435\u0440\u043E\u0431\u0456\u0442\u044C"] };
+    const me = R.rows.filter((x) => x.me), meH = me.length ? `<div class="me-g">${Object.entries(ME).map(([k, [t, tip]]) => {
+      const l = me.filter((x) => x.me === k).sort((a, b) => b.q - a.q);
+      return `<div class="card me ${k}"><h3>${t} <span class="muted">\xB7 ${l.length}</span></h3><div class="muted" style="font-size:12px;margin-bottom:6px">${tip}</div>${l.slice(0, 8).map((x) => `<div class="kv"><span>${esc(x.n)}</span><span class="muted">${x.q} \u0448\u0442 \xB7 ${money(x.cm)}/\u0448\u0442</span></div>`).join("") || '<div class="muted">\u2014</div>'}</div>`;
+    }).join("")}</div>` : "";
+    const tbl = `<div class="card"><h3>\u{1F37D} \u041F\u0440\u0438\u0431\u0443\u0442\u043E\u043A \u043F\u043E \u0441\u0442\u0440\u0430\u0432\u0430\u0445</h3><div class="sk-tbl"><div class="th"><span>\u0421\u0442\u0440\u0430\u0432\u0430</span><span>\u041F\u0440\u043E\u0434\u0430\u043D\u043E</span><span>\u0412\u0438\u0440\u0443\u0447\u043A\u0430</span><span>\u0421\u043E\u0431\u0456\u0432./\u0448\u0442</span><span>\u041C\u0430\u0440\u0436\u0430</span><span>\u0424\u0443\u0434\u043A\u043E\u0441\u0442</span></div>
+      ${R.rows.slice(0, 120).map((x) => `<div class="tr"><span>${esc(x.n)}${x.rec && x.fc > tgt ? `<br><small class="warn">\u0440\u0435\u043A\u043E\u043C. \u0446\u0456\u043D\u0430 ${money(x.rec)}</small>` : ""}</span><span>${x.q}</span><span class="money">${money(x.rev)}</span><span class="money">${x.unit == null ? "\u2014" : money(x.unit)}</span><span class="money">${x.cm == null ? "\u2014" : money(x.cm * x.q)}</span><b class="${cls(x.fc)}">${x.fc == null ? "\u2014" : x.fc + "%"}</b></div>`).join("")}</div></div>`;
+    const off = R.off.length ? `<div class="grid2"><div class="card"><h3>\u{1F5D1} \u0421\u043F\u0438\u0441\u0430\u043D\u043D\u044F \u0437\u0430 \u043F\u0440\u0438\u0447\u0438\u043D\u0430\u043C\u0438</h3>${R.off.map(([k, v]) => `<div class="kv"><span>${esc(k)}</span><b class="money">${money(v)}</b></div>`).join("")}</div><div class="card"><h3>\u0429\u043E \u0441\u043F\u0438\u0441\u0443\u0454\u043C\u043E \u043D\u0430\u0439\u0431\u0456\u043B\u044C\u0448\u0435</h3>${R.offIng.map(([k, v]) => `<div class="kv"><span>${esc(k)}</span><b class="money">${money(v)}</b></div>`).join("")}</div></div>` : "";
+    return head + kpis + meH + tbl + off;
   }
   let modalResolve;
   function modal({ title, text = "", body = "", buttons, keep }) {
@@ -1444,8 +2241,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         if (i != null) modalResolve(buttons[+i].val);
       });
       document.body.append(el);
-      const fq = el.querySelector("[data-mi-quick]");
-      if (fq) fq.onclick = () => {
+      const fq2 = el.querySelector("[data-mi-quick]");
+      if (fq2) fq2.onclick = () => {
         el.querySelector("#fIn").value = last0;
         modalResolve("ok");
       };
@@ -1526,7 +2323,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         break;
       }
       case "more": {
-        const v = await choose("\u0429\u0435", "", NAV.filter((n) => (!n[3] || isAdmin()) && ["stop", "kq", "menu", "printer", "settings"].includes(n[0])).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: "\u{1F512} \u0412\u0438\u0439\u0442\u0438", val: "logout", cls: "red" }]));
+        const v = await choose("\u0429\u0435", "", NAV.filter((n) => (!n[3] || isAdmin()) && ["stop", "kq", "menu", "calc", "settings"].includes(n[0])).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: "\u{1F512} \u0412\u0438\u0439\u0442\u0438", val: "logout", cls: "red" }]));
         if (v === "logout") {
           if (await confirmBox("\u0412\u0438\u0439\u0442\u0438?", "\u041D\u0430\u0441\u0442\u0443\u043F\u043D\u0438\u0439 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A \u0443\u0432\u0456\u0439\u0434\u0435 \u0441\u0432\u043E\u0457\u043C PIN")) logout();
         } else if (v) {
@@ -1921,7 +2718,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         break;
       }
       case "cfg": {
-        const k = el.dataset.k, L = { discMax: ["\u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430, %", "\u0432\u0456\u0434 0 \u0434\u043E 100"], scanMin: ["\u0425\u0432\u0438\u043B\u0438\u043D \u043D\u0430 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0441\u043B\u044F QR", "\u0432\u0456\u0434 10 \u0434\u043E 600"] }[k];
+        const k = el.dataset.k, L = { discMax: ["\u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430, %", "\u0432\u0456\u0434 0 \u0434\u043E 100"], scanMin: ["\u0425\u0432\u0438\u043B\u0438\u043D \u043D\u0430 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0441\u043B\u044F QR", "\u0432\u0456\u0434 10 \u0434\u043E 600"], foodCost: ["\u0426\u0456\u043B\u044C\u043E\u0432\u0438\u0439 \u0444\u0443\u0434\u043A\u043E\u0441\u0442, %", "\u0432\u0456\u0434 5 \u0434\u043E 90"], priceAlert: ["\u0421\u043F\u043E\u0432\u0456\u0449\u0430\u0442\u0438 \u043F\u0440\u043E \u043F\u043E\u0434\u043E\u0440\u043E\u0436\u0447\u0430\u043D\u043D\u044F \u0432\u0456\u0434, %", "\u0432\u0456\u0434 1 \u0434\u043E 100"] }[k];
         const v = await ask(L[0], L[1], "number");
         if (v != null && v !== "") {
           await act("cfgSet", { k, v: +v }, "\u2699\uFE0F \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
@@ -2016,6 +2813,323 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     if (e.target.id === "rFrom" || e.target.id === "rTo") {
       S.rep[e.target.id === "rFrom" ? "from" : "to"] = e.target.value;
       loadView();
+    }
+  });
+  document.addEventListener("click", async (e) => {
+    const el = e.target.closest("[data-a]");
+    if (!el || !/^sk/.test(el.dataset.a)) return;
+    const a = el.dataset.a, K = S.sk;
+    switch (a) {
+      case "skTab":
+        K.tab = el.dataset.t;
+        K.q2 = "";
+        K.card = null;
+        if (S.view !== "calc") {
+          S.view = "calc";
+          renderNav();
+        }
+        renderMain();
+        loadView();
+        $("#main").scrollTop = 0;
+        break;
+      case "skWh":
+        K.wh = el.dataset.w;
+        renderMain();
+        break;
+      case "skIng":
+        skIngEdit(el.dataset.id);
+        break;
+      case "skAdd":
+        skQty("add", el.dataset.id);
+        break;
+      case "skOff":
+        skQty("off", el.dataset.id);
+        break;
+      case "skMv":
+        skQty("mv", el.dataset.id);
+        break;
+      case "skReason": {
+        const i = $("#aN");
+        if (i) i.value = el.dataset.r;
+        break;
+      }
+      case "skOffPick": {
+        const id = await skPick("\u{1F5D1} \u0429\u043E \u0441\u043F\u0438\u0441\u0430\u0442\u0438?");
+        if (id) skQty("off", id);
+        break;
+      }
+      case "skJr":
+        skJournal();
+        break;
+      case "skShare":
+        skShare(el.dataset.g);
+        break;
+      case "skHand":
+        if (!S.data.skInv) S.data.skInv = await api("skInvList").catch(() => null);
+        K.draft = { sup: "", no: "", date: "", total: 0, src: "hand", lines: [{ id: null, n: "", q: "", f: 1, sum: "" }] };
+        renderMain();
+        break;
+      case "skScan":
+        skScan();
+        break;
+      case "skCam":
+        skCam();
+        break;
+      case "skBcBind": {
+        const c = el.dataset.c;
+        if (!isAdmin()) {
+          toast("\u041F\u0440\u0438\u0432\u02BC\u044F\u0437\u0430\u0442\u0438 \u0448\u0442\u0440\u0438\u0445\u043A\u043E\u0434 \u043C\u043E\u0436\u0435 \u0430\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440");
+          break;
+        }
+        camStop == null ? void 0 : camStop();
+        camStop = null;
+        modalResolve == null ? void 0 : modalResolve("ok");
+        await new Promise((z) => setTimeout(z, 50));
+        const id = await skPick(`\u0428\u0442\u0440\u0438\u0445\u043A\u043E\u0434 ${c} \u2014 \u044F\u043A\u0438\u0439 \u0446\u0435 \u043F\u0440\u043E\u0434\u0443\u043A\u0442?`);
+        if (!id) break;
+        const x = S.data.sk.ing.find((y) => y.id === id);
+        const r = await act("skIngSave", { x: __spreadProps(__spreadValues({}, x), { bc: [...x.bc || [], c] }) }, "\u{1F517} \u0428\u0442\u0440\u0438\u0445\u043A\u043E\u0434 \u043F\u0440\u0438\u0432\u02BC\u044F\u0437\u0430\u043D\u043E");
+        if (r) {
+          Object.assign(x, r.x);
+          skDraftAdd(x);
+          renderMain();
+        }
+        break;
+      }
+      case "skDlDel":
+        K.draft.lines.splice(+el.dataset.i, 1);
+        renderMain();
+        break;
+      case "skDlAdd":
+        K.draft.lines.push({ id: null, n: "", q: "", f: 1, sum: "" });
+        renderMain();
+        break;
+      case "skDraftX":
+        if (await confirmBox("\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0443?", "\u0412\u043D\u0435\u0441\u0435\u043D\u0435 \u043D\u0435 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u0442\u044C\u0441\u044F")) {
+          K.draft = null;
+          renderMain();
+          loadView();
+        }
+        break;
+      case "skDraftSave":
+        skDraftSave(el.dataset.p);
+        break;
+      case "skInvView":
+        skInvView(el.dataset.id);
+        break;
+      case "skInvPay": {
+        const src = await choose("\u{1F4B8} \u041E\u043F\u043B\u0430\u0442\u0438\u0442\u0438 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0443", "\u0417\u0432\u0456\u0434\u043A\u0438 \u043E\u043F\u043B\u0430\u0442\u0438\u043B\u0438? \u0421\u0443\u043C\u0430 \u0441\u0442\u0430\u043D\u0435 \u0432\u0438\u0442\u0440\u0430\u0442\u043E\u044E \u0432 \xAB\u041A\u0430\u0441\u0456\xBB.", [{ label: "\u{1F4B5} \u0417 \u043A\u0430\u0441\u0438", val: "cash", cls: "primary" }, { label: "\u{1F4B3} \u0417 \u043A\u0430\u0440\u0442\u043A\u0438", val: "card", cls: "primary" }]);
+        if (src && await act("skInvPay", { id: el.dataset.id, src }, "\u{1F4B8} \u041E\u043F\u043B\u0430\u0447\u0435\u043D\u043E")) loadView();
+        break;
+      }
+      case "skInvDel": {
+        const back = !!el.dataset.b;
+        if (!back && !await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0443?", "\u0422\u043E\u0432\u0430\u0440 \u0437\u043D\u0438\u043A\u043D\u0435 \u0437\u0456 \u0441\u043A\u043B\u0430\u0434\u0443, \u043E\u043F\u043B\u0430\u0442\u0430 \u2014 \u0437 \u0432\u0438\u0442\u0440\u0430\u0442. \u041C\u043E\u0436\u043D\u0430 \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438 \u21A9\uFE0F.")) break;
+        if (await act("skInvDel", { id: el.dataset.id, back }, back ? "\u21A9\uFE0F \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E" : "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) {
+          S.data.sk = null;
+          loadView();
+        }
+        break;
+      }
+      case "skFlt":
+        K.flt = el.dataset.fl;
+        renderMain();
+        break;
+      case "skCard":
+        skCardOpen(el.dataset.k);
+        break;
+      case "skCardSemi":
+        skCardOpen("semi:" + el.dataset.id);
+        break;
+      case "skCardX":
+        K.card = null;
+        renderMain();
+        loadView();
+        break;
+      case "skClAdd":
+        K.card.items.push({ id: null, q: 0 });
+        renderMain();
+        break;
+      case "skClDel":
+        K.card.items.splice(+el.dataset.i, 1);
+        renderMain();
+        break;
+      case "skCardSave":
+        skCardSave(false);
+        break;
+      case "skCardDel":
+        if (await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0443?", "\u0421\u0442\u0440\u0430\u0432\u0430 \u043F\u0435\u0440\u0435\u0441\u0442\u0430\u043D\u0435 \u0441\u043F\u0438\u0441\u0443\u0432\u0430\u0442\u0438 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0438")) {
+          if (await act("skCardSave", { key: K.card.key, name: K.card.name, card: null }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) {
+            K.card = null;
+            loadView();
+          }
+        }
+        break;
+      case "skCardAi":
+        skCardAi();
+        break;
+      case "skAiAll":
+        skAiAll();
+        break;
+      case "skSemiNew": {
+        const x = await skIngEdit(null, { semi: 1, cat: "\u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", u: "\u043B" });
+        if (x) skCardOpen("semi:" + x.id);
+        break;
+      }
+      case "skProd":
+        skProduce(el.dataset.id);
+        break;
+      case "skCwh":
+        K.cwh = el.dataset.w;
+        K.cf = {};
+        S.data.skCount = null;
+        renderMain();
+        loadView();
+        break;
+      case "skCntFin":
+        skCntFinish();
+        break;
+      case "skCntView": {
+        const r = await act("skCountDoc", { id: el.dataset.id });
+        if (r) skCntShow(r.doc);
+        break;
+      }
+      case "skP":
+        K.p = el.dataset.p;
+        loadView();
+        break;
+      case "skTechAll":
+        skTechAll();
+        break;
+      case "skTechOne":
+        skTechOne(el.dataset.n);
+        break;
+    }
+  });
+  document.addEventListener("input", (e) => {
+    var _a2, _b;
+    const t = e.target, K = S.sk, d = t.dataset || {};
+    if (t.id === "skQ") {
+      K.q = t.value;
+      renderMain();
+    }
+    if (t.id === "skQ2") {
+      K.q2 = t.value;
+      renderMain();
+    }
+    if (t.id === "skCq") {
+      K.cq = t.value;
+      renderMain();
+    }
+    if (d.cf) skCfInput(d.cf, t.value);
+    if (d.dh && K.draft) K.draft[d.dh] = t.value;
+    if (d.dl != null && K.draft && t.tagName === "INPUT") {
+      const l = K.draft.lines[+d.dl];
+      if (l) {
+        l[d.k] = t.value.replace(",", ".");
+        skDraftUpd(+d.dl);
+      }
+    }
+    if (d.cl != null && K.card && t.tagName === "INPUT") {
+      const i = +d.cl, l = K.card.items[i];
+      if (!l) return;
+      const x = S.data.sk.ing.find((y) => y.id === l.id), u = (x == null ? void 0 : x.u) || ((_a2 = l.add) == null ? void 0 : _a2.u) || "\u043A\u0433", k = u === "\u0448\u0442" ? 1 : 1e3, v = +t.value.replace(",", ".") || 0, lo = () => {
+        var _a3, _b2;
+        return +((_b2 = (_a3 = l.loss) != null ? _a3 : x == null ? void 0 : x.loss) != null ? _b2 : 0);
+      };
+      if (d.k === "q") {
+        l.q = r3(v / k);
+        const n = $("#cln" + i);
+        if (n) n.value = l.q ? r3(l.q * (1 - lo() / 100) * k) : "";
+      }
+      if (d.k === "loss") {
+        l.loss = Math.max(0, Math.min(90, v));
+        const n = $("#cln" + i);
+        if (n) n.value = l.q ? r3(l.q * (1 - l.loss / 100) * k) : "";
+      }
+      if (d.k === "net") {
+        const z = lo();
+        l.q = z < 100 ? r3(v / k / (1 - z / 100)) : 0;
+        const qi = (_b = t.closest(".cl")) == null ? void 0 : _b.querySelector('[data-k="q"]');
+        if (qi) qi.value = l.q ? r3(l.q * k) : "";
+      }
+      skCardCalc();
+    }
+    if (d.ch && K.card && t.tagName === "INPUT" && t.type !== "checkbox") {
+      K.card[d.ch] = t.value;
+      skCardCalc();
+    }
+  });
+  document.addEventListener("change", async (e) => {
+    const t = e.target, K = S.sk, d = t.dataset || {};
+    if (t.id === "skCat") {
+      K.cat = t.value;
+      renderMain();
+    }
+    if (t.id === "skPhoto") {
+      skPhotos(t.files);
+      t.value = "";
+    }
+    if (d.dl != null && K.draft && t.tagName === "SELECT") {
+      const l = K.draft.lines[+d.dl];
+      if (!l) return;
+      if (d.k === "id") {
+        if (t.value === "__new") {
+          const a = await skNewIng(l.n, l.u, "k");
+          if (a) {
+            l.add = a;
+            l.id = null;
+          }
+        } else {
+          l.id = t.value || null;
+          delete l.add;
+          if (l.id) {
+            l.ok = "ok";
+            l.f = skAutoF(l);
+          }
+        }
+        renderMain();
+      }
+      if (d.k === "f") {
+        if (t.value === "?") {
+          const v = await ask("\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u043E\u0434\u0438\u043D\u0438\u0446\u044C \u0441\u043A\u043B\u0430\u0434\u0443 \u0432 \u043E\u0434\u043D\u0456\u0439 \u043E\u0434\u0438\u043D\u0438\u0446\u0456 \u0437 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u043E\u0457?", "\u043D\u0430\u043F\u0440. 12 (\u0448\u0442 \u0443 \u044F\u0449\u0438\u043A\u0443) \u0430\u0431\u043E 2.5 (\u043A\u0433 \u0432 \u0443\u043F\u0430\u043A\u043E\u0432\u0446\u0456)");
+          const f = +String(v || "").replace(",", ".");
+          if (f > 0) l.f = f;
+          renderMain();
+        } else {
+          l.f = +t.value;
+          skDraftUpd(+d.dl);
+        }
+      }
+    }
+    if (d.cl != null && K.card && t.tagName === "SELECT") {
+      const l = K.card.items[+d.cl];
+      if (!l) return;
+      if (t.value === "__new") {
+        const a = await skNewIng("", "\u043A\u0433", "k");
+        if (a) {
+          l.add = a;
+          l.id = null;
+        }
+      } else {
+        l.id = t.value || null;
+        delete l.add;
+        const x = S.data.sk.ing.find((y) => y.id === l.id);
+        if (x && l.loss == null && x.loss) l.loss = x.loss;
+      }
+      renderMain();
+    }
+    if (d.ch && K.card && (t.tagName === "SELECT" || t.type === "checkbox")) {
+      K.card[d.ch] = t.type === "checkbox" ? t.checked : t.value;
+      renderMain();
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.target.id === "scIn") {
+      e.preventDefault();
+      const v = e.target.value;
+      e.target.value = "";
+      skCode(v);
     }
   });
   document.addEventListener("keydown", (e) => {

@@ -4,6 +4,8 @@ import { getMenu, saveMenu, addCategory, menuLock } from './menu.js';
 import { queuePrint, printStatus } from './print.js';
 import { QR_PRINT, TEST_JOB } from './bot.js';
 import { storeStub } from './store.js';
+import { stockApi } from './stock.js';
+import { aiInvoice, aiCard } from './ai.js';
 import {
   esc, money, hhmm, dayKey, isDay, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, setTip, moveTable, splitTable, restoreVoid, getVoids, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
@@ -34,6 +36,8 @@ export async function posApi(b, req, env) {
   const needAdmin = () => [{ error: 'admin' }, 403];
   const ok = (x = {}) => [{ ok: true, ...x }, 200];
   // 👨‍🍳 кухар: черга кухні + вибити замовлення + стоп-лист; решта — ні
+  // 🧮 Розрахунок: склад, техкарти, накладні, інвентаризація — свої права (адмін / кухар)
+  if (/^sk[A-Z]/.test(b.op || '')) return stockApi(b, env, me, { invoice: aiInvoice, card: aiCard });
   if (me.role === 'cook' && !['logout', 'state', 'menu', 'fav', 'order', 'accept', 'reject', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'printTest'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
 
   switch (b.op) {
