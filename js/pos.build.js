@@ -59,7 +59,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     photos: store.get("photos", true),
     shift: null,
     shown: /* @__PURE__ */ new Set(),
-    rep: { p: "d", pay: "", by: "", grp: "", cat: "", t: "", q: "", tab: "dishes", sort: "s" },
+    rep: { p: "d", pay: "", by: "", grp: "", cat: "", t: "", q: "", tab: "overview", sort: "s", fo: false },
     mobileMenu: false,
     data: {},
     kq: [],
@@ -1003,68 +1003,117 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     return resolver.memo.get(name);
   }
   async function loadReport() {
-    const [from, to] = perRange(S.rep.p), key = from + "|" + to;
+    const [from, to] = perRange(S.rep.p), key = from + "|" + to, [pf, pt] = prevRange(from, to), cmp = S.rep.p !== "all";
     if (S.data.rangeKey !== key) {
       S.data.range = null;
+      S.data.prev = null;
       S.data.rangeKey = key;
       renderMain();
     }
-    const [res, ks] = await Promise.all([api("report", { from, to }).catch(() => null), api("kStats", { from, to }).catch(() => null)]);
-    if (S.data.rangeKey === key) S.data.kstats = (ks == null ? void 0 : ks.list) || [];
-    if (S.data.rangeKey === key) S.data.range = res || S.data.range || { checks: [], exp: [], z: [] };
+    const [res, ks, prev] = await Promise.all([api("report", { from, to }).catch(() => null), api("kStats", { from, to }).catch(() => null), cmp ? api("report", { from: pf, to: pt }).catch(() => null) : null]);
+    if (S.data.rangeKey !== key) return;
+    S.data.kstats = (ks == null ? void 0 : ks.list) || [];
+    S.data.prev = prev && prev.checks.length ? prev : null;
+    S.data.range = res || S.data.range || { checks: [], exp: [], z: [] };
   }
+  const SECS = [["overview", "\u{1F4C8} \u041E\u0433\u043B\u044F\u0434", ["overview"]], ["sales", "\u{1F37D} \u041F\u0440\u043E\u0434\u0430\u0436\u0456", ["dishes", "cats", "groups", "tables", "hours", "days", "wd"]], ["staff", "\u{1F465} \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B", ["waiters", "tips", "ctrl", "kitchen"]], ["money", "\u{1F4B0} \u0413\u0440\u043E\u0448\u0456", ["checks", "exp", "mov", "z"]]];
+  const TABS = { dishes: "\u{1F37D} \u0421\u0442\u0440\u0430\u0432\u0438", cats: "\u{1F4C2} \u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0456\u0457", groups: "\u{1F373} \u041A\u0443\u0445\u043D\u044F/\u0431\u0430\u0440", tables: "\u{1FA91} \u0421\u0442\u043E\u043B\u0438", hours: "\u{1F550} \u0413\u043E\u0434\u0438\u043D\u0438", days: "\u{1F4C5} \u0414\u043D\u0456", wd: "\u{1F5D3} \u0414\u043D\u0456 \u0442\u0438\u0436\u043D\u044F", waiters: "\u{1F464} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0438", tips: "\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456", ctrl: "\u{1F575}\uFE0F \u041A\u043E\u043D\u0442\u0440\u043E\u043B\u044C", kitchen: "\u23F1 \u041A\u0443\u0445\u043D\u044F", checks: "\u{1F9FE} \u0427\u0435\u043A\u0438", exp: "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438", mov: "\u{1F501} \u0420\u0443\u0445 \u043A\u043E\u0448\u0442\u0456\u0432", z: "\u{1F512} Z-\u0437\u0432\u0456\u0442\u0438" };
+  const WD = ["\u041F\u043D", "\u0412\u0442", "\u0421\u0440", "\u0427\u0442", "\u041F\u0442", "\u0421\u0431", "\u041D\u0434"], wdOf = (d) => ((/* @__PURE__ */ new Date(d + "T12:00:00Z")).getUTCDay() + 6) % 7;
+  const hOrd = (h) => {
+    const n = parseInt(h, 10) || 0;
+    return n < 3 ? n + 24 : n;
+  };
+  const addDays = (d, n) => {
+    const x = /* @__PURE__ */ new Date(d + "T12:00:00Z");
+    x.setUTCDate(x.getUTCDate() + n);
+    return x.toISOString().slice(0, 10);
+  };
+  const daysIn = (a, b) => {
+    const out = [];
+    for (let d = a; d <= b && out.length < 4e3; d = addDays(d, 1)) out.push(d);
+    return out;
+  };
+  const share = (a, b) => b ? Math.round(a / b * 1e3) / 10 : 0;
+  const ACC = ["var(--accent)", "var(--blue)", "var(--purple)", "var(--green)", "var(--orange)"];
+  function prevRange(from, to) {
+    const n = daysIn(from, to).length;
+    return [addDays(from, -n), addDays(from, -1)];
+  }
+  function repChecks(r) {
+    const R = S.rep, dishF = R.grp || R.cat || R.q.trim(), q = R.q.trim().toLowerCase();
+    const dishOk = (n) => {
+      if (!dishF) return true;
+      const x = dishOf(n);
+      if (R.grp && (x == null ? void 0 : x.grp) !== R.grp) return false;
+      if (R.cat && (x == null ? void 0 : x.cat) !== R.cat) return false;
+      return !q || n.toLowerCase().includes(q);
+    };
+    const checks = ((r == null ? void 0 : r.checks) || []).filter((c) => (!R.pay || (R.pay === "card" ? c.card > 0 : c.cash > 0)) && (!R.by || (c.w || c.by) === R.by || c.by === R.by) && (!R.t || String(c.t) === R.t)).map((c) => {
+      const ds = c.dishes.filter(([n]) => dishOk(n));
+      return __spreadProps(__spreadValues({}, c), { ds, val: dishF ? ds.reduce((a, [, , s]) => a + s, 0) : c.sum });
+    }).filter((c) => !dishF || c.ds.length);
+    return { checks, dishF };
+  }
+  function repStats(r) {
+    if (!r) return null;
+    const R = S.rep, { checks, dishF } = repChecks(r), sum = (l, f) => l.reduce((a, x) => a + (f(x) || 0), 0);
+    const total = sum(checks, (c) => c.val), n = checks.length, exp = R.by || R.t || dishF || R.pay ? null : sum(r.exp, (e) => e.sum);
+    const tipOut = sum((r.mov || []).filter((m) => m.type === "tipc" || m.type === "tipk"), (m) => m.sum);
+    return { checks, dishF, total, n, avg: n ? total / n : 0, qty: sum(checks, (c) => sum(c.ds, (d) => d[1])), cash: sum(checks, (c) => c.cash), card: sum(checks, (c) => c.card), disc: sum(checks, (c) => c.disc), tip: sum(checks, (c) => c.tip), exp, tipOut, net: exp == null ? null : total - exp - tipOut };
+  }
+  const delta = (a, b, inv) => {
+    if (b == null || !isFinite(b) || !b) return "";
+    const p = Math.round((a - b) / Math.abs(b) * 100);
+    return `<em class="dl ${(inv ? -p : p) > 0 ? "up" : (inv ? -p : p) < 0 ? "down" : ""}" title="\u043F\u043E\u043F\u0435\u0440\u0435\u0434\u043D\u0456\u0439 \u043F\u0435\u0440\u0456\u043E\u0434: ${money(b)}">${p > 0 ? "\u25B2" : p < 0 ? "\u25BC" : "="} ${Math.abs(p)}%</em>`;
+  };
+  const colChart = (pts) => {
+    const max = Math.max(1, ...pts.map((p) => p[1])), step = Math.ceil(pts.length / 12);
+    return `<div class="cols">${pts.map(([l, v, t, d], i) => `<div class="c${d ? " press" : ""}"${d ? ` data-a="rDay" data-d="${d}"` : ""} title="${esc(t)}"><i style="height:${v ? Math.max(3, v / max * 86) : 0}%"></i><small>${i % step ? "" : esc(l)}</small></div>`).join("")}</div>`;
+  };
+  const barRows = (rows, unit, tot, sub) => {
+    const max = Math.max(1, ...rows.map((x) => x[1][1]));
+    return rows.length ? rows.map(([k, [qq, ss]]) => `<div class="bar"><div class="bl"><span>${esc(k)}</span><span class="muted">${sub ? sub(qq, ss) : `${qq} ${unit}`}</span><span class="muted pct">${share(ss, tot)}%</span><b class="money">${money(ss)}</b></div><i style="width:${Math.max(2, ss / max * 100)}%"></i></div>`).join("") : '<div class="muted">\u041D\u0435\u043C\u0430\u0454 \u0434\u0430\u043D\u0438\u0445 \u0437\u0430 \u0446\u0438\u043C\u0438 \u0444\u0456\u043B\u044C\u0442\u0440\u0430\u043C\u0438</div>';
+  };
   function reportsHTML() {
+    var _a2;
     const R = S.rep, [from, to] = perRange(R.p), r = S.data.range;
+    if (!SECS.some((s) => s[2].includes(R.tab))) R.tab = "overview";
+    const sec = SECS.find((s) => s[2].includes(R.tab));
     const opt = (v, l, cur) => `<option value="${esc(v)}" ${v === cur ? "selected" : ""}>${esc(l)}</option>`;
     const checks0 = r ? r.checks : [];
-    const waiters = [...new Set(checks0.map((c) => c.by).filter(Boolean))].sort(), tables = [...new Set(checks0.map((c) => c.t))].sort((a, b) => a - b);
+    const waiters = [...new Set(checks0.flatMap((c) => [c.w, c.by]).filter(Boolean))].sort(), tables = [...new Set(checks0.map((c) => c.t))].sort((a, b) => a - b);
     const cats = S.menu ? S.menu.categories.filter((c) => !R.grp || (S.groups.find((g) => g.id === R.grp) || { cats: [] }).cats.includes(c.id)) : [];
-    const filters = `<div class="filters">
-      <div class="chips">${PER.map(([k, l]) => `<button class="chip ${R.p === k ? "on" : ""}" data-a="rp" data-p="${k}">${l}</button>`).join("")}</div>
-      ${R.p === "c" ? `<div class="frow"><label>\u0417<input type="date" id="rFrom" value="${from}"></label><label>\u041F\u043E<input type="date" id="rTo" value="${to}"></label></div>` : ""}
-      <div class="frow">
+    const nF = [R.pay, R.by, R.grp, R.cat, R.t, R.q.trim()].filter(Boolean).length;
+    const dm = (d) => d.split("-").reverse().slice(0, from.slice(0, 4) === to.slice(0, 4) ? 2 : 3).join(".");
+    const head = `<div class="rhead"><div><h1>\u0417\u0432\u0456\u0442\u0438</h1><span class="muted">${from === to ? dm(from) : dm(from) + " \u2014 " + dm(to)}${S.data.prev ? " \xB7 \u043F\u043E\u0440\u0456\u0432\u043D\u044F\u043D\u043D\u044F \u0437 \u043F\u043E\u043F\u0435\u0440\u0435\u0434\u043D\u0456\u043C\u0438 " + daysIn(from, to).length + " \u0434\u043D." : ""}</span></div>
+      <button class="btn sm ${nF ? "primary" : ""}" data-a="rFo">\u2699\uFE0F \u0424\u0456\u043B\u044C\u0442\u0440\u0438${nF ? ` \xB7 ${nF}` : ""}</button></div>
+      <div class="chips scroll">${PER.map(([k, l]) => `<button class="chip ${R.p === k ? "on" : ""}" data-a="rp" data-p="${k}">${l}</button>`).join("")}</div>
+      ${R.p === "c" ? `<div class="frow" style="margin-top:10px"><label>\u0417<input type="date" id="rFrom" value="${from}"></label><label>\u041F\u043E<input type="date" id="rTo" value="${to}"></label></div>` : ""}`;
+    const filters = R.fo || nF ? `<div class="filters" style="margin-top:10px">${R.fo ? `<div class="frow">
         <label>\u041E\u043F\u043B\u0430\u0442\u0430<select data-f="pay">${opt("", "\u0423\u0441\u0456", R.pay)}${opt("cash", "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430", R.pay)}${opt("card", "\u{1F4B3} \u041A\u0430\u0440\u0442\u0430", R.pay)}</select></label>
         <label>\u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442<select data-f="by">${opt("", "\u0423\u0441\u0456", R.by)}${waiters.map((w) => opt(w, w, R.by)).join("")}</select></label>
         <label>\u0413\u0440\u0443\u043F\u0430<select data-f="grp">${opt("", "\u0423\u0441\u0435", R.grp)}${S.groups.map((g) => opt(g.id, g.name, R.grp)).join("")}</select></label>
         <label>\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0456\u044F<select data-f="cat">${opt("", "\u0423\u0441\u0456", R.cat)}${cats.map((c) => opt(c.id, c.name.uk, R.cat)).join("")}</select></label>
         <label>\u0421\u0442\u0456\u043B<select data-f="t">${opt("", "\u0423\u0441\u0456", R.t)}${tables.map((t) => opt(String(t), "\u0421\u0442\u0456\u043B " + t, R.t)).join("")}</select></label>
-        <label>\u0421\u0442\u0440\u0430\u0432\u0430<input id="rQ" placeholder="\u{1F50E} \u043D\u0430\u0437\u0432\u0430" value="${esc(R.q)}"></label>
-        ${R.pay || R.by || R.grp || R.cat || R.t || R.q ? '<button class="btn sm ghost" data-a="rReset" style="align-self:end">\u2715 \u0421\u043A\u0438\u043D\u0443\u0442\u0438</button>' : ""}
-      </div></div>`;
-    const head = `<div class="head"><h1>\u0417\u0432\u0456\u0442\u0438</h1><span class="muted">${from === to ? from : from + " \u2014 " + to}</span></div>`;
-    if (!r) return head + '<div class="muted" style="margin-bottom:14px">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>' + filters;
-    const dishF = R.grp || R.cat || R.q.trim(), q = R.q.trim().toLowerCase();
-    const dishOk = (n2) => {
-      if (!dishF) return true;
-      const x = dishOf(n2);
-      if (R.grp && (x == null ? void 0 : x.grp) !== R.grp) return false;
-      if (R.cat && (x == null ? void 0 : x.cat) !== R.cat) return false;
-      return !q || n2.toLowerCase().includes(q);
-    };
-    const checks = checks0.filter((c) => (!R.pay || (R.pay === "card" ? c.card > 0 : c.cash > 0)) && (!R.by || c.by === R.by) && (!R.t || String(c.t) === R.t)).map((c) => {
-      const ds = c.dishes.filter(([n2]) => dishOk(n2));
-      return __spreadProps(__spreadValues({}, c), { ds, val: dishF ? ds.reduce((a, [, , s]) => a + s, 0) : c.sum });
-    }).filter((c) => !dishF || c.ds.length);
-    const sum = (l, f) => l.reduce((a, x) => a + (f(x) || 0), 0);
-    const total = sum(checks, (c) => c.val), n = checks.length, qty = sum(checks, (c) => sum(c.ds, (d) => d[1]));
-    const exp = R.by || R.t || dishF || R.pay ? null : sum(r.exp, (e) => e.sum);
-    const tipOut = sum((r.mov || []).filter((m) => m.type === "tipc" || m.type === "tipk"), (m) => m.sum);
-    const W = [
-      ["\u0412\u0438\u0440\u0443\u0447\u043A\u0430", money(total), "accent"],
-      ["\u0427\u0435\u043A\u0456\u0432", n],
-      ["\u0421\u0435\u0440\u0435\u0434\u043D\u0456\u0439 \u0447\u0435\u043A", n ? money(total / n) : "\u2014"],
-      ["\u041F\u0440\u043E\u0434\u0430\u043D\u043E \u043F\u043E\u0437\u0438\u0446\u0456\u0439", qty],
-      ...!dishF ? [["\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430", money(sum(checks, (c) => c.cash))], ["\u{1F4B3} \u041A\u0430\u0440\u0442\u0430", money(sum(checks, (c) => c.card))], ["\u{1F3F7} \u0417\u043D\u0438\u0436\u043A\u0438", money(sum(checks, (c) => c.disc))], ["\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456", money(sum(checks, (c) => c.tip))]] : [],
-      ...exp != null ? [["\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438", money(exp)], ...tipOut ? [["\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456 \u0432\u0438\u0434\u0430\u043D\u043E", money(tipOut)]] : [], ["\u0427\u0438\u0441\u0442\u0438\u043C\u0438", money(total - exp - tipOut), "green"]] : []
-    ];
-    const widgets = `<div class="widgets">${W.map(([l, v, c]) => `<div class="widget ${c || ""}"><span>${l}</span><b class="money">${v}</b></div>`).join("")}</div>`;
-    const grpBy = (keyF, valF = (c) => c.val) => {
+        <label>\u0421\u0442\u0440\u0430\u0432\u0430<input id="rQ" placeholder="\u{1F50E} \u043D\u0430\u0437\u0432\u0430" value="${esc(R.q)}"></label></div>` : ""}
+        ${nF ? `<div class="chips">${[R.pay && (R.pay === "card" ? "\u{1F4B3} \u041A\u0430\u0440\u0442\u0430" : "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430"), R.by && "\u{1F464} " + R.by, R.grp && (S.groups.find((g) => g.id === R.grp) || {}).name, R.cat && (((_a2 = cats.find((c) => c.id === R.cat)) == null ? void 0 : _a2.name.uk) || R.cat), R.t && "\u0421\u0442\u0456\u043B " + R.t, R.q.trim() && "\u{1F50E} " + R.q.trim()].filter(Boolean).map((x) => `<span class="chip on sm">${esc(x)}</span>`).join("")}<button class="chip" data-a="rReset">\u2715 \u0421\u043A\u0438\u043D\u0443\u0442\u0438</button></div>` : ""}</div>` : "";
+    if (!r) return head + filters + '<div class="muted" style="margin:16px 4px">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
+    const st = repStats(r), pv = repStats(S.data.prev), { checks, dishF } = st, gross = st.total + st.disc;
+    const kpi = (l, v, raw, pr, cls) => `<div class="kpi ${cls || ""}"><span>${l}</span><b class="money">${v}</b>${pv ? delta(raw, pr) : ""}</div>`;
+    const kpis = `<div class="kpis">${kpi("\u0412\u0438\u0440\u0443\u0447\u043A\u0430", money(st.total), st.total, pv == null ? void 0 : pv.total, "accent")}${kpi("\u0427\u0435\u043A\u0456\u0432", st.n, st.n, pv == null ? void 0 : pv.n)}${kpi("\u0421\u0435\u0440\u0435\u0434\u043D\u0456\u0439 \u0447\u0435\u043A", st.n ? money(st.avg) : "\u2014", st.avg, pv == null ? void 0 : pv.avg)}${st.net != null ? kpi("\u0427\u0438\u0441\u0442\u0438\u043C\u0438", money(st.net), st.net, pv == null ? void 0 : pv.net, "green") : kpi("\u041F\u0440\u043E\u0434\u0430\u043D\u043E \u043F\u043E\u0437\u0438\u0446\u0456\u0439", st.qty, st.qty, pv == null ? void 0 : pv.qty)}</div>`;
+    const cp = share(st.cash, st.cash + st.card);
+    const pills = `<div class="pills">${!dishF ? `<div class="pill wide"><div class="split"><i style="width:${cp}%"></i></div><div class="split-l"><span>\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 <b class="money">${money(st.cash)}</b> <span class="muted">${cp}%</span></span><span>\u{1F4B3} \u041A\u0430\u0440\u0442\u0430 <b class="money">${money(st.card)}</b> <span class="muted">${st.cash + st.card ? Math.round((100 - cp) * 10) / 10 : 0}%</span></span></div></div>
+      <div class="pill"><span>\u{1F3F7} \u0417\u043D\u0438\u0436\u043A\u0438</span><b class="money">${money(st.disc)}</b><small>${share(st.disc, gross)}% \u0432\u0456\u0434 \u0441\u0443\u043C\u0438</small></div><div class="pill"><span>\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456</span><b class="money">${money(st.tip)}</b>${st.tipOut ? `<small>\u0432\u0438\u0434\u0430\u043D\u043E ${money(st.tipOut)}</small>` : ""}</div>` : ""}
+      ${st.exp != null ? `<div class="pill"><span>\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438</span><b class="money">${money(st.exp)}</b>${(pv == null ? void 0 : pv.exp) != null ? delta(st.exp, pv.exp, 1) : ""}</div>` : ""}
+      <div class="pill"><span>\u{1F37D} \u041F\u043E\u0437\u0438\u0446\u0456\u0439</span><b>${st.qty}</b><small>${st.n ? (st.qty / st.n).toFixed(1) : 0} \u0443 \u0447\u0435\u043A\u0443</small></div></div>`;
+    const nav = `<div class="seg rsec">${SECS.map(([k, l, tabs]) => `<button class="${sec[0] === k ? "on" : ""}" data-a="rSec" data-s="${k}">${l}</button>`).join("")}</div>` + (sec[2].length > 1 ? `<div class="chips scroll sub">${sec[2].map((k) => `<button class="chip ${R.tab === k ? "on" : ""}" data-a="rTab" data-t="${k}">${TABS[k]}</button>`).join("")}</div>` : "");
+    const grpBy = (keyF) => {
       const m = /* @__PURE__ */ new Map();
       checks.forEach((c) => {
         const k = keyF(c);
         const a = m.get(k) || [0, 0];
         a[0]++;
-        a[1] += valF(c);
+        a[1] += c.val;
         m.set(k, a);
       });
       return [...m];
@@ -1080,57 +1129,134 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       }));
       return [...m];
     };
-    const TABS = { dishes: "\u{1F37D} \u0421\u0442\u0440\u0430\u0432\u0438", cats: "\u{1F4C2} \u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0456\u0457", groups: "\u{1F373} \u041A\u0443\u0445\u043D\u044F/\u0431\u0430\u0440", waiters: "\u{1F464} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0438", tips: "\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456", hours: "\u{1F550} \u0413\u043E\u0434\u0438\u043D\u0438", days: "\u{1F4C5} \u0414\u043D\u0456", tables: "\u{1FA91} \u0421\u0442\u043E\u043B\u0438", checks: "\u{1F9FE} \u0427\u0435\u043A\u0438", exp: "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438", mov: "\u{1F501} \u0420\u0443\u0445 \u043A\u043E\u0448\u0442\u0456\u0432", z: "\u{1F512} Z-\u0437\u0432\u0456\u0442\u0438", ctrl: "\u{1F575}\uFE0F \u041A\u043E\u043D\u0442\u0440\u043E\u043B\u044C", kitchen: "\u23F1 \u041A\u0443\u0445\u043D\u044F" };
-    let rows, unit = "\u0447\u0435\u043A.", sortable = false;
+    const grpName = (nm) => (S.groups.find((g) => {
+      var _a3;
+      return g.id === ((_a3 = dishOf(nm)) == null ? void 0 : _a3.grp);
+    }) || { name: "\u{1F9E9} \u0406\u043D\u0448\u0435" }).name;
+    const days = daysIn(from, to), byDay = new Map(grpBy((c) => c.d)), byHour = grpBy((c) => String(c.at || "").slice(0, 2)).sort((a, b) => hOrd(a[0]) - hOrd(b[0]));
+    const waiterOf = (c) => c.w || c.by || "\u2014";
     const T = R.tab;
+    let body = "";
+    if (T === "overview") {
+      let chart, ctitle;
+      if (days.length === 1) {
+        ctitle = "\u{1F550} \u0412\u0438\u0440\u0443\u0447\u043A\u0430 \u043F\u043E \u0433\u043E\u0434\u0438\u043D\u0430\u0445";
+        const hs = byHour.map((x) => hOrd(x[0])), lo = Math.min(...hs, 12), hi = Math.max(...hs, 22), m = new Map(byHour.map(([h, v]) => [hOrd(h), v]));
+        chart = colChart([...Array(hi - lo + 1)].map((_, i) => {
+          const h = lo + i, v = m.get(h) || [0, 0], hl = String(h % 24).padStart(2, "0");
+          return [hl, v[1], `${hl}:00 \xB7 ${money(v[1])} \xB7 ${v[0]} \u0447\u0435\u043A.`];
+        }));
+      } else if (days.length <= 62) {
+        ctitle = "\u{1F4C5} \u0412\u0438\u0440\u0443\u0447\u043A\u0430 \u043F\u043E \u0434\u043D\u044F\u0445";
+        chart = colChart(days.map((d) => {
+          const v = byDay.get(d) || [0, 0];
+          return [d.slice(8), v[1], `${WD[wdOf(d)]} ${dm(d)} \xB7 ${money(v[1])} \xB7 ${v[0]} \u0447\u0435\u043A.`, d];
+        }));
+      } else {
+        ctitle = "\u{1F4C5} \u0412\u0438\u0440\u0443\u0447\u043A\u0430 \u043F\u043E \u043C\u0456\u0441\u044F\u0446\u044F\u0445";
+        const m = /* @__PURE__ */ new Map();
+        checks.forEach((c) => {
+          const k = c.d.slice(0, 7);
+          m.set(k, (m.get(k) || 0) + c.val);
+        });
+        const ms = [...new Set(days.map((d) => d.slice(0, 7)))];
+        chart = colChart(ms.map((k) => [k.slice(5) + "." + k.slice(2, 4), m.get(k) || 0, `${k} \xB7 ${money(m.get(k) || 0)}`]));
+      }
+      let heat = "";
+      if (days.length >= 7 && checks.length) {
+        const cnt = Array(7).fill(0);
+        days.forEach((d) => cnt[wdOf(d)]++);
+        const hs = [...new Set(checks.map((c) => hOrd(String(c.at || "").slice(0, 2))))].sort((a, b) => a - b), lo = hs[0], hi = hs[hs.length - 1], g = {};
+        checks.forEach((c) => {
+          const k = wdOf(c.d) + ":" + hOrd(String(c.at || "").slice(0, 2));
+          g[k] = (g[k] || 0) + c.val;
+        });
+        const avgOf = (w, h) => cnt[w] ? (g[w + ":" + h] || 0) / cnt[w] : 0, mx = Math.max(1, ...Object.keys(g).map((k) => avgOf(+k.split(":")[0], +k.split(":")[1])));
+        const hr = [...Array(hi - lo + 1)].map((_, i) => lo + i);
+        heat = `<div class="card wide"><h3>\u{1F525} \u041A\u043E\u043B\u0438 \u043D\u0430\u0439\u0431\u0456\u043B\u044C\u0448\u0435 \u0437\u0430\u0440\u043E\u0431\u043B\u044F\u0454\u043C\u043E <span class="muted">\xB7 \u0441\u0435\u0440\u0435\u0434\u043D\u044F \u0432\u0438\u0440\u0443\u0447\u043A\u0430 \u0437\u0430 \u0433\u043E\u0434\u0438\u043D\u0443</span></h3><div class="heat" style="--hc:${hr.length}"><span></span>${hr.map((h) => `<small>${h % 3 ? "" : String(h % 24).padStart(2, "0")}</small>`).join("")}
+          ${WD.map((w, wi) => `<b>${w}</b>${hr.map((h) => {
+          const v = avgOf(wi, h);
+          return `<i style="--a:${(v / mx).toFixed(2)}" title="${w} ${String(h % 24).padStart(2, "0")}:00 \xB7 ~${money(v)}"></i>`;
+        }).join("")}`).join("")}</div></div>`;
+      }
+      const grps = dishAgg(grpName).sort((a, b) => b[1][1] - a[1][1]), gt = grps.reduce((a, x) => a + x[1][1], 0);
+      const grpCard = `<div class="card"><h3>\u{1F373} \u0429\u043E \u043F\u0440\u043E\u0434\u0430\u0454\u043C\u043E</h3>${grps.length ? `<div class="stack">${grps.map(([k, [, s]], i) => `<i style="width:${share(s, gt)}%;background:${ACC[i % 5]}" title="${esc(k)} ${share(s, gt)}%"></i>`).join("")}</div>
+        ${grps.map(([k, [q, s]], i) => `<div class="kv"><span><i class="dot" style="background:${ACC[i % 5]}"></i>${esc(k)} <span class="muted">\xB7 ${q} \u0448\u0442</span></span><span><b class="money">${money(s)}</b> <span class="muted">${share(s, gt)}%</span></span></div>`).join("")}` : '<div class="muted">\u041D\u0435\u043C\u0430\u0454 \u043F\u0440\u043E\u0434\u0430\u0436\u0456\u0432</div>'}</div>`;
+      const ws2 = grpBy(waiterOf).sort((a, b) => b[1][1] - a[1][1]).slice(0, 6), wmax = Math.max(1, ...ws2.map((x) => x[1][1]));
+      const wCard = `<div class="card"><h3>\u{1F464} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0438</h3>${ws2.length ? ws2.map(([k, [q, s]], i) => `<div class="bar"><div class="bl"><span>${["\u{1F947}", "\u{1F948}", "\u{1F949}"][i] || ""} ${esc(k)}<br><small class="muted">${q} \u0447\u0435\u043A. \xB7 \u0441\u0435\u0440. \u0447\u0435\u043A ${money(s / q)}</small></span><b class="money">${money(s)}</b></div><i style="width:${Math.max(2, s / wmax * 100)}%"></i></div>`).join("") : '<div class="muted">\u041D\u0435\u043C\u0430\u0454 \u0434\u0430\u043D\u0438\u0445</div>'}</div>`;
+      const best = [...byDay].sort((a, b) => b[1][1] - a[1][1])[0], peak = [...byHour].sort((a, b) => b[1][1] - a[1][1])[0], bt = grpBy((c) => c.t).sort((a, b) => b[1][1] - a[1][1])[0];
+      const vs = (r.voids || []).filter((v) => !v.table), vsum = vs.reduce((a, v) => a + v.sum, 0), ks = S.data.kstats || [];
+      const ins = [
+        best && days.length > 1 && ["\u{1F3C6} \u041D\u0430\u0439\u043A\u0440\u0430\u0449\u0438\u0439 \u0434\u0435\u043D\u044C", `${WD[wdOf(best[0])]} ${dm(best[0])}`, money(best[1][1])],
+        peak && ["\u23F0 \u041F\u0456\u043A\u043E\u0432\u0430 \u0433\u043E\u0434\u0438\u043D\u0430", `${peak[0]}:00\u2013${String((+peak[0] + 1) % 24).padStart(2, "0")}:00`, money(peak[1][1])],
+        bt && ["\u{1FA91} \u041D\u0430\u0439\u043F\u0440\u0438\u0431\u0443\u0442\u043A\u043E\u0432\u0456\u0448\u0438\u0439 \u0441\u0442\u0456\u043B", `\u0421\u0442\u0456\u043B ${bt[0]} \xB7 ${bt[1][0]} \u0447\u0435\u043A.`, money(bt[1][1])],
+        days.length > 1 && ["\u{1F4CA} \u0412 \u0441\u0435\u0440\u0435\u0434\u043D\u044C\u043E\u043C\u0443 \u0437\u0430 \u0434\u0435\u043D\u044C", `${(st.n / days.length).toFixed(1)} \u0447\u0435\u043A.`, money(st.total / days.length)],
+        ["\u{1F6AB} \u0421\u043A\u0430\u0441\u0443\u0432\u0430\u043D\u043D\u044F", `${vs.length} \u043F\u043E\u0437. \xB7 ${share(vsum, st.total + vsum)}% \u043F\u0440\u043E\u0434\u0430\u0436\u0456\u0432`, money(vsum)],
+        ks.length && ["\u23F1 \u041A\u0443\u0445\u043D\u044F, \u0441\u0435\u0440. \u0447\u0430\u0441", `${ks.length} \u0437\u0430\u043C\u043E\u0432\u043B. \xB7 \u043F\u043E\u043D\u0430\u0434 15 \u0445\u0432: ${ks.filter((x) => x.mins > 15).length}`, Math.round(ks.reduce((a, x) => a + x.mins, 0) / ks.length) + " \u0445\u0432"]
+      ].filter(Boolean);
+      const insCard = `<div class="card"><h3>\u{1F4A1} \u0412\u0438\u0441\u043D\u043E\u0432\u043A\u0438</h3>${ins.map(([l, s, v]) => `<div class="kv"><span>${l}<br><small class="muted">${esc(s)}</small></span><b class="money">${v}</b></div>`).join("")}</div>`;
+      const top = dishAgg((nm) => nm).sort((x, y) => y[1][0] - x[1][0] || y[1][1] - x[1][1]).slice(0, 10), tmax = Math.max(1, ...top.map((x) => x[1][0]));
+      const topCard = `<div class="card"><h3>\u{1F3C6} \u0422\u043E\u043F \u0441\u0442\u0440\u0430\u0432</h3>${top.length ? top.map(([k, [qq, ss]], i) => `<div class="bar"><div class="bl"><span>${["\u{1F947}", "\u{1F948}", "\u{1F949}"][i] || `<span class="muted">${i + 1}.</span>`} ${esc(k)}</span><b>${qq} \u0448\u0442</b><span class="muted money">${money(ss)}</span></div><i style="width:${Math.max(2, qq / tmax * 100)}%"></i></div>`).join("") : '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454 \u043F\u0440\u043E\u0434\u0430\u0436\u0456\u0432 \u0437\u0430 \u0446\u0435\u0439 \u043F\u0435\u0440\u0456\u043E\u0434</div>'}</div>`;
+      return head + filters + kpis + pills + nav + `<div class="dash"><div class="card wide"><h3>${ctitle}${days.length > 1 && days.length <= 62 ? ' <span class="muted">\xB7 \u043D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \u0434\u0435\u043D\u044C \u2014 \u0432\u0456\u0434\u043A\u0440\u0438\u0454\u0442\u044C\u0441\u044F \u0437\u0432\u0456\u0442 \u0437\u0430 \u043D\u044C\u043E\u0433\u043E</span>' : ""}</h3>${chart}</div>${heat}${insCard}${grpCard}${topCard}${wCard}</div>`;
+    }
+    let rows, unit = "\u0447\u0435\u043A.", sortable = false, sub;
     if (T === "dishes") {
       rows = dishAgg((nm) => nm);
       unit = "\u0448\u0442";
       sortable = true;
     } else if (T === "cats") {
       rows = dishAgg((nm) => {
-        var _a2;
-        return ((_a2 = dishOf(nm)) == null ? void 0 : _a2.cname) || "\u0406\u043D\u0448\u0435";
+        var _a3;
+        return ((_a3 = dishOf(nm)) == null ? void 0 : _a3.cname) || "\u0406\u043D\u0448\u0435";
       });
       unit = "\u0448\u0442";
       sortable = true;
     } else if (T === "groups") {
-      rows = dishAgg((nm) => (S.groups.find((g) => {
-        var _a2;
-        return g.id === ((_a2 = dishOf(nm)) == null ? void 0 : _a2.grp);
-      }) || { name: "\u0406\u043D\u0448\u0435" }).name);
+      rows = dishAgg(grpName);
       unit = "\u0448\u0442";
-    } else if (T === "waiters") rows = grpBy((c) => c.by || "\u2014");
-    else if (T === "tips") {
+    } else if (T === "waiters") {
+      rows = grpBy(waiterOf);
+      sub = (q, s) => `${q} \u0447\u0435\u043A. \xB7 \u0441\u0435\u0440. ${money(s / q)}`;
+    } else if (T === "tips") {
       const m = /* @__PURE__ */ new Map();
-      checks.forEach((c) => Object.entries(c.tipSplit || (c.tip ? { [c.by || "\u2014"]: c.tip } : {})).forEach(([n2, v]) => {
-        const a = m.get(n2) || [0, 0];
+      checks.forEach((c) => Object.entries(c.tipSplit || (c.tip ? { [c.by || "\u2014"]: c.tip } : {})).forEach(([n, v]) => {
+        const a = m.get(n) || [0, 0];
         a[0]++;
         a[1] += v;
-        m.set(n2, a);
+        m.set(n, a);
       }));
       rows = [...m].filter((x) => x[1][1] > 0);
-      unit = "\u0447\u0435\u043A.";
-    } else if (T === "hours") rows = grpBy((c) => String(c.at || "").slice(0, 2) + ":00").sort((a, b) => a[0].localeCompare(b[0]));
-    else if (T === "days") rows = grpBy((c) => c.d).sort((a, b) => a[0].localeCompare(b[0]));
-    else if (T === "tables") rows = grpBy((c) => "\u0421\u0442\u0456\u043B " + c.t).sort((a, b) => parseInt(a[0].slice(5)) - parseInt(b[0].slice(5)));
-    let body;
+    } else if (T === "hours") rows = byHour.map(([h, v]) => [h + ":00", v]);
+    else if (T === "days") {
+      rows = [...byDay].sort((a, b) => a[0].localeCompare(b[0])).map(([d, v]) => [`${WD[wdOf(d)]} ${dm(d)}`, v]);
+    } else if (T === "wd") {
+      const cnt = Array(7).fill(0);
+      days.forEach((d) => cnt[wdOf(d)]++);
+      const m = grpBy((c) => wdOf(c.d));
+      rows = WD.map((w, i) => [w, (m.find((x) => x[0] === i) || [0, [0, 0]])[1]]).filter((x) => cnt[WD.indexOf(x[0])]);
+      sub = (q, s) => {
+        return `${q} \u0447\u0435\u043A.`;
+      };
+      body = `<div class="muted" style="margin-bottom:8px">\u0421\u0435\u0440\u0435\u0434\u043D\u044F \u0432\u0438\u0440\u0443\u0447\u043A\u0430 \u0437\u0430 \u043E\u0434\u0438\u043D \u0442\u0430\u043A\u0438\u0439 \u0434\u0435\u043D\u044C \u2014 \u0443 \u0434\u0443\u0436\u043A\u0430\u0445</div>`;
+      const cntOf = (w) => cnt[WD.indexOf(w)];
+      rows = rows.map(([w, v]) => [`${w} (\u0441\u0435\u0440. ${money(v[1] / cntOf(w))})`, v]);
+    } else if (T === "tables") rows = grpBy((c) => "\u0421\u0442\u0456\u043B " + c.t).sort((a, b) => parseInt(a[0].slice(5)) - parseInt(b[0].slice(5)));
     if (rows) {
-      if (!["hours", "days", "tables"].includes(T)) rows.sort((a, b) => R.sort === "q" && sortable ? b[1][0] - a[1][0] : b[1][1] - a[1][1]);
-      const max = Math.max(1, ...rows.map((x) => x[1][1]));
-      body = rows.length ? rows.map(([k, [qq, ss]]) => `<div class="bar"><div class="bl"><span>${esc(k)}</span><span class="muted">${qq} ${unit}</span><b class="money">${money(ss)}</b></div><i style="width:${Math.max(2, ss / max * 100)}%"></i></div>`).join("") : '<div class="muted">\u041D\u0435\u043C\u0430\u0454 \u0434\u0430\u043D\u0438\u0445 \u0437\u0430 \u0446\u0438\u043C\u0438 \u0444\u0456\u043B\u044C\u0442\u0440\u0430\u043C\u0438</div>';
+      if (!["hours", "days", "tables", "wd"].includes(T)) rows.sort((a, b) => R.sort === "q" && sortable ? b[1][0] - a[1][0] : b[1][1] - a[1][1]);
+      const tot = rows.reduce((a, x) => a + x[1][1], 0);
+      body += barRows(rows, unit, tot, sub);
       if (sortable) body = `<div class="chips" style="margin-bottom:10px"><button class="chip ${R.sort !== "q" ? "on" : ""}" data-a="rSort" data-s="s">\u0417\u0430 \u0441\u0443\u043C\u043E\u044E</button><button class="chip ${R.sort === "q" ? "on" : ""}" data-a="rSort" data-s="q">\u0417\u0430 \u043A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044E</button></div>` + body;
-    } else if (T === "checks") body = checks.length ? [...checks].reverse().slice(0, 300).map((c) => `<div class="kv"><span>${c.d.slice(5)} ${c.at} \xB7 \u0441\u0442\u0456\u043B ${c.t} \xB7 ${esc(c.by)} ${c.card ? "\u{1F4B3}" : "\u{1F4B5}"}${c.disc ? " \u{1F3F7}" : ""}<br><small class="muted">${c.ds.map(([nm, qq]) => `${qq}\xD7 ${esc(nm)}`).join(", ")}</small></span><b class="money">${money(c.val)}</b></div>`).join("") : '<div class="muted">\u041D\u0435\u043C\u0430\u0454 \u0447\u0435\u043A\u0456\u0432</div>';
+    } else if (T === "checks") body = checks.length ? [...checks].reverse().slice(0, 300).map((c) => `<div class="kv"><span>${c.d.slice(5)} ${c.at} \xB7 \u0441\u0442\u0456\u043B ${c.t} \xB7 ${esc(waiterOf(c))} ${c.card ? "\u{1F4B3}" : "\u{1F4B5}"}${c.disc ? " \u{1F3F7}" : ""}<br><small class="muted">${c.ds.map(([nm, qq]) => `${qq}\xD7 ${esc(nm)}`).join(", ")}</small></span><b class="money">${money(c.val)}</b></div>`).join("") : '<div class="muted">\u041D\u0435\u043C\u0430\u0454 \u0447\u0435\u043A\u0456\u0432</div>';
     else if (T === "exp") body = r.exp.length ? r.exp.map((e) => `<div class="kv"><span>${e.d.slice(5)} ${e.at} ${e.src === "card" ? "\u{1F4B3}" : "\u{1F4B5}"} ${esc(e.note)} <span class="muted">${esc(e.by)}</span></span><b class="money">${money(e.sum)}</b></div>`).join("") : '<div class="muted">\u0412\u0438\u0442\u0440\u0430\u0442 \u043D\u0435\u043C\u0430\u0454</div>';
     else if (T === "mov") body = (r.mov || []).length ? r.mov.map((m) => `<div class="kv"><span>${m.d.slice(5)} ${m.at} ${MOVE[m.type]} ${esc(m.note)} <span class="muted">${esc(m.by)}</span></span><b class="money">${money(m.sum)}</b></div>`).join("") : '<div class="muted">\u0420\u0443\u0445\u0443 \u043A\u043E\u0448\u0442\u0456\u0432 \u043D\u0435\u043C\u0430\u0454</div>';
     else if (T === "z") body = r.z.length ? [...r.z].reverse().map((z) => `<div class="kv"><span>${new Date(z.opened).toLocaleString("uk-UA", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} \u2014 ${new Date(z.closed).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })} \xB7 ${z.checks} \u0447\u0435\u043A. \xB7 ${esc(z.closedBy)}${z.diff ? ` \xB7 <b style="color:var(--red)">\u0440\u0456\u0437\u043D\u0438\u0446\u044F ${z.diff > 0 ? "+" : ""}${money(z.diff)}</b>` : ""}</span><b class="money">${money(z.total)}</b></div>`).join("") : '<div class="muted">Z-\u0437\u0432\u0456\u0442\u0456\u0432 \u0437\u0430 \u043F\u0435\u0440\u0456\u043E\u0434 \u043D\u0435\u043C\u0430\u0454</div>';
     else if (T === "kitchen") {
       const L = (S.data.kstats || []).filter((x) => !R.t || String(x.t) === R.t), avg = (l) => l.length ? l.reduce((a, x) => a + x.mins, 0) / l.length : 0, f = (m) => m ? `${Math.round(m)} \u0445\u0432` : "\u2014";
       const byD = /* @__PURE__ */ new Map();
-      L.forEach((x) => x.items.forEach(([n2]) => {
-        const a = byD.get(n2) || [];
+      L.forEach((x) => x.items.forEach(([n]) => {
+        const a = byD.get(n) || [];
         a.push(x.mins);
-        byD.set(n2, a);
+        byD.set(n, a);
       }));
       const byH = /* @__PURE__ */ new Map();
       L.forEach((x) => {
@@ -1140,13 +1266,14 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         byH.set(h, a);
       });
       const row = (k, a) => `<div class="kv"><span>${esc(k)} <span class="muted">\xB7 ${a.length}</span></span><b>${f(a.reduce((s, m) => s + m, 0) / a.length)}</b></div>`;
-      body = L.length ? `<div class="widgets"><div class="widget"><span>\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u044C \u043A\u0443\u0445\u043D\u0456</span><b>${L.length}</b></div><div class="widget accent"><span>\u0421\u0435\u0440\u0435\u0434\u043D\u0456\u0439 \u0447\u0430\u0441</span><b>${f(avg(L))}</b></div><div class="widget"><span>\u041D\u0430\u0439\u0434\u043E\u0432\u0448\u0435</span><b>${f(Math.max(...L.map((x) => x.mins)))}</b></div><div class="widget ${L.filter((x) => x.mins > 15).length ? "red" : "green"}"><span>\u041F\u043E\u043D\u0430\u0434 15 \u0445\u0432</span><b>${L.filter((x) => x.mins > 15).length}</b></div></div>
+      body = L.length ? `<div class="kpis"><div class="kpi"><span>\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u044C \u043A\u0443\u0445\u043D\u0456</span><b>${L.length}</b></div><div class="kpi accent"><span>\u0421\u0435\u0440\u0435\u0434\u043D\u0456\u0439 \u0447\u0430\u0441</span><b>${f(avg(L))}</b></div><div class="kpi"><span>\u041D\u0430\u0439\u0434\u043E\u0432\u0448\u0435</span><b>${f(Math.max(...L.map((x) => x.mins)))}</b></div><div class="kpi ${L.filter((x) => x.mins > 15).length ? "red" : "green"}"><span>\u041F\u043E\u043D\u0430\u0434 15 \u0445\u0432</span><b>${L.filter((x) => x.mins > 15).length}</b></div></div>
         <h3 style="margin:16px 0 8px">\u041F\u043E \u0441\u0442\u0440\u0430\u0432\u0430\u0445 (\u0441\u0435\u0440. \u0447\u0430\u0441)</h3>${[...byD].sort((a, b) => b[1].length - a[1].length).slice(0, 40).map(([k, a]) => row(k, a)).join("")}
-        <h3 style="margin:16px 0 8px">\u041F\u043E \u0433\u043E\u0434\u0438\u043D\u0430\u0445</h3>${[...byH].sort((a, b) => a[0].localeCompare(b[0])).map(([k, a]) => row(k, a)).join("")}` : '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454 \u0433\u043E\u0442\u043E\u0432\u0438\u0445 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u044C \u0437 \u043A\u0443\u0445\u043E\u043D\u043D\u043E\u0433\u043E \u0435\u043A\u0440\u0430\u043D\u0430</div>';
+        <h3 style="margin:16px 0 8px">\u041F\u043E \u0433\u043E\u0434\u0438\u043D\u0430\u0445</h3>${[...byH].sort((a, b) => hOrd(a[0]) - hOrd(b[0])).map(([k, a]) => row(k, a)).join("")}` : '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454 \u0433\u043E\u0442\u043E\u0432\u0438\u0445 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u044C \u0437 \u043A\u0443\u0445\u043E\u043D\u043D\u043E\u0433\u043E \u0435\u043A\u0440\u0430\u043D\u0430</div>';
     } else if (T === "ctrl") {
-      const vs = (r.voids || []).filter((v) => (!R.by || v.by === R.by) && (!R.t || String(v.t) === R.t)), W2 = {};
-      const w = (nm) => W2[nm || "\u2014"] = W2[nm || "\u2014"] || { name: nm || "\u2014", n: 0, s: 0, vN: 0, vS: 0, tN: 0, tS: 0, dN: 0, dS: 0, dMax: 0, tip: 0 };
+      const vs = (r.voids || []).filter((v) => (!R.by || v.by === R.by) && (!R.t || String(v.t) === R.t)), W = {};
+      const w = (nm) => W[nm || "\u2014"] = W[nm || "\u2014"] || { name: nm || "\u2014", n: 0, s: 0, vN: 0, vS: 0, tN: 0, tS: 0, dN: 0, dS: 0, dMax: 0, tip: 0 };
       checks.forEach((c) => {
+        var _a3;
         const x = w(c.by);
         x.n++;
         x.s += c.sum;
@@ -1155,7 +1282,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
           x.dS += c.disc;
           x.dMax = Math.max(x.dMax, c.pct || 0);
         }
-        x.tip += c.tip || 0;
+        const tn = waiterOf(c), tv = (_a3 = (c.tipSplit || {})[tn]) != null ? _a3 : c.tipSplit ? 0 : c.tip || 0;
+        if (tv) w(tn).tip += tv;
       });
       vs.forEach((v) => {
         const x = w(v.by);
@@ -1167,7 +1295,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
           x.vS += v.sum;
         }
       });
-      const ws2 = Object.values(W2).sort((a, b) => b.vS + b.dS + b.tS - a.vS - a.dS - a.tS);
+      const ws2 = Object.values(W).sort((a, b) => b.vS + b.dS + b.tS - a.vS - a.dS - a.tS);
       const rm = (r.removed || []).filter((x) => !R.t || String(x.t) === R.t);
       body = (ws2.length ? `<div class="ctrl">${ws2.map((x) => {
         const pct = x.s + x.vS ? Math.round(x.vS / (x.s + x.vS) * 1e3) / 10 : 0, bad = pct >= 5 || x.dMax > 20 || x.tN;
@@ -1176,9 +1304,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
           <span>\u{1F3F7} \u0417\u043D\u0438\u0436\u043A\u0438<b>${x.dN} \xB7 ${money(x.dS)}</b><small>${x.dMax ? "\u043C\u0430\u043A\u0441 " + x.dMax + "%" : "\u2014"}</small></span><span>\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456<b>${money(x.tip)}</b></span></div></div>`;
       }).join("")}</div>` : '<div class="muted">\u041D\u0435\u043C\u0430\u0454 \u0434\u0430\u043D\u0438\u0445</div>') + `<h3 style="margin:18px 0 8px">\u{1F6AB} \u0416\u0443\u0440\u043D\u0430\u043B \u0441\u043A\u0430\u0441\u0443\u0432\u0430\u043D\u044C</h3>` + (vs.length ? [...vs].reverse().slice(0, 300).map((v) => `<div class="kv"><span>${v.d.slice(5)} ${v.at} \xB7 \u0441\u0442\u0456\u043B ${v.t} \xB7 <b>${esc(v.by)}</b> \xB7 ${esc(v.name)}<br><small class="muted">\u2753 ${esc(v.reason)}</small></span><b class="money" style="color:var(--red)">\u2212${money(v.sum)}</b></div>`).join("") : '<div class="muted">\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u043D\u044C \u043D\u0435\u043C\u0430\u0454 \u{1F44D}</div>') + (rm.length ? `<h3 style="margin:18px 0 8px">\u{1F9F9} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u0456 \u0437 \u0432\u0438\u0440\u0443\u0447\u043A\u0438</h3>` + rm.map((x) => `<div class="kv"><span>${x.d.slice(5)} ${x.at} \xB7 \u0441\u0442\u0456\u043B ${x.t} \xB7 ${esc(x.by)}</span><b class="money">${money(x.sum)}</b></div>`).join("") : "");
     }
-    const top = dishAgg((nm) => nm).sort((x, y) => y[1][0] - x[1][0] || y[1][1] - x[1][1]).slice(0, 10), tmax = Math.max(1, ...top.map((x) => x[1][0]));
-    const topHTML = `<div class="card top"><h3>\u{1F3C6} \u0422\u043E\u043F \u0441\u0442\u0440\u0430\u0432</h3>${top.length ? top.map(([k, [qq, ss]], i) => `<div class="bar"><div class="bl"><span>${["\u{1F947}", "\u{1F948}", "\u{1F949}"][i] || `<span class="muted">${i + 1}.</span>`} ${esc(k)}</span><b>${qq} \u0448\u0442</b><span class="muted money">${money(ss)}</span></div><i style="width:${Math.max(2, qq / tmax * 100)}%"></i></div>`).join("") : '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454 \u043F\u0440\u043E\u0434\u0430\u0436\u0456\u0432 \u0437\u0430 \u0446\u0435\u0439 \u043F\u0435\u0440\u0456\u043E\u0434</div>'}</div>`;
-    return head + widgets + filters + `<div class="seg wrap" style="margin:14px 0 10px">${Object.entries(TABS).map(([k, l]) => `<button class="${T === k ? "on" : ""}" data-a="rTab" data-t="${k}">${l}</button>`).join("")}</div><div class="card">${body}</div>` + topHTML;
+    return head + filters + kpis + pills + nav + `<div class="card">${body}</div>`;
   }
   function menuHTML() {
     if (!S.menu) return '<div class="head"><h1>\u041C\u0435\u043D\u044E</h1></div><div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
@@ -1325,7 +1451,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     toastT = setTimeout(() => d.remove(), 2600);
   }
   document.addEventListener("click", async (e) => {
-    var _a2, _b, _c, _d;
+    var _a2, _b, _c, _d, _e;
     const el = e.target.closest("[data-a]");
     if (!el) return;
     const a = el.dataset.a, t = S.open;
@@ -1482,7 +1608,23 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         break;
       case "rTab":
         S.rep.tab = el.dataset.t;
+        ((_e = S.rep).last || (_e.last = {}))[SECS.find((x) => x[2].includes(el.dataset.t))[0]] = el.dataset.t;
         renderMain();
+        break;
+      case "rSec": {
+        const sc = SECS.find((x) => x[0] === el.dataset.s);
+        S.rep.tab = (S.rep.last || {})[sc[0]] || sc[2][0];
+        renderMain();
+        break;
+      }
+      case "rFo":
+        S.rep.fo = !S.rep.fo;
+        renderMain();
+        break;
+      case "rDay":
+        Object.assign(S.rep, { p: "c", from: el.dataset.d, to: el.dataset.d });
+        loadView();
+        $("#main").scrollTop = 0;
         break;
       case "rSort":
         S.rep.sort = el.dataset.s;

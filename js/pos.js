@@ -11,7 +11,7 @@
 
   const S = {
     token: store.get('token', ''), me: store.get('me', null), view: 'hall', n: 15, tables: {}, events: [], printer: {}, menu: null,
-    tw: {}, packAdj: {}, open: 0, carts: store.get('carts', {}), coms: {}, grp: store.get('grp', ''), cat: '', q: '', fav: [], groups: [], photos: store.get('photos', true), shift: null, shown: new Set(), rep: { p: 'd', pay: '', by: '', grp: '', cat: '', t: '', q: '', tab: 'dishes', sort: 's' }, mobileMenu: false, data: {}, kq: [], kqSeen: null, kqCanc: new Set(), ur: {}, kFont: store.get('kfont', 1), seen: new Set(), ready: false, live: false,
+    tw: {}, packAdj: {}, open: 0, carts: store.get('carts', {}), coms: {}, grp: store.get('grp', ''), cat: '', q: '', fav: [], groups: [], photos: store.get('photos', true), shift: null, shown: new Set(), rep: { p: 'd', pay: '', by: '', grp: '', cat: '', t: '', q: '', tab: 'overview', sort: 's', fo: false }, mobileMenu: false, data: {}, kq: [], kqSeen: null, kqCanc: new Set(), ur: {}, kFont: store.get('kfont', 1), seen: new Set(), ready: false, live: false,
   };
   const isAdmin = () => S.me?.role === 'admin', isCook = () => S.me?.role === 'cook';
   const setHTML = (el, html) => { if (el && el._h !== html) { el._h = html; el.innerHTML = html; } };
@@ -545,66 +545,141 @@
     return resolver.memo.get(name);
   }
   async function loadReport() {
-    const [from, to] = perRange(S.rep.p), key = from + '|' + to;
-    if (S.data.rangeKey !== key) { S.data.range = null; S.data.rangeKey = key; renderMain(); }
-    const [res, ks] = await Promise.all([api('report', { from, to }).catch(() => null), api('kStats', { from, to }).catch(() => null)]);
-    if (S.data.rangeKey === key) S.data.kstats = ks?.list || [];
-    if (S.data.rangeKey === key) S.data.range = res || S.data.range || { checks: [], exp: [], z: [] };
+    const [from, to] = perRange(S.rep.p), key = from + '|' + to, [pf, pt] = prevRange(from, to), cmp = S.rep.p !== 'all';
+    if (S.data.rangeKey !== key) { S.data.range = null; S.data.prev = null; S.data.rangeKey = key; renderMain(); }
+    const [res, ks, prev] = await Promise.all([api('report', { from, to }).catch(() => null), api('kStats', { from, to }).catch(() => null), cmp ? api('report', { from: pf, to: pt }).catch(() => null) : null]);
+    if (S.data.rangeKey !== key) return;
+    S.data.kstats = ks?.list || []; S.data.prev = prev && prev.checks.length ? prev : null;
+    S.data.range = res || S.data.range || { checks: [], exp: [], z: [] };
   }
+  // ---------- 📊 звіти: розділи · порівняння з попереднім періодом · графіки ----------
+  const SECS = [['overview', '📈 Огляд', ['overview']], ['sales', '🍽 Продажі', ['dishes', 'cats', 'groups', 'tables', 'hours', 'days', 'wd']], ['staff', '👥 Персонал', ['waiters', 'tips', 'ctrl', 'kitchen']], ['money', '💰 Гроші', ['checks', 'exp', 'mov', 'z']]];
+  const TABS = { dishes: '🍽 Страви', cats: '📂 Категорії', groups: '🍳 Кухня/бар', tables: '🪑 Столи', hours: '🕐 Години', days: '📅 Дні', wd: '🗓 Дні тижня', waiters: '👤 Офіціанти', tips: '💝 Чайові', ctrl: '🕵️ Контроль', kitchen: '⏱ Кухня', checks: '🧾 Чеки', exp: '💸 Витрати', mov: '🔁 Рух коштів', z: '🔒 Z-звіти' };
+  const WD = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'], wdOf = d => (new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7;
+  const hOrd = h => { const n = parseInt(h, 10) || 0; return n < 3 ? n + 24 : n; }; // робочий день — з 03:00: 00–02 год ідуть після 23
+  const addDays = (d, n) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+  const daysIn = (a, b) => { const out = []; for (let d = a; d <= b && out.length < 4000; d = addDays(d, 1)) out.push(d); return out; };
+  const share = (a, b) => b ? Math.round(a / b * 1000) / 10 : 0;
+  const ACC = ['var(--accent)', 'var(--blue)', 'var(--purple)', 'var(--green)', 'var(--orange)'];
+  function prevRange(from, to) { const n = daysIn(from, to).length; return [addDays(from, -n), addDays(from, -1)]; }
+  // фільтри звіту → чеки з потрібними стравами (ds) і сумою (val)
+  function repChecks(r) {
+    const R = S.rep, dishF = R.grp || R.cat || R.q.trim(), q = R.q.trim().toLowerCase();
+    const dishOk = n => { if (!dishF) return true; const x = dishOf(n); if (R.grp && x?.grp !== R.grp) return false; if (R.cat && x?.cat !== R.cat) return false; return !q || n.toLowerCase().includes(q); };
+    const checks = (r?.checks || []).filter(c => (!R.pay || (R.pay === 'card' ? c.card > 0 : c.cash > 0)) && (!R.by || (c.w || c.by) === R.by || c.by === R.by) && (!R.t || String(c.t) === R.t))
+      .map(c => { const ds = c.dishes.filter(([n]) => dishOk(n)); return { ...c, ds, val: dishF ? ds.reduce((a, [, , s]) => a + s, 0) : c.sum }; }).filter(c => !dishF || c.ds.length);
+    return { checks, dishF };
+  }
+  function repStats(r) {
+    if (!r) return null;
+    const R = S.rep, { checks, dishF } = repChecks(r), sum = (l, f) => l.reduce((a, x) => a + (f(x) || 0), 0);
+    const total = sum(checks, c => c.val), n = checks.length, exp = R.by || R.t || dishF || R.pay ? null : sum(r.exp, e => e.sum);
+    const tipOut = sum((r.mov || []).filter(m => m.type === 'tipc' || m.type === 'tipk'), m => m.sum);
+    return { checks, dishF, total, n, avg: n ? total / n : 0, qty: sum(checks, c => sum(c.ds, d => d[1])), cash: sum(checks, c => c.cash), card: sum(checks, c => c.card), disc: sum(checks, c => c.disc), tip: sum(checks, c => c.tip), exp, tipOut, net: exp == null ? null : total - exp - tipOut };
+  }
+  const delta = (a, b, inv) => { if (b == null || !isFinite(b) || !b) return ''; const p = Math.round((a - b) / Math.abs(b) * 100); return `<em class="dl ${(inv ? -p : p) > 0 ? 'up' : (inv ? -p : p) < 0 ? 'down' : ''}" title="попередній період: ${money(b)}">${p > 0 ? '▲' : p < 0 ? '▼' : '='} ${Math.abs(p)}%</em>`; };
+  // стовпчиковий графік; pts: [підпис, значення, підказка, день для переходу]
+  const colChart = pts => { const max = Math.max(1, ...pts.map(p => p[1])), step = Math.ceil(pts.length / 12);
+    return `<div class="cols">${pts.map(([l, v, t, d], i) => `<div class="c${d ? ' press' : ''}"${d ? ` data-a="rDay" data-d="${d}"` : ''} title="${esc(t)}"><i style="height:${v ? Math.max(3, v / max * 86) : 0}%"></i><small>${i % step ? '' : esc(l)}</small></div>`).join('')}</div>`; };
+  const barRows = (rows, unit, tot, sub) => { const max = Math.max(1, ...rows.map(x => x[1][1]));
+    return rows.length ? rows.map(([k, [qq, ss]]) => `<div class="bar"><div class="bl"><span>${esc(k)}</span><span class="muted">${sub ? sub(qq, ss) : `${qq} ${unit}`}</span><span class="muted pct">${share(ss, tot)}%</span><b class="money">${money(ss)}</b></div><i style="width:${Math.max(2, ss / max * 100)}%"></i></div>`).join('') : '<div class="muted">Немає даних за цими фільтрами</div>'; };
+
   function reportsHTML() {
     const R = S.rep, [from, to] = perRange(R.p), r = S.data.range;
+    if (!SECS.some(s => s[2].includes(R.tab))) R.tab = 'overview';
+    const sec = SECS.find(s => s[2].includes(R.tab));
     const opt = (v, l, cur) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(l)}</option>`;
     const checks0 = r ? r.checks : [];
-    const waiters = [...new Set(checks0.map(c => c.by).filter(Boolean))].sort(), tables = [...new Set(checks0.map(c => c.t))].sort((a, b) => a - b);
+    const waiters = [...new Set(checks0.flatMap(c => [c.w, c.by]).filter(Boolean))].sort(), tables = [...new Set(checks0.map(c => c.t))].sort((a, b) => a - b);
     const cats = S.menu ? S.menu.categories.filter(c => !R.grp || (S.groups.find(g => g.id === R.grp) || { cats: [] }).cats.includes(c.id)) : [];
-    const filters = `<div class="filters">
-      <div class="chips">${PER.map(([k, l]) => `<button class="chip ${R.p === k ? 'on' : ''}" data-a="rp" data-p="${k}">${l}</button>`).join('')}</div>
-      ${R.p === 'c' ? `<div class="frow"><label>З<input type="date" id="rFrom" value="${from}"></label><label>По<input type="date" id="rTo" value="${to}"></label></div>` : ''}
-      <div class="frow">
+    const nF = [R.pay, R.by, R.grp, R.cat, R.t, R.q.trim()].filter(Boolean).length;
+    const dm = d => d.split('-').reverse().slice(0, from.slice(0, 4) === to.slice(0, 4) ? 2 : 3).join('.');
+    const head = `<div class="rhead"><div><h1>Звіти</h1><span class="muted">${from === to ? dm(from) : dm(from) + ' — ' + dm(to)}${S.data.prev ? ' · порівняння з попередніми ' + daysIn(from, to).length + ' дн.' : ''}</span></div>
+      <button class="btn sm ${nF ? 'primary' : ''}" data-a="rFo">⚙️ Фільтри${nF ? ` · ${nF}` : ''}</button></div>
+      <div class="chips scroll">${PER.map(([k, l]) => `<button class="chip ${R.p === k ? 'on' : ''}" data-a="rp" data-p="${k}">${l}</button>`).join('')}</div>
+      ${R.p === 'c' ? `<div class="frow" style="margin-top:10px"><label>З<input type="date" id="rFrom" value="${from}"></label><label>По<input type="date" id="rTo" value="${to}"></label></div>` : ''}`;
+    const filters = R.fo || nF ? `<div class="filters" style="margin-top:10px">${R.fo ? `<div class="frow">
         <label>Оплата<select data-f="pay">${opt('', 'Усі', R.pay)}${opt('cash', '💵 Готівка', R.pay)}${opt('card', '💳 Карта', R.pay)}</select></label>
         <label>Офіціант<select data-f="by">${opt('', 'Усі', R.by)}${waiters.map(w => opt(w, w, R.by)).join('')}</select></label>
         <label>Група<select data-f="grp">${opt('', 'Усе', R.grp)}${S.groups.map(g => opt(g.id, g.name, R.grp)).join('')}</select></label>
         <label>Категорія<select data-f="cat">${opt('', 'Усі', R.cat)}${cats.map(c => opt(c.id, c.name.uk, R.cat)).join('')}</select></label>
         <label>Стіл<select data-f="t">${opt('', 'Усі', R.t)}${tables.map(t => opt(String(t), 'Стіл ' + t, R.t)).join('')}</select></label>
-        <label>Страва<input id="rQ" placeholder="🔎 назва" value="${esc(R.q)}"></label>
-        ${R.pay || R.by || R.grp || R.cat || R.t || R.q ? '<button class="btn sm ghost" data-a="rReset" style="align-self:end">✕ Скинути</button>' : ''}
-      </div></div>`;
-    const head = `<div class="head"><h1>Звіти</h1><span class="muted">${from === to ? from : from + ' — ' + to}</span></div>`;
-    if (!r) return head + '<div class="muted" style="margin-bottom:14px">Завантаження…</div>' + filters;
-    // фільтрація
-    const dishF = R.grp || R.cat || R.q.trim(), q = R.q.trim().toLowerCase();
-    const dishOk = n => { if (!dishF) return true; const x = dishOf(n); if (R.grp && x?.grp !== R.grp) return false; if (R.cat && x?.cat !== R.cat) return false; return !q || n.toLowerCase().includes(q); };
-    const checks = checks0.filter(c => (!R.pay || (R.pay === 'card' ? c.card > 0 : c.cash > 0)) && (!R.by || c.by === R.by) && (!R.t || String(c.t) === R.t))
-      .map(c => { const ds = c.dishes.filter(([n]) => dishOk(n)); return { ...c, ds, val: dishF ? ds.reduce((a, [, , s]) => a + s, 0) : c.sum }; }).filter(c => !dishF || c.ds.length);
-    const sum = (l, f) => l.reduce((a, x) => a + (f(x) || 0), 0);
-    const total = sum(checks, c => c.val), n = checks.length, qty = sum(checks, c => sum(c.ds, d => d[1]));
-    const exp = R.by || R.t || dishF || R.pay ? null : sum(r.exp, e => e.sum);
-    const tipOut = sum((r.mov || []).filter(m => m.type === 'tipc' || m.type === 'tipk'), m => m.sum); // як у касі: видані чайові теж зменшують «чистими»
-    const W = [['Виручка', money(total), 'accent'], ['Чеків', n], ['Середній чек', n ? money(total / n) : '—'], ['Продано позицій', qty],
-      ...(!dishF ? [['💵 Готівка', money(sum(checks, c => c.cash))], ['💳 Карта', money(sum(checks, c => c.card))], ['🏷 Знижки', money(sum(checks, c => c.disc))], ['💝 Чайові', money(sum(checks, c => c.tip))]] : []),
-      ...(exp != null ? [['💸 Витрати', money(exp)], ...(tipOut ? [['💝 Чайові видано', money(tipOut)]] : []), ['Чистими', money(total - exp - tipOut), 'green']] : [])];
-    const widgets = `<div class="widgets">${W.map(([l, v, c]) => `<div class="widget ${c || ''}"><span>${l}</span><b class="money">${v}</b></div>`).join('')}</div>`;
+        <label>Страва<input id="rQ" placeholder="🔎 назва" value="${esc(R.q)}"></label></div>` : ''}
+        ${nF ? `<div class="chips">${[R.pay && (R.pay === 'card' ? '💳 Карта' : '💵 Готівка'), R.by && '👤 ' + R.by, R.grp && (S.groups.find(g => g.id === R.grp) || {}).name, R.cat && (cats.find(c => c.id === R.cat)?.name.uk || R.cat), R.t && 'Стіл ' + R.t, R.q.trim() && '🔎 ' + R.q.trim()].filter(Boolean).map(x => `<span class="chip on sm">${esc(x)}</span>`).join('')}<button class="chip" data-a="rReset">✕ Скинути</button></div>` : ''}</div>` : '';
+    if (!r) return head + filters + '<div class="muted" style="margin:16px 4px">Завантаження…</div>';
+
+    const st = repStats(r), pv = repStats(S.data.prev), { checks, dishF } = st, gross = st.total + st.disc;
+    const kpi = (l, v, raw, pr, cls) => `<div class="kpi ${cls || ''}"><span>${l}</span><b class="money">${v}</b>${pv ? delta(raw, pr) : ''}</div>`;
+    const kpis = `<div class="kpis">${kpi('Виручка', money(st.total), st.total, pv?.total, 'accent')}${kpi('Чеків', st.n, st.n, pv?.n)}${kpi('Середній чек', st.n ? money(st.avg) : '—', st.avg, pv?.avg)}${st.net != null ? kpi('Чистими', money(st.net), st.net, pv?.net, 'green') : kpi('Продано позицій', st.qty, st.qty, pv?.qty)}</div>`;
+    const cp = share(st.cash, st.cash + st.card);
+    const pills = `<div class="pills">${!dishF ? `<div class="pill wide"><div class="split"><i style="width:${cp}%"></i></div><div class="split-l"><span>💵 Готівка <b class="money">${money(st.cash)}</b> <span class="muted">${cp}%</span></span><span>💳 Карта <b class="money">${money(st.card)}</b> <span class="muted">${st.cash + st.card ? Math.round((100 - cp) * 10) / 10 : 0}%</span></span></div></div>
+      <div class="pill"><span>🏷 Знижки</span><b class="money">${money(st.disc)}</b><small>${share(st.disc, gross)}% від суми</small></div><div class="pill"><span>💝 Чайові</span><b class="money">${money(st.tip)}</b>${st.tipOut ? `<small>видано ${money(st.tipOut)}</small>` : ''}</div>` : ''}
+      ${st.exp != null ? `<div class="pill"><span>💸 Витрати</span><b class="money">${money(st.exp)}</b>${pv?.exp != null ? delta(st.exp, pv.exp, 1) : ''}</div>` : ''}
+      <div class="pill"><span>🍽 Позицій</span><b>${st.qty}</b><small>${st.n ? (st.qty / st.n).toFixed(1) : 0} у чеку</small></div></div>`;
+    const nav = `<div class="seg rsec">${SECS.map(([k, l, tabs]) => `<button class="${sec[0] === k ? 'on' : ''}" data-a="rSec" data-s="${k}">${l}</button>`).join('')}</div>` +
+      (sec[2].length > 1 ? `<div class="chips scroll sub">${sec[2].map(k => `<button class="chip ${R.tab === k ? 'on' : ''}" data-a="rTab" data-t="${k}">${TABS[k]}</button>`).join('')}</div>` : '');
+
     // розрізи
-    const grpBy = (keyF, valF = c => c.val) => { const m = new Map(); checks.forEach(c => { const k = keyF(c); const a = m.get(k) || [0, 0]; a[0]++; a[1] += valF(c); m.set(k, a); }); return [...m]; };
+    const grpBy = keyF => { const m = new Map(); checks.forEach(c => { const k = keyF(c); const a = m.get(k) || [0, 0]; a[0]++; a[1] += c.val; m.set(k, a); }); return [...m]; };
     const dishAgg = keyF => { const m = new Map(); checks.forEach(c => c.ds.forEach(([nm, qq, ss]) => { const k = keyF(nm); const a = m.get(k) || [0, 0]; a[0] += qq; a[1] += ss; m.set(k, a); })); return [...m]; };
-    const TABS = { dishes: '🍽 Страви', cats: '📂 Категорії', groups: '🍳 Кухня/бар', waiters: '👤 Офіціанти', tips: '💝 Чайові', hours: '🕐 Години', days: '📅 Дні', tables: '🪑 Столи', checks: '🧾 Чеки', exp: '💸 Витрати', mov: '🔁 Рух коштів', z: '🔒 Z-звіти', ctrl: '🕵️ Контроль', kitchen: '⏱ Кухня' };
-    let rows, unit = 'чек.', sortable = false;
-    const T = R.tab;
+    const grpName = nm => (S.groups.find(g => g.id === dishOf(nm)?.grp) || { name: '🧩 Інше' }).name;
+    const days = daysIn(from, to), byDay = new Map(grpBy(c => c.d)), byHour = grpBy(c => String(c.at || '').slice(0, 2)).sort((a, b) => hOrd(a[0]) - hOrd(b[0]));
+    const waiterOf = c => c.w || c.by || '—';
+    const T = R.tab; let body = '';
+    if (T === 'overview') {
+      // графік виручки: по днях (≤ 62 дні), по місяцях (довше) або по годинах (1 день)
+      let chart, ctitle;
+      if (days.length === 1) { ctitle = '🕐 Виручка по годинах'; const hs = byHour.map(x => hOrd(x[0])), lo = Math.min(...hs, 12), hi = Math.max(...hs, 22), m = new Map(byHour.map(([h, v]) => [hOrd(h), v]));
+        chart = colChart([...Array(hi - lo + 1)].map((_, i) => { const h = lo + i, v = m.get(h) || [0, 0], hl = String(h % 24).padStart(2, '0'); return [hl, v[1], `${hl}:00 · ${money(v[1])} · ${v[0]} чек.`]; })); }
+      else if (days.length <= 62) { ctitle = '📅 Виручка по днях'; chart = colChart(days.map(d => { const v = byDay.get(d) || [0, 0]; return [d.slice(8), v[1], `${WD[wdOf(d)]} ${dm(d)} · ${money(v[1])} · ${v[0]} чек.`, d]; })); }
+      else { ctitle = '📅 Виручка по місяцях'; const m = new Map(); checks.forEach(c => { const k = c.d.slice(0, 7); m.set(k, (m.get(k) || 0) + c.val); }); const ms = [...new Set(days.map(d => d.slice(0, 7)))];
+        chart = colChart(ms.map(k => [k.slice(5) + '.' + k.slice(2, 4), m.get(k) || 0, `${k} · ${money(m.get(k) || 0)}`])); }
+      // теплова карта: день тижня × година (середня виручка за такий день)
+      let heat = '';
+      if (days.length >= 7 && checks.length) {
+        const cnt = Array(7).fill(0); days.forEach(d => cnt[wdOf(d)]++);
+        const hs = [...new Set(checks.map(c => hOrd(String(c.at || '').slice(0, 2))))].sort((a, b) => a - b), lo = hs[0], hi = hs[hs.length - 1], g = {};
+        checks.forEach(c => { const k = wdOf(c.d) + ':' + hOrd(String(c.at || '').slice(0, 2)); g[k] = (g[k] || 0) + c.val; });
+        const avgOf = (w, h) => cnt[w] ? (g[w + ':' + h] || 0) / cnt[w] : 0, mx = Math.max(1, ...Object.keys(g).map(k => avgOf(+k.split(':')[0], +k.split(':')[1])));
+        const hr = [...Array(hi - lo + 1)].map((_, i) => lo + i);
+        heat = `<div class="card wide"><h3>🔥 Коли найбільше заробляємо <span class="muted">· середня виручка за годину</span></h3><div class="heat" style="--hc:${hr.length}"><span></span>${hr.map(h => `<small>${h % 3 ? '' : String(h % 24).padStart(2, '0')}</small>`).join('')}
+          ${WD.map((w, wi) => `<b>${w}</b>${hr.map(h => { const v = avgOf(wi, h); return `<i style="--a:${(v / mx).toFixed(2)}" title="${w} ${String(h % 24).padStart(2, '0')}:00 · ~${money(v)}"></i>`; }).join('')}`).join('')}</div></div>`;
+      }
+      // частки кухня / бар / кальян
+      const grps = dishAgg(grpName).sort((a, b) => b[1][1] - a[1][1]), gt = grps.reduce((a, x) => a + x[1][1], 0);
+      const grpCard = `<div class="card"><h3>🍳 Що продаємо</h3>${grps.length ? `<div class="stack">${grps.map(([k, [, s]], i) => `<i style="width:${share(s, gt)}%;background:${ACC[i % 5]}" title="${esc(k)} ${share(s, gt)}%"></i>`).join('')}</div>
+        ${grps.map(([k, [q, s]], i) => `<div class="kv"><span><i class="dot" style="background:${ACC[i % 5]}"></i>${esc(k)} <span class="muted">· ${q} шт</span></span><span><b class="money">${money(s)}</b> <span class="muted">${share(s, gt)}%</span></span></div>`).join('')}` : '<div class="muted">Немає продажів</div>'}</div>`;
+      // офіціанти
+      const ws = grpBy(waiterOf).sort((a, b) => b[1][1] - a[1][1]).slice(0, 6), wmax = Math.max(1, ...ws.map(x => x[1][1]));
+      const wCard = `<div class="card"><h3>👤 Офіціанти</h3>${ws.length ? ws.map(([k, [q, s]], i) => `<div class="bar"><div class="bl"><span>${['🥇', '🥈', '🥉'][i] || ''} ${esc(k)}<br><small class="muted">${q} чек. · сер. чек ${money(s / q)}</small></span><b class="money">${money(s)}</b></div><i style="width:${Math.max(2, s / wmax * 100)}%"></i></div>`).join('') : '<div class="muted">Немає даних</div>'}</div>`;
+      // висновки
+      const best = [...byDay].sort((a, b) => b[1][1] - a[1][1])[0], peak = [...byHour].sort((a, b) => b[1][1] - a[1][1])[0], bt = grpBy(c => c.t).sort((a, b) => b[1][1] - a[1][1])[0];
+      const vs = (r.voids || []).filter(v => !v.table), vsum = vs.reduce((a, v) => a + v.sum, 0), ks = S.data.kstats || [];
+      const ins = [best && days.length > 1 && ['🏆 Найкращий день', `${WD[wdOf(best[0])]} ${dm(best[0])}`, money(best[1][1])], peak && ['⏰ Пікова година', `${peak[0]}:00–${String((+peak[0] + 1) % 24).padStart(2, '0')}:00`, money(peak[1][1])],
+        bt && ['🪑 Найприбутковіший стіл', `Стіл ${bt[0]} · ${bt[1][0]} чек.`, money(bt[1][1])], days.length > 1 && ['📊 В середньому за день', `${(st.n / days.length).toFixed(1)} чек.`, money(st.total / days.length)],
+        ['🚫 Скасування', `${vs.length} поз. · ${share(vsum, st.total + vsum)}% продажів`, money(vsum)], ks.length && ['⏱ Кухня, сер. час', `${ks.length} замовл. · понад 15 хв: ${ks.filter(x => x.mins > 15).length}`, Math.round(ks.reduce((a, x) => a + x.mins, 0) / ks.length) + ' хв']].filter(Boolean);
+      const insCard = `<div class="card"><h3>💡 Висновки</h3>${ins.map(([l, s, v]) => `<div class="kv"><span>${l}<br><small class="muted">${esc(s)}</small></span><b class="money">${v}</b></div>`).join('')}</div>`;
+      const top = dishAgg(nm => nm).sort((x, y) => y[1][0] - x[1][0] || y[1][1] - x[1][1]).slice(0, 10), tmax = Math.max(1, ...top.map(x => x[1][0]));
+      const topCard = `<div class="card"><h3>🏆 Топ страв</h3>${top.length ? top.map(([k, [qq, ss]], i) => `<div class="bar"><div class="bl"><span>${['🥇', '🥈', '🥉'][i] || `<span class="muted">${i + 1}.</span>`} ${esc(k)}</span><b>${qq} шт</b><span class="muted money">${money(ss)}</span></div><i style="width:${Math.max(2, qq / tmax * 100)}%"></i></div>`).join('') : '<div class="muted">Ще немає продажів за цей період</div>'}</div>`;
+      return head + filters + kpis + pills + nav + `<div class="dash"><div class="card wide"><h3>${ctitle}${days.length > 1 && days.length <= 62 ? ' <span class="muted">· натисніть день — відкриється звіт за нього</span>' : ''}</h3>${chart}</div>${heat}${insCard}${grpCard}${topCard}${wCard}</div>`;
+    }
+    let rows, unit = 'чек.', sortable = false, sub;
     if (T === 'dishes') { rows = dishAgg(nm => nm); unit = 'шт'; sortable = true; }
     else if (T === 'cats') { rows = dishAgg(nm => dishOf(nm)?.cname || 'Інше'); unit = 'шт'; sortable = true; }
-    else if (T === 'groups') { rows = dishAgg(nm => (S.groups.find(g => g.id === dishOf(nm)?.grp) || { name: 'Інше' }).name); unit = 'шт'; }
-    else if (T === 'waiters') rows = grpBy(c => c.by || '—');
-    else if (T === 'tips') { const m = new Map(); checks.forEach(c => Object.entries(c.tipSplit || (c.tip ? { [c.by || '—']: c.tip } : {})).forEach(([n, v]) => { const a = m.get(n) || [0, 0]; a[0]++; a[1] += v; m.set(n, a); })); rows = [...m].filter(x => x[1][1] > 0); unit = 'чек.'; }
-    else if (T === 'hours') rows = grpBy(c => String(c.at || '').slice(0, 2) + ':00').sort((a, b) => a[0].localeCompare(b[0]));
-    else if (T === 'days') rows = grpBy(c => c.d).sort((a, b) => a[0].localeCompare(b[0]));
+    else if (T === 'groups') { rows = dishAgg(grpName); unit = 'шт'; }
+    else if (T === 'waiters') { rows = grpBy(waiterOf); sub = (q, s) => `${q} чек. · сер. ${money(s / q)}`; }
+    else if (T === 'tips') { const m = new Map(); checks.forEach(c => Object.entries(c.tipSplit || (c.tip ? { [c.by || '—']: c.tip } : {})).forEach(([n, v]) => { const a = m.get(n) || [0, 0]; a[0]++; a[1] += v; m.set(n, a); })); rows = [...m].filter(x => x[1][1] > 0); }
+    else if (T === 'hours') rows = byHour.map(([h, v]) => [h + ':00', v]);
+    else if (T === 'days') { rows = [...byDay].sort((a, b) => a[0].localeCompare(b[0])).map(([d, v]) => [`${WD[wdOf(d)]} ${dm(d)}`, v]); }
+    else if (T === 'wd') { const cnt = Array(7).fill(0); days.forEach(d => cnt[wdOf(d)]++); const m = grpBy(c => wdOf(c.d)); rows = WD.map((w, i) => [w, (m.find(x => x[0] === i) || [0, [0, 0]])[1]]).filter(x => cnt[WD.indexOf(x[0])]); sub = (q, s) => { return `${q} чек.`; };
+      body = `<div class="muted" style="margin-bottom:8px">Середня виручка за один такий день — у дужках</div>`; const cntOf = w => cnt[WD.indexOf(w)]; rows = rows.map(([w, v]) => [`${w} (сер. ${money(v[1] / cntOf(w))})`, v]); }
     else if (T === 'tables') rows = grpBy(c => 'Стіл ' + c.t).sort((a, b) => parseInt(a[0].slice(5)) - parseInt(b[0].slice(5)));
-    let body;
     if (rows) {
-      if (!['hours', 'days', 'tables'].includes(T)) rows.sort((a, b) => R.sort === 'q' && sortable ? b[1][0] - a[1][0] : b[1][1] - a[1][1]);
-      const max = Math.max(1, ...rows.map(x => x[1][1]));
-      body = rows.length ? rows.map(([k, [qq, ss]]) => `<div class="bar"><div class="bl"><span>${esc(k)}</span><span class="muted">${qq} ${unit}</span><b class="money">${money(ss)}</b></div><i style="width:${Math.max(2, ss / max * 100)}%"></i></div>`).join('') : '<div class="muted">Немає даних за цими фільтрами</div>';
+      if (!['hours', 'days', 'tables', 'wd'].includes(T)) rows.sort((a, b) => R.sort === 'q' && sortable ? b[1][0] - a[1][0] : b[1][1] - a[1][1]);
+      const tot = rows.reduce((a, x) => a + x[1][1], 0);
+      body += barRows(rows, unit, tot, sub);
       if (sortable) body = `<div class="chips" style="margin-bottom:10px"><button class="chip ${R.sort !== 'q' ? 'on' : ''}" data-a="rSort" data-s="s">За сумою</button><button class="chip ${R.sort === 'q' ? 'on' : ''}" data-a="rSort" data-s="q">За кількістю</button></div>` + body;
-    } else if (T === 'checks') body = checks.length ? [...checks].reverse().slice(0, 300).map(c => `<div class="kv"><span>${c.d.slice(5)} ${c.at} · стіл ${c.t} · ${esc(c.by)} ${c.card ? '💳' : '💵'}${c.disc ? ' 🏷' : ''}<br><small class="muted">${c.ds.map(([nm, qq]) => `${qq}× ${esc(nm)}`).join(', ')}</small></span><b class="money">${money(c.val)}</b></div>`).join('') : '<div class="muted">Немає чеків</div>';
+    } else if (T === 'checks') body = checks.length ? [...checks].reverse().slice(0, 300).map(c => `<div class="kv"><span>${c.d.slice(5)} ${c.at} · стіл ${c.t} · ${esc(waiterOf(c))} ${c.card ? '💳' : '💵'}${c.disc ? ' 🏷' : ''}<br><small class="muted">${c.ds.map(([nm, qq]) => `${qq}× ${esc(nm)}`).join(', ')}</small></span><b class="money">${money(c.val)}</b></div>`).join('') : '<div class="muted">Немає чеків</div>';
     else if (T === 'exp') body = r.exp.length ? r.exp.map(e => `<div class="kv"><span>${e.d.slice(5)} ${e.at} ${e.src === 'card' ? '💳' : '💵'} ${esc(e.note)} <span class="muted">${esc(e.by)}</span></span><b class="money">${money(e.sum)}</b></div>`).join('') : '<div class="muted">Витрат немає</div>';
     else if (T === 'mov') body = (r.mov || []).length ? r.mov.map(m => `<div class="kv"><span>${m.d.slice(5)} ${m.at} ${MOVE[m.type]} ${esc(m.note)} <span class="muted">${esc(m.by)}</span></span><b class="money">${money(m.sum)}</b></div>`).join('') : '<div class="muted">Руху коштів немає</div>';
     else if (T === 'z') body = r.z.length ? [...r.z].reverse().map(z => `<div class="kv"><span>${new Date(z.opened).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} — ${new Date(z.closed).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })} · ${z.checks} чек. · ${esc(z.closedBy)}${z.diff ? ` · <b style="color:var(--red)">різниця ${z.diff > 0 ? '+' : ''}${money(z.diff)}</b>` : ''}</span><b class="money">${money(z.total)}</b></div>`).join('') : '<div class="muted">Z-звітів за період немає</div>';
@@ -613,14 +688,14 @@
       const byD = new Map(); L.forEach(x => x.items.forEach(([n]) => { const a = byD.get(n) || []; a.push(x.mins); byD.set(n, a); }));
       const byH = new Map(); L.forEach(x => { const h = String(x.at).slice(0, 2) + ':00'; const a = byH.get(h) || []; a.push(x.mins); byH.set(h, a); });
       const row = (k, a) => `<div class="kv"><span>${esc(k)} <span class="muted">· ${a.length}</span></span><b>${f(a.reduce((s, m) => s + m, 0) / a.length)}</b></div>`;
-      body = L.length ? `<div class="widgets"><div class="widget"><span>Замовлень кухні</span><b>${L.length}</b></div><div class="widget accent"><span>Середній час</span><b>${f(avg(L))}</b></div><div class="widget"><span>Найдовше</span><b>${f(Math.max(...L.map(x => x.mins)))}</b></div><div class="widget ${L.filter(x => x.mins > 15).length ? 'red' : 'green'}"><span>Понад 15 хв</span><b>${L.filter(x => x.mins > 15).length}</b></div></div>
+      body = L.length ? `<div class="kpis"><div class="kpi"><span>Замовлень кухні</span><b>${L.length}</b></div><div class="kpi accent"><span>Середній час</span><b>${f(avg(L))}</b></div><div class="kpi"><span>Найдовше</span><b>${f(Math.max(...L.map(x => x.mins)))}</b></div><div class="kpi ${L.filter(x => x.mins > 15).length ? 'red' : 'green'}"><span>Понад 15 хв</span><b>${L.filter(x => x.mins > 15).length}</b></div></div>
         <h3 style="margin:16px 0 8px">По стравах (сер. час)</h3>${[...byD].sort((a, b) => b[1].length - a[1].length).slice(0, 40).map(([k, a]) => row(k, a)).join('')}
-        <h3 style="margin:16px 0 8px">По годинах</h3>${[...byH].sort((a, b) => a[0].localeCompare(b[0])).map(([k, a]) => row(k, a)).join('')}` : '<div class="muted">Ще немає готових замовлень з кухонного екрана</div>';
+        <h3 style="margin:16px 0 8px">По годинах</h3>${[...byH].sort((a, b) => hOrd(a[0]) - hOrd(b[0])).map(([k, a]) => row(k, a)).join('')}` : '<div class="muted">Ще немає готових замовлень з кухонного екрана</div>';
     }
     else if (T === 'ctrl') { // 🕵️ контроль по офіціантах
       const vs = (r.voids || []).filter(v => (!R.by || v.by === R.by) && (!R.t || String(v.t) === R.t)), W = {};
       const w = nm => W[nm || '—'] = W[nm || '—'] || { name: nm || '—', n: 0, s: 0, vN: 0, vS: 0, tN: 0, tS: 0, dN: 0, dS: 0, dMax: 0, tip: 0 };
-      checks.forEach(c => { const x = w(c.by); x.n++; x.s += c.sum; if (c.disc) { x.dN++; x.dS += c.disc; x.dMax = Math.max(x.dMax, c.pct || 0); } x.tip += c.tip || 0; });
+      checks.forEach(c => { const x = w(c.by); x.n++; x.s += c.sum; if (c.disc) { x.dN++; x.dS += c.disc; x.dMax = Math.max(x.dMax, c.pct || 0); } const tn = waiterOf(c), tv = (c.tipSplit || {})[tn] ?? (c.tipSplit ? 0 : c.tip || 0); if (tv) w(tn).tip += tv; });
       vs.forEach(v => { const x = w(v.by); if (v.table) { x.tN++; x.tS += v.sum; } else { x.vN++; x.vS += v.sum; } });
       const ws = Object.values(W).sort((a, b) => b.vS + b.dS + b.tS - a.vS - a.dS - a.tS);
       const rm = (r.removed || []).filter(x => !R.t || String(x.t) === R.t);
@@ -631,10 +706,7 @@
         `<h3 style="margin:18px 0 8px">🚫 Журнал скасувань</h3>` + (vs.length ? [...vs].reverse().slice(0, 300).map(v => `<div class="kv"><span>${v.d.slice(5)} ${v.at} · стіл ${v.t} · <b>${esc(v.by)}</b> · ${esc(v.name)}<br><small class="muted">❓ ${esc(v.reason)}</small></span><b class="money" style="color:var(--red)">−${money(v.sum)}</b></div>`).join('') : '<div class="muted">Скасувань немає 👍</div>') +
         (rm.length ? `<h3 style="margin:18px 0 8px">🧹 Видалені з виручки</h3>` + rm.map(x => `<div class="kv"><span>${x.d.slice(5)} ${x.at} · стіл ${x.t} · ${esc(x.by)}</span><b class="money">${money(x.sum)}</b></div>`).join('') : '');
     }
-    // 🏆 топ страв за вибраний період (з урахуванням фільтрів)
-    const top = dishAgg(nm => nm).sort((x, y) => y[1][0] - x[1][0] || y[1][1] - x[1][1]).slice(0, 10), tmax = Math.max(1, ...top.map(x => x[1][0]));
-    const topHTML = `<div class="card top"><h3>🏆 Топ страв</h3>${top.length ? top.map(([k, [qq, ss]], i) => `<div class="bar"><div class="bl"><span>${['🥇', '🥈', '🥉'][i] || `<span class="muted">${i + 1}.</span>`} ${esc(k)}</span><b>${qq} шт</b><span class="muted money">${money(ss)}</span></div><i style="width:${Math.max(2, qq / tmax * 100)}%"></i></div>`).join('') : '<div class="muted">Ще немає продажів за цей період</div>'}</div>`;
-    return head + widgets + filters + `<div class="seg wrap" style="margin:14px 0 10px">${Object.entries(TABS).map(([k, l]) => `<button class="${T === k ? 'on' : ''}" data-a="rTab" data-t="${k}">${l}</button>`).join('')}</div><div class="card">${body}</div>` + topHTML;
+    return head + filters + kpis + pills + nav + `<div class="card">${body}</div>`;
   }
   function menuHTML() {
     if (!S.menu) return '<div class="head"><h1>Меню</h1></div><div class="muted">Завантаження…</div>';
@@ -753,7 +825,10 @@
       case 'shOpen': shOpen(); break;
       case 'shClose': shClose(); break;
       case 'rp': S.rep.p = el.dataset.p; loadView(); break;
-      case 'rTab': S.rep.tab = el.dataset.t; renderMain(); break;
+      case 'rTab': S.rep.tab = el.dataset.t; (S.rep.last ||= {})[SECS.find(x => x[2].includes(el.dataset.t))[0]] = el.dataset.t; renderMain(); break;
+      case 'rSec': { const sc = SECS.find(x => x[0] === el.dataset.s); S.rep.tab = (S.rep.last || {})[sc[0]] || sc[2][0]; renderMain(); break; }
+      case 'rFo': S.rep.fo = !S.rep.fo; renderMain(); break;
+      case 'rDay': Object.assign(S.rep, { p: 'c', from: el.dataset.d, to: el.dataset.d }); loadView(); $('#main').scrollTop = 0; break;
       case 'rSort': S.rep.sort = el.dataset.s; renderMain(); break;
       case 'rReset': Object.assign(S.rep, { pay: '', by: '', grp: '', cat: '', t: '', q: '' }); renderMain(); break;
       case 'add': addItem(el.dataset.id); break;
