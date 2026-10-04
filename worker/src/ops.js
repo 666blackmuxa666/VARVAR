@@ -54,7 +54,7 @@ async function _logClosed(env, rec) {
 
 // ---------- 🔒 замки: «прочитав → змінив → записав» з різних запитів не губить зміни одне одного ----------
 export const L = (env, keys, fn) => env.DB.locked ? env.DB.locked(keys, fn) : fn();
-const editEv = (env, fn) => L(env, 'ev:' + dayKey(), async () => { const k = 'ev:' + dayKey(), l = (await env.DB.get(k, 'json')) || []; fn(l); await env.DB.put(k, JSON.stringify(l), { expirationTtl: 3 * 86400 }); });
+export const editEv = (env, fn) => L(env, 'ev:' + dayKey(), async () => { const k = 'ev:' + dayKey(), l = (await env.DB.get(k, 'json')) || []; fn(l); await env.DB.put(k, JSON.stringify(l), { expirationTtl: 3 * 86400 }); });
 const kqMut = (env, fn) => L(env, 'kq:' + dayKey(), async () => { const l = await getKq(env); const r = await fn(l); if (r !== false) await putKq(env, l); return r; });
 
 // ---------- стрічка подій (панель POS) ----------
@@ -208,8 +208,8 @@ async function _addVoid(env, v) { const k = 'void:' + dayKey(), l = await getVoi
 // максимальна знижка для офіціанта (адмін — будь-яка)
 export const WAITER_DISC_MAX = 20;
 // ⚙️ налаштування системи (змінюються в касі «Налаштування» і в боті)
-export const CFG_DEF = { discMax: WAITER_DISC_MAX, scanMin: 60, foodCost: 30, priceAlert: 5 };
-export const CFG_LIM = { discMax: [0, 100], scanMin: [10, 600], foodCost: [5, 90], priceAlert: [1, 100] };
+export const CFG_DEF = { discMax: WAITER_DISC_MAX, scanMin: 60, foodCost: 30, priceAlert: 5, lateMin: 10, lateFine: 0 };
+export const CFG_LIM = { discMax: [0, 100], scanMin: [10, 600], foodCost: [5, 90], priceAlert: [1, 100], lateMin: [0, 120], lateFine: [0, 5000] };
 export const getCfg = async env => ({ ...CFG_DEF, ...((await env.DB.get('cfg', 'json')) || {}) });
 export async function setCfg(env, k, v) {
   if (!CFG_LIM[k]) return { error: 'Невідоме налаштування' };
@@ -461,9 +461,9 @@ async function _flagRec(env, pfx, day, i, del) { const k = pfx + day, l = (await
 // type: in (+готівка) · out (−готівка) · k2c (з картки в готівку) · c2k (з готівки на картку) · kin (+картка) · kout (−картка)
 export const MOVE = { in: '➕ Внесення готівки', out: '➖ Вилучення готівки', k2c: '🔁 Картка → готівка', c2k: '🔁 Готівка → картка', kin: '➕ Внесення на картку', kout: '➖ Вилучення з картки' };
 // службові рухи (не вводяться вручну): видача чайових
-export const MOVE_ALL = { ...MOVE, tipc: '💝 Чайові видано готівкою', tipk: '💝 Чайові видано з картки', adjc: '✏️ Звірка готівки', adjk: '✏️ Звірка картки' };
-export const moveCash = m => m.del ? 0 : ({ in: 1, out: -1, k2c: 1, c2k: -1, tipc: -1, adjc: 1 }[m.type] || 0) * m.sum;
-export const moveCard = m => m.del ? 0 : ({ k2c: -1, c2k: 1, kin: 1, tipk: -1, kout: -1, adjk: 1 }[m.type] || 0) * m.sum;
+export const MOVE_ALL = { ...MOVE, tipc: '💝 Чайові видано готівкою', tipk: '💝 Чайові видано з картки', adjc: '✏️ Звірка готівки', adjk: '✏️ Звірка картки', salc: '👷 Зарплата готівкою', salk: '👷 Зарплата з картки' };
+export const moveCash = m => m.del ? 0 : ({ in: 1, out: -1, k2c: 1, c2k: -1, tipc: -1, adjc: 1, salc: -1 }[m.type] || 0) * m.sum;
+export const moveCard = m => m.del ? 0 : ({ k2c: -1, c2k: 1, kin: 1, tipk: -1, kout: -1, adjk: 1, salk: -1 }[m.type] || 0) * m.sum;
 export const getMov = async (env, day = dayKey()) => (await env.DB.get('mov:' + day, 'json')) || [];
 async function _addMove(env, m) {
   if (!MOVE[m.type] || !(m.sum > 0)) return null;
@@ -510,7 +510,8 @@ export async function cashData(env) {
   const open = (await openTables(env)).reduce((s, r) => s + payable(r.b), 0);
   const mov = await getMov(env), mvCash = mov.reduce((a, m) => a + moveCash(m), 0), mvCard = mov.reduce((a, m) => a + moveCard(m), 0);
   const tipOut = mov.filter(m => !m.del && (m.type === 'tipc' || m.type === 'tipk')).reduce((a, m) => a + m.sum, 0);
-  return { day: dayKey(), float: d.float || 0, cash: d.cash || 0, card: d.card || 0, disc: d.disc || 0, tip: d.tip || 0, exCash, exCard, mvCash, mvCard, tipOut, net: (d.cash || 0) + (d.card || 0) - (d.tip || 0) - exCash - exCard, open, exp, mov }; // як у Z-звіті: без чайових
+  const salOut = mov.filter(m => !m.del && (m.type === 'salc' || m.type === 'salk')).reduce((a, m) => a + m.sum, 0); // 👷 зарплата — теж витрата
+  return { day: dayKey(), float: d.float || 0, cash: d.cash || 0, card: d.card || 0, disc: d.disc || 0, tip: d.tip || 0, exCash, exCard, mvCash, mvCard, tipOut, salOut, net: (d.cash || 0) + (d.card || 0) - (d.tip || 0) - exCash - exCard - salOut, open, exp, mov }; // як у Z-звіті: без чайових
 }
 export async function sumDays(env, keys) {
   const days = await env.DB.getMany(keys.map(k => 'day:' + k), 'json'), exps = await env.DB.getMany(keys.map(k => 'exp:' + k), 'json');
@@ -652,7 +653,8 @@ export async function dayZData(env, day = dayKey()) {
   const tip = sum(recs, x => x.tip);
   return { day, tipBy, checks: recs.length, cash, card, gross: cash + card, total: cash + card - tip, disc: sum(recs, x => x.discSum), tip, exCash, exCard, mvCash, mvCard,
     tipOut: sum(movs.filter(m => m.type === 'tipc' || m.type === 'tipk'), m => m.sum),
-    net: cash + card - tip - exCash - exCard, orders: (d || {}).orders || 0, dels: cl.filter(x => x.del || x.rm).length,
+    salOut: sum(movs.filter(m => m.type === 'salc' || m.type === 'salk'), m => m.sum),
+    net: cash + card - tip - exCash - exCard - sum(movs.filter(m => m.type === 'salc' || m.type === 'salk'), m => m.sum), orders: (d || {}).orders || 0, dels: cl.filter(x => x.del || x.rm).length,
     openTables: open.length, openSum: open.reduce((a, r) => a + payable(r.b), 0) };
 }
 export async function dayZ(env, who, print = true, day = dayKey()) {

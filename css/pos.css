@@ -553,3 +553,16 @@ body.cook .more-btn { display: none !important; }
 .kit-w { display: flex; gap: 6px; } .kit-w .kit { flex: 1; }
 .kinfo { flex: none; width: 44px; border-radius: 12px; background: #2c2c2e; color: #8e8e93; font-size: 1.1em; }
 .sc-cam video { width: 100%; max-height: 40vh; border-radius: 12px; background: #000; object-fit: cover; }
+/* ---------- 👷 зміни й зарплата ---------- */
+.zp-sh { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.zp-wait { font-size: 12px; color: var(--orange); font-weight: 700; }
+.zp-top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; } .zp-top b { font-size: 18px; min-width: 150px; text-align: center; } .zp-top .muted { font-size: 12px; flex-basis: 100%; }
+.zp-grid { overflow-x: auto; margin: 0 -4px; }
+.zp-grid table { border-collapse: separate; border-spacing: 2px; font-size: 12px; }
+.zp-grid th { font-weight: 600; color: var(--muted); padding: 2px; min-width: 34px; } .zp-grid th small { display: block; font-size: 10px; font-weight: 400; } .zp-grid th.we { color: var(--orange); }
+.zp-grid tbody th { text-align: left; color: var(--text); white-space: nowrap; padding-right: 8px; position: sticky; left: 0; background: var(--card); z-index: 1; }
+.zp-grid td { background: var(--card2); border-radius: 7px; height: 40px; min-width: 34px; text-align: center; vertical-align: middle; cursor: pointer; padding: 1px; }
+.zp-grid td i { display: block; font-style: normal; font-size: 15px; line-height: 1.1; } .zp-grid td small { display: block; font-size: 9px; color: var(--muted); } .zp-grid td small.h { color: var(--green); }
+.zp-grid .td { outline: 2px solid var(--accent); }
+.zp-eff { grid-template-columns: minmax(120px, 1.5fr) 60px 60px 1fr 1fr !important; }
+.zp-my { grid-template-columns: repeat(2, 1fr); } .zp-ask { background: var(--card2); margin: 10px 0; }

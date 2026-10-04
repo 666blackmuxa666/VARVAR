@@ -5,6 +5,7 @@ import { queuePrint, printStatus } from './print.js';
 import { QR_PRINT, TEST_JOB } from './bot.js';
 import { storeStub } from './store.js';
 import { stockApi } from './stock.js';
+import { payApi, closeStale, getAtt } from './pay.js';
 import { aiInvoice, aiCard } from './ai.js';
 import {
   esc, money, hhmm, dayKey, isDay, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
@@ -38,16 +39,18 @@ export async function posApi(b, req, env) {
   // 👨‍🍳 кухар: черга кухні + вибити замовлення + стоп-лист; решта — ні
   // 🧮 Розрахунок: склад, техкарти, накладні, інвентаризація — свої права (адмін / кухар)
   if (/^sk[A-Z]/.test(b.op || '')) return stockApi(b, env, me, { invoice: aiInvoice, card: aiCard });
+  if (/^zp[A-Z]/.test(b.op || '')) return payApi(b, env, me); // 👷 зміни й зарплата
   if (me.role === 'cook' && !['logout', 'state', 'menu', 'fav', 'order', 'accept', 'reject', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'printTest'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
 
   switch (b.op) {
     case 'logout': await env.DB.delete('pos:' + token); return ok();
     case 'state': {
       if (me.role === 'cook') await markCook(env, me.name); // кухар на зміні — отримує частку чайових кухні
+      await closeStale(env).catch(() => {}); const myAtt = (await getAtt(env))[dayKey()]?.[me.name] || null;
       const [rows, events, pr, shift, cl] = await Promise.all([openTables(env), getEvents(env), printStatus(env), getShift(env), getClosed(env)]);
       const mine = cl.filter(x => !x.del && !x.rm);
       const myTip = { sum: (await tipBalances(env))[me.name] || 0, today: mine.reduce((a, x) => a + ((x.tipSplit || {})[me.name] || (!x.tipSplit && x.by === me.name ? x.tip || 0 : 0)), 0) }; // накопичені, ще не видані
-      return ok({ me, shift, myTip, cfg: await getCfg(env), n: tablesCount(env), tables: rows.map(r => ({ t: r.t, ...r.b, items: billItems(r.b), pay2: payable(r.b) })), events: events.slice(-120), printer: pr, now: Date.now() });
+      return ok({ me, shift, myTip, myAtt, cfg: await getCfg(env), n: tablesCount(env), tables: rows.map(r => ({ t: r.t, ...r.b, items: billItems(r.b), pay2: payable(r.b) })), events: events.slice(-120), printer: pr, now: Date.now() });
     }
     case 'menu': { const menu = await getMenu(env); return ok({ menu, fav: await getFav(env), groups: GROUPS.map(g => ({ ...g, cats: menu.categories.filter(c => groupOf(c.id) === g.id).map(c => c.id) })) }); }
     case 'fav': { const fav = await toggleFav(env, String(b.id), !!b.on); return ok({ fav }); }

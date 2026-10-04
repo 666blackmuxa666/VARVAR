@@ -256,6 +256,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     stateDone = my;
     S.me = __spreadValues(__spreadValues({}, S.me), r.me);
     S.myTip = r.myTip;
+    S.myAtt = r.myAtt || null;
     S.cfg = r.cfg || S.cfg;
     S.n = r.n;
     S.printer = r.printer;
@@ -329,6 +330,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         });
         if (m.keys.includes("kq") && (isCook() || S.view === "kq")) loadKq().catch(() => {
         });
+        if (S.view === "settings" && S.setTab === "pay" && m.keys.some((k) => ["att", "plan", "pay", "swaps", "staff"].includes(k)) && !$("#modal")) loadView(true);
         if (S.view === "calc" && m.keys.some((k) => ["ing", "cards", "stk", "invl", "sups", "cntl", "cnt"].includes(k)) && !skBusy()) loadView(true);
         if (["closed", "reports", "settings", "cash"].includes(S.view) && m.keys.some((k) => ["closed", "day", "exp", "staff", "shift", "z", "mov", "tipbal", "tippay", "void", "kq"].includes(k) || k === "bill" && S.view === "cash")) loadView(true);
       }, 120);
@@ -400,7 +402,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       const tag = b.check ? `<span class="tag c">\u{1F9FE} \u0440\u0430\u0445\u0443\u043D\u043E\u043A</span>${b.pay ? `<i class="pay" title="${b.pay === "card" ? "\u043A\u0430\u0440\u0442\u0430" : "\u0433\u043E\u0442\u0456\u0432\u043A\u0430"}">${b.pay === "card" ? "\u{1F4B3}" : "\u{1F4B5}"}</i>` : ""}` : pending.has(t) ? '<span class="tag g">\u043D\u043E\u0432\u0435</span>' : "";
       return `<button class="tbl ${cls}" data-a="table" data-t="${t}">${tag}<div class="n">${t}</div><div class="st">${b.orders} \u0437\u0430\u043C\u043E\u0432\u043B.${b.disc ? ` \xB7 \u2212${b.disc}%` : ""}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">\u0437 ${b.opened ? hhmm(b.opened) : "\u2014"}</div></button>`;
     }).join("");
-    return `<div class="head"><h1>\u0417\u0430\u043B</h1><div class="stat">\u0412\u0456\u0434\u043A\u0440\u0438\u0442\u043E<b>${list.length}</b></div><div class="stat tipstat" title="\u041D\u0430\u043A\u043E\u043F\u0438\u0447\u0435\u043D\u043E, \u0449\u0435 \u043D\u0435 \u0432\u0438\u0434\u0430\u043D\u043E">\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456<b class="money">${money(((_a2 = S.myTip) == null ? void 0 : _a2.sum) || 0)}</b></div><div class="stat">\u0423 \u0437\u0430\u043B\u0456<b class="money">${money(sum)}</b></div>
+    return `<div class="head"><h1>\u0417\u0430\u043B</h1><div class="stat">\u0412\u0456\u0434\u043A\u0440\u0438\u0442\u043E<b>${list.length}</b></div><div class="stat tipstat" title="\u041D\u0430\u043A\u043E\u043F\u0438\u0447\u0435\u043D\u043E, \u0449\u0435 \u043D\u0435 \u0432\u0438\u0434\u0430\u043D\u043E">\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456<b class="money">${money(((_a2 = S.myTip) == null ? void 0 : _a2.sum) || 0)}</b></div><div class="zp-sh">${shiftBtns()}</div><div class="stat">\u0423 \u0437\u0430\u043B\u0456<b class="money">${money(sum)}</b></div>
       <button class="btn primary" data-a="newOrder">\u2795 \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F</button></div><div class="tables">${tiles}</div>`;
   }
   const evTitle = (e) => ({
@@ -418,16 +420,19 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     cooking: `\u{1F525} \u0421\u0442\u0456\u043B ${e.t} \u2014 \u043A\u0443\u0445\u043D\u044F \u0433\u043E\u0442\u0443\u0454`,
     kmsg: `\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u043D\u044F \u2192 \u0441\u0442\u0456\u043B ${e.t}: ${esc(e.text)}`,
     call: `\u{1F514}\u{1F514} \u0421\u0442\u0456\u043B ${e.t} \u043A\u043B\u0438\u0447\u0435 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430`,
-    noscan: `\u{1F6A8}\u{1F4F5}\u{1F6AB} \u0421\u0422\u0406\u041B ${e.t} \u2014 \u041D\u0415 \u041C\u041E\u0416\u0415 \u0417\u0410\u041C\u041E\u0412\u0418\u0422\u0418 \u{1F6AB}\u{1F4F5}\u{1F6A8}<br><small>\u0413\u0456\u0441\u0442\u044C \u043D\u0435 \u0432\u0456\u0434\u0441\u043A\u0430\u043D\u0443\u0432\u0430\u0432 QR (\u0430\u0431\u043E \u043C\u0438\u043D\u0443\u043B\u0430 \u0433\u043E\u0434\u0438\u043D\u0430). \u041F\u0456\u0434\u0456\u0439\u0434\u0456\u0442\u044C: \u{1F4F7} \u043D\u0435\u0445\u0430\u0439 \u0432\u0456\u0434\u0441\u043A\u0430\u043D\u0443\u0454 QR \u043D\u0430 \u0441\u0442\u043E\u043B\u0456 \u{1F446}</small>`
+    noscan: `\u{1F6A8}\u{1F4F5}\u{1F6AB} \u0421\u0422\u0406\u041B ${e.t} \u2014 \u041D\u0415 \u041C\u041E\u0416\u0415 \u0417\u0410\u041C\u041E\u0412\u0418\u0422\u0418 \u{1F6AB}\u{1F4F5}\u{1F6A8}<br><small>\u0413\u0456\u0441\u0442\u044C \u043D\u0435 \u0432\u0456\u0434\u0441\u043A\u0430\u043D\u0443\u0432\u0430\u0432 QR (\u0430\u0431\u043E \u043C\u0438\u043D\u0443\u043B\u0430 \u0433\u043E\u0434\u0438\u043D\u0430). \u041F\u0456\u0434\u0456\u0439\u0434\u0456\u0442\u044C: \u{1F4F7} \u043D\u0435\u0445\u0430\u0439 \u0432\u0456\u0434\u0441\u043A\u0430\u043D\u0443\u0454 QR \u043D\u0430 \u0441\u0442\u043E\u043B\u0456 \u{1F446}</small>`,
+    att: `\u{1F7E2} ${esc(e.n)} \u043D\u0430 \u0437\u043C\u0456\u043D\u0456${e.late ? ` \xB7 \u23F0 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F ${e.late} \u0445\u0432` : ""}`,
+    swap: esc(e.text)
   })[e.k] || esc(e.text || e.k);
   function renderFeed() {
     setHTML($("#events"), S.events.length ? [...S.events].reverse().map((e) => {
-      var _a2, _b, _c;
+      var _a2, _b, _c, _d, _e;
       const add = ((_a2 = e.prev) == null ? void 0 : _a2.length) && ((_b = e.lines) == null ? void 0 : _b.length);
       const rdy = e.k === "ready" && e.text ? `<div class="lines">${esc(e.text)}</div>` : "";
       const lines = rdy || (((_c = e.lines) == null ? void 0 : _c.length) ? `${add ? '<div class="addtag">\u2795 \u0414\u041E\u0417\u0410\u041C\u041E\u0412\u041B\u0415\u041D\u041D\u042F</div>' : ""}<div class="lines${add ? " add" : ""}">${e.lines.map(esc).join("\n")}</div>` : "");
       const by = e.by && !["waiter"].includes(e.k) ? ` \xB7 ${esc(e.by)}` : "";
-      const btns = e.k === "noscan" ? `<div class="act"><button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${e.t}</button></div>` : e.k === "guest" || e.k === "check" || e.k === "call" ? `<div class="act">${e.s === "acc" ? `<span class="muted">\u2705 ${esc(e.accBy || "\u043F\u0440\u0438\u0439\u043D\u044F\u0442\u043E")}</span>` : e.s === "rej" ? `<span style="color:var(--red,#ff453a)">\u274C \u0432\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E \xB7 ${esc(e.accBy || "")}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432</button>${e.k === "guest" ? `<button class="btn sm red" data-a="reject" data-oid="${e.oid}">\u274C \u0412\u0456\u0434\u0445\u0438\u043B\u0438\u0442\u0438</button>` : ""}`}<button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${e.t}</button></div>` : "";
+      const zb = e.k === "att" ? `<div class="act">${e.s === "acc" ? `<span class="muted">\u2705 ${esc(e.accBy || "")}</span>` : e.s === "rej" ? `<span class="bad">\u274C ${esc(e.accBy || "")}</span>` : isAdmin() ? `<button class="btn sm green" data-a="zpConf" data-d="${e.day}" data-n="${esc(e.n)}" data-h="o">\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438</button>${e.late && ((_d = S.cfg) == null ? void 0 : _d.lateFine) ? `<button class="btn sm" data-a="zpConf" data-d="${e.day}" data-n="${esc(e.n)}" data-h="f">\u2705 + \u0448\u0442\u0440\u0430\u0444</button>` : ""}<button class="btn sm red" data-a="zpConf" data-d="${e.day}" data-n="${esc(e.n)}" data-h="n">\u274C</button>` : '<span class="muted">\u0447\u0435\u043A\u0430\u0454 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F</span>'}</div>` : e.k === "swap" && !e.old ? e.s === "ask" && e.n === ((_e = S.me) == null ? void 0 : _e.name) ? `<div class="act"><button class="btn sm green" data-a="zpSw" data-id="${e.sw}" data-s="agree">\u041F\u043E\u0433\u043E\u0434\u0436\u0443\u044E\u0441\u044C</button><button class="btn sm red" data-a="zpSw" data-id="${e.sw}" data-s="no">\u041D\u0456</button></div>` : e.s === "agreed" && isAdmin() ? `<div class="act"><button class="btn sm green" data-a="zpSw" data-id="${e.sw}" data-s="ok">\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438 \u043E\u0431\u043C\u0456\u043D</button><button class="btn sm red" data-a="zpSw" data-id="${e.sw}" data-s="no">\u274C</button></div>` : "" : "";
+      const btns = zb || (e.k === "noscan" ? `<div class="act"><button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${e.t}</button></div>` : e.k === "guest" || e.k === "check" || e.k === "call" ? `<div class="act">${e.s === "acc" ? `<span class="muted">\u2705 ${esc(e.accBy || "\u043F\u0440\u0438\u0439\u043D\u044F\u0442\u043E")}</span>` : e.s === "rej" ? `<span style="color:var(--red,#ff453a)">\u274C \u0432\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E \xB7 ${esc(e.accBy || "")}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432</button>${e.k === "guest" ? `<button class="btn sm red" data-a="reject" data-oid="${e.oid}">\u274C \u0412\u0456\u0434\u0445\u0438\u043B\u0438\u0442\u0438</button>` : ""}`}<button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${e.t}</button></div>` : "");
       const fresh = S.shown.size && !S.shown.has(e.id) ? " fresh" : "";
       return `<div class="ev ${e.k}${e.s === "acc" || e.s === "rej" ? " acc" : ""}${e.s === "rej" ? " rej" : ""}${fresh}"><div class="top"><b>${evTitle(e)}</b><span class="tm">${e.at}${by}</span></div>${lines}${e.comment ? `<div class="com">\u{1F4AC} ${esc(e.comment)}</div>` : ""}${e.sum && ["guest", "waiter"].includes(e.k) ? `<div class="muted">\u0421\u0443\u043C\u0430 ${money(e.sum)}</div>` : ""}${btns}</div>`;
     }).join("") : '<div class="muted" style="padding:12px">\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u043F\u043E\u0434\u0456\u0439 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454</div>');
@@ -682,6 +687,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         S.data.ctoday = r.today;
       }
       if (S.view === "calc") await loadCalc();
+      if (S.view === "settings" && S.setTab === "pay") await loadPay();
       if (S.view === "settings") {
         S.data.staff = await api("staff");
         S.data.wifi = await api("wifi");
@@ -861,7 +867,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         ${(e.msgs || []).map((x) => `<div class="kmsg">\u{1F4E8} ${x.at} ${esc(x.text)}</div>`).join("")}
         <div class="kb">${e.start ? "" : `<button class="btn" data-a="kStart" data-id="${e.id}">\u{1F525} \u0413\u043E\u0442\u0443\u044E</button>`}<button class="btn" data-a="kMsg" data-id="${e.id}">\u{1F4AC}</button><button class="btn green" data-a="kAll" data-id="${e.id}">\u2705 \u0412\u0421\u0415 \u0413\u041E\u0422\u041E\u0412\u041E</button></div></div>`;
     };
-    return `<div class="khead"><h1>\u{1F468}\u200D\u{1F373} \u0427\u0435\u0440\u0433\u0430 <span class="muted">${act0.length}</span></h1>${isCook() ? `<div class="stat tipstat">\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456<b class="money">${money(((_a2 = S.myTip) == null ? void 0 : _a2.sum) || 0)}</b></div>` : ""}<button class="btn" data-a="skTechAll">\u{1F4CB} \u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0438</button><button class="btn" data-a="skOffPick">\u{1F5D1} \u0421\u043F\u0438\u0441\u0430\u0442\u0438</button><button class="btn" data-a="view" data-v="stop">\u26D4 \u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442</button><button class="btn" data-a="kFont">A${"+".repeat(S.kFont - 1)}</button></div>
+    return `<div class="khead"><h1>\u{1F468}\u200D\u{1F373} \u0427\u0435\u0440\u0433\u0430 <span class="muted">${act0.length}</span></h1>${isCook() ? `<div class="stat tipstat">\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456<b class="money">${money(((_a2 = S.myTip) == null ? void 0 : _a2.sum) || 0)}</b></div>` : ""}<div class="zp-sh">${shiftBtns()}</div><button class="btn" data-a="skTechAll">\u{1F4CB} \u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0438</button><button class="btn" data-a="skOffPick">\u{1F5D1} \u0421\u043F\u0438\u0441\u0430\u0442\u0438</button><button class="btn" data-a="view" data-v="stop">\u26D4 \u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442</button><button class="btn" data-a="kFont">A${"+".repeat(S.kFont - 1)}</button></div>
       <div class="kq f${S.kFont}">${act0.length ? act0.map(card).join("") : '<div class="kempty">\u2705 \u0427\u0435\u0440\u0433\u0430 \u043F\u043E\u0440\u043E\u0436\u043D\u044F</div>'}</div>
       ${done.length ? `<h3 class="muted" style="margin:18px 0 8px">\u041E\u0441\u0442\u0430\u043D\u043D\u0456 \u0433\u043E\u0442\u043E\u0432\u0456</h3><div class="kdone">${done.map((e) => `<div class="kd">\u0421\u0442\u0456\u043B ${e.t} \xB7 ${e.items.filter((x) => !x.cancel).map((x) => `${x.q}\xD7 ${esc(x.n)}`).join(", ")}${e.cancelled ? " \xB7 \u274C \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E" : ` \xB7 ${Math.round((e.doneAt - e.ts) / 6e4)} \u0445\u0432`} <button class="btn sm" data-a="kUndo" data-id="${e.id}">\u21A9\uFE0F</button></div>`).join("")}</div>` : ""}`;
   }
@@ -916,7 +922,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const journal = `<div class="card"><h3>\u{1F4D2} \u0416\u0443\u0440\u043D\u0430\u043B \u0437\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 <span class="muted" style="font-weight:400;font-size:13px">\xB7 ${J.length}</span></h3>${J.length ? J.map((x) => `<div class="jr ${x.cls}${x.del ? " del" : ""}"><span class="muted">${x.at}</span><span>${x.ic}</span><span class="jt">${x.t}</span><b class="money">${x.v}</b>${!x.del && x.btn ? x.btn : x.del && x.back ? x.back : "<i></i>"}</div>`).join("") : '<div class="muted">\u041F\u043E\u043A\u0438 \u043F\u043E\u0440\u043E\u0436\u043D\u044C\u043E</div>'}</div>`;
     return `<div class="head"><h1>\u041A\u0430\u0441\u0430</h1></div>${balH}${hero}${tilesH}<div class="cash-grid"><div class="col">${journal}</div><div class="col">${tipsH}${ops}${mvH}${all}</div></div>`;
   }
-  const MOVE = { in: "\u2795 \u0412\u043D\u0435\u0441\u0435\u043D\u043D\u044F", out: "\u2796 \u0412\u0438\u043B\u0443\u0447\u0435\u043D\u043D\u044F", k2c: "\u{1F501} \u041A\u0430\u0440\u0442\u043A\u0430 \u2192 \u0433\u043E\u0442\u0456\u0432\u043A\u0430", c2k: "\u{1F501} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 \u2192 \u043A\u0430\u0440\u0442\u043A\u0430", tipc: "\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456 (\u0433\u043E\u0442\u0456\u0432\u043A\u0430)", tipk: "\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456 (\u043A\u0430\u0440\u0442\u043A\u0430)", kin: "\u2795 \u0412\u043D\u0435\u0441\u0435\u043D\u043D\u044F \u043D\u0430 \u043A\u0430\u0440\u0442\u043A\u0443", kout: "\u2796 \u0412\u0438\u043B\u0443\u0447\u0435\u043D\u043D\u044F \u0437 \u043A\u0430\u0440\u0442\u043A\u0438", adjc: "\u270F\uFE0F \u0417\u0432\u0456\u0440\u043A\u0430 \u0433\u043E\u0442\u0456\u0432\u043A\u0438", adjk: "\u270F\uFE0F \u0417\u0432\u0456\u0440\u043A\u0430 \u043A\u0430\u0440\u0442\u043A\u0438" };
+  const MOVE = { in: "\u2795 \u0412\u043D\u0435\u0441\u0435\u043D\u043D\u044F", out: "\u2796 \u0412\u0438\u043B\u0443\u0447\u0435\u043D\u043D\u044F", k2c: "\u{1F501} \u041A\u0430\u0440\u0442\u043A\u0430 \u2192 \u0433\u043E\u0442\u0456\u0432\u043A\u0430", c2k: "\u{1F501} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 \u2192 \u043A\u0430\u0440\u0442\u043A\u0430", tipc: "\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456 (\u0433\u043E\u0442\u0456\u0432\u043A\u0430)", tipk: "\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456 (\u043A\u0430\u0440\u0442\u043A\u0430)", kin: "\u2795 \u0412\u043D\u0435\u0441\u0435\u043D\u043D\u044F \u043D\u0430 \u043A\u0430\u0440\u0442\u043A\u0443", kout: "\u2796 \u0412\u0438\u043B\u0443\u0447\u0435\u043D\u043D\u044F \u0437 \u043A\u0430\u0440\u0442\u043A\u0438", adjc: "\u270F\uFE0F \u0417\u0432\u0456\u0440\u043A\u0430 \u0433\u043E\u0442\u0456\u0432\u043A\u0438", adjk: "\u270F\uFE0F \u0417\u0432\u0456\u0440\u043A\u0430 \u043A\u0430\u0440\u0442\u043A\u0438", salc: "\u{1F477} \u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430 (\u0433\u043E\u0442\u0456\u0432\u043A\u0430)", salk: "\u{1F477} \u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430 (\u043A\u0430\u0440\u0442\u043A\u0430)" };
   async function balInfo(src) {
     var _a2;
     const B = (_a2 = S.data.shift) == null ? void 0 : _a2.bal;
@@ -1100,8 +1106,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     if (!r) return null;
     const R = S.rep, { checks, dishF } = repChecks(r), sum = (l, f) => l.reduce((a, x) => a + (f(x) || 0), 0);
     const total = sum(checks, (c) => c.val), n = checks.length, exp = R.by || R.t || dishF || R.pay ? null : sum(r.exp, (e) => e.sum);
-    const tipOut = sum((r.mov || []).filter((m) => m.type === "tipc" || m.type === "tipk"), (m) => m.sum);
-    return { checks, dishF, total, n, avg: n ? total / n : 0, qty: sum(checks, (c) => sum(c.ds, (d) => d[1])), cash: sum(checks, (c) => c.cash), card: sum(checks, (c) => c.card), disc: sum(checks, (c) => c.disc), tip: sum(checks, (c) => c.tip), exp, tipOut, net: exp == null ? null : total - exp };
+    const tipOut = sum((r.mov || []).filter((m) => m.type === "tipc" || m.type === "tipk"), (m) => m.sum), salOut = sum((r.mov || []).filter((m) => m.type === "salc" || m.type === "salk"), (m) => m.sum);
+    return { checks, dishF, total, n, avg: n ? total / n : 0, qty: sum(checks, (c) => sum(c.ds, (d) => d[1])), cash: sum(checks, (c) => c.cash), card: sum(checks, (c) => c.card), disc: sum(checks, (c) => c.disc), tip: sum(checks, (c) => c.tip), exp, tipOut, net: exp == null ? null : total - exp - salOut, salOut };
   }
   const delta = (a, b, inv) => {
     if (b == null || !isFinite(b) || !b) return "";
@@ -1353,13 +1359,13 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       ${S.menu.categories.map((c) => `<h3 class="muted" style="margin:18px 4px 8px">${esc(c.name.uk)}</h3><div class="grid2">${c.items.map((i) => `<button class="list-row press" data-a="menuEdit" data-id="${i.id}" style="text-align:left"><div class="grow"><b>${esc(i.name.uk)}</b>${i.hidden ? " \u26D4" : ""}<div class="muted" style="font-size:13px">${i.variants ? i.variants.map((v) => `${v.v} \u2014 ${v.p}`).join(" / ") : i.price + " \u20B4"}${i.size && !i.variants ? " \xB7 " + esc(i.size) : ""}</div></div>\u203A</button>`).join("")}</div>`).join("")}`;
   }
   function settingsHTML() {
-    var _a2, _b, _c, _d, _e, _f;
+    var _a2, _b, _c, _d, _e, _f, _g, _h;
     const st = S.data.staff, wf = S.data.wifi, c = (st == null ? void 0 : st.cfg) || {};
     const ROLE = { admin: "\u{1F510} \u0430\u0434\u043C\u0456\u043D", cook: "\u{1F468}\u200D\u{1F373} \u043A\u0443\u0445\u0430\u0440", waiter: "\u{1F9D1}\u200D\u{1F373} \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442" };
     const row = (l, v, btn, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ""}</span><span class="kv-r"><b>${v}</b>${btn}</span></div>`;
     const ch = (a, extra = "") => `<button class="btn sm" data-a="${a}"${extra}>\u0437\u043C\u0456\u043D\u0438\u0442\u0438</button>`;
     const staff = st ? [...st.staff].sort((a, b) => (a.role || "").localeCompare(b.role || "") || a.name.localeCompare(b.name)) : null;
-    const SS = [["people", "\u{1F465} \u041B\u044E\u0434\u0438"], ["rules", "\u2699\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438"], ["printer", "\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["test", "\u{1F9EA} \u0422\u0435\u0441\u0442"]], cur = S.setTab || "people";
+    const SS = [["people", "\u{1F465} \u041B\u044E\u0434\u0438"], ["rules", "\u2699\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438"], ["pay", "\u{1F477} \u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430"], ["printer", "\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["test", "\u{1F9EA} \u0422\u0435\u0441\u0442"]], cur = S.setTab || "people";
     const part = {};
     part.people = `<div class="grid2 set">
       <div class="card"><h3>\u{1F465} \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B <span class="muted">\xB7 ${staff ? staff.length : "\u2026"}</span></h3>
@@ -1374,15 +1380,19 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       <div class="card"><h3>\u{1F4B0} \u0413\u0440\u043E\u0448\u0456</h3>
         ${row("\u{1F3F7} \u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430", ((_a2 = c.discMax) != null ? _a2 : 20) + "%", ch("cfg", ' data-k="discMax"'), "\u0411\u0456\u043B\u044C\u0448\u0443 \u0437\u043D\u0438\u0436\u043A\u0443 \u0434\u0430\u0454 \u043B\u0438\u0448\u0435 \u0430\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440")}
         ${row("\u{1F468}\u200D\u{1F373} \u0427\u0430\u0441\u0442\u043A\u0430 \u043A\u0443\u0445\u043D\u0456 \u0432\u0456\u0434 \u0447\u0430\u0439\u043E\u0432\u0438\u0445", ((_b = st == null ? void 0 : st.kpct) != null ? _b : 20) + "%", ch("kpct"), `\u041F\u043B\u044E\u0441 \xAB\u043F\u043E\u0434\u044F\u043A\u0430 \u043A\u0443\u0445\u043D\u0456\xBB \u0432\u0456\u0434 \u0433\u043E\u0441\u0442\u044F; \u043F\u043E\u0440\u0456\u0432\u043D\u0443 \u043C\u0456\u0436 \u043A\u0443\u0445\u0430\u0440\u044F\u043C\u0438 \u043D\u0430 \u0437\u043C\u0456\u043D\u0456${((_c = st == null ? void 0 : st.cooks) == null ? void 0 : _c.length) ? ` (\u0437\u0430\u0440\u0430\u0437: ${st.cooks.map(esc).join(", ")})` : " (\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0449\u0435 \u043D\u0456\u043A\u043E\u0433\u043E \u2014 \u043F\u0456\u0434\u0435 \u0432 \xAB\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u043D\u044F\xBB)"}`)}</div>
+      <div class="card"><h3>\u{1F477} \u0417\u043C\u0456\u043D\u0438</h3>
+        ${row("\u23F0 \u0417\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F \u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F \u043F\u0456\u0441\u043B\u044F", ((_d = c.lateMin) != null ? _d : 10) + " \u0445\u0432", ch("cfg", ' data-k="lateMin"'), "\u0412\u0456\u0434 \u0437\u0430\u043F\u043B\u0430\u043D\u043E\u0432\u0430\u043D\u043E\u0433\u043E \u0447\u0430\u0441\u0443 \u043F\u043E\u0447\u0430\u0442\u043A\u0443 \u0437\u043C\u0456\u043D\u0438")}
+        ${row("\u2796 \u0428\u0442\u0440\u0430\u0444 \u0437\u0430 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F", ((_e = c.lateFine) != null ? _e : 0) + " \u20B4", ch("cfg", ' data-k="lateFine"'), "0 \u2014 \u0431\u0435\u0437 \u0448\u0442\u0440\u0430\u0444\u0443; \u0430\u0434\u043C\u0456\u043D \u0432\u0438\u0440\u0456\u0448\u0443\u0454 \u043A\u043D\u043E\u043F\u043A\u043E\u044E \xAB\u2705 + \u0448\u0442\u0440\u0430\u0444\xBB")}</div>
       <div class="card"><h3>\u{1F9EE} \u0420\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043E\u043A</h3>
-        ${row("\u{1F3AF} \u0426\u0456\u043B\u044C\u043E\u0432\u0438\u0439 \u0444\u0443\u0434\u043A\u043E\u0441\u0442", ((_d = c.foodCost) != null ? _d : 30) + "%", ch("cfg", ' data-k="foodCost"'), "\u0421\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C \xF7 \u0446\u0456\u043D\u0430. \u0417\u0430 \u043D\u0438\u043C \u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F \u0440\u0435\u043A\u043E\u043C\u0435\u043D\u0434\u043E\u0432\u0430\u043D\u0430 \u0446\u0456\u043D\u0430 \u0441\u0442\u0440\u0430\u0432")}
-        ${row("\u{1F53A} \u0421\u043F\u043E\u0432\u0456\u0449\u0430\u0442\u0438 \u043F\u0440\u043E \u043F\u043E\u0434\u043E\u0440\u043E\u0436\u0447\u0430\u043D\u043D\u044F \u0432\u0456\u0434", ((_e = c.priceAlert) != null ? _e : 5) + "%", ch("cfg", ' data-k="priceAlert"'), "\u042F\u043A\u0449\u043E \u0432 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0456\u0439 \u0446\u0456\u043D\u0430 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0443 \u0432\u0438\u0449\u0430 \u0437\u0430 \u043C\u0438\u043D\u0443\u043B\u0443")}</div>
+        ${row("\u{1F3AF} \u0426\u0456\u043B\u044C\u043E\u0432\u0438\u0439 \u0444\u0443\u0434\u043A\u043E\u0441\u0442", ((_f = c.foodCost) != null ? _f : 30) + "%", ch("cfg", ' data-k="foodCost"'), "\u0421\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C \xF7 \u0446\u0456\u043D\u0430. \u0417\u0430 \u043D\u0438\u043C \u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F \u0440\u0435\u043A\u043E\u043C\u0435\u043D\u0434\u043E\u0432\u0430\u043D\u0430 \u0446\u0456\u043D\u0430 \u0441\u0442\u0440\u0430\u0432")}
+        ${row("\u{1F53A} \u0421\u043F\u043E\u0432\u0456\u0449\u0430\u0442\u0438 \u043F\u0440\u043E \u043F\u043E\u0434\u043E\u0440\u043E\u0436\u0447\u0430\u043D\u043D\u044F \u0432\u0456\u0434", ((_g = c.priceAlert) != null ? _g : 5) + "%", ch("cfg", ' data-k="priceAlert"'), "\u042F\u043A\u0449\u043E \u0432 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0456\u0439 \u0446\u0456\u043D\u0430 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0443 \u0432\u0438\u0449\u0430 \u0437\u0430 \u043C\u0438\u043D\u0443\u043B\u0443")}</div>
       <div class="card"><h3>\u{1F4F1} \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0433\u043E\u0441\u0442\u0435\u0439</h3>
-        ${row("\u23F1 \u0427\u0430\u0441 \u043D\u0430 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0441\u043B\u044F QR", ((_f = c.scanMin) != null ? _f : 60) + " \u0445\u0432", ch("cfg", ' data-k="scanMin"'), "\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u0433\u0456\u0441\u0442\u044C \u043C\u043E\u0436\u0435 \u0437\u0430\u043C\u043E\u0432\u043B\u044F\u0442\u0438 \u043F\u0456\u0441\u043B\u044F \u0441\u043A\u0430\u043D\u0443\u0432\u0430\u043D\u043D\u044F QR \u043D\u0430 \u0441\u0442\u043E\u043B\u0456")}
+        ${row("\u23F1 \u0427\u0430\u0441 \u043D\u0430 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0441\u043B\u044F QR", ((_h = c.scanMin) != null ? _h : 60) + " \u0445\u0432", ch("cfg", ' data-k="scanMin"'), "\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u0433\u0456\u0441\u0442\u044C \u043C\u043E\u0436\u0435 \u0437\u0430\u043C\u043E\u0432\u043B\u044F\u0442\u0438 \u043F\u0456\u0441\u043B\u044F \u0441\u043A\u0430\u043D\u0443\u0432\u0430\u043D\u043D\u044F QR \u043D\u0430 \u0441\u0442\u043E\u043B\u0456")}
         <div class="muted set-note" style="margin-top:10px">\u{1F4F6} Wi\u2011Fi \u0437\u0430\u043A\u043B\u0430\u0434\u0443 (\u0437\u0430\u043F\u0430\u0441\u043D\u0438\u0439 \u0441\u043F\u043E\u0441\u0456\u0431) \xB7 \u0432\u0430\u0448\u0430 \u043C\u0435\u0440\u0435\u0436\u0430: ${esc((wf == null ? void 0 : wf.current) || "\u2026")}</div>
         <div class="scrollbox sm">${wf ? wf.list.map((x) => `<div class="kv"><span>${esc(x.k)}</span><span class="muted">${new Date(x.at).toLocaleDateString("uk-UA")}</span></div>`).join("") || '<div class="muted">\u043D\u0435\u043C\u0430\u0454 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u0438\u0445 \u0430\u0434\u0440\u0435\u0441</div>' : ""}</div>
         <div class="btnrow"><button class="btn sm primary" data-a="wifiAdd">\u2795 \u0426\u0435 \u043D\u0430\u0448\u0430 \u043C\u0435\u0440\u0435\u0436\u0430</button><button class="btn sm red" data-a="wifiClear">\u0421\u043A\u0438\u043D\u0443\u0442\u0438 \u0432\u0441\u0456</button></div></div></div>`;
     part.printer = printerCards();
+    if (cur === "pay") part.pay = payHTML();
     part.test = `<div class="grid2 set"><div class="card"><h3>\u{1F9EA} \u0422\u0435\u0441\u0442</h3><div class="muted set-note">\u0422\u0438\u043C\u0447\u0430\u0441\u043E\u0432\u043E, \u0434\u043E \u0437\u0430\u043F\u0443\u0441\u043A\u0443.</div><button class="btn sm red" data-a="reset">\u267B\uFE0F \u041E\u0431\u043D\u0443\u043B\u0438\u0442\u0438 \u0432\u0441\u0435</button></div></div>`;
     return `<div class="rhead"><div><h1>\u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F</h1><span class="muted">\u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B, \u043A\u043E\u0434\u0438, \u043F\u0430\u0440\u043E\u043B\u0456, \u043F\u0440\u0430\u0432\u0438\u043B\u0430</span></div></div>
       <div class="seg rsec">${SS.map(([k, l]) => `<button class="${cur === k ? "on" : ""}" data-a="setTab" data-s="${k}">${l}</button>`).join("")}</div>${part[cur]}`;
@@ -2223,6 +2233,132 @@ ${g.sup}:
     const off = R.off.length ? `<div class="grid2"><div class="card"><h3>\u{1F5D1} \u0421\u043F\u0438\u0441\u0430\u043D\u043D\u044F \u0437\u0430 \u043F\u0440\u0438\u0447\u0438\u043D\u0430\u043C\u0438</h3>${R.off.map(([k, v]) => `<div class="kv"><span>${esc(k)}</span><b class="money">${money(v)}</b></div>`).join("")}</div><div class="card"><h3>\u0429\u043E \u0441\u043F\u0438\u0441\u0443\u0454\u043C\u043E \u043D\u0430\u0439\u0431\u0456\u043B\u044C\u0448\u0435</h3>${R.offIng.map(([k, v]) => `<div class="kv"><span>${esc(k)}</span><b class="money">${money(v)}</b></div>`).join("")}</div></div>` : "";
     return head + kpis + meH + tbl + off;
   }
+  const hhK = (t) => new Date(t).toLocaleTimeString("uk-UA", { timeZone: "Europe/Kyiv", hour: "2-digit", minute: "2-digit" });
+  const WDL = ["\u043D\u0434", "\u043F\u043D", "\u0432\u0442", "\u0441\u0440", "\u0447\u0442", "\u043F\u0442", "\u0441\u0431"];
+  const curMon = () => {
+    const d = new Date(Date.now() - 3 * 36e5);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  };
+  const todayK = () => iso(Date.now() - 3 * 36e5);
+  const monAdd = (m, n) => {
+    const [y, mo] = m.split("-").map(Number), d = new Date(y, mo - 1 + n, 15);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  };
+  const MONN = ["\u0441\u0456\u0447\u0435\u043D\u044C", "\u043B\u044E\u0442\u0438\u0439", "\u0431\u0435\u0440\u0435\u0437\u0435\u043D\u044C", "\u043A\u0432\u0456\u0442\u0435\u043D\u044C", "\u0442\u0440\u0430\u0432\u0435\u043D\u044C", "\u0447\u0435\u0440\u0432\u0435\u043D\u044C", "\u043B\u0438\u043F\u0435\u043D\u044C", "\u0441\u0435\u0440\u043F\u0435\u043D\u044C", "\u0432\u0435\u0440\u0435\u0441\u0435\u043D\u044C", "\u0436\u043E\u0432\u0442\u0435\u043D\u044C", "\u043B\u0438\u0441\u0442\u043E\u043F\u0430\u0434", "\u0433\u0440\u0443\u0434\u0435\u043D\u044C"];
+  const monName = (m) => `${MONN[+m.slice(5) - 1]} ${m.slice(0, 4)}`;
+  const onShift = () => S.myAtt && S.myAtt.in && !S.myAtt.out;
+  const shiftBtns = () => {
+    var _a2;
+    return `${onShift() ? `<button class="btn sm red" data-a="zpOut">\u{1F534} \u0417\u0430\u043A\u0456\u043D\u0447\u0438\u0442\u0438 \u0437\u043C\u0456\u043D\u0443</button>` : `<button class="btn sm green" data-a="zpIn">\u{1F7E2} \u041F\u043E\u0447\u0430\u0442\u0438 \u0437\u043C\u0456\u043D\u0443</button>`}${((_a2 = S.myAtt) == null ? void 0 : _a2.ok) === 0 ? '<span class="zp-wait">\u{1F553} \u0447\u0435\u043A\u0430\u0454 \u2705</span>' : ""}<button class="btn sm" data-a="zpMy">\u{1F464} \u041A\u0430\u0431\u0456\u043D\u0435\u0442</button>`;
+  };
+  const attIc = (a, p, d) => (a == null ? void 0 : a.ok) === 1 ? a.late ? "\u23F0" : a.auto ? "\u26A0\uFE0F" : "\u2705" : (a == null ? void 0 : a.ok) === 0 ? "\u{1F553}" : (a == null ? void 0 : a.ok) === -1 ? "\u274C" : p && d < todayK() ? "\u{1F6AB}" : "";
+  const hrs = (a) => (a == null ? void 0 : a.in) && (a == null ? void 0 : a.out) ? Math.round((a.out - a.in) / 36e5 * 10) / 10 : null;
+  async function loadPay() {
+    S.zpM || (S.zpM = curMon());
+    S.data.zp = await api("zpGrid", { m: S.zpM }, 2e4);
+  }
+  function payHTML() {
+    const G = S.data.zp;
+    if (!G) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
+    const today = todayK(), people = G.staff.filter((s) => G.rows.some((r) => r.n === s.name) || Object.values(G.plan).some((d) => d[s.name])).map((s) => s.name);
+    const head = `<div class="zp-top"><button class="btn sm" data-a="zpM" data-d="-1">\u25C0</button><b>${monName(G.m)}</b><button class="btn sm" data-a="zpM" data-d="1">\u25B6</button>
+      <span class="muted">\u2705 \u0431\u0443\u0432 \xB7 \u23F0 \u0437\u0430\u043F\u0456\u0437\u043D\u0438\u0432\u0441\u044F \xB7 \u{1F553} \u0447\u0435\u043A\u0430\u0454 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F \xB7 \u274C \u0432\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E \xB7 \u{1F6AB} \u043F\u0440\u043E\u0433\u0443\u043B \xB7 \u26A0\uFE0F \u0437\u043C\u0456\u043D\u0443 \u0437\u0430\u043A\u0440\u0438\u0442\u043E \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u043D\u043E \xB7 \u0441\u0456\u0440\u0438\u0439 \u0447\u0430\u0441 \u2014 \u043F\u043B\u0430\u043D</span></div>`;
+    const grid = `<div class="zp-grid"><table><thead><tr><th></th>${G.days.map((d) => {
+      const w = (/* @__PURE__ */ new Date(d + "T12:00:00Z")).getUTCDay();
+      return `<th class="${d === today ? "td" : ""}${w === 0 || w === 6 ? " we" : ""}">${+d.slice(8)}<small>${WDL[w]}</small></th>`;
+    }).join("")}</tr></thead>
+      <tbody>${people.map((n) => `<tr><th>${esc(n)}</th>${G.days.map((d) => {
+      var _a2, _b;
+      const a = (_a2 = G.att[d]) == null ? void 0 : _a2[n], p = (_b = G.plan[d]) == null ? void 0 : _b[n], h = hrs(a);
+      return `<td class="press${d === today ? " td" : ""}" data-a="zpCell" data-d="${d}" data-n="${esc(n)}"><i>${attIc(a, p, d)}</i>${p ? `<small>${p}</small>` : ""}${h ? `<small class="h">${h}\u0433</small>` : ""}</td>`;
+    }).join("")}</tr>`).join("")}</tbody></table></div>
+      <div class="btnrow"><button class="btn sm" data-a="zpCopy">\u{1F4CB} \u041F\u043B\u0430\u043D: \u0441\u043A\u043E\u043F\u0456\u044E\u0432\u0430\u0442\u0438 \u043C\u0438\u043D\u0443\u043B\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u043D\u0430 \u0446\u0435\u0439</button></div>`;
+    const due = G.rows.reduce((a, r) => a + Math.max(0, r.due), 0);
+    const pills = `<div class="pills"><div class="pill"><span>\u{1F4B0} \u0412\u0438\u0440\u0443\u0447\u043A\u0430 \u043C\u0456\u0441\u044F\u0446\u044F</span><b class="money">${money(G.revenue)}</b></div><div class="pill"><span>\u{1F477} \u0424\u043E\u043D\u0434 \u043E\u043F\u043B\u0430\u0442\u0438 \u043F\u0440\u0430\u0446\u0456</span><b class="money">${money(G.fund)}</b><small>${G.fundPct}% \u0432\u0456\u0434 \u0432\u0438\u0440\u0443\u0447\u043A\u0438</small></div><div class="pill"><span>\u{1F4B8} \u0414\u043E \u0432\u0438\u043F\u043B\u0430\u0442\u0438 \u0432\u0441\u0456\u043C</span><b class="money">${money(due)}</b></div></div>`;
+    const ln = (l, v, cls = "") => `<div class="kv ${cls}"><span>${l}</span><b class="money">${v}</b></div>`;
+    const cards = G.rows.map((r) => {
+      const p = r.pay || {};
+      return `<div class="card"><div class="rhead"><h3 style="margin:0">${esc(r.n)} <span class="muted" style="font-weight:400">\xB7 ${r.role === "cook" ? "\u043A\u0443\u0445\u0430\u0440" : r.role === "admin" ? "\u0430\u0434\u043C\u0456\u043D" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"}</span></h3><button class="btn sm" data-a="zpSet" data-id="${r.id}">\u2699\uFE0F \u0421\u0442\u0430\u0432\u043A\u0430</button></div>
+        ${!p.rate && !p.pct ? '<div class="warn" style="font-size:13px">\u0421\u0442\u0430\u0432\u043A\u0443 \u043D\u0435 \u0437\u0430\u0434\u0430\u043D\u043E \u2014 \u043D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \xAB\u2699\uFE0F \u0421\u0442\u0430\u0432\u043A\u0430\xBB</div>' : `<div class="muted" style="font-size:12px">${p.rate ? money(p.rate) + " \u0437\u0430 \u0437\u043C\u0456\u043D\u0443" : ""}${p.pct ? ` \xB7 ${p.pct}% \u0432\u0456\u0434 ${{ all: "\u0432\u0438\u0440\u0443\u0447\u043A\u0438 \u0434\u043D\u044F", own: "\u0441\u0432\u043E\u0457\u0445 \u0447\u0435\u043A\u0456\u0432", kitchen: "\u043F\u0440\u043E\u0434\u0430\u0436\u0456\u0432 \u043A\u0443\u0445\u043D\u0456" }[p.base || "all"]}` : ""}${p.dayRev ? ` \xB7 \u{1F3AF} \u0437\u043C\u0456\u043D\u0430 > ${money(p.dayRev)} \u2192 +${money(p.dayBonus)}` : ""}${p.monRev ? ` \xB7 \u{1F3AF} \u043C\u0456\u0441\u044F\u0446\u044C > ${money(p.monRev)} \u2192 +${money(p.monBonus)}` : ""}</div>`}
+        ${ln(`\u0417\u043C\u0456\u043D ${r.shifts}${r.hours ? ` \xB7 ${r.hours} \u0433\u043E\u0434` : ""}${r.pending ? ` \xB7 <span class="warn">${r.pending} \u0447\u0435\u043A\u0430\u0454 \u2705</span>` : ""}`, money(r.rate))}
+        ${r.pct ? ln(`% \u0432\u0456\u0434 ${money(r.baseSum)}`, money(r.pct)) : ""}${r.dayB || r.monB ? ln("\u{1F3AF} \u0411\u043E\u043D\u0443\u0441 \u0437\u0430 \u043F\u043B\u0430\u043D", money(r.dayB + r.monB)) : ""}${r.toMon ? `<div class="muted" style="font-size:12px">\u0434\u043E \u043C\u0456\u0441\u044F\u0447\u043D\u043E\u0433\u043E \u0431\u043E\u043D\u0443\u0441\u0443 \u0449\u0435 ${money(r.toMon)}</div>` : ""}
+        ${r.bonus ? ln("\u2795 \u041F\u0440\u0435\u043C\u0456\u0457", money(r.bonus), "good") : ""}${r.fine ? ln("\u2796 \u0428\u0442\u0440\u0430\u0444\u0438", "\u2212" + money(r.fine), "bad") : ""}${r.adv ? ln("\u{1F4B5} \u0410\u0432\u0430\u043D\u0441\u0438", "\u2212" + money(r.adv)) : ""}${r.paid ? ln("\u{1F4B8} \u0412\u0438\u043F\u043B\u0430\u0447\u0435\u043D\u043E", "\u2212" + money(r.paid)) : ""}
+        <div class="kv tot"><span>\u0414\u043E \u0432\u0438\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(r.due)}</b></div>${r.tips ? `<div class="muted" style="font-size:12px">\u{1F49D} \u0447\u0430\u0439\u043E\u0432\u0456 \u0434\u043E \u0432\u0438\u0434\u0430\u0447\u0456 \u043E\u043A\u0440\u0435\u043C\u043E: ${money(r.tips)} (\u041A\u0430\u0441\u0430)</div>` : ""}${r.late || r.absent ? `<div class="warn" style="font-size:12px">${r.late ? `\u23F0 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u044C: ${r.late}` : ""}${r.late && r.absent ? " \xB7 " : ""}${r.absent ? `\u{1F6AB} \u043F\u0440\u043E\u0433\u0443\u043B\u0456\u0432: ${r.absent}` : ""}</div>` : ""}
+        <div class="btnrow"><button class="btn sm primary" data-a="zpPay" data-n="${esc(r.n)}" data-v="${Math.max(0, r.due)}">\u{1F4B8} \u0412\u0438\u0434\u0430\u0442\u0438</button><button class="btn sm" data-a="zpOpN" data-t="bonus" data-n="${esc(r.n)}">\u2795 \u041F\u0440\u0435\u043C\u0456\u044F</button><button class="btn sm" data-a="zpOpN" data-t="fine" data-n="${esc(r.n)}">\u2796 \u0428\u0442\u0440\u0430\u0444</button><button class="btn sm" data-a="zpOpN" data-t="adv" data-n="${esc(r.n)}">\u{1F4B5} \u0410\u0432\u0430\u043D\u0441</button></div></div>`;
+    }).join("");
+    const sw2 = (G.swaps || []).map((s) => `<div class="kv"><span>\u{1F501} ${s.day.slice(8)}.${s.day.slice(5, 7)} ${s.time}: <b>${esc(s.from)}</b> \u2192 <b>${esc(s.to)}</b> <span class="muted">${s.st === "ask" ? "\xB7 \u0447\u0435\u043A\u0430\u0454 \u0437\u0433\u043E\u0434\u0438 \u043A\u043E\u043B\u0435\u0433\u0438" : "\xB7 \u043A\u043E\u043B\u0435\u0433\u0430 \u043F\u043E\u0433\u043E\u0434\u0438\u0432\u0441\u044F"}</span></span><span class="kv-r">${s.st === "agreed" ? `<button class="btn sm green" data-a="zpSw" data-id="${s.id}" data-s="ok">\u2705</button>` : ""}<button class="btn sm red" data-a="zpSw" data-id="${s.id}" data-s="no">\u274C</button></span></div>`).join("");
+    const OPN = { bonus: "\u2795 \u041F\u0440\u0435\u043C\u0456\u044F", fine: "\u2796 \u0428\u0442\u0440\u0430\u0444", adv: "\u{1F4B5} \u0410\u0432\u0430\u043D\u0441", paid: "\u{1F4B8} \u0412\u0438\u043F\u043B\u0430\u0442\u0430" };
+    const ops = G.ops.slice(0, 40).map((o) => `<div class="kv rrow${o.del ? " del" : ""}"><span>${o.day.slice(8)}.${o.day.slice(5, 7)} ${OPN[o.t]} \xB7 <b>${esc(o.n)}</b>${o.src ? o.src === "card" ? " \u{1F4B3}" : " \u{1F4B5}" : ""}${o.note ? ` <span class="muted">\xB7 ${esc(o.note)}</span>` : ""}</span><span class="kv-r"><b class="money">${money(o.sum)}</b><button class="xb" data-a="zpOpDel" data-id="${o.id}" data-b="${o.del ? 1 : ""}">${o.del ? "\u21A9\uFE0F" : "\u{1F5D1}"}</button></span></div>`).join("");
+    const eff = `<div class="card"><h3>\u{1F4CA} \u0415\u0444\u0435\u043A\u0442\u0438\u0432\u043D\u0456\u0441\u0442\u044C</h3><div class="sk-tbl"><div class="th zp-eff"><span>\u0425\u0442\u043E</span><span>\u0417\u043C\u0456\u043D</span><span>\u0413\u043E\u0434\u0438\u043D</span><span>\u0412\u0438\u0440\u0443\u0447\u043A\u0430 \u0437\u0430 \u0437\u043C\u0456\u043D\u0443</span><span>\u0417\u0430 \u0433\u043E\u0434\u0438\u043D\u0443</span></div>${G.rows.filter((r) => r.shifts).sort((a, b) => b.revPerShift - a.revPerShift).map((r) => `<div class="tr zp-eff"><span>${esc(r.n)}</span><span>${r.shifts}</span><span>${r.hours || "\u2014"}</span><span class="money">${money(r.revPerShift)}</span><span class="money">${r.revPerHour ? money(r.revPerHour) : "\u2014"}</span></div>`).join("") || '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u0438\u0445 \u0437\u043C\u0456\u043D</div>'}</div><div class="muted" style="font-size:12px;margin-top:6px">\u0421\u0435\u0440\u0435\u0434\u043D\u044F \u0432\u0438\u0440\u0443\u0447\u043A\u0430 \u0437\u0430\u043A\u043B\u0430\u0434\u0443 \u0432 \u0434\u043D\u0456, \u043A\u043E\u043B\u0438 \u043B\u044E\u0434\u0438\u043D\u0430 \u043F\u0440\u0430\u0446\u044E\u0432\u0430\u043B\u0430.</div></div>`;
+    return head + pills + `<div class="card">${grid}</div>` + (sw2 ? `<div class="card"><h3>\u{1F501} \u041E\u0431\u043C\u0456\u043D\u0438 \u0437\u043C\u0456\u043D\u0430\u043C\u0438</h3>${sw2}</div>` : "") + `<div class="grid2 set">${cards || '<div class="card muted">\u041D\u0435\u043C\u0430\u0454 \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\u0443</div>'}</div>` + eff + (ops ? `<div class="card"><h3>\u041E\u043F\u0435\u0440\u0430\u0446\u0456\u0457 \u0437\u0430 \u043C\u0456\u0441\u044F\u0446\u044C</h3>${ops}</div>` : "");
+  }
+  async function zpCell(d, n) {
+    var _a2, _b, _c;
+    const G = S.data.zp, a = (_a2 = G.att[d]) == null ? void 0 : _a2[n], p = (_b = G.plan[d]) == null ? void 0 : _b[n], fine = (_c = G.cfg) == null ? void 0 : _c.lateFine;
+    const info = `${d.slice(8)}.${d.slice(5, 7)} \xB7 ${n}${p ? ` \xB7 \u043F\u043B\u0430\u043D ${p}` : ""}${(a == null ? void 0 : a.in) ? ` \xB7 \u043F\u0440\u0438\u0439\u0448\u043E\u0432 ${hhK(a.in)}` : ""}${(a == null ? void 0 : a.out) ? ` \xB7 \u043F\u0456\u0448\u043E\u0432 ${hhK(a.out)}${a.auto ? " (\u0430\u0432\u0442\u043E)" : ""}` : ""}${(a == null ? void 0 : a.late) ? ` \xB7 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F ${a.late} \u0445\u0432` : ""}${(a == null ? void 0 : a.by) ? ` \xB7 \u2714 ${a.by}` : ""}`;
+    const opts = (a == null ? void 0 : a.ok) === 0 ? [{ label: "\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438", val: "o", cls: "primary" }, ...a.late && fine ? [{ label: `\u2705 + \u0448\u0442\u0440\u0430\u0444 ${fine} \u20B4`, val: "f" }] : [], { label: "\u274C \u0412\u0456\u0434\u0445\u0438\u043B\u0438\u0442\u0438", val: "n", cls: "red" }] : [(a == null ? void 0 : a.ok) === 1 ? { label: "\u274C \u041D\u0435 \u0431\u0443\u0432 (\u0437\u043D\u044F\u0442\u0438)", val: "del", cls: "red" } : { label: "\u2705 \u0411\u0443\u0432 \u043D\u0430 \u0437\u043C\u0456\u043D\u0456", val: "set", cls: "primary" }, { label: p ? `\u{1F4C5} \u0417\u043C\u0456\u043D\u0438\u0442\u0438 \u043F\u043B\u0430\u043D (${p})` : "\u{1F4C5} \u0417\u0430\u043F\u043B\u0430\u043D\u0443\u0432\u0430\u0442\u0438 \u0437\u043C\u0456\u043D\u0443", val: "plan" }, ...p ? [{ label: "\u{1F5D1} \u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0437 \u043F\u043B\u0430\u043D\u0443", val: "unplan" }] : []];
+    const v = await choose("\u{1F477} \u0417\u043C\u0456\u043D\u0430", info, opts);
+    if (!v) return;
+    if (v === "plan") {
+      const t = await ask(`\u{1F4C5} ${n}, ${d.slice(8)}.${d.slice(5, 7)}: \u043E \u043A\u043E\u0442\u0440\u0456\u0439 \u043F\u043E\u0447\u0430\u0442\u043E\u043A?`, "\u043D\u0430\u043F\u0440. 10:00");
+      if (!t) return;
+      if (!/^\d{1,2}:\d{2}$/.test(t.trim())) return toast("\u26A0\uFE0F \u0424\u043E\u0440\u043C\u0430\u0442 \u0447\u0430\u0441\u0443: 10:00");
+      await act("zpPlan", { day: d, n, time: t.trim() }, "\u{1F4C5} \u0417\u0430\u043F\u043B\u0430\u043D\u043E\u0432\u0430\u043D\u043E");
+    } else if (v === "unplan") await act("zpPlan", { day: d, n, time: "" }, "\u{1F5D1} \u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
+    else await act("zpAtt", ["o", "f", "n"].includes(v) ? { day: d, n, how: v } : { day: d, n, set: v === "del" ? "del" : "o" }, "\u2714 \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
+    loadView();
+  }
+  async function zpSet(id) {
+    const s = S.data.zp.staff.find((x) => x.id === id), p = (s == null ? void 0 : s.pay) || {};
+    if (!s) return;
+    const body = `<div class="form"><div class="frow"><label>\u0421\u0442\u0430\u0432\u043A\u0430 \u0437\u0430 \u0437\u043C\u0456\u043D\u0443, \u20B4<input id="zR" inputmode="numeric" value="${p.rate || ""}" placeholder="\u043D\u0430\u043F\u0440. 600"></label><label>% \u0432\u0456\u0434 \u0432\u0438\u0440\u0443\u0447\u043A\u0438<input id="zP" inputmode="decimal" value="${p.pct || ""}" placeholder="\u043D\u0430\u043F\u0440. 2"></label></div>
+      <label>\u0412\u0456\u0434\u0441\u043E\u0442\u043E\u043A \u0440\u0430\u0445\u0443\u0432\u0430\u0442\u0438 \u0432\u0456\u0434<select id="zB"><option value="all" ${p.base !== "own" && p.base !== "kitchen" ? "selected" : ""}>\u0443\u0441\u0456\u0454\u0457 \u0432\u0438\u0440\u0443\u0447\u043A\u0438 \u0434\u043D\u044F (\u0437\u0430 \u0434\u043D\u0456 \u043D\u0430 \u0437\u043C\u0456\u043D\u0456)</option><option value="own" ${p.base === "own" ? "selected" : ""}>\u0441\u0432\u043E\u0457\u0445 \u0447\u0435\u043A\u0456\u0432 (\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442 \u0441\u0442\u043E\u043B\u0430)</option><option value="kitchen" ${p.base === "kitchen" ? "selected" : ""}>\u043F\u0440\u043E\u0434\u0430\u0436\u0456\u0432 \u043A\u0443\u0445\u043D\u0456</option></select></label>
+      <div class="muted" style="font-size:12px">\u{1F3AF} \u041F\u043B\u0430\u043D \u043F\u0440\u043E\u0434\u0430\u0436\u0456\u0432 (\u0432\u0456\u0434 \u0442\u0456\u0454\u0457 \u0436 \u0431\u0430\u0437\u0438) \u2014 \u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E:</div>
+      <div class="frow"><label>\u0417\u0430 \u0437\u043C\u0456\u043D\u0443 \u0431\u0456\u043B\u044C\u0448\u0435, \u20B4<input id="zDR" inputmode="numeric" value="${p.dayRev || ""}"></label><label>\u2192 \u0431\u043E\u043D\u0443\u0441, \u20B4<input id="zDB" inputmode="numeric" value="${p.dayBonus || ""}"></label></div>
+      <div class="frow"><label>\u0417\u0430 \u043C\u0456\u0441\u044F\u0446\u044C \u0431\u0456\u043B\u044C\u0448\u0435, \u20B4<input id="zMR" inputmode="numeric" value="${p.monRev || ""}"></label><label>\u2192 \u0431\u043E\u043D\u0443\u0441, \u20B4<input id="zMB" inputmode="numeric" value="${p.monBonus || ""}"></label></div></div>`;
+    const v = await modal({ title: `\u2699\uFE0F ${s.name}: \u0441\u0442\u0430\u0432\u043A\u0430`, body, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+    const g = (i) => $("#" + i).value.replace(",", "."), pay = v === "ok" ? { rate: g("zR"), pct: g("zP"), base: $("#zB").value, dayRev: g("zDR"), dayBonus: g("zDB"), monRev: g("zMR"), monBonus: g("zMB") } : null;
+    closeModal();
+    if (pay && await act("zpStaff", { id, pay }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) loadView();
+  }
+  async function zpOpN(t, n, preset) {
+    const T = { bonus: "\u2795 \u041F\u0440\u0435\u043C\u0456\u044F", fine: "\u2796 \u0428\u0442\u0440\u0430\u0444", adv: "\u{1F4B5} \u0410\u0432\u0430\u043D\u0441", paid: "\u{1F4B8} \u0412\u0438\u0434\u0430\u0442\u0438 \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0443" }[t], money_ = t === "adv" || t === "paid";
+    const body = `<div class="form"><label>\u0421\u0443\u043C\u0430, \u20B4<input id="oS" inputmode="numeric" value="${preset || ""}"></label><input id="oN" placeholder="${t === "fine" ? "\u0417\u0430 \u0449\u043E (\u043D\u0430\u043F\u0440. \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F)" : "\u041A\u043E\u043C\u0435\u043D\u0442\u0430\u0440"}"></div>`;
+    const v = await modal({ title: `${T} \xB7 ${n}`, body, buttons: money_ ? [{ label: "\u{1F4B5} \u0417 \u043A\u0430\u0441\u0438", val: "cash", cls: "primary" }, { label: "\u{1F4B3} \u0417 \u043A\u0430\u0440\u0442\u043A\u0438", val: "card", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }] : [{ label: "OK", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+    const sum = v ? +$("#oS").value.replace(",", ".") : 0, note = v ? $("#oN").value.trim() : "";
+    closeModal();
+    if (!v) return;
+    if (!(sum > 0)) return toast("\u26A0\uFE0F \u0412\u043A\u0430\u0436\u0456\u0442\u044C \u0441\u0443\u043C\u0443");
+    if (await act("zpOp", __spreadValues({ n, t, sum, note }, money_ ? { src: v } : {}), money_ ? `\u{1F4B8} \u0412\u0438\u0434\u0430\u043D\u043E ${money(sum)} ${v === "card" ? "\u0437 \u043A\u0430\u0440\u0442\u043A\u0438" : "\u0437 \u043A\u0430\u0441\u0438"}` : "\u2714 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E")) loadView();
+  }
+  async function zpMy() {
+    var _a2;
+    const r = await act("zpMy", {});
+    if (!r) return;
+    const w = r.row, me = (_a2 = S.me) == null ? void 0 : _a2.name;
+    const lnx = (l, v2) => `<div class="kv"><span>${l}</span><b class="money">${v2}</b></div>`;
+    const asks = r.swaps.filter((s) => s.to === me && s.st === "ask");
+    const body = `${w ? `<div class="pills zp-my"><div class="pill"><span>\u0417\u043C\u0456\u043D</span><b>${w.shifts}</b><small>${w.hours ? w.hours + " \u0433\u043E\u0434" : ""}</small></div><div class="pill"><span>\u0417\u0430\u0440\u043E\u0431\u043B\u0435\u043D\u043E</span><b class="money">${money(w.earned)}</b></div><div class="pill"><span>\u0414\u043E \u0432\u0438\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(w.due)}</b></div>${w.tips ? `<div class="pill"><span>\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456</span><b class="money">${money(w.tips)}</b></div>` : ""}</div>
+      ${lnx(`\u0421\u0442\u0430\u0432\u043A\u0430 \xD7 ${w.shifts}`, money(w.rate))}${w.pct ? lnx("% \u0432\u0456\u0434 \u0432\u0438\u0440\u0443\u0447\u043A\u0438", money(w.pct)) : ""}${w.dayB || w.monB ? lnx("\u{1F3AF} \u0411\u043E\u043D\u0443\u0441 \u0437\u0430 \u043F\u043B\u0430\u043D", money(w.dayB + w.monB)) : ""}${w.bonus ? lnx("\u2795 \u041F\u0440\u0435\u043C\u0456\u0457", money(w.bonus)) : ""}${w.fine ? lnx("\u2796 \u0428\u0442\u0440\u0430\u0444\u0438", "\u2212" + money(w.fine)) : ""}${w.adv ? lnx("\u{1F4B5} \u0410\u0432\u0430\u043D\u0441\u0438", "\u2212" + money(w.adv)) : ""}${w.paid ? lnx("\u{1F4B8} \u0412\u0438\u043F\u043B\u0430\u0447\u0435\u043D\u043E", "\u2212" + money(w.paid)) : ""}
+      ${w.toMon ? `<div class="muted" style="font-size:13px;margin-top:6px">\u{1F3AF} \u0414\u043E \u043C\u0456\u0441\u044F\u0447\u043D\u043E\u0433\u043E \u0431\u043E\u043D\u0443\u0441\u0443 \u0449\u0435 ${money(w.toMon)}</div>` : ""}` : '<div class="muted">\u0421\u0442\u0430\u0432\u043A\u0443 \u0449\u0435 \u043D\u0435 \u0437\u0430\u0434\u0430\u043D\u043E</div>'}
+      ${asks.map((s) => `<div class="card zp-ask">\u{1F501} <b>${esc(s.from)}</b> \u043F\u0440\u043E\u0441\u0438\u0442\u044C \u0432\u0438\u0439\u0442\u0438 \u0437\u0430 \u043D\u044C\u043E\u0433\u043E ${s.day.slice(8)}.${s.day.slice(5, 7)} \u043E ${s.time}<div class="btnrow"><button class="btn sm green" data-a="zpSw" data-id="${s.id}" data-s="agree">\u041F\u043E\u0433\u043E\u0434\u0436\u0443\u044E\u0441\u044C</button><button class="btn sm red" data-a="zpSw" data-id="${s.id}" data-s="no">\u041D\u0456</button></div></div>`).join("")}
+      <h3 style="margin:14px 0 6px">\u041C\u0456\u0439 \u0433\u0440\u0430\u0444\u0456\u043A \xB7 ${monName(r.m)}</h3><div class="sk-jr">${r.days.map((x) => {
+      var _a3, _b;
+      return `<div class="kv"><span>${x.d.slice(8)}.${x.d.slice(5, 7)} ${WDL[(/* @__PURE__ */ new Date(x.d + "T12:00:00Z")).getUTCDay()]}${x.plan ? ` <span class="muted">\u043F\u043B\u0430\u043D ${x.plan}</span>` : ""}</span><span>${attIc(x.att, x.plan, x.d)} ${((_a3 = x.att) == null ? void 0 : _a3.in) ? hhK(x.att.in) : ""}${((_b = x.att) == null ? void 0 : _b.out) ? "\u2013" + hhK(x.att.out) : ""}</span></div>`;
+    }).join("") || '<div class="muted">\u0417\u043C\u0456\u043D \u0449\u0435 \u043D\u0435\u043C\u0430\u0454</div>'}</div>
+      ${r.swaps.filter((s) => s.from === me).map((s) => `<div class="muted" style="font-size:12px">\u{1F501} ${s.day.slice(8)}.${s.day.slice(5, 7)} \u2192 ${esc(s.to)}: ${s.st === "ask" ? "\u0447\u0435\u043A\u0430\u0454 \u0437\u0433\u043E\u0434\u0438" : "\u0447\u0435\u043A\u0430\u0454 \u0430\u0434\u043C\u0456\u043D\u0430"}</div>`).join("")}`;
+    const v = await modal({ title: `\u{1F464} ${me}`, body, buttons: [{ label: "\u{1F501} \u041F\u043E\u043F\u0440\u043E\u0441\u0438\u0442\u0438 \u043E\u0431\u043C\u0456\u043D", val: "swap" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+    if (v === "swap") {
+      const future = r.days.filter((x) => x.plan && x.d >= todayK());
+      if (!future.length) return toast("\u0423 \u0432\u0430\u0448\u043E\u043C\u0443 \u043F\u043B\u0430\u043D\u0456 \u043D\u0435\u043C\u0430\u0454 \u043C\u0430\u0439\u0431\u0443\u0442\u043D\u0456\u0445 \u0437\u043C\u0456\u043D");
+      const d = await choose("\u{1F501} \u042F\u043A\u0443 \u0437\u043C\u0456\u043D\u0443 \u0432\u0456\u0434\u0434\u0430\u0442\u0438?", "", future.map((x) => ({ label: `${x.d.slice(8)}.${x.d.slice(5, 7)} ${WDL[(/* @__PURE__ */ new Date(x.d + "T12:00:00Z")).getUTCDay()]} \xB7 ${x.plan}`, val: x.d })));
+      if (!d) return;
+      const pl = await act("zpPeople", {});
+      const to = pl && await choose("\u{1F501} \u041A\u043E\u0433\u043E \u043F\u043E\u043F\u0440\u043E\u0441\u0438\u0442\u0438?", "\u041A\u043E\u043B\u0435\u0433\u0430 \u043F\u043E\u0433\u043E\u0434\u0438\u0442\u044C\u0441\u044F \u0443 \u0441\u0432\u043E\u0454\u043C\u0443 \u043A\u0430\u0431\u0456\u043D\u0435\u0442\u0456, \u043F\u043E\u0442\u0456\u043C \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C \u0430\u0434\u043C\u0456\u043D", pl.list.map((n) => ({ label: n, val: n })));
+      if (!to) return;
+      await act("zpSwap", { day: d, to }, "\u{1F501} \u0417\u0430\u043F\u0438\u0442 \u043D\u0430\u0434\u0456\u0441\u043B\u0430\u043D\u043E");
+    }
+  }
   let modalResolve;
   function modal({ title, text = "", body = "", buttons, keep }) {
     return new Promise((res) => {
@@ -2551,6 +2687,7 @@ ${g.sup}:
       case "setTab":
         S.setTab = el.dataset.s;
         renderMain();
+        if (S.setTab === "pay") loadView();
         break;
       case "move":
         moveFlow();
@@ -2718,7 +2855,7 @@ ${g.sup}:
         break;
       }
       case "cfg": {
-        const k = el.dataset.k, L = { discMax: ["\u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430, %", "\u0432\u0456\u0434 0 \u0434\u043E 100"], scanMin: ["\u0425\u0432\u0438\u043B\u0438\u043D \u043D\u0430 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0441\u043B\u044F QR", "\u0432\u0456\u0434 10 \u0434\u043E 600"], foodCost: ["\u0426\u0456\u043B\u044C\u043E\u0432\u0438\u0439 \u0444\u0443\u0434\u043A\u043E\u0441\u0442, %", "\u0432\u0456\u0434 5 \u0434\u043E 90"], priceAlert: ["\u0421\u043F\u043E\u0432\u0456\u0449\u0430\u0442\u0438 \u043F\u0440\u043E \u043F\u043E\u0434\u043E\u0440\u043E\u0436\u0447\u0430\u043D\u043D\u044F \u0432\u0456\u0434, %", "\u0432\u0456\u0434 1 \u0434\u043E 100"] }[k];
+        const k = el.dataset.k, L = { discMax: ["\u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430, %", "\u0432\u0456\u0434 0 \u0434\u043E 100"], scanMin: ["\u0425\u0432\u0438\u043B\u0438\u043D \u043D\u0430 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0441\u043B\u044F QR", "\u0432\u0456\u0434 10 \u0434\u043E 600"], foodCost: ["\u0426\u0456\u043B\u044C\u043E\u0432\u0438\u0439 \u0444\u0443\u0434\u043A\u043E\u0441\u0442, %", "\u0432\u0456\u0434 5 \u0434\u043E 90"], priceAlert: ["\u0421\u043F\u043E\u0432\u0456\u0449\u0430\u0442\u0438 \u043F\u0440\u043E \u043F\u043E\u0434\u043E\u0440\u043E\u0436\u0447\u0430\u043D\u043D\u044F \u0432\u0456\u0434, %", "\u0432\u0456\u0434 1 \u0434\u043E 100"], lateMin: ["\u0417\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F \u2014 \u043F\u0456\u0441\u043B\u044F \u0441\u043A\u0456\u043B\u044C\u043A\u043E\u0445 \u0445\u0432\u0438\u043B\u0438\u043D", "\u0432\u0456\u0434 0 \u0434\u043E 120"], lateFine: ["\u0428\u0442\u0440\u0430\u0444 \u0437\u0430 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F, \u20B4", "0 \u2014 \u0431\u0435\u0437 \u0448\u0442\u0440\u0430\u0444\u0443"] }[k];
         const v = await ask(L[0], L[1], "number");
         if (v != null && v !== "") {
           await act("cfgSet", { k, v: +v }, "\u2699\uFE0F \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
@@ -2813,6 +2950,78 @@ ${g.sup}:
     if (e.target.id === "rFrom" || e.target.id === "rTo") {
       S.rep[e.target.id === "rFrom" ? "from" : "to"] = e.target.value;
       loadView();
+    }
+  });
+  document.addEventListener("click", async (e) => {
+    const el = e.target.closest("[data-a]");
+    if (!el || !/^zp/.test(el.dataset.a)) return;
+    const a = el.dataset.a, D = el.dataset;
+    switch (a) {
+      case "zpIn":
+        if (await act("zpIn", {}, "\u{1F7E2} \u0417\u043C\u0456\u043D\u0443 \u043F\u043E\u0447\u0430\u0442\u043E \u2014 \u0430\u0434\u043C\u0456\u043D \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C")) loadState().catch(() => {
+        });
+        break;
+      case "zpOut":
+        if (await confirmBox("\u{1F534} \u0417\u0430\u043A\u0456\u043D\u0447\u0438\u0442\u0438 \u0437\u043C\u0456\u043D\u0443?")) {
+          if (await act("zpOut", {}, "\u{1F534} \u0417\u043C\u0456\u043D\u0443 \u0437\u0430\u043A\u0456\u043D\u0447\u0435\u043D\u043E")) loadState().catch(() => {
+          });
+        }
+        break;
+      case "zpMy":
+        zpMy();
+        break;
+      case "zpM":
+        S.zpM = monAdd(S.zpM || curMon(), +D.d);
+        S.data.zp = null;
+        renderMain();
+        loadView();
+        break;
+      case "zpCell":
+        zpCell(D.d, D.n);
+        break;
+      case "zpCopy": {
+        const t = /* @__PURE__ */ new Date(todayK() + "T12:00:00Z"), mon = new Date(t);
+        mon.setUTCDate(t.getUTCDate() - (t.getUTCDay() + 6) % 7);
+        const to = mon.toISOString().slice(0, 10);
+        mon.setUTCDate(mon.getUTCDate() - 7);
+        const from = mon.toISOString().slice(0, 10);
+        if (await confirmBox("\u{1F4CB} \u0421\u043A\u043E\u043F\u0456\u044E\u0432\u0430\u0442\u0438 \u043F\u043B\u0430\u043D?", `\u0422\u0438\u0436\u0434\u0435\u043D\u044C \u0437 ${from.slice(8)}.${from.slice(5, 7)} \u2192 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0437 ${to.slice(8)}.${to.slice(5, 7)}`)) {
+          const r = await act("zpPlanCopy", { from, to });
+          if (r) {
+            toast(`\u{1F4CB} \u0421\u043A\u043E\u043F\u0456\u0439\u043E\u0432\u0430\u043D\u043E \u0437\u043C\u0456\u043D: ${r.n}`);
+            loadView();
+          }
+        }
+        break;
+      }
+      case "zpSet":
+        zpSet(D.id);
+        break;
+      case "zpPay":
+        zpOpN("paid", D.n, D.v);
+        break;
+      case "zpOpN":
+        zpOpN(D.t, D.n);
+        break;
+      case "zpOpDel": {
+        const back = !!D.b;
+        if (!back && !await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u043E\u043F\u0435\u0440\u0430\u0446\u0456\u044E?", "\u042F\u043A\u0449\u043E \u0446\u0435 \u0432\u0438\u0434\u0430\u0447\u0430 \u0433\u0440\u043E\u0448\u0435\u0439 \u2014 \u0432\u043E\u043D\u0438 \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u0432 \u043A\u0430\u0441\u0443 / \u043D\u0430 \u043A\u0430\u0440\u0442\u043A\u0443. \u041C\u043E\u0436\u043D\u0430 \u0432\u0456\u0434\u043D\u043E\u0432\u0438\u0442\u0438 \u21A9\uFE0F")) break;
+        if (await act("zpOpDel", { id: D.id, back, m: S.zpM }, back ? "\u21A9\uFE0F \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E" : "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) loadView();
+        break;
+      }
+      case "zpSw":
+        if (await act("zpSwapStep", { id: D.id, step: D.s }, D.s === "no" ? "\u274C \u0412\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E" : D.s === "agree" ? "\u{1F501} \u041F\u043E\u0433\u043E\u0434\u0436\u0435\u043D\u043E \u2014 \u0447\u0435\u043A\u0430\u0454 \u0430\u0434\u043C\u0456\u043D\u0430" : "\u2705 \u041E\u0431\u043C\u0456\u043D \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043E")) {
+          closeModal();
+          if (S.view === "settings") loadView();
+        }
+        break;
+      case "zpConf":
+        if (await act("zpAtt", { day: D.d, n: D.n, how: D.h }, D.h === "n" ? "\u274C \u0412\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E" : "\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043E")) {
+          loadState().catch(() => {
+          });
+          if (S.view === "settings") loadView();
+        }
+        break;
     }
   });
   document.addEventListener("click", async (e) => {

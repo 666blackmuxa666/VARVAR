@@ -5,6 +5,7 @@ import { getMenu, handleMenuText, handleMenuPhoto, HELP as MENU_HELP } from './m
 import { parseWaiterOrder, draftText } from './waiter.js';
 import { tablePick, catsView, obCallback, getOb, putOb } from './orderui.js';
 import { queuePrint, printStatus } from './print.js';
+import { payroll, payText, payOp, attConfirm, swapStep, shiftIn, shiftOut, getAtt } from './pay.js';
 import { calcView, stockCmd, invPhoto, stockCallback, stockCallbackW } from './stockbot.js';
 import {
   tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
@@ -20,10 +21,10 @@ const ADMIN_TTL = 12 * 3600;
 const W = { order: '➕ Замовлення', kitchen: '👨‍🍳 Кухня', tables: '📋 Столи', close: '🧾 Закрити стіл', stop: '⛔ Стоп-лист', help: '❓ Допомога', admin: '🔐 Адмін' };
 const A = { cash: '💰 Каса', expense: '💸 Витрата', reports: '📊 Звіти', closed: '📜 Закриті сьогодні', top: '🏆 Топ страв', del: '🗑 Видалити стіл', menu: '📖 Редагувати меню', wifi: '📶 Wi‑Fi',
   staff: '👥 Персонал', pass: '🔑 Змінити пароль', wpass: '🔑 Пароль офіціанта', waiter: '⬅️ Режим офіціанта', logout: '🚪 Вийти',
-  calc: '🧮 Розрахунок', delClosed: '🧹 Видалити закритий', reset: '♻️ Обнулити все' }; // ТЕСТ: delClosed і reset — прибрати, коли скаже власник
+  calc: '🧮 Розрахунок', pay: '👷 Зарплата', delClosed: '🧹 Видалити закритий', reset: '♻️ Обнулити все' }; // ТЕСТ: delClosed і reset — прибрати, коли скаже власник
 const kb = rows => ({ keyboard: rows.map(r => r.map(text => ({ text }))), resize_keyboard: true, is_persistent: true });
 export const KEYBOARD = kb([[W.order], [W.tables, W.close], [W.kitchen], [W.stop, W.help], [W.admin]]);
-const ADMIN_KB = kb([[W.order], [A.cash, A.expense], [A.reports, A.closed], [A.calc], [A.top, A.del], [W.tables, W.stop], [W.kitchen], [A.menu, A.wifi], [A.staff, A.wpass], [A.delClosed, A.reset], [A.pass, A.waiter, A.logout]]);
+const ADMIN_KB = kb([[W.order], [A.cash, A.expense], [A.reports, A.closed], [A.calc, A.pay], [A.top, A.del], [W.tables, W.stop], [W.kitchen], [A.menu, A.wifi], [A.staff, A.wpass], [A.delClosed, A.reset], [A.pass, A.waiter, A.logout]]);
 
 export const COMMANDS = [
   ['tables', 'Відкриті столи і рахунки'], ['table', 'Деталі столу: /table 5'], ['close', 'Закрити рахунок столу'],
@@ -425,7 +426,7 @@ export async function handleUpdate(u, env) {
   if (low === '/stoplist' || text === W.stop || low === 'стоп-лист' || low === 'стоп лист') return send(await stopView(env));
 
   // --- адміністратор ---
-  const ADM = [A.calc, A.cash, A.expense, A.reports, A.closed, A.top, A.del, A.menu, A.wifi, A.staff, A.pass, A.wpass, A.waiter, A.logout, A.delClosed, A.reset];
+  const ADM = [A.calc, A.pay, A.cash, A.expense, A.reports, A.closed, A.top, A.del, A.menu, A.wifi, A.staff, A.pass, A.wpass, A.waiter, A.logout, A.delClosed, A.reset];
   const admOnly = ADM.includes(text) || /^(\/revenue|\/wifi|\/menu|виручка|каса|звіти|витрата|видалити стіл)/.test(low);
   if (admOnly && !admin) return send({ text: `🔐 Це доступно лише адміністратору. Натисніть «${W.admin}».` });
   if (text === A.cash || low === 'каса') return send(await cashView(env));
@@ -445,6 +446,25 @@ export async function handleUpdate(u, env) {
     await env.DB.delete('adm:' + uid); await env.DB.delete('kbw:' + uid);
     await remember(env, uid, chat, [m.message_id]); await purgeAdminChat(env, uid); track = false;
     return send({ text: '🚪 Ви вийшли з режиму адміністратора. Переписку адмін-режиму видалено з чату.' }, KEYBOARD);
+  }
+
+  // --- 👷 зарплата ---
+  if (text === A.pay || low === 'зарплата') {
+    const p = await payroll(env), st = await getStaff(env);
+    return send({ text: payText(p) + '\n\nТекстом: <code>премія Гріша 300 за суботу</code>, <code>штраф Назар 100 запізнення</code>, <code>аванс Назар 1000</code> (або <code>… картка</code>)',
+      markup: { inline_keyboard: p.rows.filter(r => r.due > 0).map(r => [{ text: `💸 Видати ${r.n} · ${r.due}`.slice(0, 60), callback_data: 'zpb:' + (st.find(x => x.name === r.n)?.id || '') }]) } });
+  }
+  if (admin && (x = text.match(/^(премія|штраф|аванс)\s+(.+?)\s+(\d+)\s*(?:грн)?\s*(.*)$/i))) {
+    const st = await getStaff(env), n = st.find(z => z.name.toLowerCase() === x[2].toLowerCase())?.name; if (!n) return send({ text: `❓ Немає працівника «${esc(x[2])}»` });
+    const t = { премія: 'bonus', штраф: 'fine', аванс: 'adv' }[x[1].toLowerCase()], card = /картк|карт/i.test(x[4]), note = x[4].replace(/з?\s*картк\S*|з?\s*карт\S*/i, '').trim();
+    const r = await payOp(env, { n, t, sum: +x[3], src: card ? 'card' : 'cash', note }, who); if (r.error) return send({ text: '⚠️ ' + r.error });
+    return send({ text: `✔ ${{ bonus: '➕ Премія', fine: '➖ Штраф', adv: '💵 Аванс' }[t]}: <b>${esc(n)}</b> ${money(r.op.sum)}${t === 'adv' ? (card ? ' з картки' : ' з каси') : ''}${note ? ' · ' + esc(note) : ''}` });
+  }
+  if (low === '/зміна' || low === 'зміна' || low === '/shift') {
+    const st = await getStaff(env); if (!st.some(z => z.name === who)) return send({ text: `Почати зміну можна в касі (кнопка «🟢 Почати зміну») — імʼя в Telegram «${esc(who)}» не збігається з жодним працівником.` });
+    const a = (await getAtt(env))[dayKey()]?.[who];
+    const r = a?.in && !a.out ? await shiftOut(env, who) : await shiftIn(env, who);
+    return send({ text: r.error ? '⚠️ ' + r.error : a?.in && !a.out ? '🔴 Зміну закінчено' : '🟢 Зміну почато — адмін підтвердить' });
   }
 
   // --- 🧮 розрахунок: склад, списання, заготовки, інвентаризація, техкарти ---
@@ -484,6 +504,16 @@ async function handleCallback(q, env) {
   const who = q.from?.first_name || '';
   const confirm = (text, yes) => send({ text, markup: { inline_keyboard: [[{ text: '✅ Так', callback_data: yes }, { text: 'Ні', callback_data: 'no' }]] } });
 
+  if (act === 'atk' || act === 'swk' || act === 'zpb' || act === 'zpbs') { // 👷 зміни й зарплата
+    if (!admin) return answer('🔐 Лише для адміністратора');
+    if (act === 'atk') { const n = (await getStaff(env)).find(z => z.id === oid)?.name; const x = n && await attConfirm(env, arg, n, opt, who); if (!x) return answer('Не знайдено');
+      await edit(`${q.message?.text || ''}\n\n${opt === 'n' ? '❌ Відхилив' : '✅ Підтвердив'}${opt === 'f' ? ' + штраф' : ''}: <b>${esc(who)}</b>`); return answer('Готово'); }
+    if (act === 'swk') { const sw = await swapStep(env, arg, oid === 'ok' ? 'ok' : 'no', who); await edit(`${q.message?.text || ''}\n\n${sw ? (sw.st === 'done' ? '✅ Обмін підтверджено' : '❌ Відхилено') : 'Вже оброблено'}`); return answer(''); }
+    const n = (await getStaff(env)).find(z => z.id === arg)?.name; if (!n) return answer('Не знайдено');
+    if (act === 'zpb') { const r = (await payroll(env)).rows.find(z => z.n === n); await send({ text: `💸 Видати <b>${esc(n)}</b> ${money(r?.due || 0)} — звідки?`, markup: { inline_keyboard: [[{ text: '💵 З каси', callback_data: `zpbs:${arg}:cash` }, { text: '💳 З картки', callback_data: `zpbs:${arg}:card` }]] } }); return answer(''); }
+    const r = (await payroll(env)).rows.find(z => z.n === n); if (!(r?.due > 0)) return answer('Нема що видавати');
+    const o = await payOp(env, { n, t: 'paid', sum: r.due, src: oid }, who); await edit(o.op ? `💸 Видано <b>${esc(n)}</b> ${money(o.op.sum)} ${oid === 'card' ? 'з картки' : 'з каси'}` : '⚠️ ' + o.error); return answer('');
+  }
   if (/^sk/.test(act)) { // 🧮 розрахунок
     if (!admin) return answer('🔐 Лише для адміністратора');
     const r = (await stockCallback(act, arg, env, uid, who)) || (await stockCallbackW(act, arg, oid, env, uid, who));
