@@ -567,3 +567,11 @@ body { position: fixed; top: 0; right: 0; bottom: 0; left: 0; overscroll-behavio
 .zp-eff { grid-template-columns: minmax(120px, 1.5fr) 60px 60px 1fr 1fr !important; }
 .zp-my { grid-template-columns: repeat(2, 1fr); } .zp-ask { background: var(--card2); margin: 10px 0; }
 .zp-grid td i.pl { color: var(--accent); font-size: 18px; }
+/* ⛔ стоп-лист: компактні блоки */
+.st-top { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; } .st-top input { max-width: 360px; }
+.st-w { columns: 3 300px; column-gap: 12px; }
+.st-b { break-inside: avoid; background: var(--card); border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; display: inline-block; width: 100%; }
+.st-b h3 { margin: 0 0 8px; font-size: 14px; color: var(--muted); }
+.st-g { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-i { padding: 7px 10px; border-radius: 10px; background: var(--card2); font-size: 13px; font-weight: 600; border: 1px solid #30d15855; color: var(--text); }
+.st-i.off { background: #3d1210; border-color: var(--red); color: #ff8a80; text-decoration: line-through; }

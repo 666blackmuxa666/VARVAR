@@ -435,7 +435,12 @@ async function _reopenClosed(env, ref, who, day = dayKey()) {
 // ↩️ відновити видалений стіл (сьогоднішній)
 async function _restoreTable(env, ref, who, day = dayKey()) {
   const k = 'closed:' + day, list = await getClosed(env, day), x = findClosed(list, ref);
-  if (!x || !x.del || x.restored || !x.dishes?.length) return null;
+  if (!x || !x.del || x.restored || !(x.dishes?.length || x.voids?.length)) return null;
+  if (!x.dishes?.length) { // стіл спорожнів через «−1» — повертаємо скасовані страви
+    x.dishes = x.voids.map(v => [v.name, 1, v.sum]); x.sum = x.dishes.reduce((a, d) => a + d[2], 0); x.vback = 1;
+    await L(env, 'void:' + day, async () => { const vl = await getVoids(env, day), ts = new Set(x.voids.map(v => v.ts)); await env.DB.put('void:' + day, JSON.stringify(vl.filter(v => !ts.has(v.ts)))); });
+    delete x.voids;
+  }
   x.restored = 1; await env.DB.put(k, JSON.stringify(list));
   await billBack(env, x.t, x, `↩️ відновлено (${who})`);
   await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q, sum }))); if (x.orders) await addStat(env, 'orders', x.orders); // знову на столі — знову в продажах

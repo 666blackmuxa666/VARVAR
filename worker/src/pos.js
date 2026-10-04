@@ -46,7 +46,9 @@ export async function posApi(b, req, env) {
     case 'logout': await env.DB.delete('pos:' + token); return ok();
     case 'state': {
       if (me.role === 'cook') await markCook(env, me.name); // кухар на зміні — отримує частку чайових кухні
-      await closeStale(env).catch(() => {}); const myAtt = (await getAtt(env))[dayKey()]?.[me.name] || null;
+      await closeStale(env).catch(() => {});
+      { const sk = 'seen:' + dayKey().slice(0, 7), sn = (await env.DB.get(sk, 'json')) || []; if (!sn.includes(me.name)) { sn.push(me.name); await env.DB.put(sk, JSON.stringify(sn), { expirationTtl: 400 * 86400 }); } } // хто працював у касі цього місяця — у графіку
+      const myAtt = (await getAtt(env))[dayKey()]?.[me.name] || null;
       const [rows, events, pr, shift, cl] = await Promise.all([openTables(env), getEvents(env), printStatus(env), getShift(env), getClosed(env)]);
       const mine = cl.filter(x => !x.del && !x.rm);
       const myTip = { sum: (await tipBalances(env))[me.name] || 0, today: mine.reduce((a, x) => a + ((x.tipSplit || {})[me.name] || (!x.tipSplit && x.by === me.name ? x.tip || 0 : 0)), 0) }; // накопичені, ще не видані

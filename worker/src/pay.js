@@ -146,7 +146,8 @@ export async function payroll(env, m = mon()) {
       tips: tb[s.name] || 0, toMon: p.monRev && p.monBonus && baseSum < p.monRev ? r0(p.monRev - baseSum) : 0, revPerShift: shifts ? r0(mine.reduce((a, d) => a + (rev[d]?.all || 0), 0) / shifts) : 0, revPerHour: hours ? r0(mine.reduce((a, d) => a + (rev[d]?.all || 0), 0) / hours) : 0 };
   });
   const revenue = r0(Object.values(rev).reduce((a, x) => a + x.all, 0)), fund = rows.reduce((a, x) => a + x.earned, 0);
-  return { m, days, att, plan, ops: ops.slice().reverse(), rows, revenue, fund, fundPct: revenue ? Math.round(fund / revenue * 1000) / 10 : 0, cfg: await getCfg(env) };
+  const seen = (await env.DB.get('seen:' + m, 'json')) || [];
+  return { m, days, att, plan, seen, ops: ops.slice().reverse(), rows, revenue, fund, fundPct: revenue ? Math.round(fund / revenue * 1000) / 10 : 0, cfg: await getCfg(env) };
 }
 // особистий кабінет — лише свої цифри
 export async function myPay(env, name, m = mon()) {
