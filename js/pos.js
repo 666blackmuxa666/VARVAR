@@ -1268,7 +1268,7 @@
   async function loadPay() { S.zpM ||= curMon(); S.data.zp = await api('zpGrid', { m: S.zpM }, 20000); }
   function payHTML() {
     const G = S.data.zp; if (!G) return '<div class="muted">Завантаження…</div>';
-    const people = G.staff.map(s => s.name).filter(n => !(G.hide || []).includes(n) && ((G.seen || []).includes(n) || G.days.some(d => G.att[d]?.[n] || G.plan[d]?.[n])));
+    const people = G.staff.filter(s => !(G.hide || []).includes(s.name) && (s.pay?.rate || s.pay?.pct || (G.seen || []).includes(s.name) || G.days.some(d => G.att[d]?.[s.name] || G.plan[d]?.[s.name]))).map(s => s.name); // зі ставкою — завжди в графіку
     const rows = G.rows.filter(r => people.includes(r.n) || r.paid || r.adv || r.bonus || r.fine), due = rows.reduce((a, r) => a + Math.max(0, r.due), 0), pend = rows.reduce((a, r) => a + r.pending, 0);
     const tab = S.zpTab || 'grid', TABS = [['grid', '📅 Графік'], ['pay', '💰 Відомість'], ['ops', '🧾 Операції'], ['eff', '📊 Ефективність']];
     const top = `<div class="zp-top"><button class="btn sm" data-a="zpM" data-d="-1">◀</button><b>${monName(G.m)}</b><button class="btn sm" data-a="zpM" data-d="1">▶</button></div>

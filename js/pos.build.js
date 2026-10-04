@@ -2265,10 +2265,13 @@ ${g.sup}:
   function payHTML() {
     const G = S.data.zp;
     if (!G) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
-    const people = G.staff.map((s) => s.name).filter((n) => !(G.hide || []).includes(n) && ((G.seen || []).includes(n) || G.days.some((d) => {
+    const people = G.staff.filter((s) => {
       var _a2, _b;
-      return ((_a2 = G.att[d]) == null ? void 0 : _a2[n]) || ((_b = G.plan[d]) == null ? void 0 : _b[n]);
-    })));
+      return !(G.hide || []).includes(s.name) && (((_a2 = s.pay) == null ? void 0 : _a2.rate) || ((_b = s.pay) == null ? void 0 : _b.pct) || (G.seen || []).includes(s.name) || G.days.some((d) => {
+        var _a3, _b2;
+        return ((_a3 = G.att[d]) == null ? void 0 : _a3[s.name]) || ((_b2 = G.plan[d]) == null ? void 0 : _b2[s.name]);
+      }));
+    }).map((s) => s.name);
     const rows = G.rows.filter((r) => people.includes(r.n) || r.paid || r.adv || r.bonus || r.fine), due = rows.reduce((a, r) => a + Math.max(0, r.due), 0), pend = rows.reduce((a, r) => a + r.pending, 0);
     const tab = S.zpTab || "grid", TABS2 = [["grid", "\u{1F4C5} \u0413\u0440\u0430\u0444\u0456\u043A"], ["pay", "\u{1F4B0} \u0412\u0456\u0434\u043E\u043C\u0456\u0441\u0442\u044C"], ["ops", "\u{1F9FE} \u041E\u043F\u0435\u0440\u0430\u0446\u0456\u0457"], ["eff", "\u{1F4CA} \u0415\u0444\u0435\u043A\u0442\u0438\u0432\u043D\u0456\u0441\u0442\u044C"]];
     const top = `<div class="zp-top"><button class="btn sm" data-a="zpM" data-d="-1">\u25C0</button><b>${monName(G.m)}</b><button class="btn sm" data-a="zpM" data-d="1">\u25B6</button></div>
