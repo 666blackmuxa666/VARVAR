@@ -59,7 +59,9 @@ document.addEventListener('click',function(ev){var t=ev.target;while(t&&t!==docu
  else if(t.getAttribute('data-all'))api('kDone',{id:t.getAttribute('data-all')},load)});
 $('go').onclick=function(){api('login',{pin:$('pin').value},function(j){if(j.token&&j.me&&(j.me.role==='cook'||j.me.role==='admin')){T=j.token;localStorage.setItem('ktok',T);show()}else $('err').textContent=j.token?'Цей екран — для кухаря':'Невірний PIN'})};
 $('out').onclick=function(){if(confirm('Вийти?')){api('logout',{});T='';localStorage.removeItem('ktok');show()}};
-$('start').onclick=function(){try{var A=window.AudioContext||window.webkitAudioContext;ctx=new A();play(snd)}catch(e){}$('gate').style.display='none'};
+$('start').onclick=function(){try{var A=window.AudioContext||window.webkitAudioContext;ctx=new A();play(snd)}catch(e){}$('gate').style.display='none';noSleep()};
+// 🔆 екран не гасне: старий iOS не має Wake Lock — класичний прийом (як NoSleep.js для iOS < 10): раз на 15 с «перехід» на ту саму сторінку і одразу зупинка
+function noSleep(){if(navigator.wakeLock){try{navigator.wakeLock.request('screen')}catch(e){}return}setInterval(function(){if(!document.hidden){window.location.href=window.location.href.split('#')[0];setTimeout(window.stop,0)}},15000)}
 $('snd').onclick=function(){var h='';for(var k in SND)h+='<div class="it"><span>'+SND[k][0]+(k===snd?' ✅':'')+'</span><button data-sp="'+k+'" style="width:auto;padding:0 14px;border-radius:12px">▶</button><button data-ss="'+k+'" style="width:auto;padding:0 14px;border-radius:12px;background:#30d158;color:#032">Обрати</button></div>';$('msgb').innerHTML=h;$('msg').getElementsByTagName('h2')[0].textContent='🔔 Звук нового замовлення';$('msg').style.display='block'};
 document.addEventListener('click',function(ev){var t=ev.target,a;if((a=t.getAttribute('data-sp')))play(a);if((a=t.getAttribute('data-ss'))){snd=a;localStorage.setItem('ksnd',a);$('msg').style.display='none';play(a)}});
 var tab='q',menu=null,ot=0,ocat='',cart={};
