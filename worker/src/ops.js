@@ -178,6 +178,21 @@ async function _removeOne(env, t, name, who = '', reason = '') {
   return null;
 }
 
+// ↩️ повернути скасовану страву (сьогодні): назад на стіл (відкритий — додається; закритий — новий рахунок), прибирається з журналу скасувань
+async function _restoreVoid(env, ts, who) {
+  const k = 'void:' + dayKey(), l = await getVoids(env), i = l.findIndex(v => v.ts === +ts && !v.table);
+  if (i < 0) return null;
+  const v = l[i]; l.splice(i, 1); await env.DB.put(k, JSON.stringify(l));
+  const b = await getBill(env, v.t), line = `1× ${v.name} — ${v.sum}`;
+  b.total = (b.total || 0) + v.sum; b.orders = (b.orders || 0) + 1; b.opened = b.opened || Date.now();
+  b.log = [...(b.log || []), { at: hhmm(), kind: `↩️ повернуто після скасування (${who})`, lines: [line] }].slice(-60);
+  if (b.voids) { const j = b.voids.findIndex(x => x.ts === v.ts); if (j >= 0) b.voids.splice(j, 1); }
+  await putBill(env, v.t, b);
+  await addDishes(env, [{ n: v.name, q: 1, sum: v.sum }]);
+  await logEvent(env, { k: 'shift', t: v.t, by: who, text: `↩️ Стіл ${v.t}: повернуто ${v.name} (${v.sum} грн), скасоване о ${v.at}` });
+  return v;
+}
+
 // 🕵️ журнал скасувань за день (для контролю): { ts, at, t, by, name, sum, reason }
 export const getVoids = async (env, day = dayKey()) => (await env.DB.get('void:' + day, 'json')) || [];
 async function _addVoid(env, v) { const k = 'void:' + dayKey(), l = await getVoids(env); l.push(v); await env.DB.put(k, JSON.stringify(l.slice(-1000))); }
@@ -308,6 +323,39 @@ async function _moveTable(env, a, b, who) {
   return { merged };
 }
 
+// ✂️ розділити рахунок: обрані позиції (назва + кількість) переходять на стіл «to» (вільний — новий рахунок, зайнятий — додаються)
+async function _splitTable(env, t, items, to, who) {
+  t = +t; to = +to; if (!t || !to || t === to) return null;
+  const A = await getBill(env, t); if (!A.total) return null;
+  const moved = [];
+  for (const { name, q: q0 } of (Array.isArray(items) ? items : []).slice(0, 80)) {
+    let q = Math.max(0, parseInt(q0, 10) || 0);
+    for (let i = (A.log || []).length - 1; i >= 0 && q > 0; i--) {
+      const o = A.log[i];
+      for (let j = o.lines.length - 1; j >= 0 && q > 0; j--) {
+        const x = o.lines[j].match(LINE); if (!x || x[2] !== name) continue;
+        const have = +x[1], unit = Math.round(+x[3] / have), take = Math.min(have, q), s = have === take ? +x[3] : unit * take;
+        if (have === take) o.lines.splice(j, 1); else o.lines[j] = `${have - take}× ${name} — ${+x[3] - s}`;
+        moved.push([name, take, s]); q -= take;
+      }
+      if (!o.lines.length) A.log.splice(i, 1);
+    }
+  }
+  if (!moved.length) return null;
+  const agg = new Map(); moved.forEach(([n, q, s]) => { const a = agg.get(n) || [0, 0]; agg.set(n, [a[0] + q, a[1] + s]); });
+  const lines = [...agg].map(([n, [q, s]]) => `${q}× ${n} — ${s}`), sum = moved.reduce((a, x) => a + x[2], 0);
+  A.total = Math.max(0, A.total - sum);
+  const B = await getBill(env, to), wasEmpty = !B.total;
+  B.total = (B.total || 0) + sum; B.orders = (B.orders || 0) + 1; B.opened = B.opened || Date.now(); B.waiter = B.waiter || A.waiter;
+  B.log = [...(B.log || []), { at: hhmm(), kind: `✂️ зі столу ${t} (${who})`, lines }].slice(-60);
+  if (wasEmpty && A.disc && A.discSum == null) { B.disc = A.disc; if (A.discBy) B.discBy = A.discBy; } // той самий відсоток знижки
+  if (A.discSum != null) A.discSum = Math.min(A.discSum, A.total);
+  if (!(A.total > 0)) { if (A.tip) B.tip = (B.tip || 0) + A.tip; if (A.ktip) B.ktip = (B.ktip || 0) + A.ktip; } // перенесли все — чайові теж
+  await putBill(env, t, A); await putBill(env, to, B);
+  await logEvent(env, { k: 'move', t: to, from: t, by: who, text: `✂️ стіл ${t} розділено → стіл ${to}: ${lines.join(', ')}` });
+  return { lines, sum, to, left: A.total };
+}
+
 async function _deleteTable(env, t, who, reason = '') {
   const bill = await getBill(env, t);
   if (!bill.total) return null;
@@ -397,8 +445,8 @@ export async function reprintClosed(env, ref, who, day = dayKey()) {
 // ---------- фінанси ----------
 export const getExp = async (env, day = dayKey()) => (await env.DB.get('exp:' + day, 'json')) || [];
 async function _addExpense(env, e) { const k = 'exp:' + dayKey(); const l = await getExp(env); l.push({ ts: Date.now(), ...e }); await env.DB.put(k, JSON.stringify(l)); }
-async function _delExpense(env, i) { const k = 'exp:' + dayKey(); const l = await getExp(env); if (!l[+i]) return false; l[+i].del = 1; await env.DB.put(k, JSON.stringify(l)); return true; }
-async function _restoreExpense(env, i) { const k = 'exp:' + dayKey(); const l = await getExp(env); if (!l[+i]?.del) return false; delete l[+i].del; await env.DB.put(k, JSON.stringify(l)); return true; }
+// 🗑/↩️ запис дня (витрата / рух коштів / Z-звіт): прапорець del, будь-який день
+async function _flagRec(env, pfx, day, i, del) { const k = pfx + day, l = (await env.DB.get(k, 'json')) || []; const x = l[+i]; if (!x || !!x.del === del) return false; if (del) x.del = 1; else delete x.del; await env.DB.put(k, JSON.stringify(l)); return true; }
 // ---------- рух коштів (не витрати): внесення / вилучення готівки, обмін картка ↔ готівка ----------
 // type: in (+готівка) · out (−готівка) · k2c (з картки в готівку) · c2k (з готівки на картку) · kin (+картка) · kout (−картка)
 export const MOVE = { in: '➕ Внесення готівки', out: '➖ Вилучення готівки', k2c: '🔁 Картка → готівка', c2k: '🔁 Готівка → картка', kin: '➕ Внесення на картку', kout: '➖ Вилучення з картки' };
@@ -444,8 +492,6 @@ async function _reconcile(env, src, actual, who) {
   await logEvent(env, { k: 'shift', by: who, text: `✏️ Звірка ${src === 'card' ? 'картки' : 'готівки'}: факт ${actual} грн (${diff > 0 ? '+' : ''}${diff})` });
   return { diff, was, actual };
 }
-async function _restoreMove(env, i) { const k = 'mov:' + dayKey(); const l = await getMov(env); if (!l[+i]?.del) return false; delete l[+i].del; await env.DB.put(k, JSON.stringify(l)); return true; }
-async function _delMove(env, i) { const k = 'mov:' + dayKey(); const l = await getMov(env); if (!l[+i] || l[+i].del) return false; l[+i].del = 1; await env.DB.put(k, JSON.stringify(l)); return true; }
 export const setFloat = (env, n) => bump(env, 'day:' + dayKey(), d => { d.float = Math.round(n); });
 export async function cashData(env) {
   const d = (await env.DB.get('day:' + dayKey(), 'json')) || {};
@@ -628,12 +674,15 @@ export async function reportRange(env, from, to) {
   const [cl, ex, zz, mm, vv] = await Promise.all(['closed:', 'exp:', 'z:', 'mov:', 'void:'].map(p => env.DB.getMany(days.map(d => p + d), 'json')));
   return {
     from, to,
-    checks: days.flatMap((d, i) => (cl[i] || []).filter(x => !x.del && !x.rm).map(x => ({ d, at: x.at, t: x.t, sum: x.sum, cash: x.cash ?? x.sum, card: x.card || 0, by: x.by || '', w: x.w || x.by || '', disc: x.discSum || 0, pct: x.disc || 0, tip: x.tip || 0, tipSplit: tipSplitOf(x), dishes: x.dishes || [], voids: x.voids || [] }))),
+    checks: days.flatMap((d, i) => (cl[i] || []).filter(x => !x.del && !x.rm).map(x => ({ d, id: x.id, at: x.at, t: x.t, sum: x.sum, cash: x.cash ?? x.sum, card: x.card || 0, by: x.by || '', w: x.w || x.by || '', disc: x.discSum || 0, pct: x.disc || 0, tip: x.tip || 0, tipSplit: tipSplitOf(x), dishes: x.dishes || [], voids: x.voids || [] }))),
     voids: days.flatMap((d, i) => (vv[i] || []).map(x => ({ d, ...x }))),
-    removed: days.flatMap((d, i) => (cl[i] || []).filter(x => x.rm).map(x => ({ d, at: x.at, t: x.t, sum: x.sum, by: x.by || '' }))),
-    exp: days.flatMap((d, i) => (ex[i] || []).filter(x => !x.del).map(x => ({ d, at: x.at, sum: x.sum, src: x.src, note: x.note || '', by: x.by || '' }))),
-    z: days.flatMap((d, i) => zz[i] || []),
-    mov: days.flatMap((d, i) => (mm[i] || []).filter(x => !x.del).map(x => ({ d, ...x }))),
+    removed: days.flatMap((d, i) => (cl[i] || []).filter(x => x.rm).map(x => ({ d, id: x.id, at: x.at, t: x.t, sum: x.sum, by: x.by || '', reopen: !!x.reopen }))),
+    exp: days.flatMap((d, i) => (ex[i] || []).map((x, j) => ({ d, i: j, del: !!x.del, at: x.at, sum: x.sum, src: x.src, note: x.note || '', by: x.by || '' })).filter(x => !x.del)),
+    expDel: days.flatMap((d, i) => (ex[i] || []).map((x, j) => ({ d, i: j, at: x.at, sum: x.sum, src: x.src, note: x.note || '', by: x.by || '', del: 1 })).filter((x, j) => (ex[i] || [])[j].del)),
+    z: days.flatMap((d, i) => (zz[i] || []).map((x, j) => ({ ...x, d, i: j })).filter(x => !x.del)),
+    zDel: days.flatMap((d, i) => (zz[i] || []).map((x, j) => ({ ...x, d, i: j })).filter(x => x.del)),
+    mov: days.flatMap((d, i) => (mm[i] || []).map((x, j) => ({ d, i: j, ...x })).filter(x => !x.del)),
+    movDel: days.flatMap((d, i) => (mm[i] || []).map((x, j) => ({ d, i: j, ...x })).filter(x => x.del)),
   };
 }
 // підсумки для бота: by = waiter | group | cat | hour | table
@@ -791,6 +840,8 @@ export async function closeTable(env, ...a) { return L(env, 'bills', () => _clos
 export async function setDiscount(env, ...a) { return L(env, 'bills', () => _setDiscount(env, ...a)); }
 export async function setTip(env, ...a) { return L(env, 'bills', () => _setTip(env, ...a)); }
 export async function moveTable(env, ...a) { return L(env, 'bills', () => _moveTable(env, ...a)); }
+export async function restoreVoid(env, ...a) { return L(env, ['bills', 'void:' + dayKey()], () => _restoreVoid(env, ...a)); }
+export async function splitTable(env, ...a) { return L(env, 'bills', () => _splitTable(env, ...a)); }
 export async function deleteTable(env, ...a) { return L(env, 'bills', () => _deleteTable(env, ...a)); }
 async function billBack(env, ...a) { return L(env, 'bills', () => _billBack(env, ...a)); }
 async function addVoid(env, ...a) { return L(env, 'void:' + dayKey(), () => _addVoid(env, ...a)); }
@@ -804,11 +855,13 @@ export async function restoreClosed(env, ref, who, day) { day = cDay(day); retur
 export async function reopenClosed(env, ref, who, day) { day = cDay(day); return L(env, ['bills', 'closed:' + day], () => _reopenClosed(env, ref, who, day)); }
 export async function restoreTable(env, ref, who, day) { day = cDay(day); return L(env, ['bills', 'closed:' + day, 'void:' + day], () => _restoreTable(env, ref, who, day)); }
 export async function addExpense(env, ...a) { return L(env, 'exp:' + dayKey(), () => _addExpense(env, ...a)); }
-export async function delExpense(env, ...a) { return L(env, 'exp:' + dayKey(), () => _delExpense(env, ...a)); }
-export async function restoreExpense(env, ...a) { return L(env, 'exp:' + dayKey(), () => _restoreExpense(env, ...a)); }
+export async function delExpense(env, i, day) { day = cDay(day); return L(env, 'exp:' + day, () => _flagRec(env, 'exp:', day, i, true)); }
+export async function restoreExpense(env, i, day) { day = cDay(day); return L(env, 'exp:' + day, () => _flagRec(env, 'exp:', day, i, false)); }
+export async function delZ(env, i, day) { day = cDay(day); return L(env, 'z:' + day, () => _flagRec(env, 'z:', day, i, true)); }
+export async function restoreZ(env, i, day) { day = cDay(day); return L(env, 'z:' + day, () => _flagRec(env, 'z:', day, i, false)); }
 export async function addMove(env, ...a) { return L(env, 'mov:' + dayKey(), () => _addMove(env, ...a)); }
-export async function delMove(env, ...a) { return L(env, 'mov:' + dayKey(), () => _delMove(env, ...a)); }
-export async function restoreMove(env, ...a) { return L(env, 'mov:' + dayKey(), () => _restoreMove(env, ...a)); }
+export async function delMove(env, i, day) { day = cDay(day); return L(env, 'mov:' + day, () => _flagRec(env, 'mov:', day, i, true)); }
+export async function restoreMove(env, i, day) { day = cDay(day); return L(env, 'mov:' + day, () => _flagRec(env, 'mov:', day, i, false)); }
 export async function reconcile(env, ...a) { return L(env, 'mov:' + dayKey(), () => _reconcile(env, ...a)); }
 export async function addKitchen(env, ...a) { return L(env, 'kq:' + dayKey(), () => _addKitchen(env, ...a)); }
 async function kqEdit(env, ...a) { return L(env, 'kq:' + dayKey(), () => _kqEdit(env, ...a)); }
