@@ -142,7 +142,7 @@ export async function stockCallbackW(act, arg, opt, env, uid, who) { // з за�
   if (act === 'skix') { await env.DB.delete('invd:' + uid); return { text: '❌ Накладну скасовано' }; }
   if (act === 'skis') {
     const d = await env.DB.get('invd:' + uid, 'json'); if (!d) return { text: 'Чернетка застаріла — надішліть фото ще раз' };
-    const lines = d.lines.map(l => ({ id: l.id || null, q: l.q, f: l.f || (l.id ? 1 : 1), sum: l.sum, src: l.n, ...(l.id ? {} : { add: { n: l.n.replace(/\s+\d+([.,]\d+)?\s*(кг|г|л|мл|шт)\.?$/i, '').trim().slice(0, 60), u: unitOf(l.u), home: 'k', cat: 'Інше' } }) }));
+    const lines = d.lines.map(l => ({ id: l.id || null, q: l.q, f: l.f || (l.id ? 1 : 1), sum: l.sum, src: l.n, ...(l.id ? {} : { add: l.add || { n: l.n.replace(/\s+\d+([.,]\d+)?\s*(кг|г|л|мл|шт)\.?$/i, '').trim().slice(0, 60), u: unitOf(l.u), home: 'k', cat: 'Інше' } }) }));
     const r = await invoiceSave(env, { sup: d.sup, no: d.no, date: d.date, pay: arg, src: 'photo', lines }, who);
     if (r.error) return { text: '⚠️ ' + r.error };
     await env.DB.delete('invd:' + uid);

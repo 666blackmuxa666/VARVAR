@@ -114,7 +114,7 @@ ${final ? `ЗАРАЗ дай фінальну пораду: поле "intro" (1 
 
 // 🧾 накладна з фото (або текст QR-коду) → постачальник, №, дата, рядки. Фото лише передається в запиті — ніде не зберігається.
 const INV = { type: 'OBJECT', properties: { sup: { type: 'STRING' }, no: { type: 'STRING' }, date: { type: 'STRING' }, total: { type: 'NUMBER' },
-  lines: { type: 'ARRAY', items: { type: 'OBJECT', properties: { n: { type: 'STRING' }, q: { type: 'NUMBER' }, u: { type: 'STRING' }, price: { type: 'NUMBER' }, sum: { type: 'NUMBER' } }, required: ['n', 'q'] } } }, required: ['lines'] };
+  lines: { type: 'ARRAY', items: { type: 'OBJECT', properties: { n: { type: 'STRING' }, q: { type: 'NUMBER' }, u: { type: 'STRING' }, price: { type: 'NUMBER' }, sum: { type: 'NUMBER' }, p: { type: 'STRING' }, cat: { type: 'STRING' }, bar: { type: 'BOOLEAN' }, pu: { type: 'STRING' }, pq: { type: 'NUMBER' } }, required: ['n', 'q', 'u', 'sum', 'p', 'cat', 'bar', 'pu', 'pq'] } } }, required: ['lines'] };
 export async function aiInvoice(env, { images = [], text = '' }) {
   if (!env.GEMINI_API_KEY) return { error: 'AI вимкнено' };
   const prompt = `Це ${images.length ? 'фото накладної / чека / рахунку постачальника' : 'вміст QR-коду накладної або чека'} українського ресторану. Витягни дані документа:
@@ -122,11 +122,13 @@ export async function aiInvoice(env, { images = [], text = '' }) {
 - no: номер документа; date: дата (ДД.ММ.РРРР);
 - total: загальна сума до сплати (з ПДВ);
 - lines: КОЖЕН товарний рядок по порядку: n — назва товару як у документі (без артикулів), q — кількість, u — одиниця як у документі (кг, г, л, мл, шт, уп, ящ, пач, пл…), price — ціна за одиницю, sum — сума рядка.
+Для кожного рядка також: p — коротка назва продукту для складу ресторану без бренду/відсотків/упаковки (напр. «Сир фета», «Куряче філе», «Pepsi 0.5»); cat — одна з категорій: М'ясо, Риба, Овочі й фрукти, Молочне, Бакалія, Соуси й спеції, Хліб, Напої, Алкоголь, Пиво, Кальян, Упаковка, Інше; bar — true, якщо це для бару (напої, алкоголь, кальян); pu — одиниця обліку на складі: «кг», «л» або «шт»; pq — скільки pu в ОДНІЙ одиниці з документа (напр. ящик Pepsi = 12 шт → pq 12; упаковка сиру 2.5 кг → pq 2.5; якщо одиниця та сама — 1; г → кг: 0.001).
 Якщо є колонки з ПДВ і без ПДВ — бери з ПДВ. Числа — з крапкою. Не вигадуй рядків, не пропускай. Знижку/доставку — окремим рядком, якщо є. Відповідь — JSON.${text ? '\n\nВміст коду:\n' + text : ''}`;
   try {
     const r = await gemini(env, [{ text: prompt }, ...images.map(d => ({ inline_data: { mime_type: 'image/jpeg', data: d } }))], { schema: INV, timeout: 45000, temperature: 0.1, prefer: ['gemini-flash-latest', 'gemini-2.5-flash'] });
     const num = v => Math.round((+String(v ?? '').replace(',', '.') || 0) * 1000) / 1000;
-    const lines = (r.lines || []).map(l => ({ n: String(l.n || '').trim().slice(0, 80), q: num(l.q), u: String(l.u || '').trim().slice(0, 10), price: num(l.price), sum: num(l.sum) || Math.round(num(l.price) * num(l.q) * 100) / 100 })).filter(l => l.n && l.q > 0).slice(0, 120);
+    const lines = (r.lines || []).map(l => ({ n: String(l.n || '').trim().slice(0, 80), q: num(l.q), u: String(l.u || '').trim().slice(0, 10), price: num(l.price), sum: num(l.sum) || Math.round(num(l.price) * num(l.q) * 100) / 100,
+      p: String(l.p || '').trim().slice(0, 60), cat: String(l.cat || '').slice(0, 30), bar: !!l.bar, pu: ['кг', 'л', 'шт'].includes(l.pu) ? l.pu : '', pq: num(l.pq) || 0 })).filter(l => l.n && l.q > 0).slice(0, 120);
     if (!lines.length) return { error: 'Не вдалось прочитати рядки — сфотографуйте рівніше й ближче' };
     return { sup: String(r.sup || '').trim().slice(0, 60), no: String(r.no || '').trim().slice(0, 30), date: String(r.date || '').trim().slice(0, 20), total: num(r.total), lines };
   } catch (e) { console.log('aiInvoice', e.message); return { error: 'Помічник зараз не відповідає — спробуйте ще раз за хвилину' }; }

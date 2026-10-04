@@ -966,7 +966,7 @@
     const sups = Object.keys(S.data.skInv?.sups || {});
     return `<div class="card"><div class="rhead"><h3 style="margin:0">🧾 ${d.src === 'photo' ? 'Розпізнана накладна — перевірте' : 'Нова накладна'}</h3><button class="btn sm" data-a="skDraftX">✕ Скасувати</button></div>
       <div class="frow"><label>Постачальник<input id="dSup" list="supL" value="${esc(d.sup || '')}" data-dh="sup" placeholder="напр. Метро"><datalist id="supL">${sups.map(s => `<option value="${esc(s)}">`).join('')}</datalist></label><label>№ документа<input id="dNo" value="${esc(d.no || '')}" data-dh="no"></label><label>Дата<input id="dDate" value="${esc(d.date || '')}" data-dh="date" placeholder="ДД.ММ.РРРР"></label></div></div>
-      <div class="card"><h3>Позиції <span class="muted">· ${d.lines.length}</span> <span class="muted" style="font-weight:400;font-size:12px">🟢 впізнано · 🟡 перевірте · 🔴 оберіть продукт · 🔵 новий</span></h3>${rows || '<div class="muted">Додайте позиції</div>'}
+      <div class="card"><h3>Позиції <span class="muted">· ${d.lines.length}</span> <span class="muted" style="font-weight:400;font-size:12px">🟢 впізнано · 🟡 перевірте · 🔵 новий — створиться сам</span></h3>${rows || '<div class="muted">Додайте позиції</div>'}
         <div class="btnrow"><button class="btn sm" data-a="skDlAdd">➕ Рядок</button><button class="btn sm" data-a="skScan">🔎 Сканувати штрихкод</button></div></div>
       <div class="card"><div class="kv tot"><span>Разом за позиціями</span><b class="money" id="dSum">${money(sum)}</b></div>${d.total ? `<div class="kv ${Math.abs(diff) > 1 ? 'bad' : ''}" id="dTot"><span>У документі</span><b class="money">${money(d.total)}${Math.abs(diff) > 1 ? ` · різниця ${money(diff)}` : ' ✅'}</b></div>` : ''}
         <div class="muted" style="font-size:12px;margin:10px 0 6px">Оплата:</div>
@@ -1002,7 +1002,7 @@
       const images = await Promise.all(files.map(f => shrink(f, 1800, .82)));
       const r = await api('skInvParse', { images }, 75000);
       if (!S.data.sk) S.data.sk = await api('skData');
-      S.sk.draft = { sup: r.sup, no: r.no, date: r.date, total: r.total, src: 'photo', lines: r.lines.map(l => ({ ...l, q0: l.q, f: skAutoF(l) })) };
+      S.sk.draft = { sup: r.sup, no: r.no, date: r.date, total: r.total, src: 'photo', lines: r.lines.map(l => ({ ...l, q0: l.q, f: l.add ? l.f : skAutoF(l) })) };
       if (!S.data.skInv) S.data.skInv = await api('skInvList').catch(() => null);
     } catch (e) { toast('⚠️ ' + errText(e.message)); }
     S.sk.busy = false; renderMain();

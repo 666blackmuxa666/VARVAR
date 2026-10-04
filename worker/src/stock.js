@@ -315,7 +315,11 @@ export async function matchLines(env, sup, lines) {
     const ex = l.find(x => norm(x.n) === nn); if (ex) return { ...ln, id: ex.id, f: 1, ok: 'name' };
     const w = words(ln.n); let best = null, bs = 0;
     for (const x of l) { const xw = words(x.n); if (!xw.size) continue; let c = 0; xw.forEach(z => { if ([...w].some(y => y.startsWith(z.slice(0, 5)) || z.startsWith(y.slice(0, 5)))) c++; }); const s = c / xw.size; if (s > bs) { bs = s; best = x; } }
-    return bs >= 0.5 ? { ...ln, id: best.id, f: 1, ok: 'guess' } : { ...ln, id: null, ok: '' };
+    if (bs >= 0.5) return { ...ln, id: best.id, f: 1, ok: 'guess' };
+    // новий продукт — реєструється сам при записі накладної (назва, одиниця, категорія, склад — від Gemini)
+    const n = ln.p || ln.n, same = l.find(x => norm(x.n) === norm(n)); if (same) return { ...ln, id: same.id, f: ln.pq || 1, ok: 'name' };
+    const u = ln.pu || (/^(л|мл)/i.test(ln.u || '') ? 'л' : /^(шт|уп|ящ|пач|пл|бут|бан)/i.test(ln.u || '') ? 'шт' : 'кг');
+    return { ...ln, id: null, ok: '', f: ln.pq || (u === 'кг' && /^г/i.test(ln.u || '') ? 0.001 : u === 'л' && /^мл/i.test(ln.u || '') ? 0.001 : 1), add: { n: n.slice(0, 60), u, cat: ING_CATS.includes(ln.cat) ? ln.cat : 'Інше', home: ln.bar ? 'b' : 'k' } };
   });
 }
 
