@@ -25,7 +25,7 @@ export async function shiftIn(env, name) {
     const a = await getAtt(env, m), x = a[d]?.[name];
     if (x && x.in && !x.out) return { error: 'Ви вже на зміні' };
     if (x?.ok === 1 && x.out) { delete x.out; delete x.auto; await env.DB.put('att:' + m, JSON.stringify(a)); return { x, again: 1 }; } // повернувся в той самий день
-    const now = Date.now(), late = plan ? Math.round((now - at(d, plan)) / 60000) : 0;
+    const now = Date.now(), late = /^\d{1,2}:\d{2}$/.test(plan || '') ? Math.round((now - at(d, plan)) / 60000) : 0;
     const rec = { in: now, ok: 0, ...(plan ? { plan } : {}), ...(late > (cfg.lateMin ?? 10) ? { late } : {}) };
     (a[d] ||= {})[name] = rec; await env.DB.put('att:' + m, JSON.stringify(a)); return { x: rec };
   });
@@ -84,7 +84,7 @@ export async function planSet(env, day, name, time) {
   if (!isDay(day)) return null; const m = mon(day);
   return L(env, 'plan:' + m, async () => {
     const p = await getPlan(env, m);
-    if (time && /^\d{1,2}:\d{2}$/.test(time)) (p[day] ||= {})[name] = time.padStart(5, '0'); else if (p[day]) { delete p[day][name]; if (!Object.keys(p[day]).length) delete p[day]; }
+    if (time && /^\d{1,2}:\d{2}$/.test(time)) (p[day] ||= {})[name] = time.padStart(5, '0'); else if (time === '+') (p[day] ||= {})[name] = '+'; // у графіку без часу else if (p[day]) { delete p[day][name]; if (!Object.keys(p[day]).length) delete p[day]; }
     await env.DB.put('plan:' + m, JSON.stringify(p)); return p[day] || {};
   });
 }
@@ -131,7 +131,7 @@ export async function payroll(env, m = mon()) {
   const rev = {}; // rev[day] = { all, own: {name}, kitchen }
   for (const c of r.checks) { const x = rev[c.d] ||= { all: 0, own: {}, kitchen: 0 }, v = c.sum - (c.tip || 0); x.all += v; const w = c.w || c.by || ''; x.own[w] = (x.own[w] || 0) + v;
     for (const [n, , s] of c.dishes) if (groupOf(res(n)?.cat) === 'kitchen' || res(n)?.cat === 'inshe-food') x.kitchen += s; }
-  const people = st.filter(s => s.role !== 'admin' || s.pay?.rate || Object.values(att).some(d => d[s.name]));
+  const people = st; // увесь персонал — новий працівник одразу в графіку
   const rows = people.map(s => {
     const p = s.pay || {}, base = p.base || 'all', mine = days.filter(d => att[d]?.[s.name]?.ok === 1);
     const baseOf = d => { const x = rev[d]; if (!x) return 0; return base === 'own' ? x.own[s.name] || 0 : base === 'kitchen' ? x.kitchen : x.all; };

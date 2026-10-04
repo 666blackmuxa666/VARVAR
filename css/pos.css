@@ -566,3 +566,4 @@ body { position: fixed; top: 0; right: 0; bottom: 0; left: 0; overscroll-behavio
 .zp-grid .td { outline: 2px solid var(--accent); }
 .zp-eff { grid-template-columns: minmax(120px, 1.5fr) 60px 60px 1fr 1fr !important; }
 .zp-my { grid-template-columns: repeat(2, 1fr); } .zp-ask { background: var(--card2); margin: 10px 0; }
+.zp-grid td i.pl { color: var(--accent); font-size: 18px; }
