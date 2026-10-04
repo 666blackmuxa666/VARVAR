@@ -2270,7 +2270,7 @@ ${g.sup}:
       return ((_a2 = G.att[d]) == null ? void 0 : _a2[n]) || ((_b = G.plan[d]) == null ? void 0 : _b[n]);
     }));
     const head = `<div class="zp-top"><button class="btn sm" data-a="zpM" data-d="-1">\u25C0</button><b>${monName(G.m)}</b><button class="btn sm" data-a="zpM" data-d="1">\u25B6</button>
-      <span class="muted">\u2705 \u0431\u0443\u0432 \xB7 \u23F0 \u0437\u0430\u043F\u0456\u0437\u043D\u0438\u0432\u0441\u044F \xB7 \u{1F553} \u0447\u0435\u043A\u0430\u0454 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F \xB7 \u274C \u0432\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E \xB7 \u{1F6AB} \u043F\u0440\u043E\u0433\u0443\u043B \xB7 \u26A0\uFE0F \u0437\u043C\u0456\u043D\u0443 \u0437\u0430\u043A\u0440\u0438\u0442\u043E \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u043D\u043E \xB7 \u25CF \u2014 \u0443 \u0433\u0440\u0430\u0444\u0456\u043A\u0443 (\u0442\u0430\u043F \u043F\u043E \u043A\u043B\u0456\u0442\u0438\u043D\u0446\u0456 \u2014 \u043F\u043E\u0441\u0442\u0430\u0432\u0438\u0442\u0438 / \u043F\u0440\u0438\u0431\u0440\u0430\u0442\u0438)</span></div>`;
+      <span class="muted">\u2705 \u0431\u0443\u0432 \xB7 \u23F0 \u0437\u0430\u043F\u0456\u0437\u043D\u0438\u0432\u0441\u044F \xB7 \u{1F553} \u0447\u0435\u043A\u0430\u0454 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F \xB7 \u274C \u0432\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E \xB7 \u{1F6AB} \u043F\u0440\u043E\u0433\u0443\u043B \xB7 \u26A0\uFE0F \u0437\u043C\u0456\u043D\u0443 \u0437\u0430\u043A\u0440\u0438\u0442\u043E \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u043D\u043E \xB7 \u25CF \u2014 \u0437\u0430\u043F\u043B\u0430\u043D\u043E\u0432\u0430\u043D\u043E \xB7 \u0442\u0430\u043F: \u043C\u0430\u0439\u0431\u0443\u0442\u043D\u0454 \u2014 \u0437\u0430\u043F\u043B\u0430\u043D\u0443\u0432\u0430\u0442\u0438, \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0439 \u0440\u0430\u043D\u0456\u0448\u0435 \u2014 \u0431\u0443\u0432 \u043D\u0430 \u0437\u043C\u0456\u043D\u0456, \u0449\u0435 \u0440\u0430\u0437 \u2014 \u0441\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438</span></div>`;
     const grid = `<div class="zp-grid"><table><thead><tr><th></th>${G.days.map((d) => {
       const w = (/* @__PURE__ */ new Date(d + "T12:00:00Z")).getUTCDay();
       return `<th class="${d === today ? "td" : ""}${w === 0 || w === 6 ? " we" : ""}">${+d.slice(8)}<small>${WDL[w]}</small></th>`;
@@ -2301,12 +2301,33 @@ ${g.sup}:
     return head + pills + `<div class="card">${grid}</div>` + (sw2 ? `<div class="card"><h3>\u{1F501} \u041E\u0431\u043C\u0456\u043D\u0438 \u0437\u043C\u0456\u043D\u0430\u043C\u0438</h3>${sw2}</div>` : "") + `<div class="grid2 set">${cards || '<div class="card muted">\u041D\u0435\u043C\u0430\u0454 \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\u0443</div>'}</div>` + eff + (ops ? `<div class="card"><h3>\u041E\u043F\u0435\u0440\u0430\u0446\u0456\u0457 \u0437\u0430 \u043C\u0456\u0441\u044F\u0446\u044C</h3>${ops}</div>` : "");
   }
   async function zpCell(d, n) {
-    var _a2, _b, _c;
+    var _a2, _b, _c, _d;
     const G = S.data.zp, a = (_a2 = G.att[d]) == null ? void 0 : _a2[n], p = (_b = G.plan[d]) == null ? void 0 : _b[n], fine = (_c = G.cfg) == null ? void 0 : _c.lateFine;
-    if (!a) {
-      if (await act("zpPlan", { day: d, n, time: p ? "" : "+" })) loadView();
+    const upd = (x) => {
+      var _a3;
+      (_a3 = G.att)[d] || (_a3[d] = {});
+      if (x) G.att[d][n] = x;
+      else delete G.att[d][n];
+      renderMain();
+    };
+    if (d > todayK()) {
+      (_d = G.plan)[d] || (_d[d] = {});
+      if (p) delete G.plan[d][n];
+      else G.plan[d][n] = "+";
+      renderMain();
+      if (!await act("zpPlan", { day: d, n, time: p ? "" : "+" })) loadView();
       return;
     }
+    if ((a == null ? void 0 : a.ok) === 1) {
+      upd(null);
+      if (!await act("zpAtt", { day: d, n, set: "del" })) loadView();
+      else loadView(true);
+      return;
+    }
+    upd(__spreadProps(__spreadValues({}, a || {}), { ok: 1 }));
+    if (!await act("zpAtt", (a == null ? void 0 : a.ok) === 0 ? { day: d, n, how: "o" } : { day: d, n, set: "o" })) loadView();
+    else loadView(true);
+    return;
     const info = `${d.slice(8)}.${d.slice(5, 7)} \xB7 ${n}${p && p !== "+" ? ` \xB7 \u043F\u043B\u0430\u043D ${p}` : ""}${(a == null ? void 0 : a.in) ? ` \xB7 \u043F\u0440\u0438\u0439\u0448\u043E\u0432 ${hhK(a.in)}` : ""}${(a == null ? void 0 : a.out) ? ` \xB7 \u043F\u0456\u0448\u043E\u0432 ${hhK(a.out)}${a.auto ? " (\u0430\u0432\u0442\u043E)" : ""}` : ""}${(a == null ? void 0 : a.late) ? ` \xB7 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F ${a.late} \u0445\u0432` : ""}${(a == null ? void 0 : a.by) ? ` \xB7 \u2714 ${a.by}` : ""}`;
     const opts = (a == null ? void 0 : a.ok) === 0 ? [{ label: "\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438", val: "o", cls: "primary" }, ...a.late && fine ? [{ label: `\u2705 + \u0448\u0442\u0440\u0430\u0444 ${fine} \u20B4`, val: "f" }] : [], { label: "\u274C \u0412\u0456\u0434\u0445\u0438\u043B\u0438\u0442\u0438", val: "n", cls: "red" }] : [(a == null ? void 0 : a.ok) === 1 ? { label: "\u274C \u041D\u0435 \u0431\u0443\u0432 (\u0437\u043D\u044F\u0442\u0438)", val: "del", cls: "red" } : { label: "\u2705 \u0411\u0443\u0432 \u043D\u0430 \u0437\u043C\u0456\u043D\u0456", val: "set", cls: "primary" }, { label: p && p !== "+" ? `\u{1F550} \u0427\u0430\u0441 \u043F\u043E\u0447\u0430\u0442\u043A\u0443 (${p})` : "\u{1F550} \u0412\u043A\u0430\u0437\u0430\u0442\u0438 \u0447\u0430\u0441 \u043F\u043E\u0447\u0430\u0442\u043A\u0443", val: "plan" }, ...p ? [{ label: "\u{1F5D1} \u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0437 \u043F\u043B\u0430\u043D\u0443", val: "unplan" }] : []];
     const v = await choose("\u{1F477} \u0417\u043C\u0456\u043D\u0430", info, opts);

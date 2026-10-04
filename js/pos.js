@@ -1269,7 +1269,7 @@
     const G = S.data.zp; if (!G) return '<div class="muted">Завантаження…</div>';
     const today = todayK(), people = G.staff.map(s => s.name).filter(n => (G.seen || []).includes(n) || G.days.some(d => G.att[d]?.[n] || G.plan[d]?.[n])); // хто цього місяця не заходив — не в графіку
     const head = `<div class="zp-top"><button class="btn sm" data-a="zpM" data-d="-1">◀</button><b>${monName(G.m)}</b><button class="btn sm" data-a="zpM" data-d="1">▶</button>
-      <span class="muted">✅ був · ⏰ запізнився · 🕓 чекає підтвердження · ❌ відхилено · 🚫 прогул · ⚠️ зміну закрито автоматично · ● — у графіку (тап по клітинці — поставити / прибрати)</span></div>`;
+      <span class="muted">✅ був · ⏰ запізнився · 🕓 чекає підтвердження · ❌ відхилено · 🚫 прогул · ⚠️ зміну закрито автоматично · ● — заплановано · тап: майбутнє — запланувати, сьогодні й раніше — був на зміні, ще раз — скасувати</span></div>`;
     const grid = `<div class="zp-grid"><table><thead><tr><th></th>${G.days.map(d => { const w = new Date(d + 'T12:00:00Z').getUTCDay(); return `<th class="${d === today ? 'td' : ''}${w === 0 || w === 6 ? ' we' : ''}">${+d.slice(8)}<small>${WDL[w]}</small></th>`; }).join('')}</tr></thead>
       <tbody>${people.map(n => `<tr><th>${esc(n)}</th>${G.days.map(d => { const a = G.att[d]?.[n], p = G.plan[d]?.[n], h = hrs(a); return `<td class="press${d === today ? ' td' : ''}" data-a="zpCell" data-d="${d}" data-n="${esc(n)}"><i>${attIc(a, p, d)}</i>${p ? (p === '+' ? (a ? '' : '<i class="pl">●</i>') : `<small>${p}</small>`) : ''}${h ? `<small class="h">${h}г</small>` : ''}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>
       <div class="btnrow"><button class="btn sm" data-a="zpCopy">📋 План: скопіювати минулий тиждень на цей</button></div>`;
@@ -1292,8 +1292,11 @@
   }
   async function zpCell(d, n) {
     const G = S.data.zp, a = G.att[d]?.[n], p = G.plan[d]?.[n], fine = G.cfg?.lateFine;
-    // без відмітки приходу — один тап ставить / знімає людину в графіку
-    if (!a) { if (await act('zpPlan', { day: d, n, time: p ? '' : '+' })) loadView(); return; }
+    // один тап: майбутній день — план ● / прибрати; сьогодні й раніше — був на зміні ✅ / прибрати (підтвердити 🕓)
+    const upd = x => { (G.att[d] ||= {}); if (x) G.att[d][n] = x; else delete G.att[d][n]; renderMain(); };
+    if (d > todayK()) { (G.plan[d] ||= {}); if (p) delete G.plan[d][n]; else G.plan[d][n] = '+'; renderMain(); if (!(await act('zpPlan', { day: d, n, time: p ? '' : '+' }))) loadView(); return; }
+    if (a?.ok === 1) { upd(null); if (!(await act('zpAtt', { day: d, n, set: 'del' }))) loadView(); else loadView(true); return; }
+    upd({ ...(a || {}), ok: 1 }); if (!(await act('zpAtt', a?.ok === 0 ? { day: d, n, how: 'o' } : { day: d, n, set: 'o' }))) loadView(); else loadView(true); return;
     const info = `${d.slice(8)}.${d.slice(5, 7)} · ${n}${p && p !== '+' ? ` · план ${p}` : ''}${a?.in ? ` · прийшов ${hhK(a.in)}` : ''}${a?.out ? ` · пішов ${hhK(a.out)}${a.auto ? ' (авто)' : ''}` : ''}${a?.late ? ` · запізнення ${a.late} хв` : ''}${a?.by ? ` · ✔ ${a.by}` : ''}`;
     const opts = a?.ok === 0 ? [{ label: '✅ Підтвердити', val: 'o', cls: 'primary' }, ...(a.late && fine ? [{ label: `✅ + штраф ${fine} ₴`, val: 'f' }] : []), { label: '❌ Відхилити', val: 'n', cls: 'red' }]
       : [a?.ok === 1 ? { label: '❌ Не був (зняти)', val: 'del', cls: 'red' } : { label: '✅ Був на зміні', val: 'set', cls: 'primary' }, { label: p && p !== '+' ? `🕐 Час початку (${p})` : '🕐 Вказати час початку', val: 'plan' }, ...(p ? [{ label: '🗑 Прибрати з плану', val: 'unplan' }] : [])];
