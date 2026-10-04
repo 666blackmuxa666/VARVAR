@@ -580,3 +580,13 @@ body { position: fixed; top: 0; right: 0; bottom: 0; left: 0; overscroll-behavio
 .zp-grid tr.me th { color: var(--accent); } .zp-grid tr.me td { box-shadow: inset 0 0 0 1px #f2c14e55; }
 #modal .zp-grid { max-width: 100%; }
 .zp-x { width: 20px; height: 20px; border-radius: 50%; background: var(--card2); color: var(--muted); font-size: 10px; margin-right: 6px; vertical-align: middle; }
+/* 💰 зарплата — компактно */
+.zp-body { margin-top: 12px; } .zp-leg { font-size: 11px; margin: 8px 0 2px; }
+.zp-pr { display: grid; grid-template-columns: minmax(150px, 2fr) 60px 1fr 1fr 1fr 84px; gap: 8px; align-items: center; padding: 10px 6px; border-bottom: 1px solid var(--line); border-radius: 10px; }
+.zp-pr.th { font-size: 12px; color: var(--muted); font-weight: 700; border-radius: 0; padding-top: 0; }
+.zp-pr > span:first-child { display: grid; gap: 2px; } .zp-pr small { font-size: 11px; display: block; }
+.zp-pr > :not(:first-child) { text-align: right; } .zp-pr b.acc { color: var(--accent); font-size: 17px; }
+.zp-pr.press:hover { background: var(--card2); } .zp-act { display: flex; gap: 6px; justify-content: flex-end; align-items: center; } .zp-act i { font-style: normal; color: var(--muted); }
+.zp-det { display: grid; grid-template-columns: 1fr auto; gap: 14px; padding: 8px 10px 14px; border-bottom: 1px solid var(--line); background: #ffffff06; border-radius: 0 0 12px 12px; }
+.zp-det-b { display: grid; gap: 6px; align-content: start; }
+@media (max-width: 700px) { .zp-pr { grid-template-columns: 1fr 70px 76px; } .zp-pr > :nth-child(2), .zp-pr > :nth-child(4) { display: none; } .zp-pr.th > :nth-child(3) { display: none; } .zp-pr > :nth-child(3) { display: none; } .zp-det { grid-template-columns: 1fr; } .zp-det-b { grid-template-columns: 1fr 1fr; } }
