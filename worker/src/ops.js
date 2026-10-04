@@ -305,7 +305,10 @@ async function _deleteTable(env, t, who, reason = '') {
   await kitchenCancel(env, +t, null);
   const dishes = []; for (const o of bill.log || []) for (const l of o.lines) { const x = l.match(LINE); if (x) dishes.push([x[2], +x[1], +x[3]]); }
   await addVoid(env, { ts: Date.now(), at: hhmm(), t: +t, by: who || '', name: `🗑 Весь стіл (${dishes.length} поз.)`, sum: bill.total, reason: String(reason || 'стіл видалено').slice(0, 120), table: 1 });
-  await logClosed(env, { ts: Date.now(), t, sum: bill.total, at: hhmm(), by: who || '', del: 1, dishes, ...(bill.voids?.length ? { voids: bill.voids } : {}) });
+  await logClosed(env, { ts: Date.now(), t, sum: bill.total, at: hhmm(), by: who || '', del: 1, dishes, orders: bill.orders || 0, ...(bill.voids?.length ? { voids: bill.voids } : {}) });
+  // видалений стіл — не продаж: прибрати його страви з «топ страв» і замовлення з лічильника (↩️ відновлення поверне)
+  if (dishes.length) await addDishes(env, dishes.map(([n, q, sum]) => ({ n, q: -q, sum: -sum })));
+  if (bill.orders) await addStat(env, 'orders', -bill.orders);
   await logEvent(env, { k: 'del', t, by: who, sum: bill.total });
   return { sum: bill.total };
 }
@@ -355,6 +358,7 @@ async function _reopenClosed(env, ref, who, day = dayKey()) {
   if (!x0.rm) await delClosed(env, ref, day);
   const k = 'closed:' + day, list = await getClosed(env, day), x = findClosed(list, ref);
   x.rm = 1; x.reopen = 1; await env.DB.put(k, JSON.stringify(list));
+  if (x.orders) await bump(env, 'day:' + day, d => { d.orders = (d.orders || 0) + x.orders; }); // замовлення не скасовані — лише рахунок відкрито знову
   await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q, sum }))); // страви знову на столі — у продажі сьогоднішнього дня (закриють заново сьогодні) (продажі страв рахуються при замовленні, delClosed їх відняв)
   await billBack(env, x.t, x, `↩️ відкрито знову (${who})`);
   await logEvent(env, { k: 'shift', t: x.t, by: who, text: `↩️ Стіл ${x.t}: закритий рахунок відкрито знову (${x.sum} грн)` });
@@ -366,6 +370,7 @@ async function _restoreTable(env, ref, who, day = dayKey()) {
   if (!x || !x.del || x.restored || !x.dishes?.length) return null;
   x.restored = 1; await env.DB.put(k, JSON.stringify(list));
   await billBack(env, x.t, x, `↩️ відновлено (${who})`);
+  await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q, sum }))); if (x.orders) await addStat(env, 'orders', x.orders); // знову на столі — знову в продажах
   const vk = 'void:' + day, vl = await getVoids(env, day); const vi = vl.findLastIndex(v => v.table && v.t === +x.t && v.sum === x.sum);
   if (vi >= 0) { vl.splice(vi, 1); await env.DB.put(vk, JSON.stringify(vl)); }
   await logEvent(env, { k: 'shift', t: x.t, by: who, text: `↩️ Стіл ${x.t} відновлено (${x.sum} грн)` });
