@@ -15,10 +15,15 @@ export const KITCHEN_HTML = `<!doctype html><html lang="uk"><head><meta charset=
 .i.d{background:#123f22;color:#7ee29a;text-decoration:line-through}.i.x{background:#3d1210;color:#ff6961;text-decoration:line-through}
 .b{display:-webkit-box;display:-webkit-flex;display:flex;margin-top:8px}.b .btn{-webkit-flex:1;flex:1;margin:0 4px}
 .e{padding:40px;text-align:center;color:#8e8e93;font-size:24px}#login{padding:30px;text-align:center}#login input{font-size:32px;width:200px;text-align:center;padding:10px;border-radius:10px;border:0}
+.tabs{display:-webkit-box;display:-webkit-flex;display:flex;background:#111;padding:0 6px 8px}.tabs button{-webkit-flex:1;flex:1;margin:0 3px;padding:12px 4px;border:0;border-radius:10px;background:#222;color:#aaa;font-size:16px;font-weight:bold}.tabs .on{background:#fff;color:#000}
+.pg{padding:10px}.ev{background:#1c1c1e;border-radius:12px;padding:10px 12px;margin-bottom:8px;border-left:5px solid #444}.ev.guest{border-color:#30d158}.ev.ready{border-color:#30d158}.ev.kmsg{border-color:#bf5af2}.ev.call{border-color:#ffd60a}.ev pre{margin:4px 0 0;font:15px -apple-system,Helvetica;white-space:pre-wrap;color:#ddd}
+.tb{display:inline-block;width:18%;margin:1%;padding:18px 0;font-size:24px;font-weight:bold;border:0;border-radius:12px;background:#2c2c2e;color:#fff}.tb.on{background:#ffd60a;color:#000}
+.cat{display:inline-block;margin:3px;padding:10px 12px;border:0;border-radius:99px;background:#2c2c2e;color:#fff;font-size:15px}.cat.on{background:#fff;color:#000}
+.it{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;background:#1c1c1e;border-radius:10px;padding:10px;margin:5px 0}.it span{-webkit-flex:1;flex:1;font-size:18px}.it .qq{min-width:34px;text-align:center;font-size:20px;font-weight:bold}.it button{width:46px;height:46px;border:0;border-radius:23px;font-size:24px;font-weight:bold;background:#333;color:#fff;margin-left:6px}.sw{border:0;border-radius:20px;padding:8px 14px;font-weight:bold;font-size:15px}
 #gate{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.85);text-align:center;padding-top:30%}#err{color:#ff453a;margin:10px}
 </style></head><body>
 <div id="login" style="display:none"><h1>👨‍🍳 VARVAR кухня</h1><p>Введіть свій PIN</p><input id="pin" type="tel" maxlength="4"><br><button class="btn g" id="go" style="margin-top:14px">Увійти</button><div id="err"></div></div>
-<div id="app" style="display:none"><div class="top"><h1>👨‍🍳 Черга <span id="n"></span></h1><span id="st" style="color:#8e8e93;font-size:13px"></span><button class="btn" id="out">Вийти</button></div><div class="q" id="q"></div></div>
+<div id="app" style="display:none"><div class="top"><h1 id="ttl">👨‍🍳 Черга</h1><span id="st" style="color:#8e8e93;font-size:13px"></span><button class="btn" id="out">Вийти</button></div><div class="tabs"><button data-tab="q" class="on">👨‍🍳 Черга <span id="n"></span></button><button data-tab="f">🔔 Стрічка</button><button data-tab="o">📝 Замовлення</button><button data-tab="s">⛔ Стоп-лист</button></div><div class="q" id="q"></div><div id="f" class="pg" style="display:none"></div><div id="o" class="pg" style="display:none"></div><div id="s" class="pg" style="display:none"></div></div>
 <div id="gate" style="display:none"><button class="btn g" id="start" style="font-size:28px;padding:24px 34px">🔊 Почати зміну</button><p style="color:#8e8e93">увімкне звук нових замовлень</p></div>
 <script>
 var T=localStorage.getItem('ktok')||'',seen=null,ctx=null,list=[];
@@ -44,5 +49,27 @@ document.addEventListener('click',function(ev){var t=ev.target;while(t&&t!==docu
 $('go').onclick=function(){api('login',{pin:$('pin').value},function(j){if(j.token&&j.me&&(j.me.role==='cook'||j.me.role==='admin')){T=j.token;localStorage.setItem('ktok',T);show()}else $('err').textContent=j.token?'Цей екран — для кухаря':'Невірний PIN'})};
 $('out').onclick=function(){if(confirm('Вийти?')){api('logout',{});T='';localStorage.removeItem('ktok');show()}};
 $('start').onclick=function(){try{var A=window.AudioContext||window.webkitAudioContext;ctx=new A();beep(1)}catch(e){}$('gate').style.display='none'};
+var tab='q',menu=null,ot=0,ocat='',cart={};
+function tabs(t){tab=t;var b=document.querySelectorAll('.tabs button');for(var i=0;i<b.length;i++)b[i].className=b[i].getAttribute('data-tab')===t?'on':'';['q','f','o','s'].forEach(function(k){$(k).style.display=k===t?(k==='q'?'':'block'):'none'});$('ttl').textContent={q:'👨‍🍳 Черга',f:'🔔 Стрічка',o:'📝 Замовлення',s:'⛔ Стоп-лист'}[t];if(t==='f')feed();if((t==='o'||t==='s')&&!menu)api('menu',{},function(j){menu=j.menu;draw2()});else draw2()}
+function feed(){api('state',{},function(j){var e=(j.events||[]).slice().reverse(),h='';for(var i=0;i<e.length&&i<60;i++){var x=e[i];h+='<div class="ev '+esc(x.k)+'"><b>'+(x.t?'Стіл '+x.t+' · ':'')+esc(x.text||{guest:'🛎 замовлення гостя',waiter:'🧑‍🍳 замовлення',close:'✅ стіл закрито',ready:'🍽 готово',call:'🔔 кличуть офіціанта',check:'🧾 просять чек'}[x.k]||x.k)+'</b> <span style="color:#8e8e93;font-size:13px">'+esc(x.at)+(x.by?' · '+esc(x.by):'')+'</span>'+(x.lines&&x.lines.length?'<pre>'+esc(x.lines.join('\\n'))+'</pre>':'')+'</div>'}$('f').innerHTML=h||'<div class="e">Подій ще немає</div>'})}
+function items(c){return c.items.filter(function(i){return tab==='s'||!i.hidden})}
+function draw2(){if(!menu)return;var cats=menu.categories.filter(function(c){return!c.tech}),h='';
+ if(tab==='s'){for(var i=0;i<cats.length;i++){h+='<h3>'+esc(cats[i].name.uk)+'</h3>';var it=cats[i].items;for(var j=0;j<it.length;j++)h+='<div class="it"><span>'+esc(it[j].name.uk)+'</span><button class="sw" style="background:'+(it[j].hidden?'#ff453a':'#30d158')+';width:auto" data-stop="'+it[j].id+'" data-h="'+(it[j].hidden?0:1)+'">'+(it[j].hidden?'⛔ немає':'✅ є')+'</button></div>'}$('s').innerHTML=h;return}
+ if(tab!=='o')return;
+ h='<div>';for(var t=1;t<=15;t++)h+='<button class="tb'+(ot===t?' on':'')+'" data-tb="'+t+'">'+t+'</button>';h+='</div>';
+ if(ot){if(!ocat)ocat=cats[0].id;h+='<div style="margin:8px 0">';for(i=0;i<cats.length;i++)h+='<button class="cat'+(ocat===cats[i].id?' on':'')+'" data-cat="'+cats[i].id+'">'+esc(cats[i].name.uk)+'</button>';h+='</div>';
+  var c=cats.filter(function(x){return x.id===ocat})[0],li=c?items(c):[];
+  for(j=0;j<li.length;j++){var x=li[j],vs=x.variants||[{v:'',p:x.price}];for(var k=0;k<vs.length;k++){var key=x.id+'|'+vs[k].v,q=cart[key]||0;h+='<div class="it"><span>'+esc(x.name.uk)+(vs[k].v?' '+vs[k].v+' '+(x.size||'л'):'')+' <small style="color:#8e8e93">'+vs[k].p+' ₴</small></span>'+(q?'<button data-cq="'+key+'" data-d="-1">−</button><span class="qq">'+q+'</span>':'')+'<button data-cq="'+key+'" data-d="1" style="background:#30d158;color:#032">+</button></div>'}}
+  var n=0,sum=0;for(var kk in cart){n+=cart[kk];var p=kk.split('|'),it2=null;menu.categories.forEach(function(cc){cc.items.forEach(function(ii){if(ii.id===p[0])it2=ii})});if(it2)sum+=cart[kk]*(it2.variants?(it2.variants.filter(function(v){return v.v===p[1]})[0]||{p:0}).p:it2.price)}
+  if(n)h+='<div style="position:-webkit-sticky;position:sticky;bottom:0;background:#000;padding:10px 0"><button class="btn g" id="send" style="width:100%;margin:0;font-size:20px">Відправити на стіл '+ot+' · '+n+' поз. · '+sum+' ₴</button></div>'}
+ $('o').innerHTML=h}
+document.addEventListener('click',function(ev){var t=ev.target,a;
+ if((a=t.getAttribute('data-tab')))return tabs(a);
+ if((a=t.getAttribute('data-tb'))){ot=+a;cart={};return draw2()}
+ if((a=t.getAttribute('data-cat'))){ocat=a;return draw2()}
+ if((a=t.getAttribute('data-cq'))){cart[a]=Math.max(0,(cart[a]||0)+(+t.getAttribute('data-d')));if(!cart[a])delete cart[a];return draw2()}
+ if((a=t.getAttribute('data-stop'))){var h=t.getAttribute('data-h')==='1';api('stop',{id:a,hidden:h},function(){menu.categories.forEach(function(c){c.items.forEach(function(i){if(i.id===a)i.hidden=h})});draw2()});return}
+ if(t.id==='send'){var it=[];for(var k in cart){var p=k.split('|');it.push({id:p[0],v:p[1]||undefined,q:cart[k]})}t.disabled=true;api('order',{t:ot,items:it},function(j,s){if(s===200){alert('✅ Відправлено на стіл '+ot);cart={};ot=0;tabs('q')}else{alert('⚠️ '+(j.error||'помилка'));t.disabled=false}})}});
+setInterval(function(){if(T&&tab==='f')feed()},8000);
 $('gate').style.display='block';show();setInterval(function(){if(T)load()},4000);setInterval(function(){if(T)draw()},30000);
 </script></body></html>`;
