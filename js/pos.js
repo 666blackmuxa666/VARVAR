@@ -863,7 +863,7 @@
       : low.length ? `<div class="card sk-low">⚠️ Нижче мінімуму: ${low.map(x => esc(x.n)).join(', ')}</div>` : '';
     const rowH = x => { const t = totQ(x), lo = x.min > 0 && t < x.min, both = (x.st?.k || 0) && (x.st?.b || 0);
       return `<div class="sk-row${lo ? ' low' : ''}${x.off ? ' off' : ''}"><div class="sk-n${adm ? ' press' : ''}" ${adm ? `data-a="skIng" data-id="${x.id}"` : ''}><b>${x.semi ? '🍳 ' : ''}${esc(x.n)}</b><small class="muted">${x.min ? `мін ${fq(x.min, x.u)}` : ''}${adm && x.cost ? `${x.min ? ' · ' : ''}${money(x.cost)} / ${x.u}` : ''}${adm && !x.cost ? `${x.min ? ' · ' : ''}<span class="warn">немає ціни</span>` : ''}</small></div>
-        <div class="sk-q"><b class="${t < 0 ? 'neg' : ''}">${fq(t, x.u)}</b><small class="muted">${both ? `К ${fq(x.st.k, x.u)} · Б ${fq(x.st.b, x.u)}` : (x.st?.b ? WHN.b : WHN.k)}</small></div>
+        <div class="sk-q"><b class="${t < 0 ? 'neg' : ''}">${fq(t, x.u)}</b><small class="muted">${both ? `К ${fq(x.st.k, x.u)} · Б ${fq(x.st.b, x.u)}` : (x.st?.b ? WHN.b : x.st?.k ? WHN.k : WHN[x.home || 'k'])}</small></div>
         <div class="sk-act">${adm ? `<button class="rb plus" data-a="skAdd" data-id="${x.id}" title="Оприбуткувати">+</button>` : ''}<button class="rb minus" data-a="skOff" data-id="${x.id}" title="Списати">−</button><button class="rb" data-a="skMv" data-id="${x.id}" title="Перемістити між складами">⇄</button></div></div>`; };
     const groups = {}; list.forEach(x => (groups[x.cat || 'Інше'] ||= []).push(x));
     const body = list.length ? Object.keys(groups).sort().map(c => `<div class="card"><h3>${esc(c)} <span class="muted">· ${groups[c].length}</span></h3>${groups[c].sort((a, b) => a.n.localeCompare(b.n)).map(rowH).join('')}</div>`).join('')
