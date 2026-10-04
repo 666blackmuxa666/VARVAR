@@ -8,7 +8,7 @@ import { queuePrint, printStatus } from './print.js';
 import {
   tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
   precheck, setDiscount, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
-  reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, tipBalances, payTips, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenPct, rejectOrder, kitchenStats, getKq, kitchenDone, kitchenStart, restoreClosed, reopenClosed, restoreTable, restoreExpense, balances, reconcile, WAITER_DISC_MAX, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
+  reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, tipBalances, payTips, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenPct, rejectOrder, kitchenStats, getKq, kitchenDone, kitchenStart, restoreClosed, reopenClosed, restoreTable, restoreExpense, balances, reconcile, WAITER_DISC_MAX, getCfg, setCfg, CFG_LIM, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
 } from './ops.js';
 export { tg, esc, hhmm, getBill } from './ops.js';
 export { addStat, addDishes } from './ops.js';
@@ -135,15 +135,15 @@ const fmtT = t => new Date(t).toLocaleString('uk-UA', { timeZone: TZ, day: '2-di
 async function cashView(env) {
   const z = await dayZData(env), bal = await balances(env), tb = Object.entries(await tipBalances(env)).filter(([, v]) => v > 0);
   return {
-    text: [`💰 <b>Гроші зараз</b>`, `💵 Готівка в касі: <b>${money(bal.cash)}</b>`, `💳 На картці: <b>${money(bal.card)}</b>`, `💰 Разом: <b>${money(bal.total)}</b>`, '', `📅 <b>Сьогодні (${z.day.split('-').reverse().join('.')})</b>`,
-      `Виручка: <b>${money(z.total)}</b> · чеків ${z.checks}${z.checks ? ` · сер. чек ${money(z.total / z.checks)}` : ''}`,
+    text: [`💰 <b>Гроші зараз</b>`, `💵 Готівка в касі: <b>${money(bal.cash)}</b>`, `💳 На картці: <b>${money(bal.card)}</b>`, `💰 Разом: <b>${money(bal.total)}</b>`, ...(bal.tipOwed ? [`   з них чайові до видачі ${money(bal.tipOwed)} → вільних <b>${money(bal.free)}</b>`] : []), '', `📅 <b>Сьогодні (${z.day.split('-').reverse().join('.')})</b>`,
+      `Виручка: <b>${money(z.total)}</b>${z.tip ? ` (+ чайові ${money(z.tip)})` : ''} · чеків ${z.checks}${z.checks ? ` · сер. чек ${money(z.total / z.checks)}` : ''}`,
       `💵 Готівка: ${money(z.cash)} · 💳 Картка: ${money(z.card)}`,
       z.disc ? `🏷 Знижки: ${money(z.disc)}` : '',
       `💸 Витрати: ${money(z.exCash + z.exCard)} · 📈 чистими: <b>${money(z.net)}</b>`,
       z.mvCash || z.mvCard ? `🔁 Рух коштів: готівка ${money(z.mvCash)}${z.mvCard ? `, картка ${money(z.mvCard)}` : ''}` : '',
       z.openTables ? `⏳ Ще відкрито в залі: ${money(z.openSum)} (${z.openTables} ст.)` : '',
       ...(tb.length ? ['\n💝 <b>Чайові до видачі</b> (не виручка):', ...tb.map(([n, v]) => `👤 ${esc(n)}: ${money(v)}`)] : [])].filter(x => x !== '').join('\n'),
-    markup: { inline_keyboard: [[{ text: '🧾 Z-звіт (друк)', callback_data: 'zday' }], [{ text: '💸 Витрати сьогодні', callback_data: 'exlist' }], [{ text: '➕ Внести', callback_data: 'cmv:in' }, { text: '➖ Вилучити', callback_data: 'cmv:out' }, { text: '🔁 Обмін', callback_data: 'cmvx' }], [{ text: '➕ На картку', callback_data: 'cmv:kin' }, { text: '➖ Вилучити з картки', callback_data: 'cmv:kout' }], [{ text: `👨‍🍳 Частка кухні від чайових: ${await kitchenPct(env)}%`, callback_data: 'kpct' }], [{ text: '✏️ Звірити готівку', callback_data: 'rcn:cash' }, { text: '✏️ Звірити картку', callback_data: 'rcn:card' }], ...tb.map(([n, v]) => [{ text: `💝 Видано: ${n} · ${v}`, callback_data: ('tpay:' + n).slice(0, 60) }])] },
+    markup: { inline_keyboard: [[{ text: '🧾 Z-звіт (друк)', callback_data: 'zday' }], [{ text: '💸 Витрати сьогодні', callback_data: 'exlist' }], [{ text: '➕ Внести', callback_data: 'cmv:in' }, { text: '➖ Вилучити', callback_data: 'cmv:out' }, { text: '🔁 Обмін', callback_data: 'cmvx' }], [{ text: '➕ На картку', callback_data: 'cmv:kin' }, { text: '➖ Вилучити з картки', callback_data: 'cmv:kout' }], [{ text: `👨‍🍳 Частка кухні від чайових: ${await kitchenPct(env)}%`, callback_data: 'kpct' }], ...await (async () => { const c = await getCfg(env); return [[{ text: `🏷 Макс. знижка офіціанта: ${c.discMax}%`, callback_data: 'cfg:discMax' }], [{ text: `⏱ Замовлення після QR: ${c.scanMin} хв`, callback_data: 'cfg:scanMin' }]]; })(), [{ text: '✏️ Звірити готівку', callback_data: 'rcn:cash' }, { text: '✏️ Звірити картку', callback_data: 'rcn:card' }], ...tb.map(([n, v]) => [{ text: `💝 Видано: ${n} · ${v}`, callback_data: ('tpay:' + n).slice(0, 60) }])] },
   };
 }
 async function expListView(env) {
@@ -158,14 +158,15 @@ async function expListView(env) {
 }
 async function reportsView(env) {
   const r = await reportsData(env);
-  const line = (label, d) => `<b>${label}:</b> ${money(d.closed)} (💵 ${money(d.cash)} · 💳 ${money(d.card)})\n   витрати ${money(d.exp)} · <b>чистими ${money(d.closed - d.exp)}</b> · столів ${d.tables}${d.tables ? ` · сер. чек ${money(d.closed / d.tables)}` : ''}${d.disc ? ` · знижки ${money(d.disc)}` : ''}`;
+  const line = (label, d) => `<b>${label}:</b> ${money(d.closed)} (💵 ${money(d.cash)} · 💳 ${money(d.card)})\n   витрати ${money(d.exp)} · <b>чистими ${money(d.closed - d.exp)}</b> · столів ${d.tables}${d.tables ? ` · сер. чек ${money(d.closed / d.tables)}` : ''}${d.disc ? ` · знижки ${money(d.disc)}` : ''}${d.tip ? ` · чайові ${money(d.tip)} (не виручка)` : ''}`;
   const [d0, ...rest] = r.rows;
   return { text: [`📊 <b>Звіти</b>`, line(...d0), `У залі ще відкрито: <b>${money(r.open)}</b>`, '', ...rest.map(x => line(...x)), '',
-    `<i>Виручка — закриті рахунки (після знижок). Чистими = виручка − витрати.</i>`, '', '🔎 <b>Детальніше</b> — оберіть період і розріз:'].join('\n'), markup: repMarkup('m') };
+    `<i>Виручка — закриті рахунки після знижок, без чайових. Чистими = виручка − витрати.</i>`, '', '🔎 <b>Детальніше</b> — оберіть період і розріз:'].join('\n'), markup: repMarkup('m') };
 }
 // детальні звіти: період × розріз (ті самі дані, що фільтри в POS)
 const REP_P = { d: 'Сьогодні', y: 'Вчора', w: '7 днів', m: 'Цей місяць', pm: 'Минулий місяць', yr: 'Цей рік', all: 'За весь час' };
-const REP_BY = { waiter: '👤 Офіціанти', tips: '💝 Чайові', group: '🍳 Кухня/бар', cat: '📂 Категорії', hour: '🕐 Години', table: '🪑 Столи', ctrl: '🕵️ Контроль' };
+const REP_BY = { waiter: '👤 Офіціанти', tips: '💝 Чайові', group: '🍳 Кухня/бар', cat: '📂 Категорії', table: '🪑 Столи', ctrl: '🕵️ Контроль' };
+const CFG_NAME = { discMax: '🏷 Макс. знижка офіціанта, %', scanMin: '⏱ Скільки хвилин гість може замовляти після QR' };
 const repMarkup = p => ({ inline_keyboard: [Object.entries(REP_P).slice(0, 3).map(([k, l]) => ({ text: (k === p ? '• ' : '') + l, callback_data: `rp:${k}:x` })), Object.entries(REP_P).slice(3).map(([k, l]) => ({ text: (k === p ? '• ' : '') + l, callback_data: `rp:${k}:x` })),
   ...chunk(Object.entries(REP_BY).map(([k, l]) => ({ text: l, callback_data: `rp:${p}:${k}` })), 3)] });
 function repRange(p) {
@@ -181,7 +182,7 @@ function repRange(p) {
 async function repView(env, p, by) {
   const [from, to] = repRange(p);
   if (by === 'x') { const r = await reportBreakdown(env, from, to, 'waiter'); const ex = r.r.exp.reduce((a, e) => a + e.sum, 0), n = r.r.checks.length;
-    return { text: `📊 <b>${REP_P[p]}</b> (${from} — ${to})\n\nВиручка: <b>${money(r.total)}</b> · чеків ${n}${n ? ` · сер. чек ${money(r.total / n)}` : ''}\n💵 ${money(r.r.checks.reduce((a, c) => a + c.cash, 0))} · 💳 ${money(r.r.checks.reduce((a, c) => a + c.card, 0))}\nВитрати ${money(ex)} · чистими <b>${money(r.total - ex)}</b>${await (async () => { const k = await kitchenStats(env, from, to); return k.length ? `\n⏱ Кухня: ${k.length} замовл. · сер. час <b>${Math.round(k.reduce((a, x) => a + x.mins, 0) / k.length)} хв</b> · понад 15 хв: ${k.filter(x => x.mins > 15).length}` : ''; })()}\n\nОберіть розріз:`, markup: repMarkup(p) }; }
+    return { text: `📊 <b>${REP_P[p]}</b> (${from} — ${to})\n\nВиручка: <b>${money(r.total)}</b> · чеків ${n}${n ? ` · сер. чек ${money(r.total / n)}` : ''}${(() => { const tp = r.r.checks.reduce((a, c) => a + c.tip, 0); return tp ? ` (+ чайові ${money(tp)})` : ''; })()}\n💵 ${money(r.r.checks.reduce((a, c) => a + c.cash, 0))} · 💳 ${money(r.r.checks.reduce((a, c) => a + c.card, 0))}\nВитрати ${money(ex)} · чистими <b>${money(r.total - ex)}</b>${await (async () => { const k = await kitchenStats(env, from, to); return k.length ? `\n⏱ Кухня: ${k.length} замовл. · сер. час <b>${Math.round(k.reduce((a, x) => a + x.mins, 0) / k.length)} хв</b> · понад 15 хв: ${k.filter(x => x.mins > 15).length}` : ''; })()}\n\nОберіть розріз:`, markup: repMarkup(p) }; }
   const r = await reportBreakdown(env, from, to, by);
   if (by === 'ctrl') { const v = r.r.voids;
     return { text: `🕵️ <b>Контроль · ${REP_P[p]}</b> (${from} — ${to})\n\n` + (r.ctrl.length ? r.ctrl.map(w => `👤 <b>${esc(w.name)}</b> — ${w.checks} чек. · ${money(w.sum)}\n   🚫 скасувань ${w.voidN} на ${money(w.voidSum)}${w.voidPct ? ` (${w.voidPct}%)` : ''}${w.tables ? ` · 🗑 столів ${w.tables} на ${money(w.tableSum)}` : ''}\n   🏷 знижок ${w.discN} на ${money(w.discSum)}${w.discMax ? ` (макс ${w.discMax}%)` : ''} · 💝 ${money(w.tip)}`).join('\n\n') : 'Немає даних') +
@@ -329,6 +330,7 @@ export async function handleUpdate(u, env) {
       const r = await setDiscount(env, t, p, who, admin); if (r?.error) return send({ text: '⛔ ' + r.error }); return send(await tableView(env, t));
     }
     const num = parseFloat(text.replace(',', '.').replace(/\s/g, ''));
+    if (state.startsWith('cfg:') && admin) { const k = state.slice(4), c = await setCfg(env, k, num); if (c.error) return send({ text: c.error }); await env.DB.delete('st:' + uid); return send({ text: `✅ Збережено: ${CFG_NAME[k]} — <b>${c[k]}</b>` }); }
     if (state === 'kpct' && admin) { if (!(num >= 0 && num <= 100)) return send({ text: 'Число від 0 до 100' }); await env.DB.delete('st:' + uid); await env.DB.put('kitchen_pct', String(Math.round(num))); return send({ text: `✅ Частка кухні: <b>${Math.round(num)}%</b>` }); }
     if (state.startsWith('rcn:') && admin) {
       if (!(num >= 0)) return send({ text: 'Потрібне число, наприклад 5112' });
@@ -529,7 +531,7 @@ async function handleCallback(q, env) {
       [{ text: '✖ Без знижки', callback_data: `dscs:${arg}:0` }]] } });
     return answer('');
   }
-  if (act === 'dscs') { const b = await setDiscount(env, +arg, +oid, who, admin); if (!b) return answer('Стіл порожній'); if (b.error) return answer(`⛔ Офіціант — до ${WAITER_DISC_MAX}%. Більше — лише адмін`); const v = await tableView(env, +arg); await edit(v.text, v.markup); return answer(+oid ? `Знижка ${oid}%` : 'Знижку прибрано'); }
+  if (act === 'dscs') { const b = await setDiscount(env, +arg, +oid, who, admin); if (!b) return answer('Стіл порожній'); if (b.error) return answer(`⛔ Офіціант — до ${b.max}%. Більше — лише адмін`); const v = await tableView(env, +arg); await edit(v.text, v.markup); return answer(+oid ? `Знижка ${oid}%` : 'Знижку прибрано'); }
   // чайові додає лише гість (на сайті); прибрати помилкові — лише адмін
   if (act === 'tipx') { if (!admin) return answer('🔐 Лише адміністратор'); await setTip(env, +arg, 0, who); const v = await tableView(env, +arg); await edit(v.text, v.markup); return answer('Чайові прибрано'); }
   if (act === 'dscc') { await env.DB.put('st:' + uid, 'dscc:' + arg, { expirationTtl: 300 }); return answer('Напишіть відсоток знижки числом'); }
@@ -565,7 +567,7 @@ async function handleCallback(q, env) {
     const v = await stopView(env); await edit(v.text, v.markup); return answer(it ? `${it.name.uk} знову в меню` : 'Не знайдено');
   }
   // лише адміністратор
-  if (['del', 'delok', 'wifiask', 'wifiok', 'dc', 'dcok', 'cv', 'cvb', 'cvp', 'rst1', 'rst2', 'exs', 'exdel', 'exdelok', 'float', 'exlist', 'shop', 'shopl', 'shcl', 'cmv', 'cmvx', 'zday', 'rcn', 'kpct', 'cvro', 'cvbk', 'tbk', 'exbk', 'tpay', 'tpc', 'tpk', 'rp', 'stfadd', 'stfdel', 'wout'].includes(act) && !admin) return answer('🔐 Лише для адміністратора');
+  if (['del', 'delok', 'wifiask', 'wifiok', 'dc', 'dcok', 'cv', 'cvb', 'cvp', 'rst1', 'rst2', 'exs', 'exdel', 'exdelok', 'float', 'exlist', 'shop', 'shopl', 'shcl', 'cmv', 'cmvx', 'zday', 'rcn', 'kpct', 'cfg', 'cvro', 'cvbk', 'tbk', 'exbk', 'tpay', 'tpc', 'tpk', 'rp', 'stfadd', 'stfdel', 'wout'].includes(act) && !admin) return answer('🔐 Лише для адміністратора');
   if (act === 'del') {
     const b = await getBill(env, arg);
     if (!b.total) return answer(`Стіл ${arg} вже порожній`);
@@ -599,6 +601,7 @@ async function handleCallback(q, env) {
     await send({ text: `💝 Видати чайові <b>${esc(name)}</b> — ${money(b[name])}\nЗвідки списати?`, markup: { inline_keyboard: [[{ text: '💵 Готівкою з каси', callback_data: ('tpc:' + name).slice(0, 60) }, { text: '💳 З картки', callback_data: ('tpk:' + name).slice(0, 60) }], [{ text: 'Скасувати', callback_data: 'no' }]] } }); return answer(''); }
   if (act === 'tpc' || act === 'tpk') { const name = q.data.slice(4); const s = await payTips(env, name, who, act === 'tpk' ? 'card' : 'cash'); if (!s) return answer('Нема що видавати'); await edit(`💝 Видано чайові: <b>${esc(name)}</b> — ${money(s)} ${act === 'tpk' ? '💳 з картки' : '💵 готівкою'}`); return answer('Видано'); }
   if (act === 'zday') { const z = await dayZ(env, who, true); await send({ text: zDayText(z) + '\n\n🖨 Надруковано' }); return answer('Z-звіт'); }
+  if (act === 'cfg' && CFG_NAME[arg]) { await env.DB.put('st:' + uid, 'cfg:' + arg, { expirationTtl: 600 }); await send({ text: `⚙️ ${CFG_NAME[arg]}: зараз <b>${(await getCfg(env))[arg]}</b>\nНапишіть нове значення (${CFG_LIM[arg].join('–')}):` }); return answer(''); }
   if (act === 'kpct') { await env.DB.put('st:' + uid, 'kpct', { expirationTtl: 600 }); await send({ text: `👨‍🍳 Зараз кухні йде <b>${await kitchenPct(env)}%</b> від чайових офіціанта (+ «подяка кухні» від гостя), порівну між кухарями на зміні.\nНапишіть новий відсоток (0–100):` }); return answer(''); }
   if (act === 'rcn') { await env.DB.put('st:' + uid, 'rcn:' + arg, { expirationTtl: 600 }); const b = await balances(env);
     await send({ text: `✏️ <b>Звірка ${arg === 'card' ? '💳 картки' : '💵 готівки'}</b>\nЗа програмою: <b>${money(arg === 'card' ? b.card : b.cash)}</b>\nНапишіть, скільки є насправді${arg === 'card' ? ' (залишок у Приват24)' : ' (перерахуйте касу)'}:` }); return answer(''); }

@@ -99,7 +99,7 @@
     const my = ++stateSeq, r = await api('state');
     if (my < stateDone) return; // повільна стара відповідь не затирає новішу (стіл «повертався» після закриття)
     stateDone = my;
-    S.me = { ...S.me, ...r.me }; S.myTip = r.myTip; S.n = r.n; S.printer = r.printer; S.shift = r.shift;
+    S.me = { ...S.me, ...r.me }; S.myTip = r.myTip; S.cfg = r.cfg || S.cfg; S.n = r.n; S.printer = r.printer; S.shift = r.shift;
     S.tables = Object.fromEntries(r.tables.map(b => [b.t, b]));
     const fresh = r.events.filter(e => !S.seen.has(e.id));
     if (S.ready && fresh.some(e => ['guest', 'check', 'call'].includes(e.k) || (!isCook() && ['ready', 'kmsg'].includes(e.k)))) ding();
@@ -311,8 +311,8 @@
   }
   async function discFlow() {
     const t = S.open, b = S.tables[t]; if (!b) return;
-    const max = isAdmin() ? 100 : 20; // офіціант — до 20%, адмін — будь-яка
-    const v = await choose(`Знижка — стіл ${t}`, `Сума ${money(b.total)}${b.disc ? ` · зараз ${b.disc}%` : ''}${isAdmin() ? '' : ' · офіціант — до 20%'}`, [...[5, 10, 15, 20, 25, 30, 50].filter(p => p <= max).map(p => ({ label: `${p}%  →  ${money(b.total - Math.round(b.total * p / 100))}`, val: String(p) })), { label: '✏️ Свій відсоток', val: 'own' }, { label: 'Без знижки', val: '0', cls: 'red' }]);
+    const dmax = S.cfg?.discMax ?? 20, max = isAdmin() ? 100 : dmax; // офіціант — до ліміту з налаштувань, адмін — будь-яка
+    const v = await choose(`Знижка — стіл ${t}`, `Сума ${money(b.total)}${b.disc ? ` · зараз ${b.disc}%` : ''}${isAdmin() ? '' : ` · офіціант — до ${dmax}%`}`, [...[5, 10, 15, 20, 25, 30, 50].filter(p => p <= max).map(p => ({ label: `${p}%  →  ${money(b.total - Math.round(b.total * p / 100))}`, val: String(p) })), { label: '✏️ Свій відсоток', val: 'own' }, { label: 'Без знижки', val: '0', cls: 'red' }]);
     if (v == null) return;
     let p = v;
     if (v === 'own') { p = await ask('Свій відсоток знижки', `Число від 0 до ${max}`, 'number'); if (p == null) return; if (+p > max) return toast(`⛔ Офіціант може дати знижку до ${max}%`); }
@@ -444,9 +444,9 @@
     const balH = B ? `<div class="bal">
       <button class="bal-c" data-a="balInfo" data-s="cash"><span>💵 Готівка в касі</span><b class="money">${money(B.cash)}</b><small>✏️ звірити</small></button>
       <button class="bal-c" data-a="balInfo" data-s="card"><span>💳 На картці</span><b class="money">${money(B.card)}</b><small>✏️ звірити</small></button>
-      <div class="bal-c tot"><span>💰 Разом</span><b class="money">${money(B.total)}</b><small>з ${B.from ? B.from.split('-').reverse().join('.') : '—'}</small></div></div>` : '';
+      <div class="bal-c tot"><span>💰 Разом</span><b class="money">${money(B.total)}</b><small>${B.tipOwed ? `з них чайові ${money(B.tipOwed)} · вільних <b>${money(B.free)}</b>` : `з ${B.from ? B.from.split('-').reverse().join('.') : '—'}`}</small></div></div>` : '';
     // 1. головне: виручка за сьогодні, готівка/картка, кнопка Z
-    const hero = `<div class="cash-hero on"><div class="hero-main"><div class="muted">${today}</div><div class="hero-l">Виручка за сьогодні</div><div class="hero-n money">${money(z.total)}</div>
+    const hero = `<div class="cash-hero on"><div class="hero-main"><div class="muted">${today}</div><div class="hero-l">Виручка за сьогодні</div><div class="hero-n money">${money(z.total)}</div>${z.tip ? `<div class="muted" style="font-size:13px">без чайових · + 💝 ${money(z.tip)} чайові персоналу</div>` : ''}
         <div class="split"><div class="bar2"><i style="width:${pc}%"></i></div><div class="split-l"><span>💵 Готівка <b class="money">${money(z.cash)}</b></span><span>💳 Картка <b class="money">${money(z.card)}</b></span></div></div></div>
       <button class="btn primary zbtn" data-a="zDay">🧾 Z-звіт<small>надрукувати й надіслати</small></button></div>`;
     // 2. плитки
@@ -463,7 +463,7 @@
     // рахунки чайових: накопичено → «Видано» обнуляє (не виручка)
     const tb = Object.entries(r.tipbal || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
     const tipsH = `<div class="card"><h3>💝 Чайові до видачі</h3>${tb.length ? tb.map(([n, v]) => `<div class="kv"><span>👤 ${esc(n)}</span><span><b class="money">${money(v)}</b> <button class="btn sm green" data-a="tipPay" data-n="${esc(n)}">Видано</button></span></div>`).join('') : '<div class="muted">Нічого не накопичено</div>'}
-      ${(r.tippay || []).length ? `<div class="muted" style="font-size:12px;margin-top:8px">Сьогодні видано: ${r.tippay.map(x => `${x.at} ${esc(x.name)} ${money(x.sum)}`).join(' · ')}</div>` : ''}<div class="muted" style="font-size:12px;margin-top:6px">Чайові входять у виручку; при видачі списуються з готівки або картки.</div></div>`;
+      ${(r.tippay || []).length ? `<div class="muted" style="font-size:12px;margin-top:8px">Сьогодні видано: ${r.tippay.map(x => `${x.at} ${esc(x.name)} ${money(x.sum)}`).join(' · ')}</div>` : ''}<div class="muted" style="font-size:12px;margin-top:6px">Чайові — не виручка (гроші персоналу); лежать у касі, поки не видані, і списуються з готівки або картки при видачі.</div></div>`;
     // 6. журнал за сьогодні
     const J = [...(r.closed || []).filter(x => !x.del && !x.rm).map(x => ({ at: x.at, ic: x.card ? '💳' : '💵', t: `Стіл ${x.t}${x.by ? ' · ' + esc(x.by) : ''}${x.disc ? ` · −${x.disc}%` : ''}${x.tip ? ` · 💝 ${money(x.tip)}` : ''}`, v: '+' + money(x.sum), cls: 'in' })),
       ...r.exp.map((e, i) => ({ at: e.at, ic: '💸', t: esc(e.note || 'Витрата') + (e.src === 'card' ? ' (картка)' : ''), v: '−' + money(e.sum), cls: 'out', del: e.del, btn: `<button class="xb" data-a="expDel" data-i="${i}">✕</button>`, back: `<button class="xb" data-a="expBack" data-i="${i}" title="Відновити">↩️</button>` })),
@@ -553,8 +553,8 @@
     S.data.range = res || S.data.range || { checks: [], exp: [], z: [] };
   }
   // ---------- 📊 звіти: розділи · порівняння з попереднім періодом · графіки ----------
-  const SECS = [['overview', '📈 Огляд', ['overview']], ['sales', '🍽 Продажі', ['dishes', 'cats', 'groups', 'tables', 'hours', 'days', 'wd']], ['staff', '👥 Персонал', ['waiters', 'tips', 'ctrl', 'kitchen']], ['money', '💰 Гроші', ['checks', 'exp', 'mov', 'z']]];
-  const TABS = { dishes: '🍽 Страви', cats: '📂 Категорії', groups: '🍳 Кухня/бар', tables: '🪑 Столи', hours: '🕐 Години', days: '📅 Дні', wd: '🗓 Дні тижня', waiters: '👤 Офіціанти', tips: '💝 Чайові', ctrl: '🕵️ Контроль', kitchen: '⏱ Кухня', checks: '🧾 Чеки', exp: '💸 Витрати', mov: '🔁 Рух коштів', z: '🔒 Z-звіти' };
+  const SECS = [['overview', '📈 Огляд', ['overview']], ['sales', '🍽 Продажі', ['dishes', 'cats', 'groups', 'tables', 'days', 'wd']], ['staff', '👥 Персонал', ['waiters', 'tips', 'ctrl', 'kitchen']], ['money', '💰 Гроші', ['checks', 'exp', 'mov', 'z']]];
+  const TABS = { dishes: '🍽 Страви', cats: '📂 Категорії', groups: '🍳 Кухня/бар', tables: '🪑 Столи', days: '📅 Дні', wd: '🗓 Дні тижня', waiters: '👤 Офіціанти', tips: '💝 Чайові', ctrl: '🕵️ Контроль', kitchen: '⏱ Кухня', checks: '🧾 Чеки', exp: '💸 Витрати', mov: '🔁 Рух коштів', z: '🔒 Z-звіти' };
   const WD = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'], wdOf = d => (new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7;
   const hOrd = h => { const n = parseInt(h, 10) || 0; return n < 3 ? n + 24 : n; }; // робочий день — з 03:00: 00–02 год ідуть після 23
   const addDays = (d, n) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
@@ -567,7 +567,7 @@
     const R = S.rep, dishF = R.grp || R.cat || R.q.trim(), q = R.q.trim().toLowerCase();
     const dishOk = n => { if (!dishF) return true; const x = dishOf(n); if (R.grp && x?.grp !== R.grp) return false; if (R.cat && x?.cat !== R.cat) return false; return !q || n.toLowerCase().includes(q); };
     const checks = (r?.checks || []).filter(c => (!R.pay || (R.pay === 'card' ? c.card > 0 : c.cash > 0)) && (!R.by || (c.w || c.by) === R.by || c.by === R.by) && (!R.t || String(c.t) === R.t))
-      .map(c => { const ds = c.dishes.filter(([n]) => dishOk(n)); return { ...c, ds, val: dishF ? ds.reduce((a, [, , s]) => a + s, 0) : c.sum }; }).filter(c => !dishF || c.ds.length);
+      .map(c => { const ds = c.dishes.filter(([n]) => dishOk(n)); return { ...c, ds, val: dishF ? ds.reduce((a, [, , s]) => a + s, 0) : c.sum - (c.tip || 0) }; }).filter(c => !dishF || c.ds.length);
     return { checks, dishF };
   }
   function repStats(r) {
@@ -575,7 +575,7 @@
     const R = S.rep, { checks, dishF } = repChecks(r), sum = (l, f) => l.reduce((a, x) => a + (f(x) || 0), 0);
     const total = sum(checks, c => c.val), n = checks.length, exp = R.by || R.t || dishF || R.pay ? null : sum(r.exp, e => e.sum);
     const tipOut = sum((r.mov || []).filter(m => m.type === 'tipc' || m.type === 'tipk'), m => m.sum);
-    return { checks, dishF, total, n, avg: n ? total / n : 0, qty: sum(checks, c => sum(c.ds, d => d[1])), cash: sum(checks, c => c.cash), card: sum(checks, c => c.card), disc: sum(checks, c => c.disc), tip: sum(checks, c => c.tip), exp, tipOut, net: exp == null ? null : total - exp - tipOut };
+    return { checks, dishF, total, n, avg: n ? total / n : 0, qty: sum(checks, c => sum(c.ds, d => d[1])), cash: sum(checks, c => c.cash), card: sum(checks, c => c.card), disc: sum(checks, c => c.disc), tip: sum(checks, c => c.tip), exp, tipOut, net: exp == null ? null : total - exp }; // виручка вже без чайових
   }
   const delta = (a, b, inv) => { if (b == null || !isFinite(b) || !b) return ''; const p = Math.round((a - b) / Math.abs(b) * 100); return `<em class="dl ${(inv ? -p : p) > 0 ? 'up' : (inv ? -p : p) < 0 ? 'down' : ''}" title="попередній період: ${money(b)}">${p > 0 ? '▲' : p < 0 ? '▼' : '='} ${Math.abs(p)}%</em>`; };
   // стовпчиковий графік; pts: [підпис, значення, підказка, день для переходу]
@@ -623,28 +623,17 @@
     const grpBy = keyF => { const m = new Map(); checks.forEach(c => { const k = keyF(c); const a = m.get(k) || [0, 0]; a[0]++; a[1] += c.val; m.set(k, a); }); return [...m]; };
     const dishAgg = keyF => { const m = new Map(); checks.forEach(c => c.ds.forEach(([nm, qq, ss]) => { const k = keyF(nm); const a = m.get(k) || [0, 0]; a[0] += qq; a[1] += ss; m.set(k, a); })); return [...m]; };
     const grpName = nm => (S.groups.find(g => g.id === dishOf(nm)?.grp) || { name: '🧩 Інше' }).name;
-    const days = daysIn(from, to), byDay = new Map(grpBy(c => c.d)), byHour = grpBy(c => String(c.at || '').slice(0, 2)).sort((a, b) => hOrd(a[0]) - hOrd(b[0]));
+    const days = daysIn(from, to), byDay = new Map(grpBy(c => c.d));
     const waiterOf = c => c.w || c.by || '—';
     const T = R.tab; let body = '';
     if (T === 'overview') {
       // графік виручки: по днях (≤ 62 дні), по місяцях (довше) або по годинах (1 день)
       let chart, ctitle;
-      if (days.length === 1) { ctitle = '🕐 Виручка по годинах'; const hs = byHour.map(x => hOrd(x[0])), lo = Math.min(...hs, 12), hi = Math.max(...hs, 22), m = new Map(byHour.map(([h, v]) => [hOrd(h), v]));
-        chart = colChart([...Array(hi - lo + 1)].map((_, i) => { const h = lo + i, v = m.get(h) || [0, 0], hl = String(h % 24).padStart(2, '0'); return [hl, v[1], `${hl}:00 · ${money(v[1])} · ${v[0]} чек.`]; })); }
+      if (days.length === 1) chart = '';
       else if (days.length <= 62) { ctitle = '📅 Виручка по днях'; chart = colChart(days.map(d => { const v = byDay.get(d) || [0, 0]; return [d.slice(8), v[1], `${WD[wdOf(d)]} ${dm(d)} · ${money(v[1])} · ${v[0]} чек.`, d]; })); }
       else { ctitle = '📅 Виручка по місяцях'; const m = new Map(); checks.forEach(c => { const k = c.d.slice(0, 7); m.set(k, (m.get(k) || 0) + c.val); }); const ms = [...new Set(days.map(d => d.slice(0, 7)))];
         chart = colChart(ms.map(k => [k.slice(5) + '.' + k.slice(2, 4), m.get(k) || 0, `${k} · ${money(m.get(k) || 0)}`])); }
-      // теплова карта: день тижня × година (середня виручка за такий день)
-      let heat = '';
-      if (days.length >= 7 && checks.length) {
-        const cnt = Array(7).fill(0); days.forEach(d => cnt[wdOf(d)]++);
-        const hs = [...new Set(checks.map(c => hOrd(String(c.at || '').slice(0, 2))))].sort((a, b) => a - b), lo = hs[0], hi = hs[hs.length - 1], g = {};
-        checks.forEach(c => { const k = wdOf(c.d) + ':' + hOrd(String(c.at || '').slice(0, 2)); g[k] = (g[k] || 0) + c.val; });
-        const avgOf = (w, h) => cnt[w] ? (g[w + ':' + h] || 0) / cnt[w] : 0, mx = Math.max(1, ...Object.keys(g).map(k => avgOf(+k.split(':')[0], +k.split(':')[1])));
-        const hr = [...Array(hi - lo + 1)].map((_, i) => lo + i);
-        heat = `<div class="card wide"><h3>🔥 Коли найбільше заробляємо <span class="muted">· середня виручка за годину</span></h3><div class="heat" style="--hc:${hr.length}"><span></span>${hr.map(h => `<small>${h % 3 ? '' : String(h % 24).padStart(2, '0')}</small>`).join('')}
-          ${WD.map((w, wi) => `<b>${w}</b>${hr.map(h => { const v = avgOf(wi, h); return `<i style="--a:${(v / mx).toFixed(2)}" title="${w} ${String(h % 24).padStart(2, '0')}:00 · ~${money(v)}"></i>`; }).join('')}`).join('')}</div></div>`;
-      }
+      const heat = '';
       // частки кухня / бар / кальян
       const grps = dishAgg(grpName).sort((a, b) => b[1][1] - a[1][1]), gt = grps.reduce((a, x) => a + x[1][1], 0);
       const grpCard = `<div class="card"><h3>🍳 Що продаємо</h3>${grps.length ? `<div class="stack">${grps.map(([k, [, s]], i) => `<i style="width:${share(s, gt)}%;background:${ACC[i % 5]}" title="${esc(k)} ${share(s, gt)}%"></i>`).join('')}</div>
@@ -653,15 +642,15 @@
       const ws = grpBy(waiterOf).sort((a, b) => b[1][1] - a[1][1]).slice(0, 6), wmax = Math.max(1, ...ws.map(x => x[1][1]));
       const wCard = `<div class="card"><h3>👤 Офіціанти</h3>${ws.length ? ws.map(([k, [q, s]], i) => `<div class="bar"><div class="bl"><span>${['🥇', '🥈', '🥉'][i] || ''} ${esc(k)}<br><small class="muted">${q} чек. · сер. чек ${money(s / q)}</small></span><b class="money">${money(s)}</b></div><i style="width:${Math.max(2, s / wmax * 100)}%"></i></div>`).join('') : '<div class="muted">Немає даних</div>'}</div>`;
       // висновки
-      const best = [...byDay].sort((a, b) => b[1][1] - a[1][1])[0], peak = [...byHour].sort((a, b) => b[1][1] - a[1][1])[0], bt = grpBy(c => c.t).sort((a, b) => b[1][1] - a[1][1])[0];
+      const best = [...byDay].sort((a, b) => b[1][1] - a[1][1])[0], bt = grpBy(c => c.t).sort((a, b) => b[1][1] - a[1][1])[0];
       const vs = (r.voids || []).filter(v => !v.table), vsum = vs.reduce((a, v) => a + v.sum, 0), ks = S.data.kstats || [];
-      const ins = [best && days.length > 1 && ['🏆 Найкращий день', `${WD[wdOf(best[0])]} ${dm(best[0])}`, money(best[1][1])], peak && ['⏰ Пікова година', `${peak[0]}:00–${String((+peak[0] + 1) % 24).padStart(2, '0')}:00`, money(peak[1][1])],
+      const ins = [best && days.length > 1 && ['🏆 Найкращий день', `${WD[wdOf(best[0])]} ${dm(best[0])}`, money(best[1][1])],
         bt && ['🪑 Найприбутковіший стіл', `Стіл ${bt[0]} · ${bt[1][0]} чек.`, money(bt[1][1])], days.length > 1 && ['📊 В середньому за день', `${(st.n / days.length).toFixed(1)} чек.`, money(st.total / days.length)],
         ['🚫 Скасування', `${vs.length} поз. · ${share(vsum, st.total + vsum)}% продажів`, money(vsum)], ks.length && ['⏱ Кухня, сер. час', `${ks.length} замовл. · понад 15 хв: ${ks.filter(x => x.mins > 15).length}`, Math.round(ks.reduce((a, x) => a + x.mins, 0) / ks.length) + ' хв']].filter(Boolean);
       const insCard = `<div class="card"><h3>💡 Висновки</h3>${ins.map(([l, s, v]) => `<div class="kv"><span>${l}<br><small class="muted">${esc(s)}</small></span><b class="money">${v}</b></div>`).join('')}</div>`;
       const top = dishAgg(nm => nm).sort((x, y) => y[1][0] - x[1][0] || y[1][1] - x[1][1]).slice(0, 10), tmax = Math.max(1, ...top.map(x => x[1][0]));
       const topCard = `<div class="card"><h3>🏆 Топ страв</h3>${top.length ? top.map(([k, [qq, ss]], i) => `<div class="bar"><div class="bl"><span>${['🥇', '🥈', '🥉'][i] || `<span class="muted">${i + 1}.</span>`} ${esc(k)}</span><b>${qq} шт</b><span class="muted money">${money(ss)}</span></div><i style="width:${Math.max(2, qq / tmax * 100)}%"></i></div>`).join('') : '<div class="muted">Ще немає продажів за цей період</div>'}</div>`;
-      return head + filters + kpis + pills + nav + `<div class="dash"><div class="card wide"><h3>${ctitle}${days.length > 1 && days.length <= 62 ? ' <span class="muted">· натисніть день — відкриється звіт за нього</span>' : ''}</h3>${chart}</div>${heat}${insCard}${grpCard}${topCard}${wCard}</div>`;
+      return head + filters + kpis + pills + nav + `<div class="dash">${chart ? `<div class="card wide"><h3>${ctitle}${days.length > 1 && days.length <= 62 ? ' <span class="muted">· натисніть день — відкриється звіт за нього</span>' : ''}</h3>${chart}</div>` : ''}${heat}${insCard}${grpCard}${topCard}${wCard}</div>`;
     }
     let rows, unit = 'чек.', sortable = false, sub;
     if (T === 'dishes') { rows = dishAgg(nm => nm); unit = 'шт'; sortable = true; }
@@ -669,7 +658,6 @@
     else if (T === 'groups') { rows = dishAgg(grpName); unit = 'шт'; }
     else if (T === 'waiters') { rows = grpBy(waiterOf); sub = (q, s) => `${q} чек. · сер. ${money(s / q)}`; }
     else if (T === 'tips') { const m = new Map(); checks.forEach(c => Object.entries(c.tipSplit || (c.tip ? { [c.by || '—']: c.tip } : {})).forEach(([n, v]) => { const a = m.get(n) || [0, 0]; a[0]++; a[1] += v; m.set(n, a); })); rows = [...m].filter(x => x[1][1] > 0); }
-    else if (T === 'hours') rows = byHour.map(([h, v]) => [h + ':00', v]);
     else if (T === 'days') { rows = [...byDay].sort((a, b) => a[0].localeCompare(b[0])).map(([d, v]) => [`${WD[wdOf(d)]} ${dm(d)}`, v]); }
     else if (T === 'wd') { const cnt = Array(7).fill(0); days.forEach(d => cnt[wdOf(d)]++); const m = grpBy(c => wdOf(c.d)); rows = WD.map((w, i) => [w, (m.find(x => x[0] === i) || [0, [0, 0]])[1]]).filter(x => cnt[WD.indexOf(x[0])]); sub = (q, s) => { return `${q} чек.`; };
       body = `<div class="muted" style="margin-bottom:8px">Середня виручка за один такий день — у дужках</div>`; const cntOf = w => cnt[WD.indexOf(w)]; rows = rows.map(([w, v]) => [`${w} (сер. ${money(v[1] / cntOf(w))})`, v]); }
@@ -714,20 +702,32 @@
       ${S.menu.categories.map(c => `<h3 class="muted" style="margin:18px 4px 8px">${esc(c.name.uk)}</h3><div class="grid2">${c.items.map(i => `<button class="list-row press" data-a="menuEdit" data-id="${i.id}" style="text-align:left"><div class="grow"><b>${esc(i.name.uk)}</b>${i.hidden ? ' ⛔' : ''}<div class="muted" style="font-size:13px">${i.variants ? i.variants.map(v => `${v.v} — ${v.p}`).join(' / ') : i.price + ' ₴'}${i.size && !i.variants ? ' · ' + esc(i.size) : ''}</div></div>›</button>`).join('')}</div>`).join('')}`;
   }
   function settingsHTML() {
-    const st = S.data.staff, wf = S.data.wifi;
-    return `<div class="head"><h1>Налаштування</h1></div><div class="grid2">
-      <div class="card"><h3>👥 Персонал (PIN для каси)</h3>${st ? st.staff.map(s => `<div class="kv"><span>${esc(s.name)} · ${s.role === 'admin' ? '🔐 адмін' : s.role === 'cook' ? '👨‍🍳 кухар' : '🧑‍🍳 офіціант'}</span><button class="btn sm red" data-a="staffDel" data-id="${s.id}">🗑</button></div>`).join('') || '<div class="muted">Ще немає</div>' : '…'}
+    const st = S.data.staff, wf = S.data.wifi, c = st?.cfg || {};
+    const ROLE = { admin: '🔐 адмін', cook: '👨‍🍳 кухар', waiter: '🧑‍🍳 офіціант' };
+    const row = (l, v, btn, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ''}</span><span class="kv-r"><b>${v}</b>${btn}</span></div>`;
+    const ch = (a, extra = '') => `<button class="btn sm" data-a="${a}"${extra}>змінити</button>`;
+    const sec = t => `<h2 class="set-h">${t}</h2>`;
+    const staff = st ? [...st.staff].sort((a, b) => (a.role || '').localeCompare(b.role || '') || a.name.localeCompare(b.name)) : null;
+    return `<div class="head"><h1>Налаштування</h1></div>
+      ${sec('👥 Люди')}<div class="grid2 set">
+      <div class="card"><h3>👥 Персонал <span class="muted">· ${staff ? staff.length : '…'}</span></h3>
+        <div class="scrollbox">${staff ? staff.map(s => `<div class="kv"><span>${esc(s.name)} <span class="muted">· ${ROLE[s.role] || ROLE.waiter}</span></span><button class="btn sm red" data-a="staffDel" data-id="${s.id}">🗑</button></div>`).join('') || '<div class="muted">Ще немає</div>' : '…'}</div>
         <button class="btn sm primary" style="margin-top:10px" data-a="staffAdd">➕ Додати працівника</button></div>
-      <div class="card"><h3>👨‍🍳 Чайові кухні</h3><div class="kv"><span>Частка кухні від чайових офіціанта</span><span><b>${st?.kpct ?? 20}%</b> <button class="btn sm" data-a="kpct">змінити</button></span></div><div class="muted" style="font-size:12px;margin-top:6px">Плюс «подяка кухні» від гостя на сайті. Ділиться порівну між кухарями, які сьогодні заходили в касу${st?.cooks?.length ? ` (зараз: ${st.cooks.map(esc).join(', ')})` : ' (сьогодні ще нікого — накопичиться в «👨‍🍳 Кухня»)'}.</div></div>
-      <div class="card"><h3>🆕 Коди реєстрації</h3><div class="muted" style="margin-bottom:8px">Новий працівник вводить код замість PIN → пише імʼя і придумує свій PIN. Видно, хто що робить.</div>
-        ${st?.reg ? `<div class="kv"><span>🔐 Адміністратор</span><span><b>${esc(st.reg.admin)}</b> <button class="btn sm" data-a="regSet" data-r="admin">змінити</button></span></div><div class="kv"><span>🧑‍🍳 Офіціант</span><span><b>${esc(st.reg.waiter)}</b> <button class="btn sm" data-a="regSet" data-r="waiter">змінити</button></span></div><div class="kv"><span>👨‍🍳 Кухар</span><span><b>${esc(st.reg.cook || '1113')}</b> <button class="btn sm" data-a="regSet" data-r="cook">змінити</button></span></div>` : '…'}</div>
-      <div class="card"><h3>🤖 Увійшли в Telegram-бот</h3>${st ? st.waiters.map(w => `<div class="kv"><span>${esc(w.name || w.uid)}</span><button class="btn sm red" data-a="wOut" data-uid="${w.uid}">Вийти</button></div>`).join('') || '<div class="muted">Нікого</div>' : '…'}</div>
-      <div class="card"><h3>🔑 Паролі</h3><div class="muted" style="margin-bottom:10px">Пароль офіціанта — вхід у бот і касу; пароль адміна — адмін-функції.</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-a="wPass">Пароль офіціанта</button><button class="btn sm" data-a="aPass">Пароль адміна</button></div></div>
-      <div class="card"><h3>📶 Wi‑Fi закладу</h3><div class="muted">Звідси гості можуть замовляти. Ваша мережа зараз: ${esc(wf?.current || '…')}</div>
-        ${wf ? wf.list.map(x => `<div class="kv"><span>${esc(x.k)}</span><span class="muted">${new Date(x.at).toLocaleDateString('uk-UA')}</span></div>`).join('') || '<div class="muted">немає — замовлення не прийматимуться!</div>' : ''}
-        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn sm primary" data-a="wifiAdd">➕ Це наша мережа</button><button class="btn sm red" data-a="wifiClear">Скинути всі</button></div></div>
-      <div class="card"><h3>🧪 Тест</h3><div class="muted" style="margin-bottom:10px">Тимчасово, до запуску.</div><button class="btn sm red" data-a="reset">♻️ Обнулити все</button></div></div>`;
+      <div class="card"><h3>🆕 Коди реєстрації</h3><div class="muted set-note">Новий працівник вводить код замість PIN → пише імʼя і придумує свій PIN.</div>
+        ${st?.reg ? row('🔐 Адміністратор', esc(st.reg.admin), ch('regSet', ' data-r="admin"')) + row('🧑‍🍳 Офіціант', esc(st.reg.waiter), ch('regSet', ' data-r="waiter"')) + row('👨‍🍳 Кухар', esc(st.reg.cook || '1113'), ch('regSet', ' data-r="cook"')) : '…'}</div>
+      <div class="card"><h3>🤖 Увійшли в Telegram-бот</h3><div class="scrollbox">${st ? st.waiters.map(w => `<div class="kv"><span>${esc(w.name || w.uid)}</span><button class="btn sm red" data-a="wOut" data-uid="${w.uid}">Вийти</button></div>`).join('') || '<div class="muted">Нікого</div>' : '…'}</div></div>
+      <div class="card"><h3>🔑 Паролі</h3><div class="muted set-note">Пароль офіціанта — вхід у бот і касу; пароль адміна — адмін-функції.</div>
+        <div class="btnrow"><button class="btn sm" data-a="wPass">Пароль офіціанта</button><button class="btn sm" data-a="aPass">Пароль адміна</button></div></div></div>
+      ${sec('⚙️ Правила роботи')}<div class="grid2 set">
+      <div class="card"><h3>💰 Гроші</h3>
+        ${row('🏷 Макс. знижка офіціанта', (c.discMax ?? 20) + '%', ch('cfg', ' data-k="discMax"'), 'Більшу знижку дає лише адміністратор')}
+        ${row('👨‍🍳 Частка кухні від чайових', (st?.kpct ?? 20) + '%', ch('kpct'), `Плюс «подяка кухні» від гостя; порівну між кухарями на зміні${st?.cooks?.length ? ` (зараз: ${st.cooks.map(esc).join(', ')})` : ' (сьогодні ще нікого — піде в «👨‍🍳 Кухня»)'}`)}</div>
+      <div class="card"><h3>📱 Замовлення гостей</h3>
+        ${row('⏱ Час на замовлення після QR', (c.scanMin ?? 60) + ' хв', ch('cfg', ' data-k="scanMin"'), 'Скільки гість може замовляти після сканування QR на столі')}
+        <div class="muted set-note" style="margin-top:10px">📶 Wi‑Fi закладу (запасний спосіб) · ваша мережа: ${esc(wf?.current || '…')}</div>
+        <div class="scrollbox sm">${wf ? wf.list.map(x => `<div class="kv"><span>${esc(x.k)}</span><span class="muted">${new Date(x.at).toLocaleDateString('uk-UA')}</span></div>`).join('') || '<div class="muted">немає збережених адрес</div>' : ''}</div>
+        <div class="btnrow"><button class="btn sm primary" data-a="wifiAdd">➕ Це наша мережа</button><button class="btn sm red" data-a="wifiClear">Скинути всі</button></div></div></div>
+      ${sec('🧪 Тест')}<div class="grid2 set"><div class="card"><div class="muted set-note">Тимчасово, до запуску.</div><button class="btn sm red" data-a="reset">♻️ Обнулити все</button></div></div>`;
   }
   async function menuEdit(id) {
     const it = itemsAll().find(i => i.id === id) || null;
@@ -881,6 +881,7 @@
         if (v) { await act('staffAdd', { name, pin: p, role: v }, '👥 Додано'); loadView(); }
         break;
       }
+      case 'cfg': { const k = el.dataset.k, L = { discMax: ['Макс. знижка офіціанта, %', 'від 0 до 100'], scanMin: ['Хвилин на замовлення після QR', 'від 10 до 600'] }[k]; const v = await ask(L[0], L[1], 'number'); if (v != null && v !== '') { await act('cfgSet', { k, v: +v }, '⚙️ Збережено'); loadView(); loadState().catch(() => {}); } break; }
       case 'kpct': { const v = await ask('Частка кухні від чайових, %', 'Напр. 20', 'number'); if (v != null) { await act('kitchenPct', { pct: +v }, '👨‍🍳 Збережено'); loadView(); } break; }
       case 'regSet': { const v = await ask(`Новий код реєстрації (${el.dataset.r === 'admin' ? 'адмін' : el.dataset.r === 'cook' ? 'кухар' : 'офіціант'})`, '4 цифри', 'number'); if (v) { await act('regCode', { role: el.dataset.r, code: v }, '🆕 Код змінено'); loadView(); } break; }
       case 'staffDel': if (await confirmBox('Видалити працівника?', 'Його PIN перестане працювати')) { await act('staffDel', { id: el.dataset.id }); loadView(); } break;

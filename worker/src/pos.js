@@ -7,7 +7,7 @@ import { storeStub } from './store.js';
 import {
   esc, money, hhmm, dayKey, isDay, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
-  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenClosed, markCook, kitchenPct, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
+  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenClosed, markCook, kitchenPct, getCfg, setCfg, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
 } from './ops.js';
 
 const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400, cook: 30 * 86400 };
@@ -43,7 +43,7 @@ export async function posApi(b, req, env) {
       const [rows, events, pr, shift, cl] = await Promise.all([openTables(env), getEvents(env), printStatus(env), getShift(env), getClosed(env)]);
       const mine = cl.filter(x => !x.del && !x.rm);
       const myTip = { sum: (await tipBalances(env))[me.name] || 0, today: mine.reduce((a, x) => a + ((x.tipSplit || {})[me.name] || (!x.tipSplit && x.by === me.name ? x.tip || 0 : 0)), 0) }; // накопичені, ще не видані
-      return ok({ me, shift, myTip, n: tablesCount(env), tables: rows.map(r => ({ t: r.t, ...r.b, items: billItems(r.b), pay2: payable(r.b) })), events: events.slice(-120), printer: pr, now: Date.now() });
+      return ok({ me, shift, myTip, cfg: await getCfg(env), n: tablesCount(env), tables: rows.map(r => ({ t: r.t, ...r.b, items: billItems(r.b), pay2: payable(r.b) })), events: events.slice(-120), printer: pr, now: Date.now() });
     }
     case 'menu': { const menu = await getMenu(env); return ok({ menu, fav: await getFav(env), groups: GROUPS.map(g => ({ ...g, cats: menu.categories.filter(c => groupOf(c.id) === g.id).map(c => c.id) })) }); }
     case 'fav': { const fav = await toggleFav(env, String(b.id), !!b.on); return ok({ fav }); }
@@ -170,9 +170,10 @@ async function adminRest(b, env, who, ip, ok) {
     case 'wifiClear': await env.DB.put('venue_ips', '[]'); await notify(env, `🖥 📶 Усі мережі закладу скинуто — ${esc(who)}`); return ok();
 
     // персонал і паролі
-    case 'staff': return ok({ staff: (await getStaff(env)).map(({ pin, ...s }) => s), waiters: await loggedWaiters(env), reg: { admin: await regCode(env, 'admin'), waiter: await regCode(env, 'waiter'), cook: await regCode(env, 'cook') }, kpct: await kitchenPct(env), cooks: (await env.DB.get('cooks:' + dayKey(), 'json')) || [] });
+    case 'staff': return ok({ staff: (await getStaff(env)).map(({ pin, ...s }) => s), waiters: await loggedWaiters(env), reg: { admin: await regCode(env, 'admin'), waiter: await regCode(env, 'waiter'), cook: await regCode(env, 'cook') }, kpct: await kitchenPct(env), cfg: await getCfg(env), cooks: (await env.DB.get('cooks:' + dayKey(), 'json')) || [] });
     case 'regCode': { const c = String(b.code || '').trim(); if (!/^\d{4}$/.test(c)) return [{ error: 'Код — 4 цифри' }, 400]; await env.DB.put('reg_' + (['admin', 'cook'].includes(b.role) ? b.role : 'waiter'), c); return ok(); }
     case 'staffAdd': { const r = await addStaff(env, b.name, b.pin, b.role); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 👥 Додано працівника <b>${esc(r.s.name)}</b> (${r.s.role === 'admin' ? 'адмін' : 'офіціант'}) — ${esc(who)}`); return ok(); }
+    case 'cfgSet': { const c = await setCfg(env, String(b.k), b.v); if (c.error) return [{ error: c.error }, 400]; await notify(env, `🖥 ⚙️ Налаштування: ${esc(String(b.k))} = <b>${c[b.k]}</b> — ${esc(who)}`); return ok({ cfg: c }); }
     case 'kitchenPct': { const v = Math.round(+b.pct); if (!(v >= 0 && v <= 100)) return [{ error: 'Від 0 до 100' }, 400]; await env.DB.put('kitchen_pct', String(v)); await notify(env, `🖥 👨‍🍳 Частка кухні від чайових: <b>${v}%</b> — ${esc(who)}`); return ok(); }
     case 'staffDel': await delStaff(env, String(b.id)); return ok();
     case 'waiterOut': await env.DB.delete('wlog:' + b.uid); await env.DB.delete('adm:' + b.uid); return ok();

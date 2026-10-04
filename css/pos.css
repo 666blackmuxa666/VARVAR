@@ -488,3 +488,13 @@ body.cook .more-btn { display: none !important; }
 @media (max-width: 1100px) { .pills { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 900px) { .kpis { grid-template-columns: 1fr 1fr; } .pills { grid-template-columns: 1fr 1fr; } .kpi b { font-size: 22px; } .dash { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .pill.wide { grid-column: 1 / -1; } .cols { height: 140px; } .bar .bl .pct { display: none; } .rsec button { font-size: 13px; padding: 9px 4px; } }
+/* налаштування: акуратні секції, довгі списки — скрол усередині картки */
+.set-h { font-size: 15px; font-weight: 700; color: var(--muted, #888); text-transform: uppercase; letter-spacing: .04em; margin: 22px 4px 10px; }
+.set-h:first-of-type { margin-top: 6px; }
+.grid2.set { align-items: start; }
+.set .card h3 { margin-bottom: 10px; }
+.set-note { font-size: 12px; margin-bottom: 8px; }
+.scrollbox { max-height: 260px; overflow-y: auto; overscroll-behavior: contain; margin: 0 -4px; padding: 0 4px; }
+.scrollbox.sm { max-height: 150px; }
+.kv-r { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }

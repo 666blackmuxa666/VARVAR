@@ -3,7 +3,7 @@ import { aiHelp } from './ai.js';
 // Secrets: BOT_TOKEN, CHAT_ID, ADMIN_PIN, TG_SECRET   Vars: ALLOWED_ORIGIN, TABLES, SELF_URL   KV: DB
 import { getMenu, priceMap } from './menu.js';
 import { handleUpdate } from './bot.js';
-import { tg, esc, getBill, putBill, addStat, addDishes, hhmm, logEvent, billItems, payable, addKitchen } from './ops.js';
+import { tg, esc, getBill, putBill, addStat, addDishes, hhmm, logEvent, billItems, payable, addKitchen, getCfg } from './ops.js';
 import { posApi, posLive } from './pos.js';
 import { queuePrint, kitchenTicket, printApi } from './print.js';
 export { PrintQ } from './print.js';
@@ -35,7 +35,7 @@ export default {
         const t = tableNum(b.t, env), k = String(b.k || '');
         const ok = t ? k === await tableKey(env, t) : k === await qrKey(env);
         if (!dev || !ok) return json({ error: 'bad_qr' }, 403);
-        const until = Date.now() + SCAN_MS; await env.DB.put('scan:' + dev, JSON.stringify({ until, t: t || 0 }), { expirationTtl: SCAN_MS / 1000 + 60 });
+        const ms = (await getCfg(env)).scanMin * 60e3, until = Date.now() + ms; await env.DB.put('scan:' + dev, JSON.stringify({ until, t: t || 0 }), { expirationTtl: ms / 1000 + 60 });
         return json({ ok: true, until, t: t || 0 });
       }
       if (url.pathname === '/api/ai' && req.method === 'POST') return json(...await aiHelp(await req.json(), env));
@@ -92,7 +92,6 @@ async function inVenue(env, ip) { const k = ipKey(ip); return (await venueIps(en
 
 
 // доступ до замовлення: скан QR-коду закладу дає 1 годину (потім — сканувати заново)
-const SCAN_MS = 3600e3;
 const qrKey = async env => (await env.DB.get('qr_key')) || 'f5431c32';
 async function scanInfo(env, dev) { dev = String(dev || '').slice(0, 64); if (!dev) return null; const v = await env.DB.get('scan:' + dev); if (!v) return null; try { const o = JSON.parse(v); return typeof o === 'number' ? { until: o, t: 0 } : o; } catch { return null; } }
 async function scanUntil(env, dev) { return (await scanInfo(env, dev))?.until || 0; }
