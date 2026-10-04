@@ -10,7 +10,7 @@ import { aiInvoice, aiCard } from './ai.js';
 import {
   esc, money, hhmm, dayKey, isDay, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, setTip, moveTable, splitTable, restoreVoid, getVoids, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
-  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenClosed, markCook, kitchenPct, getCfg, setCfg, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, delZ, restoreZ, editEv, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
+  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenClosed, markCook, kitchenPct, getCfg, setCfg, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, delZ, restoreZ, editEv, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents, logEvent,
 } from './ops.js';
 
 const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400, cook: 30 * 86400 };
@@ -49,7 +49,9 @@ export async function posApi(b, req, env) {
       await closeStale(env).catch(() => {});
       { const sk = 'seen:' + dayKey().slice(0, 7), sn = (await env.DB.get(sk, 'json')) || []; if (!sn.includes(me.name)) { sn.push(me.name); await env.DB.put(sk, JSON.stringify(sn), { expirationTtl: 400 * 86400 }); } } // хто працював у касі цього місяця — у графіку
       const myAtt = (await getAtt(env))[dayKey()]?.[me.name] || null;
-      const [rows, events, pr, shift, cl] = await Promise.all([openTables(env), getEvents(env), printStatus(env), getShift(env), getClosed(env)]);
+      let [rows, events, pr, shift, cl] = await Promise.all([openTables(env), getEvents(env), printStatus(env), getShift(env), getClosed(env)]);
+      { const old = events.filter(e => e.k === 'call' && e.s === 'new' && Date.now() - e.ts > 20 * 60e3); // 🔔 ніхто не підтвердив 20 хв — автоматично
+        if (old.length) { for (const e of old) await acceptOrder(env, e.oid, '⏱ авто').catch(() => {}); events = await getEvents(env); } }
       const mine = cl.filter(x => !x.del && !x.rm);
       const myTip = { sum: (await tipBalances(env))[me.name] || 0, today: mine.reduce((a, x) => a + ((x.tipSplit || {})[me.name] || (!x.tipSplit && x.by === me.name ? x.tip || 0 : 0)), 0) }; // накопичені, ще не видані
       return ok({ me, shift, myTip, myAtt, cfg: await getCfg(env), n: tablesCount(env), tables: rows.map(r => ({ t: r.t, ...r.b, items: billItems(r.b), pay2: payable(r.b) })), events: events.slice(-120), printer: pr, now: Date.now() });
@@ -98,7 +100,7 @@ export async function posApi(b, req, env) {
     case 'kStats': { if (!/^\d{4}-\d{2}-\d{2}$/.test(String(b.from)) || !/^\d{4}-\d{2}-\d{2}$/.test(String(b.to))) return [{ error: 'Невірний період' }, 400]; return ok({ list: await kitchenStats(env, String(b.from), String(b.to)) }); }
 
     // ---- стоп-лист і принтер (усім) ----
-    case 'stop': { const it = await setHidden(env, String(b.id), !!b.hidden); if (it) await notify(env, `🖥 ${b.hidden ? '⛔' : '✅'} <b>${esc(it.name.uk)}</b> ${b.hidden ? 'у стоп-листі' : 'знову в меню'} — ${esc(who)}`); return ok(); }
+    case 'stop': { const it = await setHidden(env, String(b.id), !!b.hidden); if (it) await logEvent(env, { k: 'shift', by: who, text: `${b.hidden ? '⛔' : '✅'} ${it.name.uk} — ${b.hidden ? 'у стоп-листі' : 'знову в меню'}` }); if (it) await notify(env, `🖥 ${b.hidden ? '⛔' : '✅'} <b>${esc(it.name.uk)}</b> ${b.hidden ? 'у стоп-листі' : 'знову в меню'} — ${esc(who)}`); return ok(); }
     case 'printTest': await queuePrint(env, 'test', TEST_JOB()); return ok();
     case 'printQr': await queuePrint(env, 'qr', QR_PRINT(+b.t || 0)); return ok();
 

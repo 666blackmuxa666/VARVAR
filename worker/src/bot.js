@@ -622,6 +622,7 @@ async function handleCallback(q, env) {
   }
   if (act === 'back') {
     const it = await setHidden(env, arg, false);
+    if (it) await logEvent(env, { k: 'shift', by: who, text: `✅ ${it.name.uk} — знову в меню` });
     const v = await stopView(env); await edit(v.text, v.markup); return answer(it ? `${it.name.uk} знову в меню` : 'Не знайдено');
   }
   // лише адміністратор

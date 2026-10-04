@@ -164,6 +164,7 @@ async function _handleMenuText(text, env, { canEdit = true } = {}) {
     const hide = /^(стоп|нема|немає)$/i.test(m[1]);
     if (hide) r[0].it.hidden = true; else delete r[0].it.hidden;
     await saveMenu(env, menu);
+    await (await import('./ops.js')).logEvent(env, { k: 'shift', by: 'Telegram', text: `${hide ? '⛔' : '✅'} ${r[0].it.name.uk} — ${hide ? 'у стоп-листі' : 'знову в меню'}` }).catch(() => {});
     return hide ? `⛔ <b>${esc(r[0].it.name.uk)}</b> у стоп-листі (не показується на сайті)` : `✅ <b>${esc(r[0].it.name.uk)}</b> знову в меню`;
   }
   if ((m = t.match(/^(додати|додай|добавити|добав)\s+(?:в|у|до)?\s*([^:]+):\s*([\s\S]+)$/i))) {

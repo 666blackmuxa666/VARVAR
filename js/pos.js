@@ -140,13 +140,52 @@
   const wake = () => { if (document.visibilityState !== 'visible' || !S.token) return; loadState().catch(() => {}); if (!S.live || Date.now() - lastMsg > 20000) revive(); };
   document.addEventListener('visibilitychange', wake); addEventListener('pageshow', wake); addEventListener('focus', wake); addEventListener('online', wake);
 
+  // 🔊 звуки сповіщень — вибір у Налаштуваннях → 🎨 Вигляд: [частота, старт, тривалість, тип]
+  const SOUNDS = {
+    classic: ['Дзінь-дзінь', [[880, 0, .25], [1320, .16, .25]]], bell: ['Дзвіночок', [[1568, 0, .9, 'triangle'], [2093, .02, .7, 'sine']]],
+    triple: ['Три тони', [[660, 0, .18], [880, .18, .18], [1100, .36, .3]]], soft: ['М\'який', [[523, 0, .5, 'sine'], [659, .2, .6, 'sine']]],
+    alarm: ['Тривога', [[1000, 0, .12, 'square'], [1000, .2, .12, 'square'], [1000, .4, .12, 'square']]], marimba: ['Маримба', [[784, 0, .3, 'triangle'], [988, .12, .3, 'triangle'], [1175, .24, .4, 'triangle']]],
+    pop: ['Поп', [[400, 0, .08, 'sine'], [800, .05, .12, 'sine']]], kitchen: ['Кухонний', [[2637, 0, .5, 'triangle'], [2637, .6, .5, 'triangle']]], off: ['Без звуку', []],
+  };
   let actx;
-  function ding() { // короткий сигнал про нове замовлення гостя
+  function ding(k) { // сигнал про нове замовлення гостя
     try {
-      actx ||= new (window.AudioContext || window.webkitAudioContext)();
-      [0, .16].forEach((d, i) => { const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = i ? 1320 : 880; g.gain.setValueAtTime(.0001, actx.currentTime + d); g.gain.exponentialRampToValueAtTime(.25, actx.currentTime + d + .02); g.gain.exponentialRampToValueAtTime(.0001, actx.currentTime + d + .25); o.connect(g).connect(actx.destination); o.start(actx.currentTime + d); o.stop(actx.currentTime + d + .3); });
+      const L = look(), sn = SOUNDS[k || L.sound] || SOUNDS.classic, vol = (L.vol ?? 70) / 100 * .35 + .0002;
+      actx ||= new (window.AudioContext || window.webkitAudioContext)(); actx.resume?.();
+      sn[1].forEach(([f, d, len, type]) => { const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + d; o.type = type || 'sine'; o.frequency.value = f; g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + len); o.connect(g).connect(actx.destination); o.start(t); o.stop(t + len + .05); });
     } catch {}
   }
+
+  // 🎨 теми (на цьому пристрої)
+  const THEMES = {
+    night: ['🌑 Ніч (стандарт)', { bg: '#0b0b0d', bg2: '#151518', card: '#1c1c1f', card2: '#26262a', text: '#f5f5f7', muted: '#8e8e93', accent: '#f2c14e', 'accent-ink': '#1a1400' }],
+    beet: ['🍷 Буряк', { bg: '#120609', bg2: '#1c0a10', card: '#261019', card2: '#341824', text: '#fbeff3', muted: '#a8848f', accent: '#e0457b', 'accent-ink': '#fff' }],
+    ocean: ['🌊 Океан', { bg: '#06101a', bg2: '#0b1a29', card: '#102236', card2: '#173049', text: '#eef6ff', muted: '#7f98b3', accent: '#3fb6ff', 'accent-ink': '#00121f' }],
+    forest: ['🌲 Ліс', { bg: '#07110b', bg2: '#0d1a12', card: '#13241a', card2: '#1b3224', text: '#eefaf2', muted: '#83a08e', accent: '#5ed68a', 'accent-ink': '#04210f' }],
+    violet: ['🔮 Фіалка', { bg: '#0d0916', bg2: '#151024', card: '#1d1631', card2: '#291f44', text: '#f4f0ff', muted: '#9a8fb8', accent: '#a98bff', 'accent-ink': '#14082e' }],
+    coffee: ['☕ Кава', { bg: '#120d09', bg2: '#1b140f', card: '#251c15', card2: '#32261d', text: '#f8efe6', muted: '#a8958a', accent: '#d9a066', 'accent-ink': '#2a1806' }],
+    graphite: ['⚫ Графіт', { bg: '#161618', bg2: '#1e1e21', card: '#28282c', card2: '#333338', text: '#ffffff', muted: '#9b9ba1', accent: '#ffffff', 'accent-ink': '#000' }],
+    amoled: ['🖤 Чорний AMOLED', { bg: '#000', bg2: '#050505', card: '#0e0e0e', card2: '#1a1a1a', text: '#fff', muted: '#888', accent: '#ffd60a', 'accent-ink': '#000' }],
+    sunset: ['🌅 Захід', { bg: '#140a06', bg2: '#1f100a', card: '#2a160e', card2: '#3a2014', text: '#fff3ea', muted: '#b39282', accent: '#ff7a45', 'accent-ink': '#2a0c00' }],
+    mint: ['🍃 М\'ята', { bg: '#071312', bg2: '#0c1d1b', card: '#112826', card2: '#183633', text: '#ecfffb', muted: '#80a7a1', accent: '#4fe3c1', 'accent-ink': '#00241c' }],
+  };
+  const FONTS = { system: ['Системний (iOS)', ''], inter: ['Inter', 'Inter'], manrope: ['Manrope', 'Manrope'], rubik: ['Rubik', 'Rubik'], nunito: ['Nunito', 'Nunito'], montserrat: ['Montserrat', 'Montserrat'], roboto: ['Roboto', 'Roboto'], comfortaa: ['Comfortaa', 'Comfortaa'], mono: ['JetBrains Mono', 'JetBrains Mono'], pt: ['PT Sans', 'PT Sans'] };
+  const look = () => ({ theme: 'night', font: 'system', nfont: 'same', size: 100, radius: 'round', sound: 'classic', vol: 70, anim: 1, accent: '', ...store.get('look', {}) });
+  function applyLook() {
+    const L = look(), T = (THEMES[L.theme] || THEMES.night)[1], r = document.documentElement.style;
+    for (const [k, v] of Object.entries(T)) r.setProperty('--' + k, v);
+    if (L.accent) r.setProperty('--accent', L.accent);
+    const fam = k => FONTS[k]?.[1], need = [fam(L.font), L.nfont !== 'same' && fam(L.nfont)].filter(Boolean);
+    for (const f of need) { const id = 'gf-' + f.replace(/ /g, ''); if (!document.getElementById(id)) { const l = document.createElement('link'); l.id = id; l.rel = 'stylesheet'; l.href = `https://fonts.googleapis.com/css2?family=${f.replace(/ /g, '+')}:wght@400;600;700;800&display=swap`; document.head.append(l); } }
+    const base = '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif';
+    r.setProperty('--font', fam(L.font) ? `"${fam(L.font)}", ${base}` : base);
+    r.setProperty('--nfont', L.nfont === 'same' ? 'var(--font)' : fam(L.nfont) ? `"${fam(L.nfont)}", ${base}` : base);
+    document.body.style.zoom = L.size === 100 ? '' : L.size / 100;
+    const R = { round: [18, 24], soft: [12, 16], square: [6, 8] }[L.radius] || [18, 24]; r.setProperty('--r', R[0] + 'px'); r.setProperty('--r2', R[1] + 'px');
+    document.body.classList.toggle('noanim', !L.anim);
+  }
+  const setLook = (k, v) => { store.set('look', { ...look(), [k]: v }); applyLook(); renderMain(); };
+  applyLook();
 
   // ---------- каркас ----------
   const NAV_COOK = [['kq', '👨‍🍳', 'Черга'], ['calc', '📦', 'Склад'], ['stop', '⛔', 'Стоп-лист'], ['hall', '🪑', 'Зал']];
@@ -169,12 +208,14 @@
   function hallHTML() {
     const list = Object.values(S.tables), sum = list.reduce((s, b) => s + b.pay2, 0);
     const pending = new Set(S.events.filter(e => e.k === 'guest' && e.s === 'new').map(e => e.t));
+    const calls = {}; for (const e of S.events) if (e.k === 'call' && e.s === 'new') calls[e.t] = e;
+    const bell = t => calls[t] ? `<span class="callbell${Date.now() - calls[t].ts > 60e3 ? ' late' : ''}" title="Кличе офіціанта">🔔</span>` : '';
     const tiles = Array.from({ length: S.n }, (_, i) => i + 1).map(t => {
       const b = S.tables[t];
-      if (!b) return `<button class="tbl" data-a="table" data-t="${t}"><div class="n">${t}</div><div class="st">вільний</div></button>`;
+      if (!b) return `<button class="tbl${calls[t] ? ' calling' : ''}" data-a="table" data-t="${t}">${bell(t)}<div class="n">${t}</div><div class="st">вільний</div></button>`;
       const cls = ['busy', b.check ? 'check' : '', pending.has(t) ? 'new' : ''].join(' ');
       const tag = b.check ? `<span class="tag c">🧾 рахунок</span>${b.pay ? `<i class="pay" title="${b.pay === 'card' ? 'карта' : 'готівка'}">${b.pay === 'card' ? '💳' : '💵'}</i>` : ''}` : pending.has(t) ? '<span class="tag g">нове</span>' : '';
-      return `<button class="tbl ${cls}" data-a="table" data-t="${t}">${tag}<div class="n">${t}</div><div class="st">${b.orders} замовл.${b.disc ? ` · −${b.disc}%` : ''}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">з ${b.opened ? hhmm(b.opened) : '—'}</div></button>`;
+      return `<button class="tbl ${cls}${calls[t] ? ' calling' : ''}" data-a="table" data-t="${t}">${bell(t)}${tag}<div class="n">${t}</div><div class="st">${b.orders} замовл.${b.disc ? ` · −${b.disc}%` : ''}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">з ${b.opened ? hhmm(b.opened) : '—'}</div></button>`;
     }).join('');
     return `<div class="head"><h1>Зал</h1><div class="stat tipstat" title="Накопичено, ще не видано">💝 Мої чайові<b class="money">${money(S.myTip?.sum || 0)}</b></div><div class="stat">У залі<b class="money">${money(sum)}</b></div>
       <button class="btn primary" data-a="newOrder">➕ Замовлення</button></div><div class="tables">${tiles}</div>`;
@@ -187,6 +228,7 @@
     shift: esc(e.text), del: `🗑 Стіл ${e.t} видалено (${money(e.sum)})`, move: `↔️ ${esc(e.text)}`, disc: `% Стіл ${e.t}: ${esc(e.text)}`, rm: `✏️ Стіл ${e.t}: ${esc(e.text)}`, pre: `🖨 Пречек стіл ${e.t}`, ready: e.part ? `🍽 Стіл ${e.t} — страва готова, забирайте` : `🍽 Стіл ${e.t} — ВСЕ ГОТОВО, забирайте!${e.mins != null ? ` <small>(${e.mins} хв)</small>` : ''}`, cooking: `🔥 Стіл ${e.t} — кухня готує`, kmsg: `👨‍🍳 Кухня → стіл ${e.t}: ${esc(e.text)}`, call: `🔔🔔 Стіл ${e.t} кличе офіціанта`, noscan: `🚨📵🚫 СТІЛ ${e.t} — НЕ МОЖЕ ЗАМОВИТИ 🚫📵🚨<br><small>Гість не відсканував QR (або минула година). Підійдіть: 📷 нехай відсканує QR на столі 👆</small>`,
     att: `🟢 ${esc(e.n)} на зміні${e.late ? ` · ⏰ запізнення ${e.late} хв` : ''}`, swap: esc(e.text),
   })[e.k] || esc(e.text || e.k);
+  setInterval(() => { if (S.events?.some(e => e.k === 'call' && e.s === 'new')) { renderFeed(); if (S.view === 'hall' && !S.open) renderMain(); } }, 10000); // 🔔 через 1 хв — червоним
   function renderFeed() {
     setHTML($('#events'), S.events.length ? [...S.events].reverse().map(e => {
       const add = e.prev?.length && e.lines?.length; // дозамовлення — яскраво, а що вже було на столі — сіро нижче
@@ -198,7 +240,7 @@
       const btns = zb || (e.k === 'noscan' ? `<div class="act"><button class="btn sm" data-a="table" data-t="${e.t}">Стіл ${e.t}</button></div>` : e.k === 'guest' || e.k === 'check' || e.k === 'call'
         ? `<div class="act">${e.s === 'acc' ? `<span class="muted">✅ ${esc(e.accBy || 'прийнято')}</span>` : e.s === 'rej' ? `<span style="color:var(--red,#ff453a)">❌ відхилено · ${esc(e.accBy || '')}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">✅ Прийняв</button>${e.k === 'guest' ? `<button class="btn sm red" data-a="reject" data-oid="${e.oid}">❌ Відхилити</button>` : ''}`}<button class="btn sm" data-a="table" data-t="${e.t}">Стіл ${e.t}</button></div>` : '');
       const fresh = S.shown.size && !S.shown.has(e.id) ? ' fresh' : '';
-      return `<div class="ev ${e.k}${e.s === 'acc' || e.s === 'rej' ? ' acc' : ''}${e.s === 'rej' ? ' rej' : ''}${fresh}"><div class="top"><b>${evTitle(e)}</b><span class="tm">${e.at}${by}</span></div>${lines}${e.comment ? `<div class="com">💬 ${esc(e.comment)}</div>` : ''}${e.sum && ['guest', 'waiter'].includes(e.k) ? `<div class="muted">Сума ${money(e.sum)}</div>` : ''}${btns}</div>`;
+      return `<div class="ev ${e.k}${e.k === 'call' && e.s === 'new' && Date.now() - e.ts > 60e3 ? ' late' : ''}${e.s === 'acc' || e.s === 'rej' ? ' acc' : ''}${e.s === 'rej' ? ' rej' : ''}${fresh}"><div class="top"><b>${evTitle(e)}</b><span class="tm">${e.at}${by}</span></div>${lines}${e.comment ? `<div class="com">💬 ${esc(e.comment)}</div>` : ''}${e.sum && ['guest', 'waiter'].includes(e.k) ? `<div class="muted">Сума ${money(e.sum)}</div>` : ''}${btns}</div>`;
     }).join('') : '<div class="muted" style="padding:12px">Сьогодні подій ще немає</div>');
     S.events.forEach(e => S.shown.add(e.id));
   }
@@ -757,13 +799,29 @@
     return `<div class="head"><h1>Меню</h1><button class="btn" data-a="menuUndo">↩️ Відмінити останню зміну</button><button class="btn" data-a="catAdd">📂 Новий розділ</button><button class="btn primary" data-a="menuEdit" data-id="">➕ Нова страва</button></div>
       ${S.menu.categories.map(c => `<h3 class="muted" style="margin:18px 4px 8px">${esc(c.name.uk)}</h3><div class="grid2">${c.items.map(i => `<button class="list-row press" data-a="menuEdit" data-id="${i.id}" style="text-align:left"><div class="grow"><b>${esc(i.name.uk)}</b>${i.hidden ? ' ⛔' : ''}<div class="muted" style="font-size:13px">${i.variants ? i.variants.map(v => `${v.v} — ${v.p}`).join(' / ') : i.price + ' ₴'}${i.size && !i.variants ? ' · ' + esc(i.size) : ''}</div></div>›</button>`).join('')}</div>`).join('')}`;
   }
+  function lookHTML() {
+    const L = look(), opt = (k, v, l, extra = '') => `<button class="lk-o${L[k] == v ? ' on' : ''}" data-a="look" data-k="${k}" data-v="${v}"${extra}>${l}</button>`;
+    const ACC = ['', '#f2c14e', '#ff453a', '#ff9f0a', '#30d158', '#0a84ff', '#bf5af2', '#e0457b', '#4fe3c1', '#ffffff'];
+    return `<div class="grid2 set">
+      <div class="card"><h3>🎨 Тема</h3><div class="lk-themes">${Object.entries(THEMES).map(([k, [l, T]]) => `<button class="lk-th${L.theme === k ? ' on' : ''}" data-a="look" data-k="theme" data-v="${k}" style="background:${T.bg};color:${T.text}"><i style="background:${T.card}"><b style="background:${T.accent}"></b></i>${l}</button>`).join('')}</div>
+        <div class="set-note muted" style="margin-top:12px">Колір акценту (кнопки, виділення)</div><div class="lk-acc">${ACC.map(c => `<button class="lk-dot${L.accent === c ? ' on' : ''}" data-a="look" data-k="accent" data-v="${c}" style="background:${c || 'conic-gradient(#f2c14e,#e0457b,#3fb6ff,#5ed68a,#f2c14e)'}" title="${c || 'як у темі'}"></button>`).join('')}</div></div>
+      <div class="card"><h3>🔤 Шрифти</h3><div class="set-note muted">Основний шрифт</div><div class="lk-row">${Object.entries(FONTS).map(([k, [l, f]]) => opt('font', k, l, f ? ` style="font-family:'${f}',sans-serif"` : '')).join('')}</div>
+        <div class="set-note muted" style="margin-top:10px">Шрифт сум і цифр</div><div class="lk-row">${opt('nfont', 'same', 'Як основний')}${Object.entries(FONTS).map(([k, [l, f]]) => opt('nfont', k, l, f ? ` style="font-family:'${f}',sans-serif"` : '')).join('')}</div>
+        <div class="set-note muted" style="margin-top:10px">Розмір</div><div class="lk-row">${[85, 92, 100, 110, 120].map(z => opt('size', z, z === 100 ? 'Звичайний' : z + '%')).join('')}</div></div>
+      <div class="card"><h3>🪟 Віконця</h3><div class="set-note muted">Кути</div><div class="lk-row">${opt('radius', 'round', '◯ Круглі')}${opt('radius', 'soft', '▢ М\'які')}${opt('radius', 'square', '□ Прямі')}</div>
+        <div class="set-note muted" style="margin-top:10px">Анімації</div><div class="lk-row">${opt('anim', 1, '✨ Увімкнені')}${opt('anim', 0, '⚡ Вимкнені (швидше на слабких)')}</div></div>
+      <div class="card"><h3>🔊 Звук сповіщень</h3><div class="lk-row">${Object.entries(SOUNDS).map(([k, [l]]) => opt('sound', k, (k === 'off' ? '🔇 ' : '▶ ') + l)).join('')}</div>
+        <div class="set-note muted" style="margin-top:10px">Гучність</div><div class="lk-row">${[30, 50, 70, 100].map(v => opt('vol', v, v + '%')).join('')}</div>
+        <div class="btnrow" style="margin-top:12px"><button class="btn sm" data-a="lookReset">↺ Скинути все до стандарту</button></div></div>
+      <div class="muted set-note" style="grid-column:1/-1">Вигляд зберігається на цьому пристрої — кожен телефон і планшет можна налаштувати по-своєму.</div></div>`;
+  }
   function settingsHTML(only) {
     const st = S.data.staff, wf = S.data.wifi, c = st?.cfg || {};
     const ROLE = { admin: '🔐 адмін', cook: '👨‍🍳 кухар', waiter: '🧑‍🍳 офіціант' };
     const row = (l, v, btn, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ''}</span><span class="kv-r"><b>${v}</b>${btn}</span></div>`;
     const ch = (a, extra = '') => `<button class="btn sm" data-a="${a}"${extra}>змінити</button>`;
     const staff = st ? [...st.staff].sort((a, b) => (a.role || '').localeCompare(b.role || '') || a.name.localeCompare(b.name)) : null;
-    const SS = [['rules', '⚙️ Правила роботи'], ['printer', '🖨 Принтер'], ['test', '🧪 Тест']], cur = only || (SS0 => SS0.includes(S.setTab) ? S.setTab : 'rules')(['rules', 'printer', 'test']);
+    const SS = [['rules', '⚙️ Правила роботи'], ['look', '🎨 Вигляд'], ['printer', '🖨 Принтер'], ['test', '🧪 Тест']], cur = only || (SS0 => SS0.includes(S.setTab) ? S.setTab : 'rules')(['rules', 'look', 'printer', 'test']);
     const part = {};
     part.people = `<div class="grid2 set">
       <div class="card"><h3>👥 Персонал <span class="muted">· ${staff ? staff.length : '…'}</span></h3>
@@ -789,6 +847,7 @@
         <div class="muted set-note" style="margin-top:10px">📶 Wi‑Fi закладу (запасний спосіб) · ваша мережа: ${esc(wf?.current || '…')}</div>
         <div class="scrollbox sm">${wf ? wf.list.map(x => `<div class="kv"><span>${esc(x.k)}</span><span class="muted">${new Date(x.at).toLocaleDateString('uk-UA')}</span></div>`).join('') || '<div class="muted">немає збережених адрес</div>' : ''}</div>
         <div class="btnrow"><button class="btn sm primary" data-a="wifiAdd">➕ Це наша мережа</button><button class="btn sm red" data-a="wifiClear">Скинути всі</button></div></div></div>`;
+    part.look = lookHTML();
     part.printer = printerCards();
     part.test = `<div class="grid2 set"><div class="card"><h3>🧪 Тест</h3><div class="muted set-note">Тимчасово, до запуску.</div><button class="btn sm red" data-a="reset">♻️ Обнулити все</button></div></div>`;
     if (only) return part[only];
@@ -1285,7 +1344,7 @@
     const tab = S.zpTab || 'grid', TABS = [['grid', '📅 Графік'], ['pay', '💰 Зарплата'], ['ops', '🧾 Операції'], ['eff', '📊 Ефективність'], ['people', '👥 Працівники']];
     const top = `<div class="zp-top"><button class="btn sm" data-a="zpM" data-d="-1">◀</button><b>${monName(G.m)}</b><button class="btn sm" data-a="zpM" data-d="1">▶</button></div>
       <div class="kpis"><div class="kpi accent"><span>До виплати</span><b class="money">${money(due)}</b></div><div class="kpi"><span>Фонд оплати</span><b class="money">${money(G.fund)}</b><small class="muted">${G.fundPct}% від виручки</small></div>
-        <div class="kpi"><span>Виручка місяця</span><b class="money">${money(G.revenue)}</b></div><div class="kpi ${pend ? 'red' : ''}"><span>Чекає ✅</span><b>${pend}</b><small class="muted">${pend ? 'підтвердіть у графіку або стрічці' : 'усе підтверджено'}</small></div></div>
+        <div class="kpi"><span>Виручка місяця</span><b class="money">${money(G.revenue)}</b></div><div class="kpi ${pend ? 'red press' : ''}"${pend ? ' data-a="zpPend"' : ''}><span>Чекає ✅</span><b>${pend}</b><small class="muted">${pend ? 'натисніть, щоб підтвердити' : 'усе підтверджено'}</small></div></div>
       <div class="seg rsec">${TABS.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-a="zpTab" data-t="${k}">${l}</button>`).join('')}</div>`;
     let body = '';
     if (tab === 'grid') {
@@ -1317,6 +1376,15 @@
     const today = todayK();
     return `<div class="zp-grid"><table><thead><tr><th></th>${G.days.map(d => { const w = new Date(d + 'T12:00:00Z').getUTCDay(); return `<th class="${d === today ? 'td' : ''}${w === 0 || w === 6 ? ' we' : ''}">${+d.slice(8)}<small>${WDL[w]}</small></th>`; }).join('')}</tr></thead>
       <tbody>${people.map(n => `<tr class="${n === me ? 'me' : ''}"><th>${edit ? `<button class="zp-x" data-a="zpDelP" data-n="${esc(n)}" title="Прибрати з графіка">✕</button>` : ''}${esc(n)}</th>${G.days.map(d => { const a = G.att[d]?.[n], p = G.plan[d]?.[n], h = hrs(a); return `<td class="${edit ? 'press' : ''}${d === today ? ' td' : ''}"${edit ? ` data-a="zpCell" data-d="${d}" data-n="${esc(n)}"` : ''}><i>${attIc(a, p, d)}</i>${p ? (p === '+' ? (a ? '' : '<i class="pl">●</i>') : `<small>${p}</small>`) : ''}${h ? `<small class="h">${h}г</small>` : ''}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }
+  // 🕓 усі, хто чекає підтвердження зміни — одним списком
+  async function zpPend() {
+    const G = S.data.zp, fine = G.cfg?.lateFine, L = [];
+    for (const d of G.days) for (const [n, a] of Object.entries(G.att[d] || {})) if (a?.ok === 0) L.push({ d, n, a });
+    if (!L.length) return toast('✅ Усе підтверджено');
+    const body = `<div class="zp-pend">${L.map(({ d, n, a }) => `<div class="kv"><span><b>${esc(n)}</b><br><small class="muted">${d.slice(8)}.${d.slice(5, 7)}${a.in ? ` · прийшов ${hhK(a.in)}` : ''}${a.out ? `–${hhK(a.out)}` : ''}${a.late ? ` · ⏰ ${a.late} хв` : ''}</small></span><span class="kv-r"><button class="btn sm green" data-a="zpConf" data-d="${d}" data-n="${esc(n)}" data-h="o">✅</button>${a.late && fine ? `<button class="btn sm" data-a="zpConf" data-d="${d}" data-n="${esc(n)}" data-h="f">✅ + ${fine} ₴</button>` : ''}<button class="btn sm red" data-a="zpConf" data-d="${d}" data-n="${esc(n)}" data-h="n">❌</button></span></div>`).join('')}</div>`;
+    const v = await modal({ title: `🕓 Чекають підтвердження · ${L.length}`, body, buttons: [{ label: `✅ Підтвердити всіх (${L.length})`, val: 'all', cls: 'primary' }, { label: 'Закрити', val: null }] });
+    if (v === 'all') { for (const x of L) await act('zpAtt', { day: x.d, n: x.n, how: 'o' }); toast('✅ Підтверджено'); loadState().catch(() => {}); loadView(); }
   }
   async function zpCell(d, n) {
     const G = S.data.zp, a = G.att[d]?.[n], p = G.plan[d]?.[n], fine = G.cfg?.lateFine;
@@ -1468,6 +1536,8 @@
         break; }
       case 'vBack': if (await confirmBox('Повернути страву на стіл? Вона знову буде в рахунку.')) { if (await act('voidBack', { ts: +el.dataset.ts }, '↩️ Повернуто на стіл')) loadView(); } break;
       case 'setTab': S.setTab = el.dataset.s; renderMain(); break;
+      case 'look': { const k = el.dataset.k, v = ['size', 'vol', 'anim'].includes(k) ? +el.dataset.v : el.dataset.v; setLook(k, v); if (k === 'sound' || k === 'vol') ding(); break; }
+      case 'lookReset': store.set('look', {}); applyLook(); renderMain(); toast('↺ Стандартний вигляд'); break;
       case 'cashTab': S.cashTab = el.dataset.t; renderMain(); loadView(); break;
       case 'move': moveFlow(); break;
       case 'split': splitFlow(); break;
@@ -1542,6 +1612,7 @@
       case 'zpMy': zpMy(); break;
       case 'zpM': S.zpM = monAdd(S.zpM || curMon(), +D.d); S.data.zp = null; renderMain(); loadView(); break;
       case 'zpCell': zpCell(D.d, D.n); break;
+      case 'zpPend': zpPend(); break;
       case 'zpTab': S.zpTab = D.t; renderMain(); break;
       case 'zpRow': if (e.target.closest('button')) break; S.zpOpen = S.zpOpen === D.n ? null : D.n; renderMain(); break;
       case 'zpAddP': { const G = S.data.zp, shown = new Set([...document.querySelectorAll('.zp-grid tbody th')].map(t => t.textContent.replace('✕', '').trim())), l = G.staff.map(s => s.name).filter(n => !shown.has(n));
@@ -1555,7 +1626,7 @@
       case 'zpOpN': zpOpN(D.t, D.n); break;
       case 'zpOpDel': { const back = !!D.b; if (!back && !(await confirmBox('Видалити операцію?', 'Якщо це видача грошей — вони повернуться в касу / на картку. Можна відновити ↩️'))) break; if (await act('zpOpDel', { id: D.id, back, m: S.zpM }, back ? '↩️ Повернуто' : '🗑 Видалено')) loadView(); break; }
       case 'zpSw': if (await act('zpSwapStep', { id: D.id, step: D.s }, D.s === 'no' ? '❌ Відхилено' : D.s === 'agree' ? '🔁 Погоджено — чекає адміна' : '✅ Обмін підтверджено')) { closeModal(); if (S.view === 'settings') loadView(); } break;
-      case 'zpConf': if (await act('zpAtt', { day: D.d, n: D.n, how: D.h }, D.h === 'n' ? '❌ Відхилено' : '✅ Підтверджено')) { loadState().catch(() => {}); if (S.view === 'settings') loadView(); } break;
+      case 'zpConf': { const row = el.closest('.zp-pend .kv'); if (await act('zpAtt', { day: D.d, n: D.n, how: D.h }, D.h === 'n' ? '❌ Відхилено' : '✅ Підтверджено')) { loadState().catch(() => {}); if (row) { row.remove(); if (!$('.zp-pend .kv')) closeModal(); } if (['settings', 'team'].includes(S.view)) loadView(); } break; }
     }
   });
   // 🧮 Розрахунок: кліки, введення

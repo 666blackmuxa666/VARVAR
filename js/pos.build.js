@@ -360,23 +360,85 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   addEventListener("pageshow", wake);
   addEventListener("focus", wake);
   addEventListener("online", wake);
+  const SOUNDS = {
+    classic: ["\u0414\u0437\u0456\u043D\u044C-\u0434\u0437\u0456\u043D\u044C", [[880, 0, 0.25], [1320, 0.16, 0.25]]],
+    bell: ["\u0414\u0437\u0432\u0456\u043D\u043E\u0447\u043E\u043A", [[1568, 0, 0.9, "triangle"], [2093, 0.02, 0.7, "sine"]]],
+    triple: ["\u0422\u0440\u0438 \u0442\u043E\u043D\u0438", [[660, 0, 0.18], [880, 0.18, 0.18], [1100, 0.36, 0.3]]],
+    soft: ["\u041C'\u044F\u043A\u0438\u0439", [[523, 0, 0.5, "sine"], [659, 0.2, 0.6, "sine"]]],
+    alarm: ["\u0422\u0440\u0438\u0432\u043E\u0433\u0430", [[1e3, 0, 0.12, "square"], [1e3, 0.2, 0.12, "square"], [1e3, 0.4, 0.12, "square"]]],
+    marimba: ["\u041C\u0430\u0440\u0438\u043C\u0431\u0430", [[784, 0, 0.3, "triangle"], [988, 0.12, 0.3, "triangle"], [1175, 0.24, 0.4, "triangle"]]],
+    pop: ["\u041F\u043E\u043F", [[400, 0, 0.08, "sine"], [800, 0.05, 0.12, "sine"]]],
+    kitchen: ["\u041A\u0443\u0445\u043E\u043D\u043D\u0438\u0439", [[2637, 0, 0.5, "triangle"], [2637, 0.6, 0.5, "triangle"]]],
+    off: ["\u0411\u0435\u0437 \u0437\u0432\u0443\u043A\u0443", []]
+  };
   let actx;
-  function ding() {
+  function ding(k) {
+    var _a2, _b;
     try {
+      const L = look(), sn = SOUNDS[k || L.sound] || SOUNDS.classic, vol = ((_a2 = L.vol) != null ? _a2 : 70) / 100 * 0.35 + 2e-4;
       actx || (actx = new (window.AudioContext || window.webkitAudioContext)());
-      [0, 0.16].forEach((d, i) => {
-        const o = actx.createOscillator(), g = actx.createGain();
-        o.frequency.value = i ? 1320 : 880;
-        g.gain.setValueAtTime(1e-4, actx.currentTime + d);
-        g.gain.exponentialRampToValueAtTime(0.25, actx.currentTime + d + 0.02);
-        g.gain.exponentialRampToValueAtTime(1e-4, actx.currentTime + d + 0.25);
+      (_b = actx.resume) == null ? void 0 : _b.call(actx);
+      sn[1].forEach(([f, d, len, type]) => {
+        const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + d;
+        o.type = type || "sine";
+        o.frequency.value = f;
+        g.gain.setValueAtTime(1e-4, t);
+        g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(1e-4, t + len);
         o.connect(g).connect(actx.destination);
-        o.start(actx.currentTime + d);
-        o.stop(actx.currentTime + d + 0.3);
+        o.start(t);
+        o.stop(t + len + 0.05);
       });
     } catch (e) {
     }
   }
+  const THEMES = {
+    night: ["\u{1F311} \u041D\u0456\u0447 (\u0441\u0442\u0430\u043D\u0434\u0430\u0440\u0442)", { bg: "#0b0b0d", bg2: "#151518", card: "#1c1c1f", card2: "#26262a", text: "#f5f5f7", muted: "#8e8e93", accent: "#f2c14e", "accent-ink": "#1a1400" }],
+    beet: ["\u{1F377} \u0411\u0443\u0440\u044F\u043A", { bg: "#120609", bg2: "#1c0a10", card: "#261019", card2: "#341824", text: "#fbeff3", muted: "#a8848f", accent: "#e0457b", "accent-ink": "#fff" }],
+    ocean: ["\u{1F30A} \u041E\u043A\u0435\u0430\u043D", { bg: "#06101a", bg2: "#0b1a29", card: "#102236", card2: "#173049", text: "#eef6ff", muted: "#7f98b3", accent: "#3fb6ff", "accent-ink": "#00121f" }],
+    forest: ["\u{1F332} \u041B\u0456\u0441", { bg: "#07110b", bg2: "#0d1a12", card: "#13241a", card2: "#1b3224", text: "#eefaf2", muted: "#83a08e", accent: "#5ed68a", "accent-ink": "#04210f" }],
+    violet: ["\u{1F52E} \u0424\u0456\u0430\u043B\u043A\u0430", { bg: "#0d0916", bg2: "#151024", card: "#1d1631", card2: "#291f44", text: "#f4f0ff", muted: "#9a8fb8", accent: "#a98bff", "accent-ink": "#14082e" }],
+    coffee: ["\u2615 \u041A\u0430\u0432\u0430", { bg: "#120d09", bg2: "#1b140f", card: "#251c15", card2: "#32261d", text: "#f8efe6", muted: "#a8958a", accent: "#d9a066", "accent-ink": "#2a1806" }],
+    graphite: ["\u26AB \u0413\u0440\u0430\u0444\u0456\u0442", { bg: "#161618", bg2: "#1e1e21", card: "#28282c", card2: "#333338", text: "#ffffff", muted: "#9b9ba1", accent: "#ffffff", "accent-ink": "#000" }],
+    amoled: ["\u{1F5A4} \u0427\u043E\u0440\u043D\u0438\u0439 AMOLED", { bg: "#000", bg2: "#050505", card: "#0e0e0e", card2: "#1a1a1a", text: "#fff", muted: "#888", accent: "#ffd60a", "accent-ink": "#000" }],
+    sunset: ["\u{1F305} \u0417\u0430\u0445\u0456\u0434", { bg: "#140a06", bg2: "#1f100a", card: "#2a160e", card2: "#3a2014", text: "#fff3ea", muted: "#b39282", accent: "#ff7a45", "accent-ink": "#2a0c00" }],
+    mint: ["\u{1F343} \u041C'\u044F\u0442\u0430", { bg: "#071312", bg2: "#0c1d1b", card: "#112826", card2: "#183633", text: "#ecfffb", muted: "#80a7a1", accent: "#4fe3c1", "accent-ink": "#00241c" }]
+  };
+  const FONTS = { system: ["\u0421\u0438\u0441\u0442\u0435\u043C\u043D\u0438\u0439 (iOS)", ""], inter: ["Inter", "Inter"], manrope: ["Manrope", "Manrope"], rubik: ["Rubik", "Rubik"], nunito: ["Nunito", "Nunito"], montserrat: ["Montserrat", "Montserrat"], roboto: ["Roboto", "Roboto"], comfortaa: ["Comfortaa", "Comfortaa"], mono: ["JetBrains Mono", "JetBrains Mono"], pt: ["PT Sans", "PT Sans"] };
+  const look = () => __spreadValues({ theme: "night", font: "system", nfont: "same", size: 100, radius: "round", sound: "classic", vol: 70, anim: 1, accent: "" }, store.get("look", {}));
+  function applyLook() {
+    const L = look(), T = (THEMES[L.theme] || THEMES.night)[1], r = document.documentElement.style;
+    for (const [k, v] of Object.entries(T)) r.setProperty("--" + k, v);
+    if (L.accent) r.setProperty("--accent", L.accent);
+    const fam = (k) => {
+      var _a2;
+      return (_a2 = FONTS[k]) == null ? void 0 : _a2[1];
+    }, need = [fam(L.font), L.nfont !== "same" && fam(L.nfont)].filter(Boolean);
+    for (const f of need) {
+      const id = "gf-" + f.replace(/ /g, "");
+      if (!document.getElementById(id)) {
+        const l = document.createElement("link");
+        l.id = id;
+        l.rel = "stylesheet";
+        l.href = `https://fonts.googleapis.com/css2?family=${f.replace(/ /g, "+")}:wght@400;600;700;800&display=swap`;
+        document.head.append(l);
+      }
+    }
+    const base = '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif';
+    r.setProperty("--font", fam(L.font) ? `"${fam(L.font)}", ${base}` : base);
+    r.setProperty("--nfont", L.nfont === "same" ? "var(--font)" : fam(L.nfont) ? `"${fam(L.nfont)}", ${base}` : base);
+    document.body.style.zoom = L.size === 100 ? "" : L.size / 100;
+    const R = { round: [18, 24], soft: [12, 16], square: [6, 8] }[L.radius] || [18, 24];
+    r.setProperty("--r", R[0] + "px");
+    r.setProperty("--r2", R[1] + "px");
+    document.body.classList.toggle("noanim", !L.anim);
+  }
+  const setLook = (k, v) => {
+    store.set("look", __spreadProps(__spreadValues({}, look()), { [k]: v }));
+    applyLook();
+    renderMain();
+  };
+  applyLook();
   const NAV_COOK = [["kq", "\u{1F468}\u200D\u{1F373}", "\u0427\u0435\u0440\u0433\u0430"], ["calc", "\u{1F4E6}", "\u0421\u043A\u043B\u0430\u0434"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["hall", "\u{1FA91}", "\u0417\u0430\u043B"]];
   const NAV_A = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["kq", "\u{1F468}\u200D\u{1F373}", "\u041A\u0443\u0445\u043D\u044F"], ["cash", "\u{1F4B0}", "\u041A\u0430\u0441\u0430"], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438"], ["calc", "\u{1F4E6}", "\u0421\u043A\u043B\u0430\u0434"], ["team", "\u{1F465}", "\u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B"], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442."]];
   const NAV_W = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["closed", "\u{1F9FE}", "\u0427\u0435\u043A\u0438"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"]];
@@ -398,12 +460,15 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     var _a2;
     const list = Object.values(S.tables), sum = list.reduce((s, b) => s + b.pay2, 0);
     const pending = new Set(S.events.filter((e) => e.k === "guest" && e.s === "new").map((e) => e.t));
+    const calls = {};
+    for (const e of S.events) if (e.k === "call" && e.s === "new") calls[e.t] = e;
+    const bell = (t) => calls[t] ? `<span class="callbell${Date.now() - calls[t].ts > 6e4 ? " late" : ""}" title="\u041A\u043B\u0438\u0447\u0435 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430">\u{1F514}</span>` : "";
     const tiles = Array.from({ length: S.n }, (_, i) => i + 1).map((t) => {
       const b = S.tables[t];
-      if (!b) return `<button class="tbl" data-a="table" data-t="${t}"><div class="n">${t}</div><div class="st">\u0432\u0456\u043B\u044C\u043D\u0438\u0439</div></button>`;
+      if (!b) return `<button class="tbl${calls[t] ? " calling" : ""}" data-a="table" data-t="${t}">${bell(t)}<div class="n">${t}</div><div class="st">\u0432\u0456\u043B\u044C\u043D\u0438\u0439</div></button>`;
       const cls = ["busy", b.check ? "check" : "", pending.has(t) ? "new" : ""].join(" ");
       const tag = b.check ? `<span class="tag c">\u{1F9FE} \u0440\u0430\u0445\u0443\u043D\u043E\u043A</span>${b.pay ? `<i class="pay" title="${b.pay === "card" ? "\u043A\u0430\u0440\u0442\u0430" : "\u0433\u043E\u0442\u0456\u0432\u043A\u0430"}">${b.pay === "card" ? "\u{1F4B3}" : "\u{1F4B5}"}</i>` : ""}` : pending.has(t) ? '<span class="tag g">\u043D\u043E\u0432\u0435</span>' : "";
-      return `<button class="tbl ${cls}" data-a="table" data-t="${t}">${tag}<div class="n">${t}</div><div class="st">${b.orders} \u0437\u0430\u043C\u043E\u0432\u043B.${b.disc ? ` \xB7 \u2212${b.disc}%` : ""}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">\u0437 ${b.opened ? hhmm(b.opened) : "\u2014"}</div></button>`;
+      return `<button class="tbl ${cls}${calls[t] ? " calling" : ""}" data-a="table" data-t="${t}">${bell(t)}${tag}<div class="n">${t}</div><div class="st">${b.orders} \u0437\u0430\u043C\u043E\u0432\u043B.${b.disc ? ` \xB7 \u2212${b.disc}%` : ""}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">\u0437 ${b.opened ? hhmm(b.opened) : "\u2014"}</div></button>`;
     }).join("");
     return `<div class="head"><h1>\u0417\u0430\u043B</h1><div class="stat tipstat" title="\u041D\u0430\u043A\u043E\u043F\u0438\u0447\u0435\u043D\u043E, \u0449\u0435 \u043D\u0435 \u0432\u0438\u0434\u0430\u043D\u043E">\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456<b class="money">${money(((_a2 = S.myTip) == null ? void 0 : _a2.sum) || 0)}</b></div><div class="stat">\u0423 \u0437\u0430\u043B\u0456<b class="money">${money(sum)}</b></div>
       <button class="btn primary" data-a="newOrder">\u2795 \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F</button></div><div class="tables">${tiles}</div>`;
@@ -427,6 +492,13 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     att: `\u{1F7E2} ${esc(e.n)} \u043D\u0430 \u0437\u043C\u0456\u043D\u0456${e.late ? ` \xB7 \u23F0 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F ${e.late} \u0445\u0432` : ""}`,
     swap: esc(e.text)
   })[e.k] || esc(e.text || e.k);
+  setInterval(() => {
+    var _a2;
+    if ((_a2 = S.events) == null ? void 0 : _a2.some((e) => e.k === "call" && e.s === "new")) {
+      renderFeed();
+      if (S.view === "hall" && !S.open) renderMain();
+    }
+  }, 1e4);
   function renderFeed() {
     setHTML($("#events"), S.events.length ? [...S.events].reverse().map((e) => {
       var _a2, _b, _c, _d, _e;
@@ -437,7 +509,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       const zb = e.k === "att" ? `<div class="act">${e.s === "acc" ? `<span class="muted">\u2705 ${esc(e.accBy || "")}</span>` : e.s === "rej" ? `<span class="bad">\u274C ${esc(e.accBy || "")}</span>` : isAdmin() ? `<button class="btn sm green" data-a="zpConf" data-d="${e.day}" data-n="${esc(e.n)}" data-h="o">\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438</button>${e.late && ((_d = S.cfg) == null ? void 0 : _d.lateFine) ? `<button class="btn sm" data-a="zpConf" data-d="${e.day}" data-n="${esc(e.n)}" data-h="f">\u2705 + \u0448\u0442\u0440\u0430\u0444</button>` : ""}<button class="btn sm red" data-a="zpConf" data-d="${e.day}" data-n="${esc(e.n)}" data-h="n">\u274C</button>` : '<span class="muted">\u0447\u0435\u043A\u0430\u0454 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F</span>'}</div>` : e.k === "swap" && !e.old ? e.s === "ask" && e.n === ((_e = S.me) == null ? void 0 : _e.name) ? `<div class="act"><button class="btn sm green" data-a="zpSw" data-id="${e.sw}" data-s="agree">\u041F\u043E\u0433\u043E\u0434\u0436\u0443\u044E\u0441\u044C</button><button class="btn sm red" data-a="zpSw" data-id="${e.sw}" data-s="no">\u041D\u0456</button></div>` : e.s === "agreed" && isAdmin() ? `<div class="act"><button class="btn sm green" data-a="zpSw" data-id="${e.sw}" data-s="ok">\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438 \u043E\u0431\u043C\u0456\u043D</button><button class="btn sm red" data-a="zpSw" data-id="${e.sw}" data-s="no">\u274C</button></div>` : "" : "";
       const btns = zb || (e.k === "noscan" ? `<div class="act"><button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${e.t}</button></div>` : e.k === "guest" || e.k === "check" || e.k === "call" ? `<div class="act">${e.s === "acc" ? `<span class="muted">\u2705 ${esc(e.accBy || "\u043F\u0440\u0438\u0439\u043D\u044F\u0442\u043E")}</span>` : e.s === "rej" ? `<span style="color:var(--red,#ff453a)">\u274C \u0432\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E \xB7 ${esc(e.accBy || "")}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432</button>${e.k === "guest" ? `<button class="btn sm red" data-a="reject" data-oid="${e.oid}">\u274C \u0412\u0456\u0434\u0445\u0438\u043B\u0438\u0442\u0438</button>` : ""}`}<button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${e.t}</button></div>` : "");
       const fresh = S.shown.size && !S.shown.has(e.id) ? " fresh" : "";
-      return `<div class="ev ${e.k}${e.s === "acc" || e.s === "rej" ? " acc" : ""}${e.s === "rej" ? " rej" : ""}${fresh}"><div class="top"><b>${evTitle(e)}</b><span class="tm">${e.at}${by}</span></div>${lines}${e.comment ? `<div class="com">\u{1F4AC} ${esc(e.comment)}</div>` : ""}${e.sum && ["guest", "waiter"].includes(e.k) ? `<div class="muted">\u0421\u0443\u043C\u0430 ${money(e.sum)}</div>` : ""}${btns}</div>`;
+      return `<div class="ev ${e.k}${e.k === "call" && e.s === "new" && Date.now() - e.ts > 6e4 ? " late" : ""}${e.s === "acc" || e.s === "rej" ? " acc" : ""}${e.s === "rej" ? " rej" : ""}${fresh}"><div class="top"><b>${evTitle(e)}</b><span class="tm">${e.at}${by}</span></div>${lines}${e.comment ? `<div class="com">\u{1F4AC} ${esc(e.comment)}</div>` : ""}${e.sum && ["guest", "waiter"].includes(e.k) ? `<div class="muted">\u0421\u0443\u043C\u0430 ${money(e.sum)}</div>` : ""}${btns}</div>`;
     }).join("") : '<div class="muted" style="padding:12px">\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u043F\u043E\u0434\u0456\u0439 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454</div>');
     S.events.forEach((e) => S.shown.add(e.id));
   }
@@ -1380,6 +1452,22 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     return `<div class="head"><h1>\u041C\u0435\u043D\u044E</h1><button class="btn" data-a="menuUndo">\u21A9\uFE0F \u0412\u0456\u0434\u043C\u0456\u043D\u0438\u0442\u0438 \u043E\u0441\u0442\u0430\u043D\u043D\u044E \u0437\u043C\u0456\u043D\u0443</button><button class="btn" data-a="catAdd">\u{1F4C2} \u041D\u043E\u0432\u0438\u0439 \u0440\u043E\u0437\u0434\u0456\u043B</button><button class="btn primary" data-a="menuEdit" data-id="">\u2795 \u041D\u043E\u0432\u0430 \u0441\u0442\u0440\u0430\u0432\u0430</button></div>
       ${S.menu.categories.map((c) => `<h3 class="muted" style="margin:18px 4px 8px">${esc(c.name.uk)}</h3><div class="grid2">${c.items.map((i) => `<button class="list-row press" data-a="menuEdit" data-id="${i.id}" style="text-align:left"><div class="grow"><b>${esc(i.name.uk)}</b>${i.hidden ? " \u26D4" : ""}<div class="muted" style="font-size:13px">${i.variants ? i.variants.map((v) => `${v.v} \u2014 ${v.p}`).join(" / ") : i.price + " \u20B4"}${i.size && !i.variants ? " \xB7 " + esc(i.size) : ""}</div></div>\u203A</button>`).join("")}</div>`).join("")}`;
   }
+  function lookHTML() {
+    const L = look(), opt = (k, v, l, extra = "") => `<button class="lk-o${L[k] == v ? " on" : ""}" data-a="look" data-k="${k}" data-v="${v}"${extra}>${l}</button>`;
+    const ACC2 = ["", "#f2c14e", "#ff453a", "#ff9f0a", "#30d158", "#0a84ff", "#bf5af2", "#e0457b", "#4fe3c1", "#ffffff"];
+    return `<div class="grid2 set">
+      <div class="card"><h3>\u{1F3A8} \u0422\u0435\u043C\u0430</h3><div class="lk-themes">${Object.entries(THEMES).map(([k, [l, T]]) => `<button class="lk-th${L.theme === k ? " on" : ""}" data-a="look" data-k="theme" data-v="${k}" style="background:${T.bg};color:${T.text}"><i style="background:${T.card}"><b style="background:${T.accent}"></b></i>${l}</button>`).join("")}</div>
+        <div class="set-note muted" style="margin-top:12px">\u041A\u043E\u043B\u0456\u0440 \u0430\u043A\u0446\u0435\u043D\u0442\u0443 (\u043A\u043D\u043E\u043F\u043A\u0438, \u0432\u0438\u0434\u0456\u043B\u0435\u043D\u043D\u044F)</div><div class="lk-acc">${ACC2.map((c) => `<button class="lk-dot${L.accent === c ? " on" : ""}" data-a="look" data-k="accent" data-v="${c}" style="background:${c || "conic-gradient(#f2c14e,#e0457b,#3fb6ff,#5ed68a,#f2c14e)"}" title="${c || "\u044F\u043A \u0443 \u0442\u0435\u043C\u0456"}"></button>`).join("")}</div></div>
+      <div class="card"><h3>\u{1F524} \u0428\u0440\u0438\u0444\u0442\u0438</h3><div class="set-note muted">\u041E\u0441\u043D\u043E\u0432\u043D\u0438\u0439 \u0448\u0440\u0438\u0444\u0442</div><div class="lk-row">${Object.entries(FONTS).map(([k, [l, f]]) => opt("font", k, l, f ? ` style="font-family:'${f}',sans-serif"` : "")).join("")}</div>
+        <div class="set-note muted" style="margin-top:10px">\u0428\u0440\u0438\u0444\u0442 \u0441\u0443\u043C \u0456 \u0446\u0438\u0444\u0440</div><div class="lk-row">${opt("nfont", "same", "\u042F\u043A \u043E\u0441\u043D\u043E\u0432\u043D\u0438\u0439")}${Object.entries(FONTS).map(([k, [l, f]]) => opt("nfont", k, l, f ? ` style="font-family:'${f}',sans-serif"` : "")).join("")}</div>
+        <div class="set-note muted" style="margin-top:10px">\u0420\u043E\u0437\u043C\u0456\u0440</div><div class="lk-row">${[85, 92, 100, 110, 120].map((z) => opt("size", z, z === 100 ? "\u0417\u0432\u0438\u0447\u0430\u0439\u043D\u0438\u0439" : z + "%")).join("")}</div></div>
+      <div class="card"><h3>\u{1FA9F} \u0412\u0456\u043A\u043E\u043D\u0446\u044F</h3><div class="set-note muted">\u041A\u0443\u0442\u0438</div><div class="lk-row">${opt("radius", "round", "\u25EF \u041A\u0440\u0443\u0433\u043B\u0456")}${opt("radius", "soft", "\u25A2 \u041C'\u044F\u043A\u0456")}${opt("radius", "square", "\u25A1 \u041F\u0440\u044F\u043C\u0456")}</div>
+        <div class="set-note muted" style="margin-top:10px">\u0410\u043D\u0456\u043C\u0430\u0446\u0456\u0457</div><div class="lk-row">${opt("anim", 1, "\u2728 \u0423\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u0456")}${opt("anim", 0, "\u26A1 \u0412\u0438\u043C\u043A\u043D\u0435\u043D\u0456 (\u0448\u0432\u0438\u0434\u0448\u0435 \u043D\u0430 \u0441\u043B\u0430\u0431\u043A\u0438\u0445)")}</div></div>
+      <div class="card"><h3>\u{1F50A} \u0417\u0432\u0443\u043A \u0441\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u044C</h3><div class="lk-row">${Object.entries(SOUNDS).map(([k, [l]]) => opt("sound", k, (k === "off" ? "\u{1F507} " : "\u25B6 ") + l)).join("")}</div>
+        <div class="set-note muted" style="margin-top:10px">\u0413\u0443\u0447\u043D\u0456\u0441\u0442\u044C</div><div class="lk-row">${[30, 50, 70, 100].map((v) => opt("vol", v, v + "%")).join("")}</div>
+        <div class="btnrow" style="margin-top:12px"><button class="btn sm" data-a="lookReset">\u21BA \u0421\u043A\u0438\u043D\u0443\u0442\u0438 \u0432\u0441\u0435 \u0434\u043E \u0441\u0442\u0430\u043D\u0434\u0430\u0440\u0442\u0443</button></div></div>
+      <div class="muted set-note" style="grid-column:1/-1">\u0412\u0438\u0433\u043B\u044F\u0434 \u0437\u0431\u0435\u0440\u0456\u0433\u0430\u0454\u0442\u044C\u0441\u044F \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457 \u2014 \u043A\u043E\u0436\u0435\u043D \u0442\u0435\u043B\u0435\u0444\u043E\u043D \u0456 \u043F\u043B\u0430\u043D\u0448\u0435\u0442 \u043C\u043E\u0436\u043D\u0430 \u043D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u0442\u0438 \u043F\u043E-\u0441\u0432\u043E\u0454\u043C\u0443.</div></div>`;
+  }
   function settingsHTML(only) {
     var _a2, _b, _c, _d, _e, _f, _g, _h;
     const st = S.data.staff, wf = S.data.wifi, c = (st == null ? void 0 : st.cfg) || {};
@@ -1387,7 +1475,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const row = (l, v, btn, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ""}</span><span class="kv-r"><b>${v}</b>${btn}</span></div>`;
     const ch = (a, extra = "") => `<button class="btn sm" data-a="${a}"${extra}>\u0437\u043C\u0456\u043D\u0438\u0442\u0438</button>`;
     const staff = st ? [...st.staff].sort((a, b) => (a.role || "").localeCompare(b.role || "") || a.name.localeCompare(b.name)) : null;
-    const SS = [["rules", "\u2699\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438"], ["printer", "\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["test", "\u{1F9EA} \u0422\u0435\u0441\u0442"]], cur = only || ((SS0) => SS0.includes(S.setTab) ? S.setTab : "rules")(["rules", "printer", "test"]);
+    const SS = [["rules", "\u2699\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438"], ["look", "\u{1F3A8} \u0412\u0438\u0433\u043B\u044F\u0434"], ["printer", "\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["test", "\u{1F9EA} \u0422\u0435\u0441\u0442"]], cur = only || ((SS0) => SS0.includes(S.setTab) ? S.setTab : "rules")(["rules", "look", "printer", "test"]);
     const part = {};
     part.people = `<div class="grid2 set">
       <div class="card"><h3>\u{1F465} \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B <span class="muted">\xB7 ${staff ? staff.length : "\u2026"}</span></h3>
@@ -1413,6 +1501,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         <div class="muted set-note" style="margin-top:10px">\u{1F4F6} Wi\u2011Fi \u0437\u0430\u043A\u043B\u0430\u0434\u0443 (\u0437\u0430\u043F\u0430\u0441\u043D\u0438\u0439 \u0441\u043F\u043E\u0441\u0456\u0431) \xB7 \u0432\u0430\u0448\u0430 \u043C\u0435\u0440\u0435\u0436\u0430: ${esc((wf == null ? void 0 : wf.current) || "\u2026")}</div>
         <div class="scrollbox sm">${wf ? wf.list.map((x) => `<div class="kv"><span>${esc(x.k)}</span><span class="muted">${new Date(x.at).toLocaleDateString("uk-UA")}</span></div>`).join("") || '<div class="muted">\u043D\u0435\u043C\u0430\u0454 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u0438\u0445 \u0430\u0434\u0440\u0435\u0441</div>' : ""}</div>
         <div class="btnrow"><button class="btn sm primary" data-a="wifiAdd">\u2795 \u0426\u0435 \u043D\u0430\u0448\u0430 \u043C\u0435\u0440\u0435\u0436\u0430</button><button class="btn sm red" data-a="wifiClear">\u0421\u043A\u0438\u043D\u0443\u0442\u0438 \u0432\u0441\u0456</button></div></div></div>`;
+    part.look = lookHTML();
     part.printer = printerCards();
     part.test = `<div class="grid2 set"><div class="card"><h3>\u{1F9EA} \u0422\u0435\u0441\u0442</h3><div class="muted set-note">\u0422\u0438\u043C\u0447\u0430\u0441\u043E\u0432\u043E, \u0434\u043E \u0437\u0430\u043F\u0443\u0441\u043A\u0443.</div><button class="btn sm red" data-a="reset">\u267B\uFE0F \u041E\u0431\u043D\u0443\u043B\u0438\u0442\u0438 \u0432\u0441\u0435</button></div></div>`;
     if (only) return part[only];
@@ -2299,7 +2388,7 @@ ${g.sup}:
     const tab = S.zpTab || "grid", TABS2 = [["grid", "\u{1F4C5} \u0413\u0440\u0430\u0444\u0456\u043A"], ["pay", "\u{1F4B0} \u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430"], ["ops", "\u{1F9FE} \u041E\u043F\u0435\u0440\u0430\u0446\u0456\u0457"], ["eff", "\u{1F4CA} \u0415\u0444\u0435\u043A\u0442\u0438\u0432\u043D\u0456\u0441\u0442\u044C"], ["people", "\u{1F465} \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0438"]];
     const top = `<div class="zp-top"><button class="btn sm" data-a="zpM" data-d="-1">\u25C0</button><b>${monName(G.m)}</b><button class="btn sm" data-a="zpM" data-d="1">\u25B6</button></div>
       <div class="kpis"><div class="kpi accent"><span>\u0414\u043E \u0432\u0438\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(due)}</b></div><div class="kpi"><span>\u0424\u043E\u043D\u0434 \u043E\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(G.fund)}</b><small class="muted">${G.fundPct}% \u0432\u0456\u0434 \u0432\u0438\u0440\u0443\u0447\u043A\u0438</small></div>
-        <div class="kpi"><span>\u0412\u0438\u0440\u0443\u0447\u043A\u0430 \u043C\u0456\u0441\u044F\u0446\u044F</span><b class="money">${money(G.revenue)}</b></div><div class="kpi ${pend ? "red" : ""}"><span>\u0427\u0435\u043A\u0430\u0454 \u2705</span><b>${pend}</b><small class="muted">${pend ? "\u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C \u0443 \u0433\u0440\u0430\u0444\u0456\u043A\u0443 \u0430\u0431\u043E \u0441\u0442\u0440\u0456\u0447\u0446\u0456" : "\u0443\u0441\u0435 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043E"}</small></div></div>
+        <div class="kpi"><span>\u0412\u0438\u0440\u0443\u0447\u043A\u0430 \u043C\u0456\u0441\u044F\u0446\u044F</span><b class="money">${money(G.revenue)}</b></div><div class="kpi ${pend ? "red press" : ""}"${pend ? ' data-a="zpPend"' : ""}><span>\u0427\u0435\u043A\u0430\u0454 \u2705</span><b>${pend}</b><small class="muted">${pend ? "\u043D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C, \u0449\u043E\u0431 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438" : "\u0443\u0441\u0435 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043E"}</small></div></div>
       <div class="seg rsec">${TABS2.map(([k, l]) => `<button class="${tab === k ? "on" : ""}" data-a="zpTab" data-t="${k}">${l}</button>`).join("")}</div>`;
     let body = "";
     if (tab === "grid") {
@@ -2341,6 +2430,21 @@ ${g.sup}:
       const a = (_a2 = G.att[d]) == null ? void 0 : _a2[n], p = (_b = G.plan[d]) == null ? void 0 : _b[n], h = hrs(a);
       return `<td class="${edit ? "press" : ""}${d === today ? " td" : ""}"${edit ? ` data-a="zpCell" data-d="${d}" data-n="${esc(n)}"` : ""}><i>${attIc(a, p, d)}</i>${p ? p === "+" ? a ? "" : '<i class="pl">\u25CF</i>' : `<small>${p}</small>` : ""}${h ? `<small class="h">${h}\u0433</small>` : ""}</td>`;
     }).join("")}</tr>`).join("")}</tbody></table></div>`;
+  }
+  async function zpPend() {
+    var _a2;
+    const G = S.data.zp, fine = (_a2 = G.cfg) == null ? void 0 : _a2.lateFine, L = [];
+    for (const d of G.days) for (const [n, a] of Object.entries(G.att[d] || {})) if ((a == null ? void 0 : a.ok) === 0) L.push({ d, n, a });
+    if (!L.length) return toast("\u2705 \u0423\u0441\u0435 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043E");
+    const body = `<div class="zp-pend">${L.map(({ d, n, a }) => `<div class="kv"><span><b>${esc(n)}</b><br><small class="muted">${d.slice(8)}.${d.slice(5, 7)}${a.in ? ` \xB7 \u043F\u0440\u0438\u0439\u0448\u043E\u0432 ${hhK(a.in)}` : ""}${a.out ? `\u2013${hhK(a.out)}` : ""}${a.late ? ` \xB7 \u23F0 ${a.late} \u0445\u0432` : ""}</small></span><span class="kv-r"><button class="btn sm green" data-a="zpConf" data-d="${d}" data-n="${esc(n)}" data-h="o">\u2705</button>${a.late && fine ? `<button class="btn sm" data-a="zpConf" data-d="${d}" data-n="${esc(n)}" data-h="f">\u2705 + ${fine} \u20B4</button>` : ""}<button class="btn sm red" data-a="zpConf" data-d="${d}" data-n="${esc(n)}" data-h="n">\u274C</button></span></div>`).join("")}</div>`;
+    const v = await modal({ title: `\u{1F553} \u0427\u0435\u043A\u0430\u044E\u0442\u044C \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F \xB7 ${L.length}`, body, buttons: [{ label: `\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438 \u0432\u0441\u0456\u0445 (${L.length})`, val: "all", cls: "primary" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+    if (v === "all") {
+      for (const x of L) await act("zpAtt", { day: x.d, n: x.n, how: "o" });
+      toast("\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043E");
+      loadState().catch(() => {
+      });
+      loadView();
+    }
   }
   async function zpCell(d, n) {
     var _a2, _b, _c, _d;
@@ -2762,6 +2866,18 @@ ${g.sup}:
         S.setTab = el.dataset.s;
         renderMain();
         break;
+      case "look": {
+        const k = el.dataset.k, v = ["size", "vol", "anim"].includes(k) ? +el.dataset.v : el.dataset.v;
+        setLook(k, v);
+        if (k === "sound" || k === "vol") ding();
+        break;
+      }
+      case "lookReset":
+        store.set("look", {});
+        applyLook();
+        renderMain();
+        toast("\u21BA \u0421\u0442\u0430\u043D\u0434\u0430\u0440\u0442\u043D\u0438\u0439 \u0432\u0438\u0433\u043B\u044F\u0434");
+        break;
       case "cashTab":
         S.cashTab = el.dataset.t;
         renderMain();
@@ -3069,6 +3185,9 @@ ${g.sup}:
       case "zpCell":
         zpCell(D.d, D.n);
         break;
+      case "zpPend":
+        zpPend();
+        break;
       case "zpTab":
         S.zpTab = D.t;
         renderMain();
@@ -3129,13 +3248,19 @@ ${g.sup}:
           if (S.view === "settings") loadView();
         }
         break;
-      case "zpConf":
+      case "zpConf": {
+        const row = el.closest(".zp-pend .kv");
         if (await act("zpAtt", { day: D.d, n: D.n, how: D.h }, D.h === "n" ? "\u274C \u0412\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E" : "\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043E")) {
           loadState().catch(() => {
           });
-          if (S.view === "settings") loadView();
+          if (row) {
+            row.remove();
+            if (!$(".zp-pend .kv")) closeModal();
+          }
+          if (["settings", "team"].includes(S.view)) loadView();
         }
         break;
+      }
     }
   });
   document.addEventListener("click", async (e) => {
