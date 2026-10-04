@@ -167,7 +167,7 @@ export async function wasteDish(env, items, reason, who) {
 }
 // техкарта: { out, wh?, perL?, yield? (заготовка), draft?, items: [{ id, q (брутто), loss }] }
 export async function cardSave(env, key, d) {
-  key = String(key || ''); if (!/^(semi:)?[\w-]+(\|[\w.,-]+)?$/.test(key)) return { error: 'Невірна страва' };
+  key = String(key || ''); if (!/^(semi:)?[\w-]+(\|[^|:]{1,20})?$/.test(key)) return { error: 'Невірна страва' };
   return lk(env, async () => {
     const cards = await getCards(env), ids = new Set((await getIng(env)).map(x => x.id));
     if (d == null) { delete cards[key]; await putCards(env, cards); return { ok: 1 }; }
@@ -405,7 +405,7 @@ export async function stockApi(b, env, me, ai) {
     case 'skJournal': { const l = await journal(env, b.day); return ok({ list: admin ? l : l.map(({ sum, ...x }) => x) }); }
     // техкарти
     case 'skCost': return ok({ list: await costList(env), cards: await getCards(env), cfg: await getCfg(env) });
-    case 'skCardSave': { const r = await cardSave(env, String(b.key), b.card); if (r?.card || r?.ok) await notify(env, `🖥 📋 Техкарта: <b>${esc(String(b.name || b.key))}</b> ${b.card ? 'збережено' : 'видалено'} — ${esc(who)}`).catch(() => {}); return R(r); }
+    case 'skCardSave': { const r = await cardSave(env, String(b.key), b.card); if ((r?.card || r?.ok) && !b.card?.draft) await notify(env, `🖥 📋 Техкарта: <b>${esc(String(b.name || b.key))}</b> ${b.card ? 'збережено' : 'видалено'} — ${esc(who)}`).catch(() => {}); return R(r); }
     case 'skCardAi': { if (!ai) return bad('AI вимкнено'); const r = await ai.card(env, b); return R(r); }
     case 'skTech': { // 📋 техкарти для кухні: склад і грамовки без грошей
       const [cards, l, menu] = await Promise.all([getCards(env), getIng(env), getMenu(env)]), im = new Map(l.map(x => [x.id, x])), res = cardResolver(menu);
