@@ -1,13 +1,16 @@
 // Спільна логіка закладу для Telegram-бота і касової програми (POS).
 // Усе, що змінює столи/звіти/касу, — тут, щоб бот і POS завжди робили одне й те саме.
-import { getMenu, saveMenu } from './menu.js';
+import { getMenu, saveMenu, menuLock } from './menu.js';
 import { queuePrint, kitchenTicket, receipt } from './print.js';
 
 export const tg = (env, method, body) => fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 export const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 export const TZ = 'Europe/Kyiv';
 export const hhmm = (t = Date.now()) => new Date(t).toLocaleTimeString('uk-UA', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
-export const dayKey = (t = Date.now()) => new Date(t).toLocaleDateString('sv-SE', { timeZone: TZ }); // YYYY-MM-DD
+// робочий день закладу: з 03:00 до 03:00 (нічні продажі після півночі — у вчорашню виручку)
+export const DAY_START_H = 3;
+export const dayKey = (t = Date.now()) => new Date(t - DAY_START_H * 3600e3).toLocaleDateString('sv-SE', { timeZone: TZ }); // YYYY-MM-DD
+export const isDay = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ''));
 export const money = n => `${Math.round(n).toLocaleString('uk-UA')} грн`;
 export const YEAR = 400 * 86400, BILL_TTL = 12 * 3600;
 export const LINE = /^(\d+)× (.+?) — (\d+)$/;
@@ -19,7 +22,8 @@ export const notify = (env, text, markup) => tg(env, 'sendMessage', { chat_id: e
 // ---------- рахунки ----------
 export const getBill = async (env, t) => (await env.DB.get('bill:' + t, 'json')) || { total: 0, orders: 0, log: [] };
 export const putBill = (env, t, b) => b.total > 0 ? env.DB.put('bill:' + t, JSON.stringify(b), { expirationTtl: BILL_TTL }) : env.DB.delete('bill:' + t);
-export const discAmt = b => Math.round((b.total || 0) * (b.disc || 0) / 100);
+// discSum — знижка фіксованою сумою (після об'єднання столів з різними знижками); інакше — відсоток від суми
+export const discAmt = b => b.discSum != null ? Math.max(0, Math.min(b.total || 0, b.discSum)) : Math.round((b.total || 0) * (b.disc || 0) / 100);
 export const payable = b => (b.total || 0) - discAmt(b);
 export async function openTables(env) {
   const keys = (await env.DB.list({ prefix: 'bill:' })).keys.map(k => k.name);
@@ -37,7 +41,7 @@ export function billItems(b) {
 async function _bump(env, key, fn) { const d = (await env.DB.get(key, 'json')) || {}; fn(d); await env.DB.put(key, JSON.stringify(d)); }
 export const addStat = (env, field, n) => bump(env, 'day:' + dayKey(), d => { d[field] = (d[field] || 0) + n; });
 // продажі страв за місяць: { назва: [кількість, сума] }
-export const addDishes = (env, items) => bump(env, 'dish:' + dayKey().slice(0, 7), d => { for (const { n, q, sum } of items) { const x = d[n] || [0, 0]; d[n] = [x[0] + q, x[1] + sum]; } });
+export const addDishes = (env, items, day = dayKey()) => bump(env, 'dish:' + day.slice(0, 7), d => { for (const { n, q, sum } of items) { const x = d[n] || [0, 0]; d[n] = [x[0] + q, x[1] + sum]; } });
 async function _logClosed(env, rec) {
   const k = 'closed:' + dayKey(); const list = (await env.DB.get(k, 'json')) || [];
   list.push(rec); await env.DB.put(k, JSON.stringify(list.slice(-500)));
@@ -101,6 +105,7 @@ async function _addWaiterOrder(env, d, who, comment = '', src = 'бот', urgent
   const bill = await getBill(env, d.table);
   const prev = billItems(bill).map(x => `${x.q}× ${x.name}`); // що вже було на столі — у стрічці видно окремо від дозамовлення
   bill.total += sum; bill.orders = (bill.orders || 0) + 1; bill.opened = bill.opened || Date.now();
+  if (!bill.waiter && who) bill.waiter = who; // хто обслуговує стіл — йому чайові
   bill.log = [...(bill.log || []), { at: hhmm(), kind: `від офіціанта (${who})`, lines, ...(comment ? { comment } : {}) }].slice(-40);
   await putBill(env, d.table, bill);
   // різні ключі — паралельно (менше часу під замком «bills», швидше бачать інші екрани)
@@ -192,11 +197,12 @@ async function _closeTable(env, t, who, pay = 'cash', print = true) {
   await bump(env, 'day:' + dayKey(), d => { d.closed = (d.closed || 0) + sum; d.tables = (d.tables || 0) + 1; d.cash = (d.cash || 0) + cash; d.card = (d.card || 0) + card; if (disc) d.disc = (d.disc || 0) + disc; if (tip) d.tip = (d.tip || 0) + tip; });
   // страви рахунку — щоб при видаленні закритого рахунку відняти їх і з «топ страв»
   const dishes = []; for (const o of bill.log || []) for (const l of o.lines) { const x = l.match(LINE); if (x) dishes.push([x[2], +x[1], +x[3]]); }
-  const tipSplit = tip ? await splitTip(env, who, bill.tip || 0, bill.ktip || 0) : null;
+  const waiter = bill.waiter || who || ''; // чайові — офіціанту стола (хто першим вибив/прийняв), а не тому, хто закрив
+  const tipSplit = tip ? await splitTip(env, waiter, bill.tip || 0, bill.ktip || 0) : null;
   await Promise.all([
     kq,
     (async () => { if (tipSplit) for (const [n, v] of Object.entries(tipSplit)) await addTipBal(env, n, v); })(), // один ключ — по черзі
-    logClosed(env, { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), t, sum, cash, card, at: hhmm(), by: who || '', orders: bill.orders || 0, dishes, ...(tip ? { tip, tipSplit, ...(bill.ktip ? { ktip: bill.ktip } : {}) } : {}), ...(bill.voids?.length ? { voids: bill.voids } : {}), ...(disc ? { gross: bill.total, disc: bill.disc, discSum: disc } : {}) }),
+    logClosed(env, { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), t, sum, cash, card, at: hhmm(), by: who || '', w: waiter, orders: bill.orders || 0, dishes, ...(tip ? { tip, tipSplit, ...(bill.ktip ? { ktip: bill.ktip } : {}) } : {}), ...(bill.voids?.length ? { voids: bill.voids } : {}), ...(disc ? { gross: bill.total, disc: bill.disc, discSum: disc } : {}) }),
     logEvent(env, { k: 'close', t, by: who, sum, pay, print }),
   ]);
   return { t, sum, cash, card, disc, tip };
@@ -214,6 +220,7 @@ async function _setDiscount(env, t, pct, who, admin = true) {
   const b = await getBill(env, t); if (!b.total) return null;
   pct = Math.max(0, Math.min(100, Math.round(+pct || 0)));
   if (!admin && pct > WAITER_DISC_MAX) return { error: `Офіціант може дати знижку до ${WAITER_DISC_MAX}%. Більше — лише адміністратор.` };
+  delete b.discSum; // нова знижка — знову відсотком від усього рахунку
   if (pct) b.discBy = who || ''; else delete b.discBy;
   if (pct) b.disc = pct; else delete b.disc;
   await putBill(env, t, b);
@@ -273,10 +280,14 @@ async function _moveTable(env, a, b, who) {
   let merged = false;
   if (B.total) {
     merged = true;
-    B.total += A.total; B.orders = (B.orders || 0) + (A.orders || 0);
+    B.orders = (B.orders || 0) + (A.orders || 0);
     B.opened = Math.min(B.opened || Date.now(), A.opened || Date.now());
     B.log = [...(B.log || []), ...(A.log || []).map(o => ({ ...o, kind: `${o.kind} (зі столу ${a})` }))].slice(-60);
-    B.check = B.check || A.check; if (!B.disc && A.disc) B.disc = A.disc; if (A.voids) B.voids = [...(B.voids || []), ...A.voids];
+    B.check = B.check || A.check; B.waiter = B.waiter || A.waiter;
+    // знижка: кожен стіл зберігає свою — у гривнях (раніше знижка A діяла на весь рахунок B або губилась)
+    const dA = discAmt(A), dB = discAmt(B), sameP = A.discSum == null && B.discSum == null && (A.disc || 0) === (B.disc || 0);
+    B.total += A.total;
+    if (!sameP && dA + dB) { B.discSum = dA + dB; B.disc = Math.max(1, Math.round(B.discSum / B.total * 100)); B.discBy = B.discBy || A.discBy; } if (A.voids) B.voids = [...(B.voids || []), ...A.voids];
     if (A.tip) B.tip = (B.tip || 0) + A.tip; if (A.ktip) B.ktip = (B.ktip || 0) + A.ktip; // чайові обох столів сумуються (раніше чайові A губились)
     await putBill(env, b, B);
   } else await putBill(env, b, A);
@@ -302,30 +313,31 @@ async function _deleteTable(env, t, who, reason = '') {
 // ---------- закриті рахунки ----------
 export const getClosed = async (env, day = dayKey()) => (await env.DB.get('closed:' + day, 'json')) || [];
 const findClosed = (list, ref) => list.find(e => e.id === ref) || (/^\d+$/.test(String(ref)) ? list[+ref] : null);
-export async function closedRec(env, ref) { return findClosed(await getClosed(env), ref); }
-async function _delClosed(env, ref) {
-  const k = 'closed:' + dayKey(); const list = await getClosed(env);
+export async function closedRec(env, ref, day = dayKey()) { return findClosed(await getClosed(env, day), ref); }
+// day — робочий день рахунку (можна виправляти й минулі дні: виручка/страви змінюються саме того дня)
+async function _delClosed(env, ref, day = dayKey()) {
+  const k = 'closed:' + day; const list = await getClosed(env, day);
   const x = findClosed(list, ref);
   if (!x || x.del || x.rm) return null;
   x.rm = 1; await env.DB.put(k, JSON.stringify(list)); // rm — прибраний з виручки (del — стіл видалений до закриття)
-  await bump(env, 'day:' + dayKey(), d => { d.closed = Math.max(0, (d.closed || 0) - x.sum); d.tables = Math.max(0, (d.tables || 0) - 1);
+  await bump(env, 'day:' + day, d => { d.closed = Math.max(0, (d.closed || 0) - x.sum); d.tables = Math.max(0, (d.tables || 0) - 1);
     d.cash = Math.max(0, (d.cash || 0) - (x.cash ?? x.sum)); d.card = Math.max(0, (d.card || 0) - (x.card || 0)); d.orders = Math.max(0, (d.orders || 0) - (x.orders || 0));
     if (x.discSum) d.disc = Math.max(0, (d.disc || 0) - x.discSum); if (x.tip) d.tip = Math.max(0, (d.tip || 0) - x.tip); });
-  if (x.dishes?.length) await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q: -q, sum: -sum })));
+  if (x.dishes?.length) await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q: -q, sum: -sum })), day);
   for (const [n, v] of Object.entries(tipSplitOf(x))) await addTipBal(env, n, -v);
   return x;
 }
 // ↩️ повернути закритий рахунок у виручку (скасувати «видалити з виручки»)
-async function _restoreClosed(env, ref, who) {
-  const k = 'closed:' + dayKey(), list = await getClosed(env), x = findClosed(list, ref);
+async function _restoreClosed(env, ref, who, day = dayKey()) {
+  const k = 'closed:' + day, list = await getClosed(env, day), x = findClosed(list, ref);
   if (!x || !x.rm || x.reopen || x.del) return null;
   delete x.rm; await env.DB.put(k, JSON.stringify(list));
-  await bump(env, 'day:' + dayKey(), d => { d.closed = (d.closed || 0) + x.sum; d.tables = (d.tables || 0) + 1;
+  await bump(env, 'day:' + day, d => { d.closed = (d.closed || 0) + x.sum; d.tables = (d.tables || 0) + 1;
     d.cash = (d.cash || 0) + (x.cash ?? x.sum); d.card = (d.card || 0) + (x.card || 0); d.orders = (d.orders || 0) + (x.orders || 0);
     if (x.discSum) d.disc = (d.disc || 0) + x.discSum; if (x.tip) d.tip = (d.tip || 0) + x.tip; });
-  if (x.dishes?.length) await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q, sum })));
+  if (x.dishes?.length) await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q, sum })), day);
   for (const [n, v] of Object.entries(tipSplitOf(x))) await addTipBal(env, n, v);
-  await logEvent(env, { k: 'shift', by: who, text: `↩️ Рахунок стола ${x.t} (${x.sum} грн) повернуто у виручку` });
+  await logEvent(env, { k: 'shift', by: who, text: `↩️ Рахунок стола ${x.t} (${x.sum} грн${day !== dayKey() ? ', ' + day : ''}) повернуто у виручку` });
   return x;
 }
 // відновити страви на стіл (якщо стіл зайнятий — додаються до його рахунку)
@@ -334,35 +346,35 @@ async function _billBack(env, t, x, kind) {
   const b = await getBill(env, t), sum = x.dishes.reduce((a, d) => a + d[2], 0);
   b.total = (b.total || 0) + sum; b.orders = (b.orders || 0) + 1; b.opened = b.opened || Date.now();
   b.log = [...(b.log || []), { at: hhmm(), kind, lines }].slice(-60);
-  if (x.disc && !b.disc) b.disc = x.disc; if (x.tip && !b.tip) b.tip = x.tip - (x.ktip || 0); if (x.ktip && !b.ktip) b.ktip = x.ktip; if (x.voids?.length) b.voids = [...(b.voids || []), ...x.voids];
+  if (x.disc && !b.disc) { b.disc = x.disc; if (x.discSum != null && x.gross && x.discSum !== Math.round(x.gross * x.disc / 100)) b.discSum = x.discSum; } if (x.tip && !b.tip) b.tip = x.tip - (x.ktip || 0); if (x.ktip && !b.ktip) b.ktip = x.ktip; if (x.voids?.length) b.voids = [...(b.voids || []), ...x.voids]; if (x.w && !b.waiter) b.waiter = x.w;
   await putBill(env, t, b); return true;
 }
 // ↩️ відкрити закритий рахунок знову: знімається з виручки і повертається на стіл (щоб виправити й закрити заново)
-async function _reopenClosed(env, ref, who) {
-  const x0 = await closedRec(env, ref); if (!x0 || x0.del || x0.reopen || !x0.dishes?.length) return null;
-  if (!x0.rm) await delClosed(env, ref);
-  const k = 'closed:' + dayKey(), list = await getClosed(env), x = findClosed(list, ref);
+async function _reopenClosed(env, ref, who, day = dayKey()) {
+  const x0 = await closedRec(env, ref, day); if (!x0 || x0.del || x0.reopen || !x0.dishes?.length) return null;
+  if (!x0.rm) await delClosed(env, ref, day);
+  const k = 'closed:' + day, list = await getClosed(env, day), x = findClosed(list, ref);
   x.rm = 1; x.reopen = 1; await env.DB.put(k, JSON.stringify(list));
-  await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q, sum }))); // страви знову на столі (продажі страв рахуються при замовленні, delClosed їх відняв)
+  await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q, sum }))); // страви знову на столі — у продажі сьогоднішнього дня (закриють заново сьогодні) (продажі страв рахуються при замовленні, delClosed їх відняв)
   await billBack(env, x.t, x, `↩️ відкрито знову (${who})`);
   await logEvent(env, { k: 'shift', t: x.t, by: who, text: `↩️ Стіл ${x.t}: закритий рахунок відкрито знову (${x.sum} грн)` });
   return x;
 }
 // ↩️ відновити видалений стіл (сьогоднішній)
-async function _restoreTable(env, ref, who) {
-  const k = 'closed:' + dayKey(), list = await getClosed(env), x = findClosed(list, ref);
+async function _restoreTable(env, ref, who, day = dayKey()) {
+  const k = 'closed:' + day, list = await getClosed(env, day), x = findClosed(list, ref);
   if (!x || !x.del || x.restored || !x.dishes?.length) return null;
   x.restored = 1; await env.DB.put(k, JSON.stringify(list));
   await billBack(env, x.t, x, `↩️ відновлено (${who})`);
-  const vk = 'void:' + dayKey(), vl = await getVoids(env); const vi = vl.findLastIndex(v => v.table && v.t === +x.t && v.sum === x.sum);
+  const vk = 'void:' + day, vl = await getVoids(env, day); const vi = vl.findLastIndex(v => v.table && v.t === +x.t && v.sum === x.sum);
   if (vi >= 0) { vl.splice(vi, 1); await env.DB.put(vk, JSON.stringify(vl)); }
   await logEvent(env, { k: 'shift', t: x.t, by: who, text: `↩️ Стіл ${x.t} відновлено (${x.sum} грн)` });
   return x;
 }
-export async function reprintClosed(env, ref, who) {
-  const x = await closedRec(env, ref);
+export async function reprintClosed(env, ref, who, day = dayKey()) {
+  const x = await closedRec(env, ref, day);
   if (!x?.dishes?.length) return false;
-  const bill = { total: x.gross || (x.sum - (x.tip || 0)), disc: x.disc, tip: (x.tip || 0) - (x.ktip || 0), ktip: x.ktip, log: [{ lines: x.dishes.map(([n, q, sum]) => `${q}× ${n} — ${sum}`) }] };
+  const bill = { total: x.gross || (x.sum - (x.tip || 0)), disc: x.disc, ...(x.discSum != null ? { discSum: x.discSum } : {}), tip: (x.tip || 0) - (x.ktip || 0), ktip: x.ktip, log: [{ lines: x.dishes.map(([n, q, sum]) => `${q}× ${n} — ${sum}`) }] };
   await queuePrint(env, 'receipt', await receipt(env, { table: x.t, bill, final: true, pay: x.card ? 'card' : 'cash', by: who }));
   return true;
 }
@@ -373,12 +385,12 @@ async function _addExpense(env, e) { const k = 'exp:' + dayKey(); const l = awai
 async function _delExpense(env, i) { const k = 'exp:' + dayKey(); const l = await getExp(env); if (!l[+i]) return false; l[+i].del = 1; await env.DB.put(k, JSON.stringify(l)); return true; }
 async function _restoreExpense(env, i) { const k = 'exp:' + dayKey(); const l = await getExp(env); if (!l[+i]?.del) return false; delete l[+i].del; await env.DB.put(k, JSON.stringify(l)); return true; }
 // ---------- рух коштів (не витрати): внесення / вилучення готівки, обмін картка ↔ готівка ----------
-// type: in (+готівка) · out (−готівка) · k2c (з картки в готівку) · c2k (з готівки на картку)
-export const MOVE = { in: '➕ Внесення готівки', out: '➖ Вилучення готівки', k2c: '🔁 Картка → готівка', c2k: '🔁 Готівка → картка', kout: '➖ Вилучення з картки' };
+// type: in (+готівка) · out (−готівка) · k2c (з картки в готівку) · c2k (з готівки на картку) · kin (+картка) · kout (−картка)
+export const MOVE = { in: '➕ Внесення готівки', out: '➖ Вилучення готівки', k2c: '🔁 Картка → готівка', c2k: '🔁 Готівка → картка', kin: '➕ Внесення на картку', kout: '➖ Вилучення з картки' };
 // службові рухи (не вводяться вручну): видача чайових
 export const MOVE_ALL = { ...MOVE, tipc: '💝 Чайові видано готівкою', tipk: '💝 Чайові видано з картки', adjc: '✏️ Звірка готівки', adjk: '✏️ Звірка картки' };
 export const moveCash = m => m.del ? 0 : ({ in: 1, out: -1, k2c: 1, c2k: -1, tipc: -1, adjc: 1 }[m.type] || 0) * m.sum;
-export const moveCard = m => m.del ? 0 : ({ k2c: -1, c2k: 1, tipk: -1, kout: -1, adjk: 1 }[m.type] || 0) * m.sum;
+export const moveCard = m => m.del ? 0 : ({ k2c: -1, c2k: 1, kin: 1, tipk: -1, kout: -1, adjk: 1 }[m.type] || 0) * m.sum;
 export const getMov = async (env, day = dayKey()) => (await env.DB.get('mov:' + day, 'json')) || [];
 async function _addMove(env, m) {
   if (!MOVE[m.type] || !(m.sum > 0)) return null;
@@ -474,7 +486,9 @@ export function dishResolver(menu) {
 }
 
 // ---------- зміна (відкрити / закрити касу) ----------
-const dayStart = (t = Date.now()) => { const [h, m, x] = new Date(t).toLocaleTimeString('en-GB', { timeZone: TZ, hour12: false }).split(':').map(Number); return t - ((h % 24) * 3600 + m * 60 + x) * 1000 - (t % 1000); };
+const midnight = t => { const [h, m, x] = new Date(t).toLocaleTimeString('en-GB', { timeZone: TZ, hour12: false }).split(':').map(Number); return t - ((h % 24) * 3600 + m * 60 + x) * 1000 - (t % 1000); };
+// початок робочого дня (03:00), до якого належить момент t
+const dayStart = (t = Date.now()) => midnight(t - DAY_START_H * 3600e3) + DAY_START_H * 3600e3;
 export const getShift = async env => env.DB.get('shift', 'json');
 const dayList = (from, to) => { const out = []; for (let t = Date.parse(from + 'T12:00:00Z'); out.length < 5000; t += 86400e3) { const d = new Date(t).toISOString().slice(0, 10); out.push(d); if (d >= to) break; } return out; };
 // підсумок з моменту відкриття зміни (або з початку дня, якщо зміна не відкрита)
@@ -483,7 +497,8 @@ export async function shiftData(env) {
   const from = s?.opened || dayStart();
   const days = dayList(dayKey(from), dayKey(now));
   const [cl, ex, mv] = await Promise.all([env.DB.getMany(days.map(d => 'closed:' + d), 'json'), env.DB.getMany(days.map(d => 'exp:' + d), 'json'), env.DB.getMany(days.map(d => 'mov:' + d), 'json')]);
-  const tsOf = (x, d) => x.ts || (/^\d\d:\d\d$/.test(x.at || '') ? dayStart(Date.parse(d + 'T12:00:00Z')) + (+x.at.slice(0, 2) * 60 + +x.at.slice(3)) * 60e3 : 0);
+  // старі записи без ts: час «00:30» робочого дня d — це вже наступна календарна доба
+  const tsOf = (x, d) => { if (x.ts) return x.ts; if (!/^\d\d:\d\d$/.test(x.at || '')) return 0; const h = +x.at.slice(0, 2), mins = (h < DAY_START_H ? h + 24 : h) * 60 + +x.at.slice(3); return midnight(Date.parse(d + 'T12:00:00Z')) + mins * 60e3; };
   const inShift = (x, d) => tsOf(x, d) >= from;
   const recs = days.flatMap((d, i) => (cl[i] || []).filter(x => !x.del && !x.rm && inShift(x, d)));
   const exps = days.flatMap((d, i) => (ex[i] || []).filter(x => !x.del && inShift(x, d)));
@@ -594,7 +609,7 @@ export async function reportRange(env, from, to) {
   const [cl, ex, zz, mm, vv] = await Promise.all(['closed:', 'exp:', 'z:', 'mov:', 'void:'].map(p => env.DB.getMany(days.map(d => p + d), 'json')));
   return {
     from, to,
-    checks: days.flatMap((d, i) => (cl[i] || []).filter(x => !x.del && !x.rm).map(x => ({ d, at: x.at, t: x.t, sum: x.sum, cash: x.cash ?? x.sum, card: x.card || 0, by: x.by || '', disc: x.discSum || 0, pct: x.disc || 0, tip: x.tip || 0, tipSplit: tipSplitOf(x), dishes: x.dishes || [], voids: x.voids || [] }))),
+    checks: days.flatMap((d, i) => (cl[i] || []).filter(x => !x.del && !x.rm).map(x => ({ d, at: x.at, t: x.t, sum: x.sum, cash: x.cash ?? x.sum, card: x.card || 0, by: x.by || '', w: x.w || x.by || '', disc: x.discSum || 0, pct: x.disc || 0, tip: x.tip || 0, tipSplit: tipSplitOf(x), dishes: x.dishes || [], voids: x.voids || [] }))),
     voids: days.flatMap((d, i) => (vv[i] || []).map(x => ({ d, ...x }))),
     removed: days.flatMap((d, i) => (cl[i] || []).filter(x => x.rm).map(x => ({ d, at: x.at, t: x.t, sum: x.sum, by: x.by || '' }))),
     exp: days.flatMap((d, i) => (ex[i] || []).filter(x => !x.del).map(x => ({ d, at: x.at, sum: x.sum, src: x.src, note: x.note || '', by: x.by || '' }))),
@@ -623,7 +638,7 @@ export async function reportBreakdown(env, from, to, by) {
 // 🕵️ контроль по офіціантах: чеки, виручка, скасування, знижки, чайові
 export function controlData(r) {
   const m = {}, W = n => m[n || '—'] = m[n || '—'] || { name: n || '—', checks: 0, sum: 0, voidN: 0, voidSum: 0, discN: 0, discSum: 0, discMax: 0, tip: 0, tipN: 0, tables: 0, tableSum: 0 };
-  for (const c of r.checks) { const w = W(c.by); w.checks++; w.sum += c.sum; if (c.disc) { w.discN++; w.discSum += c.disc; w.discMax = Math.max(w.discMax, c.pct || 0); } { const v = (c.tipSplit || {})[c.by || '—'] || 0; if (v) { w.tip += v; w.tipN++; } } }
+  for (const c of r.checks) { const w = W(c.by); w.checks++; w.sum += c.sum; if (c.disc) { w.discN++; w.discSum += c.disc; w.discMax = Math.max(w.discMax, c.pct || 0); } { const wn = c.w || c.by, v = (c.tipSplit || {})[wn || '—'] || 0; if (v) { const ww = W(wn); ww.tip += v; ww.tipN++; } } }
   for (const v of r.voids || []) { const w = W(v.by); if (v.table) { w.tables++; w.tableSum += v.sum; } else { w.voidN++; w.voidSum += v.sum; } }
   return Object.values(m).map(w => ({ ...w, voidPct: w.sum ? Math.round(w.voidSum / (w.sum + w.voidSum) * 1000) / 10 : 0 })).sort((a, b) => b.voidSum + b.discSum - a.voidSum - a.discSum);
 }
@@ -683,7 +698,8 @@ export async function kitchenStats(env, from, to) {
 }
 
 // ---------- стоп-лист ----------
-export async function setHidden(env, id, hidden) {
+export const setHidden = (env, ...a) => menuLock(env, () => _setHidden(env, ...a));
+async function _setHidden(env, id, hidden) {
   const menu = await getMenu(env); const it = menu.categories.flatMap(c => c.items).find(i => i.id === id);
   if (!it) return null;
   if (hidden) it.hidden = true; else delete it.hidden;
@@ -743,7 +759,12 @@ export async function resetAll(env) {
 export async function bump(env, ...a) { return L(env, a[0], () => _bump(env, ...a)); }
 async function logClosed(env, ...a) { return L(env, 'closed:' + dayKey(), () => _logClosed(env, ...a)); }
 export async function logEvent(env, ...a) { return L(env, 'ev:' + dayKey(), () => _logEvent(env, ...a)); }
-export async function acceptOrder(env, ...a) { return L(env, 'ord:' + a[0], () => _acceptOrder(env, ...a)); }
+export async function acceptOrder(env, ...a) {
+  const ok = await L(env, 'ord:' + a[0], () => _acceptOrder(env, ...a));
+  // хто прийняв замовлення гостя — офіціант стола (якщо ще не призначений); окремо від замка ord: — без взаємного блокування з rejectOrder
+  if (ok && a[1]) { const o = await env.DB.get('ord:' + a[0], 'json'); if (o?.t) await L(env, 'bills', async () => { const b = await getBill(env, o.t); if (b.total > 0 && !b.waiter) { b.waiter = a[1]; await putBill(env, o.t, b); } }); }
+  return ok;
+}
 export async function rejectOrder(env, ...a) { return L(env, ['ord:' + a[0], 'bills'], () => _rejectOrder(env, ...a)); }
 export async function addWaiterOrder(env, ...a) { return L(env, 'bills', () => _addWaiterOrder(env, ...a)); }
 export async function removeOne(env, ...a) { return L(env, 'bills', () => _removeOne(env, ...a)); }
@@ -758,10 +779,11 @@ export async function markCook(env, ...a) { return L(env, 'cooks:' + dayKey(), (
 export async function tipBalances(env, ...a) { return L(env, 'tipbal', () => _tipBalances(env, ...a)); }
 export async function addTipBal(env, ...a) { return L(env, 'tipbal', () => _addTipBal(env, ...a)); }
 export async function payTips(env, ...a) { return L(env, ['tipbal', 'tippay:' + dayKey(), 'mov:' + dayKey()], () => _payTips(env, ...a)); }
-export async function delClosed(env, ...a) { return L(env, 'closed:' + dayKey(), () => _delClosed(env, ...a)); }
-export async function restoreClosed(env, ...a) { return L(env, 'closed:' + dayKey(), () => _restoreClosed(env, ...a)); }
-export async function reopenClosed(env, ...a) { return L(env, ['bills', 'closed:' + dayKey()], () => _reopenClosed(env, ...a)); }
-export async function restoreTable(env, ...a) { return L(env, ['bills', 'closed:' + dayKey()], () => _restoreTable(env, ...a)); }
+const cDay = d => isDay(d) && d <= dayKey() ? d : dayKey();
+export async function delClosed(env, ref, day) { day = cDay(day); return L(env, 'closed:' + day, () => _delClosed(env, ref, day)); }
+export async function restoreClosed(env, ref, who, day) { day = cDay(day); return L(env, 'closed:' + day, () => _restoreClosed(env, ref, who, day)); }
+export async function reopenClosed(env, ref, who, day) { day = cDay(day); return L(env, ['bills', 'closed:' + day], () => _reopenClosed(env, ref, who, day)); }
+export async function restoreTable(env, ref, who, day) { day = cDay(day); return L(env, ['bills', 'closed:' + day, 'void:' + day], () => _restoreTable(env, ref, who, day)); }
 export async function addExpense(env, ...a) { return L(env, 'exp:' + dayKey(), () => _addExpense(env, ...a)); }
 export async function delExpense(env, ...a) { return L(env, 'exp:' + dayKey(), () => _delExpense(env, ...a)); }
 export async function restoreExpense(env, ...a) { return L(env, 'exp:' + dayKey(), () => _restoreExpense(env, ...a)); }

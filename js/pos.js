@@ -332,7 +332,7 @@
       if (S.view === 'kq') await loadKq();
       if (S.view === 'cash') S.data.shift = await api('shift');
       if (S.view === 'reports') { if (!S.menu) await loadMenu(); await loadReport(); }
-      if (S.view === 'closed') S.data.closed = (await api('closed')).list;
+      if (S.view === 'closed') { const r = await api('closed', { day: S.cday || '' }); S.data.closed = r.list; S.data.cday = r.day; S.data.ctoday = r.today; }
       if (S.view === 'settings') { S.data.staff = await api('staff'); S.data.wifi = await api('wifi'); }
       if (['stop', 'menu'].includes(S.view) && !S.menu) await loadMenu();
     } catch {}
@@ -361,9 +361,11 @@
   addEventListener('resize', () => { if (S.view === 'hall' && S.token) { $('#main')._h = ''; renderMain(); } });
   const payL = x => x.card ? '💳 карта' : '💵 готівка';
   function closedHTML() {
-    const l = S.data.closed; if (!l) return '<div class="head"><h1>Закриті сьогодні</h1></div><div class="muted">Завантаження…</div>';
+    const l = S.data.closed; if (!l) return '<div class="head"><h1>Закриті</h1></div><div class="muted">Завантаження…</div>';
+    const isToday = !S.data.cday || S.data.cday === S.data.ctoday, dTitle = isToday ? 'сьогодні' : S.data.cday.split('-').reverse().join('.');
+    const nav = `<button class="btn sm" data-a="cDay" data-v="-1">◀</button>${isToday ? '' : '<button class="btn sm" data-a="cDay" data-v="1">▶</button><button class="btn sm" data-a="cDay" data-v="0">Сьогодні</button>'}`;
     const gone = x => x.del || x.rm, ok = l.filter(x => !gone(x));
-    return `<div class="head"><h1>Закриті сьогодні</h1><div class="stat">Рахунків<b>${ok.length}</b></div><div class="stat">Разом<b class="money">${money(ok.reduce((s, x) => s + x.sum, 0))}</b></div>
+    return `<div class="head"><h1>Закриті ${dTitle}</h1>${nav}<div class="stat">Рахунків<b>${ok.length}</b></div><div class="stat">Разом<b class="money">${money(ok.reduce((s, x) => s + x.sum, 0))}</b></div>
       <div class="stat">💵<b class="money">${money(ok.reduce((s, x) => s + (x.cash ?? x.sum), 0))}</b></div><div class="stat">💳<b class="money">${money(ok.reduce((s, x) => s + (x.card || 0), 0))}</b></div></div>
       <div class="cards">${[...l].reverse().map((x, i) => { const ref = x.id || (l.length - 1 - i); return `<div class="card" style="${gone(x) ? 'opacity:.45' : ''}"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
         <h3 style="margin:0;flex:1">${x.at} · Стіл ${x.t} · <span class="money">${money(x.sum)}</span> ${x.reopen ? '↩️ відкрито знову' : x.restored ? '↩️ стіл відновлено' : x.del ? '🗑 стіл видалено' : x.rm ? '🧹 знято з виручки' : payL(x)}${x.disc ? ` · знижка ${x.disc}%` : ''}</h3><span class="muted">${esc(x.by || '')}</span>
@@ -372,7 +374,7 @@
         ${isAdmin() && x.rm && !x.reopen && !x.del ? `<button class="btn sm green" data-a="cBack" data-ref="${ref}">↩️ У виручку</button>` : ''}
         ${isAdmin() && x.del && !x.restored && x.dishes?.length ? `<button class="btn sm green" data-a="tBack" data-ref="${ref}">↩️ Відновити стіл</button>` : ''}</div>
         ${x.dishes?.length ? `<div class="muted" style="margin-top:8px">${x.dishes.map(([n, q, s]) => `${q}× ${esc(n)} — ${s}`).join(' · ')}</div>` : ''}${x.tip ? `<div class="muted" style="margin-top:4px">💝 в т.ч. чайові ${money(x.tip)}</div>` : ''}
-        ${x.voids?.length ? `<div class="voids">🚫 Скасовано:${x.voids.map(v => `<div>${v.at} · −${money(v.sum)} ${esc(v.name)} — <i>${esc(v.reason)}</i> <span class="muted">(${esc(v.by)})</span></div>`).join('')}</div>` : ''}</div>`; }).join('') || '<div class="muted">Сьогодні закритих рахунків ще немає</div>'}</div>`;
+        ${x.voids?.length ? `<div class="voids">🚫 Скасовано:${x.voids.map(v => `<div>${v.at} · −${money(v.sum)} ${esc(v.name)} — <i>${esc(v.reason)}</i> <span class="muted">(${esc(v.by)})</span></div>`).join('')}</div>` : ''}</div>`; }).join('') || `<div class="muted">${isToday ? 'Сьогодні закритих рахунків ще немає' : 'Цього дня закритих рахунків немає'}</div>`}</div>`;
   }
   // ---------- 👨‍🍳 кухонний екран ----------
   async function loadKq() {
@@ -451,7 +453,7 @@
     const tiles = [['🧾 Чеків', z.checks], ['Ø Середній чек', z.checks ? money(z.total / z.checks) : '—'], ['🏷 Знижки', money(z.disc)], ['💝 Чайові', money(z.tip || 0)], ['💸 Витрати', money(z.exCash + z.exCard)], ['📈 Чистими', money(z.net), 'green'], ['⏳ Відкрито в залі', z.openTables ? `${money(z.openSum)} · ${z.openTables} ст.` : '—']];
     const tilesH = `<div class="widgets">${tiles.map(([l, v, c]) => `<div class="widget ${c || ''}"><span>${l}</span><b class="money">${v}</b></div>`).join('')}</div>`;
     // 3. операції
-    const ops = `<div class="card"><h3>⚡ Операції</h3><div class="opsg"><button class="btn" data-a="expense">💸 Витрата</button><button class="btn" data-a="cMove" data-t="in">➕ Внести</button><button class="btn" data-a="cMove" data-t="out">➖ Вилучити</button><button class="btn" data-a="cMove" data-t="x">🔁 Обмін</button><button class="btn" data-a="cMove" data-t="kout">➖ З картки</button></div>
+    const ops = `<div class="card"><h3>⚡ Операції</h3><div class="opsg"><button class="btn" data-a="expense">💸 Витрата</button><button class="btn" data-a="cMove" data-t="in">➕ Внести</button><button class="btn" data-a="cMove" data-t="out">➖ Вилучити</button><button class="btn" data-a="cMove" data-t="x">🔁 Обмін</button><button class="btn" data-a="cMove" data-t="kin">➕ На картку</button><button class="btn" data-a="cMove" data-t="kout">➖ З картки</button></div>
       <div class="muted" style="font-size:12px;margin-top:8px">Витрата — купили щось · Внести / вилучити — поклали чи забрали гроші · Обмін — картка ↔ готівка · З картки — зняли з рахунку ФОП (собі, податки)</div></div>`;
     // 4. готівка за весь час
     const kv = (l, v, cls = '') => `<div class="kv ${cls}"><span>${l}</span><b class="money">${v}</b></div>`;
@@ -470,7 +472,7 @@
     const journal = `<div class="card"><h3>📒 Журнал за сьогодні <span class="muted" style="font-weight:400;font-size:13px">· ${J.length}</span></h3>${J.length ? J.map(x => `<div class="jr ${x.cls}${x.del ? ' del' : ''}"><span class="muted">${x.at}</span><span>${x.ic}</span><span class="jt">${x.t}</span><b class="money">${x.v}</b>${!x.del && x.btn ? x.btn : x.del && x.back ? x.back : '<i></i>'}</div>`).join('') : '<div class="muted">Поки порожньо</div>'}</div>`;
     return `<div class="head"><h1>Каса</h1></div>${balH}${hero}${tilesH}<div class="cash-grid"><div class="col">${journal}</div><div class="col">${tipsH}${ops}${mvH}${all}</div></div>`;
   }
-  const MOVE = { in: '➕ Внесення', out: '➖ Вилучення', k2c: '🔁 Картка → готівка', c2k: '🔁 Готівка → картка', tipc: '💝 Чайові (готівка)', tipk: '💝 Чайові (картка)', kout: '➖ Вилучення з картки', adjc: '✏️ Звірка готівки', adjk: '✏️ Звірка картки' };
+  const MOVE = { in: '➕ Внесення', out: '➖ Вилучення', k2c: '🔁 Картка → готівка', c2k: '🔁 Готівка → картка', tipc: '💝 Чайові (готівка)', tipk: '💝 Чайові (картка)', kin: '➕ Внесення на картку', kout: '➖ Вилучення з картки', adjc: '✏️ Звірка готівки', adjk: '✏️ Звірка картки' };
   // розшифровка залишку + звірка з фактом
   async function balInfo(src) {
     const B = S.data.shift?.bal; if (!B) return; const c = src === 'card';
@@ -485,7 +487,7 @@
   }
   async function cashMove(t) {
     if (t === 'x') { t = await choose('🔁 Обмін', 'Звідки куди переходять гроші?', [{ label: '💳 Картка → 💵 готівка', val: 'k2c' }, { label: '💵 Готівка → 💳 картка', val: 'c2k' }]); if (!t) return; }
-    const v = await modal({ title: MOVE[t], text: t === 'k2c' ? 'Зняли з картки й поклали в касу' : t === 'c2k' ? 'Взяли з каси й поклали на картку' : t === 'in' ? 'Поклали гроші в касу' : t === 'kout' ? 'Зняли з рахунку ФОП: собі, податки, закупка' : 'Забрали гроші з каси',
+    const v = await modal({ title: MOVE[t], text: t === 'k2c' ? 'Зняли з картки й поклали в касу' : t === 'c2k' ? 'Взяли з каси й поклали на картку' : t === 'in' ? 'Поклали гроші в касу' : t === 'kin' ? 'Зарахували гроші на рахунок/картку ФОП' : t === 'kout' ? 'Зняли з рахунку ФОП: собі, податки, закупка' : 'Забрали гроші з каси',
       body: '<div class="form"><input id="mSum" inputmode="decimal" placeholder="Сума, ₴"><input id="mNote" placeholder="Коментар (необовʼязково)"></div>', buttons: [{ label: 'Записати', val: 1, cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
     const sum = v && +$('#mSum').value.replace(',', '.'), note = v && $('#mNote').value; closeModal();
     if (v && sum > 0) { await act('cashMove', { type: t, sum, note }, '🔁 Записано'); loadView(); }
@@ -521,7 +523,7 @@
   const iso = t => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const PER = [['d', 'Сьогодні'], ['y', 'Вчора'], ['w', '7 днів'], ['30', '30 днів'], ['m', 'Цей місяць'], ['pm', 'Мин. місяць'], ['yr', 'Рік'], ['all', 'За весь час'], ['c', 'Свій період']];
   function perRange(p) {
-    const now = new Date(), day = 864e5, y = now.getFullYear(), mo = now.getMonth();
+    const now = new Date(Date.now() - 3 * 3600e3), day = 864e5, y = now.getFullYear(), mo = now.getMonth(); // робочий день — з 03:00 (як на сервері)
     if (p === 'd') return [iso(now), iso(now)];
     if (p === 'y') return [iso(now - day), iso(now - day)];
     if (p === 'w') return [iso(now - 6 * day), iso(now)];
@@ -771,13 +773,14 @@
       case 'delTable': { const reason = await voidReason(`Видалити весь стіл ${t}? Сума НЕ піде у виручку`); if (reason) { const r = await act('delete', { t, reason }, `🗑 Стіл ${t} видалено`); if (r) closeSheet(); } break; }
       case 'accept': act('accept', { oid: el.dataset.oid }, '✅ Прийнято — пішло на кухню'); break;
       case 'reject': if (await confirmBox('Відхилити замовлення гостя?', 'Позиції приберуться з рахунку, на кухню не піде, гість побачить «відхилено»')) { await act('reject', { oid: el.dataset.oid }, '❌ Відхилено'); loadState().catch(() => {}); } break;
-      case 'cBack': if (await confirmBox('Повернути рахунок у виручку?', 'Сума, страви й чайові знову зарахуються')) { await act('closedBack', { ref: el.dataset.ref }, '↩️ Повернуто у виручку'); loadView(); } break;
-      case 'cReopen': if (await confirmBox('Відкрити рахунок знову?', 'Він зніметься з виручки й повернеться на стіл — виправите й закриєте заново')) { const r = await act('closedReopen', { ref: el.dataset.ref }, '↩️ Рахунок знову на столі'); loadView(); loadState().catch(() => {}); if (r?.x) openTable(r.x.t); } break;
-      case 'tBack': if (await confirmBox('Відновити видалений стіл?', 'Страви повернуться на стіл')) { const r = await act('tableBack', { ref: el.dataset.ref }, '↩️ Стіл відновлено'); loadView(); loadState().catch(() => {}); if (r?.x) openTable(r.x.t); } break;
+      case 'cBack': if (await confirmBox('Повернути рахунок у виручку?', 'Сума, страви й чайові знову зарахуються')) { await act('closedBack', { ref: el.dataset.ref, day: S.data.cday }, '↩️ Повернуто у виручку'); loadView(); } break;
+      case 'cReopen': if (await confirmBox('Відкрити рахунок знову?', 'Він зніметься з виручки й повернеться на стіл — виправите й закриєте заново')) { const r = await act('closedReopen', { ref: el.dataset.ref, day: S.data.cday }, '↩️ Рахунок знову на столі'); loadView(); loadState().catch(() => {}); if (r?.x) openTable(r.x.t); } break;
+      case 'tBack': if (await confirmBox('Відновити видалений стіл?', 'Страви повернуться на стіл')) { const r = await act('tableBack', { ref: el.dataset.ref, day: S.data.cday }, '↩️ Стіл відновлено'); loadView(); loadState().catch(() => {}); if (r?.x) openTable(r.x.t); } break;
       case 'movBack': await act('moveBack', { i: +el.dataset.i }, '↩️ Відновлено'); loadView(); break;
       case 'expBack': await act('expenseBack', { i: +el.dataset.i }, '↩️ Відновлено'); loadView(); break;
-      case 'cPrint': act('closedPrint', { ref: el.dataset.ref }, '🖨 Чек відправлено'); break;
-      case 'cDel': if (await confirmBox('Видалити рахунок з виручки?', 'Сума, страви й замовлення віднімуться зі звітів')) await act('closedDel', { ref: el.dataset.ref }, '🧹 Видалено з виручки'); loadView(); break;
+      case 'cPrint': act('closedPrint', { ref: el.dataset.ref, day: S.data.cday }, '🖨 Чек відправлено'); break;
+      case 'cDay': { const v = +el.dataset.v, base = S.data.cday || S.data.ctoday; if (!v || !base) S.cday = ''; else { const d = new Date(base + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + v); const k = d.toISOString().slice(0, 10); S.cday = k >= S.data.ctoday ? '' : k; } S.data.closed = null; renderMain(); loadView(); break; }
+      case 'cDel': if (await confirmBox('Видалити рахунок з виручки?', 'Сума, страви й замовлення віднімуться зі звітів')) await act('closedDel', { ref: el.dataset.ref, day: S.data.cday }, '🧹 Видалено з виручки'); loadView(); break;
       case 'stopT': await act('stop', { id: el.dataset.id, hidden: el.dataset.h === '1' }); break;
       case 'pTest': act('printTest', {}, '🖨 Тест відправлено'); break;
       case 'pQr': { const n = await pickTable('QR меню', 'У кожного столу свій QR — замовлення одразу на цей стіл'); if (n) act('printQr', { t: n }, `🖨 QR столу ${n}`); break; }

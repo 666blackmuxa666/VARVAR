@@ -1,7 +1,7 @@
 // Черга друку для принтера в закладі (XP-80C через програму printer/varvar-print.ps1 на Windows).
 // Завдання = список рядків: [стиль, текст, текст-праворуч?]
 //   стилі: logo · big (великий жирний по центру) · c (по центру) · b (жирний) · l (звичайний) · lr (ліворуч + праворуч) · hr (риска) · gap
-import { hhmm, dayKey } from './ops.js';
+import { hhmm, dayKey, discAmt } from './ops.js';
 
 
 // черга живе в Durable Object: програма друку чекає на /pull (long-poll), і чек віддається миттєво
@@ -78,10 +78,10 @@ export async function receipt(env, { table, bill, final, pay, by }) {
     ...[...agg].flatMap(([name, a]) => [['item', name, `${a.sum}`], ['sub', `${a.q} × ${Math.round(a.sum / a.q)} грн`]]),
     ['dbl'],
     ['lr', 'Позицій', String(count)],
-    ...(bill.disc ? [['lr', 'Сума', `${bill.total} грн`], ['lr', `Знижка ${bill.disc}%`, `−${Math.round(bill.total * bill.disc / 100)} грн`]] : []),
-    ['total', final ? 'СПЛАЧЕНО' : 'ДО СПЛАТИ', `${bill.total - Math.round(bill.total * (bill.disc || 0) / 100)} грн`],
+    ...(bill.disc ? [['lr', 'Сума', `${bill.total} грн`], ['lr', `Знижка ${bill.disc}%`, `−${discAmt(bill)} грн`]] : []),
+    ['total', final ? 'СПЛАЧЕНО' : 'ДО СПЛАТИ', `${bill.total - discAmt(bill)} грн`],
     ...(bill.tip ? [['lr', 'Чайові', `${bill.tip} грн`]] : []), ...(bill.ktip ? [['lr', 'Подяка кухні', `${bill.ktip} грн`]] : []),
-    ...(bill.tip || bill.ktip ? [['lr', 'Разом з чайовими', `${bill.total - Math.round(bill.total * (bill.disc || 0) / 100) + (bill.tip || 0) + (bill.ktip || 0)} грн`]] : []),
+    ...(bill.tip || bill.ktip ? [['lr', 'Разом з чайовими', `${bill.total - discAmt(bill) + (bill.tip || 0) + (bill.ktip || 0)} грн`]] : []),
     ...(final && pay ? [['lr', 'Оплата', pay === 'card' ? 'Картка' : 'Готівка']] : []),
     ['gap'],
     ['c', 'Дякуємо, що завітали!'],
