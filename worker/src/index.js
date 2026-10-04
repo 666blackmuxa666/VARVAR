@@ -55,7 +55,8 @@ export default {
       }
       if (url.pathname === '/api/orders') { // статуси замовлень гостя: ?ids=a,b
         const ids = (url.searchParams.get('ids') || '').split(',').filter(x => /^[a-z0-9]{6,12}$/.test(x)).slice(0, 20);
-        const out = {}; for (const id of ids) { const o = await env.DB.get('ord:' + id, 'json'); out[id] = o && { s: o.s, t: o.t, by: o.by, at: o.at }; }
+        const out = {}, all = ids.length ? await env.DB.getMany(ids.map(id => 'ord:' + id), 'json') : []; // один запит замість N
+        ids.forEach((id, i) => { const o = all[i]; out[id] = o && { s: o.s, t: o.t, by: o.by, at: o.at }; });
         return json(out);
       }
       if (url.pathname === '/api/pos/live') return posLive(req, env, url);
@@ -117,7 +118,18 @@ async function callWaiter(b, ip, env) {
   return [{ ok: true, id: oid }, 200];
 }
 
-async function order(b, ip, env) { return env.DB.locked('bills', () => orderRaw(b, ip, env)); } // 🔒 рахунки — по одному
+// 🔒 рахунки — по одному; Telegram — вже після замка (повільна мережа не тримає всі столи і не перевищує 8 с запобіжника)
+async function order(b, ip, env) {
+  const r = await env.DB.locked('bills', () => orderRaw(b, ip, env));
+  if (!r.send) return r;
+  const { oid, table, msg, lines } = r.send;
+  const res = await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: msg, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[
+    { text: '✅ Прийняв', callback_data: `acc:${table}:${oid}` }, ...(lines.length ? [{ text: '❌ Відхилити', callback_data: `rej:${table}:${oid}` }] : [])], [{ text: '🧾 Закрити стіл', callback_data: 'cls:' + table }]] } }).catch(() => null);
+  const mid = res && await res.json().then(j => j.result?.message_id).catch(() => null);
+  // mid — щоб «Прийняв» з каси (POS) оновив і повідомлення в Telegram; статус могли вже змінити — не перезаписуємо
+  if (mid) await env.DB.locked('ord:' + oid, async () => { const o = await env.DB.get('ord:' + oid, 'json'); if (o) await env.DB.put('ord:' + oid, JSON.stringify({ ...o, mid }), { expirationTtl: BILL_TTL }); });
+  return [r[0], r[1]];
+}
 async function orderRaw(b, ip, env) {
   const table = tableNum(b.table, env), type = b.type;
   if (!table || !TYPES[type]) return [{ error: 'bad_request' }, 400];
@@ -135,11 +147,13 @@ async function orderRaw(b, ip, env) {
   for (const it of (Array.isArray(b.items) ? b.items : []).slice(0, 60)) {
     const p = PRICES[it.id], q = Math.min(50, Math.max(0, parseInt(it.q, 10) || 0));
     if (!p || !q) continue;
-    const price = typeof p.p === 'number' ? p.p : p.p[it.v];
-    if (!price) continue;
+    // лише власні ключі: v='toString' тощо давало NaN і обнуляло рахунок столу
+    const price = typeof p.p === 'number' ? p.p : Object.hasOwn(p.p, String(it.v)) ? p.p[it.v] : 0;
+    if (!(price > 0)) continue;
+    const n = p.n + (typeof p.p === 'number' ? '' : ` ${it.v} ${p.s || 'л'}`); // назва як у каси (itemsFromMenu) — один рядок у рахунку
     sum += price * q;
-    sold.push({ n: p.n + (typeof p.p === 'number' ? '' : ` ${it.v} л`), q, sum: price * q });
-    lines.push(`${q}× ${p.n}${typeof p.p === 'number' ? '' : ` ${it.v} л`} — ${price * q}`);
+    sold.push({ n, q, sum: price * q });
+    lines.push(`${q}× ${n} — ${price * q}`);
   }
   if (type !== 'check' && !lines.length) return [{ error: 'empty' }, 400];
   if (sum > MAX_ORDER) return [{ error: 'too_big' }, 400];
@@ -175,19 +189,18 @@ async function orderRaw(b, ip, env) {
     wantsCheck && (tip || ktip) ? `→ разом до сплати <b>${payable(bill) + tip + ktip} грн</b>` : '',
   ].filter((x, i, arr) => x !== '' || (arr[i - 1] !== '' && i > 0)).join('\n').trim();
 
-  const r = await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: msg, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[
-    { text: '✅ Прийняв', callback_data: `acc:${table}:${oid}` }, ...(lines.length ? [{ text: '❌ Відхилити', callback_data: `rej:${table}:${oid}` }] : [])], [{ text: '🧾 Закрити стіл', callback_data: 'cls:' + table }]] } });
-  const mid = await r.json().then(j => j.result?.message_id).catch(() => null);
-  // mid/html — щоб «Прийняв» з каси (POS) оновив і повідомлення в Telegram
+  // html — щоб «Прийняв» оновив повідомлення в Telegram (mid допишемо після відправки)
   // на кухню (екран і бігунок) — лише після «✅ Прийняв» (acceptOrder); sold — щоб «❌ Відхилити» відняв продажі
-  await env.DB.put('ord:' + oid, JSON.stringify({ s: 'new', t: table, mid, html: msg, ...(lines.length ? { lines, comment, kind: TYPES[type], sum, sold } : {}) }), { expirationTtl: BILL_TTL });
-  await logEvent(env, { k: lines.length ? 'guest' : 'check', t: table, oid, s: 'new', kind: TYPES[type], lines, comment, sum, check: wantsCheck, pay, tip, ...(lines.length && prevItems.length ? { prev: prevItems } : {}) });
-  if (lines.length) {
-    await addStat(env, 'orders', 1); await addDishes(env, sold);
-  }
-  await putBill(env, table, bill);
-  await env.DB.put('rl:' + dev, String(Date.now()), { expirationTtl: 60 });
-  return [{ ok: true, id: oid, orderTotal: sum, tableTotal: bill.total }, 200];
+  await putBill(env, table, bill); // рахунок першим — каса бачить замовлення одразу
+  await Promise.all([
+    env.DB.put('ord:' + oid, JSON.stringify({ s: 'new', t: table, html: msg, ...(lines.length ? { lines, comment, kind: TYPES[type], sum, sold } : {}) }), { expirationTtl: BILL_TTL }),
+    logEvent(env, { k: lines.length ? 'guest' : 'check', t: table, oid, s: 'new', kind: TYPES[type], lines, comment, sum, check: wantsCheck, pay, tip, ...(lines.length && prevItems.length ? { prev: prevItems } : {}) }),
+    ...(lines.length ? [addStat(env, 'orders', 1), addDishes(env, sold)] : []),
+    env.DB.put('rl:' + dev, String(Date.now()), { expirationTtl: 60 }),
+  ]);
+  const res = [{ ok: true, id: oid, orderTotal: sum, tableTotal: bill.total }, 200];
+  res.send = { oid, table, msg, lines };
+  return res;
 }
 
 // не частіше ніж раз на 30 хв: підказка персоналу, якщо змінився IP роутера

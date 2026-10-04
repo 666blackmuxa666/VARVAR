@@ -450,3 +450,41 @@ body.cook .more-btn { display: none !important; }
 .ev.kmsg { background: linear-gradient(135deg, #3a1450, #22102e); border: 2px solid #bf5af2; } .ev.kmsg .top b { color: #e0aaff; }
 .ev.cooking .top b { color: #ff9f0a; }
 .ev.rej .lines{text-decoration:line-through;opacity:.5}
+
+/* ---------- 📊 звіти ---------- */
+.rhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.rhead h1 { margin: 0 0 2px; } .rhead .btn { white-space: nowrap; flex: none; }
+.chips.scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.chips.scroll::-webkit-scrollbar { display: none; }
+.chip.sm { padding: 5px 10px; font-size: 12px; }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0 10px; }
+.kpi { background: linear-gradient(160deg, var(--card2), var(--card)); border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; display: grid; gap: 4px; align-content: start; }
+.kpi span { color: var(--muted); font-size: 13px; font-weight: 600; }
+.kpi b { font-size: 28px; letter-spacing: -.6px; line-height: 1.1; }
+.kpi.accent b { color: var(--accent); } .kpi.green b { color: var(--green); } .kpi.red b { color: var(--red); }
+.dl { font-style: normal; font-size: 12px; font-weight: 700; color: var(--muted); }
+.dl.up { color: var(--green); } .dl.down { color: var(--red); }
+.pills { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 14px; }
+.pill { background: var(--card); border-radius: 14px; padding: 10px 14px; display: grid; gap: 2px; align-content: start; }
+.pill span { color: var(--muted); font-size: 12px; } .pill b { font-size: 18px; } .pill small { color: var(--muted); font-size: 11px; }
+.pill.wide { grid-column: span 2; gap: 8px; }
+.split { height: 10px; border-radius: 99px; background: var(--blue); overflow: hidden; } .split i { display: block; height: 100%; background: var(--green); }
+.split-l { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13px; } .split-l span { color: var(--text); font-size: 13px; }
+.rsec { margin: 4px 0 10px; } .rsec button { font-size: 15px; padding: 11px 10px; }
+.chips.sub { margin-bottom: 12px; }
+.dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px; }
+.dash .wide { grid-column: 1 / -1; }
+.cols { display: flex; align-items: flex-end; gap: 3px; height: 180px; padding-top: 6px; }
+.cols .c { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; border-radius: 6px; }
+.cols .c i { display: block; width: 100%; max-width: 38px; background: linear-gradient(180deg, var(--accent), #f2c14e88); border-radius: 6px 6px 2px 2px; transition: height .3s; }
+.cols .c:hover i { background: var(--text); }
+.cols .c small { height: 16px; margin-top: 4px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.heat { display: grid; grid-template-columns: 28px repeat(var(--hc), 1fr); gap: 3px; align-items: center; }
+.heat b { font-size: 12px; color: var(--muted); font-weight: 600; } .heat small { font-size: 10px; color: var(--muted); text-align: center; }
+.heat i { display: block; aspect-ratio: 1.4; max-height: 30px; border-radius: 5px; background: var(--card2); box-shadow: inset 0 0 0 99px rgba(242, 193, 78, var(--a)); }
+.stack { display: flex; height: 14px; border-radius: 99px; overflow: hidden; margin-bottom: 10px; gap: 2px; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; }
+.bar .bl .pct { min-width: 46px; text-align: right; font-size: 12px; }
+@media (max-width: 1100px) { .pills { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 900px) { .kpis { grid-template-columns: 1fr 1fr; } .pills { grid-template-columns: 1fr 1fr; } .kpi b { font-size: 22px; } .dash { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .pill.wide { grid-column: 1 / -1; } .cols { height: 140px; } .bar .bl .pct { display: none; } .rsec button { font-size: 13px; padding: 9px 4px; } }

@@ -28,6 +28,11 @@ const INSHE = [
     it('banquet', 'Банкетне обслуговування', 'Banquet service', 500), it('cork', 'Пробковий збір (свій алкоголь)', 'Corkage fee', 200),
     it('cake', 'Подача торта гостей', 'Cake service', 100), it('music', 'Замовлення пісні / музики', 'Music request', 100), it('deco', 'Оформлення столу / декор', 'Table decoration', 300)] },
 ];
+// 🔒 меню змінюють по одному (два планшети/бот одночасно не перезаписують зміни одне одного)
+export const menuLock = (env, fn) => env.DB.locked ? env.DB.locked('menu', fn) : fn();
+export const addCategory = (env, ...a) => menuLock(env, () => _addCategory(env, ...a));
+export const handleMenuText = (text, env, ...a) => menuLock(env, () => _handleMenuText(text, env, ...a));
+export const handleMenuPhoto = (msg, env, ...a) => menuLock(env, () => _handleMenuPhoto(msg, env, ...a));
 export async function saveMenu(env, menu) {
   const cur = await env.DB.get('menu');
   if (cur) await env.DB.put('menu_prev', cur);           // для «відмінити»
@@ -39,7 +44,7 @@ export function priceMap(menu) {
   const m = {};
   menu.categories.forEach(c => c.items.forEach(it => {
     if (it.hidden) return;
-    m[it.id] = { n: it.name.uk, p: it.variants ? Object.fromEntries(it.variants.map(v => [v.v, v.p])) : it.price };
+    m[it.id] = { n: it.name.uk, s: it.size, p: it.variants ? Object.fromEntries(it.variants.map(v => [v.v, v.p])) : it.price };
   }));
   return m;
 }
@@ -117,7 +122,7 @@ export const HELP = `<b>Як керувати меню</b> (пишіть зви�
 🧾 Рахунки: /tables, /close 5`;
 
 // новий розділ меню — у кінець списку (бот: «новий розділ Упакування», POS: «➕ Розділ»)
-export async function addCategory(env, name) {
+async function _addCategory(env, name) {
   name = String(name || '').trim().slice(0, 40); if (!name) return null;
   const menu = await getMenu(env);
   if (menu.categories.some(c => c.name.uk.toLowerCase() === name.toLowerCase())) return { error: 'Такий розділ уже є' };
@@ -127,7 +132,7 @@ export async function addCategory(env, name) {
 }
 
 // повертає текст відповіді або null (не схоже на команду меню)
-export async function handleMenuText(text, env, { canEdit = true } = {}) {
+async function _handleMenuText(text, env, { canEdit = true } = {}) {
   const t = text.trim(); let m;
   const NO = '🔐 Змінювати меню може лише адміністратор. Натисніть «🔐 Адмін».';
   const menu = await getMenu(env);
@@ -140,7 +145,7 @@ export async function handleMenuText(text, env, { canEdit = true } = {}) {
   }
   if ((m = t.match(/^(?:новий|додати|додай)\s+розділ\s+(.+)$/i))) {
     if (!canEdit) return NO;
-    const r = await addCategory(env, m[1]); if (r?.error) return r.error;
+    const r = await _addCategory(env, m[1]); if (r?.error) return r.error;
     return `📂 Розділ <b>${esc(r.c.name.uk)}</b> додано в кінець меню.\nДодати страву: <code>додати в ${esc(r.c.name.uk.toLowerCase())}: Назва, ціна 15</code>`;
   }
   if (/^(розділи|категорії|категории)$/i.test(t)) return menu.categories.map(c => `• ${esc(c.name.uk)} (${c.items.length})`).join('\n');
@@ -202,7 +207,7 @@ export async function handleMenuText(text, env, { canEdit = true } = {}) {
 }
 
 // фото з підписом «фото <назва>» → KV, віддається з /img/<id>
-export async function handleMenuPhoto(msg, env, tg) {
+async function _handleMenuPhoto(msg, env, tg) {
   const m = (msg.caption || '').trim().match(/^(фото|photo)\s+(.+)$/i);
   if (!m) return 'Щоб змінити фото, додайте підпис: «фото <назва страви>»';
   const menu = await getMenu(env);

@@ -1,11 +1,11 @@
 // API касової програми (pos.html). POST /api/pos {op, ...} з заголовком Authorization: Bearer <token>.
 // Живі оновлення: WebSocket /api/pos/live?token=… (див. store.js). Логіка — спільна з ботом (ops.js).
-import { getMenu, saveMenu, addCategory } from './menu.js';
+import { getMenu, saveMenu, addCategory, menuLock } from './menu.js';
 import { queuePrint, printStatus } from './print.js';
 import { QR_PRINT, TEST_JOB } from './bot.js';
 import { storeStub } from './store.js';
 import {
-  esc, money, hhmm, dayKey, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
+  esc, money, hhmm, dayKey, isDay, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
   topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenClosed, markCook, kitchenPct, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents,
 } from './ops.js';
@@ -41,8 +41,8 @@ export async function posApi(b, req, env) {
     case 'state': {
       if (me.role === 'cook') await markCook(env, me.name); // кухар на зміні — отримує частку чайових кухні
       const [rows, events, pr, shift, cl] = await Promise.all([openTables(env), getEvents(env), printStatus(env), getShift(env), getClosed(env)]);
-      const mine = cl.filter(x => !x.del && !x.rm && x.by === me.name);
-      const myTip = { sum: (await tipBalances(env))[me.name] || 0, today: mine.reduce((a, x) => a + (x.tip || 0), 0) }; // накопичені, ще не видані
+      const mine = cl.filter(x => !x.del && !x.rm);
+      const myTip = { sum: (await tipBalances(env))[me.name] || 0, today: mine.reduce((a, x) => a + ((x.tipSplit || {})[me.name] || (!x.tipSplit && x.by === me.name ? x.tip || 0 : 0)), 0) }; // накопичені, ще не видані
       return ok({ me, shift, myTip, n: tablesCount(env), tables: rows.map(r => ({ t: r.t, ...r.b, items: billItems(r.b), pay2: payable(r.b) })), events: events.slice(-120), printer: pr, now: Date.now() });
     }
     case 'menu': { const menu = await getMenu(env); return ok({ menu, fav: await getFav(env), groups: GROUPS.map(g => ({ ...g, cats: menu.categories.filter(c => groupOf(c.id) === g.id).map(c => c.id) })) }); }
@@ -93,12 +93,12 @@ export async function posApi(b, req, env) {
     case 'printQr': await queuePrint(env, 'qr', QR_PRINT(+b.t || 0)); return ok();
 
     // ---- закриті ----
-    case 'closed': return ok({ list: await getClosed(env) });
-    case 'closedPrint': return ok({ done: await reprintClosed(env, String(b.ref), who) });
-    case 'closedBack': { if (!admin) return needAdmin(); const x = await restoreClosed(env, String(b.ref), who); if (x) await notify(env, `🖥 ↩️ Рахунок стола ${x.t} (${money(x.sum)}, ${x.at}) повернуто у виручку — ${esc(who)}`); return ok({ x }); }
-    case 'closedReopen': { if (!admin) return needAdmin(); const x = await reopenClosed(env, String(b.ref), who); if (x) await notify(env, `🖥 ↩️ <b>Стіл ${x.t}</b>: закритий рахунок (${money(x.sum)}, ${x.at}) відкрито знову — ${esc(who)}`, tgBtns(x.t)); return ok({ x }); }
-    case 'tableBack': { if (!admin) return needAdmin(); const x = await restoreTable(env, String(b.ref), who); if (x) await notify(env, `🖥 ↩️ <b>Стіл ${x.t}</b> відновлено (${money(x.sum)}) — ${esc(who)}`, tgBtns(x.t)); return ok({ x }); }
-    case 'closedDel': { if (!admin) return needAdmin(); const x = await delClosed(env, String(b.ref)); if (x) await notify(env, `🖥 🧹 Закритий рахунок стола ${x.t} (${money(x.sum)}, ${x.at}) видалено з виручки — ${esc(who)}`); return ok({ x }); }
+    case 'closed': { const day = isDay(b.day) && b.day <= dayKey() ? b.day : dayKey(); return ok({ day, today: dayKey(), list: await getClosed(env, day) }); }
+    case 'closedPrint': return ok({ done: await reprintClosed(env, String(b.ref), who, isDay(b.day) ? b.day : undefined) });
+    case 'closedBack': { if (!admin) return needAdmin(); const x = await restoreClosed(env, String(b.ref), who, b.day); if (x) await notify(env, `🖥 ↩️ Рахунок стола ${x.t} (${money(x.sum)}, ${x.at}) повернуто у виручку — ${esc(who)}`); return ok({ x }); }
+    case 'closedReopen': { if (!admin) return needAdmin(); const x = await reopenClosed(env, String(b.ref), who, b.day); if (x) await notify(env, `🖥 ↩️ <b>Стіл ${x.t}</b>: закритий рахунок (${money(x.sum)}, ${x.at}) відкрито знову — ${esc(who)}`, tgBtns(x.t)); return ok({ x }); }
+    case 'tableBack': { if (!admin) return needAdmin(); const x = await restoreTable(env, String(b.ref), who, b.day); if (x) await notify(env, `🖥 ↩️ <b>Стіл ${x.t}</b> відновлено (${money(x.sum)}) — ${esc(who)}`, tgBtns(x.t)); return ok({ x }); }
+    case 'closedDel': { if (!admin) return needAdmin(); const x = await delClosed(env, String(b.ref), b.day); if (x) await notify(env, `🖥 🧹 Закритий рахунок стола ${x.t} (${money(x.sum)}, ${x.at}) видалено з виручки — ${esc(who)}`); return ok({ x }); }
   }
 
   // ---- далі лише адміністратор ----
@@ -126,7 +126,15 @@ export async function posApi(b, req, env) {
     case 'expenseDel': await delExpense(env, +b.i); return ok();
     case 'reset': return ok({ n: await resetAll(env) });
 
-    // меню
+    // меню (🔒 по одному — див. menuLock)
+    case 'menuSave': case 'catAdd': case 'menuDel': case 'menuUndo': case 'menuPhoto': return menuLock(env, () => menuOp(b, env, who));
+    default: return adminRest(b, env, who, ip, ok);
+  }
+}
+
+async function menuOp(b, env, who) {
+  const ok = (x = {}) => [{ ok: true, ...x }, 200];
+  switch (b.op) {
     case 'menuSave': return menuSave(env, b.item, who);
     case 'catAdd': { const r = await addCategory(env, b.name); if (!r || r.error) return [{ error: r?.error || 'Потрібна назва' }, 400]; await notify(env, `🖥 📂 Меню: новий розділ <b>${esc(r.c.name.uk)}</b> — ${esc(who)}`); return ok({ id: r.c.id }); }
     case 'menuDel': {
@@ -147,6 +155,11 @@ export async function posApi(b, req, env) {
       it.img = `${env.SELF_URL}/img/${it.id}?v=${Date.now().toString(36)}`;
       await saveMenu(env, menu); await notify(env, `🖥 📷 Меню: нове фото для <b>${esc(it.name.uk)}</b> — ${esc(who)}`); return ok();
     }
+  }
+}
+
+async function adminRest(b, env, who, ip, ok) {
+  switch (b.op) {
 
     // Wi‑Fi
     case 'wifi': return ok({ list: (await env.DB.get('venue_ips', 'json')) || [], current: ipKey(ip) });
