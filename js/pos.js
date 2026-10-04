@@ -446,7 +446,7 @@
         <div class="ki">${e.items.map((x, i) => `<div class="kit-w"><button class="kit${x.done ? ' done' : ''}${x.cancel ? ' canc' : ''}" data-a="kItem" data-id="${e.id}" data-i="${i}" ${x.cancel ? 'disabled' : ''}><b>${x.q}×</b> ${esc(x.n)}${x.cancel ? ' <em>СКАСОВАНО</em>' : x.canc ? ` <em>−${x.canc} скас.</em>` : ''}</button><button class="kinfo" data-a="skTechOne" data-n="${esc(x.n)}" title="Техкарта">ⓘ</button></div>`).join('')}</div>
         ${(e.msgs || []).map(x => `<div class="kmsg">📨 ${x.at} ${esc(x.text)}</div>`).join('')}
         <div class="kb">${e.start ? '' : `<button class="btn" data-a="kStart" data-id="${e.id}">🔥 Готую</button>`}<button class="btn" data-a="kMsg" data-id="${e.id}">💬</button><button class="btn green" data-a="kAll" data-id="${e.id}">✅ ВСЕ ГОТОВО</button></div></div>`; };
-    return `<div class="khead"><h1>👨‍🍳 Черга <span class="muted">${act0.length}</span></h1>${isCook() ? `<div class="stat tipstat">💝 Мої чайові<b class="money">${money(S.myTip?.sum || 0)}</b></div>` : ''}<button class="btn" data-a="skTechAll">📋 Техкарти</button><button class="btn" data-a="skOffPick">🗑 Списати</button><button class="btn" data-a="view" data-v="stop">⛔ Стоп-лист</button></div>
+    return `<div class="khead"><h1>👨‍🍳 Черга <span class="muted">${act0.length}</span></h1>${isCook() ? `<div class="stat tipstat">💝 Мої чайові<b class="money">${money(S.myTip?.sum || 0)}</b></div>` : ''}<button class="btn" data-a="kStock">📦 Склад</button><button class="btn" data-a="view" data-v="stop">⛔ Стоп-лист</button></div>
       <div class="kq f${S.kFont}">${act0.length ? act0.map(card).join('') : '<div class="kempty">✅ Черга порожня</div>'}</div>
       ${done.length ? `<h3 class="muted" style="margin:18px 0 8px">Останні готові</h3><div class="kdone">${done.map(e => `<div class="kd">Стіл ${e.t} · ${e.items.filter(x => !x.cancel).map(x => `${x.q}× ${esc(x.n)}`).join(', ')}${e.cancelled ? ' · ❌ скасовано' : ` · ${Math.round((e.doneAt - e.ts) / 60000)} хв`} <button class="btn sm" data-a="kUndo" data-id="${e.id}">↩️</button></div>`).join('')}</div>` : ''}`;
   }
@@ -1589,6 +1589,8 @@
       case 'skCntView': { const r = await act('skCountDoc', { id: el.dataset.id }); if (r) skCntShow(r.doc); break; }
       case 'skP': K.p = el.dataset.p; loadView(); break;
       case 'skTechAll': skTechAll(); break;
+      case 'kStock': { const v = await choose('📦 Склад', '', [{ label: '🗑 Списати продукт', val: 'off', cls: 'primary' }, { label: '📝 Інвентаризація', val: 'cnt' }, { label: '📋 Техкарти', val: 'tech' }]);
+        if (v === 'off') { const id = await skPick('🗑 Що списати?'); if (id) skQty('off', id); } else if (v === 'tech') skTechAll(); else if (v === 'cnt') { K.tab = 'count'; K.card = null; S.view = 'calc'; renderNav(); renderMain(); loadView(); } break; }
       case 'skTechOne': skTechOne(el.dataset.n); break;
     }
   });
