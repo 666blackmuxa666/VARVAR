@@ -3,6 +3,7 @@ import { aiHelp } from './ai.js';
 // Secrets: BOT_TOKEN, CHAT_ID, ADMIN_PIN, TG_SECRET   Vars: ALLOWED_ORIGIN, TABLES, SELF_URL   KV: DB
 import { getMenu, priceMap } from './menu.js';
 import { handleUpdate } from './bot.js';
+import { KITCHEN_HTML } from './kitchen.js';
 import { tg, esc, getBill, putBill, addStat, addDishes, hhmm, logEvent, billItems, payable, addKitchen, getCfg } from './ops.js';
 import { posApi, posLive } from './pos.js';
 import { queuePrint, kitchenTicket, printApi } from './print.js';
@@ -21,6 +22,7 @@ export default {
     const json = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { ...cors, 'content-type': 'application/json' } });
     const ip = req.headers.get('CF-Connecting-IP') || '';
     try {
+      if (url.pathname === '/kitchen' || url.pathname === '/k') return new Response(KITCHEN_HTML, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' } }); // 👨‍🍳 старий iPad: http, без https
       if (url.pathname === '/api/status') {
         const table = tableNum(url.searchParams.get('table'), env);
         const bill = table ? await getBill(env, table) : null;
