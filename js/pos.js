@@ -1268,10 +1268,10 @@
   async function loadPay() { S.zpM ||= curMon(); S.data.zp = await api('zpGrid', { m: S.zpM }, 20000); }
   function payHTML() {
     const G = S.data.zp; if (!G) return '<div class="muted">Завантаження…</div>';
-    const today = todayK(), people = G.staff.map(s => s.name).filter(n => (G.seen || []).includes(n) || G.days.some(d => G.att[d]?.[n] || G.plan[d]?.[n])); // хто цього місяця не заходив — не в графіку
+    const today = todayK(), people = G.staff.map(s => s.name).filter(n => !(G.hide || []).includes(n) && ((G.seen || []).includes(n) || G.days.some(d => G.att[d]?.[n] || G.plan[d]?.[n]))); // хто цього місяця не заходив — не в графіку
     const head = `<div class="zp-top"><button class="btn sm" data-a="zpM" data-d="-1">◀</button><b>${monName(G.m)}</b><button class="btn sm" data-a="zpM" data-d="1">▶</button>
       <span class="muted">✅ був · ⏰ запізнився · 🕓 чекає підтвердження · ❌ відхилено · 🚫 прогул · ⚠️ зміну закрито автоматично · ● — заплановано · тап: майбутнє — запланувати, сьогодні й раніше — був на зміні, ще раз — скасувати</span></div>`;
-    const grid = gridHTML(G, people, true) + `<div class="btnrow"><button class="btn sm" data-a="zpCopy">📋 План: скопіювати минулий тиждень на цей</button></div>`;
+    const grid = gridHTML(G, people, true) + `<div class="btnrow"><button class="btn sm primary" data-a="zpAddP">➕ Додати в графік</button><button class="btn sm" data-a="zpCopy">📋 План: скопіювати минулий тиждень на цей</button></div>`;
     const grid0 = `<div class="zp-grid"><table><thead><tr><th></th>${G.days.map(d => { const w = new Date(d + 'T12:00:00Z').getUTCDay(); return `<th class="${d === today ? 'td' : ''}${w === 0 || w === 6 ? ' we' : ''}">${+d.slice(8)}<small>${WDL[w]}</small></th>`; }).join('')}</tr></thead>
       <tbody>${people.map(n => `<tr><th>${esc(n)}</th>${G.days.map(d => { const a = G.att[d]?.[n], p = G.plan[d]?.[n], h = hrs(a); return `<td class="press${d === today ? ' td' : ''}" data-a="zpCell" data-d="${d}" data-n="${esc(n)}"><i>${attIc(a, p, d)}</i>${p ? (p === '+' ? (a ? '' : '<i class="pl">●</i>') : `<small>${p}</small>`) : ''}${h ? `<small class="h">${h}г</small>` : ''}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>
       <div class="btnrow"><button class="btn sm" data-a="zpCopy">📋 План: скопіювати минулий тиждень на цей</button></div>`;
@@ -1295,7 +1295,7 @@
   function gridHTML(G, people, edit, me) {
     const today = todayK();
     return `<div class="zp-grid"><table><thead><tr><th></th>${G.days.map(d => { const w = new Date(d + 'T12:00:00Z').getUTCDay(); return `<th class="${d === today ? 'td' : ''}${w === 0 || w === 6 ? ' we' : ''}">${+d.slice(8)}<small>${WDL[w]}</small></th>`; }).join('')}</tr></thead>
-      <tbody>${people.map(n => `<tr class="${n === me ? 'me' : ''}"><th>${esc(n)}</th>${G.days.map(d => { const a = G.att[d]?.[n], p = G.plan[d]?.[n], h = hrs(a); return `<td class="${edit ? 'press' : ''}${d === today ? ' td' : ''}"${edit ? ` data-a="zpCell" data-d="${d}" data-n="${esc(n)}"` : ''}><i>${attIc(a, p, d)}</i>${p ? (p === '+' ? (a ? '' : '<i class="pl">●</i>') : `<small>${p}</small>`) : ''}${h ? `<small class="h">${h}г</small>` : ''}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>`;
+      <tbody>${people.map(n => `<tr class="${n === me ? 'me' : ''}"><th>${edit ? `<button class="zp-x" data-a="zpDelP" data-n="${esc(n)}" title="Прибрати з графіка">✕</button>` : ''}${esc(n)}</th>${G.days.map(d => { const a = G.att[d]?.[n], p = G.plan[d]?.[n], h = hrs(a); return `<td class="${edit ? 'press' : ''}${d === today ? ' td' : ''}"${edit ? ` data-a="zpCell" data-d="${d}" data-n="${esc(n)}"` : ''}><i>${attIc(a, p, d)}</i>${p ? (p === '+' ? (a ? '' : '<i class="pl">●</i>') : `<small>${p}</small>`) : ''}${h ? `<small class="h">${h}г</small>` : ''}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>`;
   }
   async function zpCell(d, n) {
     const G = S.data.zp, a = G.att[d]?.[n], p = G.plan[d]?.[n], fine = G.cfg?.lateFine;
@@ -1520,6 +1520,10 @@
       case 'zpMy': zpMy(); break;
       case 'zpM': S.zpM = monAdd(S.zpM || curMon(), +D.d); S.data.zp = null; renderMain(); loadView(); break;
       case 'zpCell': zpCell(D.d, D.n); break;
+      case 'zpAddP': { const G = S.data.zp, shown = new Set([...document.querySelectorAll('.zp-grid tbody th')].map(t => t.textContent.replace('✕', '').trim())), l = G.staff.map(s => s.name).filter(n => !shown.has(n));
+        if (!l.length) { toast('Усі працівники вже в графіку'); break; }
+        const n = await choose('➕ Додати в графік', monName(G.m), l.map(x => ({ label: x, val: x }))); if (n && await act('zpGridSet', { m: G.m, n, show: 1 }, '➕ Додано')) loadView(); break; }
+      case 'zpDelP': if (await confirmBox(`Прибрати ${D.n} з графіка?`, 'Лише з цього місяця. Нарахування й виплати не зміняться; повернути — «➕ Додати в графік»')) { if (await act('zpGridSet', { m: S.data.zp.m, n: D.n, show: 0 }, '✕ Прибрано')) loadView(); } break;
       case 'zpCopy': { const t = new Date(todayK() + 'T12:00:00Z'), mon = new Date(t); mon.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); const to = mon.toISOString().slice(0, 10); mon.setUTCDate(mon.getUTCDate() - 7); const from = mon.toISOString().slice(0, 10);
         if (await confirmBox('📋 Скопіювати план?', `Тиждень з ${from.slice(8)}.${from.slice(5, 7)} → тиждень з ${to.slice(8)}.${to.slice(5, 7)}`)) { const r = await act('zpPlanCopy', { from, to }); if (r) { toast(`📋 Скопійовано змін: ${r.n}`); loadView(); } } break; }
       case 'zpSet': zpSet(D.id); break;

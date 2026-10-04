@@ -2265,13 +2265,13 @@ ${g.sup}:
   function payHTML() {
     const G = S.data.zp;
     if (!G) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
-    const today = todayK(), people = G.staff.map((s) => s.name).filter((n) => (G.seen || []).includes(n) || G.days.some((d) => {
+    const today = todayK(), people = G.staff.map((s) => s.name).filter((n) => !(G.hide || []).includes(n) && ((G.seen || []).includes(n) || G.days.some((d) => {
       var _a2, _b;
       return ((_a2 = G.att[d]) == null ? void 0 : _a2[n]) || ((_b = G.plan[d]) == null ? void 0 : _b[n]);
-    }));
+    })));
     const head = `<div class="zp-top"><button class="btn sm" data-a="zpM" data-d="-1">\u25C0</button><b>${monName(G.m)}</b><button class="btn sm" data-a="zpM" data-d="1">\u25B6</button>
       <span class="muted">\u2705 \u0431\u0443\u0432 \xB7 \u23F0 \u0437\u0430\u043F\u0456\u0437\u043D\u0438\u0432\u0441\u044F \xB7 \u{1F553} \u0447\u0435\u043A\u0430\u0454 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F \xB7 \u274C \u0432\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E \xB7 \u{1F6AB} \u043F\u0440\u043E\u0433\u0443\u043B \xB7 \u26A0\uFE0F \u0437\u043C\u0456\u043D\u0443 \u0437\u0430\u043A\u0440\u0438\u0442\u043E \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u043D\u043E \xB7 \u25CF \u2014 \u0437\u0430\u043F\u043B\u0430\u043D\u043E\u0432\u0430\u043D\u043E \xB7 \u0442\u0430\u043F: \u043C\u0430\u0439\u0431\u0443\u0442\u043D\u0454 \u2014 \u0437\u0430\u043F\u043B\u0430\u043D\u0443\u0432\u0430\u0442\u0438, \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0439 \u0440\u0430\u043D\u0456\u0448\u0435 \u2014 \u0431\u0443\u0432 \u043D\u0430 \u0437\u043C\u0456\u043D\u0456, \u0449\u0435 \u0440\u0430\u0437 \u2014 \u0441\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438</span></div>`;
-    const grid = gridHTML(G, people, true) + `<div class="btnrow"><button class="btn sm" data-a="zpCopy">\u{1F4CB} \u041F\u043B\u0430\u043D: \u0441\u043A\u043E\u043F\u0456\u044E\u0432\u0430\u0442\u0438 \u043C\u0438\u043D\u0443\u043B\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u043D\u0430 \u0446\u0435\u0439</button></div>`;
+    const grid = gridHTML(G, people, true) + `<div class="btnrow"><button class="btn sm primary" data-a="zpAddP">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438 \u0432 \u0433\u0440\u0430\u0444\u0456\u043A</button><button class="btn sm" data-a="zpCopy">\u{1F4CB} \u041F\u043B\u0430\u043D: \u0441\u043A\u043E\u043F\u0456\u044E\u0432\u0430\u0442\u0438 \u043C\u0438\u043D\u0443\u043B\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u043D\u0430 \u0446\u0435\u0439</button></div>`;
     const grid0 = `<div class="zp-grid"><table><thead><tr><th></th>${G.days.map((d) => {
       const w = (/* @__PURE__ */ new Date(d + "T12:00:00Z")).getUTCDay();
       return `<th class="${d === today ? "td" : ""}${w === 0 || w === 6 ? " we" : ""}">${+d.slice(8)}<small>${WDL[w]}</small></th>`;
@@ -2307,7 +2307,7 @@ ${g.sup}:
       const w = (/* @__PURE__ */ new Date(d + "T12:00:00Z")).getUTCDay();
       return `<th class="${d === today ? "td" : ""}${w === 0 || w === 6 ? " we" : ""}">${+d.slice(8)}<small>${WDL[w]}</small></th>`;
     }).join("")}</tr></thead>
-      <tbody>${people.map((n) => `<tr class="${n === me ? "me" : ""}"><th>${esc(n)}</th>${G.days.map((d) => {
+      <tbody>${people.map((n) => `<tr class="${n === me ? "me" : ""}"><th>${edit ? `<button class="zp-x" data-a="zpDelP" data-n="${esc(n)}" title="\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0437 \u0433\u0440\u0430\u0444\u0456\u043A\u0430">\u2715</button>` : ""}${esc(n)}</th>${G.days.map((d) => {
       var _a2, _b;
       const a = (_a2 = G.att[d]) == null ? void 0 : _a2[n], p = (_b = G.plan[d]) == null ? void 0 : _b[n], h = hrs(a);
       return `<td class="${edit ? "press" : ""}${d === today ? " td" : ""}"${edit ? ` data-a="zpCell" data-d="${d}" data-n="${esc(n)}"` : ""}><i>${attIc(a, p, d)}</i>${p ? p === "+" ? a ? "" : '<i class="pl">\u25CF</i>' : `<small>${p}</small>` : ""}${h ? `<small class="h">${h}\u0433</small>` : ""}</td>`;
@@ -3034,6 +3034,21 @@ ${g.sup}:
         break;
       case "zpCell":
         zpCell(D.d, D.n);
+        break;
+      case "zpAddP": {
+        const G = S.data.zp, shown = new Set([...document.querySelectorAll(".zp-grid tbody th")].map((t) => t.textContent.replace("\u2715", "").trim())), l = G.staff.map((s) => s.name).filter((n2) => !shown.has(n2));
+        if (!l.length) {
+          toast("\u0423\u0441\u0456 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0438 \u0432\u0436\u0435 \u0432 \u0433\u0440\u0430\u0444\u0456\u043A\u0443");
+          break;
+        }
+        const n = await choose("\u2795 \u0414\u043E\u0434\u0430\u0442\u0438 \u0432 \u0433\u0440\u0430\u0444\u0456\u043A", monName(G.m), l.map((x) => ({ label: x, val: x })));
+        if (n && await act("zpGridSet", { m: G.m, n, show: 1 }, "\u2795 \u0414\u043E\u0434\u0430\u043D\u043E")) loadView();
+        break;
+      }
+      case "zpDelP":
+        if (await confirmBox(`\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 ${D.n} \u0437 \u0433\u0440\u0430\u0444\u0456\u043A\u0430?`, "\u041B\u0438\u0448\u0435 \u0437 \u0446\u044C\u043E\u0433\u043E \u043C\u0456\u0441\u044F\u0446\u044F. \u041D\u0430\u0440\u0430\u0445\u0443\u0432\u0430\u043D\u043D\u044F \u0439 \u0432\u0438\u043F\u043B\u0430\u0442\u0438 \u043D\u0435 \u0437\u043C\u0456\u043D\u044F\u0442\u044C\u0441\u044F; \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438 \u2014 \xAB\u2795 \u0414\u043E\u0434\u0430\u0442\u0438 \u0432 \u0433\u0440\u0430\u0444\u0456\u043A\xBB")) {
+          if (await act("zpGridSet", { m: S.data.zp.m, n: D.n, show: 0 }, "\u2715 \u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E")) loadView();
+        }
         break;
       case "zpCopy": {
         const t = /* @__PURE__ */ new Date(todayK() + "T12:00:00Z"), mon = new Date(t);

@@ -146,15 +146,15 @@ export async function payroll(env, m = mon()) {
       tips: tb[s.name] || 0, toMon: p.monRev && p.monBonus && baseSum < p.monRev ? r0(p.monRev - baseSum) : 0, revPerShift: shifts ? r0(mine.reduce((a, d) => a + (rev[d]?.all || 0), 0) / shifts) : 0, revPerHour: hours ? r0(mine.reduce((a, d) => a + (rev[d]?.all || 0), 0) / hours) : 0 };
   });
   const revenue = r0(Object.values(rev).reduce((a, x) => a + x.all, 0)), fund = rows.reduce((a, x) => a + x.earned, 0);
-  const seen = (await env.DB.get('seen:' + m, 'json')) || [];
-  return { m, days, att, plan, seen, ops: ops.slice().reverse(), rows, revenue, fund, fundPct: revenue ? Math.round(fund / revenue * 1000) / 10 : 0, cfg: await getCfg(env) };
+  const gx = (await env.DB.get('gridx:' + m, 'json')) || { add: [], hide: [] }, seen = [...new Set([...((await env.DB.get('seen:' + m, 'json')) || []), ...gx.add])].filter(n => !gx.hide.includes(n));
+  return { m, days, att, plan, seen, hide: gx.hide, ops: ops.slice().reverse(), rows, revenue, fund, fundPct: revenue ? Math.round(fund / revenue * 1000) / 10 : 0, cfg: await getCfg(env) };
 }
 // особистий кабінет — лише свої цифри
 export async function myPay(env, name, m = mon()) {
   const p = await payroll(env, m), row = p.rows.find(r => r.n === name) || null, days = p.days.map(d => ({ d, plan: p.plan[d]?.[name] || '', att: p.att[d]?.[name] || null })).filter(x => x.plan || x.att);
   const swaps = ((await env.DB.get('swaps', 'json')) || []).filter(s => (s.from === name || s.to === name) && s.st !== 'done' && s.st !== 'no');
   // спільний графік (без грошей): хто коли запланований і був
-  const names = (await getStaff(env)).map(s => s.name).filter(n => p.seen.includes(n) || p.days.some(d => p.att[d]?.[n] || p.plan[d]?.[n]));
+  const names = (await getStaff(env)).map(s => s.name).filter(n => !p.hide.includes(n) && (p.seen.includes(n) || p.days.some(d => p.att[d]?.[n] || p.plan[d]?.[n])));
   const att = {}; for (const d of p.days) for (const [n, x] of Object.entries(p.att[d] || {})) (att[d] ||= {})[n] = { ok: x.ok, late: x.late ? 1 : 0, auto: x.auto ? 1 : 0, in: x.in, out: x.out };
   return { m, row, days, ops: p.ops.filter(o => o.n === name), swaps, grid: { days: p.days, att, plan: p.plan, people: names } };
 }
@@ -209,6 +209,12 @@ export async function payApi(b, env, me) {
     case 'zpPlanCopy': return R(await planCopyWeek(env, b.from, b.to));
     case 'zpOp': { const r = await payOp(env, { n: String(b.n), t: b.t, sum: b.sum, src: b.src, note: b.note }, who); if (r.op && (b.t === 'paid' || b.t === 'adv')) await notify(env, `🖥 ${OPS[b.t]}: <b>${esc(b.n)}</b> — ${money(r.op.sum)} ${r.op.src === 'card' ? 'з картки' : 'з каси'} — ${esc(who)}`).catch(() => {}); return R(r); }
     case 'zpOpDel': return R(await payOpDel(env, m, String(b.id), !!b.back));
+    case 'zpGridSet': { // ➕ / ✕ людина в графіку місяця
+      const n = String(b.n || ''); if (!n) return R(null);
+      await L(env, 'gridx:' + m, async () => { const g = (await env.DB.get('gridx:' + m, 'json')) || { add: [], hide: [] };
+        g.add = g.add.filter(x => x !== n); g.hide = g.hide.filter(x => x !== n); (b.show ? g.add : g.hide).push(n);
+        await env.DB.put('gridx:' + m, JSON.stringify(g), { expirationTtl: 400 * 86400 }); });
+      return ok(); }
     case 'zpStaff': return R(await setStaffPay(env, String(b.id), b.pay || {}));
   }
   return [{ error: 'unknown_op' }, 400];
