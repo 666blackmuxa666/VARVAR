@@ -14,9 +14,18 @@ import { storeDB } from './store.js';
 const TYPES = { order: 'НОВЕ ЗАМОВЛЕННЯ', order_check: 'НОВЕ ЗАМОВЛЕННЯ', reorder: 'ДОЗАМОВЛЕННЯ', check: 'ПРОСЯТЬ ЧЕК' };
 const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;
 
+// 💸 запити, що працюють з базою, виконуються всередині Durable Object (store.js → Store.fetch):
+// там кожне читання/запис — локальне, а платний «запит до DO» — один на дію, а не 20–50
+const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai)$|tg$)/;
 export default {
   async fetch(req, env) {
-    env = { ...env, DB: storeDB(env.DB, env.STORE) }; // стан закладу — у Durable Object (див. store.js)
+    const p = new URL(req.url).pathname;
+    if (IN_STORE.test(p) && req.method !== 'OPTIONS') return env.STORE.get(env.STORE.idFromName('main')).fetch(req);
+    return handle(req, { ...env, DB: storeDB(env.DB, env.STORE) });
+  },
+};
+export async function handle(req, env) {
+  {
     const url = new URL(req.url), cors = corsHeaders(req, env);
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
     const json = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { ...cors, 'content-type': 'application/json' } });
@@ -77,8 +86,8 @@ export default {
     } catch (e) {
       return json({ error: 'bad_request' }, 400);
     }
-  },
-};
+  }
+}
 
 function corsHeaders(req, env) {
   const o = req.headers.get('Origin') || '';

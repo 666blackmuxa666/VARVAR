@@ -2,6 +2,7 @@
 // KV віддає старе значення до ~60 с після запису → губились швидкі натискання, двічі віднімалась виручка.
 // env.DB = storeDB(...) має той самий API, що й KV (get/put/delete/list) + getMany; картинки img:* лишаються в KV.
 import { DurableObject } from 'cloudflare:workers';
+import { handle } from './index.js';
 
 const now = () => Date.now();
 // ключі, зміна яких оновлює екрани POS
@@ -41,7 +42,7 @@ export class Store extends DurableObject {
   }
   // ---- живе оновлення для POS: WebSocket-и підключені до цього ж об'єкта ----
   async fetch(req) {
-    if (req.headers.get('Upgrade') !== 'websocket') return new Response('expected websocket', { status: 426 });
+    if (req.headers.get('Upgrade') !== 'websocket') return handle(req, { ...this.env, DB: localDB(this, this.env.DB) }); // увесь запит — тут, база локальна
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
     return new Response(null, { status: 101, webSocket: client });
@@ -81,6 +82,24 @@ export class Store extends DurableObject {
   }
 }
 
+// той самий API, що storeDB, але всередині Store — без мережевих викликів
+function localDB(st, kv) {
+  const img = k => k.startsWith('img:'), held = new Set();
+  const parse = (v, type) => v == null ? null : type === 'json' ? JSON.parse(v) : v;
+  return {
+    get: async (k, type) => img(k) ? kv.get(k, type) : parse(await st.get(k), type),
+    getMany: async (ks, type) => (await st.getMany(ks)).map(v => parse(v, type)),
+    put: (k, v, o) => img(k) ? kv.put(k, v, o) : st.put(k, String(v), o?.expirationTtl),
+    delete: k => img(k) ? kv.delete(k) : st.del(k),
+    deleteMany: ks => st.delMany(ks),
+    locked: async (keys, fn) => {
+      keys = [...new Set([].concat(keys))].sort(); const mine = keys.filter(k => !held.has(k));
+      const ids = []; try { for (const k of mine) { ids.push(await st.lock(k)); held.add(k); } return await fn(); }
+      finally { mine.forEach(k => held.delete(k)); for (const id of ids) st.unlock(id); }
+    },
+    list: async ({ prefix } = {}) => ({ keys: (await st.list(prefix)).map(name => ({ name })), list_complete: true }),
+  };
+}
 export const storeStub = env => env.STORE.get(env.STORE.idFromName('main'));
 export function storeDB(kv, ns) {
   const s = ns.get(ns.idFromName('main'));
