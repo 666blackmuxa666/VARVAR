@@ -56,7 +56,7 @@ function load(){api('kitchen',{},function(j){if(!j.list)return;list=j.list;var i
 document.addEventListener('click',function(ev){var t=ev.target;while(t&&t!==document&&!t.getAttribute('data-id')&&!t.getAttribute('data-st')&&!t.getAttribute('data-all'))t=t.parentNode;if(!t||t===document)return;
  if(t.getAttribute('data-id'))api('kDone',{id:t.getAttribute('data-id'),i:+t.getAttribute('data-i')},load);
  else if(t.getAttribute('data-st'))api('kStart',{id:t.getAttribute('data-st')},load);
- else if(t.getAttribute('data-all')&&confirm('Все готово?'))api('kDone',{id:t.getAttribute('data-all')},load)});
+ else if(t.getAttribute('data-all'))api('kDone',{id:t.getAttribute('data-all')},load)});
 $('go').onclick=function(){api('login',{pin:$('pin').value},function(j){if(j.token&&j.me&&(j.me.role==='cook'||j.me.role==='admin')){T=j.token;localStorage.setItem('ktok',T);show()}else $('err').textContent=j.token?'Цей екран — для кухаря':'Невірний PIN'})};
 $('out').onclick=function(){if(confirm('Вийти?')){api('logout',{});T='';localStorage.removeItem('ktok');show()}};
 $('start').onclick=function(){try{var A=window.AudioContext||window.webkitAudioContext;ctx=new A();play(snd)}catch(e){}$('gate').style.display='none'};
