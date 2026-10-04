@@ -249,8 +249,11 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     closeSheet();
     showLogin(expired ? "\u0421\u0435\u0441\u0456\u044F \u0437\u0430\u043A\u0456\u043D\u0447\u0438\u043B\u0430\u0441\u044C \u2014 \u0443\u0432\u0456\u0439\u0434\u0456\u0442\u044C \u0437\u043D\u043E\u0432\u0443" : "");
   }
+  let stateSeq = 0, stateDone = 0;
   async function loadState() {
-    const r = await api("state");
+    const my = ++stateSeq, r = await api("state");
+    if (my < stateDone) return;
+    stateDone = my;
     S.me = __spreadValues(__spreadValues({}, S.me), r.me);
     S.myTip = r.myTip;
     S.n = r.n;
@@ -273,6 +276,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     if (["stop", "menu", "reports"].includes(S.view)) renderMain();
   }
   let ws, wsTimer, pingT, reloadT, lastMsg = 0;
+  const pendKeys = /* @__PURE__ */ new Set();
   function revive() {
     if (!S.token) return;
     S.live = false;
@@ -313,8 +317,11 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         return;
       }
       if (m.type !== "changed") return;
+      m.keys.forEach((k) => pendKeys.add(k));
       clearTimeout(reloadT);
       reloadT = setTimeout(() => {
+        m = { keys: [...pendKeys] };
+        pendKeys.clear();
         loadState().catch(() => {
         });
         if (m.keys.includes("menu") || m.keys.includes("fav")) loadMenu().catch(() => {

@@ -39,7 +39,7 @@ export function priceMap(menu) {
   const m = {};
   menu.categories.forEach(c => c.items.forEach(it => {
     if (it.hidden) return;
-    m[it.id] = { n: it.name.uk, p: it.variants ? Object.fromEntries(it.variants.map(v => [v.v, v.p])) : it.price };
+    m[it.id] = { n: it.name.uk, s: it.size, p: it.variants ? Object.fromEntries(it.variants.map(v => [v.v, v.p])) : it.price };
   }));
   return m;
 }

@@ -94,8 +94,11 @@
   }
 
   // ---------- дані і живе оновлення ----------
+  let stateSeq = 0, stateDone = 0;
   async function loadState() {
-    const r = await api('state');
+    const my = ++stateSeq, r = await api('state');
+    if (my < stateDone) return; // повільна стара відповідь не затирає новішу (стіл «повертався» після закриття)
+    stateDone = my;
     S.me = { ...S.me, ...r.me }; S.myTip = r.myTip; S.n = r.n; S.printer = r.printer; S.shift = r.shift;
     S.tables = Object.fromEntries(r.tables.map(b => [b.t, b]));
     const fresh = r.events.filter(e => !S.seen.has(e.id));
@@ -105,7 +108,7 @@
     render();
   }
   async function loadMenu() { const r = await api('menu'); S.menu = r.menu; S.fav = r.fav || []; S.groups = r.groups || []; if (S.open) renderSheet(); if (['stop', 'menu', 'reports'].includes(S.view)) renderMain(); }
-  let ws, wsTimer, pingT, reloadT, lastMsg = 0;
+  let ws, wsTimer, pingT, reloadT, lastMsg = 0; const pendKeys = new Set();
   // iPhone «на головному екрані» присипляє застосунок: зʼєднання тихо вмирає — перепідключаємось і перечитуємо стан
   function revive() { if (!S.token) return; S.live = false; liveDot(); try { ws.onclose = null; ws.close(); } catch {} clearInterval(pingT); connect(); }
   function connect() {
@@ -117,8 +120,11 @@
       if (e.data === 'pong') return;
       let m; try { m = JSON.parse(e.data); } catch { return; }
       if (m.type !== 'changed') return;
+      // ключі накопичуємо: раніше брались лише з останнього повідомлення — зміна меню/кухні за 120 мс до іншої губилась
+      m.keys.forEach(k => pendKeys.add(k));
       clearTimeout(reloadT);
       reloadT = setTimeout(() => {
+        m = { keys: [...pendKeys] }; pendKeys.clear();
         loadState().catch(() => {});
         if (m.keys.includes('menu') || m.keys.includes('fav')) loadMenu().catch(() => {});
         if (m.keys.includes('kq') && (isCook() || S.view === 'kq')) loadKq().catch(() => {});

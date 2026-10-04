@@ -103,11 +103,14 @@ async function _addWaiterOrder(env, d, who, comment = '', src = 'бот', urgent
   bill.total += sum; bill.orders = (bill.orders || 0) + 1; bill.opened = bill.opened || Date.now();
   bill.log = [...(bill.log || []), { at: hhmm(), kind: `від офіціанта (${who})`, lines, ...(comment ? { comment } : {}) }].slice(-40);
   await putBill(env, d.table, bill);
-  await addStat(env, 'orders', 1);
-  await addDishes(env, ok.map(i => ({ n: i.name, q: i.q, sum: i.price * i.q })));
-  await queuePrint(env, 'kitchen', kitchenTicket({ table: d.table, kind: 'ВІД ОФІЦІАНТА', lines, comment, by: who, urgent }));
-  await addKitchen(env, { t: d.table, by: who, src: 'офіціант', comment, lines, urgent });
-  await logEvent(env, { k: 'waiter', t: d.table, by: who, src, lines, comment, sum, ...(prev.length ? { prev } : {}) });
+  // різні ключі — паралельно (менше часу під замком «bills», швидше бачать інші екрани)
+  await Promise.all([
+    addStat(env, 'orders', 1),
+    addDishes(env, ok.map(i => ({ n: i.name, q: i.q, sum: i.price * i.q }))),
+    queuePrint(env, 'kitchen', kitchenTicket({ table: d.table, kind: 'ВІД ОФІЦІАНТА', lines, comment, by: who, urgent })),
+    addKitchen(env, { t: d.table, by: who, src: 'офіціант', comment, lines, urgent }),
+    logEvent(env, { k: 'waiter', t: d.table, by: who, src, lines, comment, sum, ...(prev.length ? { prev } : {}) }),
+  ]);
   return { sum, total: bill.total, lines, prev };
 }
 // позиції з меню за id → рядки замовлення (ціни — лише з меню)
@@ -130,10 +133,14 @@ async function _rejectOrder(env, oid, who, { editTg = true } = {}) {
   const o = (await env.DB.get('ord:' + oid, 'json')) || {};
   if (o.s !== 'new' || !o.lines?.length) return null;
   await env.DB.put('ord:' + oid, JSON.stringify({ ...o, s: 'rej', by: who, at: hhmm() }), { expirationTtl: BILL_TTL });
-  const b = await getBill(env, o.t), i = (b.log || []).findIndex(x => x.oid === oid);
+  // стіл могли перенести/об'єднати — шукаємо замовлення на всіх відкритих столах, починаючи з o.t
+  let t = o.t, b = await getBill(env, t), i = (b.log || []).findIndex(x => x.oid === oid);
+  if (i < 0) for (const r of await openTables(env)) { const j = (r.b.log || []).findIndex(x => x.oid === oid); if (j >= 0) { t = r.t; b = r.b; i = j; break; } }
   if (i >= 0) { // ще на рахунку — прибрати і з рахунку, і зі статистики
-    b.log.splice(i, 1); b.total = Math.max(0, (b.total || 0) - (o.sum || 0)); b.orders = Math.max(0, (b.orders || 1) - 1); await putBill(env, o.t, b);
-    if (o.sold?.length) await addDishes(env, o.sold.map(x => ({ n: x.n, q: -x.q, sum: -x.sum })));
+    // віднімаємо те, що лишилось від замовлення (частину могли вже скасувати через «−1» — вона вже віднята)
+    const left = b.log[i].lines.map(l => l.match(LINE)).filter(Boolean);
+    b.log.splice(i, 1); b.total = Math.max(0, (b.total || 0) - left.reduce((a, x) => a + +x[3], 0)); b.orders = Math.max(0, (b.orders || 1) - 1); await putBill(env, t, b);
+    if (left.length) await addDishes(env, left.map(x => ({ n: x[2], q: -x[1], sum: -x[3] })));
     await addStat(env, 'orders', -1);
   }
   await editEv(env, list => { for (const e of list) if (e.oid === oid) { e.s = 'rej'; e.accBy = who; } });
@@ -181,14 +188,17 @@ async function _closeTable(env, t, who, pay = 'cash', print = true) {
   const card = pay === 'card' ? sum : 0, cash = sum - card;
   if (print) await queuePrint(env, 'receipt', await receipt(env, { table: t, bill, final: true, pay, by: who }));
   await env.DB.delete('bill:' + t);
-  await kitchenClosed(env, [+t]); // стіл закрили — його замовлення зникають з черги кухні
+  const kq = kitchenClosed(env, [+t]); // стіл закрили — його замовлення зникають з черги кухні (паралельно з виручкою)
   await bump(env, 'day:' + dayKey(), d => { d.closed = (d.closed || 0) + sum; d.tables = (d.tables || 0) + 1; d.cash = (d.cash || 0) + cash; d.card = (d.card || 0) + card; if (disc) d.disc = (d.disc || 0) + disc; if (tip) d.tip = (d.tip || 0) + tip; });
   // страви рахунку — щоб при видаленні закритого рахунку відняти їх і з «топ страв»
   const dishes = []; for (const o of bill.log || []) for (const l of o.lines) { const x = l.match(LINE); if (x) dishes.push([x[2], +x[1], +x[3]]); }
   const tipSplit = tip ? await splitTip(env, who, bill.tip || 0, bill.ktip || 0) : null;
-  if (tipSplit) for (const [n, v] of Object.entries(tipSplit)) await addTipBal(env, n, v);
-  await logClosed(env, { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), t, sum, cash, card, at: hhmm(), by: who || '', orders: bill.orders || 0, dishes, ...(tip ? { tip, tipSplit, ...(bill.ktip ? { ktip: bill.ktip } : {}) } : {}), ...(bill.voids?.length ? { voids: bill.voids } : {}), ...(disc ? { gross: bill.total, disc: bill.disc, discSum: disc } : {}) });
-  await logEvent(env, { k: 'close', t, by: who, sum, pay, print });
+  await Promise.all([
+    kq,
+    (async () => { if (tipSplit) for (const [n, v] of Object.entries(tipSplit)) await addTipBal(env, n, v); })(), // один ключ — по черзі
+    logClosed(env, { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), t, sum, cash, card, at: hhmm(), by: who || '', orders: bill.orders || 0, dishes, ...(tip ? { tip, tipSplit, ...(bill.ktip ? { ktip: bill.ktip } : {}) } : {}), ...(bill.voids?.length ? { voids: bill.voids } : {}), ...(disc ? { gross: bill.total, disc: bill.disc, discSum: disc } : {}) }),
+    logEvent(env, { k: 'close', t, by: who, sum, pay, print }),
+  ]);
   return { t, sum, cash, card, disc, tip };
 }
 export const payLabel = (cash, card) => card ? '💳 карта' : '💵 готівка';
@@ -266,7 +276,8 @@ async function _moveTable(env, a, b, who) {
     B.total += A.total; B.orders = (B.orders || 0) + (A.orders || 0);
     B.opened = Math.min(B.opened || Date.now(), A.opened || Date.now());
     B.log = [...(B.log || []), ...(A.log || []).map(o => ({ ...o, kind: `${o.kind} (зі столу ${a})` }))].slice(-60);
-    B.check = B.check || A.check; if (!B.disc && A.disc) B.disc = A.disc; if (A.voids) B.voids = [...(B.voids || []), ...A.voids]; if (!B.tip && A.tip) B.tip = A.tip; if (!B.ktip && A.ktip) B.ktip = A.ktip;
+    B.check = B.check || A.check; if (!B.disc && A.disc) B.disc = A.disc; if (A.voids) B.voids = [...(B.voids || []), ...A.voids];
+    if (A.tip) B.tip = (B.tip || 0) + A.tip; if (A.ktip) B.ktip = (B.ktip || 0) + A.ktip; // чайові обох столів сумуються (раніше чайові A губились)
     await putBill(env, b, B);
   } else await putBill(env, b, A);
   await env.DB.delete('bill:' + a);
@@ -413,7 +424,8 @@ export async function cashData(env) {
   const exCash = ex.filter(e => e.src === 'cash').reduce((s, e) => s + e.sum, 0), exCard = ex.filter(e => e.src === 'card').reduce((s, e) => s + e.sum, 0);
   const open = (await openTables(env)).reduce((s, r) => s + payable(r.b), 0);
   const mov = await getMov(env), mvCash = mov.reduce((a, m) => a + moveCash(m), 0), mvCard = mov.reduce((a, m) => a + moveCard(m), 0);
-  return { day: dayKey(), float: d.float || 0, cash: d.cash || 0, card: d.card || 0, disc: d.disc || 0, exCash, exCard, mvCash, mvCard, net: (d.cash || 0) + (d.card || 0) - exCash - exCard, open, exp, mov };
+  const tipOut = mov.filter(m => !m.del && (m.type === 'tipc' || m.type === 'tipk')).reduce((a, m) => a + m.sum, 0); // як у Z-звіті (dayZData)
+  return { day: dayKey(), float: d.float || 0, cash: d.cash || 0, card: d.card || 0, disc: d.disc || 0, exCash, exCard, mvCash, mvCard, tipOut, net: (d.cash || 0) + (d.card || 0) - exCash - exCard - tipOut, open, exp, mov };
 }
 export async function sumDays(env, keys) {
   const days = await env.DB.getMany(keys.map(k => 'day:' + k), 'json'), exps = await env.DB.getMany(keys.map(k => 'exp:' + k), 'json');
@@ -492,10 +504,11 @@ export async function lastZ(env) {
   const cash = dd.reduce((a, d) => a + ((d && (d.cash ?? d.closed)) || 0), 0);
   const ex = ee.reduce((a, l) => a + (l || []).filter(e => !e.del && e.src !== 'card').reduce((b, e) => b + e.sum, 0), 0);
   const from = dn.map(k => k.slice(4)).sort()[0];
-  // сума на кнопці = уся готівка від гостей за весь час + рух коштів (внесення, обмін)
+  // сума на кнопці = уся готівка від гостей за весь час + рух коштів (внесення, обмін, видача чайових, звірка) − витрати готівкою
+  // (раніше витрати не віднімались — кнопка «Відкрити» показувала більше, ніж «Залишки» → готівка)
   const mk = (await env.DB.list({ prefix: 'mov:' })).keys.map(k => k.name);
   const mv = (mk.length ? await env.DB.getMany(mk, 'json') : []).reduce((a, l) => a + (l || []).reduce((b, m) => b + moveCash(m), 0), 0);
-  return { sum: Math.max(0, cash + mv), cash, mv, ex, from };
+  return { sum: Math.max(0, cash + mv - ex), cash, mv, ex, from };
 }
 export async function lastZrec(env) {
   const days = [...Array(30)].map((_, i) => dayKey(Date.now() - i * 86400e3));
