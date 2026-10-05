@@ -167,6 +167,24 @@ async function apiTests() {
   }
   if (G2) await pos(A, 'delete', { t: G2, reason: 'QA тест' });
   await step('без токена → 401', async () => { const r = await pos('', 'state'); must(r.status === 401, 'статус ' + r.status); });
+
+  sect('Персонал: перейменування не губить графік і ЗП; PIN; роль');
+  if (K) {
+    const old = users.cook.me.name, nu = `QA кухар-нов ${RUN}`, m = day().slice(0, 7), sid = users.cook.me.sid, tmr = day(1).slice(0, 7) === m ? day(1) : day();
+    await step('графік, план і премія на старе імʼя', async () => { await posOk(A, 'zpAtt', { day: day(), n: old, set: 1 }); await posOk(A, 'zpPlan', { day: tmr, n: old, time: '10:00' }); await posOk(A, 'zpOp', { n: old, t: 'bonus', sum: 123, note: 'QA' }); });
+    await step('staffEdit: імʼя зайняте → 400', async () => { const r = await pos(A, 'staffEdit', { id: sid, name: users.waiter.me.name }); must(r.status === 400, 'статус ' + r.status); });
+    await step('staffEdit: перейменування', () => posOk(A, 'staffEdit', { id: sid, name: nu }));
+    await step('zpGrid: зміна, план і премія — на новому імені', async () => { const g = await posOk(A, 'zpGrid', { m });
+      must(g.att[day()]?.[nu] && !g.att[day()]?.[old], 'att не перенесено'); must(g.plan[tmr]?.[nu] && !g.plan[tmr]?.[old], 'plan не перенесено');
+      const r = g.rows.find(x => x.n === nu); must(r && r.bonus === 123 && r.shifts >= 1, 'ЗП: ' + JSON.stringify(r).slice(0, 150)); must(!g.rows.some(x => x.n === old), 'старе імʼя лишилось'); });
+    await step('стара сесія кухаря → 401', async () => { const r = await pos(K, 'state'); must(r.status === 401, 'статус ' + r.status); });
+    await step('staffEdit: PIN = код реєстрації / чужий PIN → 400', async () => { for (const p of ['1114', '1119']) { const r = await pos(A, 'staffEdit', { id: sid, pin: p }); must(r.status === 400, p + ' → ' + r.status); } });
+    const np = pin();
+    await step('staffEdit: новий PIN → вхід ним', async () => { await posOk(A, 'staffEdit', { id: sid, pin: np }); const r = await http('/api/pos', { op: 'login', pin: np }); must(r.j.token && r.j.me.name === nu, JSON.stringify(r.j).slice(0, 120)); users.cook = { token: r.j.token, me: r.j.me }; });
+    await step('staffEdit: роль кур\'єр → назад кухар', async () => { await posOk(A, 'staffEdit', { id: sid, role: 'courier' }); let s = (await posOk(A, 'staff')).staff.find(x => x.id === sid); must(s.role === 'courier', s.role);
+      await posOk(A, 'staffEdit', { id: sid, role: 'cook' }); const r = await http('/api/pos', { op: 'login', pin: np }); must(r.j.me?.role === 'cook', JSON.stringify(r.j).slice(0, 100)); users.cook = { token: r.j.token, me: r.j.me }; });
+    await step('коди реєстрації: є кур\'єр', async () => { const r = await posOk(A, 'staff'); must(r.reg.courier, 'нема reg.courier'); });
+  }
   return true;
 }
 

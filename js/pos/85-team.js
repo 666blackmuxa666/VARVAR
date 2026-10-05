@@ -131,3 +131,15 @@
       case 'zpConf': { const row = el.closest('.zp-pend .kv'); if (await act('zpAtt', { day: D.d, n: D.n, how: D.h }, D.h === 'n' ? '❌ Відхилено' : '✅ Підтверджено')) { loadState().catch(() => {}); if (row) { row.remove(); if (!$('.zp-pend .kv')) closeModal(); } if (['settings', 'team'].includes(S.view)) loadView(); } break; }
     }
   });
+
+  // 👥 Працівники: ✏️ імʼя · 🔑 PIN · 🔄 роль (сервер staffEdit: перейменування переносить графік, ЗП, чайові; сесії працівника закриваються)
+  const ROLES = [['admin', '🔐 Адміністратор'], ['waiter', '🧑‍🍳 Офіціант'], ['cook', '👨‍🍳 Кухар'], ['courier', '🛵 Кур\'єр']];
+  document.addEventListener('click', async e => {
+    const el = e.target.closest('[data-a]'); if (!el || !/^stf(Name|Pin|Role)$/.test(el.dataset.a)) return;
+    const s = (S.data.staff?.staff || []).find(x => x.id === el.dataset.id); if (!s) return;
+    let f = null;
+    if (el.dataset.a === 'stfName') { const v = await askVal('✏️ Нове імʼя (графік, зарплата й чайові перейдуть)', s.name); if (v && v.trim() !== s.name) f = { name: v.trim() }; }
+    if (el.dataset.a === 'stfPin') { const v = await ask(`🔑 Новий PIN: ${s.name}`, '4 цифри · працівника вийде з каси', 'tel'); if (v) f = { pin: String(v) }; }
+    if (el.dataset.a === 'stfRole') { const v = await choose(`🔄 Роль: ${s.name}`, 'Працівника вийде з каси — увійде знову з новими правами', ROLES.filter(([r]) => r !== (s.role || 'waiter')).map(([val, label]) => ({ label, val }))); if (v) f = { role: v }; }
+    if (f && await act('staffEdit', { id: s.id, ...f }, f.name ? '✏️ Імʼя змінено' : f.pin ? '🔑 PIN змінено' : '🔄 Роль змінено')) loadView();
+  });

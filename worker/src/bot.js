@@ -14,7 +14,7 @@ import { calcView, stockCmd, invPhoto, stockCallback, stockCallbackW, stockCallb
 import {
   L, tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
   precheck, setDiscount, splitTable, restoreVoid, getVoids, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
-  reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, tipBalances, payTips, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenPct, rejectOrder, kitchenStats, getKq, kitchenDone, kitchenStart, restoreClosed, reopenClosed, restoreTable, restoreExpense, balances, reconcile, WAITER_DISC_MAX, getCfg, setCfg, CFG_LIM, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
+  reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, tipBalances, payTips, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenPct, rejectOrder, kitchenStats, getKq, kitchenDone, kitchenStart, restoreClosed, reopenClosed, restoreTable, restoreExpense, balances, reconcile, WAITER_DISC_MAX, getCfg, setCfg, CFG_LIM, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, editStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
   getMov, delMove, restoreMove, delZ, restoreZ, pinHash, isDay,
 } from './ops.js';
 export { tg, esc, hhmm, getBill } from './ops.js';
@@ -252,17 +252,29 @@ async function wifiView(env) {
     markup: list.length ? { inline_keyboard: [[{ text: '🗑 Скинути всі мережі', callback_data: 'wifiask' }]] } : undefined,
   };
 }
+const ROLE_TG = { admin: '🔐 Адміністратори', waiter: '🧑‍🍳 Офіціанти', cook: '👨‍🍳 Кухня', courier: "🛵 Кур'єри" };
+const ROLE_ONE = { admin: '🔐 адмін', waiter: '🧑‍🍳 офіціант', cook: '👨‍🍳 кухар', courier: "🛵 кур'єр" };
+const roleOf = s => ROLE_TG[s.role] ? s.role : 'waiter';
 async function staffView(env) {
   const [list, ws] = await Promise.all([getStaff(env), loggedWaiters(env)]);
+  const groups = Object.keys(ROLE_TG).map(r => [r, list.filter(s => roleOf(s) === r)]);
   return {
-    text: `👥 <b>Персонал</b>\n\n<b>PIN-коди для касової програми:</b>\n${list.length ? list.map(s => `• ${esc(s.name)} — ${s.role === 'admin' ? '🔐 адмін' : '🧑‍🍳 офіціант'}`).join('\n') : '<i>ще немає</i>'}\n\n` +
+    text: `👥 <b>Персонал</b>\n` + groups.map(([r, l]) => `\n<b>${ROLE_TG[r]}</b> · ${l.length}\n${l.length ? l.map(s => `• ${esc(s.name)}`).join('\n') : '<i>немає</i>'}`).join('\n') + '\n\n' +
       `<b>Увійшли в бот:</b>\n${ws.length ? ws.map(w => `• ${esc(w.name || w.uid)}`).join('\n') : '<i>нікого</i>'}\n\n` +
-      `Додати: натисніть «➕ Додати» і напишіть <code>Назар 1234</code> (офіціант) або <code>Назар 1234 адмін</code>.`,
+      `Натисніть на працівника — ✏️ імʼя, 🔑 PIN, 🔄 роль, 🗑. Додати: «➕ Додати» → <code>Назар 1234</code> (офіціант) або <code>Назар 1234 адмін</code> / <code>кухар</code> / <code>курʼєр</code>.`,
     markup: { inline_keyboard: [[{ text: '➕ Додати працівника', callback_data: 'stfadd' }],
-      ...chunk(list.map(s => ({ text: `🗑 ${s.name}`, callback_data: 'stfdel:' + s.id })), 2),
+      ...chunk(groups.flatMap(([r, l]) => l.map(s => ({ text: `${ROLE_ONE[r].split(' ')[0]} ${s.name}`, callback_data: 'stf:' + s.id }))), 2),
       ...chunk(ws.map(w => ({ text: `🚪 Вийти: ${w.name || w.uid}`, callback_data: 'wout:' + w.uid })), 2)] },
   };
 }
+async function staffOne(env, id) {
+  const s = (await getStaff(env)).find(x => x.id === id); if (!s) return staffView(env);
+  return { text: `👤 <b>${esc(s.name)}</b> · ${ROLE_ONE[roleOf(s)]}`, markup: { inline_keyboard: [
+    [{ text: '✏️ Імʼя', callback_data: 'stfn:' + id }, { text: '🔑 PIN', callback_data: 'stfp:' + id }],
+    [{ text: '🔄 Роль', callback_data: 'stfr:' + id }, { text: '🗑 Видалити', callback_data: 'stfdq:' + id }],
+    [{ text: '⬅️ Усі працівники', callback_data: 'stfbk' }]] } };
+}
+const staffEdited = r => r.error ? { text: '⚠️ ' + r.error } : { text: `✅ <b>${esc(r.s.name)}</b> · ${ROLE_ONE[roleOf(r.s)]}${r.old !== r.s.name ? `\n✏️ Було: ${esc(r.old)} — графік, зарплату й чайові перенесено` : ''}\nВхід у касу — заново.` };
 const TEST_PRINT = () => [['logo'], ['big', 'ТЕСТ ДРУКУ'], ['c', 'VARVAR · ' + hhmm()], ['hr'], ['l', 'Українські літери: Іі Її Єє Ґґ'], ['lr', '2 × Мєско', '760'], ['lr2', 'Всього', '760 грн'], ['hr'], ['gap']];
 export const QR_PRINT = t => [['logo'], ...(t ? [['invb', `СТІЛ ${t}`]] : []), ['inv', 'МЕНЮ ТА ЗАМОВЛЕННЯ'], ['gap'], ['img', t ? 'qr-t' + t : 'qr2', 220], ['c', 'Скануйте камерою телефона'], ...(t ? [['b', `Замовлення одразу на стіл ${tn(t)}`]] : []), ['s', 'Замовлення доступне 1 годину після сканування'], ['gap']];
 export const TEST_JOB = TEST_PRINT;
@@ -358,7 +370,7 @@ export async function handleUpdate(u, env) {
   const state = uid && await env.DB.get('st:' + uid);
   if (state && text && !text.startsWith('/') && !Object.values(W).concat(Object.values(A)).includes(text)) {
     await env.DB.delete('st:' + uid);
-    if (['login', 'newpass', 'wlogin', 'newwpass', 'stfadd'].includes(state) || state.startsWith('tgpin:')) await tg(env, 'deleteMessage', { chat_id: chat, message_id: m.message_id }); // прибираємо паролі/PIN з чату
+    if (['login', 'newpass', 'wlogin', 'newwpass', 'stfadd'].includes(state) || state.startsWith('tgpin:') || state.startsWith('stfp:')) await tg(env, 'deleteMessage', { chat_id: chat, message_id: m.message_id }); // прибираємо паролі/PIN з чату
     if (state === 'wlogin') {
       if (await tooMany()) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' }, { remove_keyboard: true });
       if (!samePass(text, await waiterPass(env)) && !samePass(text, await adminPass(env))) {
@@ -483,10 +495,12 @@ export async function handleUpdate(u, env) {
       await env.DB.put('waiter_pass', text);
       return send({ text: '🔑 Пароль офіціанта змінено. Хто вже увійшов — лишається в системі (вийти їх можна в «👥 Персонал»).' });
     }
+    if (state.startsWith('stfn:') && admin) { const r = await editStaff(env, state.slice(5), { name: text }); await send(staffEdited(r)); return send(await staffOne(env, state.slice(5))); }
+    if (state.startsWith('stfp:') && admin) { const r = await editStaff(env, state.slice(5), { pin: text }); await send(staffEdited(r)); return send(await staffOne(env, state.slice(5))); }
     if (state === 'stfadd' && admin) {
-      const sm = text.match(/^(.+?)\s+(\d{4,6})(?:\s+(адмін|админ|admin))?$/i);
+      const sm = text.match(/^(.+?)\s+(\d{4,6})(?:\s+(адмін|админ|admin|кухар|повар|cook|кур[ʼ'’]?єр|курьер|courier))?$/i);
       if (!sm) return send({ text: 'Формат: <code>Назар 1234</code> або <code>Назар 1234 адмін</code>. Натисніть «➕ Додати» ще раз.' });
-      const r = await addStaff(env, sm[1], sm[2], sm[3] ? 'admin' : 'waiter');
+      const rw = (sm[3] || '').toLowerCase(), r = await addStaff(env, sm[1], sm[2], !rw ? 'waiter' : /^(кух|пов|cook)/.test(rw) ? 'cook' : /^(кур|cour)/.test(rw) ? 'courier' : 'admin');
       if (r.error) return send({ text: '⚠️ ' + r.error });
       return send(await staffView(env));
     }
@@ -796,7 +810,7 @@ async function handleCallback(q, env) {
     const v = await stopView(env); await edit(v.text, v.markup); return answer(it ? `${it.name.uk} знову в меню` : 'Не знайдено');
   }
   // лише адміністратор
-  if (['del', 'delok', 'wifiask', 'wifiok', 'dc', 'dcok', 'cv', 'cvb', 'cvp', 'rst1', 'rst2', 'exs', 'exdel', 'exdelok', 'float', 'exlist', 'shop', 'shopl', 'shcl', 'cmv', 'cmvx', 'cmvp', 'cmvm', 'zday', 'rcn', 'kpct', 'cfg', 'cvro', 'cvbk', 'vbk', 'tbk', 'exbk', 'tpay', 'tpc', 'tpk', 'rp', 'stfadd', 'stfdel', 'wout', 'mvl', 'mvdel', 'mvdok', 'mvbk', 'zl', 'zv', 'zdel', 'zdok', 'zbk'].includes(act) && !admin) return answer('🔐 Лише для адміністратора');
+  if (['del', 'delok', 'wifiask', 'wifiok', 'dc', 'dcok', 'cv', 'cvb', 'cvp', 'rst1', 'rst2', 'exs', 'exdel', 'exdelok', 'float', 'exlist', 'shop', 'shopl', 'shcl', 'cmv', 'cmvx', 'cmvp', 'cmvm', 'zday', 'rcn', 'kpct', 'cfg', 'cvro', 'cvbk', 'vbk', 'tbk', 'exbk', 'tpay', 'tpc', 'tpk', 'rp', 'stfadd', 'stfdel', 'stf', 'stfn', 'stfp', 'stfr', 'stfro', 'stfdq', 'stfbk', 'wout', 'mvl', 'mvdel', 'mvdok', 'mvbk', 'zl', 'zv', 'zdel', 'zdok', 'zbk'].includes(act) && !admin) return answer('🔐 Лише для адміністратора');
   if (act === 'del') {
     const b = await getBill(env, arg);
     if (!b.total) return answer(`Стіл ${tn(arg)} вже порожній`);
@@ -862,6 +876,12 @@ async function handleCallback(q, env) {
   if (act === 'rp') { const v = await repView(env, arg, oid || 'x'); await edit(v.text, v.markup); return answer(''); }
   if (act === 'float') { await env.DB.put('st:' + uid, 'float', { expirationTtl: 600 }); await send({ text: '🏦 Скільки грошей у касі на початок дня (розмін)? Напишіть число:' }); return answer(''); }
   if (act === 'stfadd') { await env.DB.put('st:' + uid, 'stfadd', { expirationTtl: 600 }); await send({ text: '👥 Напишіть імʼя і PIN (4–6 цифр):\n<code>Назар 1234</code> — офіціант\n<code>Назар 1234 адмін</code> — адміністратор\n(повідомлення одразу видалиться)' }); return answer(''); }
+  if (act === 'stf') { const v = await staffOne(env, arg); await edit(v.text, v.markup); return answer(''); }
+  if (act === 'stfbk') { const v = await staffView(env); await edit(v.text, v.markup); return answer(''); }
+  if (act === 'stfn' || act === 'stfp') { await env.DB.put('st:' + uid, act + ':' + arg, { expirationTtl: 600 }); await send({ text: act === 'stfn' ? '✏️ Напишіть нове імʼя (графік, зарплата й чайові перейдуть на нього)' : '🔑 Напишіть новий PIN — 4 цифри (повідомлення одразу видалиться)' }); return answer(''); }
+  if (act === 'stfr') { const s = (await getStaff(env)).find(x => x.id === arg); if (!s) return answer('Не знайдено'); await edit(`🔄 Нова роль для <b>${esc(s.name)}</b>:`, { inline_keyboard: [...chunk(Object.keys(ROLE_ONE).filter(r => r !== roleOf(s)).map(r => ({ text: ROLE_ONE[r], callback_data: `stfro:${arg}:${r}` })), 2), [{ text: '⬅️ Назад', callback_data: 'stf:' + arg }]] }); return answer(''); }
+  if (act === 'stfro') { const r = await editStaff(env, arg, { role: oid }); const v = await staffOne(env, arg); await edit(v.text, v.markup); return answer(r.error || '🔄 Роль змінено'); }
+  if (act === 'stfdq') { const s = (await getStaff(env)).find(x => x.id === arg); if (!s) return answer('Не знайдено'); await edit(`🗑 Видалити <b>${esc(s.name)}</b>? Його PIN перестане працювати.`, { inline_keyboard: [[{ text: '🗑 Так, видалити', callback_data: 'stfdel:' + arg }, { text: '⬅️ Ні', callback_data: 'stf:' + arg }]] }); return answer(''); }
   if (act === 'stfdel') { await delStaff(env, arg); const v = await staffView(env); await edit(v.text, v.markup); return answer('Видалено'); }
   if (act === 'wout') { await env.DB.delete('wlog:' + arg); await env.DB.delete('adm:' + arg); const v = await staffView(env); await edit(v.text, v.markup); return answer('Вийшов'); }
   if (act === 'no') { await edit('Скасовано.'); return answer(''); }

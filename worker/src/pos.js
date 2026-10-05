@@ -15,7 +15,7 @@ import { aiInvoice, aiCard } from './ai.js';
 import {
   esc, money, hhmm, dayKey, isDay, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, setTip, moveTable, splitTable, restoreVoid, getVoids, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
-  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenClosed, markCook, kitchenPct, getCfg, setCfg, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, delZ, restoreZ, editEv, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents, logEvent,
+  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenClosed, markCook, kitchenPct, getCfg, setCfg, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, delZ, restoreZ, editEv, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, editStaff, loggedWaiters, resetAll, acceptOrder, getEvents, logEvent,
 } from './ops.js';
 
 const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400, cook: 30 * 86400, courier: 30 * 86400 };
@@ -36,7 +36,8 @@ export async function posApi(b, req, env) {
   const token = tokenOf(req), me = await session(env, token);
   if (!me) return [{ error: 'auth' }, 401];
   // видаленого працівника одразу викидає з каси (сесія більше не діє)
-  if (me.sid && !(await getStaff(env)).some(x => x.id === me.sid)) { await env.DB.delete('pos:' + token); return [{ error: 'auth' }, 401]; }
+  // ✏️ змінили PIN / імʼя / роль (ver) — теж вхід заново
+  if (me.sid) { const s = (await getStaff(env)).find(x => x.id === me.sid); if (!s || (s.ver || 0) !== (me.ver || 0)) { await env.DB.delete('pos:' + token); return [{ error: 'auth' }, 401]; } }
   const admin = me.role === 'admin', who = me.name;
   const t = +b.t || 0;
   const needAdmin = () => [{ error: 'admin' }, 403];
@@ -213,10 +214,14 @@ async function adminRest(b, env, who, ip, ok) {
     // персонал і паролі
     case 'staff': return ok({ staff: (await getStaff(env)).map(({ pin, ...s }) => s), waiters: await loggedWaiters(env), reg: { admin: await regCode(env, 'admin'), waiter: await regCode(env, 'waiter'), cook: await regCode(env, 'cook'), courier: await regCode(env, 'courier') }, kpct: await kitchenPct(env), cfg: await getCfg(env), cooks: (await env.DB.get('cooks:' + dayKey(), 'json')) || [] });
     case 'regCode': { const c = String(b.code || '').trim(); if (!/^\d{4}$/.test(c)) return [{ error: 'Код — 4 цифри' }, 400]; await env.DB.put('reg_' + (['admin', 'cook', 'courier'].includes(b.role) ? b.role : 'waiter'), c); return ok(); }
-    case 'staffAdd': { const r = await addStaff(env, b.name, b.pin, b.role); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 👥 Додано працівника <b>${esc(r.s.name)}</b> (${r.s.role === 'admin' ? 'адмін' : 'офіціант'}) — ${esc(who)}`); return ok(); }
+    case 'staffAdd': { const r = await addStaff(env, b.name, b.pin, b.role); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 👥 Додано працівника <b>${esc(r.s.name)}</b> (${ROLE_UA[r.s.role]}) — ${esc(who)}`); return ok(); }
     case 'cfgSet': { const c = await setCfg(env, String(b.k), b.v); if (c.error) return [{ error: c.error }, 400]; await notify(env, `🖥 ⚙️ Налаштування: ${esc(String(b.k))} = <b>${c[b.k]}</b> — ${esc(who)}`); return ok({ cfg: c }); }
     case 'kitchenPct': { const v = Math.round(+b.pct); if (!(v >= 0 && v <= 100)) return [{ error: 'Від 0 до 100' }, 400]; await env.DB.put('kitchen_pct', String(v)); await notify(env, `🖥 👨‍🍳 Частка кухні від чайових: <b>${v}%</b> — ${esc(who)}`); return ok(); }
     case 'staffDel': await delStaff(env, String(b.id)); return ok();
+    case 'staffEdit': { const f = {}; for (const k of ['name', 'pin', 'role']) if (b[k] != null && b[k] !== '') f[k] = b[k];
+      const r = await editStaff(env, String(b.id), f); if (r.error) return [{ error: r.error }, 400];
+      await notify(env, `🖥 👥 Працівник <b>${esc(r.old)}</b>: ${[f.name != null && r.old !== r.s.name ? `імʼя → <b>${esc(r.s.name)}</b>` : '', f.pin != null ? 'новий PIN' : '', f.role != null ? `роль → ${ROLE_UA[r.s.role]}` : ''].filter(Boolean).join(', ')} — ${esc(who)}`);
+      return ok({ s: { id: r.s.id, name: r.s.name, role: r.s.role }, moved: r.moved || 0 }); }
     case 'waiterOut': await env.DB.delete('wlog:' + b.uid); await env.DB.delete('adm:' + b.uid); return ok();
     case 'adminPass': if (String(b.pass || '').length < 4) return [{ error: 'Мінімум 4 символи' }, 400]; await env.DB.put('admin_pass', String(b.pass)); return ok();
     case 'waiterPass': if (String(b.pass || '').length < 3) return [{ error: 'Мінімум 3 символи' }, 400]; await env.DB.put('waiter_pass', String(b.pass)); return ok();
@@ -225,10 +230,11 @@ async function adminRest(b, env, who, ip, ok) {
 }
 
 // реєстрація працівника: код (1119 адмін / 1112 офіціант) + імʼя + свій PIN → одразу вхід
+const ROLE_UA = { admin: 'адміністратор', cook: 'кухар', courier: 'кур\'єр', waiter: 'офіціант' };
 async function register(b, env) {
   const role = await regRole(env, b.code); if (!role) return [{ error: 'Невірний код реєстрації' }, 401];
   const r = await addStaff(env, b.name, b.pin, role); if (r.error) return [{ error: r.error }, 400];
-  await notify(env, `👥 Новий працівник: <b>${esc(r.s.name)}</b> (${role === 'admin' ? 'адміністратор' : role === 'cook' ? 'кухар' : role === 'courier' ? 'кур\'єр' : 'офіціант'}) — зареєструвався в касі`);
+  await notify(env, `👥 Новий працівник: <b>${esc(r.s.name)}</b> (${ROLE_UA[role]}) — зареєструвався в касі`);
   const me = { name: r.s.name, role, sid: r.s.id };
   const token = [...crypto.getRandomValues(new Uint8Array(16))].map(x => x.toString(16).padStart(2, '0')).join('');
   await env.DB.put('pos:' + token, JSON.stringify({ ...me, at: Date.now() }), { expirationTtl: SESSION_TTL[role] });
@@ -238,7 +244,7 @@ async function login(b, env, ip) {
   let me = null;
   if (b.pin) {
     const role = await regRole(env, b.pin); if (role) return [{ ok: true, register: role }, 200]; // код реєстрації → форма «імʼя + свій PIN»
-    const h = await pinHash(String(b.pin)); const s = (await getStaff(env)).find(x => x.pin === h); if (s) me = { name: s.name, role: s.role, sid: s.id };
+    const h = await pinHash(String(b.pin)); const s = (await getStaff(env)).find(x => x.pin === h); if (s) me = { name: s.name, role: s.role, sid: s.id, ver: s.ver || 0 };
   }
   if (b.pass) {
     const p = String(b.pass);
