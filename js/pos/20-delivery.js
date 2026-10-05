@@ -58,7 +58,7 @@
         <div class="cr-row"><span>👤 ${esc(g.name)}</span><a class="btn sm" href="tel:+${g.phone}">📞 ${fmtPh(g.phone)}</a></div>
         <div class="muted">🍽 ${items(b)}${g.cut ? ` · 🍴 ${g.cut}` : ''}</div>
         <div class="cr-pay">${g.paid ? '💳 оплачено онлайн' : `<b class="money">${money(b.pay2)}</b><span>${g.pay === 'card' ? '💳 термінал' : '💵 готівка'}${g.change ? ` · решта з <b>${g.change}</b>` : ''}</span>`}</div>
-        ${my ? `<div class="cr-act">${g.st !== 'road' ? `<button class="btn green" data-a="crAct" data-t="${b.t}" data-x="road">🛵 Поїхав</button>` : `<div class="cr-eta">${[5, 10, 15, 20].map(m => `<button class="btn sm" data-a="crAct" data-t="${b.t}" data-x="eta" data-v="${m}">⏱ ${m} хв</button>`).join('')}</div>`}
+        ${my ? `<div class="cr-act">${g.st !== 'road' ? `<button class="btn green" data-a="crAct" data-t="${b.t}" data-x="road">🛵 Поїхав</button>` : `<div class="cr-eta">${g.etaC ? `<div class="cr-etac">⏱ гостю сказано: буду о <b>${hhmm(g.etaC)}</b></div>` : '<div class="cr-etac muted">⏱ Коли будете в гостя? Гість побачить час</div>'}${[5, 10, 15, 20].map(m => `<button class="btn sm" data-a="crAct" data-t="${b.t}" data-x="eta" data-v="${m}">⏱ ${m} хв</button>`).join('')}</div>`}
             <button class="btn primary" data-a="crDone" data-t="${b.t}">🤝 Видано</button></div>
           <div class="btnrow"><button class="btn sm" data-a="crAct" data-t="${b.t}" data-x="km" data-v="soon">💬 Буду за 5 хв</button><button class="btn sm" data-a="crAct" data-t="${b.t}" data-x="km" data-v="here">💬 Я на місці</button><button class="btn sm red" data-a="crProb" data-t="${b.t}">⚠️ Проблема</button></div>`
         : `<button class="btn primary cr-take" data-a="crAct" data-t="${b.t}" data-x="take">✋ Беру</button>`}</div>`; };

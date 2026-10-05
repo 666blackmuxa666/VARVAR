@@ -73,7 +73,7 @@ export async function handle(req, env) {
       if (url.pathname === '/api/orders') { // статуси замовлень гостя: ?ids=a,b
         const ids = (url.searchParams.get('ids') || '').split(',').filter(x => /^[a-z0-9]{6,12}$/.test(x)).slice(0, 20);
         const out = {}, all = ids.length ? await env.DB.getMany(ids.map(id => 'ord:' + id), 'json') : []; // один запит замість N
-        ids.forEach((id, i) => { const o = all[i]; out[id] = o && { s: o.s, t: o.t, by: o.by, at: o.at, ...(o.go ? { g: o.g || o.s, no: tn(o.t), eta: o.eta, gAt: o.gAt } : {}) }; });
+        ids.forEach((id, i) => { const o = all[i]; out[id] = o && { s: o.s, t: o.t, by: o.by, at: o.at, ...(o.go ? { g: o.g || o.s, no: tn(o.t), eta: o.eta, gAt: o.gAt, ...(o.etaC ? { etaC: o.etaC } : {}) } : {}) }; });
         return json(out);
       }
       if (url.pathname === '/api/pos/live') return posLive(req, env, url);

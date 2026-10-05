@@ -755,3 +755,4 @@ body.cour #feed, body.cour .feed-btn { display: none !important; }
 .cr-k { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
 .cr-k .kpi { min-width: 0; padding: 10px; } .cr-k .kpi span { font-size: 12px; line-height: 1.2; overflow-wrap: break-word; }
 @media (max-width: 520px) { .cr-k { grid-template-columns: 1fr 1fr !important; } .cr-k .kpi:first-child { grid-column: 1 / -1; } }
+.cr-etac{grid-column:1/-1;font-size:13px;padding:2px 2px 4px}.cr-etac b{color:var(--accent);font-size:16px}

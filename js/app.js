@@ -393,15 +393,15 @@
     const o = goHist.find(x => x.id === id); if (!o) return; const g = o.g || 'new', steps = ['new', 'acc', 'cook', 'ready', ...(o.no.startsWith('Д') ? ['road'] : []), 'done'];
     $('#goBody').innerHTML = `<div class="go-big">${GST[g][0]}</div><h3 class="go-no">${t('goOrder')} ${o.no}</h3><p class="go-st">${t(GST[g][1])}</p>
       ${g === 'rej' ? '' : `<div class="go-steps">${steps.map(s => `<i class="${steps.indexOf(s) <= steps.indexOf(g) ? 'on' : ''}" title="${t(GST[s][1])}">${GST[s][0]}</i>`).join('')}</div>`}
-      ${o.eta && !['done', 'rej'].includes(g) ? `<p class="go-note">${t('goEta')} ~${new Date(o.eta).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' })}</p>` : ''}
+      ${o.etaC && g === 'road' ? `<p class="go-st">🛵 ${t('goEtaC')} <b>~${new Date(o.etaC).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' })}</b></p>` : ''}${o.eta && !o.etaC && !['done', 'rej'].includes(g) ? `<p class="go-note">${t('goEta')} ~${new Date(o.eta).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' })}</p>` : ''}
       ${goCfg?.phone ? `<a class="btn ghost" href="tel:${esc(goCfg.phone.replace(/[^\d+]/g, ''))}">📞 ${esc(goCfg.phone)}</a>` : ''}<button class="btn alt" data-close>${t('goOk')}</button>`;
     $('#goModal').hidden = false; $('#goModal').dataset.show = id;
   }
   async function goPoll() {
     const act = goHist.filter(o => !['done', 'rej'].includes(o.g) && Date.now() - o.ts < 12 * 3600e3); if (!act.length) { $('#orderStatus').hidden = true; return; }
     try { const { data } = await api('/api/orders?ids=' + act.map(o => o.id).join(','));
-      for (const o of act) { const x = data[o.id]; if (x && x.g && x.g !== o.g) { o.g = x.g; navigator.vibrate?.(80); } } goSave(); } catch {}
-    const last = act[act.length - 1], bar = $('#orderStatus'); bar.hidden = false; bar.className = 'order-status ' + (['ready', 'road', 'done'].includes(last.g) ? 'ok' : 'wait'); bar.textContent = `${last.no} · ${GST[last.g || 'new'][0]} ${t(GST[last.g || 'new'][1])}`; bar.dataset.go = last.id;
+      for (const o of act) { const x = data[o.id]; if (x && x.g && x.g !== o.g) { o.g = x.g; navigator.vibrate?.(80); } if (x?.etaC && x.etaC !== o.etaC) { o.etaC = x.etaC; navigator.vibrate?.(80); } } goSave(); } catch {}
+    const last = act[act.length - 1], bar = $('#orderStatus'); bar.hidden = false; bar.className = 'order-status ' + (['ready', 'road', 'done'].includes(last.g) ? 'ok' : 'wait'); bar.textContent = `${last.no} · ${GST[last.g || 'new'][0]} ${t(GST[last.g || 'new'][1])}${last.etaC && last.g === 'road' ? ` · ~${new Date(last.etaC).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' })}` : ''}`; bar.dataset.go = last.id;
     if (!$('#goModal').hidden && $('#goModal').dataset.show) goShow($('#goModal').dataset.show);
     if (!$('#sheet').hidden) renderCart();
   }
