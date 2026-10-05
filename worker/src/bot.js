@@ -12,7 +12,7 @@ import { queuePrint, printStatus } from './print.js';
 import { payroll, payText, payOp, attConfirm, swapStep, shiftIn, shiftOut, getAtt } from './pay.js';
 import { calcView, stockCmd, invPhoto, stockCallback, stockCallbackW } from './stockbot.js';
 import {
-  tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
+  L, tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
   precheck, setDiscount, splitTable, restoreVoid, getVoids, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
   reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, tipBalances, payTips, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenPct, rejectOrder, kitchenStats, getKq, kitchenDone, kitchenStart, restoreClosed, reopenClosed, restoreTable, restoreExpense, balances, reconcile, WAITER_DISC_MAX, getCfg, setCfg, CFG_LIM, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
 } from './ops.js';
@@ -541,8 +541,15 @@ async function handleCallback(q, env) {
     if (act === 'swk') { const sw = await swapStep(env, arg, oid === 'ok' ? 'ok' : 'no', who); await edit(`${q.message?.text || ''}\n\n${sw ? (sw.st === 'done' ? '✅ Обмін підтверджено' : '❌ Відхилено') : 'Вже оброблено'}`); return answer(''); }
     const n = (await getStaff(env)).find(z => z.id === arg)?.name; if (!n) return answer('Не знайдено');
     if (act === 'zpb') { const r = (await payroll(env)).rows.find(z => z.n === n); await send({ text: `💸 Видати <b>${esc(n)}</b> ${money(r?.due || 0)} — звідки?`, markup: { inline_keyboard: [[{ text: '💵 З каси', callback_data: `zpbs:${arg}:cash` }, { text: '💳 З картки', callback_data: `zpbs:${arg}:card` }]] } }); return answer(''); }
-    const r = (await payroll(env)).rows.find(z => z.n === n); if (!(r?.due > 0)) return answer('Нема що видавати');
-    const o = await payOp(env, { n, t: 'paid', sum: r.due, src: oid }, who); await edit(o.op ? `💸 Видано <b>${esc(n)}</b> ${money(o.op.sum)} ${oid === 'card' ? 'з картки' : 'з каси'}` : '⚠️ ' + o.error); return answer('');
+    // «видати все»: сума до виплати рахується й записується під одним замком + запобіжник від повторного натискання (10 с)
+    const o = await L(env, 'zpbs:' + arg, async () => {
+      const g = await env.DB.get('zpbs:' + arg, 'json'); if (g && Date.now() - g.ts < 10e3) return { dup: 1 };
+      const r = (await payroll(env)).rows.find(z => z.n === n); if (!(r?.due > 0)) return { none: 1 };
+      await env.DB.put('zpbs:' + arg, JSON.stringify({ ts: Date.now() }), { expirationTtl: 60 });
+      return payOp(env, { n, t: 'paid', sum: r.due, src: oid }, who);
+    });
+    if (o.dup) return answer('⏳ Вже видається'); if (o.none) return answer('Нема що видавати');
+    await edit(o.op ? `💸 Видано <b>${esc(n)}</b> ${money(o.op.sum)} ${oid === 'card' ? 'з картки' : 'з каси'}` : '⚠️ ' + o.error); return answer('');
   }
   if (/^sk/.test(act)) { // 🧮 розрахунок
     if (!admin) return answer('🔐 Лише для адміністратора');

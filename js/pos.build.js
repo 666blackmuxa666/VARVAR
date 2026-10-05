@@ -864,9 +864,6 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       case "shOpen":
         shOpen();
         break;
-      case "shClose":
-        shClose();
-        break;
       case "rp":
         S.rep.p = el.dataset.p;
         loadView();
@@ -2638,29 +2635,6 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     closeModal();
     if (!v) return;
     if (await act("shiftOpen", { float: +v.replace(",", ".") }, "\u{1F513} \u041A\u0430\u0441\u0443 \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u043E")) {
-      loadState().catch(() => {
-      });
-      if (S.view === "cash") loadView();
-    }
-  }
-  async function shClose() {
-    var _a2;
-    const d = (_a2 = await api("shift").catch(() => null)) == null ? void 0 : _a2.d;
-    if (!d) return;
-    const v = await modal({
-      title: "\u{1F512} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u043A\u0430\u0441\u0443",
-      text: `\u041C\u0430\u0454 \u0431\u0443\u0442\u0438 \u0432 \u043A\u0430\u0441\u0456: ${money(d.inBox)}${d.openTables ? ` \xB7 \u26A0\uFE0F \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u043E \u0441\u0442\u043E\u043B\u0456\u0432: ${d.openTables}` : ""}`,
-      body: '<div class="form"><input id="zCnt" inputmode="decimal" placeholder="\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u043F\u043E\u0440\u0430\u0445\u043E\u0432\u0430\u043D\u043E \u0433\u043E\u0442\u0456\u0432\u043A\u0438, \u20B4 (\u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)"></div>',
-      buttons: [{ label: "\u{1F5A8} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0456 \u043D\u0430\u0434\u0440\u0443\u043A\u0443\u0432\u0430\u0442\u0438 Z-\u0437\u0432\u0456\u0442", val: "p", cls: "red" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0431\u0435\u0437 \u0434\u0440\u0443\u043A\u0443", val: "n" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }],
-      keep: true
-    });
-    const c = v && $("#zCnt").value.trim().replace(",", ".");
-    closeModal();
-    if (!v) return;
-    const r = await act("shiftClose", { counted: c === "" ? null : +c, print: v === "p" });
-    if (r == null ? void 0 : r.z) {
-      const z = r.z;
-      await modal({ title: "\u{1F512} \u041A\u0430\u0441\u0443 \u0437\u0430\u043A\u0440\u0438\u0442\u043E", text: `\u0412\u0438\u0440\u0443\u0447\u043A\u0430 ${money(z.total)} \xB7 \u0447\u0435\u043A\u0456\u0432 ${z.checks} \xB7 \u{1F4B5} ${money(z.cash)} \xB7 \u{1F4B3} ${money(z.card)} \xB7 \u0432 \u043A\u0430\u0441\u0456 \u043C\u0430\u0454 \u0431\u0443\u0442\u0438 ${money(z.inBox)}${z.diff != null ? ` \xB7 \u0440\u0456\u0437\u043D\u0438\u0446\u044F ${z.diff > 0 ? "+" : ""}${money(z.diff)}` : ""}`, buttons: [{ label: "OK", val: 1, cls: "primary" }] });
       loadState().catch(() => {
       });
       if (S.view === "cash") loadView();

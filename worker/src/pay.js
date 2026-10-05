@@ -104,10 +104,15 @@ export async function payOp(env, { n, t, sum, src, note }, by) {
   sum = r0(sum); if (!OPS[t] || !(sum > 0) || !n) return { error: 'Потрібні людина, тип і сума' };
   const d = dayKey(), m = mon(d), money_ = t === 'adv' || t === 'paid';
   src = src === 'card' ? 'card' : 'cash';
-  let mov = null;
-  if (money_) mov = await L(env, 'mov:' + d, async () => { const k = 'mov:' + d, l = (await env.DB.get(k, 'json')) || []; l.push({ ts: Date.now(), at: hhmm(), type: src === 'card' ? 'salk' : 'salc', sum, note: `${n} · ${OPS[t].slice(2).toLowerCase()}${note ? ' · ' + note : ''}`, by: by || '' }); await env.DB.put(k, JSON.stringify(l)); return { d, i: l.length - 1 }; });
-  const op = { id: uid(), ts: Date.now(), day: d, n, t, sum, ...(money_ ? { src, mov } : {}), note: String(note || '').slice(0, 100), by: by || '' };
-  await L(env, 'pay:' + m, async () => { const l = await getOps(env, m); l.push(op); await env.DB.put('pay:' + m, JSON.stringify(l)); });
+  // рух грошей і операція ЗП — під одним замком на обидва ключі; спершу читаємо обидва списки, потім пишемо підряд
+  const op = await L(env, ['mov:' + d, 'pay:' + m], async () => {
+    const k = 'mov:' + d, ml = money_ ? (await env.DB.get(k, 'json')) || [] : null, l = await getOps(env, m);
+    let mov = null;
+    if (money_) { ml.push({ ts: Date.now(), at: hhmm(), type: src === 'card' ? 'salk' : 'salc', sum, note: `${n} · ${OPS[t].slice(2).toLowerCase()}${note ? ' · ' + note : ''}`, by: by || '' }); mov = { d, i: ml.length - 1 }; }
+    const op = { id: uid(), ts: Date.now(), day: d, n, t, sum, ...(money_ ? { src, mov } : {}), note: String(note || '').slice(0, 100), by: by || '' };
+    if (money_) await env.DB.put(k, JSON.stringify(ml));
+    l.push(op); await env.DB.put('pay:' + m, JSON.stringify(l)); return op;
+  });
   await logEvent(env, { k: 'shift', by, text: `${OPS[t]}: ${n} — ${sum} грн${money_ ? (src === 'card' ? ' (з картки)' : ' (з каси)') : ''}${note ? ' · ' + note : ''}` });
   return { op };
 }

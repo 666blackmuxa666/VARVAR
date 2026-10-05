@@ -353,7 +353,6 @@
       case 'photos': S.photos = !S.photos; store.set('photos', S.photos); renderSheet(); break;
       case 'zDay': zDay(); break;
       case 'shOpen': shOpen(); break;
-      case 'shClose': shClose(); break;
       case 'rp': S.rep.p = el.dataset.p; loadView(); break;
       case 'rTab': S.rep.tab = el.dataset.t; (S.rep.last ||= {})[SECS.find(x => x[2].includes(el.dataset.t))[0]] = el.dataset.t; renderMain(); break;
       case 'rSec': { const sc = SECS.find(x => x[0] === el.dataset.s); S.rep.tab = (S.rep.last || {})[sc[0]] || sc[2][0]; renderMain(); if (S.rep.tab === 'plus' || !S.data.range) loadView(); break; }

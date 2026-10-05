@@ -79,13 +79,3 @@
     const v = b ? $('#fIn').value.trim() : null; closeModal(); if (!v) return;
     if (await act('shiftOpen', { float: +v.replace(',', '.') }, '🔓 Касу відкрито')) { loadState().catch(() => {}); if (S.view === 'cash') loadView(); }
   }
-  async function shClose() {
-    const d = (await api('shift').catch(() => null))?.d; if (!d) return;
-    const v = await modal({ title: '🔒 Закрити касу', text: `Має бути в касі: ${money(d.inBox)}${d.openTables ? ` · ⚠️ відкрито столів: ${d.openTables}` : ''}`,
-      body: '<div class="form"><input id="zCnt" inputmode="decimal" placeholder="Скільки пораховано готівки, ₴ (необовʼязково)"></div>',
-      buttons: [{ label: '🖨 Закрити і надрукувати Z-звіт', val: 'p', cls: 'red' }, { label: 'Закрити без друку', val: 'n' }, { label: 'Скасувати', val: null }], keep: true });
-    const c = v && $('#zCnt').value.trim().replace(',', '.'); closeModal(); if (!v) return;
-    const r = await act('shiftClose', { counted: c === '' ? null : +c, print: v === 'p' });
-    if (r?.z) { const z = r.z; await modal({ title: '🔒 Касу закрито', text: `Виручка ${money(z.total)} · чеків ${z.checks} · 💵 ${money(z.cash)} · 💳 ${money(z.card)} · в касі має бути ${money(z.inBox)}${z.diff != null ? ` · різниця ${z.diff > 0 ? '+' : ''}${money(z.diff)}` : ''}`, buttons: [{ label: 'OK', val: 1, cls: 'primary' }] }); loadState().catch(() => {}); if (S.view === 'cash') loadView(); }
-  }
-
