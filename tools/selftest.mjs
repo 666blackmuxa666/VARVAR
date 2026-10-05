@@ -1,0 +1,269 @@
+#!/usr/bin/env node
+// 🧪 Автотести VARVAR — лише проти worker-test (http://localhost:8787) і сайту (http://localhost:8000).
+// Запуск: node tools/selftest.mjs [--api-only] [--ui-only]
+// Змінні: API=http://localhost:8787 SITE=http://localhost:8000 CHROME=/шлях/до/chrome
+// Без залежностей: API — fetch, інтерфейс — безголовий Chrome через CDP (вбудований WebSocket Node 22+).
+import { spawn } from 'node:child_process';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+const API = process.env.API || 'http://localhost:8787';
+const SITE = process.env.SITE || 'http://localhost:8000';
+const ARGS = process.argv.slice(2);
+const RUN = Date.now().toString(36).slice(-5);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const day = (d = 0) => new Date(Date.now() + 3 * 3600e3 + d * 864e5).toISOString().slice(0, 10); // Київ ≈ UTC+3
+
+// захист: не ганяти тести проти справжнього сервера
+if (!/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(API)) { console.error('❌ API має бути локальним worker-test, а не', API); process.exit(2); }
+
+// ---------- звіт ----------
+const results = [];
+let group = '';
+function sect(name) { group = name; console.log(`\n▶ ${name}`); }
+function rec(name, ok, info = '') { results.push({ group, name, ok }); console.log(`  ${ok ? '✅' : '❌'} ${name}${info ? ' — ' + info : ''}`); return ok; }
+async function step(name, fn) {
+  try { const r = await fn(); if (r === false) return rec(name, false); return rec(name, true, typeof r === 'string' ? r : ''); }
+  catch (e) { return rec(name, false, String(e?.message || e).slice(0, 300)); }
+}
+const must = (c, msg) => { if (!c) throw new Error(msg); };
+
+// ---------- API ----------
+async function http(path, body, token) {
+  const r = await fetch(API + path, { method: body ? 'POST' : 'GET', headers: { 'content-type': 'application/json', ...(token ? { authorization: 'Bearer ' + token } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  let j = null; try { j = await r.json(); } catch {}
+  return { status: r.status, j: j || {} };
+}
+const pos = (token, op, b = {}) => http('/api/pos', { op, ...b }, token);
+async function posOk(token, op, b) { const r = await pos(token, op, b); must(r.status === 200 && r.j.ok, `${op} → ${r.status} ${JSON.stringify(r.j).slice(0, 200)}`); return r.j; }
+
+const users = {};
+const usedPins = new Set();
+function pin() { let p; do { p = String(1000 + Math.floor(Math.random() * 9000)); } while (/^111[1-9]$/.test(p) || usedPins.has(p)); usedPins.add(p); return p; }
+async function register(role, code) {
+  const name = `QA ${role} ${RUN}`;
+  for (let i = 0; i < 5; i++) { // PIN може випадково збігтися з чужим
+    const r = await http('/api/pos', { op: 'register', code, name, pin: pin() });
+    if (r.status === 200 && r.j.token) { users[role] = { token: r.j.token, me: r.j.me }; must(r.j.me.role === role, `роль ${r.j.me.role} ≠ ${role}`); return r.j.me.name; }
+    if (!/PIN/.test(r.j.error || '')) throw new Error(`${r.status} ${JSON.stringify(r.j)}`);
+  }
+  throw new Error('не вдалося підібрати PIN');
+}
+
+async function apiTests() {
+  sect('Сервер');
+  const alive = await step('worker-test відповідає', async () => { const r = await http('/api/goinfo'); must(r.status === 200, 'статус ' + r.status); });
+  if (!alive) return false;
+
+  sect('Реєстрація ролей (коди тестової бази)');
+  for (const [role, code] of [['admin', '1119'], ['waiter', '1112'], ['cook', '1113'], ['courier', '1114']]) await step(`${role} (${code})`, () => register(role, code));
+  const A = users.admin?.token, W = users.waiter?.token, C = users.courier?.token, K = users.cook?.token;
+  if (!A || !W) { rec('далі без адміна/офіціанта неможливо', false); return true; }
+
+  const menu = (await http('/api/menu')).j;
+  const all = (menu.categories || []).flatMap(c => c.items.map(i => ({ ...i, cat: c.id })));
+  const dish = all.find(i => i.cat === 'pasta' && !i.hidden && i.price) || all.find(i => ['burgers', 'salads', 'soups'].includes(i.cat) && !i.hidden && i.price);
+  const drink = all.find(i => i.cat === 'coffee' && !i.hidden && i.price);
+
+  sect('Стіл → кухня → закриття');
+  let T = 0;
+  await step('вибрати вільний стіл', async () => {
+    const s = await posOk(W, 'state'); const busy = new Set(s.tables.map(x => x.t));
+    for (let t = s.n; t >= 1; t--) if (!busy.has(t)) { T = t; break; }
+    must(T, 'усі столи зайняті'); return 'стіл ' + T;
+  });
+  await step(`офіціант замовляє (${dish?.id} + ${drink?.id})`, async () => {
+    must(dish && drink, 'у меню немає страви/напою'); const r = await posOk(W, 'order', { t: T, items: [{ id: dish.id, q: 2 }, { id: drink.id, q: 1 }] });
+    must(r.total === dish.price * 2 + drink.price, `сума ${r.total}`); return `сума ${r.total}`;
+  });
+  let kq = null;
+  await step('на кухні лише страва (без напою)', async () => {
+    const r = await posOk(K || A, 'kitchen'); kq = r.list.filter(e => e.t === T && !e.done).pop(); must(kq, 'картки немає');
+    must(kq.items.some(i => i.q === 2) && kq.items.length === 1, 'склад картки: ' + JSON.stringify(kq.items));
+  });
+  await step('кухня: почати → готово', async () => {
+    must(kq, 'немає картки'); await posOk(K || A, 'kStart', { id: kq.id }); const r = await posOk(K || A, 'kDone', { id: kq.id }); must(r.e?.done, 'не done');
+  });
+  await step('закрити готівкою → у закритих', async () => {
+    const r = await posOk(W, 'close', { t: T, pay: 'cash', print: false }); must(r.r?.sum > 0, 'немає суми');
+    const s = await posOk(W, 'state'); must(!s.tables.some(x => x.t === T), 'стіл досі відкритий');
+    const c = await posOk(A, 'closed'); must(c.list.some(x => x.t === T), 'немає в closed'); return `${r.r.sum} грн`;
+  });
+
+  sect('Доставка ?go → кур\'єр');
+  let G = 0, oid = '';
+  await step('POST /api/go (доставка)', async () => {
+    const r = await http('/api/go', { kind: 'del', name: 'QA Гість', phone: '0670000' + String(Math.floor(Math.random() * 900) + 100), addr: 'вул. Тестова 1', when: '12:00', pay: 'cash', items: [{ id: dish.id, q: 1 }], device: 'qa-' + RUN });
+    must(r.status === 200 && r.j.ok, `${r.status} ${JSON.stringify(r.j)}`); G = r.j.t; oid = r.j.id; must(G > 1000 && G < 2000, 'номер ' + G); return r.j.no;
+  });
+  await step('адмін приймає', async () => {
+    const r = await posOk(A, 'accept', { oid }); must(r.done, 'accept=false');
+    const s = await posOk(A, 'state'); const b = s.tables.find(x => x.t === G); must(b?.go?.st === 'acc', 'go.st=' + b?.go?.st);
+  });
+  if (C) {
+    await step('кур\'єр бере', async () => { const r = await posOk(C, 'courAct', { t: G, act: 'take' }); must(r.go?.cour === users.courier.me.name, 'cour=' + r.go?.cour); });
+    await step('кур\'єр: поїхав', async () => { const r = await posOk(C, 'courAct', { t: G, act: 'road' }); must(r.go?.st === 'road', 'st=' + r.go?.st); });
+    await step('кур\'єр: видано 💵 → чек закрито', async () => {
+      const r = await posOk(C, 'courAct', { t: G, act: 'done', arg: 'cash' }); must(r.done, 'не закрито');
+      const o = await http('/api/orders?ids=' + oid); const st = JSON.stringify(o.j); must(/done/.test(st), 'статус гостя: ' + st.slice(0, 150));
+      const me = await posOk(C, 'courMe'); return `готівка в кур'єра: ${JSON.stringify(me.day?.cash ?? me.day).slice(0, 60)}`;
+    });
+  } else rec('кур\'єр не зареєстрований — сценарій пропущено', false);
+
+  sect('Броні');
+  let bid = '';
+  const d0 = day(3), d1 = day(103);
+  await step(`POST /api/book на ${d0}`, async () => {
+    const r = await http('/api/book', { name: 'QA Бронь', phone: '0670001' + String(Math.floor(Math.random() * 900) + 100), date: d0, time: '19:00', people: 2, device: 'qa-bk-' + RUN });
+    must(r.status === 200 && r.j.ok, `${r.status} ${JSON.stringify(r.j)}`); bid = r.j.id; return bid;
+  });
+  await step('bkSet ok', async () => { const r = await posOk(A, 'bkSet', { id: bid, st: 'ok' }); must(r.b?.st === 'ok', 'st=' + r.b?.st); });
+  await step(`bkEdit дата → ${d1} (+100 днів)`, async () => { const r = await posOk(A, 'bkEdit', { id: bid, f: { date: d1 } }); must(r.b?.date === d1, 'date=' + r.b?.date); });
+  await step('bkList знаходить на новій даті', async () => {
+    const r = await posOk(A, 'bkList', { from: d1, to: d1 }); const x = r.list.find(b => b.id === bid); must(x, 'не знайдено'); must(x.date === d1 && x.st === 'ok', JSON.stringify(x).slice(0, 120));
+  });
+  await step('bkList: на старій даті більше нема', async () => { const r = await posOk(A, 'bkList', { from: d0, to: d0 }); must(!r.list.some(b => b.id === bid), 'дубль на старій даті'); });
+  await step('GET /api/book?id статус', async () => { const r = await http('/api/book?id=' + bid); must(!r.j.error, JSON.stringify(r.j)); });
+
+  sect('Права ролей (очікуємо 403)');
+  let G2 = 0; // відкрита доставка, щоб кур'єр не міг поставити їй чужий статус
+  { const r = await http('/api/go', { kind: 'del', name: 'QA Права', phone: '0670002' + String(Math.floor(Math.random() * 900) + 100), addr: 'вул. Тестова 2', when: '12:00', pay: 'cash', items: [{ id: dish.id, q: 1 }], device: 'qa2-' + RUN }); G2 = r.j.t || 0; }
+  const deny = [
+    [C, 'courier', 'close', { t: 1, pay: 'cash' }], [C, 'courier', 'shift'], [C, 'courier', 'order', { t: 1, items: [] }], [C, 'courier', 'bkList'], [C, 'courier', 'skData'], [C, 'courier', 'goSt', { t: G2, st: 'acc' }],
+    [K, 'cook', 'close', { t: 1, pay: 'cash' }], [K, 'cook', 'shift'], [K, 'cook', 'staff'], [K, 'cook', 'goSt', { t: 1001, st: 'road' }], [K, 'cook', 'bkList'],
+    [W, 'waiter', 'shift'], [W, 'waiter', 'delete', { t: 1 }], [W, 'waiter', 'zpGrid', { m: day().slice(0, 7) }], [W, 'waiter', 'courList'],
+  ];
+  for (const [tok, role, op, b] of deny) {
+    if (!tok) { rec(`${role} ✗ ${op}`, false, 'немає токена'); continue; }
+    await step(`${role} ✗ ${op}`, async () => { const r = await pos(tok, op, b); must(r.status === 403, `статус ${r.status} ${JSON.stringify(r.j).slice(0, 100)}`); });
+  }
+  if (G2) await pos(A, 'delete', { t: G2, reason: 'QA тест' });
+  await step('без токена → 401', async () => { const r = await pos('', 'state'); must(r.status === 401, 'статус ' + r.status); });
+  return true;
+}
+
+async function cleanup() {
+  const A = users.admin?.token; if (!A) return;
+  const st = await pos(A, 'staff'); const mine = (st.j.staff || []).filter(s => s.name.endsWith(' ' + RUN));
+  for (const s of mine.filter(s => s.role !== 'admin')) await pos(A, 'staffDel', { id: s.id });
+  const adm = mine.find(s => s.role === 'admin'); if (adm) await pos(A, 'staffDel', { id: adm.id });
+}
+
+// ---------- інтерфейс: безголовий Chrome через CDP ----------
+function findChrome() {
+  return [process.env.CHROME, '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'].filter(Boolean).find(p => existsSync(p));
+}
+async function cdpOpen(bin) {
+  const dir = mkdtempSync(join(tmpdir(), 'varvar-qa-')), port = 9300 + Math.floor(Math.random() * 500);
+  const proc = spawn(bin, ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--mute-audio', `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, 'about:blank'], { stdio: 'ignore' });
+  let ws;
+  for (let i = 0; i < 50 && !ws; i++) { await sleep(200); try { const l = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json(); const p = l.find(x => x.type === 'page'); if (p) ws = p.webSocketDebuggerUrl; } catch {} }
+  if (!ws) { proc.kill(); throw new Error('Chrome не стартував'); }
+  const sock = new WebSocket(ws); await new Promise((ok, no) => { sock.onopen = ok; sock.onerror = no; });
+  let id = 0; const wait = new Map(), errs = [];
+  sock.onmessage = m => {
+    const x = JSON.parse(m.data);
+    if (x.id && wait.has(x.id)) { const [ok, no] = wait.get(x.id); wait.delete(x.id); x.error ? no(new Error(x.error.message)) : ok(x.result); return; }
+    if (x.method === 'Runtime.exceptionThrown') errs.push('exception: ' + (x.params.exceptionDetails.exception?.description || x.params.exceptionDetails.text).split('\n')[0]);
+    if (x.method === 'Runtime.consoleAPICalled' && x.params.type === 'error') errs.push('console.error: ' + x.params.args.map(a => a.value ?? a.description ?? '').join(' ').slice(0, 200));
+    if (x.method === 'Log.entryAdded' && x.params.entry.level === 'error' && !/favicon/.test(x.params.entry.url || '')) errs.push('log: ' + x.params.entry.text.slice(0, 200) + (x.params.entry.url ? ' ' + x.params.entry.url : ''));
+  };
+  const send = (method, params = {}) => new Promise((ok, no) => { const i = ++id; wait.set(i, [ok, no]); sock.send(JSON.stringify({ id: i, method, params })); });
+  const ev = async expr => { const r = await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
+  await send('Runtime.enable'); await send('Log.enable'); await send('Page.enable');
+  const close = () => { try { sock.close(); } catch {} proc.kill(); setTimeout(() => rmSync(dir, { recursive: true, force: true }), 500); };
+  return { send, ev, errs, close };
+}
+
+// що вилазить за .card / .kv / .kpi (і горизонтальний скрол сторінки)
+const OVERFLOW_JS = `(() => {
+  const bad = [], seen = new Set();
+  const vis = el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
+  const label = el => (el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\\s+/).join('.') : '') + ' «' + (el.innerText || '').trim().replace(/\\s+/g, ' ').slice(0, 40) + '»');
+  const scrolls = el => /auto|scroll/.test(getComputedStyle(el).overflowX);
+  for (const box of document.querySelectorAll('#main .card, #main .kv, #main .kpi, #sheet .card, #sheet .kv, #sheet .kpi, #modal .card, #modal .kv')) {
+    if (!vis(box)) continue;
+    const br = box.getBoundingClientRect();
+    if (!scrolls(box) && box.scrollWidth > box.clientWidth + 2) { const k = label(box); if (!seen.has(k)) { seen.add(k); bad.push('scrollWidth ' + box.scrollWidth + '>' + box.clientWidth + ': ' + k); } }
+    for (const el of box.querySelectorAll('*')) {
+      if (!vis(el) || el.closest('[style*="overflow"]') && el.closest('[style*="overflow"]') !== box && box.contains(el.closest('[style*="overflow"]'))) continue;
+      let p = el.parentElement, inScroll = false; while (p && p !== box) { if (scrolls(p)) { inScroll = true; break; } p = p.parentElement; }
+      if (inScroll) continue;
+      const r = el.getBoundingClientRect();
+      if (r.right > br.right + 2 || r.left < br.left - 2) { const k = label(el); if (!seen.has(k)) { seen.add(k); bad.push('вилазить на ' + Math.round(Math.max(r.right - br.right, br.left - r.left)) + 'px: ' + k + ' у ' + label(box)); } }
+    }
+  }
+  if (document.documentElement.scrollWidth > innerWidth + 2) bad.push('горизонтальний скрол сторінки: ' + document.documentElement.scrollWidth + '>' + innerWidth);
+  return bad.slice(0, 8);
+})()`;
+
+const WIDTHS = [375, 880, 1280];
+const TABS = ['cashTab', 'rTab', 'setTab', 'skTab', 'zpTab', 'crTab'];
+
+async function uiTests() {
+  sect('Інтерфейс каси (безголовий Chrome)');
+  const bin = findChrome(); if (!bin) { rec('браузерний рушій', false, 'Chrome не знайдено — задайте CHROME=…'); return; }
+  const siteOk = await fetch(SITE + '/pos.html').then(r => r.ok).catch(() => false);
+  if (!rec('сайт ' + SITE + ' відповідає', siteOk)) return;
+  if (!users.admin) { for (const [role, code] of [['admin', '1119'], ['courier', '1114'], ['cook', '1113']]) await step(`реєстрація ${role} для UI`, () => register(role, code)); }
+  // щоб було що малювати: відкритий стіл і доставка
+  try { const m = (await http('/api/menu')).j, it = m.categories.flatMap(c => c.items).find(i => i.price && !i.hidden); await pos(users.admin.token, 'order', { t: 1, items: [{ id: it.id, q: 1 }] }); } catch {}
+
+  let b; try { b = await cdpOpen(bin); } catch (e) { rec('запуск Chrome', false, e.message); return; }
+  const url = `${SITE}/pos.html?api=${encodeURIComponent(API)}`;
+  const login = async u => {
+    await b.send('Page.navigate', { url: SITE + '/pos.html?api=' + encodeURIComponent(API) + '&blank=1' }); await sleep(800);
+    await b.ev(`localStorage.setItem('pos_token', ${JSON.stringify(JSON.stringify(u.token))}); localStorage.setItem('pos_me', ${JSON.stringify(JSON.stringify(u.me))}); 1`);
+    await b.send('Page.navigate', { url }); await sleep(2500);
+  };
+  const checkView = async (who, w, v) => {
+    const before = b.errs.length;
+    await b.ev(`(() => { const x = document.querySelector('[data-a="view"][data-v="${v}"]'); if (!x) throw new Error('немає кнопки'); x.click(); return 1; })()`);
+    await sleep(1800);
+    const tabs = await b.ev(`[...document.querySelectorAll('#main [data-a]')].filter(x => ${JSON.stringify(TABS)}.includes(x.dataset.a)).map(x => [x.dataset.a, x.dataset.t ?? x.dataset.s ?? ''])`);
+    const uniq = [...new Map(tabs.map(t => [t.join(':'), t])).values()];
+    const over = [...await b.ev(OVERFLOW_JS)];
+    for (const [a, t] of uniq) {
+      await b.ev(`(() => { const x = [...document.querySelectorAll('#main [data-a="${a}"]')].find(x => (x.dataset.t ?? x.dataset.s ?? '') === ${JSON.stringify(t)}); x && x.click(); return 1; })()`);
+      await sleep(1300);
+      for (const o of await b.ev(OVERFLOW_JS)) over.push(`[${a}=${t}] ${o}`);
+    }
+    const errs = b.errs.slice(before);
+    const empty = await b.ev(`(document.querySelector('#main')?.innerText || '').trim().length`);
+    rec(`${who} ${w}px · ${v}${uniq.length ? ` (+${uniq.length} вкладок)` : ''}`, !errs.length && !over.length && empty > 0,
+      [empty ? '' : 'порожній #main', ...errs.slice(0, 3), ...[...new Set(over)].slice(0, 4)].filter(Boolean).join(' | '));
+  };
+  try {
+    for (const w of WIDTHS) {
+      await b.send('Emulation.setDeviceMetricsOverride', { width: w, height: w < 600 ? 812 : 900, deviceScaleFactor: 1, mobile: w < 600 });
+      for (const [role, label] of [['admin', '👑 адмін'], ['waiter', '🧑‍🍳 офіціант'], ['cook', '👨‍🍳 кухар'], ['courier', '🛵 кур\'єр']]) {
+        const u = users[role]; if (!u) continue;
+        b.errs.length = 0; await login(u);
+        if (b.errs.length) rec(`${label} ${w}px · завантаження`, false, b.errs.slice(0, 3).join(' | '));
+        const views = await b.ev(`[...new Set([...document.querySelectorAll('[data-a="view"][data-v]')].map(x => x.dataset.v))]`);
+        if (!views.length) { rec(`${label} ${w}px · навігація`, false, 'немає кнопок розділів (вхід не вдався?)'); continue; }
+        for (const v of views) await checkView(label, w, v);
+      }
+    }
+  } finally { b.close(); }
+}
+
+// ---------- запуск ----------
+(async () => {
+  console.log(`🧪 VARVAR selftest · API ${API} · сайт ${SITE} · прогін ${RUN}`);
+  let ok = true;
+  try {
+    if (!ARGS.includes('--ui-only')) ok = await apiTests();
+    if (ok !== false && !ARGS.includes('--api-only')) {
+      if (!users.waiter) await step('реєстрація waiter для UI', () => register('waiter', '1112'));
+      await uiTests();
+    }
+  } catch (e) { rec('непередбачена помилка', false, e.stack?.split('\n').slice(0, 3).join(' ')); }
+  finally { await cleanup().catch(() => {}); }
+  const bad = results.filter(r => !r.ok);
+  console.log(`\n${bad.length ? '❌' : '✅'} Разом: ${results.length - bad.length}/${results.length} пройдено`);
+  if (bad.length) { console.log('Впало:'); for (const r of bad) console.log(`  ❌ [${r.group}] ${r.name}`); }
+  process.exit(bad.length ? 1 : 0);
+})();
