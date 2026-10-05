@@ -180,7 +180,7 @@ export async function cardSave(env, key, d) {
     const cards = await getCards(env), ids = new Set((await getIng(env)).map(x => x.id));
     if (d == null) { delete cards[key]; await putCards(env, cards); return { ok: 1 }; }
     const items = (Array.isArray(d.items) ? d.items : []).filter(l => ids.has(l.id) && +l.q > 0).slice(0, 40).map(l => ({ id: l.id, q: r3(l.q), ...(+l.loss ? { loss: Math.min(90, Math.max(0, Math.round(+l.loss))) } : {}), ...(l.wh === 'k' || l.wh === 'b' ? { wh: l.wh } : {}) }));
-    const c = { items, ...(+d.out > 0 ? { out: Math.round(+d.out) } : {}), ...(d.wh === 'k' || d.wh === 'b' ? { wh: d.wh } : {}), ...(d.perL ? { perL: 1 } : {}), ...(+d.yield > 0 ? { yield: r3(d.yield) } : {}), ...(d.draft ? { draft: 1 } : {}), ...(d.note ? { note: String(d.note).slice(0, 400) } : {}) };
+    const c = { items, ...(+d.out > 0 ? { out: Math.round(+d.out) } : {}), ...(d.wh === 'k' || d.wh === 'b' ? { wh: d.wh } : {}), ...(d.perL ? { perL: 1 } : {}), ...(+d.yield > 0 ? { yield: r3(d.yield) } : {}), ...(+d.mk > 0 ? { mk: Math.round(+d.mk * 100) / 100 } : {}), ...(d.draft ? { draft: 1 } : {}), ...(d.note ? { note: String(d.note).slice(0, 400) } : {}) };
     cards[key] = c; await putCards(env, cards); return { card: c };
   });
 }

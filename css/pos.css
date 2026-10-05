@@ -770,3 +770,4 @@ body.cour #feed, body.cour .feed-btn { display: none !important; }
 .bk-blink{animation:callbl 1s ease-in-out infinite alternate}
 .cr-cols.t-all > section { display: grid !important; } .cr-cols.t-all h3 { display: block !important; } .cr-c.late { border-color: var(--red); }
 @media (max-width: 900px) { .cr-cols.t-all { grid-template-columns: 1fr; } }
+.sk-mass{margin-top:6px}.sk-mk input{text-align:center}
