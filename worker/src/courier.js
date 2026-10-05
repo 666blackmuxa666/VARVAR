@@ -91,7 +91,7 @@ export async function courRep(env, m) {
   const lists = days.length ? await env.DB.getMany(days.map(d => 'closed:' + d), 'json') : [];
   const by = {}, mins = (a, b) => a && b && b > a ? (b - a) / 60e3 : null;
   days.forEach((d, i) => { for (const c of lists[i] || []) {
-    if (c.go !== 'del' || !c.gt) continue;
+    if (c.go !== 'del' || !c.gt || c.del || c.rm) continue; // скасовані чеки не рахуємо
     const x = by[c.cour || '—'] ||= { n: 0, sum: 0, fee: 0, road: [], tot: [], late: 0, prob: {} };
     x.n++; x.sum += c.sum || 0; x.fee += c.fee || 0;
     const r = mins(c.gt.road, c.gt.done), t = mins(c.gt.at, c.gt.done); if (r != null) x.road.push(r); if (t != null) x.tot.push(t);
@@ -106,7 +106,7 @@ export async function courRep(env, m) {
 
 // ---------- 💵 готівка на руках і підсумок дня ----------
 export async function courDay(env, name) {
-  const cl = (await getClosed(env)).filter(c => !c.del && c.cour === name && c.go === 'del'), c = await getGoCfg(env), st = (await getStaff(env)).find(s => s.name === name);
+  const cl = (await getClosed(env)).filter(c => !c.del && !c.rm && c.cour === name && c.go === 'del'), c = await getGoCfg(env), st = (await getStaff(env)).find(s => s.name === name);
   const cash = cl.reduce((a, x) => a + (x.cash || 0), 0), hand = (await env.DB.get('ccash:' + dayKey(), 'json')) || {};
   const mm = cl.map(x => x.gt?.road && x.gt?.done ? (x.gt.done - x.gt.road) / 60e3 : null).filter(x => x != null);
   return { avg: mm.length ? Math.round(mm.reduce((a, x) => a + x, 0) / mm.length) : null, n: cl.length, cash, given: hand[name]?.sum || 0, left: cash - (hand[name]?.sum || 0), earn: cl.length * (st?.pay?.dlv ?? c.cpay), list: cl.map(x => ({ t: x.t, at: x.at, sum: x.sum, pay: x.card ? 'card' : 'cash', mins: x.gt?.road && x.gt?.done ? Math.round((x.gt.done - x.gt.road) / 60e3) : null })) };

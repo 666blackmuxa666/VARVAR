@@ -2,7 +2,7 @@
   function teamHTML() { return `<div class="rhead"><div><h1>Персонал</h1><span class="muted">графік змін, зарплата, працівники</span></div></div>${payHTML()}`; }
   function payHTML() {
     const G = S.data.zp; if (!G) return '<div class="muted">Завантаження…</div>';
-    const people = G.staff.filter(s => !(G.hide || []).includes(s.name) && (s.pay?.rate || s.pay?.pct || (G.seen || []).includes(s.name) || G.days.some(d => G.att[d]?.[s.name] || G.plan[d]?.[s.name]))).map(s => s.name); // зі ставкою — завжди в графіку
+    const people = G.staff.filter(s => s.role !== 'courier' && !(G.hide || []).includes(s.name) && (s.pay?.rate || s.pay?.pct || (G.seen || []).includes(s.name) || G.days.some(d => G.att[d]?.[s.name] || G.plan[d]?.[s.name]))).map(s => s.name); // зі ставкою — завжди в графіку
     const rows = G.rows.filter(r => people.includes(r.n) || r.paid || r.adv || r.bonus || r.fine), due = rows.reduce((a, r) => a + Math.max(0, r.due), 0), pend = rows.reduce((a, r) => a + r.pending, 0);
     const tab = S.zpTab || 'grid', TABS = [['grid', '📅 Графік'], ['pay', '💰 Зарплата'], ['ops', '🧾 Операції'], ['eff', '📊 Ефективність'], ['people', '👥 Працівники']];
     const top = `<div class="zp-top"><button class="btn sm" data-a="zpM" data-d="-1">◀</button><b>${monName(G.m)}</b><button class="btn sm" data-a="zpM" data-d="1">▶</button></div>

@@ -92,6 +92,25 @@
       done: d.list.map(x => `<div class="kv"><span><b>${tn(x.t)}</b> · ${x.at}${x.mins != null ? ` · в дорозі ${x.mins} хв` : ''}</span><b class="money">${money(x.sum)} ${x.pay === 'card' ? '💳' : '💵'}</b></div>`).join('') || '<div class="cr-empty">Ще нічого не доставлено</div>' };
     return head + tabs + `<div class="cr-cols t-${tab}"><section class="c-new"><h3>🆕 Нові</h3>${col.new}</section><section class="c-mine"><h3>🛵 Мої</h3>${col.mine}</section><section class="c-done"><h3>✅ Сьогодні</h3><div class="card">${col.done}</div></section></div>`;
   }
+  // 🛵 контроль доставок для адміна (екран «Кухня»): нові / в дорозі / сьогодні — без кнопок кур'єра
+  function goCtlHTML() {
+    if (!S.data.courAt || Date.now() - S.data.courAt > 30e3) { S.data.courAt = Date.now(); api('courList').then(r => { S.data.cours = r; if (S.view === 'kq') renderMain(); }).catch(() => {}); }
+    const all = Object.values(S.tables).filter(b => b.t > 1000 && b.t < 2000 && b.go && !['done', 'rej'].includes(b.go.st)).sort((a, b) => (a.go.accAt || a.go.at || 0) - (b.go.accAt || b.go.at || 0));
+    const fresh = all.filter(b => !b.go.cour), act = all.filter(b => b.go.cour);
+    const items = b => b.items.filter(i => !i.name.includes('Доставка')).map(i => `${i.q}× ${esc(i.name)}`).join(', ');
+    const card = b => { const g = b.go, late = g.st === 'new' || (!g.cour && minsAgo(g.accAt || g.at) >= 3);
+      return `<div class="cr-c st-${g.st}${g.prob ? ' prob' : ''}${late && !g.cour ? ' late' : ''}" data-t="${b.t}"><div class="cr-h"><b>${tn(b.t)}</b><span class="chip sm">${g.when ? '🕐 ' + g.when : '⚡'}</span><span class="chip sm">${GOST[g.st] || g.st}</span><small>${minsAgo(g.accAt || g.at)} хв</small></div>
+        <div>${g.cour ? `🛵 <b>${esc(g.cour)}</b>${g.st === 'road' && g.roadAt ? ` · в дорозі ${minsAgo(g.roadAt)} хв` : ''}${g.etaC ? ` · ⏱ буду о ${hhmm(g.etaC)}` : ''}` : '⚠️ <b>кур\'єра немає</b>'}</div>
+        ${g.prob ? `<div class="cr-prob">⚠️ ${esc(g.prob.text)}</div>` : ''}<div class="cr-addr">📍 ${esc(g.addr || '—')}${g.ent ? ` · ${esc(g.ent)}` : ''} · 👤 ${esc(g.name || '')}</div>
+        <div class="muted">🍽 ${items(b)}</div>
+        <div class="btnrow"><button class="btn sm${g.cour ? '' : ' primary'}" data-a="goCourSet" data-t="${b.t}">👤 ${g.cour ? 'Змінити кур\'єра' : 'Призначити'}</button><button class="btn sm" data-a="table" data-t="${b.t}">Відкрити</button></div></div>`; };
+    const C = (S.data.cours?.list || []), done = C.flatMap(c => (c.list || []).map(x => ({ ...x, n: c.name }))).sort((a, b) => (b.at || '').localeCompare(a.at || ''));
+    const route = act.some(b => b.go.addr) && all.length ? `<button class="btn sm" data-a="goMap">🗺 Карта · ${act.length + fresh.length}</button>` : '';
+    return `<div class="khead" style="margin-top:22px"><h1>🛵 Доставки <span class="muted">${all.length}</span></h1><div class="btnrow">${route}</div></div>
+      <div class="cr-cols t-all"><section><h3>🆕 Нові${fresh.length ? ` · ${fresh.length}` : ''}</h3>${fresh.map(card).join('') || '<div class="cr-empty">Нових немає</div>'}</section>
+      <section><h3>🛵 В роботі${act.length ? ` · ${act.length}` : ''}</h3>${act.map(card).join('') || '<div class="cr-empty">Ніхто не їде</div>'}</section>
+      <section><h3>✅ Сьогодні · ${done.length}</h3><div class="card">${done.map(x => `<div class="kv"><span><b>${tn(x.t)}</b> · ${x.at} · ${esc(x.n)}${x.mins != null ? ` · ${x.mins} хв` : ''}</span><b class="money">${money(x.sum)} ${x.pay === 'card' ? '💳' : '💵'}</b></div>`).join('') || '<div class="cr-empty">Ще нічого</div>'}</div></section></div>`;
+  }
   function courCard() {
     const L = S.data.cours?.list?.filter(c => c.n || c.left) || []; if (!L.length) return '';
     return `<div class="card cr-adm"><h3>🛵 Кур'єри сьогодні</h3>${L.map(c => `<div class="kv"><span><b>${esc(c.name)}</b> ${c.tg ? '✈️' : ''}<br><small class="muted">${c.n} доставок${c.avg != null ? ` · ⌀ ${c.avg} хв у дорозі` : ''} · заробіток ${money(c.earn)}${c.given ? ` · здав ${money(c.given)}` : ''}</small></span><span class="kv-r"><b class="money">${money(c.left)}</b>${c.left > 0 ? `<button class="btn sm green" data-a="crGive" data-n="${esc(c.name)}" data-v="${c.left}">✅ Отримав</button>` : ''}</span></div>`).join('')}</div>`;
