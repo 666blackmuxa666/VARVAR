@@ -61,7 +61,7 @@
   let regCodeV = '';
   function showReg(role, code) {
     regCodeV = code; pin = ''; dots();
-    $('#pinView').hidden = true; $('#passView').hidden = true; $('#regView').hidden = false;
+    $('#pinView').hidden = true; $('#regView').hidden = false;
     $('#loginSub').textContent = 'Реєстрація працівника';
     $('#regRole').textContent = role === 'admin' ? '🔐 Новий адміністратор' : role === 'cook' ? '👨‍🍳 Новий кухар' : role === 'courier' ? '🛵 Новий кур\'єр' : '🧑‍🍳 Новий офіціант';
     $('#lErr').textContent = ''; $('#rName').value = ''; $('#rPin').value = ''; $('#rPin2').value = ''; setTimeout(() => $('#rName').focus(), 50);
@@ -81,9 +81,6 @@
       start(); toast(`👋 Вітаю, ${r.me.name}! Ваш PIN збережено`);
     } catch (e2) { $('#lErr').style.color = ''; $('#lErr').textContent = e2.message; }
   };
-  if ($('#toPass')) $('#toPass').onclick = () => { $('#pinView').hidden = true; $('#passView').hidden = false; $('#loginSub').textContent = 'Вхід паролем'; $('#lName').focus(); };
-  $('#toPin').onclick = () => { $('#pinView').hidden = false; $('#passView').hidden = true; $('#loginSub').textContent = 'Введіть свій PIN'; };
-  $('#passView').onsubmit = e => { e.preventDefault(); tryLogin({ pass: $('#lPass').value, name: $('#lName').value }); };
   async function logout(expired) {
     if (!expired) await api('logout').catch(() => {});
     S.token = ''; S.me = null; store.set('token', ''); store.set('me', null); ws?.close(); closeSheet();
@@ -474,8 +471,6 @@
       case 'regSet': { const v = await ask(`Новий код реєстрації (${{ admin: 'адмін', cook: 'кухар', courier: 'кур\'єр' }[el.dataset.r] || 'офіціант'})`, '4 цифри', 'number'); if (v) { await act('regCode', { role: el.dataset.r, code: v }, '🆕 Код змінено'); loadView(); } break; }
       case 'staffDel': if (await confirmBox('Видалити працівника?', 'Його PIN перестане працювати')) { await act('staffDel', { id: el.dataset.id }); loadView(); } break;
       case 'wOut': await act('waiterOut', { uid: el.dataset.uid }, 'Вийшов із бота'); loadView(); break;
-      case 'wPass': { const v = await ask('Новий пароль офіціанта', 'мінімум 3 символи'); if (v) act('waiterPass', { pass: v }, '🔑 Змінено'); break; }
-      case 'aPass': { const v = await ask('Новий пароль адміністратора', 'мінімум 4 символи'); if (v) act('adminPass', { pass: v }, '🔑 Змінено'); break; }
       case 'wifiAdd': await act('wifiAdd', {}, '📶 Мережу додано'); loadView(); break;
       case 'wifiClear': if (await confirmBox('Скинути всі мережі?', 'Гості не зможуть замовляти, поки не додасте мережу')) { await act('wifiClear'); loadView(); } break;
       case 'reset': if (await confirmBox('♻️ Обнулити все?', 'Звіти, каса, закриті, топ страв, стрічка і ВСІ відкриті столи')) if (await confirmBox('Точно? Це не можна скасувати.')) { await act('reset', {}, '♻️ Обнулено'); loadView(); } break;

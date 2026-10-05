@@ -15,7 +15,7 @@ import { calcView, stockCmd, invPhoto, stockCallback, stockCallbackW, stockCallb
 import {
   L, tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
   precheck, setDiscount, splitTable, restoreVoid, getVoids, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
-  reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, tipBalances, payTips, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenPct, rejectOrder, kitchenStats, getKq, kitchenDone, kitchenStart, restoreClosed, reopenClosed, restoreTable, restoreExpense, balances, reconcile, WAITER_DISC_MAX, getCfg, setCfg, CFG_LIM, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, editStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
+  reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, tipBalances, payTips, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenPct, rejectOrder, kitchenStats, getKq, kitchenDone, kitchenStart, restoreClosed, reopenClosed, restoreTable, restoreExpense, balances, reconcile, WAITER_DISC_MAX, getCfg, setCfg, CFG_LIM, zText, reportBreakdown, regRole, isAdmin, isWaiter, getStaff, addStaff, delStaff, editStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
   getMov, delMove, restoreMove, delZ, restoreZ, pinHash, isDay,editClosed, dayX, notify,
 } from './ops.js';
 export { tg, esc, hhmm, getBill } from './ops.js';
@@ -26,11 +26,11 @@ const ADMIN_TTL = 12 * 3600;
 // ---------- клавіатури ----------
 const W = { loy: '🎁 Гості й акції', order: '➕ Замовлення', kitchen: '👨‍🍳 Кухня', tables: '📋 Столи', close: '🧾 Закрити стіл', stop: '⛔ Стоп-лист', help: '❓ Допомога', admin: '🔐 Адмін', go: '🛵 Доставка', book: '📅 Броні' };
 const A = { cash: '💰 Каса', expense: '💸 Витрата', reports: '📊 Звіти', closed: '📜 Закриті сьогодні', top: '🏆 Топ страв', del: '🗑 Видалити стіл', menu: '📖 Редагувати меню', wifi: '📶 Wi‑Fi',
-  staff: '👥 Персонал', pass: '🔑 Змінити пароль', wpass: '🔑 Пароль офіціанта', waiter: '⬅️ Режим офіціанта', logout: '🚪 Вийти',
+  staff: '👥 Персонал', waiter: '⬅️ Режим офіціанта', logout: '🚪 Вийти',
   calc: '🧮 Розрахунок', pay: '👷 Зарплата', delClosed: '🧹 Видалити закритий', reset: '♻️ Обнулити все' }; // ТЕСТ: delClosed і reset — прибрати, коли скаже власник
 const kb = rows => ({ keyboard: rows.map(r => r.map(text => ({ text }))), resize_keyboard: true, is_persistent: true });
 export const KEYBOARD = kb([[W.order], [W.tables, W.close], [W.kitchen, W.go], [W.stop, W.book], [W.loy], [W.help, W.admin]]);
-const ADMIN_KB = kb([[W.order], [A.cash, A.expense], [A.reports, A.closed], [A.calc, A.pay], [A.top, A.del], [W.tables, W.stop], [W.kitchen, W.go], [W.book, W.loy], [A.menu, A.wifi], [A.staff, A.wpass], [A.delClosed, A.reset], [A.pass, A.waiter, A.logout]]);
+const ADMIN_KB = kb([[W.order], [A.cash, A.expense], [A.reports, A.closed], [A.calc, A.pay], [A.top, A.del], [W.tables, W.stop], [W.kitchen, W.go], [W.book, W.loy], [A.menu, A.wifi], [A.staff], [A.delClosed, A.reset], [A.waiter, A.logout]]);
 
 export const COMMANDS = [
   ['tables', 'Відкриті столи і рахунки'], ['table', 'Деталі столу: /table 5'], ['close', 'Закрити рахунок столу'],
@@ -45,7 +45,7 @@ ${W.tables} — відкриті столи і суми (у столі: преч
 ${W.close} — закрити рахунок (гість розрахувався)
 ${W.stop} — чого немає / повернути в меню
 ${W.loy} — рівні й акції; <code>клієнт 0501234567</code> — картка гостя
-${W.admin} — режим адміністратора (за паролем)
+${W.admin} — режим адміністратора (для ролі «адмін»)
 <code>принтер</code> — стан принтера, тестовий друк, QR
 
 <b>Записати замовлення текстом:</b>
@@ -70,9 +70,7 @@ ${A.del} — прибрати помилковий/тестовий стіл (н
 ${A.menu} — ціни, склад, нові страви, фото
 ${A.wifi} — мережі закладу для замовлень
 ${A.staff} — PIN-коди працівників для касової програми, хто увійшов у бот
-${A.wpass} — пароль для входу офіціантів у бот
 ${A.delClosed} / ${A.reset} — тестові
-${A.pass} — новий пароль адміністратора
 ${A.waiter} — звичайні кнопки (вхід зберігається)
 ${A.logout} — вийти з режиму адміністратора
 
@@ -362,6 +360,13 @@ async function shiftToggle(env, s) {
   return { text: r.error ? '⚠️ ' + r.error : out ? `🔴 <b>${esc(s.name)}</b>: зміну закінчено` : `🟢 <b>${esc(s.name)}</b>: зміну почато — адмін підтвердить` };
 }
 
+// вхід: привʼязка Telegram → працівник (tgs:), сесія за роллю (admin → ще й режим адміна). Повертає клавіатуру
+async function tgLogin(env, uid, s, chat) {
+  await env.DB.put('tgs:' + uid, s.id); await env.DB.put('wlog:' + uid, JSON.stringify({ name: s.name, role: s.role, at: Date.now() }));
+  if (s.role !== 'admin') return KEYBOARD;
+  await env.DB.put('adm:' + uid, JSON.stringify({ name: s.name, at: Date.now() }), { expirationTtl: ADMIN_TTL }); await env.DB.delete('kbw:' + uid); return ADMIN_KB;
+}
+
 export async function handleUpdate(u, env) {
   if (u.callback_query) return handleCallback(u.callback_query, env);
   const m = u.message; if (!m) return;
@@ -369,7 +374,7 @@ export async function handleUpdate(u, env) {
   const admin = await isAdmin(env, uid);
   const waiter = admin || await isWaiter(env, uid);
   // вхід закінчився сам (12 год) — прибираємо, що лишилось від сесії
-  if (!admin && uid && await env.DB.get('admmsg:' + uid) && await env.DB.get('st:' + uid) !== 'login') await purgeAdminChat(env, uid);
+  if (!admin && uid && await env.DB.get('admmsg:' + uid) && await env.DB.get('st:' + uid) !== 'pin') await purgeAdminChat(env, uid);
   let track = admin; // повідомлення цієї взаємодії належать адмін-сесії
   const waiterView = admin && !!(await env.DB.get('kbw:' + uid)); // адмін перемкнувся на кнопки офіціанта
   const send = async (v, keyboard) => {
@@ -385,28 +390,25 @@ export async function handleUpdate(u, env) {
   const state = uid && await env.DB.get('st:' + uid);
   if (state && text && !text.startsWith('/') && !Object.values(W).concat(Object.values(A)).includes(text)) {
     await env.DB.delete('st:' + uid);
-    if (['login', 'newpass', 'wlogin', 'newwpass', 'stfadd'].includes(state) || state.startsWith('tgpin:') || state.startsWith('stfp:')) await tg(env, 'deleteMessage', { chat_id: chat, message_id: m.message_id }); // прибираємо паролі/PIN з чату
-    if (state === 'wlogin') {
-      if (await tooMany()) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' }, { remove_keyboard: true });
-      if (!samePass(text, await waiterPass(env)) && !samePass(text, await adminPass(env))) {
-        const n = await fail(); await env.DB.put('st:' + uid, 'wlogin', { expirationTtl: 3600 });
-        return send({ text: `❌ Невірний пароль Введіть ще раз:` }, { remove_keyboard: true });
-      }
+    if (['pin', 'stfadd'].includes(state) || state.startsWith('regp:') || state.startsWith('tgpin:') || state.startsWith('stfp:')) await tg(env, 'deleteMessage', { chat_id: chat, message_id: m.message_id }); // прибираємо паролі/PIN з чату
+    if (state === 'pin') { // 🔑 вхід за особистим PIN каси (або код реєстрації нового працівника)
+      if (+(await env.DB.get('fail:' + uid) || 0) >= 5) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' }, { remove_keyboard: true });
+      const keep = async t => { await env.DB.put('st:' + uid, 'pin', { expirationTtl: 3600 }); return send({ text: t }, { remove_keyboard: true }); };
+      if (!/^\d{4}$/.test(text)) return keep('Введіть 4 цифри — свій PIN (або код реєстрації):');
+      const role = await regRole(env, text);
+      if (role) { await env.DB.put('st:' + uid, 'regn:' + role, { expirationTtl: 900 }); return send({ text: `🆕 Реєстрація (${ROLE_ONE[role]}). Напишіть своє імʼя:` }, { remove_keyboard: true }); }
+      const h = await pinHash(text), me = (await getStaff(env)).find(z => z.pin === h);
+      if (!me) { await fail(); return keep('❌ Невірний PIN. Введіть ще раз:'); }
       await env.DB.delete('fail:' + uid);
-      await env.DB.put('wlog:' + uid, JSON.stringify({ name: who, at: Date.now() }));
-      return send({ text: `✅ Вітаю, ${esc(who)}! Ви увійшли як офіціант.\n\n` + HELP(env) }, KEYBOARD);
+      return send({ text: `✅ Вітаю, ${esc(me.name)}! Ви увійшли як ${ROLE_ONE[me.role] || me.role}.\n\n` + (me.role === 'admin' ? ADMIN_HELP(env) : HELP(env)) }, await tgLogin(env, uid, me, chat));
     }
-    if (state === 'login') {
-      if (await tooMany()) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' });
-      if (!samePass(text, await adminPass(env))) {
-        const n = await fail();
-        return send({ text: `❌ Невірний пароль. Натисніть «${W.admin}», щоб спробувати ще.` }, KEYBOARD);
-      }
-      await env.DB.delete('fail:' + uid);
-      await env.DB.put('adm:' + uid, JSON.stringify({ name: who, at: Date.now() }), { expirationTtl: ADMIN_TTL });
-      await env.DB.put('wlog:' + uid, JSON.stringify({ name: who, at: Date.now() }));
-      track = true;
-      return send({ text: `✅ Вітаю, ${esc(who)}! Ви в режимі адміністратора.\n\n` + ADMIN_HELP(env) }, ADMIN_KB);
+    if (state.startsWith('regn:')) { const name = text.replace(/:/g, ' ').trim().slice(0, 30); if (!name) return send({ text: 'Напишіть імʼя' }); await env.DB.put('st:' + uid, `regp:${state.slice(5)}:${name}`, { expirationTtl: 900 }); return send({ text: `Привіт, ${esc(name)}! Придумайте свій PIN — 4 цифри (повідомлення одразу видалиться):` }, { remove_keyboard: true }); }
+    if (state.startsWith('regp:')) {
+      const [, role, ...nm] = state.split(':'), name = nm.join(':');
+      if (!/^\d{4}$/.test(text)) { await env.DB.put('st:' + uid, state, { expirationTtl: 900 }); return send({ text: 'PIN — рівно 4 цифри:' }, { remove_keyboard: true }); }
+      const r = await addStaff(env, name, text, role); if (r.error) { await env.DB.put('st:' + uid, state, { expirationTtl: 900 }); return send({ text: '⚠️ ' + r.error + '\nВведіть інший PIN:' }, { remove_keyboard: true }); }
+      await notify(env, `👥 Новий працівник: <b>${esc(r.s.name)}</b> (${ROLE_ONE[role]}) — зареєструвався в Telegram-боті`).catch(() => {});
+      return send({ text: `👋 Вітаю, ${esc(r.s.name)}! PIN збережено — ним же входите в касу.\n\n` + (role === 'admin' ? ADMIN_HELP(env) : HELP(env)) }, await tgLogin(env, uid, r.s, chat));
     }
     if (state?.startsWith('bkt:') && waiter) { const r = await bookSet(env, state.slice(4), 'kit', who, { t: +text }); return send({ text: r?.error ? '⚠️ ' + r.error : `🔥 Передзамовлення відправлено на кухню · стіл ${+text}` }); }
     if (state.startsWith('goe:') && admin) { // ✏️ доставка: та сама goEdit, що й у касі
@@ -500,17 +502,6 @@ export async function handleUpdate(u, env) {
       return send({ text: `💸 Витрата <b>${money(sum)}</b>${note.trim() ? ` — ${esc(note.trim())}` : ''}\nЗвідки гроші?`,
         markup: { inline_keyboard: [[{ text: '💵 З каси (готівка)', callback_data: `exs:${eid}:cash` }, { text: '💳 З карти', callback_data: `exs:${eid}:card` }], [{ text: 'Скасувати', callback_data: 'no' }]] } });
     }
-    if (state === 'newpass' && admin) {
-      if (text.length < 4) return send({ text: 'Пароль закороткий (мінімум 4 символи). Натисніть «🔑 Змінити пароль» ще раз.' });
-      await env.DB.put('admin_pass', text);
-      return send({ text: '🔑 Пароль адміністратора змінено. Повідомлення з паролем видалено з чату.' });
-    }
-    if (state === 'newwpass' && admin) {
-      if (text.length < 3) return send({ text: 'Пароль закороткий (мінімум 3 символи).' });
-      await env.DB.put('waiter_pass', text);
-      return send({ text: '🔑 Пароль офіціанта змінено. Хто вже увійшов — лишається в системі (вийти їх можна в «👥 Персонал»).' });
-    }
-    if (state.startsWith('stfn:') && admin) { const r = await editStaff(env, state.slice(5), { name: text }); await send(staffEdited(r)); return send(await staffOne(env, state.slice(5))); }
     if (state.startsWith('stfp:') && admin) { const r = await editStaff(env, state.slice(5), { pin: text }); await send(staffEdited(r)); return send(await staffOne(env, state.slice(5))); }
     if (state === 'stfadd' && admin) {
       const sm = text.match(/^(.+?)\s+(\d{4,6})(?:\s+(адмін|админ|admin|кухар|повар|cook|кур[ʼ'’]?єр|курьер|courier))?$/i);
@@ -524,14 +515,16 @@ export async function handleUpdate(u, env) {
   // вхід адміністратора — з будь-якого чату
   if (low === '/admin' || text === W.admin) {
     if (admin) { await env.DB.delete('kbw:' + uid); return send({ text: ADMIN_HELP(env) }, ADMIN_KB); }
-    await env.DB.put('st:' + uid, 'login', { expirationTtl: 300 });
-    track = true; // запрошення до входу теж приберемо при виході
-    return send({ text: '🔐 Введіть пароль адміністратора (повідомлення одразу видалиться):' }, { remove_keyboard: true });
+    const me = await meStaff(env, uid);
+    if (me?.role === 'admin') { track = true; await tgLogin(env, uid, me, chat); return send({ text: ADMIN_HELP(env) }, ADMIN_KB); }
+    if (me) return send({ text: '🔐 Режим адміністратора — лише для працівників з роллю «адмін».' });
+    await env.DB.put('st:' + uid, 'pin', { expirationTtl: 3600 });
+    return send({ text: '🔑 Введіть свій PIN каси (повідомлення одразу видалиться):' }, { remove_keyboard: true });
   }
   // без входу — лише запит пароля офіціанта
   if (!waiter) {
-    await env.DB.put('st:' + uid, 'wlogin', { expirationTtl: 3600 });
-    return send({ text: '🔑 Цей бот — для персоналу VARVAR.\nВведіть пароль офіціанта (повідомлення одразу видалиться):' }, { remove_keyboard: true });
+    await env.DB.put('st:' + uid, 'pin', { expirationTtl: 3600 });
+    return send({ text: '🔑 Цей бот — для персоналу VARVAR.\nВведіть свій PIN каси — той самий, що й для входу в касу (повідомлення одразу видалиться).\nНовий працівник — введіть код реєстрації.' }, { remove_keyboard: true });
   }
 
   // 🧮 фото накладної → розпізнати (Gemini) → чернетка з кнопками «Записати»
@@ -572,7 +565,7 @@ export async function handleUpdate(u, env) {
   if (low === '/stoplist' || text === W.stop || low === 'стоп-лист' || low === 'стоп лист') return send(await stopView(env));
 
   // --- адміністратор ---
-  const ADM = [A.calc, A.pay, A.cash, A.expense, A.reports, A.closed, A.top, A.del, A.menu, A.wifi, A.staff, A.pass, A.wpass, A.waiter, A.logout, A.delClosed, A.reset];
+  const ADM = [A.calc, A.pay, A.cash, A.expense, A.reports, A.closed, A.top, A.del, A.menu, A.wifi, A.staff, A.waiter, A.logout, A.delClosed, A.reset];
   const admOnly = ADM.includes(text) || /^(\/revenue|\/wifi|\/menu|виручка|каса|звіти|витрата|видалити стіл)/.test(low);
   if (admOnly && !admin) return send({ text: `🔐 Це доступно лише адміністратору. Натисніть «${W.admin}».` });
   if (text === A.cash || low === 'каса') return send(await cashView(env));
@@ -585,8 +578,6 @@ export async function handleUpdate(u, env) {
   if (text === A.menu || low === '/menu') return send({ text: MENU_HELP });
   if (text === A.wifi || low === '/wifi') return send(await wifiView(env));
   if (text === A.staff) return send(await staffView(env));
-  if (text === A.pass) { await env.DB.put('st:' + uid, 'newpass', { expirationTtl: 300 }); return send({ text: '🔑 Напишіть новий пароль адміністратора (мінімум 4 символи). Повідомлення одразу видалиться.' }); }
-  if (text === A.wpass) { await env.DB.put('st:' + uid, 'newwpass', { expirationTtl: 300 }); return send({ text: '🔑 Напишіть новий пароль для офіціантів. Повідомлення одразу видалиться.' }); }
   if (text === A.waiter) { await env.DB.put('kbw:' + uid, '1', { expirationTtl: ADMIN_TTL }); return send({ text: `Звичайні кнопки. Вхід адміністратора зберігається — «${W.admin}», щоб повернутись.` }, KEYBOARD); }
   if (text === A.logout) {
     await env.DB.delete('adm:' + uid); await env.DB.delete('kbw:' + uid);

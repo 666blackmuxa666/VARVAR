@@ -13,10 +13,10 @@
 - `worker/src/menu.js` — меню: `getMenu` (KV або `data/menu.json`), `saveMenu` (+`menu_prev` для «відмінити»), `handleMenuText` (стоп-лист усім, зміни — адміну), `handleMenuPhoto` (фото страви → `img:<id>`), `priceMap`, `HELP`; замок `menuLock` (`env.DB.locked('menu')`).
 
 ## Ключі бази
-- `st:<uid>` — стан очікування вводу (TTL 5–60 хв): `login`, `wlogin`, `exp`, `newpass`, `newwpass`, `ocom` (коментар), `gocon` (дані доставки), `dscc:<t>`, `rmr:<t>:<i>`, `bkt:<id>`, `cfg:<k>`, `kpct`, `rcn:<src>`, `cmv:<тип>`, `shopen`, `shclose`, `float`, `stfadd`, `bkd` (дата броней), `bkn` (нова бронь), `bke:<id>:<поле>`, `tgpin:<staffId>`, `skcn:<k|b>` (інвентаризація), `skpr:<ingId>` (заготовка), `skbc` (штрихкод)
+- `st:<uid>` — стан очікування вводу (TTL 5–60 хв): `pin` (вхід за PIN каси або кодом реєстрації), `regn:<роль>`, `regp:<роль>:<імʼя>` (реєстрація), `exp`, `ocom` (коментар), `gocon` (дані доставки), `dscc:<t>`, `rmr:<t>:<i>`, `bkt:<id>`, `cfg:<k>`, `kpct`, `rcn:<src>`, `cmv:<тип>`, `shopen`, `shclose`, `float`, `stfadd`, `bkd` (дата броней), `bkn` (нова бронь), `bke:<id>:<поле>`, `tgpin:<staffId>`, `skcn:<k|b>` (інвентаризація), `skpr:<ingId>` (заготовка), `skbc` (штрихкод)
 - `tgs:<uid>` → id працівника зі `staff` (привʼязка Telegram ↔ персонал, без терміну; після вибору себе + PIN каси)
 - `adm:<uid>` (адмін, TTL 12 год), `wlog:<uid>` (офіціант), `kbw:<uid>` (адмін у режимі офіціанта), `fail:<uid>` (невдалі паролі, 15 хв)
-- `admmsg:<uid>` → `{chat, ids}` повідомлення адмін-сесії; `admin_pass`, `waiter_pass`
+- `admmsg:<uid>` → `{chat, ids}` повідомлення адмін-сесії
 - `ob:<uid>` → кошик кнопок `{table,items:[{name,price,q}],com,ur,gk,tw,mid,chat}` (TTL 3 год); `draft:<id>` → текстове замовлення (1 год); `gopend:<uid>`, `expd:<id>`
 - `menu`, `menu_prev`, `img:<id>`, `venue_ips`
 
@@ -37,6 +37,7 @@
 - `pay.js` (ЗП), `stockbot.js` (склад), `delivery.js`, `site.js` (броні/сайт), `courier.js`, `print.js`.
 
 ## Тонкі місця й правила
+- **Вхід — лише особистий PIN каси** (`staff.pin`, `pinHash`), спільних паролів немає. Код реєстрації (`regRole`: 1119/1112/1113/1114) → імʼя → свій PIN → `addStaff`. `tgLogin` ставить `tgs:<uid>`, `wlog:<uid>` {name, role}, для ролі admin ще й `adm:<uid>` (12 год; «🔐 Адмін» без пароля відновлює її за `tgs`). Не-адмін у «🔐 Адмін» отримує відмову. Ролі cook/courier у боті мають права офіціанта (окремих кнопок нема). 5 невдалих PIN → 15 хв блоку (`fail:`).
 - **Паритет з касою:** нова дія в касі → кнопка/команда тут (і навпаки). Склад у боті: інвентаризація, заготовки, штрихкоди — кнопками і текстом (`штрихкод <код> [назва]`); ШІ-техкарт кнопками ще нема.
 - Права: `handleCallback` пускає лише офіціанта/адміна; адмінські кнопки перевіряють `admin` всередині. Ролей кухар/кур'єр бот не знає (кур'єр — окремий бот).
 - Стани `st:` перехоплюють будь-який текст, крім кнопок `W`/`A` і `/`-команд — не забувати `delete('st:'+uid)`.
