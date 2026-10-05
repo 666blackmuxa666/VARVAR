@@ -13,7 +13,9 @@ export const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '
 export const TZ = 'Europe/Kyiv';
 export const hhmm = (t = Date.now()) => new Date(t).toLocaleTimeString('uk-UA', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
 // робочий день закладу: з 03:00 до 03:00 (нічні продажі після півночі — у вчорашню виручку)
-export const DAY_START_H = 3;
+// ⚙️ о котрій закінчується робочий день (Налаштування → «🌙 День і Z-звіт»; ставиться на початку кожного запиту з cfg.dayH)
+export let DAY_START_H = 3;
+export const setDayH = h => { if (h >= 0 && h <= 8) DAY_START_H = h; };
 export const dayKey = (t = Date.now()) => new Date(t - DAY_START_H * 3600e3).toLocaleDateString('sv-SE', { timeZone: TZ }); // YYYY-MM-DD
 export const isDay = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ''));
 export const money = n => `${Math.round(n).toLocaleString('uk-UA')} грн`;
@@ -213,8 +215,8 @@ async function _addVoid(env, v) { const k = 'void:' + dayKey(), l = await getVoi
 // максимальна знижка для офіціанта (адмін — будь-яка)
 export const WAITER_DISC_MAX = 20;
 // ⚙️ налаштування системи (змінюються в касі «Налаштування» і в боті)
-export const CFG_DEF = { discMax: WAITER_DISC_MAX, scanMin: 60, foodCost: 30, priceAlert: 5, lateMin: 10, lateFine: 0 };
-export const CFG_LIM = { discMax: [0, 100], scanMin: [10, 600], foodCost: [5, 90], priceAlert: [1, 100], lateMin: [0, 120], lateFine: [0, 5000] };
+export const CFG_DEF = { discMax: WAITER_DISC_MAX, scanMin: 60, foodCost: 30, priceAlert: 5, lateMin: 10, lateFine: 0, dayH: 3, autoZ: 0, zPrint: 1, zTg: 1, zRemind: 1 };
+export const CFG_LIM = { discMax: [0, 100], scanMin: [10, 600], foodCost: [5, 90], priceAlert: [1, 100], lateMin: [0, 120], lateFine: [0, 5000], dayH: [0, 8], autoZ: [0, 1], zPrint: [0, 1], zTg: [0, 1], zRemind: [0, 1] };
 export const getCfg = async env => ({ ...CFG_DEF, ...((await env.DB.get('cfg', 'json')) || {}) });
 export async function setCfg(env, k, v) {
   if (!CFG_LIM[k]) return { error: 'Невідоме налаштування' };

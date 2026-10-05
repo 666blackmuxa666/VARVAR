@@ -1,5 +1,5 @@
   function perRange(p) {
-    const now = new Date(Date.now() - 3 * 3600e3), day = 864e5, y = now.getFullYear(), mo = now.getMonth(); // робочий день — з 03:00 (як на сервері)
+    const now = new Date(Date.now() - (S.cfg?.dayH ?? 3) * 3600e3), day = 864e5, y = now.getFullYear(), mo = now.getMonth(); // робочий день — з 03:00 (як на сервері)
     if (p === 'd') return [iso(now), iso(now)];
     if (p === 'y') return [iso(now - day), iso(now - day)];
     if (p === 'w') return [iso(now - 6 * day), iso(now)];

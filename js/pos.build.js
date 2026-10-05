@@ -590,10 +590,14 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   const hhK = (t) => new Date(t).toLocaleTimeString("uk-UA", { timeZone: "Europe/Kyiv", hour: "2-digit", minute: "2-digit" });
   const WDL = ["\u043D\u0434", "\u043F\u043D", "\u0432\u0442", "\u0441\u0440", "\u0447\u0442", "\u043F\u0442", "\u0441\u0431"];
   const curMon = () => {
-    const d = new Date(Date.now() - 3 * 36e5);
+    var _a2, _b;
+    const d = new Date(Date.now() - ((_b = (_a2 = S.cfg) == null ? void 0 : _a2.dayH) != null ? _b : 3) * 36e5);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   };
-  const todayK = () => iso(Date.now() - 3 * 36e5);
+  const todayK = () => {
+    var _a2, _b;
+    return iso(Date.now() - ((_b = (_a2 = S.cfg) == null ? void 0 : _a2.dayH) != null ? _b : 3) * 36e5);
+  };
   const monAdd = (m, n) => {
     const [y, mo] = m.split("-").map(Number), d = new Date(y, mo - 1 + n, 15);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -709,7 +713,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     renderMain();
   });
   document.addEventListener("click", async (e) => {
-    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
+    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p;
     const el = e.target.closest("[data-a]");
     if (!el) return;
     const a = el.dataset.a, t = S.open;
@@ -1415,8 +1419,17 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         }
         break;
       }
+      case "cfgTgl": {
+        const k = el.dataset.k, cur = (_p = (_o = (_m = (_l = S.data.staff) == null ? void 0 : _l.cfg) == null ? void 0 : _m[k]) != null ? _o : (_n = S.cfg) == null ? void 0 : _n[k]) != null ? _p : 0;
+        if (await act("cfgSet", { k, v: cur ? 0 : 1 }, "\u2699\uFE0F \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
+          loadView();
+          loadState().catch(() => {
+          });
+        }
+        break;
+      }
       case "cfg": {
-        const k = el.dataset.k, L = { discMax: ["\u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430, %", "\u0432\u0456\u0434 0 \u0434\u043E 100"], scanMin: ["\u0425\u0432\u0438\u043B\u0438\u043D \u043D\u0430 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0441\u043B\u044F QR", "\u0432\u0456\u0434 10 \u0434\u043E 600"], foodCost: ["\u0426\u0456\u043B\u044C\u043E\u0432\u0438\u0439 \u0444\u0443\u0434\u043A\u043E\u0441\u0442, %", "\u0432\u0456\u0434 5 \u0434\u043E 90"], priceAlert: ["\u0421\u043F\u043E\u0432\u0456\u0449\u0430\u0442\u0438 \u043F\u0440\u043E \u043F\u043E\u0434\u043E\u0440\u043E\u0436\u0447\u0430\u043D\u043D\u044F \u0432\u0456\u0434, %", "\u0432\u0456\u0434 1 \u0434\u043E 100"], lateMin: ["\u0417\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F \u2014 \u043F\u0456\u0441\u043B\u044F \u0441\u043A\u0456\u043B\u044C\u043A\u043E\u0445 \u0445\u0432\u0438\u043B\u0438\u043D", "\u0432\u0456\u0434 0 \u0434\u043E 120"], lateFine: ["\u0428\u0442\u0440\u0430\u0444 \u0437\u0430 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F, \u20B4", "0 \u2014 \u0431\u0435\u0437 \u0448\u0442\u0440\u0430\u0444\u0443"] }[k];
+        const k = el.dataset.k, L = { discMax: ["\u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430, %", "\u0432\u0456\u0434 0 \u0434\u043E 100"], scanMin: ["\u0425\u0432\u0438\u043B\u0438\u043D \u043D\u0430 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0441\u043B\u044F QR", "\u0432\u0456\u0434 10 \u0434\u043E 600"], foodCost: ["\u0426\u0456\u043B\u044C\u043E\u0432\u0438\u0439 \u0444\u0443\u0434\u043A\u043E\u0441\u0442, %", "\u0432\u0456\u0434 5 \u0434\u043E 90"], priceAlert: ["\u0421\u043F\u043E\u0432\u0456\u0449\u0430\u0442\u0438 \u043F\u0440\u043E \u043F\u043E\u0434\u043E\u0440\u043E\u0436\u0447\u0430\u043D\u043D\u044F \u0432\u0456\u0434, %", "\u0432\u0456\u0434 1 \u0434\u043E 100"], lateMin: ["\u0417\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F \u2014 \u043F\u0456\u0441\u043B\u044F \u0441\u043A\u0456\u043B\u044C\u043A\u043E\u0445 \u0445\u0432\u0438\u043B\u0438\u043D", "\u0432\u0456\u0434 0 \u0434\u043E 120"], lateFine: ["\u0428\u0442\u0440\u0430\u0444 \u0437\u0430 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F, \u20B4", "0 \u2014 \u0431\u0435\u0437 \u0448\u0442\u0440\u0430\u0444\u0443"], dayH: ["\u041E \u043A\u043E\u0442\u0440\u0456\u0439 \u0437\u0430\u043A\u0456\u043D\u0447\u0443\u0454\u0442\u044C\u0441\u044F \u0440\u043E\u0431\u043E\u0447\u0438\u0439 \u0434\u0435\u043D\u044C (\u0433\u043E\u0434\u0438\u043D\u0430)", "\u0432\u0456\u0434 0 \u0434\u043E 8, \u043D\u0430\u043F\u0440. 3"] }[k];
         const v = await ask(L[0], L[1], "number");
         if (v != null && v !== "") {
           await act("cfgSet", { k, v: +v }, "\u2699\uFE0F \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
@@ -2705,7 +2718,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     }
   }
   function perRange(p) {
-    const now = new Date(Date.now() - 3 * 36e5), day = 864e5, y = now.getFullYear(), mo = now.getMonth();
+    var _a2, _b;
+    const now = new Date(Date.now() - ((_b = (_a2 = S.cfg) == null ? void 0 : _a2.dayH) != null ? _b : 3) * 36e5), day = 864e5, y = now.getFullYear(), mo = now.getMonth();
     if (p === "d") return [iso(now), iso(now)];
     if (p === "y") return [iso(now - day), iso(now - day)];
     if (p === "w") return [iso(now - 6 * day), iso(now)];
@@ -3087,7 +3101,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       <div class="muted set-note" style="grid-column:1/-1">\u0412\u0438\u0433\u043B\u044F\u0434 \u0437\u0431\u0435\u0440\u0456\u0433\u0430\u0454\u0442\u044C\u0441\u044F \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457 \u2014 \u043A\u043E\u0436\u0435\u043D \u0442\u0435\u043B\u0435\u0444\u043E\u043D \u0456 \u043F\u043B\u0430\u043D\u0448\u0435\u0442 \u043C\u043E\u0436\u043D\u0430 \u043D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u0442\u0438 \u043F\u043E-\u0441\u0432\u043E\u0454\u043C\u0443.</div></div>`;
   }
   function settingsHTML(only) {
-    var _a2, _b, _c, _d, _e, _f, _g, _h;
+    var _a2, _b, _c, _d, _e, _f, _g, _h, _i;
     const st = S.data.staff, wf = S.data.wifi, c = (st == null ? void 0 : st.cfg) || {};
     const ROLE = { admin: "\u{1F510} \u0430\u0434\u043C\u0456\u043D", cook: "\u{1F468}\u200D\u{1F373} \u043A\u0443\u0445\u0430\u0440", courier: "\u{1F6F5} \u043A\u0443\u0440'\u0454\u0440", waiter: "\u{1F9D1}\u200D\u{1F373} \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442" };
     const row = (l, v, btn, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ""}</span><span class="kv-r"><b>${v}</b>${btn}</span></div>`;
@@ -3104,18 +3118,25 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       <div class="card"><h3>\u{1F916} \u0423\u0432\u0456\u0439\u0448\u043B\u0438 \u0432 Telegram-\u0431\u043E\u0442</h3><div class="scrollbox">${st ? st.waiters.map((w) => `<div class="kv"><span>${esc(w.name || w.uid)}</span><button class="btn sm red" data-a="wOut" data-uid="${w.uid}">\u0412\u0438\u0439\u0442\u0438</button></div>`).join("") || '<div class="muted">\u041D\u0456\u043A\u043E\u0433\u043E</div>' : "\u2026"}</div></div>
       <div class="card"><h3>\u{1F511} \u041F\u0430\u0440\u043E\u043B\u0456</h3><div class="muted set-note">\u041F\u0430\u0440\u043E\u043B\u044C \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430 \u2014 \u0432\u0445\u0456\u0434 \u0443 \u0431\u043E\u0442 \u0456 \u043A\u0430\u0441\u0443; \u043F\u0430\u0440\u043E\u043B\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \u2014 \u0430\u0434\u043C\u0456\u043D-\u0444\u0443\u043D\u043A\u0446\u0456\u0457.</div>
         <div class="btnrow"><button class="btn sm" data-a="wPass">\u041F\u0430\u0440\u043E\u043B\u044C \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430</button><button class="btn sm" data-a="aPass">\u041F\u0430\u0440\u043E\u043B\u044C \u0430\u0434\u043C\u0456\u043D\u0430</button></div></div></div>`;
+    const tg = (k, l, hint) => {
+      var _a3;
+      return `<div class="kv press" data-a="cfgTgl" data-k="${k}"><span>${l}<br><small class="muted">${hint}</small></span><span class="switch ${((_a3 = c[k]) != null ? _a3 : 0) ? "on" : ""}"></span></div>`;
+    };
     part.rules = `<div class="grid2 set">
       <div class="card"><h3>\u{1F4B0} \u0413\u0440\u043E\u0448\u0456</h3>
         ${row("\u{1F3F7} \u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430", ((_a2 = c.discMax) != null ? _a2 : 20) + "%", ch("cfg", ' data-k="discMax"'), "\u0411\u0456\u043B\u044C\u0448\u0443 \u0437\u043D\u0438\u0436\u043A\u0443 \u0434\u0430\u0454 \u043B\u0438\u0448\u0435 \u0430\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440")}
         ${row("\u{1F468}\u200D\u{1F373} \u0427\u0430\u0441\u0442\u043A\u0430 \u043A\u0443\u0445\u043D\u0456 \u0432\u0456\u0434 \u0447\u0430\u0439\u043E\u0432\u0438\u0445", ((_b = st == null ? void 0 : st.kpct) != null ? _b : 20) + "%", ch("kpct"), `\u041F\u043B\u044E\u0441 \xAB\u043F\u043E\u0434\u044F\u043A\u0430 \u043A\u0443\u0445\u043D\u0456\xBB \u0432\u0456\u0434 \u0433\u043E\u0441\u0442\u044F; \u043F\u043E\u0440\u0456\u0432\u043D\u0443 \u043C\u0456\u0436 \u043A\u0443\u0445\u0430\u0440\u044F\u043C\u0438 \u043D\u0430 \u0437\u043C\u0456\u043D\u0456${((_c = st == null ? void 0 : st.cooks) == null ? void 0 : _c.length) ? ` (\u0437\u0430\u0440\u0430\u0437: ${st.cooks.map(esc).join(", ")})` : " (\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0449\u0435 \u043D\u0456\u043A\u043E\u0433\u043E \u2014 \u043F\u0456\u0434\u0435 \u0432 \xAB\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u043D\u044F\xBB)"}`)}</div>
+      <div class="card"><h3>\u{1F319} \u0414\u0435\u043D\u044C \u0456 Z-\u0437\u0432\u0456\u0442</h3>
+        ${row("\u{1F552} \u0420\u043E\u0431\u043E\u0447\u0438\u0439 \u0434\u0435\u043D\u044C \u0437\u0430\u043A\u0456\u043D\u0447\u0443\u0454\u0442\u044C\u0441\u044F \u043E", String((_d = c.dayH) != null ? _d : 3).padStart(2, "0") + ":00", ch("cfg", ' data-k="dayH"'), "\u0427\u0435\u043A\u0438 \u0434\u043E \u0446\u0456\u0454\u0457 \u0433\u043E\u0434\u0438\u043D\u0438 \u0440\u0430\u0445\u0443\u044E\u0442\u044C\u0441\u044F \u0432 \u043F\u043E\u043F\u0435\u0440\u0435\u0434\u043D\u0456\u0439 \u0434\u0435\u043D\u044C (0\u20138)")}
+        ${tg("autoZ", "\u{1F916} \u0410\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u043D\u0438\u0439 Z-\u0437\u0432\u0456\u0442", "\u0421\u0430\u043C \u0437\u0430\u043A\u0440\u0438\u0432\u0430\u0454 \u0434\u0435\u043D\u044C, \u044F\u043A\u0449\u043E Z \u043D\u0435 \u0437\u0430\u043A\u0440\u0438\u043B\u0438 \u0432\u0440\u0443\u0447\u043D\u0443")}${tg("zPrint", "\u{1F5A8} \u0414\u0440\u0443\u043A\u0443\u0432\u0430\u0442\u0438 \u0430\u0432\u0442\u043E-Z", "\u041D\u0430 \u043F\u0440\u0438\u043D\u0442\u0435\u0440\u0456 \u043A\u0430\u0441\u0438")}${tg("zTg", "\u2708\uFE0F \u041D\u0430\u0434\u0441\u0438\u043B\u0430\u0442\u0438 Z \u0443 Telegram", "\u0417\u0432\u0456\u0442 \u043F\u0440\u0438\u0445\u043E\u0434\u0438\u0442\u044C \u0443 \u0433\u0440\u0443\u043F\u0443 \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\u0443")}${tg("zRemind", "\u{1F514} \u041D\u0430\u0433\u0430\u0434\u0443\u0432\u0430\u0442\u0438 \u043F\u0440\u043E \u043D\u0435\u0437\u0430\u043A\u0440\u0438\u0442\u0438\u0439 Z", "\u042F\u043A\u0449\u043E \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u043D\u0438\u0439 Z \u0432\u0438\u043C\u043A\u043D\u0435\u043D\u043E")}</div>
       <div class="card"><h3>\u{1F477} \u0417\u043C\u0456\u043D\u0438</h3>
-        ${row("\u23F0 \u0417\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F \u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F \u043F\u0456\u0441\u043B\u044F", ((_d = c.lateMin) != null ? _d : 10) + " \u0445\u0432", ch("cfg", ' data-k="lateMin"'), "\u0412\u0456\u0434 \u0437\u0430\u043F\u043B\u0430\u043D\u043E\u0432\u0430\u043D\u043E\u0433\u043E \u0447\u0430\u0441\u0443 \u043F\u043E\u0447\u0430\u0442\u043A\u0443 \u0437\u043C\u0456\u043D\u0438")}
-        ${row("\u2796 \u0428\u0442\u0440\u0430\u0444 \u0437\u0430 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F", ((_e = c.lateFine) != null ? _e : 0) + " \u20B4", ch("cfg", ' data-k="lateFine"'), "0 \u2014 \u0431\u0435\u0437 \u0448\u0442\u0440\u0430\u0444\u0443; \u0430\u0434\u043C\u0456\u043D \u0432\u0438\u0440\u0456\u0448\u0443\u0454 \u043A\u043D\u043E\u043F\u043A\u043E\u044E \xAB\u2705 + \u0448\u0442\u0440\u0430\u0444\xBB")}</div>
+        ${row("\u23F0 \u0417\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F \u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F \u043F\u0456\u0441\u043B\u044F", ((_e = c.lateMin) != null ? _e : 10) + " \u0445\u0432", ch("cfg", ' data-k="lateMin"'), "\u0412\u0456\u0434 \u0437\u0430\u043F\u043B\u0430\u043D\u043E\u0432\u0430\u043D\u043E\u0433\u043E \u0447\u0430\u0441\u0443 \u043F\u043E\u0447\u0430\u0442\u043A\u0443 \u0437\u043C\u0456\u043D\u0438")}
+        ${row("\u2796 \u0428\u0442\u0440\u0430\u0444 \u0437\u0430 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F", ((_f = c.lateFine) != null ? _f : 0) + " \u20B4", ch("cfg", ' data-k="lateFine"'), "0 \u2014 \u0431\u0435\u0437 \u0448\u0442\u0440\u0430\u0444\u0443; \u0430\u0434\u043C\u0456\u043D \u0432\u0438\u0440\u0456\u0448\u0443\u0454 \u043A\u043D\u043E\u043F\u043A\u043E\u044E \xAB\u2705 + \u0448\u0442\u0440\u0430\u0444\xBB")}</div>
       <div class="card"><h3>\u{1F9EE} \u0420\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043E\u043A</h3>
-        ${row("\u{1F3AF} \u0426\u0456\u043B\u044C\u043E\u0432\u0438\u0439 \u0444\u0443\u0434\u043A\u043E\u0441\u0442", ((_f = c.foodCost) != null ? _f : 30) + "%", ch("cfg", ' data-k="foodCost"'), "\u0421\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C \xF7 \u0446\u0456\u043D\u0430. \u0417\u0430 \u043D\u0438\u043C \u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F \u0440\u0435\u043A\u043E\u043C\u0435\u043D\u0434\u043E\u0432\u0430\u043D\u0430 \u0446\u0456\u043D\u0430 \u0441\u0442\u0440\u0430\u0432")}
-        ${row("\u{1F53A} \u0421\u043F\u043E\u0432\u0456\u0449\u0430\u0442\u0438 \u043F\u0440\u043E \u043F\u043E\u0434\u043E\u0440\u043E\u0436\u0447\u0430\u043D\u043D\u044F \u0432\u0456\u0434", ((_g = c.priceAlert) != null ? _g : 5) + "%", ch("cfg", ' data-k="priceAlert"'), "\u042F\u043A\u0449\u043E \u0432 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0456\u0439 \u0446\u0456\u043D\u0430 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0443 \u0432\u0438\u0449\u0430 \u0437\u0430 \u043C\u0438\u043D\u0443\u043B\u0443")}</div>
+        ${row("\u{1F3AF} \u0426\u0456\u043B\u044C\u043E\u0432\u0438\u0439 \u0444\u0443\u0434\u043A\u043E\u0441\u0442", ((_g = c.foodCost) != null ? _g : 30) + "%", ch("cfg", ' data-k="foodCost"'), "\u0421\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C \xF7 \u0446\u0456\u043D\u0430. \u0417\u0430 \u043D\u0438\u043C \u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F \u0440\u0435\u043A\u043E\u043C\u0435\u043D\u0434\u043E\u0432\u0430\u043D\u0430 \u0446\u0456\u043D\u0430 \u0441\u0442\u0440\u0430\u0432")}
+        ${row("\u{1F53A} \u0421\u043F\u043E\u0432\u0456\u0449\u0430\u0442\u0438 \u043F\u0440\u043E \u043F\u043E\u0434\u043E\u0440\u043E\u0436\u0447\u0430\u043D\u043D\u044F \u0432\u0456\u0434", ((_h = c.priceAlert) != null ? _h : 5) + "%", ch("cfg", ' data-k="priceAlert"'), "\u042F\u043A\u0449\u043E \u0432 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0456\u0439 \u0446\u0456\u043D\u0430 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0443 \u0432\u0438\u0449\u0430 \u0437\u0430 \u043C\u0438\u043D\u0443\u043B\u0443")}</div>
       <div class="card"><h3>\u{1F4F1} \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0433\u043E\u0441\u0442\u0435\u0439</h3>
-        ${row("\u23F1 \u0427\u0430\u0441 \u043D\u0430 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0441\u043B\u044F QR", ((_h = c.scanMin) != null ? _h : 60) + " \u0445\u0432", ch("cfg", ' data-k="scanMin"'), "\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u0433\u0456\u0441\u0442\u044C \u043C\u043E\u0436\u0435 \u0437\u0430\u043C\u043E\u0432\u043B\u044F\u0442\u0438 \u043F\u0456\u0441\u043B\u044F \u0441\u043A\u0430\u043D\u0443\u0432\u0430\u043D\u043D\u044F QR \u043D\u0430 \u0441\u0442\u043E\u043B\u0456")}
+        ${row("\u23F1 \u0427\u0430\u0441 \u043D\u0430 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0441\u043B\u044F QR", ((_i = c.scanMin) != null ? _i : 60) + " \u0445\u0432", ch("cfg", ' data-k="scanMin"'), "\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u0433\u0456\u0441\u0442\u044C \u043C\u043E\u0436\u0435 \u0437\u0430\u043C\u043E\u0432\u043B\u044F\u0442\u0438 \u043F\u0456\u0441\u043B\u044F \u0441\u043A\u0430\u043D\u0443\u0432\u0430\u043D\u043D\u044F QR \u043D\u0430 \u0441\u0442\u043E\u043B\u0456")}
         <div class="muted set-note" style="margin-top:10px">\u{1F4F6} Wi\u2011Fi \u0437\u0430\u043A\u043B\u0430\u0434\u0443 (\u0437\u0430\u043F\u0430\u0441\u043D\u0438\u0439 \u0441\u043F\u043E\u0441\u0456\u0431) \xB7 \u0432\u0430\u0448\u0430 \u043C\u0435\u0440\u0435\u0436\u0430: ${esc((wf == null ? void 0 : wf.current) || "\u2026")}</div>
         <div class="scrollbox sm">${wf ? wf.list.map((x) => `<div class="kv"><span>${esc(x.k)}</span><span class="muted">${new Date(x.at).toLocaleDateString("uk-UA")}</span></div>`).join("") || '<div class="muted">\u043D\u0435\u043C\u0430\u0454 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u0438\u0445 \u0430\u0434\u0440\u0435\u0441</div>' : ""}</div>
         <div class="btnrow"><button class="btn sm primary" data-a="wifiAdd">\u2795 \u0426\u0435 \u043D\u0430\u0448\u0430 \u043C\u0435\u0440\u0435\u0436\u0430</button><button class="btn sm red" data-a="wifiClear">\u0421\u043A\u0438\u043D\u0443\u0442\u0438 \u0432\u0441\u0456</button></div></div></div>`;
