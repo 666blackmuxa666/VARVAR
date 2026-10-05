@@ -261,6 +261,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     S.me = __spreadValues(__spreadValues({}, S.me), r.me);
     S.myTip = r.myTip;
     S.myAtt = r.myAtt || null;
+    S.books = r.books || [];
     S.cfg = r.cfg || S.cfg;
     S.n = r.n;
     S.printer = r.printer;
@@ -470,18 +471,19 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const bell = (t) => calls[t] ? `<span class="callbell${Date.now() - calls[t].ts > 6e4 ? " late" : ""}" title="\u041A\u043B\u0438\u0447\u0435 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430">\u{1F514}</span>` : "";
     const tiles = Array.from({ length: S.n }, (_, i) => i + 1).map((t) => {
       const b = S.tables[t];
-      if (!b) return `<button class="tbl${calls[t] ? " calling" : ""}" data-a="table" data-t="${t}">${bell(t)}<div class="n">${t}</div><div class="st">\u0432\u0456\u043B\u044C\u043D\u0438\u0439</div></button>`;
+      const bk = (S.books || []).find((x) => x.t === t && x.st === "ok");
+      if (!b) return `<button class="tbl${calls[t] ? " calling" : ""}${bk ? " booked" : ""}" data-a="table" data-t="${t}">${bell(t)}<div class="n">${t}</div><div class="st">${bk ? `\u{1F4C5} ${bk.time} \xB7 ${esc(bk.name)}` : "\u0432\u0456\u043B\u044C\u043D\u0438\u0439"}</div></button>`;
       const cls = ["busy", b.check ? "check" : "", pending.has(t) ? "new" : ""].join(" ");
       const tag = b.check ? `<span class="tag c">\u{1F9FE} \u0440\u0430\u0445\u0443\u043D\u043E\u043A</span>${b.pay ? `<i class="pay" title="${b.pay === "card" ? "\u043A\u0430\u0440\u0442\u0430" : "\u0433\u043E\u0442\u0456\u0432\u043A\u0430"}">${b.pay === "card" ? "\u{1F4B3}" : "\u{1F4B5}"}</i>` : ""}` : pending.has(t) ? '<span class="tag g">\u043D\u043E\u0432\u0435</span>' : "";
       return `<button class="tbl ${cls}${calls[t] ? " calling" : ""}" data-a="table" data-t="${t}">${bell(t)}${tag}<div class="n">${t}</div><div class="st">${b.orders} \u0437\u0430\u043C\u043E\u0432\u043B.${b.disc ? ` \xB7 \u2212${b.disc}%` : ""}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">\u0437 ${b.opened ? hhmm(b.opened) : "\u2014"}</div></button>`;
     }).join("");
     const gos = list.filter((b) => b.t > 1e3 && b.go);
-    const strip = `<div class="go-strip">${gos.map((b) => {
+    const strip = !gos.length ? "" : `<div class="go-strip">${gos.map((b) => {
       const g = b.go, late = g.st === "new" && Date.now() - g.at > 6e4;
       return `<button class="go-t st-${g.st}${pending.has(b.t) ? " new" : ""}${late ? " late" : ""}" data-a="table" data-t="${b.t}"><b>${g.kind === "del" ? "\u{1F6F5}" : "\u{1F961}"} ${tn(b.t)}</b><span>${esc(g.name || "")}</span><small>${GOST[g.st] || g.st}${g.when ? " \xB7 \u043D\u0430 " + g.when : ""}${g.cour ? " \xB7 " + esc(g.cour) : ""}</small><i class="money">${money(b.pay2)}</i></button>`;
-    }).join("")}<button class="go-t add" data-a="goNew"><b>\u2795</b><span>\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430 / \u0437 \u0441\u043E\u0431\u043E\u044E</span></button></div>`;
+    }).join("")}</div>`;
     return `<div class="head"><h1>\u0417\u0430\u043B</h1><div class="stat tipstat" title="\u041D\u0430\u043A\u043E\u043F\u0438\u0447\u0435\u043D\u043E, \u0449\u0435 \u043D\u0435 \u0432\u0438\u0434\u0430\u043D\u043E">\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456<b class="money">${money(((_a2 = S.myTip) == null ? void 0 : _a2.sum) || 0)}</b></div><div class="stat">\u0423 \u0437\u0430\u043B\u0456<b class="money">${money(sum)}</b></div>
-      <button class="btn primary" data-a="newOrder">\u2795 \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F</button></div>${strip}<div class="tables">${tiles}</div>`;
+      ${(S.books || []).length ? `<button class="btn${S.books.some((b) => b.st === "new") ? " red" : ""}" data-a="books">\u{1F4C5} ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="\u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F">\u{1F4C5}</button>`}<button class="btn primary" data-a="newOrder">\u2795 \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F</button></div>${strip}<div class="tables">${tiles}</div>`;
   }
   const evTitle = (e) => ({
     guest: `\u{1F6CE} \u0421\u0442\u0456\u043B ${tn(e.t)} \u2014 ${esc((e.kind || "\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F").toLowerCase())}`,
@@ -500,6 +502,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     call: `\u{1F514}\u{1F514} \u0421\u0442\u0456\u043B ${tn(e.t)} \u043A\u043B\u0438\u0447\u0435 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430`,
     noscan: `\u{1F6A8}\u{1F4F5}\u{1F6AB} \u0421\u0422\u0406\u041B ${e.t} \u2014 \u041D\u0415 \u041C\u041E\u0416\u0415 \u0417\u0410\u041C\u041E\u0412\u0418\u0422\u0418 \u{1F6AB}\u{1F4F5}\u{1F6A8}<br><small>\u0413\u0456\u0441\u0442\u044C \u043D\u0435 \u0432\u0456\u0434\u0441\u043A\u0430\u043D\u0443\u0432\u0430\u0432 QR (\u0430\u0431\u043E \u043C\u0438\u043D\u0443\u043B\u0430 \u0433\u043E\u0434\u0438\u043D\u0430). \u041F\u0456\u0434\u0456\u0439\u0434\u0456\u0442\u044C: \u{1F4F7} \u043D\u0435\u0445\u0430\u0439 \u0432\u0456\u0434\u0441\u043A\u0430\u043D\u0443\u0454 QR \u043D\u0430 \u0441\u0442\u043E\u043B\u0456 \u{1F446}</small>`,
     go: esc(e.text),
+    book: esc(e.text),
+    cert: esc(e.text),
     att: `\u{1F7E2} ${esc(e.n)} \u043D\u0430 \u0437\u043C\u0456\u043D\u0456${e.late ? ` \xB7 \u23F0 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F ${e.late} \u0445\u0432` : ""}`,
     swap: esc(e.text)
   })[e.k] || esc(e.text || e.k);
@@ -518,7 +522,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       const lines = rdy || (((_c = e.lines) == null ? void 0 : _c.length) ? `${add ? '<div class="addtag">\u2795 \u0414\u041E\u0417\u0410\u041C\u041E\u0412\u041B\u0415\u041D\u041D\u042F</div>' : ""}<div class="lines${add ? " add" : ""}">${e.lines.map(esc).join("\n")}</div>` : "");
       const by = e.by && !["waiter"].includes(e.k) ? ` \xB7 ${esc(e.by)}` : "";
       const zb = e.k === "att" ? `<div class="act">${e.s === "acc" ? `<span class="muted">\u2705 ${esc(e.accBy || "")}</span>` : e.s === "rej" ? `<span class="bad">\u274C ${esc(e.accBy || "")}</span>` : isAdmin() ? `<button class="btn sm green" data-a="zpConf" data-d="${e.day}" data-n="${esc(e.n)}" data-h="o">\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438</button>${e.late && ((_d = S.cfg) == null ? void 0 : _d.lateFine) ? `<button class="btn sm" data-a="zpConf" data-d="${e.day}" data-n="${esc(e.n)}" data-h="f">\u2705 + \u0448\u0442\u0440\u0430\u0444</button>` : ""}<button class="btn sm red" data-a="zpConf" data-d="${e.day}" data-n="${esc(e.n)}" data-h="n">\u274C</button>` : '<span class="muted">\u0447\u0435\u043A\u0430\u0454 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F</span>'}</div>` : e.k === "swap" && !e.old ? e.s === "ask" && e.n === ((_e = S.me) == null ? void 0 : _e.name) ? `<div class="act"><button class="btn sm green" data-a="zpSw" data-id="${e.sw}" data-s="agree">\u041F\u043E\u0433\u043E\u0434\u0436\u0443\u044E\u0441\u044C</button><button class="btn sm red" data-a="zpSw" data-id="${e.sw}" data-s="no">\u041D\u0456</button></div>` : e.s === "agreed" && isAdmin() ? `<div class="act"><button class="btn sm green" data-a="zpSw" data-id="${e.sw}" data-s="ok">\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438 \u043E\u0431\u043C\u0456\u043D</button><button class="btn sm red" data-a="zpSw" data-id="${e.sw}" data-s="no">\u274C</button></div>` : "" : "";
-      const btns = isCour() ? "" : zb || (e.k === "noscan" ? `<div class="act"><button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${tn(e.t)}</button></div>` : e.k === "guest" || e.k === "check" || e.k === "call" ? `<div class="act">${e.s === "acc" ? `<span class="muted">\u2705 ${esc(e.accBy || "\u043F\u0440\u0438\u0439\u043D\u044F\u0442\u043E")}</span>` : e.s === "rej" ? `<span style="color:var(--red,#ff453a)">\u274C \u0432\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E \xB7 ${esc(e.accBy || "")}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432</button>${e.k === "guest" ? `<button class="btn sm red" data-a="reject" data-oid="${e.oid}">\u274C \u0412\u0456\u0434\u0445\u0438\u043B\u0438\u0442\u0438</button>` : ""}`}<button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${tn(e.t)}</button></div>` : "");
+      const sb = e.k === "book" && e.s === "new" ? `<div class="act"><button class="btn sm green" data-a="bkSet" data-id="${e.bid}" data-s="ok">\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438</button><button class="btn sm red" data-a="bkSet" data-id="${e.bid}" data-s="no">\u274C</button><button class="btn sm" data-a="books">\u{1F4C5} \u0423\u0441\u0456 \u0431\u0440\u043E\u043D\u0456</button></div>` : e.k === "cert" && e.s === "new" && isAdmin() ? `<div class="act"><button class="btn sm green" data-a="certPay" data-c="${e.code}" data-h="cash">\u{1F4B5} \u041E\u043F\u043B\u0430\u0447\u0435\u043D\u043E</button><button class="btn sm" data-a="certPay" data-c="${e.code}" data-h="card">\u{1F4B3}</button><button class="btn sm red" data-a="certPay" data-c="${e.code}" data-h="no">\u274C</button></div>` : (e.k === "book" || e.k === "cert") && e.s !== "new" ? `<div class="act"><span class="muted">${e.s === "rej" ? "\u274C" : "\u2705"} ${esc(e.accBy || "")}</span></div>` : "";
+      const btns = isCour() ? "" : sb || zb || (e.k === "noscan" ? `<div class="act"><button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${tn(e.t)}</button></div>` : e.k === "guest" || e.k === "check" || e.k === "call" ? `<div class="act">${e.s === "acc" ? `<span class="muted">\u2705 ${esc(e.accBy || "\u043F\u0440\u0438\u0439\u043D\u044F\u0442\u043E")}</span>` : e.s === "rej" ? `<span style="color:var(--red,#ff453a)">\u274C \u0432\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E \xB7 ${esc(e.accBy || "")}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432</button>${e.k === "guest" ? `<button class="btn sm red" data-a="reject" data-oid="${e.oid}">\u274C \u0412\u0456\u0434\u0445\u0438\u043B\u0438\u0442\u0438</button>` : ""}`}<button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${tn(e.t)}</button></div>` : "");
       const fresh = S.shown.size && !S.shown.has(e.id) ? " fresh" : "";
       return `<div class="ev ${e.k}${e.k === "call" && e.s === "new" && Date.now() - e.ts > 6e4 ? " late" : ""}${e.s === "acc" || e.s === "rej" ? " acc" : ""}${e.s === "rej" ? " rej" : ""}${fresh}"><div class="top"><b>${evTitle(e)}</b><span class="tm">${e.at}${by}</span></div>${lines}${e.comment ? `<div class="com">\u{1F4AC} ${esc(e.comment)}</div>` : ""}${e.sum && ["guest", "waiter"].includes(e.k) ? `<div class="muted">\u0421\u0443\u043C\u0430 ${money(e.sum)}</div>` : ""}${btns}</div>`;
     }).join("") : '<div class="muted" style="padding:12px">\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u043F\u043E\u0434\u0456\u0439 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454</div>');
@@ -583,14 +588,14 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     $("#shBody").className = "sheet-body" + (S.mobileMenu ? " show-menu" : "");
     const billRows = b ? b.items.map((it) => `<div class="row"><div class="nm">${esc(it.name)}<small>${it.q} \xD7 ${Math.round(it.sum / it.q)} \u20B4</small></div><b class="money">${it.sum}</b><button class="rb minus" data-a="rm" data-name="${esc(it.name)}" title="\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 1">\u2212</button></div>`).join("") : '<div class="muted" style="padding:8px 4px">\u0420\u0430\u0445\u0443\u043D\u043E\u043A \u043F\u043E\u0440\u043E\u0436\u043D\u0456\u0439 \u2014 \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u0441\u0442\u0440\u0430\u0432\u0438 \u0432 \u043C\u0435\u043D\u044E</div>';
     const discRow = (b == null ? void 0 : b.disc) ? `<div class="row"><div class="nm">\u0417\u043D\u0438\u0436\u043A\u0430 ${b.disc}%</div><b class="money" style="color:var(--green)">\u2212${b.total - b.pay2}</b><button class="rb minus" data-a="discSet" data-p="0">\xD7</button></div>` : "";
-    const bonRow = (b == null ? void 0 : b.bonus) ? `<div class="row"><div class="nm">\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438</div><b class="money" style="color:var(--green)">\u2212${b.bonus}</b><button class="rb minus" data-a="cliBon0">\xD7</button></div>` : "";
+    const bonRow = (b == null ? void 0 : b.bonus) ? `<div class="row"><div class="nm">${b.cert ? `\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 ${esc(b.cert.code)}${b.bonus > b.cert.sum ? " + \u{1F381} \u0431\u043E\u043D\u0443\u0441\u0438" : ""}` : "\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438"}</div><b class="money" style="color:var(--green)">\u2212${b.bonus}</b><button class="rb minus" data-a="cliBon0">\xD7</button></div>` : "";
     const tipRow = (b == null ? void 0 : b.tip) ? `<div class="row"><div class="nm">\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456<small>\u0432\u0445\u043E\u0434\u044F\u0442\u044C \u0443 \u0432\u0438\u0440\u0443\u0447\u043A\u0443</small></div><b class="money" style="color:#ff7aa8">+${b.tip}</b>${isAdmin() ? '<button class="rb minus" data-a="tipSet" data-v="0">\xD7</button>' : ""}</div>` : "";
     const comments = b ? b.log.filter((o) => o.comment).map((o) => `<div class="muted" style="padding:2px 6px">\u{1F4AC} ${esc(o.comment)}</div>`).join("") : "";
     const cartHTML = cartRows.length ? `<div class="cart"><h3>\u041D\u043E\u0432\u0435 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F</h3><div class="rows">${cartRows.map(([k, x]) => `<div class="row"><div class="nm">${esc(x.name)}<small>${x.price} \u20B4</small></div><button class="rb minus" data-a="cq" data-k="${esc(k)}" data-d="-1">\u2212</button><span class="q">${x.q}</span><button class="rb plus" data-a="cq" data-k="${esc(k)}" data-d="1">+</button></div>`).join("")}${pq ? `<div class="row auto"><div class="nm">\u{1F961} ${esc(pk.name.uk)}<small>${pk.price} \u20B4 \xD7 ${pq}${S.packAdj[t] ? "" : " \xB7 \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u043D\u043E"}</small></div><button class="rb minus" data-a="pk" data-d="-1">\u2212</button><span class="q">${pq}</span><button class="rb plus" data-a="pk" data-d="1">+</button></div>` : ""}</div>
       <div class="srow" style="margin:6px 0 10px"><input id="cartCom" placeholder="\u{1F4AC} \u041A\u043E\u043C\u0435\u043D\u0442\u0430\u0440 \u0434\u043B\u044F \u043A\u0443\u0445\u043D\u0456" value="${esc(S.coms[t] || "")}"><button class="btn sm ${S.tw[t] ? "primary" : "ghost"}" data-a="tw">\u{1F961} \u0417 \u0441\u043E\u0431\u043E\u044E</button><button class="btn sm ${S.ur[t] ? "red" : "ghost"}" data-a="ur">\u26A1 \u0422\u0435\u0440\u043C\u0456\u043D\u043E\u0432\u043E</button></div>
       <div style="display:grid;grid-template-columns:auto 1fr;gap:8px"><button class="btn red" data-a="cartClear">\u2715</button><button class="btn primary" data-a="send">\u0412\u0456\u0434\u043F\u0440\u0430\u0432\u0438\u0442\u0438 \xB7 ${money(cartSum)}</button></div></div>` : "";
     const actions = b && !isCook() ? `<div class="actions"><button class="btn" data-a="pre">\u{1F5A8} \u041F\u0440\u0435\u0447\u0435\u043A</button><button class="btn" data-a="disc">% \u0417\u043D\u0438\u0436\u043A\u0430</button>
-      <button class="btn" data-a="move">\u2194\uFE0F \u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0442\u0438</button><button class="btn" data-a="split">\u2702\uFE0F \u0420\u043E\u0437\u0434\u0456\u043B\u0438\u0442\u0438</button>${t < 1e3 ? `<button class="btn" data-a="cliT">\u{1F381} ${b.cli ? "\u0413\u0456\u0441\u0442\u044C" : "\u0411\u043E\u043D\u0443\u0441\u0438"}</button>` : ""}${isAdmin() ? '<button class="btn red" data-a="delTable">\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438</button>' : '<button class="btn" data-a="mobileMenu">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438</button>'}
+      <button class="btn" data-a="move">\u2194\uFE0F \u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0442\u0438</button><button class="btn" data-a="split">\u2702\uFE0F \u0420\u043E\u0437\u0434\u0456\u043B\u0438\u0442\u0438</button>${t < 1e3 ? `<button class="btn" data-a="cliT">\u{1F381} ${b.cli ? "\u0413\u0456\u0441\u0442\u044C" : "\u0411\u043E\u043D\u0443\u0441\u0438"}</button>` : ""}<button class="btn" data-a="certT">\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442</button>${isAdmin() ? '<button class="btn red" data-a="delTable">\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438</button>' : '<button class="btn" data-a="mobileMenu">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438</button>'}
       <button class="btn green wide" data-a="closeT">\u{1F4B0} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0440\u0430\u0445\u0443\u043D\u043E\u043A \xB7 ${money(b.pay2)}</button></div>` : "";
     const keepBill = (_a2 = $("#shBill .scroll")) == null ? void 0 : _a2.scrollTop, focusCom = ((_b = document.activeElement) == null ? void 0 : _b.id) === "cartCom";
     setHTML($("#shBill"), `<div class="scroll"><h3>\u0420\u0430\u0445\u0443\u043D\u043E\u043A</h3>${billRows}${discRow}${bonRow}${tipRow}${comments}</div>${cartHTML}${actions}`);
@@ -669,13 +674,13 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       <div class="muted">${g.when ? `\u{1F550} \u043D\u0430 <b>${g.when}</b> \xB7 ` : ""}${g.pay === "online" ? g.paid ? "\u{1F4B3} \u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u043E\u043D\u043B\u0430\u0439\u043D" : "\u23F3 \u043E\u0447\u0456\u043A\u0443\u0454 \u043E\u043D\u043B\u0430\u0439\u043D-\u043E\u043F\u043B\u0430\u0442\u0443" : g.pay === "card" ? "\u{1F4B3} \u043A\u0430\u0440\u0442\u043A\u0430 \u043F\u0440\u0438 \u043E\u0442\u0440\u0438\u043C\u0430\u043D\u043D\u0456" : "\u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u0430"}${g.change ? ` \xB7 \u0440\u0435\u0448\u0442\u0430 \u0437 <b>${g.change}</b>` : ""}${g.cut ? ` \xB7 \u{1F374} ${g.cut}` : ""}${g.cour ? ` \xB7 \u{1F6F5} ${esc(g.cour)}` : ""}${g.src ? ` \xB7 ${esc(g.src)}` : ""}</div>
       ${t !== -1 ? `<div class="btnrow">${nx}${g.kind === "del" && isAdmin() ? `<button class="btn sm" data-a="goCourSet">\u{1F464} \u041A\u0443\u0440'\u0454\u0440</button>` : ""}<button class="btn sm green" data-a="goDone">\u{1F91D} \u0412\u0438\u0434\u0430\u043D\u043E \xB7 ${money((b == null ? void 0 : b.pay2) || 0)}</button></div>` : ""}</div>`;
   }
-  async function goNew() {
-    const body = `<div class="form"><div class="seg" id="gKind"><button class="on" data-k="pick">\u{1F961} \u0421\u0430\u043C\u043E\u0432\u0438\u0432\u0456\u0437</button><button data-k="del">\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430</button></div>
+  async function goNew(kind0 = "pick", fromT = 0) {
+    const body = `<div class="form"><div class="seg" id="gKind"><button class="${kind0 === "pick" ? "on" : ""}" data-k="pick">\u{1F961} \u0421\u0430\u043C\u043E\u0432\u0438\u0432\u0456\u0437</button><button class="${kind0 === "del" ? "on" : ""}" data-k="del">\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430</button></div>
       <label>\u0422\u0435\u043B\u0435\u0444\u043E\u043D<input id="gP" type="tel" inputmode="tel" placeholder="050 123 45 67"></label><div id="gCli" class="muted" style="font-size:13px"></div>
-      <label>\u0406\u043C\u02BC\u044F<input id="gN"></label><label id="gAL" hidden>\u0410\u0434\u0440\u0435\u0441\u0430<input id="gA" list="gAdr"><datalist id="gAdr"></datalist></label>
+      <label>\u0406\u043C\u02BC\u044F<input id="gN"></label><label id="gAL" ${kind0 === "del" ? "" : "hidden"}>\u0410\u0434\u0440\u0435\u0441\u0430<input id="gA" list="gAdr"><datalist id="gAdr"></datalist></label>
       <div class="frow"><label>\u041D\u0430 \u043A\u043E\u0442\u0440\u0443 (\u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)<input id="gW" placeholder="19:30"></label><label>\u041E\u043F\u043B\u0430\u0442\u0430<select id="gPay"><option value="cash">\u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u0430</option><option value="card">\u{1F4B3} \u043A\u0430\u0440\u0442\u043A\u0430</option></select></label></div></div>`;
-    const pr = modal({ title: "\u260E\uFE0F \u041D\u043E\u0432\u0430 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430 / \u0437 \u0441\u043E\u0431\u043E\u044E", body, buttons: [{ label: "\u0414\u0430\u043B\u0456 \u2192 \u043C\u0435\u043D\u044E", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
-    let kind = "pick";
+    const pr = modal({ title: kind0 === "del" ? "\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430" : "\u{1F961} \u0421\u0430\u043C\u043E\u0432\u0438\u0432\u0456\u0437", body, buttons: [{ label: "\u0414\u0430\u043B\u0456 \u2192 \u043C\u0435\u043D\u044E", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+    let kind = kind0;
     $("#gKind").onclick = (e) => {
       var _a2;
       const k = (_a2 = e.target.closest("[data-k]")) == null ? void 0 : _a2.dataset.k;
@@ -705,8 +710,19 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     if (kind === "del" && !d.addr) return toast("\u26A0\uFE0F \u0412\u043A\u0430\u0436\u0456\u0442\u044C \u0430\u0434\u0440\u0435\u0441\u0443");
     S.goDraft = d;
     S.tw[-1] = true;
+    if (fromT) {
+      S.carts[-1] = S.carts[fromT] || {};
+      S.coms[-1] = S.coms[fromT] || "";
+      S.packAdj[-1] = S.packAdj[fromT] || 0;
+      S.ur[-1] = S.ur[fromT];
+      S.carts[fromT] = {};
+      S.coms[fromT] = "";
+      S.tw[fromT] = false;
+      S.packAdj[fromT] = 0;
+      saveCarts();
+    }
     openTable(-1);
-    S.mobileMenu = true;
+    S.mobileMenu = !fromT;
     renderSheet();
   }
   async function goDone(t) {
@@ -760,6 +776,80 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         <div class="muted">${g.pay === "online" ? "\u{1F4B3} \u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E" : g.pay === "card" ? "\u{1F4B3} \u0442\u0435\u0440\u043C\u0456\u043D\u0430\u043B" : "\u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u0430"}${g.change ? ` \xB7 \u0440\u0435\u0448\u0442\u0430 \u0437 <b>${g.change}</b>` : ""}${g.cut ? ` \xB7 \u{1F374} ${g.cut}` : ""} \xB7 ${b.items.map((i) => `${i.q}\xD7 ${esc(i.name)}`).join(", ")}</div>
         <div class="btnrow">${!g.cour ? `<button class="btn sm primary" data-a="goTake" data-t="${b.t}">\u270B \u0411\u0435\u0440\u0443</button>` : ""}${g.st !== "road" ? `<button class="btn sm" data-a="goRoad" data-t="${b.t}">\u{1F6F5} \u041F\u043E\u0457\u0445\u0430\u0432</button>` : ""}<button class="btn sm green" data-a="goDoneT" data-t="${b.t}">\u{1F91D} \u0412\u0438\u0434\u0430\u043D\u043E</button></div></div>`;
     }).join("") || '<div class="muted">\u041D\u043E\u0432\u0438\u0445 \u0434\u043E\u0441\u0442\u0430\u0432\u043E\u043A \u043D\u0435\u043C\u0430\u0454 \u2014 \u0442\u0443\u0442 \u0437\u02BC\u044F\u0432\u043B\u044F\u0442\u044C\u0441\u044F, \u0449\u043E\u0439\u043D\u043E \u0430\u0434\u043C\u0456\u043D \u043F\u0440\u0438\u0439\u043C\u0435 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F.</div>'}</div>`;
+  }
+  const BKS = { new: "\u{1F195} \u043D\u043E\u0432\u0430", ok: "\u2705 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043E", no: "\u274C \u0432\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E", came: "\u{1FA91} \u043F\u0440\u0438\u0439\u0448\u043B\u0438", noshow: "\u{1F6AB} \u043D\u0435 \u043F\u0440\u0438\u0439\u0448\u043B\u0438", cancel: "\u21A9\uFE0F \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E" };
+  async function booksModal() {
+    const r = await api("bkList").catch(() => null);
+    if (!r) return;
+    const dd = (d) => d === todayK() ? "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : `${d.slice(8)}.${d.slice(5, 7)}`;
+    const body = `<div class="bk-list">${r.list.map((b) => {
+      var _a2, _b;
+      return `<div class="kv bk-${b.st}"><span><b>${dd(b.date)} ${b.time}</b> \xB7 ${b.people} \u0433\u043E\u0441\u0442.${b.kind === "banquet" ? " \xB7 \u{1F389} \u0431\u0430\u043D\u043A\u0435\u0442" : ""}<br>${esc(b.name)} \xB7 <a href="tel:+${b.phone}">${fmtPh(b.phone)}</a>${b.t ? ` \xB7 \u{1FA91} ${b.t}` : ""}<br><small class="muted">${BKS[b.st]}${b.comment ? " \xB7 \u{1F4AC} " + esc(b.comment) : ""}${((_a2 = b.pre) == null ? void 0 : _a2.length) ? `<br>\u{1F37D} ${b.pre.map(esc).join(", ")}` : ""}</small></span>
+      <span class="kv-r">${b.st === "new" ? `<button class="btn sm green" data-a="bkSet" data-id="${b.id}" data-s="ok">\u2705</button><button class="btn sm red" data-a="bkSet" data-id="${b.id}" data-s="no">\u274C</button>` : b.st === "ok" ? `<button class="btn sm" data-a="bkTbl" data-id="${b.id}">\u{1FA91}</button>${((_b = b.pre) == null ? void 0 : _b.length) && !b.preSent ? `<button class="btn sm" data-a="bkSet" data-id="${b.id}" data-s="kit">\u{1F525}</button>` : ""}<button class="btn sm green" data-a="bkSet" data-id="${b.id}" data-s="came">\u041F\u0440\u0438\u0439\u0448\u043B\u0438</button><button class="btn sm red" data-a="bkSet" data-id="${b.id}" data-s="noshow">\u{1F6AB}</button>` : ""}</span></div>`;
+    }).join("") || '<div class="muted">\u0411\u0440\u043E\u043D\u0435\u0439 \u043D\u0430 2 \u0442\u0438\u0436\u043D\u0456 \u043D\u0435\u043C\u0430\u0454</div>'}</div>`;
+    await modal({ title: "\u{1F4C5} \u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F \xB7 14 \u0434\u043D\u0456\u0432", body, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+  }
+  async function certT(t) {
+    const code = await ask("\u{1F39F} \u041A\u043E\u0434 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0430", "VV-XXXXX");
+    if (!code) return;
+    const g = await api("certGet", { code }).catch((e) => {
+      toast("\u26A0\uFE0F " + e.message);
+      return null;
+    });
+    if (!g) return;
+    if (g.c.st !== "ok") return toast(g.c.st === "new" ? "\u26A0\uFE0F \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 \u0449\u0435 \u043D\u0435 \u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E" : "\u26A0\uFE0F \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E");
+    if (!await confirmBox(`\u{1F39F} ${g.c.code} \u2014 ${money(g.c.left)} \u0437 ${money(g.c.sum)}`, `\u0412\u0456\u0434 ${g.c.from}${g.c.to ? " \u0434\u043B\u044F " + g.c.to : ""}. \u0421\u043F\u0438\u0441\u0430\u0442\u0438 \u043D\u0430 \u0446\u0435\u0439 \u0440\u0430\u0445\u0443\u043D\u043E\u043A?`)) return;
+    const r = await act("certUse", { t, code });
+    if (r) {
+      toast(`\u{1F39F} \u2212${money(r.use)} \xB7 \u0437\u0430\u043B\u0438\u0448\u043E\u043A ${money(r.left)}`);
+      loadState().catch(() => {
+      });
+    }
+  }
+  async function siteImg(hero) {
+    const f = await new Promise((res) => {
+      const i = document.createElement("input");
+      i.type = "file";
+      i.accept = "image/*";
+      i.onchange = () => res(i.files[0]);
+      i.click();
+    });
+    if (!f) return;
+    const img = await new Promise((r2) => {
+      const im = new Image();
+      im.onload = () => r2(im);
+      im.src = URL.createObjectURL(f);
+    }), k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+    c.width = img.width * k;
+    c.height = img.height * k;
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    const r = await act("sitePhoto", { data: c.toDataURL("image/jpeg", 0.82), hero: !!hero }, "\u{1F4F7} \u0424\u043E\u0442\u043E \u0434\u043E\u0434\u0430\u043D\u043E");
+    if (r) {
+      S.data.site = r.site;
+      renderMain();
+    }
+  }
+  function siteHTML() {
+    const s = S.data.site;
+    if (!s) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
+    const row = (k, l, v, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ""}</span><span class="kv-r"><b class="st-v">${v}</b><button class="btn sm" data-a="siteSet" data-k="${k}" data-l="${esc(l)}">\u0437\u043C\u0456\u043D\u0438\u0442\u0438</button></span></div>`;
+    const cut = (x) => esc(String(x || "\u2014").slice(0, 60)) + (String(x || "").length > 60 ? "\u2026" : "");
+    const U = "https://666blackmuxa666.github.io/VARVAR/about.html";
+    return `<div class="grid2 set">
+      <div class="card"><h3>\u{1F310} \u0412\u0456\u0437\u0438\u0442\u043A\u0430</h3><div class="btnrow" style="margin-bottom:8px"><a class="btn sm primary" href="${U}" target="_blank" rel="noopener">\u{1F517} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u0441\u0430\u0439\u0442</a><button class="btn sm" data-a="siteCopy">\u{1F4CB} \u041F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F</button></div>
+        ${row("name", "\u041D\u0430\u0437\u0432\u0430", cut(s.name))}${row("tagline", "\u0421\u043B\u043E\u0433\u0430\u043D", cut(s.tagline))}${row("about", "\u041F\u0440\u043E \u043D\u0430\u0441", cut(s.about))}${row("phone", "\u{1F4DE} \u0422\u0435\u043B\u0435\u0444\u043E\u043D", esc(s.phone))}${row("addr", "\u{1F4CD} \u0410\u0434\u0440\u0435\u0441\u0430", cut(s.addr))}${row("from", "\u{1F550} \u0412\u0456\u0434\u043A\u0440\u0438\u0432\u0430\u0454\u043C\u043E\u0441\u044C", s.from)}${row("to", "\u{1F550} \u0417\u0430\u0447\u0438\u043D\u044F\u0454\u043C\u043E\u0441\u044C", s.to)}</div>
+      <div class="card"><h3>\u{1F517} \u041F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F \u0439 \u0432\u0456\u0434\u0433\u0443\u043A\u0438</h3>${row("insta", "Instagram", cut(s.insta), "\u043D\u0430\u043F\u0440. https://instagram.com/varvar")}${row("tg", "Telegram-\u043A\u0430\u043D\u0430\u043B", cut(s.tg))}${row("gmaps", "Google Maps", cut(s.gmaps))}${row("reviewsUrl", "\u041F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F \u043D\u0430 \u0432\u0456\u0434\u0433\u0443\u043A\u0438", cut(s.reviewsUrl))}${row("rating", "\u2B50 \u0420\u0435\u0439\u0442\u0438\u043D\u0433 Google", s.rating || "\u2014")}${row("ratingN", "\u041A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044C \u0432\u0456\u0434\u0433\u0443\u043A\u0456\u0432", s.ratingN)}
+        <div class="muted set-note" style="margin-top:8px">\u0426\u0438\u0442\u0430\u0442\u0438 \u0432\u0456\u0434\u0433\u0443\u043A\u0456\u0432</div>${s.quotes.map((q, i) => `<div class="kv"><span>\xAB${esc(q.t)}\xBB <small class="muted">\u2014 ${esc(q.a)}</small></span><button class="btn sm red" data-a="siteDel" data-k="quoteDel" data-v="${i}">\u{1F5D1}</button></div>`).join("")}<button class="btn sm" data-a="siteQuote">\u2795 \u0426\u0438\u0442\u0430\u0442\u0430</button></div>
+      <div class="card"><h3>\u{1F389} \u0410\u043A\u0446\u0456\u0457 \u0442\u0430 \u043F\u043E\u0434\u0456\u0457</h3>${s.promos.map((p) => `<div class="kv"><span><b>${esc(p.t)}</b><br><small class="muted">${esc(p.d)}</small></span><button class="btn sm red" data-a="siteDel" data-k="promoDel" data-v="${p.id}">\u{1F5D1}</button></div>`).join("") || '<div class="muted">\u041D\u0435\u043C\u0430\u0454 \u2014 \u0431\u043B\u043E\u043A \u043D\u0430 \u0441\u0430\u0439\u0442\u0456 \u043F\u0440\u0438\u0445\u043E\u0432\u0430\u043D\u0438\u0439</div>'}<button class="btn sm primary" data-a="sitePromo">\u2795 \u0410\u043A\u0446\u0456\u044F</button></div>
+      <div class="card"><h3>\u{1F4F7} \u0424\u043E\u0442\u043E</h3><div class="site-ph">${s.hero ? `<div><img src="${esc(s.hero)}"><small>\u0433\u043E\u043B\u043E\u0432\u043D\u0435</small></div>` : ""}${s.photos.map((u) => `<div><img src="${esc(u)}"><button class="btn sm red" data-a="siteDel" data-k="photoDel" data-v="${esc(u)}">\u{1F5D1}</button></div>`).join("")}</div>
+        <div class="btnrow"><button class="btn sm primary" data-a="siteImg" data-h="1">\u{1F5BC} \u0413\u043E\u043B\u043E\u0432\u043D\u0435 \u0444\u043E\u0442\u043E</button><button class="btn sm" data-a="siteImg">\u2795 \u0423 \u0433\u0430\u043B\u0435\u0440\u0435\u044E</button></div></div>
+      <div class="card"><h3>\u{1F37D} \u0425\u0456\u0442\u0438 \u043D\u0430 \u0441\u0430\u0439\u0442\u0456</h3><div class="muted set-note">${s.hits.length ? s.hits.map((id) => {
+      var _a2;
+      return esc(((_a2 = itemsAll().find((i) => i.id === id)) == null ? void 0 : _a2.name.uk) || id);
+    }).join(", ") : "\u0410\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u043D\u043E \u2014 \u0441\u0442\u0440\u0430\u0432\u0438 \u0437 \u0444\u043E\u0442\u043E"}</div><button class="btn sm" data-a="siteHits">\u270F\uFE0F \u041E\u0431\u0440\u0430\u0442\u0438 \u0441\u0442\u0440\u0430\u0432\u0438</button></div>
+      <div class="card"><h3>\u{1F389} \u0411\u0430\u043D\u043A\u0435\u0442\u0438 \xB7 \u{1F4A8} \u041A\u0430\u043B\u044C\u044F\u043D\u0438</h3>${row("banquet", "\u0411\u0430\u043D\u043A\u0435\u0442\u0438", cut(s.banquet))}${row("hookah", "\u041A\u0430\u043B\u044C\u044F\u043D\u0438", cut(s.hookah))}</div>
+      <div class="card"><h3>\u2699\uFE0F \u0424\u0443\u043D\u043A\u0446\u0456\u0457</h3>${row("bookOn", "\u{1F4C5} \u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F \u0437 \u0441\u0430\u0439\u0442\u0443", s.bookOn ? "\u0443\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u043E" : "\u0432\u0438\u043C\u043A\u043D\u0435\u043D\u043E", "1 \u2014 \u0443\u0432\u0456\u043C\u043A\u043D\u0443\u0442\u0438, 0 \u2014 \u0432\u0438\u043C\u043A\u043D\u0443\u0442\u0438")}${row("certOn", "\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438 \u0437 \u0441\u0430\u0439\u0442\u0443", s.certOn ? "\u0443\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u043E" : "\u0432\u0438\u043C\u043A\u043D\u0435\u043D\u043E", "1 / 0")}
+        <button class="btn sm" data-a="certs" style="margin-top:8px">\u{1F39F} \u0423\u0441\u0456 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438</button>${S.data.rates ? `<div class="muted set-note" style="margin-top:8px">\u2B50 \u041E\u0446\u0456\u043D\u043A\u0438 \u0433\u043E\u0441\u0442\u0435\u0439 \u0437\u0430 30 \u0434\u043D\u0456\u0432: <b>${S.data.rates.avg || "\u2014"}</b> (${S.data.rates.n})</div>` : ""}</div></div>`;
   }
   async function sendCart() {
     const t = S.open, cart = cartOf(t), pk = packItem(), pq = pk ? packQ(t) : 0, items = [...Object.values(cart).map((x) => ({ id: x.id, v: x.v, q: x.q })), ...pq ? [{ id: pk.id, q: pq }] : []];
@@ -900,6 +990,9 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         S.data.staff = await api("staff");
         S.data.wifi = await api("wifi");
         S.data.gocfg = (await api("goCfg")).cfg;
+        S.data.site = (await api("siteGet")).site;
+        S.data.rates = await api("siteRates", { from: iso(Date.now() - 30 * 864e5), to: todayK() }).catch(() => null);
+        if (!S.menu) await loadMenu();
       }
       if (["stop", "menu"].includes(S.view) && !S.menu) await loadMenu();
     } catch (e) {
@@ -929,7 +1022,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     }
   }
   function hallGrid(m) {
-    const w = m.clientWidth || innerWidth, h = Math.max(200, (m.clientHeight || innerHeight) - 90 - 74), n = S.n;
+    const w = m.clientWidth || innerWidth, h = Math.max(200, (m.clientHeight || innerHeight) - 90 - (Object.keys(S.tables).some((t) => t > 1e3) ? 74 : 0)), n = S.n;
     let best = [1, n], score = 1e9;
     for (let c = 1; c <= n; c++) {
       const r = Math.ceil(n / c), empty = c * r - n, ratio = w / c / (h / r);
@@ -1629,7 +1722,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const row = (l, v, btn, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ""}</span><span class="kv-r"><b>${v}</b>${btn}</span></div>`;
     const ch = (a, extra = "") => `<button class="btn sm" data-a="${a}"${extra}>\u0437\u043C\u0456\u043D\u0438\u0442\u0438</button>`;
     const staff = st ? [...st.staff].sort((a, b) => (a.role || "").localeCompare(b.role || "") || a.name.localeCompare(b.name)) : null;
-    const SS = [["rules", "\u2699\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438"], ["go", "\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430"], ["look", "\u{1F3A8} \u0412\u0438\u0433\u043B\u044F\u0434"], ["printer", "\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["test", "\u{1F9EA} \u0422\u0435\u0441\u0442"]], cur = only || ((SS0) => SS0.includes(S.setTab) ? S.setTab : "rules")(["rules", "go", "look", "printer", "test"]);
+    const SS = [["rules", "\u2699\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438"], ["site", "\u{1F310} \u0421\u0430\u0439\u0442"], ["go", "\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430"], ["look", "\u{1F3A8} \u0412\u0438\u0433\u043B\u044F\u0434"], ["printer", "\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["test", "\u{1F9EA} \u0422\u0435\u0441\u0442"]], cur = only || ((SS0) => SS0.includes(S.setTab) ? S.setTab : "rules")(["rules", "site", "go", "look", "printer", "test"]);
     const part = {};
     part.people = `<div class="grid2 set">
       <div class="card"><h3>\u{1F465} \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B <span class="muted">\xB7 ${staff ? staff.length : "\u2026"}</span></h3>
@@ -1656,6 +1749,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         <div class="scrollbox sm">${wf ? wf.list.map((x) => `<div class="kv"><span>${esc(x.k)}</span><span class="muted">${new Date(x.at).toLocaleDateString("uk-UA")}</span></div>`).join("") || '<div class="muted">\u043D\u0435\u043C\u0430\u0454 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u0438\u0445 \u0430\u0434\u0440\u0435\u0441</div>' : ""}</div>
         <div class="btnrow"><button class="btn sm primary" data-a="wifiAdd">\u2795 \u0426\u0435 \u043D\u0430\u0448\u0430 \u043C\u0435\u0440\u0435\u0436\u0430</button><button class="btn sm red" data-a="wifiClear">\u0421\u043A\u0438\u043D\u0443\u0442\u0438 \u0432\u0441\u0456</button></div></div></div>`;
     part.go = goSetHTML();
+    part.site = siteHTML();
     part.look = lookHTML();
     part.printer = printerCards();
     part.test = `<div class="grid2 set"><div class="card"><h3>\u{1F9EA} \u0422\u0435\u0441\u0442</h3><div class="muted set-note">\u0422\u0438\u043C\u0447\u0430\u0441\u043E\u0432\u043E, \u0434\u043E \u0437\u0430\u043F\u0443\u0441\u043A\u0443.</div><button class="btn sm red" data-a="reset">\u267B\uFE0F \u041E\u0431\u043D\u0443\u043B\u0438\u0442\u0438 \u0432\u0441\u0435</button></div></div>`;
@@ -2731,7 +2825,7 @@ ${g.sup}:
     closeModal();
     return x || null;
   }
-  function pickTable(title, text, skip) {
+  function pickTable(title, text, skip, withGo) {
     return new Promise((res) => {
       modalResolve = (v) => {
         closeModal();
@@ -2740,12 +2834,12 @@ ${g.sup}:
       const el = document.createElement("div");
       el.className = "modal-bg";
       el.id = "modal";
-      el.innerHTML = `<div class="modal"><h3>${esc(title)}</h3><p>${esc(text)}</p><div class="grid">${Array.from({ length: S.n }, (_, i) => i + 1).filter((n) => n !== skip).map((n) => `<button class="${S.tables[n] ? "busy" : ""}" data-t="${n}">${n}</button>`).join("")}</div><div class="btns"><button class="btn" data-x>\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438</button></div></div>`;
+      el.innerHTML = `<div class="modal"><h3>${esc(title)}</h3><p>${esc(text)}</p>${withGo ? '<div class="btnrow" style="margin-bottom:10px"><button class="btn" data-t="pick">\u{1F961} \u0421\u0430\u043C\u043E\u0432\u0438\u0432\u0456\u0437</button><button class="btn" data-t="del">\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430</button></div>' : ""}<div class="grid">${Array.from({ length: S.n }, (_, i) => i + 1).filter((n) => n !== skip).map((n) => `<button class="${S.tables[n] ? "busy" : ""}" data-t="${n}">${n}</button>`).join("")}</div><div class="btns"><button class="btn" data-x>\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438</button></div></div>`;
       el.addEventListener("click", (e) => {
         var _a2;
         if (e.target === el || e.target.closest("[data-x]")) return modalResolve(null);
         const t = (_a2 = e.target.closest("[data-t]")) == null ? void 0 : _a2.dataset.t;
-        if (t) modalResolve(+t);
+        if (t) modalResolve(isNaN(+t) ? t : +t);
       });
       document.body.append(el);
       setTimeout(() => {
@@ -2768,7 +2862,7 @@ ${g.sup}:
     toastT = setTimeout(() => d.remove(), 2600);
   }
   document.addEventListener("click", async (e) => {
-    var _a2, _b, _c, _d, _e, _f, _g, _h;
+    var _a2, _b, _c, _d, _e, _f, _g, _h, _i;
     const el = e.target.closest("[data-a]");
     if (!el) return;
     const a = el.dataset.a, t = S.open;
@@ -2814,8 +2908,9 @@ ${g.sup}:
         openTable(el.dataset.t);
         break;
       case "newOrder": {
-        const n = await pickTable("\u041D\u043E\u0432e \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", "\u041E\u0431\u0435\u0440\u0456\u0442\u044C \u0441\u0442\u0456\u043B");
-        if (n) {
+        const n = await pickTable("\u041D\u043E\u0432e \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", "\u041E\u0431\u0435\u0440\u0456\u0442\u044C \u0441\u0442\u0456\u043B", 0, true);
+        if (n === "pick" || n === "del") goNew(n);
+        else if (n) {
           openTable(n);
           S.mobileMenu = true;
           renderSheet();
@@ -2854,11 +2949,17 @@ ${g.sup}:
         act("fav", { id: el.dataset.id, on }, on ? "\u2B50 \u0414\u043E\u0434\u0430\u043D\u043E \u0432 \u043E\u0431\u0440\u0430\u043D\u0456" : "\u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E \u0437 \u043E\u0431\u0440\u0430\u043D\u0438\u0445");
         break;
       }
-      case "tw":
-        S.tw[t] = !S.tw[t];
-        S.packAdj[t] = 0;
-        renderSheet();
+      case "tw": {
+        if (t === -1 || t > 1e3) {
+          S.tw[t] = !S.tw[t];
+          S.packAdj[t] = 0;
+          renderSheet();
+          break;
+        }
+        const k = await choose("\u{1F961} \u0417 \u0441\u043E\u0431\u043E\u044E", "\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0434\u0435 \u043E\u043A\u0440\u0435\u043C\u0438\u043C \u0447\u0435\u043A\u043E\u043C; \u0441\u0442\u0456\u043B \u043D\u0435 \u0437\u0430\u0439\u043C\u0430\u0454\u0442\u044C\u0441\u044F", [{ label: "\u{1F961} \u0421\u0430\u043C\u043E\u0432\u0438\u0432\u0456\u0437", val: "pick", cls: "primary" }, { label: "\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430", val: "del", cls: "primary" }]);
+        if (k) goNew(k, t);
         break;
+      }
       case "ur":
         S.ur[t] = !S.ur[t];
         renderSheet();
@@ -2976,6 +3077,107 @@ ${g.sup}:
       case "goNew":
         goNew();
         break;
+      case "books":
+        booksModal();
+        break;
+      case "bkSet": {
+        if (await act("bkSet", { id: el.dataset.id, st: el.dataset.s }, BKS[el.dataset.s] || "\u{1F525} \u041D\u0430 \u043A\u0443\u0445\u043D\u044E")) {
+          closeModal();
+          loadState().catch(() => {
+          });
+          if (el.closest(".bk-list")) booksModal();
+        }
+        break;
+      }
+      case "bkTbl": {
+        const n = await pickTable("\u{1FA91} \u0421\u0442\u0456\u043B \u0434\u043B\u044F \u0431\u0440\u043E\u043D\u0456", "\u041F\u043B\u0438\u0442\u043A\u0430 \u0441\u0442\u043E\u043B\u0430 \u043F\u043E\u043A\u0430\u0436\u0435 \u0447\u0430\u0441 \u0431\u0440\u043E\u043D\u0456");
+        if (n && await act("bkSet", { id: el.dataset.id, st: "ok", t: n }, "\u{1FA91} \u0421\u0442\u0456\u043B \u043F\u0440\u0438\u0437\u043D\u0430\u0447\u0435\u043D\u043E")) {
+          loadState().catch(() => {
+          });
+          booksModal();
+        }
+        break;
+      }
+      case "certPay":
+        if (await act("certPay", { code: el.dataset.c, how: el.dataset.h }, el.dataset.h === "no" ? "\u274C \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E" : "\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 \u0430\u043A\u0442\u0438\u0432\u043E\u0432\u0430\u043D\u043E")) loadState().catch(() => {
+        });
+        break;
+      case "certT":
+        certT(t);
+        break;
+      case "certs": {
+        const r = await api("certList").catch(() => null);
+        if (!r) break;
+        await modal({ title: "\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438", body: `<div class="bk-list">${r.list.map((c) => `<div class="kv"><span><b>${c.code}</b> \xB7 ${money(c.sum)}${c.left !== c.sum ? ` \xB7 \u0437\u0430\u043B\u0438\u0448\u043E\u043A ${money(c.left)}` : ""}<br><small class="muted">\u0432\u0456\u0434 ${esc(c.from)}${c.to ? " \u0434\u043B\u044F " + esc(c.to) : ""} \xB7 ${fmtPh(c.phone)} \xB7 ${{ new: "\u23F3 \u043D\u0435 \u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E", ok: "\u2705 \u0430\u043A\u0442\u0438\u0432\u043D\u0438\u0439", no: "\u274C \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E" }[c.st]}</small></span>${c.st === "new" ? `<span class="kv-r"><button class="btn sm green" data-a="certPay" data-c="${c.code}" data-h="cash">\u{1F4B5}</button><button class="btn sm" data-a="certPay" data-c="${c.code}" data-h="card">\u{1F4B3}</button></span>` : ""}</div>`).join("") || '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454</div>'}</div>`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+        break;
+      }
+      case "siteSet": {
+        const k = el.dataset.k, cur = (_f = S.data.site) == null ? void 0 : _f[k];
+        const v = await ask(el.dataset.l || k, String(cur != null ? cur : ""), ["rating", "ratingN", "bookOn", "certOn"].includes(k) ? "number" : "text");
+        if (v == null) break;
+        const r = await act("siteSet", { k, v }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E \u2014 \u0443\u0436\u0435 \u043D\u0430 \u0441\u0430\u0439\u0442\u0456");
+        if (r) {
+          S.data.site = r.site;
+          renderMain();
+        }
+        break;
+      }
+      case "siteDel": {
+        const r = await act("siteSet", { k: el.dataset.k, v: el.dataset.v }, "\u{1F5D1} \u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
+        if (r) {
+          S.data.site = r.site;
+          renderMain();
+        }
+        break;
+      }
+      case "sitePromo": {
+        const tt = await ask("\u{1F389} \u041D\u0430\u0437\u0432\u0430 \u0430\u043A\u0446\u0456\u0457", "\u0429\u0430\u0441\u043B\u0438\u0432\u0456 \u0433\u043E\u0434\u0438\u043D\u0438 15\u201317");
+        if (!tt) break;
+        const d = await ask("\u041E\u043F\u0438\u0441 (\u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)", "\u221220% \u043D\u0430 \u043A\u043E\u043A\u0442\u0435\u0439\u043B\u0456");
+        const r = await act("siteSet", { k: "promoAdd", v: { t: tt, d: d || "" } }, "\u{1F389} \u0414\u043E\u0434\u0430\u043D\u043E");
+        if (r) {
+          S.data.site = r.site;
+          renderMain();
+        }
+        break;
+      }
+      case "siteQuote": {
+        const tt = await ask("\u{1F4AC} \u0422\u0435\u043A\u0441\u0442 \u0432\u0456\u0434\u0433\u0443\u043A\u0443");
+        if (!tt) break;
+        const a2 = await ask("\u0410\u0432\u0442\u043E\u0440", "\u041E\u043B\u0435\u043D\u0430, Google");
+        const r = await act("siteSet", { k: "quoteAdd", v: { t: tt, a: a2 || "" } }, "\u{1F4AC} \u0414\u043E\u0434\u0430\u043D\u043E");
+        if (r) {
+          S.data.site = r.site;
+          renderMain();
+        }
+        break;
+      }
+      case "siteImg":
+        siteImg(el.dataset.h);
+        break;
+      case "siteHits": {
+        const sel = new Set(S.data.site.hits);
+        const v = await modal({ title: "\u{1F37D} \u0425\u0456\u0442\u0438 \u043D\u0430 \u0441\u0430\u0439\u0442\u0456", text: "\u0414\u043E 12 \u0441\u0442\u0440\u0430\u0432; \u043F\u043E\u0440\u043E\u0436\u043D\u044C\u043E \u2014 \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u043D\u043E", body: `<div class="bk-list">${itemsAll().filter((i) => !i.hidden).map((i) => `<label class="kv"><span>${esc(i.name.uk)}${i.img ? " \u{1F4F7}" : ""}</span><input type="checkbox" class="hitC" value="${i.id}" ${sel.has(i.id) ? "checked" : ""} style="width:22px;height:22px"></label>`).join("")}</div>`, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+        const ids = [...document.querySelectorAll(".hitC:checked")].map((x) => x.value).slice(0, 12);
+        closeModal();
+        if (v !== "ok") break;
+        const r = await act("siteSet", { k: "hits", v: ids }, "\u{1F37D} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
+        if (r) {
+          S.data.site = r.site;
+          renderMain();
+        }
+        break;
+      }
+      case "siteCopy": {
+        const u = "https://666blackmuxa666.github.io/VARVAR/about.html";
+        try {
+          await navigator.clipboard.writeText(u);
+          toast("\u{1F4CB} " + u);
+        } catch (e2) {
+          await ask("\u041F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F", u);
+        }
+        break;
+      }
       case "goSt":
         if (await act("goSt", { t, st: el.dataset.s }, "\u2714 " + GOST[el.dataset.s])) loadState().catch(() => {
         });
@@ -3001,7 +3203,7 @@ ${g.sup}:
         }
         break;
       case "goCourSet": {
-        const n = await ask("\u{1F464} \u041A\u0443\u0440'\u0454\u0440 (\u0456\u043C\u02BC\u044F)", ((_g = (_f = S.tables[t]) == null ? void 0 : _f.go) == null ? void 0 : _g.cour) || "");
+        const n = await ask("\u{1F464} \u041A\u0443\u0440'\u0454\u0440 (\u0456\u043C\u02BC\u044F)", ((_h = (_g = S.tables[t]) == null ? void 0 : _g.go) == null ? void 0 : _h.cour) || "");
         if (n != null && await act("goCour", { t, n }, "\u2714")) loadState().catch(() => {
         });
         break;
@@ -3014,7 +3216,7 @@ ${g.sup}:
         });
         break;
       case "goCfg": {
-        const k = el.dataset.k, cur = (_h = S.data.gocfg) == null ? void 0 : _h[k];
+        const k = el.dataset.k, cur = (_i = S.data.gocfg) == null ? void 0 : _i[k];
         const v = ["on", "del", "pick"].includes(k) ? cur ? 0 : 1 : await ask(el.dataset.l || k, String(cur != null ? cur : ""), ["phone", "zone", "from", "to"].includes(k) ? "text" : "number");
         if (v == null) break;
         const r = await act("goCfgSet", { k, v }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");

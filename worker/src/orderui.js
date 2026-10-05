@@ -28,7 +28,7 @@ export async function tablePick(env, openTables, tables) {
 export async function catsView(env, ob) {
   const cats = [b('⭐ Обрані', 'f'), ...GROUPS.map(g => b(g.name, 'g:' + g.id))];
   const n = ob.items.reduce((s, i) => s + i.q, 0);
-  const tw = b(ob.tw ? '🥡 З собою ✅ (+упаковка)' : '🥡 З собою', 'tw'), ur = b(ob.ur ? '⚡ Терміново ✅' : '⚡ Терміново', 'ur');
+  const tw = b(ob.gk === 'del' ? '🛵 Доставка ✅' : ob.gk === 'pick' ? '🥡 Самовивіз ✅' : '🥡 З собою', 'tw'), ur = b(ob.ur ? '⚡ Терміново ✅' : '⚡ Терміново', 'ur');
   const foot = ob.items.length
     ? [[b(`✅ Відправити · ${sum(ob)} грн`, 'send')], [b(`✏️ Кошик (${n})`, 'cart'), b(ob.com ? '💬 Змінити коментар' : '💬 Коментар', 'com')], [tw, ur], [b('🪑 Інший стіл', 'tp'), b('✖ Скасувати', 'x')]]
     : [[b('💬 Коментар', 'com'), tw], [b('🪑 Інший стіл', 'tp'), b('✖ Скасувати', 'x')]];
@@ -80,7 +80,7 @@ export async function obCallback(env, uid, p) {
   if (a === 'tp') return { tablePick: true };
   if (a === 'back') return { view: await catsView(env, ob) };
   if (a === 'ur') { ob.ur = !ob.ur; await putOb(env, uid, ob); return { view: await catsView(env, ob), toast: ob.ur ? '⚡ Терміново' : 'Звичайно' }; }
-  if (a === 'tw') { ob.tw = !ob.tw; await putOb(env, uid, ob); return { view: await catsView(env, ob), toast: ob.tw ? '🥡 З собою' : 'В залі' }; }
+  if (a === 'tw') { ob.gk = !ob.gk ? 'pick' : ob.gk === 'pick' ? 'del' : null; ob.tw = !!ob.gk; await putOb(env, uid, ob); return { view: await catsView(env, ob), toast: ob.gk === 'del' ? '🛵 Доставка — окремий чек Д‑' : ob.gk ? '🥡 Самовивіз — окремий чек С‑' : 'В залі' }; } // з собою → віртуальний стіл
   if (a === 'f') return { view: await favView(env, ob) };
   if (a === 'g') return { view: await groupView(env, ob, x) };
   if (a === 'fv') {

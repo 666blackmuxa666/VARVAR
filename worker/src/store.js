@@ -42,7 +42,7 @@ export class Store extends DurableObject {
   }
   // ---- живе оновлення для POS: WebSocket-и підключені до цього ж об'єкта ----
   async fetch(req) {
-    if (req.headers.get('Upgrade') !== 'websocket') return handle(req, { ...this.env, DB: localDB(this, this.env.DB) }); // увесь запит — тут, база локальна
+    if (req.headers.get('Upgrade') !== 'websocket') return handle(req, { ...this.env, DB: localDB(this, this.env.DB), INSTORE: 1 }); // увесь запит — тут, база локальна
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
     return new Response(null, { status: 101, webSocket: client });

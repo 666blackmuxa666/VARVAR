@@ -30,3 +30,7 @@ class_name = "Store"
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["Store"]
+
+# ⏰ нагадування про броні й відгуки
+[triggers]
+crons = ["*/5 * * * *"]

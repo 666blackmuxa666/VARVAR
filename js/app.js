@@ -24,7 +24,7 @@
   let scanUntil = store.get('scan', 0), lockT = store.get('lockT', 0);
   const lockOn = () => lockT && scanUntil > Date.now();
   const qs = new URLSearchParams(location.search), qk = qs.get('k'), qt = qs.get('t');
-  const GO = qs.has('go'); // 🛵 замовлення за посиланням: лише з собою (самовивіз / доставка)
+  const GO = qs.has('go'), BOOK = /^\d{8}[a-f0-9]{6}$/.test(qs.get('book') || '') ? qs.get('book') : ''; // BOOK — передзамовлення до броні // 🛵 замовлення за посиланням: лише з собою (самовивіз / доставка)
   if (GO) { tw = true; document.body.classList.add('go'); }
   const scanP = qk ? fetch(C.api + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ k: qk, t: qt, device }) })
     .then(r => r.json()).then(d => { if (d.until) { scanUntil = d.until; lockT = d.t || 0; store.set('scan', d.until); store.set('lockT', lockT); if (lockT) { table = String(lockT); store.set('table', table); } } }).catch(() => {}) : Promise.resolve();
@@ -327,11 +327,13 @@
   const GST = { new: ['⏳', 'goStNew'], acc: ['✅', 'goStAcc'], cook: ['🔥', 'goStCook'], ready: ['🍽', 'goStReady'], road: ['🛵', 'goStRoad'], done: ['🤝', 'goStDone'], rej: ['❌', 'goStRej'] };
   async function goInit() {
     $('#callBtn').hidden = true;
+    { const a = document.createElement('a'); a.href = 'about.html'; a.className = 'lang'; a.style.cssText = 'text-decoration:none;color:inherit;margin-left:auto;margin-right:8px'; a.textContent = '← VARVAR'; $('.top').insertBefore(a, $('#lang')); }
     try { goCfg = (await api('/api/goinfo')).data; } catch {}
     try { reco = (await api('/api/reco')).data || {}; } catch {}
     if (goCfg && !goCfg[gf.kind]) gf.kind = goCfg.del ? 'del' : 'pick';
     const bar = $('#wifiBanner');
     if (goCfg && (!goCfg.on || !goCfg.open)) { bar.hidden = false; bar.textContent = !goCfg.on ? '⛔ ' + t('goOff') : `🕐 ${t('goClosed')} ${goCfg.from}–${goCfg.to}`; }
+    if (BOOK) { bar.hidden = false; bar.className = 'wifi-banner go-ok'; bar.textContent = '📅 ' + t('goPreBar'); }
     else if (goCfg) { bar.hidden = false; bar.className = 'wifi-banner go-ok'; bar.textContent = `🥡 ${t('goHello')}${goCfg.del ? ' · 🛵 ' + t('goDel') : ''}`; }
     goPoll(); renderFab();
   }
@@ -351,6 +353,7 @@
     $('#history').innerHTML = (act.length ? `<div class="hist"><div class="hist-title">📦 ${t('goActive')}</div>${act.map(o => `<button class="go-ord" data-go-st="${o.id}"><b>${o.no}</b> · ${GST[o.g || 'new'][0]} ${t(GST[o.g || 'new'][1])}<span>${money(o.sum)}</span></button>`).join('')}</div>` : '')
       + (old.length ? `<div class="hist"><div class="hist-title">🔁 ${t('goMine')}</div>${old.map(o => `<div class="go-old"><span>${o.at} · ${o.items.map(([k, q]) => `${q}× ${esc(byId[k.split('|')[0]] ? labelOf(k) : '…')}`).join(', ')}</span><button class="btn ghost sm" data-go-rep="${o.id}">${t('goRepeat')}</button></div>`).join('')}</div>` : '');
     const ok = rows.length && goCfg?.on && (goCfg.del || goCfg.pick);
+    if (BOOK) { $('#actions').innerHTML = `<button class="btn" data-go-pre ${rows.length ? '' : 'disabled'}>📅 ${t('goPreSave')}${rows.length ? ' · ' + money(goFood()) : ''}</button>`; $('#history').innerHTML = ''; return; }
     $('#actions').innerHTML = `<button class="btn" data-go-out ${ok ? '' : 'disabled'}>${t('goCheckout')}${rows.length ? ' · ' + money(goFood()) : ''}</button>`;
   }
   function goForm() {
@@ -409,6 +412,9 @@
     if (d.goP) { goRead(); gf.pay = d.goP; goForm(); return true; }
     if (d.goCut) { goRead(); gf.cut = Math.max(0, Math.min(20, gf.cut + +d.goCut)); goForm(); return true; }
     if ('goSend' in d) { goSend(); return true; }
+    if ('goPre' in d) { (async () => { const items = cartEntries().map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; });
+      const { status } = await api('/api/bookpre', { id: BOOK, phone: store.get('bkPhone', store.get('goPhone', '')), items }).catch(() => ({ status: 0 }));
+      if (status === 200) { cart = {}; save(); refreshButtons(); renderFab(); $('#msg').textContent = '✅ ' + t('goPreOk'); setTimeout(() => { location.href = 'about.html#book'; }, 1500); } else $('#msg').textContent = t('error'); })(); return true; }
     if (d.goSt) { goShow(d.goSt); return true; }
     if (el.id === 'orderStatus' && el.dataset.go) { goShow(el.dataset.go); return true; }
     if (d.goRep) { const o = goHist.find(x => x.id === d.goRep); if (o) { o.items.forEach(([k, q]) => { const it = byId[k.split('|')[0]]; if (it) cart[k] = (cart[k] || 0) + q; }); save(); refreshButtons(); renderFab(); renderCart(); } return true; }

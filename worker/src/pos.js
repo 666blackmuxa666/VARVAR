@@ -3,6 +3,8 @@
 import { getMenu, saveMenu, addCategory, menuLock } from './menu.js';
 import { tn, isGo } from './tn.js';
 import { goFromPos, goAttach, goButtons, fmtPhone, goApi } from './delivery.js';
+import { siteApi } from './siteapi.js';
+import { bookList } from './site.js';
 import { queuePrint, printStatus } from './print.js';
 import { QR_PRINT, TEST_JOB } from './bot.js';
 import { storeStub } from './store.js';
@@ -47,6 +49,7 @@ export async function posApi(b, req, env) {
   // 🛵 кур'єр: лише свої доставки
   if (me.role === 'courier' && !['logout', 'state', 'goSt', 'goCour'].includes(b.op)) return [{ error: 'Кур\'єр — лише доставки' }, 403];
   if (/^go[A-Z]|^cli[A-Z]/.test(b.op || '')) return goApi(b, env, me, t);
+  if (/^(bk|site|cert)[A-Z]/.test(b.op || '')) return siteApi(b, env, me, t);
 
   switch (b.op) {
     case 'logout': await env.DB.delete('pos:' + token); return ok();
@@ -60,7 +63,8 @@ export async function posApi(b, req, env) {
         if (old.length) { for (const e of old) await acceptOrder(env, e.oid, '⏱ авто').catch(() => {}); events = await getEvents(env); } }
       const mine = cl.filter(x => !x.del && !x.rm);
       const myTip = { sum: (await tipBalances(env))[me.name] || 0, today: mine.reduce((a, x) => a + ((x.tipSplit || {})[me.name] || (!x.tipSplit && x.by === me.name ? x.tip || 0 : 0)), 0) }; // накопичені, ще не видані
-      return ok({ me, shift, myTip, myAtt, cfg: await getCfg(env), n: tablesCount(env), tables: rows.map(r => ({ t: r.t, ...r.b, items: billItems(r.b), pay2: payable(r.b) })), events: events.slice(-120), printer: pr, now: Date.now() });
+      const books = me.role === 'courier' ? [] : (await bookList(env)).filter(x => x.date === dayKey() && ['new', 'ok'].includes(x.st)).map(x => ({ id: x.id, time: x.time, name: x.name, people: x.people, t: x.t || 0, st: x.st, pre: (x.pre || []).length }));
+      return ok({ me, shift, myTip, myAtt, books, cfg: await getCfg(env), n: tablesCount(env), tables: rows.map(r => ({ t: r.t, ...r.b, items: billItems(r.b), pay2: payable(r.b) })), events: events.slice(-120), printer: pr, now: Date.now() });
     }
     case 'menu': { const menu = await getMenu(env); return ok({ menu, fav: await getFav(env), groups: GROUPS.map(g => ({ ...g, cats: menu.categories.filter(c => groupOf(c.id) === g.id).map(c => c.id) })) }); }
     case 'fav': { const fav = await toggleFav(env, String(b.id), !!b.on); return ok({ fav }); }

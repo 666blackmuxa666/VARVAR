@@ -100,7 +100,7 @@
     const my = ++stateSeq, r = await api('state');
     if (my < stateDone) return; // повільна стара відповідь не затирає новішу (стіл «повертався» після закриття)
     stateDone = my;
-    S.me = { ...S.me, ...r.me }; S.myTip = r.myTip; S.myAtt = r.myAtt || null; S.cfg = r.cfg || S.cfg; S.n = r.n; S.printer = r.printer; S.shift = r.shift;
+    S.me = { ...S.me, ...r.me }; S.myTip = r.myTip; S.myAtt = r.myAtt || null; S.books = r.books || []; S.cfg = r.cfg || S.cfg; S.n = r.n; S.printer = r.printer; S.shift = r.shift;
     S.tables = Object.fromEntries(r.tables.map(b => [b.t, b]));
     const fresh = r.events.filter(e => !S.seen.has(e.id));
     if (S.ready && fresh.some(e => ['guest', 'check', 'call'].includes(e.k) || (!isCook() && ['ready', 'kmsg'].includes(e.k)))) ding();
@@ -214,16 +214,17 @@
     const bell = t => calls[t] ? `<span class="callbell${Date.now() - calls[t].ts > 60e3 ? ' late' : ''}" title="Кличе офіціанта">🔔</span>` : '';
     const tiles = Array.from({ length: S.n }, (_, i) => i + 1).map(t => {
       const b = S.tables[t];
-      if (!b) return `<button class="tbl${calls[t] ? ' calling' : ''}" data-a="table" data-t="${t}">${bell(t)}<div class="n">${t}</div><div class="st">вільний</div></button>`;
+      const bk = (S.books || []).find(x => x.t === t && x.st === 'ok');
+      if (!b) return `<button class="tbl${calls[t] ? ' calling' : ''}${bk ? ' booked' : ''}" data-a="table" data-t="${t}">${bell(t)}<div class="n">${t}</div><div class="st">${bk ? `📅 ${bk.time} · ${esc(bk.name)}` : 'вільний'}</div></button>`;
       const cls = ['busy', b.check ? 'check' : '', pending.has(t) ? 'new' : ''].join(' ');
       const tag = b.check ? `<span class="tag c">🧾 рахунок</span>${b.pay ? `<i class="pay" title="${b.pay === 'card' ? 'карта' : 'готівка'}">${b.pay === 'card' ? '💳' : '💵'}</i>` : ''}` : pending.has(t) ? '<span class="tag g">нове</span>' : '';
       return `<button class="tbl ${cls}${calls[t] ? ' calling' : ''}" data-a="table" data-t="${t}">${bell(t)}${tag}<div class="n">${t}</div><div class="st">${b.orders} замовл.${b.disc ? ` · −${b.disc}%` : ''}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">з ${b.opened ? hhmm(b.opened) : '—'}</div></button>`;
     }).join('');
     const gos = list.filter(b => b.t > 1000 && b.go);
-    const strip = `<div class="go-strip">${gos.map(b => { const g = b.go, late = g.st === 'new' && Date.now() - g.at > 60e3;
-      return `<button class="go-t st-${g.st}${pending.has(b.t) ? ' new' : ''}${late ? ' late' : ''}" data-a="table" data-t="${b.t}"><b>${g.kind === 'del' ? '🛵' : '🥡'} ${tn(b.t)}</b><span>${esc(g.name || '')}</span><small>${GOST[g.st] || g.st}${g.when ? ' · на ' + g.when : ''}${g.cour ? ' · ' + esc(g.cour) : ''}</small><i class="money">${money(b.pay2)}</i></button>`; }).join('')}<button class="go-t add" data-a="goNew"><b>➕</b><span>Доставка / з собою</span></button></div>`;
+    const strip = !gos.length ? '' : `<div class="go-strip">${gos.map(b => { const g = b.go, late = g.st === 'new' && Date.now() - g.at > 60e3;
+      return `<button class="go-t st-${g.st}${pending.has(b.t) ? ' new' : ''}${late ? ' late' : ''}" data-a="table" data-t="${b.t}"><b>${g.kind === 'del' ? '🛵' : '🥡'} ${tn(b.t)}</b><span>${esc(g.name || '')}</span><small>${GOST[g.st] || g.st}${g.when ? ' · на ' + g.when : ''}${g.cour ? ' · ' + esc(g.cour) : ''}</small><i class="money">${money(b.pay2)}</i></button>`; }).join('')}</div>`;
     return `<div class="head"><h1>Зал</h1><div class="stat tipstat" title="Накопичено, ще не видано">💝 Мої чайові<b class="money">${money(S.myTip?.sum || 0)}</b></div><div class="stat">У залі<b class="money">${money(sum)}</b></div>
-      <button class="btn primary" data-a="newOrder">➕ Замовлення</button></div>${strip}<div class="tables">${tiles}</div>`;
+      ${(S.books || []).length ? `<button class="btn${S.books.some(b => b.st === 'new') ? ' red' : ''}" data-a="books">📅 ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="Бронювання">📅</button>`}<button class="btn primary" data-a="newOrder">➕ Замовлення</button></div>${strip}<div class="tables">${tiles}</div>`;
   }
 
   // ---------- стрічка ----------
@@ -231,7 +232,7 @@
     guest: `🛎 Стіл ${tn(e.t)} — ${esc((e.kind || 'замовлення').toLowerCase())}`, check: `🧾 Стіл ${tn(e.t)} просить чек${e.pay ? (e.pay === 'card' ? ' · 💳 карта' : ' · 💵 готівка') : ''}${e.tip ? ` · 💝 ${money(e.tip)}` : ''}`,
     waiter: `🧑‍🍳 Стіл ${tn(e.t)} — ${esc(e.by)}${e.src === 'каса' ? ' (каса)' : ''}`, close: `✅ Стіл ${tn(e.t)} закрито — ${money(e.sum)} ${e.pay === 'card' ? '💳' : '💵'}${e.print === false ? ' · без чека' : ''}`,
     shift: esc(e.text), del: `🗑 Стіл ${tn(e.t)} видалено (${money(e.sum)})`, move: `↔️ ${esc(e.text)}`, disc: `% Стіл ${tn(e.t)}: ${esc(e.text)}`, rm: `✏️ Стіл ${tn(e.t)}: ${esc(e.text)}`, pre: `🖨 Пречек стіл ${tn(e.t)}`, ready: e.part ? `🍽 Стіл ${tn(e.t)} — страва готова, забирайте` : `🍽 Стіл ${tn(e.t)} — ВСЕ ГОТОВО, забирайте!${e.mins != null ? ` <small>(${e.mins} хв)</small>` : ''}`, cooking: `🔥 Стіл ${tn(e.t)} — кухня готує`, kmsg: `👨‍🍳 Кухня → стіл ${tn(e.t)}: ${esc(e.text)}`, call: `🔔🔔 Стіл ${tn(e.t)} кличе офіціанта`, noscan: `🚨📵🚫 СТІЛ ${e.t} — НЕ МОЖЕ ЗАМОВИТИ 🚫📵🚨<br><small>Гість не відсканував QR (або минула година). Підійдіть: 📷 нехай відсканує QR на столі 👆</small>`,
-    go: esc(e.text), att: `🟢 ${esc(e.n)} на зміні${e.late ? ` · ⏰ запізнення ${e.late} хв` : ''}`, swap: esc(e.text),
+    go: esc(e.text), book: esc(e.text), cert: esc(e.text), att: `🟢 ${esc(e.n)} на зміні${e.late ? ` · ⏰ запізнення ${e.late} хв` : ''}`, swap: esc(e.text),
   })[e.k] || esc(e.text || e.k);
   setInterval(() => { if (S.events?.some(e => e.k === 'call' && e.s === 'new')) { renderFeed(); if (S.view === 'hall' && !S.open) renderMain(); } }, 10000); // 🔔 через 1 хв — червоним
   function renderFeed() {
@@ -242,7 +243,10 @@
       const by = e.by && !['waiter'].includes(e.k) ? ` · ${esc(e.by)}` : '';
       const zb = e.k === 'att' ? `<div class="act">${e.s === 'acc' ? `<span class="muted">✅ ${esc(e.accBy || '')}</span>` : e.s === 'rej' ? `<span class="bad">❌ ${esc(e.accBy || '')}</span>` : isAdmin() ? `<button class="btn sm green" data-a="zpConf" data-d="${e.day}" data-n="${esc(e.n)}" data-h="o">✅ Підтвердити</button>${e.late && S.cfg?.lateFine ? `<button class="btn sm" data-a="zpConf" data-d="${e.day}" data-n="${esc(e.n)}" data-h="f">✅ + штраф</button>` : ''}<button class="btn sm red" data-a="zpConf" data-d="${e.day}" data-n="${esc(e.n)}" data-h="n">❌</button>` : '<span class="muted">чекає підтвердження</span>'}</div>`
         : e.k === 'swap' && !e.old ? (e.s === 'ask' && e.n === S.me?.name ? `<div class="act"><button class="btn sm green" data-a="zpSw" data-id="${e.sw}" data-s="agree">Погоджуюсь</button><button class="btn sm red" data-a="zpSw" data-id="${e.sw}" data-s="no">Ні</button></div>` : e.s === 'agreed' && isAdmin() ? `<div class="act"><button class="btn sm green" data-a="zpSw" data-id="${e.sw}" data-s="ok">✅ Підтвердити обмін</button><button class="btn sm red" data-a="zpSw" data-id="${e.sw}" data-s="no">❌</button></div>` : '') : '';
-      const btns = isCour() ? '' : zb || (e.k === 'noscan' ? `<div class="act"><button class="btn sm" data-a="table" data-t="${e.t}">Стіл ${tn(e.t)}</button></div>` : e.k === 'guest' || e.k === 'check' || e.k === 'call'
+      const sb = e.k === 'book' && e.s === 'new' ? `<div class="act"><button class="btn sm green" data-a="bkSet" data-id="${e.bid}" data-s="ok">✅ Підтвердити</button><button class="btn sm red" data-a="bkSet" data-id="${e.bid}" data-s="no">❌</button><button class="btn sm" data-a="books">📅 Усі броні</button></div>`
+        : e.k === 'cert' && e.s === 'new' && isAdmin() ? `<div class="act"><button class="btn sm green" data-a="certPay" data-c="${e.code}" data-h="cash">💵 Оплачено</button><button class="btn sm" data-a="certPay" data-c="${e.code}" data-h="card">💳</button><button class="btn sm red" data-a="certPay" data-c="${e.code}" data-h="no">❌</button></div>`
+        : (e.k === 'book' || e.k === 'cert') && e.s !== 'new' ? `<div class="act"><span class="muted">${e.s === 'rej' ? '❌' : '✅'} ${esc(e.accBy || '')}</span></div>` : '';
+      const btns = isCour() ? '' : sb || zb || (e.k === 'noscan' ? `<div class="act"><button class="btn sm" data-a="table" data-t="${e.t}">Стіл ${tn(e.t)}</button></div>` : e.k === 'guest' || e.k === 'check' || e.k === 'call'
         ? `<div class="act">${e.s === 'acc' ? `<span class="muted">✅ ${esc(e.accBy || 'прийнято')}</span>` : e.s === 'rej' ? `<span style="color:var(--red,#ff453a)">❌ відхилено · ${esc(e.accBy || '')}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">✅ Прийняв</button>${e.k === 'guest' ? `<button class="btn sm red" data-a="reject" data-oid="${e.oid}">❌ Відхилити</button>` : ''}`}<button class="btn sm" data-a="table" data-t="${e.t}">Стіл ${tn(e.t)}</button></div>` : '');
       const fresh = S.shown.size && !S.shown.has(e.id) ? ' fresh' : '';
       return `<div class="ev ${e.k}${e.k === 'call' && e.s === 'new' && Date.now() - e.ts > 60e3 ? ' late' : ''}${e.s === 'acc' || e.s === 'rej' ? ' acc' : ''}${e.s === 'rej' ? ' rej' : ''}${fresh}"><div class="top"><b>${evTitle(e)}</b><span class="tm">${e.at}${by}</span></div>${lines}${e.comment ? `<div class="com">💬 ${esc(e.comment)}</div>` : ''}${e.sum && ['guest', 'waiter'].includes(e.k) ? `<div class="muted">Сума ${money(e.sum)}</div>` : ''}${btns}</div>`;
@@ -293,14 +297,14 @@
     // рахунок
     const billRows = b ? b.items.map(it => `<div class="row"><div class="nm">${esc(it.name)}<small>${it.q} × ${Math.round(it.sum / it.q)} ₴</small></div><b class="money">${it.sum}</b><button class="rb minus" data-a="rm" data-name="${esc(it.name)}" title="Прибрати 1">−</button></div>`).join('') : '<div class="muted" style="padding:8px 4px">Рахунок порожній — оберіть страви в меню</div>';
     const discRow = b?.disc ? `<div class="row"><div class="nm">Знижка ${b.disc}%</div><b class="money" style="color:var(--green)">−${b.total - b.pay2}</b><button class="rb minus" data-a="discSet" data-p="0">×</button></div>` : '';
-    const bonRow = b?.bonus ? `<div class="row"><div class="nm">🎁 Бонуси</div><b class="money" style="color:var(--green)">−${b.bonus}</b><button class="rb minus" data-a="cliBon0">×</button></div>` : '';
+    const bonRow = b?.bonus ? `<div class="row"><div class="nm">${b.cert ? `🎟 Сертифікат ${esc(b.cert.code)}${b.bonus > b.cert.sum ? ' + 🎁 бонуси' : ''}` : '🎁 Бонуси'}</div><b class="money" style="color:var(--green)">−${b.bonus}</b><button class="rb minus" data-a="cliBon0">×</button></div>` : '';
     const tipRow = b?.tip ? `<div class="row"><div class="nm">💝 Чайові<small>входять у виручку</small></div><b class="money" style="color:#ff7aa8">+${b.tip}</b>${isAdmin() ? '<button class="rb minus" data-a="tipSet" data-v="0">×</button>' : ''}</div>` : '';
     const comments = b ? b.log.filter(o => o.comment).map(o => `<div class="muted" style="padding:2px 6px">💬 ${esc(o.comment)}</div>`).join('') : '';
     const cartHTML = cartRows.length ? `<div class="cart"><h3>Нове замовлення</h3><div class="rows">${cartRows.map(([k, x]) => `<div class="row"><div class="nm">${esc(x.name)}<small>${x.price} ₴</small></div><button class="rb minus" data-a="cq" data-k="${esc(k)}" data-d="-1">−</button><span class="q">${x.q}</span><button class="rb plus" data-a="cq" data-k="${esc(k)}" data-d="1">+</button></div>`).join('')}${pq ? `<div class="row auto"><div class="nm">🥡 ${esc(pk.name.uk)}<small>${pk.price} ₴ × ${pq}${S.packAdj[t] ? '' : ' · автоматично'}</small></div><button class="rb minus" data-a="pk" data-d="-1">−</button><span class="q">${pq}</span><button class="rb plus" data-a="pk" data-d="1">+</button></div>` : ''}</div>
       <div class="srow" style="margin:6px 0 10px"><input id="cartCom" placeholder="💬 Коментар для кухні" value="${esc(S.coms[t] || '')}"><button class="btn sm ${S.tw[t] ? 'primary' : 'ghost'}" data-a="tw">🥡 З собою</button><button class="btn sm ${S.ur[t] ? 'red' : 'ghost'}" data-a="ur">⚡ Терміново</button></div>
       <div style="display:grid;grid-template-columns:auto 1fr;gap:8px"><button class="btn red" data-a="cartClear">✕</button><button class="btn primary" data-a="send">Відправити · ${money(cartSum)}</button></div></div>` : '';
     const actions = b && !isCook() ? `<div class="actions"><button class="btn" data-a="pre">🖨 Пречек</button><button class="btn" data-a="disc">% Знижка</button>
-      <button class="btn" data-a="move">↔️ Перенести</button><button class="btn" data-a="split">✂️ Розділити</button>${t < 1000 ? `<button class="btn" data-a="cliT">🎁 ${b.cli ? 'Гість' : 'Бонуси'}</button>` : ''}${isAdmin() ? '<button class="btn red" data-a="delTable">🗑 Видалити</button>' : '<button class="btn" data-a="mobileMenu">➕ Додати</button>'}
+      <button class="btn" data-a="move">↔️ Перенести</button><button class="btn" data-a="split">✂️ Розділити</button>${t < 1000 ? `<button class="btn" data-a="cliT">🎁 ${b.cli ? 'Гість' : 'Бонуси'}</button>` : ''}<button class="btn" data-a="certT">🎟 Сертифікат</button>${isAdmin() ? '<button class="btn red" data-a="delTable">🗑 Видалити</button>' : '<button class="btn" data-a="mobileMenu">➕ Додати</button>'}
       <button class="btn green wide" data-a="closeT">💰 Закрити рахунок · ${money(b.pay2)}</button></div>` : '';
     const keepBill = $('#shBill .scroll')?.scrollTop, focusCom = document.activeElement?.id === 'cartCom';
     setHTML($('#shBill'), `<div class="scroll"><h3>Рахунок</h3>${billRows}${discRow}${bonRow}${tipRow}${comments}</div>${cartHTML}${actions}`);
@@ -352,13 +356,13 @@
       <div class="muted">${g.when ? `🕐 на <b>${g.when}</b> · ` : ''}${g.pay === 'online' ? (g.paid ? '💳 оплачено онлайн' : '⏳ очікує онлайн-оплату') : g.pay === 'card' ? '💳 картка при отриманні' : '💵 готівка'}${g.change ? ` · решта з <b>${g.change}</b>` : ''}${g.cut ? ` · 🍴 ${g.cut}` : ''}${g.cour ? ` · 🛵 ${esc(g.cour)}` : ''}${g.src ? ` · ${esc(g.src)}` : ''}</div>
       ${t !== -1 ? `<div class="btnrow">${nx}${g.kind === 'del' && isAdmin() ? '<button class="btn sm" data-a="goCourSet">👤 Кур\'єр</button>' : ''}<button class="btn sm green" data-a="goDone">🤝 Видано · ${money(b?.pay2 || 0)}</button></div>` : ''}</div>`;
   }
-  async function goNew() {
-    const body = `<div class="form"><div class="seg" id="gKind"><button class="on" data-k="pick">🥡 Самовивіз</button><button data-k="del">🛵 Доставка</button></div>
+  async function goNew(kind0 = 'pick', fromT = 0) {
+    const body = `<div class="form"><div class="seg" id="gKind"><button class="${kind0 === 'pick' ? 'on' : ''}" data-k="pick">🥡 Самовивіз</button><button class="${kind0 === 'del' ? 'on' : ''}" data-k="del">🛵 Доставка</button></div>
       <label>Телефон<input id="gP" type="tel" inputmode="tel" placeholder="050 123 45 67"></label><div id="gCli" class="muted" style="font-size:13px"></div>
-      <label>Імʼя<input id="gN"></label><label id="gAL" hidden>Адреса<input id="gA" list="gAdr"><datalist id="gAdr"></datalist></label>
+      <label>Імʼя<input id="gN"></label><label id="gAL" ${kind0 === 'del' ? '' : 'hidden'}>Адреса<input id="gA" list="gAdr"><datalist id="gAdr"></datalist></label>
       <div class="frow"><label>На котру (необовʼязково)<input id="gW" placeholder="19:30"></label><label>Оплата<select id="gPay"><option value="cash">💵 готівка</option><option value="card">💳 картка</option></select></label></div></div>`;
-    const pr = modal({ title: '☎️ Нова доставка / з собою', body, buttons: [{ label: 'Далі → меню', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
-    let kind = 'pick';
+    const pr = modal({ title: kind0 === 'del' ? '🛵 Доставка' : '🥡 Самовивіз', body, buttons: [{ label: 'Далі → меню', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
+    let kind = kind0;
     $('#gKind').onclick = e => { const k = e.target.closest('[data-k]')?.dataset.k; if (!k) return; kind = k; $('#gKind').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.k === k)); $('#gAL').hidden = k !== 'del'; };
     $('#gP').onchange = async () => { const r = await api('cliGet', { phone: $('#gP').value }).catch(() => null); if (!r?.cli) { $('#gCli').textContent = r ? '🆕 новий клієнт' : '⚠️ номер?'; return; }
       const c = r.cli; if (!$('#gN').value) $('#gN').value = c.name || ''; $('#gAdr').innerHTML = (c.addr || []).map(a => `<option value="${esc(a)}">`).join(''); if (!$('#gA').value && c.addr?.[0]) $('#gA').value = c.addr[0];
@@ -366,7 +370,9 @@
     const v = await pr; if (v !== 'ok') return closeModal();
     const d = { kind, phone: $('#gP').value, name: $('#gN').value.trim(), addr: $('#gA').value.trim(), when: $('#gW').value.trim(), pay: $('#gPay').value }; closeModal();
     if (!d.name) return toast('⚠️ Вкажіть імʼя'); if (kind === 'del' && !d.addr) return toast('⚠️ Вкажіть адресу');
-    S.goDraft = d; S.tw[-1] = true; openTable(-1); S.mobileMenu = true; renderSheet();
+    S.goDraft = d; S.tw[-1] = true;
+    if (fromT) { S.carts[-1] = S.carts[fromT] || {}; S.coms[-1] = S.coms[fromT] || ''; S.packAdj[-1] = S.packAdj[fromT] || 0; S.ur[-1] = S.ur[fromT]; S.carts[fromT] = {}; S.coms[fromT] = ''; S.tw[fromT] = false; S.packAdj[fromT] = 0; saveCarts(); }
+    openTable(-1); S.mobileMenu = !fromT; renderSheet();
   }
   async function goDone(t) {
     const b = S.tables[t], g = b?.go; if (!g) return;
@@ -392,6 +398,46 @@
         <div><b>${esc(g.name)}</b> · <a href="tel:+${g.phone}">📞 ${fmtPh(g.phone)}</a></div><div>📍 <a href="${map}" target="_blank" rel="noopener">${esc(g.addr)}</a>${g.ent ? ` · ${esc(g.ent)}` : ''}</div>
         <div class="muted">${g.pay === 'online' ? '💳 оплачено' : g.pay === 'card' ? '💳 термінал' : '💵 готівка'}${g.change ? ` · решта з <b>${g.change}</b>` : ''}${g.cut ? ` · 🍴 ${g.cut}` : ''} · ${b.items.map(i => `${i.q}× ${esc(i.name)}`).join(', ')}</div>
         <div class="btnrow">${!g.cour ? `<button class="btn sm primary" data-a="goTake" data-t="${b.t}">✋ Беру</button>` : ''}${g.st !== 'road' ? `<button class="btn sm" data-a="goRoad" data-t="${b.t}">🛵 Поїхав</button>` : ''}<button class="btn sm green" data-a="goDoneT" data-t="${b.t}">🤝 Видано</button></div></div>`; }).join('') || '<div class="muted">Нових доставок немає — тут зʼявляться, щойно адмін прийме замовлення.</div>'}</div>`;
+  }
+  // ---------- 📅 броні, 🎟 сертифікати, 🌐 сайт ----------
+  const BKS = { new: '🆕 нова', ok: '✅ підтверджено', no: '❌ відхилено', came: '🪑 прийшли', noshow: '🚫 не прийшли', cancel: '↩️ скасовано' };
+  async function booksModal() {
+    const r = await api('bkList').catch(() => null); if (!r) return;
+    const dd = d => d === todayK() ? 'Сьогодні' : `${d.slice(8)}.${d.slice(5, 7)}`;
+    const body = `<div class="bk-list">${r.list.map(b => `<div class="kv bk-${b.st}"><span><b>${dd(b.date)} ${b.time}</b> · ${b.people} гост.${b.kind === 'banquet' ? ' · 🎉 банкет' : ''}<br>${esc(b.name)} · <a href="tel:+${b.phone}">${fmtPh(b.phone)}</a>${b.t ? ` · 🪑 ${b.t}` : ''}<br><small class="muted">${BKS[b.st]}${b.comment ? ' · 💬 ' + esc(b.comment) : ''}${b.pre?.length ? `<br>🍽 ${b.pre.map(esc).join(', ')}` : ''}</small></span>
+      <span class="kv-r">${b.st === 'new' ? `<button class="btn sm green" data-a="bkSet" data-id="${b.id}" data-s="ok">✅</button><button class="btn sm red" data-a="bkSet" data-id="${b.id}" data-s="no">❌</button>` : b.st === 'ok' ? `<button class="btn sm" data-a="bkTbl" data-id="${b.id}">🪑</button>${b.pre?.length && !b.preSent ? `<button class="btn sm" data-a="bkSet" data-id="${b.id}" data-s="kit">🔥</button>` : ''}<button class="btn sm green" data-a="bkSet" data-id="${b.id}" data-s="came">Прийшли</button><button class="btn sm red" data-a="bkSet" data-id="${b.id}" data-s="noshow">🚫</button>` : ''}</span></div>`).join('') || '<div class="muted">Броней на 2 тижні немає</div>'}</div>`;
+    await modal({ title: '📅 Бронювання · 14 днів', body, buttons: [{ label: 'Закрити', val: null }] });
+  }
+  async function certT(t) {
+    const code = await ask('🎟 Код сертифіката', 'VV-XXXXX'); if (!code) return;
+    const g = await api('certGet', { code }).catch(e => { toast('⚠️ ' + e.message); return null; }); if (!g) return;
+    if (g.c.st !== 'ok') return toast(g.c.st === 'new' ? '⚠️ Сертифікат ще не оплачено' : '⚠️ Сертифікат скасовано');
+    if (!(await confirmBox(`🎟 ${g.c.code} — ${money(g.c.left)} з ${money(g.c.sum)}`, `Від ${g.c.from}${g.c.to ? ' для ' + g.c.to : ''}. Списати на цей рахунок?`))) return;
+    const r = await act('certUse', { t, code }); if (r) { toast(`🎟 −${money(r.use)} · залишок ${money(r.left)}`); loadState().catch(() => {}); }
+  }
+  async function siteImg(hero) {
+    const f = await new Promise(res => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.onchange = () => res(i.files[0]); i.click(); }); if (!f) return;
+    const img = await new Promise(r => { const im = new Image(); im.onload = () => r(im); im.src = URL.createObjectURL(f); }), k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+    c.width = img.width * k; c.height = img.height * k; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    const r = await act('sitePhoto', { data: c.toDataURL('image/jpeg', .82), hero: !!hero }, '📷 Фото додано'); if (r) { S.data.site = r.site; renderMain(); }
+  }
+  function siteHTML() {
+    const s = S.data.site; if (!s) return '<div class="muted">Завантаження…</div>';
+    const row = (k, l, v, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ''}</span><span class="kv-r"><b class="st-v">${v}</b><button class="btn sm" data-a="siteSet" data-k="${k}" data-l="${esc(l)}">змінити</button></span></div>`;
+    const cut = x => esc(String(x || '—').slice(0, 60)) + (String(x || '').length > 60 ? '…' : '');
+    const U = 'https://666blackmuxa666.github.io/VARVAR/about.html';
+    return `<div class="grid2 set">
+      <div class="card"><h3>🌐 Візитка</h3><div class="btnrow" style="margin-bottom:8px"><a class="btn sm primary" href="${U}" target="_blank" rel="noopener">🔗 Відкрити сайт</a><button class="btn sm" data-a="siteCopy">📋 Посилання</button></div>
+        ${row('name', 'Назва', cut(s.name))}${row('tagline', 'Слоган', cut(s.tagline))}${row('about', 'Про нас', cut(s.about))}${row('phone', '📞 Телефон', esc(s.phone))}${row('addr', '📍 Адреса', cut(s.addr))}${row('from', '🕐 Відкриваємось', s.from)}${row('to', '🕐 Зачиняємось', s.to)}</div>
+      <div class="card"><h3>🔗 Посилання й відгуки</h3>${row('insta', 'Instagram', cut(s.insta), 'напр. https://instagram.com/varvar')}${row('tg', 'Telegram-канал', cut(s.tg))}${row('gmaps', 'Google Maps', cut(s.gmaps))}${row('reviewsUrl', 'Посилання на відгуки', cut(s.reviewsUrl))}${row('rating', '⭐ Рейтинг Google', s.rating || '—')}${row('ratingN', 'Кількість відгуків', s.ratingN)}
+        <div class="muted set-note" style="margin-top:8px">Цитати відгуків</div>${s.quotes.map((q, i) => `<div class="kv"><span>«${esc(q.t)}» <small class="muted">— ${esc(q.a)}</small></span><button class="btn sm red" data-a="siteDel" data-k="quoteDel" data-v="${i}">🗑</button></div>`).join('')}<button class="btn sm" data-a="siteQuote">➕ Цитата</button></div>
+      <div class="card"><h3>🎉 Акції та події</h3>${s.promos.map(p => `<div class="kv"><span><b>${esc(p.t)}</b><br><small class="muted">${esc(p.d)}</small></span><button class="btn sm red" data-a="siteDel" data-k="promoDel" data-v="${p.id}">🗑</button></div>`).join('') || '<div class="muted">Немає — блок на сайті прихований</div>'}<button class="btn sm primary" data-a="sitePromo">➕ Акція</button></div>
+      <div class="card"><h3>📷 Фото</h3><div class="site-ph">${s.hero ? `<div><img src="${esc(s.hero)}"><small>головне</small></div>` : ''}${s.photos.map(u => `<div><img src="${esc(u)}"><button class="btn sm red" data-a="siteDel" data-k="photoDel" data-v="${esc(u)}">🗑</button></div>`).join('')}</div>
+        <div class="btnrow"><button class="btn sm primary" data-a="siteImg" data-h="1">🖼 Головне фото</button><button class="btn sm" data-a="siteImg">➕ У галерею</button></div></div>
+      <div class="card"><h3>🍽 Хіти на сайті</h3><div class="muted set-note">${s.hits.length ? s.hits.map(id => esc(itemsAll().find(i => i.id === id)?.name.uk || id)).join(', ') : 'Автоматично — страви з фото'}</div><button class="btn sm" data-a="siteHits">✏️ Обрати страви</button></div>
+      <div class="card"><h3>🎉 Банкети · 💨 Кальяни</h3>${row('banquet', 'Банкети', cut(s.banquet))}${row('hookah', 'Кальяни', cut(s.hookah))}</div>
+      <div class="card"><h3>⚙️ Функції</h3>${row('bookOn', '📅 Бронювання з сайту', s.bookOn ? 'увімкнено' : 'вимкнено', '1 — увімкнути, 0 — вимкнути')}${row('certOn', '🎟 Сертифікати з сайту', s.certOn ? 'увімкнено' : 'вимкнено', '1 / 0')}
+        <button class="btn sm" data-a="certs" style="margin-top:8px">🎟 Усі сертифікати</button>${S.data.rates ? `<div class="muted set-note" style="margin-top:8px">⭐ Оцінки гостей за 30 днів: <b>${S.data.rates.avg || '—'}</b> (${S.data.rates.n})</div>` : ''}</div></div>`;
   }
   async function sendCart() {
     const t = S.open, cart = cartOf(t), pk = packItem(), pq = pk ? packQ(t) : 0, items = [...Object.values(cart).map(x => ({ id: x.id, v: x.v, q: x.q })), ...(pq ? [{ id: pk.id, q: pq }] : [])];
@@ -465,7 +511,7 @@
       if (S.view === 'reports') { if (!S.menu) await loadMenu(); if (S.rep.tab === 'plus') { const [from, to] = perRange(S.sk.p); S.data.skRep = await api('skReport', { from, to }, 30000); } else await loadReport(); }
       if (S.view === 'calc') await loadCalc();
       if (S.view === 'team') { await loadPay(); S.data.staff = await api('staff'); }
-      if (S.view === 'settings') { S.data.staff = await api('staff'); S.data.wifi = await api('wifi'); S.data.gocfg = (await api('goCfg')).cfg; }
+      if (S.view === 'settings') { S.data.staff = await api('staff'); S.data.wifi = await api('wifi'); S.data.gocfg = (await api('goCfg')).cfg; S.data.site = (await api('siteGet')).site; S.data.rates = await api('siteRates', { from: iso(Date.now() - 30 * 864e5), to: todayK() }).catch(() => null); if (!S.menu) await loadMenu(); }
       if (['stop', 'menu'].includes(S.view) && !S.menu) await loadMenu();
     } catch {}
     renderMain();
@@ -483,7 +529,7 @@
   }
   // сітка залу: столи рівномірно на всю робочу зону, без порожніх клітинок, плитки близькі до квадрата
   function hallGrid(m) {
-    const w = m.clientWidth || innerWidth, h = Math.max(200, (m.clientHeight || innerHeight) - 90 - 74), n = S.n; // 74 — ряд доставок
+    const w = m.clientWidth || innerWidth, h = Math.max(200, (m.clientHeight || innerHeight) - 90 - (Object.keys(S.tables).some(t => t > 1000) ? 74 : 0)), n = S.n; // 74 — ряд доставок
     let best = [1, n], score = 1e9;
     for (let c = 1; c <= n; c++) {
       const r = Math.ceil(n / c), empty = c * r - n, ratio = (w / c) / (h / r);
@@ -897,7 +943,7 @@
     const row = (l, v, btn, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ''}</span><span class="kv-r"><b>${v}</b>${btn}</span></div>`;
     const ch = (a, extra = '') => `<button class="btn sm" data-a="${a}"${extra}>змінити</button>`;
     const staff = st ? [...st.staff].sort((a, b) => (a.role || '').localeCompare(b.role || '') || a.name.localeCompare(b.name)) : null;
-    const SS = [['rules', '⚙️ Правила роботи'], ['go', '🛵 Доставка'], ['look', '🎨 Вигляд'], ['printer', '🖨 Принтер'], ['test', '🧪 Тест']], cur = only || (SS0 => SS0.includes(S.setTab) ? S.setTab : 'rules')(['rules', 'go', 'look', 'printer', 'test']);
+    const SS = [['rules', '⚙️ Правила роботи'], ['site', '🌐 Сайт'], ['go', '🛵 Доставка'], ['look', '🎨 Вигляд'], ['printer', '🖨 Принтер'], ['test', '🧪 Тест']], cur = only || (SS0 => SS0.includes(S.setTab) ? S.setTab : 'rules')(['rules', 'site', 'go', 'look', 'printer', 'test']);
     const part = {};
     part.people = `<div class="grid2 set">
       <div class="card"><h3>👥 Персонал <span class="muted">· ${staff ? staff.length : '…'}</span></h3>
@@ -924,6 +970,7 @@
         <div class="scrollbox sm">${wf ? wf.list.map(x => `<div class="kv"><span>${esc(x.k)}</span><span class="muted">${new Date(x.at).toLocaleDateString('uk-UA')}</span></div>`).join('') || '<div class="muted">немає збережених адрес</div>' : ''}</div>
         <div class="btnrow"><button class="btn sm primary" data-a="wifiAdd">➕ Це наша мережа</button><button class="btn sm red" data-a="wifiClear">Скинути всі</button></div></div></div>`;
     part.go = goSetHTML();
+    part.site = siteHTML();
     part.look = lookHTML();
     part.printer = printerCards();
     part.test = `<div class="grid2 set"><div class="card"><h3>🧪 Тест</h3><div class="muted set-note">Тимчасово, до запуску.</div><button class="btn sm red" data-a="reset">♻️ Обнулити все</button></div></div>`;
@@ -1539,12 +1586,12 @@
     const v = await modal({ title, body: `<input id="askIn" type="${type}" placeholder="${esc(ph)}" ${type === 'number' ? 'inputmode="decimal"' : ''}>`, buttons: [{ label: 'OK', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
     const x = v === 'ok' ? $('#askIn').value.trim() : null; closeModal(); return x || null;
   }
-  function pickTable(title, text, skip) {
+  function pickTable(title, text, skip, withGo) {
     return new Promise(res => {
       modalResolve = v => { closeModal(); res(v); };
       const el = document.createElement('div'); el.className = 'modal-bg'; el.id = 'modal';
-      el.innerHTML = `<div class="modal"><h3>${esc(title)}</h3><p>${esc(text)}</p><div class="grid">${Array.from({ length: S.n }, (_, i) => i + 1).filter(n => n !== skip).map(n => `<button class="${S.tables[n] ? 'busy' : ''}" data-t="${n}">${n}</button>`).join('')}</div><div class="btns"><button class="btn" data-x>Скасувати</button></div></div>`;
-      el.addEventListener('click', e => { if (e.target === el || e.target.closest('[data-x]')) return modalResolve(null); const t = e.target.closest('[data-t]')?.dataset.t; if (t) modalResolve(+t); });
+      el.innerHTML = `<div class="modal"><h3>${esc(title)}</h3><p>${esc(text)}</p>${withGo ? '<div class="btnrow" style="margin-bottom:10px"><button class="btn" data-t="pick">🥡 Самовивіз</button><button class="btn" data-t="del">🛵 Доставка</button></div>' : ''}<div class="grid">${Array.from({ length: S.n }, (_, i) => i + 1).filter(n => n !== skip).map(n => `<button class="${S.tables[n] ? 'busy' : ''}" data-t="${n}">${n}</button>`).join('')}</div><div class="btns"><button class="btn" data-x>Скасувати</button></div></div>`;
+      el.addEventListener('click', e => { if (e.target === el || e.target.closest('[data-x]')) return modalResolve(null); const t = e.target.closest('[data-t]')?.dataset.t; if (t) modalResolve(isNaN(+t) ? t : +t); });
       document.body.append(el);
       setTimeout(() => el.querySelector('input')?.focus(), 50);
     });
@@ -1565,14 +1612,17 @@
         if (v === 'logout') { if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); } else if (v) { S.view = v; S.q = ''; renderNav(); renderMain(); loadView(); $('#main').scrollTop = 0; } break; }
       case 'switch': if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); break;
       case 'table': $('#feed').classList.remove('open'); openTable(el.dataset.t); break;
-      case 'newOrder': { const n = await pickTable('Новe замовлення', 'Оберіть стіл'); if (n) { openTable(n); S.mobileMenu = true; renderSheet(); } break; }
+      case 'newOrder': { const n = await pickTable('Новe замовлення', 'Оберіть стіл', 0, true); if (n === 'pick' || n === 'del') goNew(n); else if (n) { openTable(n); S.mobileMenu = true; renderSheet(); } break; }
       case 'closeSheet': closeSheet(); break;
       case 'tab': S.mobileMenu = el.dataset.m === '1'; renderSheet(); break;
       case 'mobileMenu': S.mobileMenu = true; renderSheet(); break;
       case 'cat': S.cat = el.dataset.c; S.q = ''; renderSheet(); $('#shItems').scrollTop = 0; break;
       case 'grp': S.grp = el.dataset.g; S.cat = ''; S.q = ''; store.set('grp', S.grp); renderSheet(); $('#shItems').scrollTop = 0; break;
       case 'fav': { const on = !S.fav.includes(el.dataset.id); S.fav = on ? [...S.fav, el.dataset.id] : S.fav.filter(x => x !== el.dataset.id); renderSheet(); act('fav', { id: el.dataset.id, on }, on ? '⭐ Додано в обрані' : 'Прибрано з обраних'); break; }
-      case 'tw': S.tw[t] = !S.tw[t]; S.packAdj[t] = 0; renderSheet(); break;
+      case 'tw': { // 🥡 з собою: самовивіз або доставка — окремий віртуальний стіл С‑ / Д‑
+        if (t === -1 || t > 1000) { S.tw[t] = !S.tw[t]; S.packAdj[t] = 0; renderSheet(); break; }
+        const k = await choose('🥡 З собою', 'Замовлення піде окремим чеком; стіл не займається', [{ label: '🥡 Самовивіз', val: 'pick', cls: 'primary' }, { label: '🛵 Доставка', val: 'del', cls: 'primary' }]);
+        if (k) goNew(k, t); break; }
       case 'ur': S.ur[t] = !S.ur[t]; renderSheet(); break;
       case 'kItem': { const r = await act('kDone', { id: el.dataset.id, i: +el.dataset.i }); if (r) loadKq(); break; }
       case 'kAll': { el.closest('.kc')?.classList.add('bye'); const r = await act('kDone', { id: el.dataset.id }); if (r) setTimeout(loadKq, 250); break; }
@@ -1599,6 +1649,22 @@
       case 'cartClear': S.carts[t] = {}; saveCarts(); renderSheet(); break;
       case 'send': sendCart(); break;
       case 'goNew': goNew(); break;
+      case 'books': booksModal(); break;
+      case 'bkSet': { if (await act('bkSet', { id: el.dataset.id, st: el.dataset.s }, BKS[el.dataset.s] || '🔥 На кухню')) { closeModal(); loadState().catch(() => {}); if (el.closest('.bk-list')) booksModal(); } break; }
+      case 'bkTbl': { const n = await pickTable('🪑 Стіл для броні', 'Плитка стола покаже час броні'); if (n && await act('bkSet', { id: el.dataset.id, st: 'ok', t: n }, '🪑 Стіл призначено')) { loadState().catch(() => {}); booksModal(); } break; }
+      case 'certPay': if (await act('certPay', { code: el.dataset.c, how: el.dataset.h }, el.dataset.h === 'no' ? '❌ Скасовано' : '🎟 Сертифікат активовано')) loadState().catch(() => {}); break;
+      case 'certT': certT(t); break;
+      case 'certs': { const r = await api('certList').catch(() => null); if (!r) break; await modal({ title: '🎟 Сертифікати', body: `<div class="bk-list">${r.list.map(c => `<div class="kv"><span><b>${c.code}</b> · ${money(c.sum)}${c.left !== c.sum ? ` · залишок ${money(c.left)}` : ''}<br><small class="muted">від ${esc(c.from)}${c.to ? ' для ' + esc(c.to) : ''} · ${fmtPh(c.phone)} · ${{ new: '⏳ не оплачено', ok: '✅ активний', no: '❌ скасовано' }[c.st]}</small></span>${c.st === 'new' ? `<span class="kv-r"><button class="btn sm green" data-a="certPay" data-c="${c.code}" data-h="cash">💵</button><button class="btn sm" data-a="certPay" data-c="${c.code}" data-h="card">💳</button></span>` : ''}</div>`).join('') || '<div class="muted">Ще немає</div>'}</div>`, buttons: [{ label: 'Закрити', val: null }] }); break; }
+      case 'siteSet': { const k = el.dataset.k, cur = S.data.site?.[k]; const v = await ask(el.dataset.l || k, String(cur ?? ''), ['rating', 'ratingN', 'bookOn', 'certOn'].includes(k) ? 'number' : 'text'); if (v == null) break; const r = await act('siteSet', { k, v }, '💾 Збережено — уже на сайті'); if (r) { S.data.site = r.site; renderMain(); } break; }
+      case 'siteDel': { const r = await act('siteSet', { k: el.dataset.k, v: el.dataset.v }, '🗑 Прибрано'); if (r) { S.data.site = r.site; renderMain(); } break; }
+      case 'sitePromo': { const tt = await ask('🎉 Назва акції', 'Щасливі години 15–17'); if (!tt) break; const d = await ask('Опис (необовʼязково)', '−20% на коктейлі'); const r = await act('siteSet', { k: 'promoAdd', v: { t: tt, d: d || '' } }, '🎉 Додано'); if (r) { S.data.site = r.site; renderMain(); } break; }
+      case 'siteQuote': { const tt = await ask('💬 Текст відгуку'); if (!tt) break; const a = await ask('Автор', 'Олена, Google'); const r = await act('siteSet', { k: 'quoteAdd', v: { t: tt, a: a || '' } }, '💬 Додано'); if (r) { S.data.site = r.site; renderMain(); } break; }
+      case 'siteImg': siteImg(el.dataset.h); break;
+      case 'siteHits': { const sel = new Set(S.data.site.hits);
+        const v = await modal({ title: '🍽 Хіти на сайті', text: 'До 12 страв; порожньо — автоматично', body: `<div class="bk-list">${itemsAll().filter(i => !i.hidden).map(i => `<label class="kv"><span>${esc(i.name.uk)}${i.img ? ' 📷' : ''}</span><input type="checkbox" class="hitC" value="${i.id}" ${sel.has(i.id) ? 'checked' : ''} style="width:22px;height:22px"></label>`).join('')}</div>`, buttons: [{ label: '💾 Зберегти', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
+        const ids = [...document.querySelectorAll('.hitC:checked')].map(x => x.value).slice(0, 12); closeModal(); if (v !== 'ok') break;
+        const r = await act('siteSet', { k: 'hits', v: ids }, '🍽 Збережено'); if (r) { S.data.site = r.site; renderMain(); } break; }
+      case 'siteCopy': { const u = 'https://666blackmuxa666.github.io/VARVAR/about.html'; try { await navigator.clipboard.writeText(u); toast('📋 ' + u); } catch { await ask('Посилання', u); } break; }
       case 'goSt': if (await act('goSt', { t, st: el.dataset.s }, '✔ ' + GOST[el.dataset.s])) loadState().catch(() => {}); break;
       case 'goDone': goDone(t); break;
       case 'goDoneT': goDone(+el.dataset.t); break;

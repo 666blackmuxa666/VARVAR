@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#141414">
+<meta name="color-scheme" content="dark only">
+<title>Varvar Food Bar — Буковель</title>
+<meta name="description" content="Varvar Food Bar у Поляниці (Буковель): ситні страви, бургери, пасти, коктейлі й кальяни. Бронювання столу, банкети, доставка й самовивіз.">
+<meta property="og:type" content="restaurant">
+<meta property="og:title" content="Varvar Food Bar — Буковель">
+<meta property="og:description" content="Їжа, кальяни й затишок поруч із трасами Буковелю. Бронюйте стіл або замовляйте з собою.">
+<meta property="og:image" content="https://666blackmuxa666.github.io/VARVAR/img/bg.jpg">
+<meta property="og:url" content="https://666blackmuxa666.github.io/VARVAR/about.html">
+<link rel="icon" href="img/icon.png">
+<link rel="apple-touch-icon" href="img/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik+Dirt&family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/about.css?v=1">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Restaurant","name":"Varvar Food Bar","image":"https://666blackmuxa666.github.io/VARVAR/img/bg.jpg",
+ "address":{"@type":"PostalAddress","streetAddress":"вул. Карпатська, 310","addressLocality":"Поляниця","addressRegion":"Івано-Франківська обл.","addressCountry":"UA"},
+ "geo":{"@type":"GeoCoordinates","latitude":48.3545862,"longitude":24.4224854},"telephone":"+380689781642",
+ "openingHoursSpecification":[{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],"opens":"11:00","closes":"23:00"}],
+ "servesCuisine":["Ukrainian","European","Burgers"],"hasMenu":"https://666blackmuxa666.github.io/VARVAR/?go","acceptsReservations":"True","url":"https://666blackmuxa666.github.io/VARVAR/about.html"}
+</script>
+</head>
+<body>
+<header class="nav">
+  <a class="brand" href="#top">VARVAR</a>
+  <nav class="links"><a href="#menu" data-t="nMenu"></a><a href="#book" data-t="nBook"></a><a href="#banquet" data-t="nBanq"></a><a href="#contacts" data-t="nCont"></a></nav>
+  <button class="me-btn" id="meBtn">👤 <span data-t="nMe"></span></button>
+  <button class="lng" id="lng">EN</button>
+</header>
+
+<section class="hero" id="top">
+  <div class="hero-bg" id="heroBg"></div>
+  <div class="hero-in">
+    <span class="badge" id="openBadge"></span>
+    <h1 id="sName">Varvar Food Bar</h1>
+    <p class="tag" id="sTag"></p>
+    <p class="addr">📍 <span id="sAddr"></span></p>
+    <div class="cta">
+      <a class="btn" href="index.html?go">🛵 <span data-t="order"></span></a>
+      <a class="btn alt" href="#book">📅 <span data-t="book"></span></a>
+      <a class="btn ghost" id="callA">📞 <span data-t="call"></span></a>
+      <a class="btn ghost" id="routeA" target="_blank" rel="noopener">🧭 <span data-t="route"></span></a>
+    </div>
+  </div>
+</section>
+
+<main>
+  <section class="about" id="about">
+    <h2 data-t="hAbout"></h2>
+    <p id="sAbout"></p>
+    <div class="feats">
+      <div><b>🍽</b><span data-t="f1"></span></div><div><b>💨</b><span data-t="f2"></span></div>
+      <div><b>🎉</b><span data-t="f3"></span></div><div><b>🛵</b><span data-t="f4"></span></div>
+    </div>
+  </section>
+
+  <section id="promos" hidden><h2 data-t="hPromo"></h2><div class="promos" id="promoList"></div></section>
+
+  <section id="menu"><div class="sec-h"><h2 data-t="hHits"></h2><a class="more" href="index.html?go" data-t="allMenu"></a></div><div class="hits" id="hits"></div></section>
+
+  <section id="gallery" hidden><h2 data-t="hGal"></h2><div class="gal" id="gal"></div></section>
+
+  <section class="two">
+    <div class="box" id="hookah"><h2>💨 <span data-t="hHook"></span></h2><p id="sHook"></p></div>
+    <div class="box" id="banquet"><h2>🎉 <span data-t="hBanq"></span></h2><p id="sBanq"></p><button class="btn alt" data-book="banquet" data-t="banqBtn"></button></div>
+  </section>
+
+  <section class="formbox" id="book">
+    <h2>📅 <span data-t="hBook"></span></h2>
+    <form id="bookF">
+      <div class="seg"><button type="button" class="on" data-kind="table" data-t="kTable"></button><button type="button" data-kind="banquet" data-t="kBanq"></button></div>
+      <div class="row2"><input name="name" required autocomplete="name" data-ph="fName"><input name="phone" type="tel" required autocomplete="tel" inputmode="tel" data-ph="fPhone"></div>
+      <div class="row3"><input name="date" type="date" required><input name="time" type="time" required step="900"><input name="people" type="number" min="1" max="60" value="2" required></div>
+      <textarea name="comment" rows="2" data-ph="fCom"></textarea>
+      <button class="btn" type="submit" data-t="bookSend"></button>
+      <div class="msg" id="bookMsg"></div>
+    </form>
+    <div class="done" id="bookDone" hidden></div>
+  </section>
+
+  <section class="formbox cert" id="cert">
+    <h2>🎟 <span data-t="hCert"></span></h2>
+    <p class="muted" data-t="certTxt"></p>
+    <form id="certF">
+      <div class="seg" id="certSum"><button type="button" data-v="500">500 ₴</button><button type="button" class="on" data-v="1000">1000 ₴</button><button type="button" data-v="2000">2000 ₴</button><button type="button" data-v="own" data-t="own"></button></div>
+      <input name="sum" type="number" min="100" max="50000" hidden data-ph="certOwn">
+      <div class="row2"><input name="from" required data-ph="certFrom"><input name="to" data-ph="certTo"></div>
+      <input name="phone" type="tel" required inputmode="tel" data-ph="fPhone">
+      <button class="btn" type="submit" data-t="certSend"></button>
+      <div class="msg" id="certMsg"></div>
+    </form>
+  </section>
+
+  <section id="reviews"><div class="sec-h"><h2 data-t="hRev"></h2><span class="rate" id="rate"></span></div><div class="quotes" id="quotes"></div>
+    <div class="cta"><a class="btn ghost" id="revA" target="_blank" rel="noopener">⭐ <span data-t="revAll"></span></a><a class="btn ghost" id="revW" target="_blank" rel="noopener">✍️ <span data-t="revWrite"></span></a></div></section>
+
+  <section id="contacts" class="contacts">
+    <div><h2 data-t="hCont"></h2>
+      <p>📍 <span id="cAddr"></span></p><p>🕐 <span data-t="daily"></span> <b id="cHours"></b></p><p>📞 <a id="cPhone"></a></p>
+      <p class="socials" id="socials"></p>
+      <a class="btn alt" id="routeB" target="_blank" rel="noopener">🧭 <span data-t="route"></span></a></div>
+    <iframe class="map" id="map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="map"></iframe>
+  </section>
+</main>
+<footer class="foot">© Varvar Food Bar · <a href="index.html?go" data-t="order"></a></footer>
+
+<div class="dock"><a id="dockCall">📞</a><a href="index.html?go" class="main">🛵 <span data-t="order"></span></a><a href="#book">📅</a></div>
+
+<div class="modal" id="modal" hidden><div class="bg" data-x></div><div class="card" id="mBody"></div></div>
+
+<script src="js/config.js?v=9"></script>
+<script src="js/about.js?v=1"></script>
+</body>
+</html>

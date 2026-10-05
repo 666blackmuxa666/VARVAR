@@ -1,6 +1,7 @@
 import { aiHelp } from './ai.js';
 import { tn } from './tn.js';
 import { goOrder, goInfo, reco } from './delivery.js';
+import { sitePublic, bookCreate, bookStatus, bookPre, certAsk, certPublic, meStart, mePoll, meData, meLogout, cron } from './site.js';
 // VARVAR — Cloudflare Worker: прийом замовлень, перевірка Wi‑Fi закладу, Telegram.
 // Secrets: BOT_TOKEN, CHAT_ID, ADMIN_PIN, TG_SECRET   Vars: ALLOWED_ORIGIN, TABLES, SELF_URL   KV: DB
 import { getMenu, priceMap } from './menu.js';
@@ -18,13 +19,15 @@ const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;
 
 // 💸 запити, що працюють з базою, виконуються всередині Durable Object (store.js → Store.fetch):
 // там кожне читання/запис — локальне, а платний «запит до DO» — один на дію, а не 20–50
-const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|goinfo|reco)$|tg$)/;
+const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|goinfo|reco|site|book|bookpre|cert|me|me\/start|me\/poll|me\/logout)$|tg$|__cron$)/;
 export default {
   async fetch(req, env) {
     const p = new URL(req.url).pathname;
     if (IN_STORE.test(p) && req.method !== 'OPTIONS') return env.STORE.get(env.STORE.idFromName('main')).fetch(req);
     return handle(req, { ...env, DB: storeDB(env.DB, env.STORE) });
   },
+  // ⏰ кожні 5 хв: нагадування про броні, запити відгуків (виконується всередині Store)
+  async scheduled(ev, env, ctx) { ctx.waitUntil(env.STORE.get(env.STORE.idFromName('main')).fetch(new Request('https://in/__cron', { headers: { 'x-cron': '1' } }))); },
 };
 export async function handle(req, env) {
   {
@@ -74,6 +77,19 @@ export async function handle(req, env) {
       }
       if (url.pathname === '/api/pos/live') return posLive(req, env, url);
       if (url.pathname === '/api/pos' && req.method === 'POST') return json(...await posApi(await req.json(), req, env));
+      if (url.pathname === '/__cron') return env.INSTORE && req.headers.get('x-cron') ? json(await cron(env)) : json({ error: 'no' }, 403);
+      // 🌐 візитка
+      if (url.pathname === '/api/site') return new Response(JSON.stringify(await sitePublic(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
+      if (url.pathname === '/site') return Response.redirect((env.SITE_URL || 'https://666blackmuxa666.github.io/VARVAR/') + 'about.html', 302);
+      if (url.pathname === '/api/book' && req.method === 'POST') return json(...await bookCreate(await req.json(), ip, env));
+      if (url.pathname === '/api/book') return json(await bookStatus(env, url.searchParams.get('id')) || { error: 'not_found' });
+      if (url.pathname === '/api/bookpre' && req.method === 'POST') return json(...await bookPre(await req.json(), env));
+      if (url.pathname === '/api/cert' && req.method === 'POST') return json(...await certAsk(await req.json(), ip, env));
+      if (url.pathname === '/api/cert') return json(await certPublic(env, url.searchParams.get('code')) || { error: 'not_found' });
+      if (url.pathname === '/api/me/start') return json(await meStart(env));
+      if (url.pathname === '/api/me/poll') return json(await mePoll(env, url.searchParams.get('n')) || { error: 'bad' });
+      if (url.pathname === '/api/me/logout' && req.method === 'POST') { await meLogout(env, (req.headers.get('authorization') || '').slice(7)); return json({ ok: true }); }
+      if (url.pathname === '/api/me') { const d = await meData(env, (req.headers.get('authorization') || '').slice(7)); return d ? json(d) : json({ error: 'auth' }, 401); }
       // 🛵 замовлення за посиланням (самовивіз / доставка)
       if (url.pathname === '/api/go' && req.method === 'POST') return json(...await goOrder(await req.json(), ip, env));
       if (url.pathname === '/api/goinfo') return json(await goInfo(env, url.searchParams.get('ph')));

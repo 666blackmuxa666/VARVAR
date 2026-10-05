@@ -679,3 +679,9 @@ body.noanim .tbl.calling,body.noanim .ev.call:not(.acc){outline:3px solid #ffd60
 .go-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.go-h b{font-size:16px}
 .go-list{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}.go-c{display:grid;gap:6px}.go-c a{color:var(--accent)}.go-c.st-ready{border:2px solid var(--green)}
 #gKind{display:flex;gap:6px}#gKind button{flex:1}
+/* 📅 броні, 🌐 сайт */
+.bk-list{max-height:60vh;overflow:auto;display:grid;gap:4px;text-align:left}.bk-list a{color:var(--accent)}.bk-list .bk-new{background:#ffd60a14;border-radius:10px}
+.tbl.booked{border-color:var(--blue)!important}.tbl.booked .st{color:var(--blue)}
+.site-ph{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}.site-ph div{position:relative;width:90px}.site-ph img{width:90px;height:68px;object-fit:cover;border-radius:10px;display:block}.site-ph button{position:absolute;top:2px;right:2px;min-height:26px;padding:0 6px}.site-ph small{font-size:11px;color:var(--muted)}
+.st-v{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.set .kv-r{min-width:0}.st-v{max-width:min(150px,28vw)!important}
