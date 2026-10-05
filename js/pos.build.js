@@ -262,6 +262,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     S.myTip = r.myTip;
     S.myAtt = r.myAtt || null;
     S.books = r.books || [];
+    S.bkNew = r.bkNew || 0;
     S.cfg = r.cfg || S.cfg;
     S.n = r.n;
     S.printer = r.printer;
@@ -455,7 +456,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     var _a2, _b;
     const newCnt = S.events.filter((e) => e.k === "guest" && e.s === "new").length;
     const attNew = isAdmin() ? S.events.filter((e) => e.k === "att" && e.s === "new").length : 0;
-    setHTML($("#nav"), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` + navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? "on" : ""}${!isCook() && ["calc", "menu", "settings", "stop", "kq"].includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === "team" && attNew ? `<span class="badge">${attNew}</span>` : ""}${v === "books" && (S.books || []).some((b) => b.st === "new") ? `<span class="badge">${S.books.filter((b) => b.st === "new").length}</span>` : ""}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : ""}</button><button class="more-btn ${["calc", "menu", "settings", "stop", "kq"].includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><button class="me" data-a="zpMy" title="\u041C\u0456\u0439 \u043A\u0430\u0431\u0456\u043D\u0435\u0442"><i>${esc((((_a2 = S.me) == null ? void 0 : _a2.name) || "?").slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ""}</i><b>${esc((_b = S.me) == null ? void 0 : _b.name)}</b><small>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : isCour() ? "\u043A\u0443\u0440'\u0454\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"} \xB7 \u043A\u0430\u0431\u0456\u043D\u0435\u0442</small></button><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
+    setHTML($("#nav"), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` + navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? "on" : ""}${!isCook() && ["calc", "menu", "settings", "stop", "kq"].includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === "team" && attNew ? `<span class="badge">${attNew}</span>` : ""}${v === "books" && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ""}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : ""}</button><button class="more-btn ${["calc", "menu", "settings", "stop", "kq"].includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><button class="me" data-a="zpMy" title="\u041C\u0456\u0439 \u043A\u0430\u0431\u0456\u043D\u0435\u0442"><i>${esc((((_a2 = S.me) == null ? void 0 : _a2.name) || "?").slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ""}</i><b>${esc((_b = S.me) == null ? void 0 : _b.name)}</b><small>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : isCour() ? "\u043A\u0443\u0440'\u0454\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"} \xB7 \u043A\u0430\u0431\u0456\u043D\u0435\u0442</small></button><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
   }
   function render() {
     renderNav();
@@ -713,7 +714,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     renderMain();
   });
   document.addEventListener("click", async (e) => {
-    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p;
+    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
     const el = e.target.closest("[data-a]");
     if (!el) return;
     const a = el.dataset.a, t = S.open;
@@ -993,6 +994,12 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       case "certT":
         certT(t);
         break;
+      case "bonCert": {
+        const v = await choose("\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438 \xB7 \u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442", ((_g = S.tables[t]) == null ? void 0 : _g.cli) ? "\u0413\u0456\u0441\u0442\u044C \u0437\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u043E\u043C \u0443\u0436\u0435 \u0432\u043A\u0430\u0437\u0430\u043D\u0438\u0439" : "\u0429\u043E \u0437\u0430\u0441\u0442\u043E\u0441\u0443\u0432\u0430\u0442\u0438 \u0434\u043E \u0440\u0430\u0445\u0443\u043D\u043A\u0443?", [{ label: ((_h = S.tables[t]) == null ? void 0 : _h.cli) ? "\u{1F381} \u0413\u0456\u0441\u0442\u044C \u0456 \u0431\u043E\u043D\u0443\u0441\u0438" : "\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438 \u0433\u043E\u0441\u0442\u044F (\u0437\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u043E\u043C)", val: "cli", cls: "primary" }, { label: "\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 (\u043A\u043E\u0434)", val: "cert" }]);
+        if (v === "cli") cliT(t);
+        else if (v === "cert") certT(t);
+        break;
+      }
       case "certs": {
         const r = await api("certList").catch(() => null);
         if (!r) break;
@@ -1000,7 +1007,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         break;
       }
       case "siteSet": {
-        const k = el.dataset.k, cur = (_g = S.data.site) == null ? void 0 : _g[k];
+        const k = el.dataset.k, cur = (_i = S.data.site) == null ? void 0 : _i[k];
         const v = ["about", "banquet", "hookah"].includes(k) ? await askLong(el.dataset.l || k, String(cur != null ? cur : "")) : await askVal(el.dataset.l || k, String(cur != null ? cur : ""), ["rating", "ratingN"].includes(k) ? "number" : "text");
         if (v == null) break;
         const r = await act("siteSet", { k, v }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E \u2014 \u0443\u0436\u0435 \u043D\u0430 \u0441\u0430\u0439\u0442\u0456");
@@ -1107,7 +1114,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       }
       case "crDone": {
         const tt = +el.dataset.t, b = S.tables[tt];
-        const pay = ((_h = b == null ? void 0 : b.go) == null ? void 0 : _h.paid) ? "card" : await choose(`\u{1F91D} ${tn(tt)} \u0432\u0438\u0434\u0430\u043D\u043E`, `\u0414\u043E \u0441\u043F\u043B\u0430\u0442\u0438 ${money(b.pay2)}${b.go.change ? ` \xB7 \u0440\u0435\u0448\u0442\u0430 \u0437 ${b.go.change}` : ""}`, [{ label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430", val: "cash", cls: "green" }, { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u043A\u0430", val: "card", cls: "blue" }]);
+        const pay = ((_j = b == null ? void 0 : b.go) == null ? void 0 : _j.paid) ? "card" : await choose(`\u{1F91D} ${tn(tt)} \u0432\u0438\u0434\u0430\u043D\u043E`, `\u0414\u043E \u0441\u043F\u043B\u0430\u0442\u0438 ${money(b.pay2)}${b.go.change ? ` \xB7 \u0440\u0435\u0448\u0442\u0430 \u0437 ${b.go.change}` : ""}`, [{ label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430", val: "cash", cls: "green" }, { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u043A\u0430", val: "card", cls: "blue" }]);
         if (!pay) break;
         if (await act("courAct", { t: tt, act: "done", arg: pay }, "\u2705 \u0412\u0438\u0434\u0430\u043D\u043E")) {
           await loadState().catch(() => {
@@ -1150,7 +1157,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         }
         break;
       case "goCourSet": {
-        const n = await ask("\u{1F464} \u041A\u0443\u0440'\u0454\u0440 (\u0456\u043C\u02BC\u044F)", ((_j = (_i = S.tables[t]) == null ? void 0 : _i.go) == null ? void 0 : _j.cour) || "");
+        const n = await ask("\u{1F464} \u041A\u0443\u0440'\u0454\u0440 (\u0456\u043C\u02BC\u044F)", ((_l = (_k = S.tables[t]) == null ? void 0 : _k.go) == null ? void 0 : _l.cour) || "");
         if (n != null && await act("goCour", { t, n }, "\u2714")) loadState().catch(() => {
         });
         break;
@@ -1163,7 +1170,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         });
         break;
       case "goCfg": {
-        const k = el.dataset.k, cur = (_k = S.data.gocfg) == null ? void 0 : _k[k];
+        const k = el.dataset.k, cur = (_m = S.data.gocfg) == null ? void 0 : _m[k];
         const v = ["on", "del", "pick"].includes(k) ? cur ? 0 : 1 : await ask(el.dataset.l || k, String(cur != null ? cur : ""), ["phone", "zone", "from", "to"].includes(k) ? "text" : "number");
         if (v == null) break;
         const r = await act("goCfgSet", { k, v }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
@@ -1423,7 +1430,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         break;
       }
       case "cfgTgl": {
-        const k = el.dataset.k, cur = (_p = (_o = (_m = (_l = S.data.staff) == null ? void 0 : _l.cfg) == null ? void 0 : _m[k]) != null ? _o : (_n = S.cfg) == null ? void 0 : _n[k]) != null ? _p : +(el.dataset.def || 0);
+        const k = el.dataset.k, cur = (_r = (_q = (_o = (_n = S.data.staff) == null ? void 0 : _n.cfg) == null ? void 0 : _o[k]) != null ? _q : (_p = S.cfg) == null ? void 0 : _p[k]) != null ? _r : +(el.dataset.def || 0);
         if (await act("cfgSet", { k, v: cur ? 0 : 1 }, "\u2699\uFE0F \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
           loadView();
           loadState().catch(() => {
@@ -1813,7 +1820,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       return `<button class="go-t st-${g.st}${pending.has(b.t) ? " new" : ""}${late ? " late" : ""}" data-a="table" data-t="${b.t}"><b>${g.kind === "del" ? "\u{1F6F5}" : "\u{1F961}"} ${tn(b.t)}</b><span>${esc(g.name || "")}</span><small>${GOST[g.st] || g.st}${g.when ? " \xB7 \u043D\u0430 " + g.when : ""}${goTileInfo(g)}</small><i class="money">${money(b.pay2)}</i></button>`;
     }).join("")}</div>`;
     return `<div class="head"><h1>\u0417\u0430\u043B</h1><div class="stat tipstat" title="\u041D\u0430\u043A\u043E\u043F\u0438\u0447\u0435\u043D\u043E, \u0449\u0435 \u043D\u0435 \u0432\u0438\u0434\u0430\u043D\u043E">\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456<b class="money">${money(((_a2 = S.myTip) == null ? void 0 : _a2.sum) || 0)}</b></div><div class="stat">\u0423 \u0437\u0430\u043B\u0456<b class="money">${money(sum)}</b></div>
-      ${(S.books || []).length ? `<button class="btn${S.books.some((b) => b.st === "new") ? " red" : ""}" data-a="books">\u{1F4C5} ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="\u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F">\u{1F4C5}</button>`}<button class="btn primary" data-a="newOrder">\u2795 \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F</button></div>${strip}<div class="tables">${tiles}</div>`;
+      ${S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="\u041D\u043E\u0432\u0456 \u0431\u0440\u043E\u043D\u0456 \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C">\u{1F4C5} ${S.bkNew} \u043D\u043E\u0432.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">\u{1F4C5} ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="\u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F">\u{1F4C5}</button>`}</div>${strip}<div class="tables">${tiles}</div>`;
   }
   const evTitle = (e) => ({
     guest: `\u{1F6CE} \u0421\u0442\u0456\u043B ${tn(e.t)} \u2014 ${esc((e.kind || "\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F").toLowerCase())}`,
@@ -1919,7 +1926,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       <div class="srow" style="margin:6px 0 10px"><input id="cartCom" placeholder="\u{1F4AC} \u041A\u043E\u043C\u0435\u043D\u0442\u0430\u0440 \u0434\u043B\u044F \u043A\u0443\u0445\u043D\u0456" value="${esc(S.coms[t] || "")}"><button class="btn sm ${S.tw[t] ? "primary" : "ghost"}" data-a="tw">\u{1F961} \u0417 \u0441\u043E\u0431\u043E\u044E</button><button class="btn sm ${S.ur[t] ? "red" : "ghost"}" data-a="ur">\u26A1 \u0422\u0435\u0440\u043C\u0456\u043D\u043E\u0432\u043E</button></div>
       <div style="display:grid;grid-template-columns:auto 1fr;gap:8px"><button class="btn red" data-a="cartClear">\u2715</button><button class="btn primary" data-a="send">\u0412\u0456\u0434\u043F\u0440\u0430\u0432\u0438\u0442\u0438 \xB7 ${money(cartSum)}</button></div></div>` : "";
     const actions = b && !isCook() ? `<div class="actions"><button class="btn" data-a="pre">\u{1F5A8} \u041F\u0440\u0435\u0447\u0435\u043A</button><button class="btn" data-a="disc">% \u0417\u043D\u0438\u0436\u043A\u0430</button>
-      <button class="btn" data-a="move">\u2194\uFE0F \u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0442\u0438</button><button class="btn" data-a="split">\u2702\uFE0F \u0420\u043E\u0437\u0434\u0456\u043B\u0438\u0442\u0438</button>${t < 1e3 ? `<button class="btn" data-a="cliT">\u{1F381} ${b.cli ? "\u0413\u0456\u0441\u0442\u044C" : "\u0411\u043E\u043D\u0443\u0441\u0438"}</button>` : ""}<button class="btn" data-a="certT">\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442</button>${isAdmin() ? '<button class="btn red" data-a="delTable">\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438</button>' : '<button class="btn" data-a="mobileMenu">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438</button>'}
+      <button class="btn" data-a="move">\u2194\uFE0F \u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0442\u0438</button><button class="btn" data-a="split">\u2702\uFE0F \u0420\u043E\u0437\u0434\u0456\u043B\u0438\u0442\u0438</button><button class="btn" data-a="bonCert">\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438 \xB7 \u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442</button>${isAdmin() ? '<button class="btn red" data-a="delTable">\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438</button>' : '<button class="btn" data-a="mobileMenu">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438</button>'}
       <button class="btn green wide" data-a="closeT">\u{1F4B0} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0440\u0430\u0445\u0443\u043D\u043E\u043A \xB7 ${money(b.pay2)}</button></div>` : "";
     const keepBill = (_c = $("#shBill .scroll")) == null ? void 0 : _c.scrollTop, focusCom = ((_d = document.activeElement) == null ? void 0 : _d.id) === "cartCom";
     setHTML($("#shBill"), `<div class="scroll"><h3>\u0420\u0430\u0445\u0443\u043D\u043E\u043A</h3>${billRows}${discRow}${promoRow}${bonRow}${tipRow}${comments}</div>${cartHTML}${actions}`);

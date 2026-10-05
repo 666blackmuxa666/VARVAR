@@ -96,7 +96,7 @@
     const my = ++stateSeq, r = await api('state');
     if (my < stateDone) return; // повільна стара відповідь не затирає новішу (стіл «повертався» після закриття)
     stateDone = my;
-    S.me = { ...S.me, ...r.me }; S.myTip = r.myTip; S.myAtt = r.myAtt || null; S.books = r.books || []; S.cfg = r.cfg || S.cfg; S.n = r.n; S.printer = r.printer; S.shift = r.shift;
+    S.me = { ...S.me, ...r.me }; S.myTip = r.myTip; S.myAtt = r.myAtt || null; S.books = r.books || []; S.bkNew = r.bkNew || 0; S.cfg = r.cfg || S.cfg; S.n = r.n; S.printer = r.printer; S.shift = r.shift;
     S.tables = Object.fromEntries(r.tables.map(b => [b.t, b]));
     const fresh = r.events.filter(e => !S.seen.has(e.id));
     if (S.ready && fresh.some(e => ['guest', 'check', 'call'].includes(e.k) || (!isCook() && ['ready', 'kmsg'].includes(e.k)))) ding();
@@ -196,7 +196,7 @@
     const newCnt = S.events.filter(e => e.k === 'guest' && e.s === 'new').length;
     const attNew = isAdmin() ? S.events.filter(e => e.k === 'att' && e.s === 'new').length : 0;
     setHTML($('#nav'), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` +
-      navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? 'on' : ''}${!isCook() && ['calc', 'menu', 'settings', 'stop', 'kq'].includes(v) ? ' more-i' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === 'team' && attNew ? `<span class="badge">${attNew}</span>` : ''}${v === 'books' && (S.books || []).some(b => b.st === 'new') ? `<span class="badge">${S.books.filter(b => b.st === 'new').length}</span>` : ''}</button>`).join('') +
+      navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? 'on' : ''}${!isCook() && ['calc', 'menu', 'settings', 'stop', 'kq'].includes(v) ? ' more-i' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === 'team' && attNew ? `<span class="badge">${attNew}</span>` : ''}${v === 'books' && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ''}</button>`).join('') +
       `<button class="feed-btn" data-a="feed"><span class="ic">🔔</span>Стрічка${newCnt ? `<span class="badge">${newCnt}</span>` : ''}</button>` +
       `<button class="more-btn ${['calc', 'menu', 'settings', 'stop', 'kq'].includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><button class="me" data-a="zpMy" title="Мій кабінет"><i>${esc((S.me?.name || '?').slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ''}</i><b>${esc(S.me?.name)}</b><small>${isAdmin() ? 'адмін' : isCook() ? 'кухар' : isCour() ? 'кур\'єр' : 'офіціант'} · кабінет</small></button>` +
       `<button data-a="switch"><span class="ic">🔒</span>Вийти</button>`);
@@ -376,6 +376,7 @@
       case 'bkTbl': { const n = await pickTable('🪑 Стіл для броні', 'Плитка стола покаже час броні'); if (n && await act('bkEdit', { id: el.dataset.id, f: { t: n } }, '🪑 Стіл призначено')) { loadState().catch(() => {}); await loadBooks(); renderMain(); } break; }
       case 'certPay': if (await act('certPay', { code: el.dataset.c, how: el.dataset.h }, el.dataset.h === 'no' ? '❌ Скасовано' : '🎟 Сертифікат активовано')) loadState().catch(() => {}); break;
       case 'certT': certT(t); break;
+      case 'bonCert': { const v = await choose('🎁 Бонуси · 🎟 Сертифікат', S.tables[t]?.cli ? 'Гість за телефоном уже вказаний' : 'Що застосувати до рахунку?', [{ label: S.tables[t]?.cli ? '🎁 Гість і бонуси' : '🎁 Бонуси гостя (за телефоном)', val: 'cli', cls: 'primary' }, { label: '🎟 Сертифікат (код)', val: 'cert' }]); if (v === 'cli') cliT(t); else if (v === 'cert') certT(t); break; }
       case 'certs': { const r = await api('certList').catch(() => null); if (!r) break; await modal({ title: '🎟 Сертифікати', body: `<div class="bk-list">${r.list.map(c => `<div class="kv"><span><b>${c.code}</b> · ${money(c.sum)}${c.left !== c.sum ? ` · залишок ${money(c.left)}` : ''}<br><small class="muted">від ${esc(c.from)}${c.to ? ' для ' + esc(c.to) : ''} · ${fmtPh(c.phone)} · ${{ new: '⏳ не оплачено', ok: '✅ активний', no: '❌ скасовано' }[c.st]}</small></span>${c.st === 'new' ? `<span class="kv-r"><button class="btn sm green" data-a="certPay" data-c="${c.code}" data-h="cash">💵</button><button class="btn sm" data-a="certPay" data-c="${c.code}" data-h="card">💳</button></span>` : ''}</div>`).join('') || '<div class="muted">Ще немає</div>'}</div>`, buttons: [{ label: 'Закрити', val: null }] }); break; }
       case 'siteSet': { const k = el.dataset.k, cur = S.data.site?.[k]; const v = ['about', 'banquet', 'hookah'].includes(k) ? await askLong(el.dataset.l || k, String(cur ?? '')) : await askVal(el.dataset.l || k, String(cur ?? ''), ['rating', 'ratingN'].includes(k) ? 'number' : 'text'); if (v == null) break; const r = await act('siteSet', { k, v }, '💾 Збережено — уже на сайті'); if (r) { S.data.site = r.site; renderMain(); } break; }
       case 'siteTgl': { const k = el.dataset.k, r = await act('siteSet', { k, v: S.data.site[k] ? 0 : 1 }, '💾 Збережено'); if (r) { S.data.site = r.site; renderMain(); } break; }

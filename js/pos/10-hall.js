@@ -15,7 +15,7 @@
     const strip = !gos.length ? '' : `${goMapBtn(gos)}<div class="go-strip">${gos.map(b => { const g = b.go, late = g.st === 'new' && Date.now() - g.at > 60e3;
       return `<button class="go-t st-${g.st}${pending.has(b.t) ? ' new' : ''}${late ? ' late' : ''}" data-a="table" data-t="${b.t}"><b>${g.kind === 'del' ? '🛵' : '🥡'} ${tn(b.t)}</b><span>${esc(g.name || '')}</span><small>${GOST[g.st] || g.st}${g.when ? ' · на ' + g.when : ''}${goTileInfo(g)}</small><i class="money">${money(b.pay2)}</i></button>`; }).join('')}</div>`;
     return `<div class="head"><h1>Зал</h1><div class="stat tipstat" title="Накопичено, ще не видано">💝 Мої чайові<b class="money">${money(S.myTip?.sum || 0)}</b></div><div class="stat">У залі<b class="money">${money(sum)}</b></div>
-      ${(S.books || []).length ? `<button class="btn${S.books.some(b => b.st === 'new') ? ' red' : ''}" data-a="books">📅 ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="Бронювання">📅</button>`}<button class="btn primary" data-a="newOrder">➕ Замовлення</button></div>${strip}<div class="tables">${tiles}</div>`;
+      ${S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="Нові броні — підтвердіть">📅 ${S.bkNew} нов.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">📅 ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="Бронювання">📅</button>`}</div>${strip}<div class="tables">${tiles}</div>`;
   }
 
   // ---------- стрічка ----------
@@ -96,7 +96,7 @@
       <div class="srow" style="margin:6px 0 10px"><input id="cartCom" placeholder="💬 Коментар для кухні" value="${esc(S.coms[t] || '')}"><button class="btn sm ${S.tw[t] ? 'primary' : 'ghost'}" data-a="tw">🥡 З собою</button><button class="btn sm ${S.ur[t] ? 'red' : 'ghost'}" data-a="ur">⚡ Терміново</button></div>
       <div style="display:grid;grid-template-columns:auto 1fr;gap:8px"><button class="btn red" data-a="cartClear">✕</button><button class="btn primary" data-a="send">Відправити · ${money(cartSum)}</button></div></div>` : '';
     const actions = b && !isCook() ? `<div class="actions"><button class="btn" data-a="pre">🖨 Пречек</button><button class="btn" data-a="disc">% Знижка</button>
-      <button class="btn" data-a="move">↔️ Перенести</button><button class="btn" data-a="split">✂️ Розділити</button>${t < 1000 ? `<button class="btn" data-a="cliT">🎁 ${b.cli ? 'Гість' : 'Бонуси'}</button>` : ''}<button class="btn" data-a="certT">🎟 Сертифікат</button>${isAdmin() ? '<button class="btn red" data-a="delTable">🗑 Видалити</button>' : '<button class="btn" data-a="mobileMenu">➕ Додати</button>'}
+      <button class="btn" data-a="move">↔️ Перенести</button><button class="btn" data-a="split">✂️ Розділити</button><button class="btn" data-a="bonCert">🎁 Бонуси · 🎟 Сертифікат</button>${isAdmin() ? '<button class="btn red" data-a="delTable">🗑 Видалити</button>' : '<button class="btn" data-a="mobileMenu">➕ Додати</button>'}
       <button class="btn green wide" data-a="closeT">💰 Закрити рахунок · ${money(b.pay2)}</button></div>` : '';
     const keepBill = $('#shBill .scroll')?.scrollTop, focusCom = document.activeElement?.id === 'cartCom';
     setHTML($('#shBill'), `<div class="scroll"><h3>Рахунок</h3>${billRows}${discRow}${promoRow}${bonRow}${tipRow}${comments}</div>${cartHTML}${actions}`);
