@@ -16,6 +16,8 @@
 - `site` → JSON налаштувань (зливається з `SITE_DEF`): name, tagline, about, phone, addr, from/to, insta, tg, gmaps, geo, rating, ratingN, reviewsUrl, quotes[], hits[], promos[], photos[], hero, banquet, hookah, preMin, certOn, bookOn.
 - `img:<id>` → ArrayBuffer фото (`site-xxxxxxxx`), віддається `/img/<id>`.
 - `book:YYYY-MM` → масив броней місяця з **id** (id = `YYYYMMDD`+6 hex від дати створення): {id, kind table|banquet, name, phone, date, time, people, comment, note, st, t, pre[], preIds, preSent, mid, remA, remG, by, edBy, src}. Статуси: new, ok, no, cancel, came, noshow.
+- Запис лежить у ключі місяця своєї **дати**: при зміні дати (`bookEditFields` → `bkEdit(..., nm)`) переноситься під замком обох ключів. `bkm:<id>` → місяць, де лежить запис, якщо він ≠ місяцю id (видаляється при поверненні). Пошук: `bkLoc/bkFind` (індекс → запасний варіант місяць з id). `bookList` сканує місяці дат + 62 дні назад (старі записи без індексу); `meData` бере броні через `bookList` (сьогодні…+365).
+- `preSent`: `'sending'` (під замком, поки йде `addWaiterOrder`; при збої знімається) → timestamp. Повторне `kit` → «Вже відправлено».
 - `bkrl:<device|ip>` → лічильник броней (≤3/год, TTL 3600). `ctrl:<device|ip>` — те саме для сертифікатів.
 - `cert:<VV-XXXXX>` → {code, sum, left, st new|ok|no, from, to, phone, note, paid, paidAt, by}; `certs` → масив кодів (останні 500).
 - `gl:<nonce16>` → {at} / {token} (TTL 900/300); `glu:<uid>` → nonce; `gs:<token32>` → телефон (TTL 30 днів); `g2hook` → SELF_URL з встановленим вебхуком; `gbotname`.

@@ -52,7 +52,25 @@ export async function sitePublic(env) {
 // ---------- 📅 бронювання ----------
 const bkMon = id => `${id.slice(0, 4)}-${id.slice(4, 6)}`;
 const getBk = async (env, m) => (await env.DB.get('book:' + m, 'json')) || [];
-async function bkEdit(env, id, fn) { const m = bkMon(id); return L(env, 'book:' + m, async () => { const l = await getBk(env, m), x = l.find(b => b.id === id); if (!x) return null; const r = fn(x, l); if (r === false) return null; await env.DB.put('book:' + m, JSON.stringify(l)); return x; }); }
+// індекс bkm:<id> → місяць ключа, де лежить запис (після переносу дати). Без індексу — місяць з id (старі записи)
+const bkLoc = async (env, id) => (await env.DB.get('bkm:' + id)) || bkMon(id);
+const bkFind = async (env, id) => { const m = await bkLoc(env, id); let x = (await getBk(env, m)).find(b => b.id === id); if (!x && m !== bkMon(id)) x = (await getBk(env, bkMon(id))).find(b => b.id === id); return x; };
+// nm — місяць, у який запис може переїхати (нова дата); тоді замикаємо обидва ключі
+async function bkEdit(env, id, fn, nm) {
+  const m0 = await bkLoc(env, id), keys = ['book:' + m0, 'book:' + bkMon(id)]; if (nm) keys.push('book:' + nm);
+  return L(env, keys, async () => {
+    let m = (await env.DB.get('bkm:' + id)) || bkMon(id), l = await getBk(env, m), x = l.find(b => b.id === id);
+    if (!x && m !== bkMon(id)) { m = bkMon(id); l = await getBk(env, m); x = l.find(b => b.id === id); }
+    if (!x) return null; const r = fn(x, l); if (r === false) return null;
+    const to = x.date.slice(0, 7);
+    if (to !== m && keys.includes('book:' + to)) { // перенос у ключ нового місяця
+      const l2 = (await getBk(env, to)).filter(b => b.id !== id); l2.push(x);
+      await env.DB.put('book:' + to, JSON.stringify(l2)); await env.DB.put('book:' + m, JSON.stringify(l.filter(b => b.id !== id)));
+      if (to === bkMon(id)) await env.DB.delete('bkm:' + id); else await env.DB.put('bkm:' + id, to);
+    } else await env.DB.put('book:' + m, JSON.stringify(l));
+    return x;
+  });
+}
 const BST = { new: '🆕 нова', ok: '✅ підтверджено', no: '❌ відхилено', came: '🪑 прийшли', noshow: '🚫 не прийшли', cancel: '↩️ скасовано гостем' };
 export const bkLabel = s => BST[s] || s;
 const bkText = b => `${b.kind === 'banquet' ? '🎉 <b>БАНКЕТ</b>' : '📅 <b>БРОНЬ</b>'} · <b>${b.date.slice(8)}.${b.date.slice(5, 7)} о ${b.time}</b> · ${b.people} гост.\n👤 ${esc(b.name)} · <a href="tel:+${b.phone}">${fmtPhone(b.phone)}</a>${b.comment ? `\n💬 ${esc(b.comment)}` : ''}${b.pre?.length ? `\n🍽 Передзамовлення:\n${b.pre.map(esc).join('\n')}` : ''}${b.t ? `\n🪑 Стіл ${b.t}` : ''}`;
@@ -90,17 +108,21 @@ export async function bookPre(b, env) {
   return [{ ok: true, n: lines.length }, 200];
 }
 export async function bookStatus(env, id) {
-  if (!/^\d{8}[a-f0-9]{6}$/.test(id || '')) return null; const x = (await getBk(env, bkMon(id))).find(b => b.id === id);
+  if (!/^\d{8}[a-f0-9]{6}$/.test(id || '')) return null; const x = await bkFind(env, id);
   return x && { st: x.st, date: x.date, time: x.time, people: x.people, kind: x.kind, pre: x.pre || [] };
 }
 // зміна статусу (каса / бот). kit — передзамовлення на кухню (потрібен стіл)
 export async function bookSet(env, id, st, who, { t } = {}) {
   if (st === 'kit') {
-    const b0 = (await getBk(env, bkMon(id))).find(b => b.id === id); if (!b0?.pre?.length) return { error: 'Немає передзамовлення' };
-    const tt = +t || b0.t; if (!tt) return { error: 'Вкажіть стіл' };
+    // атомарно: під замком перевірити й позначити «відправляється», потім кухня; при збої — зняти позначку
+    let err = null;
+    const b0 = await bkEdit(env, id, y => { if (!y.pre?.length) { err = 'Немає передзамовлення'; return false; } if (y.preSent) { err = 'Вже відправлено'; return false; }
+      if (!(+t || y.t)) { err = 'Вкажіть стіл'; return false; } y.preSent = 'sending'; y.t = +t || y.t; });
+    if (!b0) return { error: err || 'Не знайдено' };
     const items = b0.pre.map(l => l.match(/^(\d+)× (.+) — (\d+)$/)).filter(Boolean).map(m => ({ name: m[2], q: +m[1], price: +m[3] / +m[1] }));
-    const r = await addWaiterOrder(env, { table: tt, items }, who, `📅 передзамовлення · ${b0.name}`, 'бронь'); if (!r) return { error: 'Не вдалось' };
-    return bkEdit(env, id, y => { y.preSent = Date.now(); y.t = tt; });
+    const r = await addWaiterOrder(env, { table: b0.t, items }, who, `📅 передзамовлення · ${b0.name}`, 'бронь').catch(() => null);
+    if (!r) { await bkEdit(env, id, y => { if (y.preSent === 'sending') delete y.preSent; }); return { error: 'Не вдалось' }; }
+    return bkEdit(env, id, y => { y.preSent = Date.now(); });
   }
   if (!BST[st]) return { error: 'Невідомий статус' };
   const x = await bkEdit(env, id, y => { y.st = st; y.by = who; if (t) y.t = +t; });
@@ -112,8 +134,8 @@ export async function bookSet(env, id, st, who, { t } = {}) {
   return x;
 }
 // список для каси: сьогодні + 14 днів
-// список за датами. Запис живе в місяці свого id (дата створення), навіть якщо дату броні змінили, — тому скануємо ширше
-const monRange = (a, b) => { const out = []; const d = new Date(a.slice(0, 7) + '-01T12:00:00Z'), e = b.slice(0, 7); while (out.length < 8) { const m = d.toISOString().slice(0, 7); out.push(m); if (m >= e) break; d.setUTCMonth(d.getUTCMonth() + 1); } return out; };
+// список за датами. Запис живе в місяці своєї дати (при зміні дати переноситься, індекс bkm:<id>); старі записи — у місяці id, тому скануємо ще 62 дні назад
+const monRange = (a, b) => { const out = []; const d = new Date(a.slice(0, 7) + '-01T12:00:00Z'), e = b.slice(0, 7); while (out.length < 24) { const m = d.toISOString().slice(0, 7); out.push(m); if (m >= e) break; d.setUTCMonth(d.getUTCMonth() + 1); } return out; };
 const addDays = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
 export async function bookList(env, from = dayKey(), to = addDays(dayKey(), 14), all = false) {
   const ms = monRange(addDays(from, -62), to);
@@ -129,7 +151,7 @@ export async function bookEditFields(env, id, f, who) {
     if (f.people != null) y.people = Math.max(1, Math.min(60, parseInt(f.people, 10) || y.people)); if (f.comment != null) y.comment = String(f.comment).trim().slice(0, 300);
     if (f.kind) y.kind = f.kind === 'banquet' ? 'banquet' : 'table'; if (f.t != null) y.t = +f.t || 0; if (f.note != null) y.note = String(f.note).trim().slice(0, 300);
     if (f.date || f.time) { delete y.remA; delete y.remG; } y.edBy = who; y.edAt = Date.now();
-  });
+  }, f.date ? f.date.slice(0, 7) : undefined);
   if (!x) return { error: 'Не знайдено' };
   if (x.mid) await tg(env, 'editMessageText', { chat_id: env.CHAT_ID, message_id: x.mid, text: `${bkText(x)}\n\n✏️ змінено — <b>${esc(who)}</b>`, parse_mode: 'HTML', reply_markup: { inline_keyboard: bkButtons(x) } }).catch(() => {});
   if (f.date || f.time) await guestMsg(env, x.phone, `✏️ Вашу бронь змінено: <b>${x.date.slice(8)}.${x.date.slice(5, 7)} о ${x.time}</b>, ${x.people} гост.`);
@@ -200,8 +222,8 @@ const meSess = async (env, tok) => /^[a-f0-9]{32}$/.test(tok || '') ? env.DB.get
 export async function meData(env, tok) {
   const ph = await meSess(env, tok); if (!ph) return null;
   const c = (await getCli(env, ph)) || { n: 0, sum: 0, bal: 0 };
-  const now = new Date(), ms = [0, 1].map(i => new Date(now.getFullYear(), now.getMonth() + i, 1).toLocaleDateString('sv-SE').slice(0, 7));
-  const books = (await Promise.all(ms.map(m => getBk(env, m)))).flat().filter(b => b.phone === ph && b.date >= dayKey()).map(b => ({ id: b.id, date: b.date, time: b.time, people: b.people, st: b.st, kind: b.kind, pre: b.pre || [] }));
+  // через bookList: він сканує місяці дат + запас назад (старі записи), тож перенесені броні теж знайдуться
+  const books = (await bookList(env, dayKey(), addDays(dayKey(), 365), true)).filter(b => b.phone === ph).map(b => ({ id: b.id, date: b.date, time: b.time, people: b.people, st: b.st, kind: b.kind, pre: b.pre || [] }));
   // історія: закриті чеки з цим телефоном за 90 днів
   const days = Array.from({ length: 90 }, (_, i) => new Date(Date.now() - i * 864e5).toLocaleDateString('sv-SE', { timeZone: TZ }));
   const cl = await env.DB.getMany(days.map(d => 'closed:' + d), 'json'), hist = [];
