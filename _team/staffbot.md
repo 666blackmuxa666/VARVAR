@@ -29,6 +29,7 @@
 - Персонал: `stfadd, stfdel, wout`; Wi-Fi `wifiask, wifiok`; друк `pqr, pqrt, ptest`; тест `rst1, rst2`; `no`.
 - Рух коштів / Z (адмін): `mvl:<день>, mvdel|mvdok|mvbk:<i>:<день>`; `zl:<день>, zv|zdel|zdok|zbk:<i>:<день>`.
 - Привʼязка працівника: `tgl:<staffId>, tgw, tgu`.
+- ✏️ Доставка (адмін): `goe:<t>` → поля `goef:<t>:name|phone|addr|ent|when|note` → стан `goe:<t>:<поле>` → `goEdit` (delivery.js, та сама, що op `goEdit` у касі; кур'єру — `courNotify 'upd'`).
 - ЗП: `atk, swk, zpb, zpbs`; склад: `sk*` (див. `stock.md`); нові `skcnm, skcn:<wh>, skcf:<wh>, skprl, skpr:<id>, skbc` — `stockbot.js` (`stockCallbackX`; текст у стані — `stockState`).
 
 ## Зв'язки

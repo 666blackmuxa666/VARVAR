@@ -5,7 +5,7 @@ import { getMenu, handleMenuText, handleMenuPhoto, HELP as MENU_HELP } from './m
 import { tn, isGo } from './tn.js';
 import { courCashGive } from './courier.js';
 import { bookList, bookSet, bookGet, bookManual, bookEditFields, bkLabel, bkButtons, certPay, getSite, setSite } from './site.js';
-import { goSet, goStLabel, goButtons, goList, goText, setGoCfg, goFromPos, goAttach, normPhone, fmtPhone } from './delivery.js';
+import { goSet, goStLabel, goButtons, goList, goText, setGoCfg, goFromPos, goAttach, goEdit, normPhone, fmtPhone } from './delivery.js';
 import { parseWaiterOrder, draftText } from './waiter.js';
 import { tablePick, catsView, obCallback, getOb, putOb } from './orderui.js';
 import { queuePrint, printStatus } from './print.js';
@@ -297,6 +297,8 @@ async function bookNew(env, text, who) {
   const x = await bookManual(env, { date, time: m[2].replace('.', ':'), people: m[3], name: m[4], phone: m[5], t: m[6] || 0, comment: m[7] || '' }, who);
   return x.error ? { text: '⚠️ ' + x.error } : { text: '✅ Бронь записано\n' + bkLine(x), markup: bkKb(x) };
 }
+const GO_F = { name: "👤 Імʼя", phone: '📞 Телефон', addr: '📍 Адреса', ent: '🚪 Підʼїзд', when: '🕐 Час', note: '💬 Коментар' };
+const GO_ASK = { name: "Нове імʼя клієнта", phone: 'Новий телефон', addr: 'Нова адреса', ent: 'Підʼїзд / поверх / код (<code>-</code> — прибрати)', when: 'На котру? <code>19:30</code> (<code>-</code> — якнайшвидше)', note: 'Коментар (<code>-</code> — прибрати)' };
 const BK_F = { date: '📆 Дата', time: '🕐 Час', people: '👥 Гостей', t: '🪑 Стіл', note: '📝 Нотатка', name: "👤 Імʼя", phone: '📞 Телефон' };
 const BK_ASK = { date: 'Нова дата, напр. <code>25.10</code>', time: 'Новий час, напр. <code>19:30</code>', people: 'Скільки гостей?', t: 'Номер стола (<code>0</code> — без стола)', note: 'Нотатка для персоналу (<code>-</code> — прибрати)', name: "Імʼя гостя", phone: 'Телефон гостя' };
 async function bookEditText(env, id, f, v, who) {
@@ -380,6 +382,13 @@ export async function handleUpdate(u, env) {
       return send({ text: `✅ Вітаю, ${esc(who)}! Ви в режимі адміністратора.\n\n` + ADMIN_HELP(env) }, ADMIN_KB);
     }
     if (state?.startsWith('bkt:') && waiter) { const r = await bookSet(env, state.slice(4), 'kit', who, { t: +text }); return send({ text: r?.error ? '⚠️ ' + r.error : `🔥 Передзамовлення відправлено на кухню · стіл ${+text}` }); }
+    if (state.startsWith('goe:') && admin) { // ✏️ доставка: та сама goEdit, що й у касі
+      const [, t, f] = state.split(':'), v = text === '-' && (f === 'when' || f === 'note' || f === 'ent') ? '' : text.replace(/^(\d{1,2})\.(\d{2})$/, '$1:$2');
+      if (f === 'when' && v && !/^\d{1,2}:\d{2}$/.test(v)) return send({ text: '⚠️ Час у форматі <code>19:30</code> (або <code>-</code> — якнайшвидше)' });
+      if (f === 'phone' && !normPhone(v)) return send({ text: '⚠️ Невірний телефон' });
+      const r = await goEdit(env, +t, { [f]: f === 'when' && v ? v.padStart(5, '0') : v }, who); if (r.error) return send({ text: '⚠️ ' + r.error });
+      return send({ text: r.ch.length ? `✏️ <b>${tn(+t)}</b> змінено: ${r.ch.map(esc).join(' · ')}${(await getBill(env, +t)).go?.cour ? '\n🛵 Курʼєра сповіщено' : ''}` : 'Без змін' });
+    }
     if (state === 'bkd' && waiter) { const [a, b] = text.split(/\s*[-–]\s*/).map(parseDay); if (!a || (text.match(/[-–]/) && !b)) return send({ text: '⚠️ Формат: <code>25.10</code> або <code>25.10-30.10</code>' }); return booksSend(env, send, a, b && b > a ? b : a); }
     if (state === 'bkn' && waiter) return send(await bookNew(env, text, who));
     if (state.startsWith('bke:') && waiter) { const [, id, f] = state.split(':'); return send(await bookEditText(env, id, f, text, who)); }
@@ -526,7 +535,7 @@ export async function handleUpdate(u, env) {
     else if (k === 'акція') { const dm = v.match(/^видалити\s+(\d+)$/i); r = dm ? await setSite(env, 'promoDel', s0.promos[+dm[1] - 1]?.id) : await setSite(env, 'promoAdd', { t: v.split(/\s+[—-]\s+/)[0], d: v.split(/\s+[—-]\s+/).slice(1).join(' — ') }); }
     else { const K = { 'телефон': 'phone', 'адреса': 'addr', 'опис': 'about', 'слоган': 'tagline', 'назва': 'name', 'інстаграм': 'insta', 'телеграм': 'tg', 'банкети': 'banquet', 'кальяни': 'hookah', 'відгуки': 'reviewsUrl' }[k]; if (!K) return send({ text: '⚠️ Невідоме поле. Напишіть «сайт» — список команд.' }); r = await setSite(env, K, v); }
     return send({ text: r.error ? '⚠️ ' + r.error : '✅ Збережено — уже на сайті' }); } }
-  if (text === W.go || low === '/go' || low === 'доставка') { const l = await goList(env, await openTables(env)); await send({ text: goText(l) }); for (const g of l) await send({ text: `<b>${tn(g.t)}</b> · ${esc(g.name)} · ${goStLabel(g.st)}`, markup: { inline_keyboard: goButtons(g) } }); return; }
+  if (text === W.go || low === '/go' || low === 'доставка') { const l = await goList(env, await openTables(env)); await send({ text: goText(l) }); for (const g of l) await send({ text: `<b>${tn(g.t)}</b> · ${esc(g.name)} · ${goStLabel(g.st)}`, markup: { inline_keyboard: [...goButtons(g), ...(admin ? [[{ text: '✏️ Змінити', callback_data: 'goe:' + g.t }]] : [])] } }); return; }
   { const m = text.match(/^доставка\s+(\S+)\s+(.+)$/i); if (m && admin) { // ⚙️ доставка мін 300 · доставка з 10:00 · доставка вимк
     const K = { 'увімк': ['on', 1], 'вимк': ['on', 0], 'з': 'from', 'до': 'to', 'мін': 'min', 'ціна': 'fee', 'безкоштовно': 'free', 'час': 'prep', 'телефон': 'phone', 'зона': 'zone', 'кешбек': 'cash', 'бонуси': 'bmax', 'курєр': 'cpay', "кур'єр": 'cpay' }[m[1].toLowerCase()];
     if (K) { const c = await setGoCfg(env, Array.isArray(K) ? K[0] : K, Array.isArray(K) ? K[1] : m[2]); return send({ text: c.error ? '⚠️ ' + c.error : `✅ Доставка: прийом ${c.on ? 'увімкнено' : 'вимкнено'} · ${c.from}–${c.to} · мін. ${c.min} грн · доставка ${c.fee} грн (безкоштовно від ${c.free}) · готуємо ~${c.prep} хв · кешбек ${c.cash}% · бонусами до ${c.bmax}% · кур'єру ${c.cpay} грн` }); } } }
@@ -639,6 +648,14 @@ async function handleCallback(q, env) {
     if (oid === 'kit') { const b0 = await bookGet(env, arg); if (b0 && !b0.t) { await env.DB.put('st:' + uid, 'bkt:' + arg, { expirationTtl: 600 }); await send({ text: '🪑 Номер стола для передзамовлення?' }); return answer(''); } }
     const r = await bookSet(env, arg, oid, who); if (!r || r.error) return answer(r?.error || 'Не знайдено');
     return answer(bkLabel(oid === 'kit' ? 'ok' : oid));
+  }
+  if (act === 'goe' || act === 'goef') { // ✏️ доставка (адмін)
+    if (!admin) return answer('🔐 Лише для адміністратора');
+    const g = (await getBill(env, +arg)).go; if (!g) return answer('Немає замовлення');
+    if (act === 'goe') { await send({ text: `✏️ <b>${tn(+arg)}</b> · ${esc(g.name || '')} ${fmtPhone(g.phone)}${g.addr ? `\n📍 ${esc(g.addr)}` : ''}${g.ent ? `\n🚪 ${esc(g.ent)}` : ''}${g.when ? `\n🕐 ${g.when}` : ''}${g.note ? `\n💬 ${esc(g.note)}` : ''}\n\nЩо змінити?`,
+      markup: { inline_keyboard: chunk(Object.entries(GO_F).filter(([f]) => g.kind === 'del' || !['addr', 'ent'].includes(f)).map(([f, t]) => ({ text: t, callback_data: `goef:${arg}:${f}` })), 3) } }); return answer(''); }
+    if (!GO_F[oid]) return answer('');
+    await env.DB.put('st:' + uid, `goe:${arg}:${oid}`, { expirationTtl: 600 }); await send({ text: `${GO_F[oid]}: ${GO_ASK[oid]}` }); return answer('');
   }
   if (act === 'bkd') { if (!isDay(arg)) return answer(''); await booksSend(env, send, arg, arg); return answer(''); }
   if (act === 'bkdd') { await env.DB.put('st:' + uid, 'bkd', { expirationTtl: 600 }); await send({ text: '📆 Яка дата? <code>25.10</code> або період <code>25.10-30.10</code>' }); return answer(''); }
