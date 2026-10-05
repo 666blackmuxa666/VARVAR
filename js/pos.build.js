@@ -698,7 +698,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     renderMain();
   });
   document.addEventListener("click", async (e) => {
-    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
+    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s;
     const el = e.target.closest("[data-a]");
     if (!el) return;
     const a = el.dataset.a, t = S.open;
@@ -975,11 +975,19 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         if (await act("certPay", { code: el.dataset.c, how: el.dataset.h }, el.dataset.h === "no" ? "\u274C \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E" : "\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 \u0430\u043A\u0442\u0438\u0432\u043E\u0432\u0430\u043D\u043E")) loadState().catch(() => {
         });
         break;
+      case "certDel": {
+        const code = el.dataset.c;
+        if (!await choose("\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442?", code + " \u2014 \u043A\u043E\u0434 \u043F\u0435\u0440\u0435\u0441\u0442\u0430\u043D\u0435 \u0434\u0456\u044F\u0442\u0438. \u0426\u0435 \u043D\u0435 \u043C\u043E\u0436\u043D\u0430 \u0441\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438.", [{ label: "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438", val: 1, cls: "red" }, { label: "\u041D\u0456", val: 0 }])) break;
+        if (await act("certDel", { code }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) {
+          (_g = el.closest(".kv")) == null ? void 0 : _g.remove();
+        }
+        break;
+      }
       case "certT":
         certT(t);
         break;
       case "bonCert": {
-        const v = await choose("\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438 \xB7 \u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442", ((_g = S.tables[t]) == null ? void 0 : _g.cli) ? "\u0413\u0456\u0441\u0442\u044C \u0437\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u043E\u043C \u0443\u0436\u0435 \u0432\u043A\u0430\u0437\u0430\u043D\u0438\u0439" : "\u0429\u043E \u0437\u0430\u0441\u0442\u043E\u0441\u0443\u0432\u0430\u0442\u0438 \u0434\u043E \u0440\u0430\u0445\u0443\u043D\u043A\u0443?", [{ label: ((_h = S.tables[t]) == null ? void 0 : _h.cli) ? "\u{1F381} \u0413\u0456\u0441\u0442\u044C \u0456 \u0431\u043E\u043D\u0443\u0441\u0438" : "\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438 \u0433\u043E\u0441\u0442\u044F (\u0437\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u043E\u043C)", val: "cli", cls: "primary" }, { label: "\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 (\u043A\u043E\u0434)", val: "cert" }]);
+        const v = await choose("\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438 \xB7 \u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442", ((_h = S.tables[t]) == null ? void 0 : _h.cli) ? "\u0413\u0456\u0441\u0442\u044C \u0437\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u043E\u043C \u0443\u0436\u0435 \u0432\u043A\u0430\u0437\u0430\u043D\u0438\u0439" : "\u0429\u043E \u0437\u0430\u0441\u0442\u043E\u0441\u0443\u0432\u0430\u0442\u0438 \u0434\u043E \u0440\u0430\u0445\u0443\u043D\u043A\u0443?", [{ label: ((_i = S.tables[t]) == null ? void 0 : _i.cli) ? "\u{1F381} \u0413\u0456\u0441\u0442\u044C \u0456 \u0431\u043E\u043D\u0443\u0441\u0438" : "\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438 \u0433\u043E\u0441\u0442\u044F (\u0437\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u043E\u043C)", val: "cli", cls: "primary" }, { label: "\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 (\u043A\u043E\u0434)", val: "cert" }]);
         if (v === "cli") cliT(t);
         else if (v === "cert") certT(t);
         break;
@@ -987,11 +995,11 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       case "certs": {
         const r = await api("certList").catch(() => null);
         if (!r) break;
-        await modal({ title: "\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438", body: `<div class="bk-list">${r.list.map((c) => `<div class="kv"><span><b>${c.code}</b> \xB7 ${money(c.sum)}${c.left !== c.sum ? ` \xB7 \u0437\u0430\u043B\u0438\u0448\u043E\u043A ${money(c.left)}` : ""}<br><small class="muted">\u0432\u0456\u0434 ${esc(c.from)}${c.to ? " \u0434\u043B\u044F " + esc(c.to) : ""} \xB7 ${fmtPh(c.phone)} \xB7 ${{ new: "\u23F3 \u043D\u0435 \u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E", ok: "\u2705 \u0430\u043A\u0442\u0438\u0432\u043D\u0438\u0439", no: "\u274C \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E" }[c.st]}</small></span>${c.st === "new" ? `<span class="kv-r"><button class="btn sm green" data-a="certPay" data-c="${c.code}" data-h="cash">\u{1F4B5}</button><button class="btn sm" data-a="certPay" data-c="${c.code}" data-h="card">\u{1F4B3}</button></span>` : ""}</div>`).join("") || '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454</div>'}</div>`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+        await modal({ title: "\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438", body: `<div class="bk-list">${r.list.map((c) => `<div class="kv"><span><b>${c.code}</b> \xB7 ${money(c.sum)}${c.left !== c.sum ? ` \xB7 \u0437\u0430\u043B\u0438\u0448\u043E\u043A ${money(c.left)}` : ""}<br><small class="muted">\u0432\u0456\u0434 ${esc(c.from)}${c.to ? " \u0434\u043B\u044F " + esc(c.to) : ""} \xB7 ${fmtPh(c.phone)} \xB7 ${{ new: "\u23F3 \u043D\u0435 \u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E", ok: "\u2705 \u0430\u043A\u0442\u0438\u0432\u043D\u0438\u0439", no: "\u274C \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E" }[c.st]}</small></span>${c.st === "new" ? `<span class="kv-r"><button class="btn sm green" data-a="certPay" data-c="${c.code}" data-h="cash">\u{1F4B5}</button><button class="btn sm" data-a="certPay" data-c="${c.code}" data-h="card">\u{1F4B3}</button><button class="btn sm red" data-a="certDel" data-c="${c.code}">\u{1F5D1}</button></span>` : `<span class="kv-r"><button class="btn sm red" data-a="certDel" data-c="${c.code}">\u{1F5D1}</button></span>`}</div>`).join("") || '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454</div>'}</div>`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
         break;
       }
       case "siteSet": {
-        const k = el.dataset.k, cur = (_i = S.data.site) == null ? void 0 : _i[k];
+        const k = el.dataset.k, cur = (_j = S.data.site) == null ? void 0 : _j[k];
         const v = ["about", "banquet", "hookah"].includes(k) ? await askLong(el.dataset.l || k, String(cur != null ? cur : "")) : await askVal(el.dataset.l || k, String(cur != null ? cur : ""), ["rating", "ratingN"].includes(k) ? "number" : "text");
         if (v == null) break;
         const r = await act("siteSet", { k, v }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E \u2014 \u0443\u0436\u0435 \u043D\u0430 \u0441\u0430\u0439\u0442\u0456");
@@ -1098,7 +1106,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       }
       case "crDone": {
         const tt = +el.dataset.t, b = S.tables[tt];
-        const pay = ((_j = b == null ? void 0 : b.go) == null ? void 0 : _j.paid) ? "card" : await choose(`\u{1F91D} ${tn(tt)} \u0432\u0438\u0434\u0430\u043D\u043E`, `\u0414\u043E \u0441\u043F\u043B\u0430\u0442\u0438 ${money(b.pay2)}${b.go.change ? ` \xB7 \u0440\u0435\u0448\u0442\u0430 \u0437 ${b.go.change}` : ""}`, [{ label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430", val: "cash", cls: "green" }, { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u043A\u0430", val: "card", cls: "blue" }]);
+        const pay = ((_k = b == null ? void 0 : b.go) == null ? void 0 : _k.paid) ? "card" : await choose(`\u{1F91D} ${tn(tt)} \u0432\u0438\u0434\u0430\u043D\u043E`, `\u0414\u043E \u0441\u043F\u043B\u0430\u0442\u0438 ${money(b.pay2)}${b.go.change ? ` \xB7 \u0440\u0435\u0448\u0442\u0430 \u0437 ${b.go.change}` : ""}`, [{ label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430", val: "cash", cls: "green" }, { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u043A\u0430", val: "card", cls: "blue" }]);
         if (!pay) break;
         if (await act("courAct", { t: tt, act: "done", arg: pay }, "\u2705 \u0412\u0438\u0434\u0430\u043D\u043E")) {
           await loadState().catch(() => {
@@ -1141,7 +1149,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         }
         break;
       case "goCourSet": {
-        const n = await ask("\u{1F464} \u041A\u0443\u0440'\u0454\u0440 (\u0456\u043C\u02BC\u044F)", ((_l = (_k = S.tables[t]) == null ? void 0 : _k.go) == null ? void 0 : _l.cour) || "");
+        const n = await ask("\u{1F464} \u041A\u0443\u0440'\u0454\u0440 (\u0456\u043C\u02BC\u044F)", ((_m = (_l = S.tables[t]) == null ? void 0 : _l.go) == null ? void 0 : _m.cour) || "");
         if (n != null && await act("goCour", { t, n }, "\u2714")) loadState().catch(() => {
         });
         break;
@@ -1154,7 +1162,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         });
         break;
       case "goCfg": {
-        const k = el.dataset.k, cur = (_m = S.data.gocfg) == null ? void 0 : _m[k];
+        const k = el.dataset.k, cur = (_n = S.data.gocfg) == null ? void 0 : _n[k];
         const v = ["on", "del", "pick"].includes(k) ? cur ? 0 : 1 : await ask(el.dataset.l || k, String(cur != null ? cur : ""), ["phone", "zone", "from", "to"].includes(k) ? "text" : "number");
         if (v == null) break;
         const r = await act("goCfgSet", { k, v }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
@@ -1414,7 +1422,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         break;
       }
       case "cfgTgl": {
-        const k = el.dataset.k, cur = (_r = (_q = (_o = (_n = S.data.staff) == null ? void 0 : _n.cfg) == null ? void 0 : _o[k]) != null ? _q : (_p = S.cfg) == null ? void 0 : _p[k]) != null ? _r : +(el.dataset.def || 0);
+        const k = el.dataset.k, cur = (_s = (_r = (_p = (_o = S.data.staff) == null ? void 0 : _o.cfg) == null ? void 0 : _p[k]) != null ? _r : (_q = S.cfg) == null ? void 0 : _q[k]) != null ? _s : +(el.dataset.def || 0);
         if (await act("cfgSet", { k, v: cur ? 0 : 1 }, "\u2699\uFE0F \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
           loadView();
           loadState().catch(() => {

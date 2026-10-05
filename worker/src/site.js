@@ -207,6 +207,13 @@ export async function certUse(env, t, code, who) {
     await putBill(env, t, b); await env.DB.put('cert:' + code, JSON.stringify(c)); return { use, left: c.left };
   });
 }
+export async function certDel(env, code) {
+  code = String(code || '').toUpperCase().trim();
+  if (!(await getCert(env, code))) return false;
+  await env.DB.delete('cert:' + code);
+  await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; await env.DB.put('certs', JSON.stringify(l.filter(x => x !== code))); });
+  return true;
+}
 export async function certList(env) { const l = (await env.DB.get('certs', 'json')) || []; return (await env.DB.getMany(l.slice(-60).map(c => 'cert:' + c), 'json')).filter(Boolean).reverse(); }
 const SITE = () => 'https://666blackmuxa666.github.io/VARVAR/';
 export const certPublic = async (env, code) => { const c = await getCert(env, code); return c && c.st === 'ok' ? { code: c.code, sum: c.sum, left: c.left, from: c.from, to: c.to } : null; };
