@@ -275,9 +275,12 @@ async function priceAlert(env, inv, alerts) {
   await notify(env, `🔺 <b>Подорожчання</b> (${esc(inv.sup)}${inv.no ? ' №' + esc(inv.no) : ''}):\n${alerts.map(a => `• ${esc(a.n)}: ${money(a.from)} → <b>${money(a.to)}</b>/${a.u} (+${a.pct}%)`).join('\n')}${dn.length ? `\n\nЗачіпає страви (собівартість · фудкост):\n${dn.map(([n, v]) => `• ${esc(n)} — ${money(v.cost)} · ${v.fc}%`).join('\n')}` : ''}`).catch(() => {});
 }
 export async function invPay(env, id, src, who) {
-  const inv = await env.DB.get('inv:' + id, 'json'); if (!inv || inv.del || inv.paid || inv.pay !== 'debt') return null;
-  await L(env, 'ing', () => supDebt(env, inv.sup, -inv.total));
-  await payExpense(env, inv, src, who); return inv;
+  // перевірка paid і запис витрати — під одним замком, щоб подвійне натискання не оплатило двічі
+  return L(env, ['inv:' + id, 'ing', 'exp:' + dayKey()], async () => {
+    const inv = await env.DB.get('inv:' + id, 'json'); if (!inv || inv.del || inv.paid || inv.pay !== 'debt') return null;
+    await supDebt(env, inv.sup, -inv.total);
+    await payExpense(env, inv, src, who); return inv;
+  });
 }
 // 🗑 / ↩️ накладна: склад і витрата повертаються як було
 export async function invoiceDel(env, id, back, who) {

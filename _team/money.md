@@ -4,12 +4,12 @@
 Облік грошей закладу: виручка за день (готівка/картка), витрати, рух коштів (внесення, вилучення, обмін, звірка, видача чайових і ЗП), накопичені чайові персоналу, Z-звіт за день і (застаріле) відкриття/закриття зміни. Залишки рахуються «за весь час» — змін фактично немає, гроші переходять з дня в день. Звіти за будь-який період (чеки, страви, офіціанти, контроль) — у касі та підсумками в боті.
 
 ## Файли
-- `js/pos/50-cash.js` — екран «Каса»: `cashHTML()` (вкладки 💰 Сьогодні / 🧾 Чеки → `closedHTML`), `cashHTML0()` (залишки, день, витрати, рух, чайові), `balInfo(src)` (деталі залишку + ✏️ звірка → `reconcile`), `cashMove(t)` (→ `cashMove`), `zDay()` (друк/надсилання Z → `zDay`), `shOpen()`/`shClose()` (→ `shiftOpen`/`shiftClose`).
+- `js/pos/50-cash.js` — екран «Каса»: `cashHTML()` (вкладки 💰 Сьогодні / 🧾 Чеки → `closedHTML`), `cashHTML0()` (залишки, день, витрати, рух, чайові), `balInfo(src)` (деталі залишку + ✏️ звірка → `reconcile`), `cashMove(t)` (→ `cashMove`), `zDay()` (друк/надсилання Z → `zDay`), `shOpen()` (→ `shiftOpen`; мертвий `shClose()` видалено — кнопки не було).
 - `js/pos/60-reports.js` — «Звіти»: `perRange(p)` (період), `loadReport()` (`report` + `kStats` + попередній період для порівняння), `prevRange`, `dishOf` (страва → категорія/група), `repChecks`, `repStats`, `reportsHTML()`. Фільтри й підсумки рахуються на клієнті з сирих даних.
 - `worker/src/ops.js` (грошова частина):
   - `dayKey`, `DAY_START_H=3`, `dayStart`, `midnight` — бізнес-день.
   - `_closeTable` → `bump day:`, `logClosed` (`closed:`), `splitTip` → `addTipBal`.
-  - Чайові: `splitTip` (частка кухні `kitchen_pct`, ділиться між `cooks:<day>` або в пул «👨‍🍳 Кухня»), `tipSplitOf`, `tipBalances` (перший раз відновлює з `closed:`), `addTipBal`, `payTips` (→ `tippay:` + рух `tipc/tipk`).
+  - Чайові: `splitTip` (частка кухні `kitchen_pct`, ділиться між `cooks:<day>` або в пул «👨‍🍳 Кухня»), `tipSplitOf`, `tipBalances` (перший раз відновлює з `closed:` через `tipSplitOf`), `addTipBal`, `payTips` (→ `tippay:` + рух `tipc/tipk`).
   - Витрати: `getExp`, `addExpense`, `delExpense/restoreExpense` (м'яке `del`).
   - Рух: `MOVE` (ручні: in, out, k2c, c2k, kin, kout), `MOVE_ALL` (+ tipc, tipk, adjc, adjk, salc, salk), `moveCash/moveCard` (знак), `getMov`, `addMove` (лише типи з MOVE), `delMove/restoreMove`, `reconcile` (коригування adjc/adjk = факт − програма).
   - `balances()` — залишки за весь час по всіх `day:/exp:/mov:` + `tipOwed`, `free`.
@@ -44,8 +44,9 @@
 
 ## Тонкі місця й правила
 - **Бізнес-день з 03:00** (Київ): все, що закрито до 03:00, — у попередньому дні. Старі записи без `ts` — `tsOf` у `shiftData`.
-- **Чайові — не виручка**: у `day:` і `closed:` `sum/cash/card` включають чайові (так гість заплатив); у Z за день, `cashData.net`, `sumDays`, `reportBreakdown` чайові віднімаються. Видача — рух `tipc/tipk`, зменшує залишок.
+- **Чайові — не виручка**: у `day:` і `closed:` `sum/cash/card` включають чайові (так гість заплатив); у Z за день, Z зміни (`shiftData.total`, є `gross`, `tip`, `tipBy`; `inBox` — фізична готівка з чайовими), `cashData.net`, `sumDays`, `reportBreakdown` чайові віднімаються. Видача — рух `tipc/tipk`, зменшує залишок.
 - Усі «прочитав → змінив → записав» — під `L()`; `payTips` блокує одразу `tipbal`, `tippay:`, `mov:`. `cDay()` не дає правити майбутні дні.
+- Від подвійних натискань: `invPay` (stock.js) — під замком `inv:<id>`+`ing`+`exp:<day>`; `payOp` (pay.js) — один замок `mov:<day>`+`pay:<month>`; бот `zpbs` — замок `zpbs:<staffId>` + запобіжник 10 с (ключ `zpbs:<staffId>` {ts}, TTL 60).
 - Видалення — тільки м'яке (`del:1`), відновлення через `*Back`.
 - `addMove` приймає лише ручні типи `MOVE`; службові (tip/adj/sal) пишуться напряму в інших функціях.
 - Кнопок відкриття/закриття зміни в UI немає (за словами власника) — `shiftOpen/Close` залишились у коді й боті.
