@@ -230,8 +230,6 @@ async function adminRest(b, env, who, ip, ok) {
       await notify(env, `🖥 👥 Працівник <b>${esc(r.old)}</b>: ${[f.name != null && r.old !== r.s.name ? `імʼя → <b>${esc(r.s.name)}</b>` : '', f.pin != null ? 'новий PIN' : '', f.role != null ? `роль → ${ROLE_UA[r.s.role]}` : ''].filter(Boolean).join(', ')} — ${esc(who)}`);
       return ok({ s: { id: r.s.id, name: r.s.name, role: r.s.role }, moved: r.moved || 0 }); }
     case 'waiterOut': await env.DB.delete('wlog:' + b.uid); await env.DB.delete('adm:' + b.uid); return ok();
-    case 'adminPass': if (String(b.pass || '').length < 4) return [{ error: 'Мінімум 4 символи' }, 400]; await env.DB.put('admin_pass', String(b.pass)); return ok();
-    case 'waiterPass': if (String(b.pass || '').length < 3) return [{ error: 'Мінімум 3 символи' }, 400]; await env.DB.put('waiter_pass', String(b.pass)); return ok();
   }
   return [{ error: 'unknown_op' }, 400];
 }
@@ -253,12 +251,7 @@ async function login(b, env, ip) {
     const role = await regRole(env, b.pin); if (role) return [{ ok: true, register: role }, 200]; // код реєстрації → форма «імʼя + свій PIN»
     const h = await pinHash(String(b.pin)); const s = (await getStaff(env)).find(x => x.pin === h); if (s) me = { name: s.name, role: s.role, sid: s.id, ver: s.ver || 0 };
   }
-  if (b.pass) {
-    const p = String(b.pass);
-    if (samePass(p, await adminPass(env))) me = { name: String(b.name || 'Адміністратор').slice(0, 30), role: 'admin' };
-    else if (samePass(p, await waiterPass(env))) me = { name: String(b.name || 'Офіціант').slice(0, 30), role: 'waiter' };
-  }
-  if (!me) return [{ error: 'Невірний PIN або пароль' }, 401];
+  if (!me) return [{ error: 'Невірний PIN' }, 401];
   const token = [...crypto.getRandomValues(new Uint8Array(16))].map(x => x.toString(16).padStart(2, '0')).join('');
   await env.DB.put('pos:' + token, JSON.stringify({ ...me, at: Date.now() }), { expirationTtl: SESSION_TTL[me.role] });
   return [{ ok: true, token, me }, 200];
