@@ -1,5 +1,6 @@
 import { aiHelp } from './ai.js';
 import { tn } from './tn.js';
+import { BUILD } from './buildid.js';
 import { goOrder, goInfo, reco } from './delivery.js';
 import { promoQuote, promoFill } from './promo.js';
 import { courUpdate } from './courier.js';
@@ -80,6 +81,7 @@ export async function handle(req, env) {
       }
       if (url.pathname === '/api/pos/live') return posLive(req, env, url);
       if (url.pathname === '/api/pos' && req.method === 'POST') return json(...await posApi(await req.json(), req, env));
+      if (url.pathname === '/api/build') return json({ build: BUILD });
       if (url.pathname === '/__cron') return env.INSTORE && req.headers.get('x-cron') ? json(await cron(env)) : json({ error: 'no' }, 403);
       // 🌐 візитка
       if (url.pathname === '/api/site') return new Response(JSON.stringify(await sitePublic(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });

@@ -12,5 +12,7 @@ echo "$WHO $(date +%H:%M:%S)" > "$LOCK/who"; trap 'rm -rf "$LOCK"' EXIT INT TERM
 echo "🔒 тестове середовище — $WHO"
 rsync -a --delete "$ROOT/worker/src/" "$TEST/worker/src/"
 rsync -a --delete --exclude worker --exclude .git --exclude .claude --exclude node_modules --exclude print/ --exclude varvar-print.config.json "$ROOT/" "$TEST/site/"
-sleep 6 # wrangler dev перезавантажує код
+ID="$WHO-$(date +%s)"; printf "export const BUILD = '%s';\n" "$ID" > "$TEST/worker/src/buildid.js"
+i=0; until [ "$(curl -s http://localhost:8787/api/build 2>/dev/null | grep -o "$ID")" = "$ID" ]; do i=$((i+1)); [ $i -gt 60 ] && { echo "⚠️ тестовий сервер не перезавантажився за 60 с — чи запущено worker-test?"; exit 1; }; sleep 1; done
+echo "✅ сервер на коді $WHO (за ${i} с)"
 API=http://localhost:8787 SITE=http://localhost:8001 node "$ROOT/tools/selftest.mjs" "$@"
