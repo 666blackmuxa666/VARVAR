@@ -2,7 +2,10 @@
 # 🧪 Тест у СПІЛЬНОМУ тестовому середовищі — по черзі (замок), щоб працівники не перезаписували код одне одному.
 # Запуск з кореня СВОЄЇ копії (worktree): sh tools/test.sh [--api-only|--ui-only]
 # Потрібні запущені launch-конфіги «worker-test» (8787) і «site-test» (8001).
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"; TEST="$ROOT/../.varvar-test"; [ -d "$TEST" ] || TEST="$(cd "$ROOT" && git rev-parse --path-format=absolute --git-common-dir)/../../.varvar-test"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# справжня тестова копія завжди поруч із ГОЛОВНИМ репозиторієм (а не з worktree помічника)
+TEST="$(cd "$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)/../.." && pwd)/.varvar-test"
+[ -d "$TEST/worker/src" ] || { echo "⚠️ не знайдено тестову копію $TEST"; exit 1; }
 LOCK=/tmp/varvar-test.lock; WHO="$(basename "$ROOT")"
 i=0; until mkdir "$LOCK" 2>/dev/null; do
   [ $((i % 6)) -eq 0 ] && echo "⏳ тест зайнятий: $(cat $LOCK/who 2>/dev/null) — чекаю…"; i=$((i+1)); sleep 10
