@@ -1,6 +1,7 @@
 // 🧮 Розрахунок: склад (Кухня / Бар), техкарти й собівартість, заготовки, накладні, інвентаризація.
 // Спільне для каси (POS) і бота. Усі зміни складу — під замком «ing» (порядок замків: bills → ing, ніколи навпаки).
 import { getMenu } from './menu.js';
+import { index, matchOne } from './match.js';
 import { L, dayKey, hhmm, esc, money, notify, groupOf, getCfg, addExpense, delExpense, restoreExpense, reportRange, isDay } from './ops.js';
 
 export const WH = { k: '🍳 Кухня', b: '🍹 Бар' };
@@ -308,21 +309,16 @@ export async function invList(env, months = 2) {
   return { list: ll.flatMap(l => l || []).sort((a, b) => b.ts - a.ts), sups: (await env.DB.get('sups', 'json')) || {} };
 }
 export const invGet = async (env, id) => env.DB.get('inv:' + id, 'json');
-// рядок з накладної → продукт: памʼять зіставлень, точна назва, збіг слів
+// рядок з накладної → продукт (логіка в match.js): штрихкод → памʼять al → точна назва → токен-скоринг.
+// ok: bc|mem|name|sure — підставлено впевнено; guess — «❓ перевірте» + c (2–3 кандидати); '' — новий продукт (add), створиться при записі
 export async function matchLines(env, sup, lines) {
-  const l = (await getIng(env)).filter(x => !x.off), al = (await env.DB.get('al', 'json')) || {}, sk = norm(sup) + '|';
-  const words = s => new Set(norm(s).split(' ').filter(w => w.length > 2 && !/^\d/.test(w)));
+  const l = (await getIng(env)).filter(x => !x.off), al = (await env.DB.get('al', 'json')) || {}, I = index(l), sk = norm(sup) + '|';
   return lines.map(ln => {
-    const nn = norm(ln.n), m = al[sk + nn] || Object.entries(al).find(([k]) => k.endsWith('|' + nn))?.[1];
-    if (m && l.some(x => x.id === m.id)) return { ...ln, id: m.id, f: m.f, ok: 'mem' };
-    const ex = l.find(x => norm(x.n) === nn); if (ex) return { ...ln, id: ex.id, f: 1, ok: 'name' };
-    const w = words(ln.n); let best = null, bs = 0;
-    for (const x of l) { const xw = words(x.n); if (!xw.size) continue; let c = 0; xw.forEach(z => { if ([...w].some(y => y.startsWith(z.slice(0, 5)) || z.startsWith(y.slice(0, 5)))) c++; }); const s = c / xw.size; if (s > bs) { bs = s; best = x; } }
-    if (bs >= 0.5) return { ...ln, id: best.id, f: 1, ok: 'guess' };
-    // новий продукт — реєструється сам при записі накладної (назва, одиниця, категорія, склад — від Gemini)
-    const n = ln.p || ln.n, same = l.find(x => norm(x.n) === norm(n)); if (same) return { ...ln, id: same.id, f: ln.pq || 1, ok: 'name' };
-    const u = ln.pu || (/^(л|мл)/i.test(ln.u || '') ? 'л' : /^(шт|уп|ящ|пач|пл|бут|бан)/i.test(ln.u || '') ? 'шт' : 'кг');
-    return { ...ln, id: null, ok: '', f: ln.pq || (u === 'кг' && /^г/i.test(ln.u || '') ? 0.001 : u === 'л' && /^мл/i.test(ln.u || '') ? 0.001 : 1), add: { n: n.slice(0, 60), u, cat: ING_CATS.includes(ln.cat) ? ln.cat : 'Інше', home: ln.bar ? 'b' : 'k' } };
+    const m = matchOne(ln, I, al, sk), { id, ok, sc, c } = m, cc = c?.length ? { c } : {};
+    if (id) { const x = l.find(y => y.id === id), gu = /^(г|гр|мл)\.?$/i.test(ln.u || '') && (x.u === 'кг' || x.u === 'л'); // фасування: памʼять → pq від Gemini → г/мл
+      return { ...ln, id, f: m.f || (ln.pq && (!ln.pu || ln.pu === x.u) ? ln.pq : gu ? 0.001 : 1), ok, sc, ...cc }; }
+    const n = ln.p || ln.n, u = ln.pu || (/^(л|мл)/i.test(ln.u || '') ? 'л' : /^(шт|уп|ящ|пач|пл|бут|бан)/i.test(ln.u || '') ? 'шт' : 'кг');
+    return { ...ln, id: null, ok: '', sc, ...cc, f: ln.pq || (u === 'кг' && /^г/i.test(ln.u || '') ? 0.001 : u === 'л' && /^мл/i.test(ln.u || '') ? 0.001 : 1), add: { n: n.slice(0, 60), u, cat: ING_CATS.includes(ln.cat) ? ln.cat : 'Інше', home: ln.bar ? 'b' : 'k' } };
   });
 }
 

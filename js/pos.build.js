@@ -3430,16 +3430,17 @@ ${g.sup}:
       return pks.map((p) => `<option value="${p.f}" ${(+l.f || 1) === p.f ? "selected" : ""}>${esc(p.n)}${p.f !== 1 ? ` (${p.f} ${u})` : ""}</option>`).join("") + '<option value="?">\u0456\u043D\u0448\u0430\u2026</option>';
     };
     const rows = d.lines.map((l, i) => {
-      var _a3, _b, _c;
+      var _a3, _b, _c, _d;
       const st = l.add ? "new" : !l.id ? "none" : l.ok === "guess" ? "guess" : "ok", x = im.get(l.id);
-      return `<div class="dl ${st}"><div class="dl-src">${i + 1}. ${l.n ? esc(l.n) : '<i class="muted">\u043D\u043E\u0432\u0438\u0439 \u0440\u044F\u0434\u043E\u043A</i>'}${l.u || l.price ? ` <span class="muted">\xB7 ${esc((_a3 = l.q0) != null ? _a3 : l.q)} ${esc(l.u || "")}${l.price ? " \xD7 " + l.price : ""}</span>` : ""}${st === "guess" ? ' <span class="warn">\u043F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435 \u043F\u0440\u043E\u0434\u0443\u043A\u0442</span>' : st === "none" ? ' <span class="warn">\u043E\u0431\u0435\u0440\u0456\u0442\u044C \u043F\u0440\u043E\u0434\u0443\u043A\u0442</span>' : ""}</div>
-        <div class="dl-f"><button class="pk-b ${l.id || l.add ? "" : "empty"}" data-a="skDlPick" data-i="${i}">${x ? esc(x.n) + ` <span class="muted">${x.u}</span>` : l.add ? `\u2795 ${esc(l.add.n)} <span class="muted">${l.add.u}</span>` : "\u{1F50E} \u041E\u0431\u0435\u0440\u0456\u0442\u044C \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u2026"}</button><input data-dl="${i}" data-k="q" inputmode="decimal" value="${(_b = l.q) != null ? _b : ""}" placeholder="\u041A-\u0441\u0442\u044C"><select data-dl="${i}" data-k="f">${pkOpt(l)}</select><input data-dl="${i}" data-k="sum" inputmode="decimal" value="${(_c = l.sum) != null ? _c : ""}" placeholder="\u0421\u0443\u043C\u0430 \u20B4"><button class="xb" data-a="skDlDel" data-i="${i}" title="\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0440\u044F\u0434\u043E\u043A">\u2715</button></div>
+      return `<div class="dl ${st}"><div class="dl-src">${i + 1}. ${l.n ? esc(l.n) : '<i class="muted">\u043D\u043E\u0432\u0438\u0439 \u0440\u044F\u0434\u043E\u043A</i>'}${l.u || l.price ? ` <span class="muted">\xB7 ${esc((_a3 = l.q0) != null ? _a3 : l.q)} ${esc(l.u || "")}${l.price ? " \xD7 " + l.price : ""}</span>` : ""}${st === "guess" ? ` <span class="warn">\u2753 \u043F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435${l.sc ? " \xB7 " + Math.round(l.sc * 100) + "%" : ""}</span>` : st === "none" ? ' <span class="warn">\u043E\u0431\u0435\u0440\u0456\u0442\u044C \u043F\u0440\u043E\u0434\u0443\u043A\u0442</span>' : ""}</div>
+        ${(st === "guess" || st === "new") && ((_b = l.c) == null ? void 0 : _b.length) ? `<div class="chips dl-c">${st === "new" ? '<span class="muted">\u0441\u0445\u043E\u0436\u0435 \u043D\u0430:</span>' : ""}${l.c.map((c) => `<button class="chip ${c.id === l.id ? "on" : ""}" data-a="skDlCand" data-i="${i}" data-id="${c.id}">${esc(c.n)} <small class="muted">${Math.round(c.sc * 100)}%</small></button>`).join("")}${st === "guess" ? `<button class="chip" data-a="skDlCand" data-i="${i}" data-id="__new">\u2795 \u041D\u043E\u0432\u0438\u0439</button>` : ""}</div>` : ""}
+        <div class="dl-f"><button class="pk-b ${l.id || l.add ? "" : "empty"}" data-a="skDlPick" data-i="${i}">${x ? esc(x.n) + ` <span class="muted">${x.u}</span>` : l.add ? `\u2795 ${esc(l.add.n)} <span class="muted">${l.add.u}</span>` : "\u{1F50E} \u041E\u0431\u0435\u0440\u0456\u0442\u044C \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u2026"}</button><input data-dl="${i}" data-k="q" inputmode="decimal" value="${(_c = l.q) != null ? _c : ""}" placeholder="\u041A-\u0441\u0442\u044C"><select data-dl="${i}" data-k="f">${pkOpt(l)}</select><input data-dl="${i}" data-k="sum" inputmode="decimal" value="${(_d = l.sum) != null ? _d : ""}" placeholder="\u0421\u0443\u043C\u0430 \u20B4"><button class="xb" data-a="skDlDel" data-i="${i}" title="\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0440\u044F\u0434\u043E\u043A">\u2715</button></div>
         <div class="dl-h muted" id="dlh${i}">${lineHint(l, x, adm)}</div></div>`;
     }).join("");
     const sups = Object.keys(((_a2 = S.data.skInv) == null ? void 0 : _a2.sups) || {});
     return `<div class="card"><div class="rhead"><h3 style="margin:0">\u{1F9FE} ${d.src === "photo" ? "\u0420\u043E\u0437\u043F\u0456\u0437\u043D\u0430\u043D\u0430 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0430 \u2014 \u043F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435" : "\u041D\u043E\u0432\u0430 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0430"}</h3><button class="btn sm" data-a="skDraftX">\u2715 \u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438</button></div>
       <div class="frow"><label>\u041F\u043E\u0441\u0442\u0430\u0447\u0430\u043B\u044C\u043D\u0438\u043A<input id="dSup" list="supL" value="${esc(d.sup || "")}" data-dh="sup" placeholder="\u043D\u0430\u043F\u0440. \u041C\u0435\u0442\u0440\u043E"><datalist id="supL">${sups.map((s) => `<option value="${esc(s)}">`).join("")}</datalist></label><label>\u2116 \u0434\u043E\u043A\u0443\u043C\u0435\u043D\u0442\u0430<input id="dNo" value="${esc(d.no || "")}" data-dh="no"></label><label>\u0414\u0430\u0442\u0430<input id="dDate" value="${esc(d.date || "")}" data-dh="date" placeholder="\u0414\u0414.\u041C\u041C.\u0420\u0420\u0420\u0420"></label></div></div>
-      <div class="card"><h3>\u041F\u043E\u0437\u0438\u0446\u0456\u0457 <span class="muted">\xB7 ${d.lines.length}</span> <span class="muted" style="font-weight:400;font-size:12px">\u{1F7E2} \u0432\u043F\u0456\u0437\u043D\u0430\u043D\u043E \xB7 \u{1F7E1} \u043F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435 \xB7 \u{1F535} \u043D\u043E\u0432\u0438\u0439 \u2014 \u0441\u0442\u0432\u043E\u0440\u0438\u0442\u044C\u0441\u044F \u0441\u0430\u043C</span></h3>${rows || '<div class="muted">\u0414\u043E\u0434\u0430\u0439\u0442\u0435 \u043F\u043E\u0437\u0438\u0446\u0456\u0457</div>'}
+      <div class="card"><h3>\u041F\u043E\u0437\u0438\u0446\u0456\u0457 <span class="muted">\xB7 ${d.lines.length}</span> <span class="muted" style="font-weight:400;font-size:12px">\u{1F7E2} \u0432\u043F\u0456\u0437\u043D\u0430\u043D\u043E \xB7 \u{1F7E1} \u2753 \u043F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435 \u2014 \u0442\u0430\u043F\u043D\u0456\u0442\u044C \u043F\u0440\u0430\u0432\u0438\u043B\u044C\u043D\u0438\u0439 \xB7 \u{1F535} \u043D\u043E\u0432\u0438\u0439 \u2014 \u0441\u0442\u0432\u043E\u0440\u0438\u0442\u044C\u0441\u044F \u0441\u0430\u043C</span></h3>${rows || '<div class="muted">\u0414\u043E\u0434\u0430\u0439\u0442\u0435 \u043F\u043E\u0437\u0438\u0446\u0456\u0457</div>'}
         <div class="btnrow"><button class="btn sm" data-a="skDlAdd">\u2795 \u0420\u044F\u0434\u043E\u043A</button><button class="btn sm" data-a="skScan">\u{1F50E} \u0421\u043A\u0430\u043D\u0443\u0432\u0430\u0442\u0438 \u0448\u0442\u0440\u0438\u0445\u043A\u043E\u0434</button></div></div>
       <div class="card"><div class="kv tot"><span>\u0420\u0430\u0437\u043E\u043C \u0437\u0430 \u043F\u043E\u0437\u0438\u0446\u0456\u044F\u043C\u0438</span><b class="money" id="dSum">${money(sum)}</b></div>${d.total ? `<div class="kv ${Math.abs(diff) > 1 ? "bad" : ""}" id="dTot"><span>\u0423 \u0434\u043E\u043A\u0443\u043C\u0435\u043D\u0442\u0456</span><b class="money">${money(d.total)}${Math.abs(diff) > 1 ? ` \xB7 \u0440\u0456\u0437\u043D\u0438\u0446\u044F ${money(diff)}` : " \u2705"}</b></div>` : ""}
         <div class="muted" style="font-size:12px;margin:10px 0 6px">\u041E\u043F\u043B\u0430\u0442\u0430:</div>
@@ -3494,7 +3495,7 @@ ${g.sup}:
       const images = await Promise.all(files.map((f) => shrink(f, 1800, 0.82)));
       const r = await api("skInvParse", { images }, 75e3);
       if (!S.data.sk) S.data.sk = await api("skData");
-      S.sk.draft = { sup: r.sup, no: r.no, date: r.date, total: r.total, src: "photo", lines: r.lines.map((l) => __spreadProps(__spreadValues({}, l), { q0: l.q, f: l.add ? l.f : skAutoF(l) })) };
+      S.sk.draft = { sup: r.sup, no: r.no, date: r.date, total: r.total, src: "photo", lines: r.lines.map((l) => __spreadProps(__spreadValues({}, l), { q0: l.q, f: l.add || l.f && l.f !== 1 ? l.f : skAutoF(l) })) };
       if (!S.data.skInv) S.data.skInv = await api("skInvList").catch(() => null);
     } catch (e) {
       toast("\u26A0\uFE0F " + errText(e.message));
@@ -4062,6 +4063,25 @@ ${g.sup}:
             l.f = skAutoF(l);
           } else if (x && l.loss == null && x.loss) l.loss = x.loss;
         }
+        renderMain();
+        break;
+      }
+      case "skDlCand": {
+        const l = K.draft.lines[+el.dataset.i];
+        if (!l) break;
+        const id = el.dataset.id;
+        if (id === "__new") {
+          const nw = await skNewIng(l.p || l.n || "", l.pu || l.u || "\u043A\u0433", l.bar ? "b" : "k");
+          if (!nw) break;
+          l.add = nw;
+          l.id = null;
+        } else {
+          l.id = id;
+          delete l.add;
+          l.f = skAutoF(l);
+        }
+        l.ok = "ok";
+        delete l.c;
         renderMain();
         break;
       }
