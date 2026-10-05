@@ -239,6 +239,7 @@ export async function guestBot(m, env) {
 export async function reviewQueue(env, ph, sum) { if (!ph) return; const c = await getCli(env, ph); if (!c?.chat) return; await L(env, 'revq', async () => { const q = (await env.DB.get('revq', 'json')) || []; if (q.some(x => x.ph === ph && Date.now() - x.at < 864e5)) return; q.push({ id: crypto.randomUUID().slice(0, 8), ph, at: Date.now() + 3600e3, sum }); await env.DB.put('revq', JSON.stringify(q.slice(-300))); }); }
 export async function cron(env) {
   const now = Date.now(), out = [];
+  await (await import('./courier.js')).courWatch(env).catch(() => {}); // 🛵 ніхто не взяв доставку
   // відгуки
   const due = await L(env, 'revq', async () => { const q = (await env.DB.get('revq', 'json')) || [], d = q.filter(x => x.at <= now); if (d.length) await env.DB.put('revq', JSON.stringify(q.filter(x => x.at > now))); return d; });
   for (const r of due) { await guestMsg(env, r.ph, '🙏 Дякуємо, що завітали у Varvar! Як вам усе сподобалось?', { inline_keyboard: [[1, 2, 3, 4, 5].map(n => ({ text: '⭐'.repeat(n === 5 ? 1 : 0) + n, callback_data: `rv:${r.id}:${n}` }))] }); await env.DB.put('rvph:' + r.id, r.ph, { expirationTtl: 7 * 86400 }); out.push('rv'); }

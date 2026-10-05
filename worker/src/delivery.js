@@ -3,6 +3,7 @@
 import { getMenu, priceMap } from './menu.js';
 import { tg, esc, hhmm, dayKey, getBill, putBill, billItems, payable, logEvent, addStat, addDishes, L, editEv, closeTable, notify } from './ops.js';
 import { GO_DEL, GO_PICK, isGo, tn } from './tn.js';
+import { courNotify } from './courier.js';
 
 const BILL_TTL = 2 * 86400;
 // ⚙️ налаштування доставки (окремо від cfg — тут є текст і час)
@@ -57,14 +58,14 @@ export async function goSet(env, t, st, who, { pay, cour } = {}) {
     await markOrd(env, g.oid, 'done');
     return { ...r, done: 1 };
   }
-  const b = await L(env, 'bills', async () => { const b = await getBill(env, t); if (!b.go) return null; b.go.st = st; if (cour !== undefined) b.go.cour = cour || ''; await putBill(env, t, b); return b; });
+  const b = await L(env, 'bills', async () => { const b = await getBill(env, t); if (!b.go) return null; b.go.st = st; if (st === 'road' && !b.go.roadAt) b.go.roadAt = Date.now(); if (cour !== undefined && cour !== b.go.cour) { b.go.cour = cour || ''; if (cour) b.go.takeAt ||= Date.now(); } await putBill(env, t, b); return b; });
   if (!b) return null;
   await markOrd(env, b.go.oid, st);
   if (st === 'road' || st === 'ready') await logEvent(env, { k: 'go', t, by: who, s: 'acc', text: `${st === 'road' ? '🛵' : '🍽'} ${tn(t)} ${b.go.name || ''} — ${goStLabel(st)}${b.go.cour ? ' · ' + b.go.cour : ''}` });
   return b.go;
 }
 // кухня взяла / віддала — статус доставки рухається сам
-export async function goKitchen(env, t, st) { if (!isGo(t)) return; const b = await getBill(env, t); if (!b.go || ['road', 'done', 'rej'].includes(b.go.st)) return; if (st === 'ready' || b.go.st === 'new' || b.go.st === 'acc') await goSet(env, t, st, 'кухня'); }
+export async function goKitchen(env, t, st) { if (!isGo(t)) return; const b = await getBill(env, t); if (!b.go || ['road', 'done', 'rej'].includes(b.go.st)) return; if (st === 'ready' || b.go.st === 'new' || b.go.st === 'acc') await goSet(env, t, st, 'кухня'); if (st === 'ready') await courNotify(env, t, 'ready').catch(() => {}); else await courNotify(env, t, 'refresh').catch(() => {}); }
 
 // ---------- 🛒 замовлення з сайту ----------
 const TYPES = { del: 'ДОСТАВКА', pick: 'САМОВИВІЗ' };
@@ -135,7 +136,8 @@ export async function goAttach(env, t, go) {
   return L(env, 'bills', async () => {
     const b = await getBill(env, t); if (!b.total) return null; b.go = go; if (go.phone) b.cli = go.phone;
     if (go.fee && !(b.log || []).some(o => o.lines.some(l => l.includes('🛵 Доставка')))) { b.total += go.fee; b.log.push({ at: hhmm(), kind: 'доставка', lines: [`1× 🛵 Доставка — ${go.fee}`] }); }
-    await putBill(env, t, b); if (go.phone) await cliTouch(env, go.phone, x => { if (go.name) x.name = go.name; if (go.addr && !x.addr.includes(go.addr)) x.addr = [go.addr, ...x.addr].slice(0, 5); });
+    if (go.kind === 'del') b.go.accAt = Date.now();
+    await putBill(env, t, b); if (go.kind === 'del') courNotify(env, t, 'new').catch(() => {}); if (go.phone) await cliTouch(env, go.phone, x => { if (go.name) x.name = go.name; if (go.addr && !x.addr.includes(go.addr)) x.addr = [go.addr, ...x.addr].slice(0, 5); });
     return b;
   });
 }

@@ -4,6 +4,7 @@ import { getMenu, saveMenu, menuLock } from './menu.js';
 import { tn } from './tn.js';
 import { cliClose, goKitchen, goButtons } from './delivery.js';
 import { reviewQueue } from './site.js';
+import { courNotify } from './courier.js';
 import { queuePrint, kitchenTicket, receipt } from './print.js';
 import { consume, wasteDish } from './stock.js';
 
@@ -240,7 +241,7 @@ async function _closeTable(env, t, who, pay = 'cash', print = true) {
     kq,
     (async () => { if (tipSplit) for (const [n, v] of Object.entries(tipSplit)) await addTipBal(env, n, v); })(), // один ключ — по черзі
     (async () => { if (bill.cli) { await cliClose(env, bill.cli, sum - tip, (bill.bonus || 0) - (bill.cert?.sum || 0), bill.go?.name).catch(() => {}); await reviewQueue(env, bill.cli, sum).catch(() => {}); } })(),
-    logClosed(env, { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), t, sum, cash, card, ...(bill.go ? { go: bill.go.kind, ...(bill.go.cour ? { cour: bill.go.cour } : {}), ...(bill.go.fee ? { fee: bill.go.fee } : {}) } : {}), ...(bill.bonus ? { bonus: bill.bonus } : {}), ...(bill.cert ? { cert: bill.cert } : {}), ...(bill.cli ? { cli: bill.cli } : {}), at: hhmm(), by: who || '', w: waiter, orders: bill.orders || 0, dishes, ...(tip ? { tip, tipSplit, ...(bill.ktip ? { ktip: bill.ktip } : {}) } : {}), ...(bill.voids?.length ? { voids: bill.voids } : {}), ...(disc ? { gross: bill.total, disc: bill.disc, discSum: disc } : {}) }),
+    logClosed(env, { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), t, sum, cash, card, ...(bill.go ? { go: bill.go.kind, ...(bill.go.cour ? { cour: bill.go.cour } : {}), ...(bill.go.fee ? { fee: bill.go.fee } : {}), gt: { at: bill.go.at, acc: bill.go.accAt, take: bill.go.takeAt, road: bill.go.roadAt, done: Date.now(), when: bill.go.when || '', prob: bill.go.prob?.k || '' } } : {}), ...(bill.bonus ? { bonus: bill.bonus } : {}), ...(bill.cert ? { cert: bill.cert } : {}), ...(bill.cli ? { cli: bill.cli } : {}), at: hhmm(), by: who || '', w: waiter, orders: bill.orders || 0, dishes, ...(tip ? { tip, tipSplit, ...(bill.ktip ? { ktip: bill.ktip } : {}) } : {}), ...(bill.voids?.length ? { voids: bill.voids } : {}), ...(disc ? { gross: bill.total, disc: bill.disc, discSum: disc } : {}) }),
     logEvent(env, { k: 'close', t, by: who, sum, pay, print }),
   ]);
   return { t, sum, cash, card, disc, tip };
@@ -765,6 +766,7 @@ export async function kitchenMsg(env, id, text, who) {
   text = String(text || '').trim().slice(0, 120); if (!text) return null;
   const e = await kqEdit(env, id, e => { (e.msgs ||= []).push({ at: hhmm(), text }); });
   if (e) await logEvent(env, { k: 'kmsg', t: e.t, by: who, text });
+  if (e && e.t > 1000) await courNotify(env, e.t, 'msg', text).catch(() => {}); // кухня → кур'єру
   return e;
 }
 // стіл закрито/звільнено — активні картки кухні цих столів знімаються з черги (без «готово» у стрічку)
@@ -859,7 +861,7 @@ export async function logEvent(env, ...a) { return L(env, 'ev:' + dayKey(), () =
 export async function acceptOrder(env, ...a) {
   const ok = await L(env, 'ord:' + a[0], () => _acceptOrder(env, ...a));
   // хто прийняв замовлення гостя — офіціант стола (якщо ще не призначений); окремо від замка ord: — без взаємного блокування з rejectOrder
-  if (ok && a[1]) { const o = await env.DB.get('ord:' + a[0], 'json'); if (o?.t) await L(env, 'bills', async () => { const b = await getBill(env, o.t); if (b.total > 0 && (!b.waiter || b.go?.st === 'new')) { if (!b.waiter) b.waiter = a[1]; if (b.go?.st === 'new') b.go.st = 'acc'; await putBill(env, o.t, b); } }); }
+  if (ok && a[1]) { const o = await env.DB.get('ord:' + a[0], 'json'); if (o?.t) await L(env, 'bills', async () => { const b = await getBill(env, o.t); if (b.total > 0 && (!b.waiter || b.go?.st === 'new')) { if (!b.waiter) b.waiter = a[1]; if (b.go?.st === 'new') { b.go.st = 'acc'; b.go.accAt = Date.now(); } await putBill(env, o.t, b); } }); if (o?.go) await courNotify(env, o.t, 'new').catch(() => {}); }
   return ok;
 }
 export async function rejectOrder(env, ...a) { return L(env, ['ord:' + a[0], 'bills'], () => _rejectOrder(env, ...a)); }

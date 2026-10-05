@@ -67,7 +67,7 @@
     regCodeV = code; pin = ''; dots();
     $('#pinView').hidden = true; $('#passView').hidden = true; $('#regView').hidden = false;
     $('#loginSub').textContent = 'Реєстрація працівника';
-    $('#regRole').textContent = role === 'admin' ? '🔐 Новий адміністратор' : role === 'cook' ? '👨‍🍳 Новий кухар' : '🧑‍🍳 Новий офіціант';
+    $('#regRole').textContent = role === 'admin' ? '🔐 Новий адміністратор' : role === 'cook' ? '👨‍🍳 Новий кухар' : role === 'courier' ? '🛵 Новий кур\'єр' : '🧑‍🍳 Новий офіціант';
     $('#lErr').textContent = ''; $('#rName').value = ''; $('#rPin').value = ''; $('#rPin2').value = ''; setTimeout(() => $('#rName').focus(), 50);
   }
   document.querySelectorAll('.pin4').forEach(i => i.addEventListener('input', () => { i.value = i.value.replace(/\D/g, '').slice(0, 4); }));
@@ -106,6 +106,7 @@
     if (S.ready && fresh.some(e => ['guest', 'check', 'call'].includes(e.k) || (!isCook() && ['ready', 'kmsg'].includes(e.k)))) ding();
     r.events.forEach(e => S.seen.add(e.id));
     S.events = r.events; S.ready = true;
+    if (isCour() && S.view === 'go') renderMain(); // 🛵 нові доставки й «готово» — одразу на екрані кур'єра
     render();
   }
   async function loadMenu() { const r = await api('menu'); S.menu = r.menu; S.fav = r.fav || []; S.groups = r.groups || []; if (S.open) renderSheet(); if (['stop', 'menu', 'reports', 'calc'].includes(S.view)) renderMain(); }
@@ -201,7 +202,7 @@
     setHTML($('#nav'), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` +
       navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? 'on' : ''}${!isCook() && ['calc', 'menu', 'settings', 'stop', 'kq'].includes(v) ? ' more-i' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === 'team' && attNew ? `<span class="badge">${attNew}</span>` : ''}${v === 'books' && (S.books || []).some(b => b.st === 'new') ? `<span class="badge">${S.books.filter(b => b.st === 'new').length}</span>` : ''}</button>`).join('') +
       `<button class="feed-btn" data-a="feed"><span class="ic">🔔</span>Стрічка${newCnt ? `<span class="badge">${newCnt}</span>` : ''}</button>` +
-      `<button class="more-btn ${['calc', 'menu', 'settings', 'stop', 'kq'].includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><button class="me" data-a="zpMy" title="Мій кабінет"><i>${esc((S.me?.name || '?').slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ''}</i><b>${esc(S.me?.name)}</b><small>${isAdmin() ? 'адмін' : isCook() ? 'кухар' : 'офіціант'} · кабінет</small></button>` +
+      `<button class="more-btn ${['calc', 'menu', 'settings', 'stop', 'kq'].includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><button class="me" data-a="zpMy" title="Мій кабінет"><i>${esc((S.me?.name || '?').slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ''}</i><b>${esc(S.me?.name)}</b><small>${isAdmin() ? 'адмін' : isCook() ? 'кухар' : isCour() ? 'кур\'єр' : 'офіціант'} · кабінет</small></button>` +
       `<button data-a="switch"><span class="ic">🔒</span>Вийти</button>`);
   }
   function render() { renderNav(); renderFeed(); if (['hall', 'printer', 'kq'].includes(S.view) || (S.view === 'settings' && S.setTab === 'printer')) renderMain(); if (S.open) renderSheet(); }
@@ -391,13 +392,36 @@
     if (v === 'use') await act('cliBonus', { t, sum: max }, '🎁 Бонуси списано'); else if (v === 'del') await act('cliSet', { t, phone: '' }, 'Прибрано');
     await loadState().catch(() => {});
   }
-  function goHTML() { // 🛵 екран кур'єра
-    const mine = Object.values(S.tables).filter(b => b.t > 1000 && b.t < 2000 && b.go && ['acc', 'cook', 'ready', 'road'].includes(b.go.st) && (!b.go.cour || b.go.cour === S.me?.name));
-    return `<div class="head"><h1>🛵 Доставки</h1><span class="muted">${mine.length ? 'спершу ті, що готові' : 'поки нічого'}</span></div><div class="go-list">${mine.sort((a, b) => (b.go.st === 'ready') - (a.go.st === 'ready') || a.t - b.t).map(b => { const g = b.go, map = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(g.addr)}`;
-      return `<div class="card go-c st-${g.st}"><div class="go-h"><b>${tn(b.t)}</b><span class="chip">${GOST[g.st]}</span>${g.when ? `<span class="chip">🕐 ${g.when}</span>` : ''}<b class="money" style="margin-left:auto">${money(b.pay2)}</b></div>
-        <div><b>${esc(g.name)}</b> · <a href="tel:+${g.phone}">📞 ${fmtPh(g.phone)}</a></div><div>📍 <a href="${map}" target="_blank" rel="noopener">${esc(g.addr)}</a>${g.ent ? ` · ${esc(g.ent)}` : ''}</div>
-        <div class="muted">${g.pay === 'online' ? '💳 оплачено' : g.pay === 'card' ? '💳 термінал' : '💵 готівка'}${g.change ? ` · решта з <b>${g.change}</b>` : ''}${g.cut ? ` · 🍴 ${g.cut}` : ''} · ${b.items.map(i => `${i.q}× ${esc(i.name)}`).join(', ')}</div>
-        <div class="btnrow">${!g.cour ? `<button class="btn sm primary" data-a="goTake" data-t="${b.t}">✋ Беру</button>` : ''}${g.st !== 'road' ? `<button class="btn sm" data-a="goRoad" data-t="${b.t}">🛵 Поїхав</button>` : ''}<button class="btn sm green" data-a="goDoneT" data-t="${b.t}">🤝 Видано</button></div></div>`; }).join('') || '<div class="muted">Нових доставок немає — тут зʼявляться, щойно адмін прийме замовлення.</div>'}</div>`;
+  // 🛵 екран кур'єра: Нові / Мої / Сьогодні (як кухня, без стрічки)
+  async function loadCour() { S.data.cour = await api('courMe'); renderMain(); }
+  const minsAgo = ts => ts ? Math.max(0, Math.round((Date.now() - ts) / 60e3)) : 0;
+  function goHTML() {
+    const me = S.me?.name, C = S.data.cour, all = Object.values(S.tables).filter(b => b.t > 1000 && b.t < 2000 && b.go && !['new', 'done', 'rej'].includes(b.go.st));
+    const fresh = all.filter(b => !b.go.cour), mine = all.filter(b => b.go.cour === me).sort((a, b) => (a.go.takeAt || 0) - (b.go.takeAt || 0));
+    const seen = (S.courSeen ||= new Set()); if (S.courReady && fresh.some(b => !seen.has(b.t)) || mine.some(b => b.go.st === 'ready' && !seen.has('r' + b.t))) { ding(); navigator.vibrate?.([200, 100, 200]); }
+    fresh.forEach(b => seen.add(b.t)); mine.forEach(b => { if (b.go.st === 'ready') seen.add('r' + b.t); }); S.courReady = true;
+    const tab = S.courTab || (mine.length ? 'mine' : 'new');
+    const items = b => b.items.filter(i => !i.name.includes('Доставка')).map(i => `${i.q}× ${esc(i.name)}`).join(', ');
+    const card = (b, my) => { const g = b.go, map = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(g.addr + ', Поляниця')}&travelmode=driving`;
+      return `<div class="cr-c st-${g.st}${g.prob ? ' prob' : ''}"><div class="cr-h"><b>${tn(b.t)}</b><span class="chip">${g.when ? '🕐 на ' + g.when : '⚡ якнайшвидше'}</span><span class="chip">${GOST[g.st]}</span><small>${minsAgo(g.accAt || g.at)} хв</small></div>
+        ${g.st === 'ready' && my ? '<div class="cr-ready">🍽 ГОТОВО — ЗАБИРАЙ!</div>' : ''}${g.prob ? `<div class="cr-prob">⚠️ ${esc(g.prob.text)}</div>` : ''}
+        <a class="cr-addr" href="${map}" target="_blank" rel="noopener">📍 ${esc(g.addr)}${g.ent ? ` · ${esc(g.ent)}` : ''}</a>
+        <div class="cr-row"><span>👤 ${esc(g.name)}</span><a class="btn sm" href="tel:+${g.phone}">📞 ${fmtPh(g.phone)}</a></div>
+        <div class="muted">🍽 ${items(b)}${g.cut ? ` · 🍴 ${g.cut}` : ''}</div>
+        <div class="cr-pay">${g.paid ? '💳 оплачено онлайн' : `<b class="money">${money(b.pay2)}</b><span>${g.pay === 'card' ? '💳 термінал' : '💵 готівка'}${g.change ? ` · решта з <b>${g.change}</b>` : ''}</span>`}</div>
+        ${my ? `<div class="cr-act">${g.st !== 'road' ? `<button class="btn green" data-a="crAct" data-t="${b.t}" data-x="road">🛵 Поїхав</button>` : `<div class="cr-eta">${[5, 10, 15, 20].map(m => `<button class="btn sm" data-a="crAct" data-t="${b.t}" data-x="eta" data-v="${m}">⏱ ${m} хв</button>`).join('')}</div>`}
+            <button class="btn primary" data-a="crDone" data-t="${b.t}">🤝 Видано</button></div>
+          <div class="btnrow"><button class="btn sm" data-a="crAct" data-t="${b.t}" data-x="km" data-v="soon">💬 Буду за 5 хв</button><button class="btn sm" data-a="crAct" data-t="${b.t}" data-x="km" data-v="here">💬 Я на місці</button><button class="btn sm red" data-a="crProb" data-t="${b.t}">⚠️ Проблема</button></div>`
+        : `<button class="btn primary cr-take" data-a="crAct" data-t="${b.t}" data-x="take">✋ Беру</button>`}</div>`; };
+    const d = C?.day || { n: 0, left: 0, earn: 0, list: [] };
+    const head = `<div class="cr-top"><div><h1>🛵 ${esc(me || '')}</h1><span class="muted">${onShift() ? '🟢 на зміні' : 'зміну не розпочато'}</span></div>
+      <div class="btnrow">${onShift() ? '<button class="btn sm red" data-a="zpOut">🔴 Закінчити зміну</button>' : '<button class="btn sm green" data-a="zpIn">🟢 Почати зміну</button>'}${C?.bot ? `<button class="btn sm${C.linked ? '' : ' primary'}" data-a="crTg">✈️ ${C.linked ? 'Telegram ✓' : 'Підключити Telegram'}</button>` : ''}</div></div>
+      <div class="kpis cr-k"><div class="kpi"><span>Доставок сьогодні</span><b>${d.n}</b></div><div class="kpi accent"><span>💵 Готівка на руках</span><b class="money">${money(d.left)}</b></div><div class="kpi"><span>💰 Заробіток</span><b class="money">${money(d.earn)}</b></div></div>`;
+    const tabs = `<div class="seg cr-tabs">${[['new', `🆕 Нові${fresh.length ? ` · ${fresh.length}` : ''}`], ['mine', `🛵 Мої${mine.length ? ` · ${mine.length}` : ''}`], ['done', `✅ Сьогодні · ${d.n}`]].map(([k, l]) => `<button class="${tab === k ? 'on' : ''}${k === 'new' && fresh.length ? ' blink' : ''}" data-a="crTab" data-t="${k}">${l}</button>`).join('')}</div>`;
+    const col = { new: fresh.map(b => card(b, false)).join('') || '<div class="cr-empty">Нових доставок немає<br><small>щойно адмін прийме замовлення — тут пролунає звук</small></div>',
+      mine: (mine.length > 1 && C?.route ? `<a class="btn cr-route" href="${C.route}" target="_blank" rel="noopener">🗺 Маршрут через усі ${mine.length} адреси</a>` : '') + (mine.map(b => card(b, true)).join('') || '<div class="cr-empty">У вас немає доставок</div>'),
+      done: d.list.map(x => `<div class="kv"><span><b>${tn(x.t)}</b> · ${x.at}${x.mins != null ? ` · в дорозі ${x.mins} хв` : ''}</span><b class="money">${money(x.sum)} ${x.pay === 'card' ? '💳' : '💵'}</b></div>`).join('') || '<div class="cr-empty">Ще нічого не доставлено</div>' };
+    return head + tabs + `<div class="cr-cols t-${tab}"><section class="c-new"><h3>🆕 Нові</h3>${col.new}</section><section class="c-mine"><h3>🛵 Мої</h3>${col.mine}</section><section class="c-done"><h3>✅ Сьогодні</h3><div class="card">${col.done}</div></section></div>`;
   }
   // ---------- 📅 броні, 🎟 сертифікати, 🌐 сайт ----------
   const BKS = { new: '🆕 нова', ok: '✅ підтверджено', no: '❌ відхилено', came: '🪑 прийшли', noshow: '🚫 не прийшли', cancel: '↩️ скасовано' };
@@ -547,13 +571,14 @@
   async function loadView(silent) {
     try {
       if (S.view === 'kq') await loadKq();
-      if (S.view === 'cash' && S.cashTab !== 'checks') S.data.shift = await api('shift');
+      if (S.view === 'cash' && S.cashTab !== 'checks') { S.data.shift = await api('shift'); if (isAdmin()) S.data.cours = await api('courList').catch(() => null); }
       if (S.view === 'closed' || (S.view === 'cash' && S.cashTab === 'checks')) { const r = await api('closed', { day: S.cday || '' }); S.data.closed = r.list; S.data.cvoids = r.voids || []; S.data.cday = r.day; S.data.ctoday = r.today; }
       if (S.view === 'reports') { if (!S.menu) await loadMenu(); if (S.rep.tab === 'plus') { const [from, to] = perRange(S.sk.p); S.data.skRep = await api('skReport', { from, to }, 30000); } else await loadReport(); }
+      if (S.view === 'go' && isCour()) await loadCour();
       if (S.view === 'books') await loadBooks();
       if (S.view === 'calc') await loadCalc();
       if (S.view === 'team') { await loadPay(); S.data.staff = await api('staff'); }
-      if (S.view === 'settings') { S.data.staff = await api('staff'); S.data.wifi = await api('wifi'); S.data.gocfg = (await api('goCfg')).cfg; S.data.site = (await api('siteGet')).site; S.data.rates = await api('siteRates', { from: iso(Date.now() - 30 * 864e5), to: todayK() }).catch(() => null); if (!S.menu) await loadMenu(); }
+      if (S.view === 'settings') { S.data.staff = await api('staff'); S.data.wifi = await api('wifi'); S.data.gocfg = (await api('goCfg')).cfg; S.data.cours = await api('courList').catch(() => null); S.data.site = (await api('siteGet')).site; S.data.rates = await api('siteRates', { from: iso(Date.now() - 30 * 864e5), to: todayK() }).catch(() => null); if (!S.menu) await loadMenu(); }
       if (['stop', 'menu'].includes(S.view) && !S.menu) await loadMenu();
     } catch {}
     renderMain();
@@ -664,7 +689,12 @@
   function cashHTML() {
     const ctab = S.cashTab || 'day', cseg = `<div class="seg rsec cseg">${[['day', '💰 Сьогодні'], ['checks', '🧾 Чеки']].map(([k, l]) => `<button class="${ctab === k ? 'on' : ''}" data-a="cashTab" data-t="${k}">${l}</button>`).join('')}</div>`;
     if (ctab === 'checks') return cseg + closedHTML();
-    return cseg + cashHTML0();
+    return cseg + courCard() + cashHTML0();
+  }
+  // 🛵 кур'єри: готівка на руках, «отримав»
+  function courCard() {
+    const L = S.data.cours?.list?.filter(c => c.n || c.left) || []; if (!L.length) return '';
+    return `<div class="card cr-adm"><h3>🛵 Кур'єри сьогодні</h3>${L.map(c => `<div class="kv"><span><b>${esc(c.name)}</b> ${c.tg ? '✈️' : ''}<br><small class="muted">${c.n} доставок${c.avg != null ? ` · ⌀ ${c.avg} хв у дорозі` : ''} · заробіток ${money(c.earn)}${c.given ? ` · здав ${money(c.given)}` : ''}</small></span><span class="kv-r"><b class="money">${money(c.left)}</b>${c.left > 0 ? `<button class="btn sm green" data-a="crGive" data-n="${esc(c.name)}" data-v="${c.left}">✅ Отримав</button>` : ''}</span></div>`).join('')}</div>`;
   }
   function cashHTML0() {
     const r = S.data.shift; if (!r) return '<div class="head"><h1>Каса</h1></div><div class="muted">Завантаження…</div>';
@@ -961,7 +991,9 @@
       <div class="card"><h3>🎁 Бонуси за телефоном</h3>${row('cash', '💸 Кешбек', c.cash + '%', 'Нараховується при закритті чека (сайт, каса, зал)')}${row('bmax', '🎟 Бонусами можна оплатити до', c.bmax + '%', 'від суми замовлення')}</div>
       <div class="card"><h3>🔗 Посилання для гостей</h3><div class="muted set-note">Інстаграм, Google Maps, месенджери — гість відкриває і замовляє з собою. Окремі посилання показують у звітах, звідки прийшло замовлення.</div>
         <div class="btnrow"><button class="btn sm primary" data-a="goLink">📋 Основне</button><button class="btn sm" data-a="goLink" data-src="insta">Instagram</button><button class="btn sm" data-a="goLink" data-src="google">Google</button><button class="btn sm" data-a="goLink" data-src="tiktok">TikTok</button></div>
-        <div class="muted set-note" style="margin-top:8px">Кур'єри реєструються в касі кодом <b>${esc(S.data.staff?.reg?.courier || '1114')}</b>.</div></div></div>`;
+</div>
+      <div class="card"><h3>🛵 Кур'єри</h3><div class="muted set-note">Реєстрація в касі кодом <b>${esc(S.data.staff?.reg?.courier || '1114')}</b> → у своєму екрані кур'єр натискає «✈️ Підключити Telegram». Бот кур'єрів: ${S.data.cours?.bot ? `<a href="https://t.me/${esc(S.data.cours.bot)}" target="_blank" rel="noopener">@${esc(S.data.cours.bot)}</a>` : '—'}</div>
+        ${(S.data.cours?.list || []).map(c => `<div class="kv"><span>${esc(c.name)}</span><span class="kv-r">${c.tg ? '✈️ Telegram підключено' : '<span class="muted">без Telegram</span>'}</span></div>`).join('') || '<div class="muted">Кур\'єрів ще немає</div>'}</div></div>`;
   }
   function lookHTML() {
     const L = look(), opt = (k, v, l, extra = '') => `<button class="lk-o${L[k] == v ? ' on' : ''}" data-a="look" data-k="${k}" data-v="${v}"${extra}>${l}</button>`;
@@ -981,7 +1013,7 @@
   }
   function settingsHTML(only) {
     const st = S.data.staff, wf = S.data.wifi, c = st?.cfg || {};
-    const ROLE = { admin: '🔐 адмін', cook: '👨‍🍳 кухар', waiter: '🧑‍🍳 офіціант' };
+    const ROLE = { admin: '🔐 адмін', cook: '👨‍🍳 кухар', courier: '🛵 кур\'єр', waiter: '🧑‍🍳 офіціант' };
     const row = (l, v, btn, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ''}</span><span class="kv-r"><b>${v}</b>${btn}</span></div>`;
     const ch = (a, extra = '') => `<button class="btn sm" data-a="${a}"${extra}>змінити</button>`;
     const staff = st ? [...st.staff].sort((a, b) => (a.role || '').localeCompare(b.role || '') || a.name.localeCompare(b.name)) : null;
@@ -1518,7 +1550,7 @@
       body = `<div class="card">${gridHTML(G, people, true)}<div class="zp-leg muted">Тап: майбутнє — ● заплановано, сьогодні й раніше — ✅ був; ще раз — скасувати · 🕓 чекає · ⏰ запізнення · 🚫 прогул · ⚠️ закрито автоматично</div>
         <div class="btnrow"><button class="btn sm primary" data-a="zpAddP">➕ Додати в графік</button><button class="btn sm" data-a="zpCopy">📋 Скопіювати минулий тиждень</button></div></div>${sw ? `<div class="card"><h3>🔁 Обміни змінами</h3>${sw}</div>` : ''}`;
     } else if (tab === 'pay') {
-      const role = r => r.role === 'cook' ? 'кухар' : r.role === 'admin' ? 'адмін' : 'офіціант';
+      const role = r => r.role === 'cook' ? 'кухар' : r.role === 'admin' ? 'адмін' : r.role === 'courier' ? 'кур\'єр' : 'офіціант';
       const cond = p => !p.rate && !p.pct ? '<span class="warn">ставку не задано</span>' : `${p.rate ? money(p.rate) + '/зміна' : ''}${p.pct ? ` · ${p.pct}% ${{ all: 'виручки', own: 'своїх чеків', kitchen: 'кухні' }[p.base || 'all']}` : ''}${p.dayRev || p.monRev ? ' · 🎯' : ''}`;
       body = `<div class="card zp-pay"><div class="zp-pr th"><span>Працівник</span><span>Змін</span><span>Нараховано</span><span>Видано</span><span>До виплати</span><span></span></div>
         ${rows.map(r => { const open = S.zpOpen === r.n, ln = (l, v, c = '') => `<div class="kv ${c}"><span>${l}</span><b class="money">${v}</b></div>`;
@@ -1726,6 +1758,14 @@
       case 'goSt': if (await act('goSt', { t, st: el.dataset.s }, '✔ ' + GOST[el.dataset.s])) loadState().catch(() => {}); break;
       case 'goDone': goDone(t); break;
       case 'goDoneT': goDone(+el.dataset.t); break;
+      case 'crGive': { const v = await askVal(`💵 Скільки отримано від ${el.dataset.n}?`, el.dataset.v, 'number'); if (!v) break; if (await act('courCash', { n: el.dataset.n, sum: +v }, '✅ Записано')) loadView(); break; }
+      case 'crTab': S.courTab = el.dataset.t; renderMain(); break;
+      case 'crAct': { const x = el.dataset.x; if (await act('courAct', { t: +el.dataset.t, act: x, arg: el.dataset.v }, { take: '✋ Ваша доставка', road: '🛵 В дорозі', eta: '⏱ Гостю надіслано', km: '💬 Кухні надіслано' }[x])) { if (x === 'take') S.courTab = 'mine'; await loadState().catch(() => {}); await loadCour().catch(() => {}); } break; }
+      case 'crDone': { const tt = +el.dataset.t, b = S.tables[tt]; const pay = b?.go?.paid ? 'card' : await choose(`🤝 ${tn(tt)} видано`, `До сплати ${money(b.pay2)}${b.go.change ? ` · решта з ${b.go.change}` : ''}`, [{ label: '💵 Готівка', val: 'cash', cls: 'green' }, { label: '💳 Картка', val: 'card', cls: 'blue' }]); if (!pay) break;
+        if (await act('courAct', { t: tt, act: 'done', arg: pay }, '✅ Видано')) { await loadState().catch(() => {}); await loadCour().catch(() => {}); } break; }
+      case 'crProb': { const v = await choose('⚠️ Що сталось?', 'Адмін отримає сповіщення', [{ label: '📵 Гість не відповідає', val: 'noans' }, { label: '📍 Невірна адреса', val: 'addr' }, { label: '🙅 Гість відмовився', val: 'refuse', cls: 'red' }, { label: '✏️ Інше…', val: 'own' }]); if (!v) break;
+        const arg = v === 'own' ? await ask('⚠️ Опишіть проблему') : v; if (arg && await act('courAct', { t: +el.dataset.t, act: 'prob', arg }, '⚠️ Адміна повідомлено')) loadState().catch(() => {}); break; }
+      case 'crTg': { const r = await act('courTg'); if (r?.url) { window.open(r.url, '_blank'); toast('✈️ Натисніть «Start» у боті'); setTimeout(() => loadCour().catch(() => {}), 15000); } break; }
       case 'goTake': if (await act('goCour', { t: +el.dataset.t }, '✋ Ваша доставка')) { await loadState().catch(() => {}); renderMain(); } break;
       case 'goRoad': if (await act('goSt', { t: +el.dataset.t, st: 'road' }, '🛵 В дорозі')) { await loadState().catch(() => {}); renderMain(); } break;
       case 'goCourSet': { const n = await ask('👤 Кур\'єр (імʼя)', S.tables[t]?.go?.cour || ''); if (n != null && await act('goCour', { t, n }, '✔')) loadState().catch(() => {}); break; }
@@ -1982,12 +2022,12 @@
   async function start() {
     $('#login').hidden = true; $('#app').hidden = false;
     renderNav(); $('#main').innerHTML = '<div class="muted">Завантаження…</div>';
-    try { await loadState(); } catch { return; }
-    loadMenu().catch(() => {});
+    try { await loadState(); } catch (e) { console.error('start', e); return; }
+    if (!isCour()) loadMenu().catch(() => {});
     connect();
-    document.body.classList.toggle('cook', isCook());
+    document.body.classList.toggle('cook', isCook()); document.body.classList.toggle('cour', isCour());
     if (isCook()) { S.view = 'kq'; renderNav(); loadKq().catch(() => {}); kitchenGate(); }
-    if (isCour()) { S.view = 'go'; renderNav(); renderMain(); }
+    if (isCour()) { S.view = 'go'; renderNav(); loadCour().catch(() => {}); }
   }
   if (S.token) start(); else showLogin();
 })();

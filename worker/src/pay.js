@@ -197,7 +197,7 @@ export async function payApi(b, env, me) {
   const m = /^\d{4}-\d{2}$/.test(b.m || '') ? b.m : mon();
   switch (b.op) {
     case 'zpIn': return R(await shiftIn(env, who));
-    case 'zpOut': { const r = await shiftOut(env, who); if (r.x) await logEvent(env, { k: 'shift', by: who, text: `🔴 ${who} закінчив зміну (${Math.round((r.x.out - r.x.in) / 360e4 * 10) / 10} год)` }); return R(r); }
+    case 'zpOut': { const r = await shiftOut(env, who); if (me.role === 'courier') await (await import('./courier.js')).courShiftEnd(env, who).catch(() => {}); if (r.x) await logEvent(env, { k: 'shift', by: who, text: `🔴 ${who} закінчив зміну (${Math.round((r.x.out - r.x.in) / 360e4 * 10) / 10} год)` }); return R(r); }
     case 'zpMy': return ok(await myPay(env, who, m));
     case 'zpPeople': return ok({ list: (await getStaff(env)).map(s => s.name).filter(n => n !== who) });
     case 'zpSwap': return R(await swapAsk(env, who, b.day, String(b.to || '')));

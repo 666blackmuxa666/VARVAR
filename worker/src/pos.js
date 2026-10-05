@@ -5,6 +5,7 @@ import { tn, isGo } from './tn.js';
 import { goFromPos, goAttach, goButtons, fmtPhone, goApi } from './delivery.js';
 import { siteApi } from './siteapi.js';
 import { bookList } from './site.js';
+import { courDay, courBot, courLinkUrl, courAct, courCashGive, courWatch, getLinks, multiRoute } from './courier.js';
 import { queuePrint, printStatus } from './print.js';
 import { QR_PRINT, TEST_JOB } from './bot.js';
 import { storeStub } from './store.js';
@@ -47,15 +48,23 @@ export async function posApi(b, req, env) {
   if (me.role === 'cook' && !['logout', 'state', 'menu', 'fav', 'order', 'accept', 'reject', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'printTest'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
 
   // 🛵 кур'єр: лише свої доставки
-  if (me.role === 'courier' && !['logout', 'state', 'goSt', 'goCour'].includes(b.op)) return [{ error: 'Кур\'єр — лише доставки' }, 403];
+  if (me.role === 'courier' && !['logout', 'state', 'goSt', 'goCour', 'zpIn', 'zpOut', 'zpMy', 'courMe', 'courTg', 'courAct'].includes(b.op)) return [{ error: 'Кур\'єр — лише доставки' }, 403];
   if (/^go[A-Z]|^cli[A-Z]/.test(b.op || '')) return goApi(b, env, me, t);
   if (/^(bk|site|cert)[A-Z]/.test(b.op || '')) return siteApi(b, env, me, t);
+  if (/^cour[A-Z]/.test(b.op || '')) { // 🛵 кур'єр
+    if (b.op === 'courMe') return ok({ day: await courDay(env, b.n && admin ? String(b.n) : who), route: await multiRoute(env, who), bot: env.COURIER_BOT_TOKEN ? await courBot(env) : '', linked: !!(await getLinks(env))[who] });
+    if (b.op === 'courTg') return ok(await courLinkUrl(env, who));
+    if (b.op === 'courAct') { const r = await courAct(env, t, who, String(b.act), b.arg); return r.error ? [{ error: r.error }, 400] : ok(r); }
+    if (b.op === 'courList') { if (!admin) return needAdmin(); const st = (await getStaff(env)).filter(s => s.role === 'courier'), links = await getLinks(env); return ok({ list: await Promise.all(st.map(async s => ({ ...(await courDay(env, s.name)), name: s.name, tg: !!links[s.name] }))), bot: env.COURIER_BOT_TOKEN ? await courBot(env) : '' }); }
+    if (b.op === 'courCash') { if (!admin) return needAdmin(); const r = await courCashGive(env, String(b.n), +b.sum, who); await logEvent(env, { k: 'shift', by: who, text: `💵 Отримано від кур'єра ${b.n}: ${+b.sum} ₴` }); return ok({ r }); }
+  }
 
   switch (b.op) {
     case 'logout': await env.DB.delete('pos:' + token); return ok();
     case 'state': {
       if (me.role === 'cook') await markCook(env, me.name); // кухар на зміні — отримує частку чайових кухні
       await closeStale(env).catch(() => {});
+      if (!(await env.DB.get('cw'))) { await env.DB.put('cw', '1', { expirationTtl: 60 }); await courWatch(env).catch(() => {}); } // 🛵 ніхто не взяв — не частіше раз на хвилину
       { const sk = 'seen:' + dayKey().slice(0, 7), sn = (await env.DB.get(sk, 'json')) || []; if (!sn.includes(me.name)) { sn.push(me.name); await env.DB.put(sk, JSON.stringify(sn), { expirationTtl: 400 * 86400 }); } } // хто працював у касі цього місяця — у графіку
       const myAtt = (await getAtt(env))[dayKey()]?.[me.name] || null;
       let [rows, events, pr, shift, cl] = await Promise.all([openTables(env), getEvents(env), printStatus(env), getShift(env), getClosed(env)]);

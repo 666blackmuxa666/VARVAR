@@ -1,6 +1,7 @@
 import { aiHelp } from './ai.js';
 import { tn } from './tn.js';
 import { goOrder, goInfo, reco } from './delivery.js';
+import { courUpdate } from './courier.js';
 import { guestBot, guestCallback, guestText, guestHello, sitePublic, bookCreate, bookStatus, bookPre, certAsk, certPublic, meStart, mePoll, meData, meLogout, cron } from './site.js';
 // VARVAR — Cloudflare Worker: прийом замовлень, перевірка Wi‑Fi закладу, Telegram.
 // Secrets: BOT_TOKEN, CHAT_ID, ADMIN_PIN, TG_SECRET   Vars: ALLOWED_ORIGIN, TABLES, SELF_URL   KV: DB
@@ -19,7 +20,7 @@ const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;
 
 // 💸 запити, що працюють з базою, виконуються всередині Durable Object (store.js → Store.fetch):
 // там кожне читання/запис — локальне, а платний «запит до DO» — один на дію, а не 20–50
-const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|goinfo|reco|site|book|bookpre|cert|me|me\/start|me\/poll|me\/logout)$|tg$|tg2$|__cron$)/;
+const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|goinfo|reco|site|book|bookpre|cert|me|me\/start|me\/poll|me\/logout)$|tg$|tg2$|tg3$|__cron$)/;
 export default {
   async fetch(req, env) {
     const p = new URL(req.url).pathname;
@@ -98,6 +99,10 @@ export async function handle(req, env) {
       if (url.pathname === '/api/call' && req.method === 'POST') return json(...await callWaiter(await req.json(), ip, env));
       if (url.pathname === '/api/order' && req.method === 'POST') return json(...await order(await req.json(), ip, env));
       if (url.pathname === '/api/admin' && req.method === 'POST') return json(...await admin(await req.json(), ip, env));
+      if (url.pathname === '/tg3' && req.method === 'POST') { // 🛵 бот кур'єрів
+        if (req.headers.get('X-Telegram-Bot-Api-Secret-Token') !== env.TG_SECRET) return new Response('no', { status: 403 });
+        await courUpdate(await req.json(), env); return new Response('ok');
+      }
       if (url.pathname === '/tg2' && req.method === 'POST') { // 👤 бот гостей
         if (req.headers.get('X-Telegram-Bot-Api-Secret-Token') !== env.TG_SECRET) return new Response('no', { status: 403 });
         const u = await req.json(); if (u.callback_query) await guestCallback(u.callback_query, env); else if (u.message && !(await guestBot(u.message, env)) && !(await guestText(u.message, env)) && u.message.text) await guestHello(u.message, env);

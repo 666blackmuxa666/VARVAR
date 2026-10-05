@@ -3,6 +3,7 @@
 // Уся логіка — у ops.js (та сама, що в касовій програмі POS).
 import { getMenu, handleMenuText, handleMenuPhoto, HELP as MENU_HELP } from './menu.js';
 import { tn, isGo } from './tn.js';
+import { courCashGive } from './courier.js';
 import { bookList, bookSet, bkLabel, bkButtons, certPay, getSite, setSite } from './site.js';
 import { goSet, goStLabel, goButtons, goList, goText, setGoCfg, goFromPos, goAttach, normPhone, fmtPhone } from './delivery.js';
 import { parseWaiterOrder, draftText } from './waiter.js';
@@ -553,6 +554,10 @@ async function handleCallback(q, env) {
     if (oid === 'kit') { const b0 = (await bookList(env)).find(x => x.id === arg); if (!b0?.t) { await env.DB.put('st:' + uid, 'bkt:' + arg, { expirationTtl: 600 }); await send({ text: '🪑 Номер стола для передзамовлення?' }); return answer(''); } }
     const r = await bookSet(env, arg, oid, who); if (!r || r.error) return answer(r?.error || 'Не знайдено');
     return answer(bkLabel(oid === 'kit' ? 'ok' : oid));
+  }
+  if (act === 'cc') { // 🛵 адмін отримав готівку від кур'єра
+    if (!admin) return answer('🔐 Лише для адміністратора');
+    const n = decodeURIComponent(arg), r = await courCashGive(env, n, +oid, who); await edit(`${q.message?.text ? esc(q.message.text) : ''}\n\n✅ Отримав ${oid} ₴ — <b>${esc(who)}</b>`); return answer(r ? 'Записано' : '');
   }
   if (act === 'ct') { // 🎁 сертифікат оплачено / скасовано
     if (!admin) return answer('🔐 Лише для адміністратора');
