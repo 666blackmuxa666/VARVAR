@@ -323,7 +323,11 @@
   const goFood = () => cartEntries().reduce((s, [k, q]) => s + priceOf(k) * q, 0) + packSum();
   const goFee = () => gf.kind === 'del' && goCfg && !(goCfg.free && goFood() >= goCfg.free) ? goCfg.fee : 0;
   const goBonus = () => gf.useB ? Math.min(gf.bal, Math.floor(goFood() * (goCfg?.bmax || 0) / 100)) : 0;
-  const goTotal = () => goFood() + goFee() - goBonus();
+  const goTotal = () => Math.max(0, goFood() + goFee() - goBonus() - (gf.pr?.sum || 0));
+  // 🎁 акції й рівень клієнта — рахує сервер (/api/promo), тут лише показ; при замовленні сервер рахує наново
+  let prSeq = 0;
+  async function goPromo() { const n = ++prSeq, items = cartEntries().map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; });
+    try { const { status, data } = await api('/api/promo', { kind: gf.kind, phone: gf.phone, items }); if (n !== prSeq || status !== 200) return; const was = JSON.stringify(gf.pr || null); gf.pr = data.sum || data.lvl ? data : null; if (JSON.stringify(gf.pr) !== was && !$('#goModal').hidden) { goRead(); goForm(); } } catch {} }
   const GST = { new: ['⏳', 'goStNew'], acc: ['✅', 'goStAcc'], cook: ['🔥', 'goStCook'], ready: ['🍽', 'goStReady'], road: ['🛵', 'goStRoad'], done: ['🤝', 'goStDone'], rej: ['❌', 'goStRej'] };
   async function goInit() {
     $('#callBtn').hidden = true;
@@ -368,7 +372,7 @@
       <div class="seg2"><button class="${gf.pay === 'cash' ? 'on' : ''}" data-go-p="cash">💵 ${t('goCash')}</button><button class="${gf.pay === 'card' ? 'on' : ''}" data-go-p="card">💳 ${t('goCard')}</button></div>
       ${gf.pay === 'cash' ? `<label class="go-row"><span>💵 ${t('goChange')}</span><select id="gChange">${[0, 200, 500, 1000].map(v => `<option value="${v}" ${gf.change === v ? 'selected' : ''}>${v ? `${t('goFrom')} ${v}` : t('goNoChange')}</option>`).join('')}</select></label>` : ''}
       ${gf.bal > 0 && c.bmax ? `<label class="go-row go-bonus"><span>🎁 ${t('goBonus')} <b>${money(gf.bal)}</b></span><input type="checkbox" id="gUseB" ${gf.useB ? 'checked' : ''}></label>` : c.cash ? `<div class="go-note">🎁 ${t('goCashback')} ${c.cash}%</div>` : ''}
-      <div class="go-sum"><div><span>${t('goFood')}</span><b>${money(sum)}</b></div>${goFee() ? `<div><span>🛵 ${t('goDel')}</span><b>${money(goFee())}</b></div>` : gf.kind === 'del' ? `<div><span>🛵 ${t('goDel')}</span><b>0</b></div>` : ''}${goBonus() ? `<div><span>🎁 ${t('goBonusUse')}</span><b>−${money(goBonus())}</b></div>` : ''}<div class="tot"><span>${t('total')}</span><b>${money(goTotal())}</b></div></div>
+      <div class="go-sum"><div><span>${t('goFood')}</span><b>${money(sum)}</b></div>${goFee() ? `<div><span>🛵 ${t('goDel')}</span><b>${money(goFee())}</b></div>` : gf.kind === 'del' ? `<div><span>🛵 ${t('goDel')}</span><b>0</b></div>` : ''}${(gf.pr?.lines || []).filter(l => l.amt).map(l => `<div><span>${esc(l.n)}</span><b>−${money(l.amt)}</b></div>`).join('')}${goBonus() ? `<div><span>🎁 ${t('goBonusUse')}</span><b>−${money(goBonus())}</b></div>` : ''}<div class="tot"><span>${t('total')}</span><b>${money(goTotal())}</b></div></div>
       ${min ? `<div class="go-err">${t('goMinSum')} ${money(c.min)}</div>` : ''}<div class="msg" id="goMsg"></div>
       <button class="btn" data-go-send ${min ? 'disabled' : ''}>${t('goSend')} · ${money(goTotal())}</button>`;
   }
@@ -385,7 +389,7 @@
         items: [...items.map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; }), ...(packId && packQty() ? [{ id: packId, q: packQty() }] : [])] });
       if (status !== 200) { m.textContent = { closed: `${t('goClosed')} ${data.from}–${data.to}`, min: `${t('goMinSum')} ${money(data.min || 0)}`, rate: t('wait'), contact: t('goNeedContact'), addr: t('goNeedAddr'), off: t('goOff') }[data.error] || t('error'); return; }
       goHist.push({ id: data.id, no: data.no, ts: Date.now(), at: new Date().toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' }), sum: data.sum, items: items.map(([k, q]) => [k, q]), g: 'new', eta: Date.now() + data.eta * 60e3 });
-      cart = {}; packAdj = 0; gf.useB = false; gf.bal = 0; $('#comment').value = ''; save(); goSave();
+      cart = {}; packAdj = 0; gf.useB = false; gf.pr = null; gf.bal = 0; $('#comment').value = ''; save(); goSave();
       $('#goModal').hidden = true; refreshButtons(); renderFab(); renderCart(); goShow(data.id);
     } catch { m.textContent = t('error'); } finally { busy = false; }
   }
@@ -407,8 +411,8 @@
   }
   function goClick(el) {
     const d = el.dataset;
-    if ('goOut' in d) { goRead(); goForm(); delete $('#goModal').dataset.show; $('#goModal').hidden = false; goBal(); return true; }
-    if (d.goK) { goRead(); gf.kind = d.goK; goForm(); return true; }
+    if ('goOut' in d) { goRead(); goForm(); delete $('#goModal').dataset.show; $('#goModal').hidden = false; goBal(); goPromo(); return true; }
+    if (d.goK) { goRead(); gf.kind = d.goK; goForm(); goPromo(); return true; }
     if (d.goP) { goRead(); gf.pay = d.goP; goForm(); return true; }
     if (d.goCut) { goRead(); gf.cut = Math.max(0, Math.min(20, gf.cut + +d.goCut)); goForm(); return true; }
     if ('goSend' in d) { goSend(); return true; }
@@ -422,7 +426,7 @@
     return false;
   }
   document.addEventListener('change', e => { if (!GO) return; if (e.target.id === 'gUseB' || e.target.id === 'gWhen' || e.target.id === 'gChange') { goRead(); goForm(); } });
-  document.addEventListener('focusout', e => { if (GO && e.target.id === 'gPhone') { goRead(); goBal(); } });
+  document.addEventListener('focusout', e => { if (GO && e.target.id === 'gPhone') { goRead(); goBal(); goPromo(); } });
 
   // ---------- події ----------
   document.addEventListener('click', e => {

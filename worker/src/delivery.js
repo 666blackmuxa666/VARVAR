@@ -5,6 +5,7 @@ import { tg, esc, hhmm, dayKey, getBill, putBill, billItems, payable, logEvent, 
 import { GO_DEL, GO_PICK, isGo, tn } from './tn.js';
 import { courNotify } from './courier.js';
 import { getSite } from './site.js';
+import { promoFill } from './promo.js';
 
 const BILL_TTL = 2 * 86400;
 // ⚙️ налаштування доставки (окремо від cfg — тут є текст і час)
@@ -28,8 +29,8 @@ export const fmtPhone = p => p ? `+${p.slice(0, 3)} ${p.slice(3, 5)} ${p.slice(5
 export const getCli = async (env, ph) => ph ? (await env.DB.get('cli:' + ph, 'json')) || null : null;
 export async function cliTouch(env, ph, fn) { return L(env, 'cli:' + ph, async () => { const c = (await getCli(env, ph)) || { n: 0, sum: 0, bal: 0, addr: [] }; fn(c); await env.DB.put('cli:' + ph, JSON.stringify(c)); return c; }); }
 // чек закрито: списані бонуси — з балансу, кешбек — на баланс
-export async function cliClose(env, ph, paid, used, name) {
-  if (!ph) return null; const pct = (await getGoCfg(env)).cash, add = Math.floor(paid * pct / 100);
+export async function cliClose(env, ph, paid, used, name, lvCash) {
+  if (!ph) return null; const pct = lvCash > 0 ? lvCash : (await getGoCfg(env)).cash, add = Math.floor(paid * pct / 100);
   return cliTouch(env, ph, c => { c.bal = Math.max(0, (c.bal || 0) - (used || 0)) + add; c.n++; c.sum += paid; c.last = Date.now(); if (name) c.name = name; c.lastAdd = add; });
 }
 
@@ -110,16 +111,18 @@ export async function goOrder(b, ip, env) {
     if (bonus) bill.bonus = bonus;
     if (pay !== 'online') { bill.check = true; bill.pay = pay === 'card' ? 'card' : 'cash'; }
     bill.log = [{ at: hhmm(), kind: TYPES[kind].toLowerCase(), lines: all, comment, oid }];
+    await promoFill(env, bill).catch(() => {}); // 🎁 акції й рівень — рахує сервер (promo.js), після log
     await putBill(env, t, bill); return { t, bill };
   });
+  const pr = r.bill.promo?.sum || 0, prL = (r.bill.promo?.lines || []).filter(l => l.amt).map(l => `🎁 ${l.n} −${l.amt}`);
   const { t } = r, pl = { cash: '💵 готівка', card: '💳 картка при отриманні', online: '💳 онлайн' }[pay];
   const msg = [`${kind === 'del' ? '🛵' : '🥡'} <b>${TYPES[kind]} ${tn(t)}</b>${when ? ` · <b>на ${when}</b>` : ''}`,
     `👤 ${esc(name)} · <a href="tel:+${phone}">${fmtPhone(phone)}</a>`, kind === 'del' ? `📍 ${esc(addr)}${ent ? ` (${esc(ent)})` : ''}` : '',
-    '', ...lines.map(esc), fee ? `🛵 Доставка — ${fee}` : '', `Сума: <b>${sum + fee - bonus} грн</b>${bonus ? ` (−${bonus} бонусами)` : ''}`,
+    '', ...lines.map(esc), fee ? `🛵 Доставка — ${fee}` : '', ...prL.map(esc), `Сума: <b>${sum + fee - bonus - pr} грн</b>${bonus ? ` (−${bonus} бонусами)` : ''}`,
     `Оплата: <b>${pl}</b>${change ? ` · решта з ${change}` : ''}`, cut ? `🍴 Прибори: ${cut}` : '', note ? `💬 ${esc(note)}` : ''].filter(x => x !== '').join('\n');
   await Promise.all([
     env.DB.put('ord:' + oid, JSON.stringify({ s: 'new', g: 'new', t, html: msg, lines, comment, kind: TYPES[kind], sum, sold, go: 1, eta: Date.now() + c.prep * 60e3 }), { expirationTtl: BILL_TTL }),
-    logEvent(env, { k: 'guest', t, oid, s: 'new', kind: `${TYPES[kind]}${when ? ' на ' + when : ''}`, lines, comment: [name, fmtPhone(phone), kind === 'del' ? addr : '', pl, change ? `решта з ${change}` : ''].filter(Boolean).join(' · '), sum: sum + fee - bonus, go: kind }),
+    logEvent(env, { k: 'guest', t, oid, s: 'new', kind: `${TYPES[kind]}${when ? ' на ' + when : ''}`, lines, comment: [name, fmtPhone(phone), kind === 'del' ? addr : '', pl, change ? `решта з ${change}` : ''].filter(Boolean).join(' · '), sum: sum + fee - bonus - pr, go: kind }),
     addStat(env, 'orders', 1), addDishes(env, sold),
     env.DB.put(rk, String(rn + 1), { expirationTtl: 600 }),
     cliTouch(env, phone, x => { x.name = name; if (addr && !x.addr.includes(addr)) x.addr = [addr, ...x.addr].slice(0, 5); }),
@@ -128,7 +131,7 @@ export async function goOrder(b, ip, env) {
     { text: '✅ Прийняв', callback_data: `acc:${t}:${oid}` }, { text: '❌ Відхилити', callback_data: `rej:${t}:${oid}` }]] } }).catch(() => null);
   const mid = res && await res.json().then(j => j.result?.message_id).catch(() => null);
   if (mid) await L(env, 'ord:' + oid, async () => { const o = await env.DB.get('ord:' + oid, 'json'); if (o) await env.DB.put('ord:' + oid, JSON.stringify({ ...o, mid }), { expirationTtl: BILL_TTL }); });
-  return [{ ok: true, id: oid, t, no: tn(t), sum: sum + fee - bonus, eta: c.prep }, 200];
+  return [{ ok: true, id: oid, t, no: tn(t), sum: sum + fee - bonus - pr, ...(pr ? { promo: pr } : {}), eta: c.prep }, 200];
 }
 
 // 🛵 замовлення з каси/бота (дзвінок): клієнт до першого «Замовити» — новий віртуальний стіл

@@ -9,6 +9,7 @@ import { goSet, goStLabel, goButtons, goList, goText, setGoCfg, goFromPos, goAtt
 import { parseWaiterOrder, draftText } from './waiter.js';
 import { tablePick, catsView, obCallback, getOb, putOb } from './orderui.js';
 import { queuePrint, printStatus } from './print.js';
+import { loyBotText, loyBotCb, promoFill, promoFillMany } from './promo.js';
 import { payroll, payText, payOp, attConfirm, swapStep, shiftIn, shiftOut, getAtt } from './pay.js';
 import { calcView, stockCmd, invPhoto, stockCallback, stockCallbackW, stockCallbackX, stockState } from './stockbot.js';
 import {
@@ -23,13 +24,13 @@ export { addStat, addDishes } from './ops.js';
 const ADMIN_TTL = 12 * 3600;
 
 // ---------- клавіатури ----------
-const W = { order: '➕ Замовлення', kitchen: '👨‍🍳 Кухня', tables: '📋 Столи', close: '🧾 Закрити стіл', stop: '⛔ Стоп-лист', help: '❓ Допомога', admin: '🔐 Адмін', go: '🛵 Доставка', book: '📅 Броні' };
+const W = { loy: '🎁 Гості й акції', order: '➕ Замовлення', kitchen: '👨‍🍳 Кухня', tables: '📋 Столи', close: '🧾 Закрити стіл', stop: '⛔ Стоп-лист', help: '❓ Допомога', admin: '🔐 Адмін', go: '🛵 Доставка', book: '📅 Броні' };
 const A = { cash: '💰 Каса', expense: '💸 Витрата', reports: '📊 Звіти', closed: '📜 Закриті сьогодні', top: '🏆 Топ страв', del: '🗑 Видалити стіл', menu: '📖 Редагувати меню', wifi: '📶 Wi‑Fi',
   staff: '👥 Персонал', pass: '🔑 Змінити пароль', wpass: '🔑 Пароль офіціанта', waiter: '⬅️ Режим офіціанта', logout: '🚪 Вийти',
   calc: '🧮 Розрахунок', pay: '👷 Зарплата', delClosed: '🧹 Видалити закритий', reset: '♻️ Обнулити все' }; // ТЕСТ: delClosed і reset — прибрати, коли скаже власник
 const kb = rows => ({ keyboard: rows.map(r => r.map(text => ({ text }))), resize_keyboard: true, is_persistent: true });
-export const KEYBOARD = kb([[W.order], [W.tables, W.close], [W.kitchen, W.go], [W.stop, W.book], [W.help, W.admin]]);
-const ADMIN_KB = kb([[W.order], [A.cash, A.expense], [A.reports, A.closed], [A.calc, A.pay], [A.top, A.del], [W.tables, W.stop], [W.kitchen, W.go], [W.book], [A.menu, A.wifi], [A.staff, A.wpass], [A.delClosed, A.reset], [A.pass, A.waiter, A.logout]]);
+export const KEYBOARD = kb([[W.order], [W.tables, W.close], [W.kitchen, W.go], [W.stop, W.book], [W.loy], [W.help, W.admin]]);
+const ADMIN_KB = kb([[W.order], [A.cash, A.expense], [A.reports, A.closed], [A.calc, A.pay], [A.top, A.del], [W.tables, W.stop], [W.kitchen, W.go], [W.book, W.loy], [A.menu, A.wifi], [A.staff, A.wpass], [A.delClosed, A.reset], [A.pass, A.waiter, A.logout]]);
 
 export const COMMANDS = [
   ['tables', 'Відкриті столи і рахунки'], ['table', 'Деталі столу: /table 5'], ['close', 'Закрити рахунок столу'],
@@ -43,6 +44,7 @@ ${W.order} — записати замовлення кнопками: стіл 
 ${W.tables} — відкриті столи і суми (у столі: пречек, знижка, перенос, редагування)
 ${W.close} — закрити рахунок (гість розрахувався)
 ${W.stop} — чого немає / повернути в меню
+${W.loy} — рівні й акції; <code>клієнт 0501234567</code> — картка гостя
 ${W.admin} — режим адміністратора (за паролем)
 <code>принтер</code> — стан принтера, тестовий друк, QR
 
@@ -92,10 +94,12 @@ const msgId = async r => { try { return (await r.json()).result?.message_id; } c
 const chunk = (a, n) => a.reduce((r, x, i) => (i % n ? r[r.length - 1].push(x) : r.push([x]), r), []);
 
 // ---------- екрани ----------
-const billSum = b => b.disc ? `${money(payable(b))} <i>(знижка ${b.disc}%)</i>` : money(b.total);
+const billSum = b => b.disc || b.promo?.sum ? `${money(payable(b))} <i>(${[b.disc ? `знижка ${b.disc}%` : '', b.promo?.sum ? `🎁 акції −${b.promo.sum}` : ''].filter(Boolean).join(', ')})</i>` : money(b.total);
+const promoTxt = b => (b.promo?.lines || []).filter(l => l.amt || !l.info).map(l => `\n🎁 ${esc(l.n)}${l.amt ? ` −${money(l.amt)}` : ''}`).join(''); // акції й рівень (promo.js)
 async function tablesView(env) {
   const rows = await openTables(env);
   if (!rows.length) return { text: '📋 Відкритих столів немає' };
+  await promoFillMany(env, rows.map(r => r.b));
   const sum = rows.reduce((s, r) => s + payable(r.b), 0);
   return {
     text: `📋 <b>Відкриті столи</b>\n` + rows.map(r => `🪑 Стіл ${tn(r.t)} — <b>${billSum(r.b)}</b> · замовлень: ${r.b.orders}${r.b.opened ? ` · з ${hhmm(r.b.opened)}` : ''}${r.b.check ? ' · 🧾 чек' : ''}`).join('\n') + `\n\nРазом у залі: <b>${money(sum)}</b>`,
@@ -105,9 +109,10 @@ async function tablesView(env) {
 async function tableView(env, t) {
   const b = await getBill(env, t);
   if (!b.total) return { text: `🪑 Стіл ${tn(t)}: відкритого рахунку немає` };
+  await promoFill(env, b).catch(() => {});
   const log = (b.log || []).map(o => `<b>${o.at}</b> ${esc(o.kind)}\n${o.lines.map(esc).join('\n')}${o.comment ? `\n💬 ${esc(o.comment)}` : ''}`).join('\n\n');
   return {
-    text: `🪑 <b>Стіл ${tn(t)}</b> — ${billSum(b)}${b.disc ? `\nСума ${money(b.total)} − знижка ${b.disc}% (${money(discAmt(b))})` : ''}${b.tip ? `\n💝 Чайові: ${money(b.tip)}` : ''}${b.ktip ? `\n👨‍🍳 Подяка кухні: ${money(b.ktip)}` : ''}${b.tip || b.ktip ? ` (разом ${money(payable(b) + (b.tip || 0) + (b.ktip || 0))})` : ''}${b.check ? ' · 🧾 просять чек' : ''}\n\n${log || '(деталі недоступні)'}`,
+    text: `🪑 <b>Стіл ${tn(t)}</b> — ${billSum(b)}${b.disc ? `\nСума ${money(b.total)} − знижка ${b.disc}% (${money(discAmt(b))})` : ''}${promoTxt(b)}${b.tip ? `\n💝 Чайові: ${money(b.tip)}` : ''}${b.ktip ? `\n👨‍🍳 Подяка кухні: ${money(b.ktip)}` : ''}${b.tip || b.ktip ? ` (разом ${money(payable(b) + (b.tip || 0) + (b.ktip || 0))})` : ''}${b.check ? ' · 🧾 просять чек' : ''}\n\n${log || '(деталі недоступні)'}`,
     markup: { inline_keyboard: [
       [{ text: '🖨 Пречек', callback_data: 'pre:' + t }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + t }],
       [{ text: '➕ Дозамовити', callback_data: 'o:t:' + t }, { text: '✏️ Редагувати чек', callback_data: 'ed:' + t }],
@@ -130,6 +135,7 @@ const PAY_PICK = { cash: '💵 готівка', card: '💳 карта' };
 async function closeAsk(env, t) {
   const b = await getBill(env, t);
   if (!b.total) return { text: `Стіл ${tn(t)} вже закритий.` };
+  await promoFill(env, b).catch(() => {});
   return { text: `🧾 Закрити <b>стіл ${tn(t)}</b> на <b>${billSum(b)}</b>?${b.pay ? `\nГість хоче платити: ${PAY_PICK[b.pay]}` : ''}${b.tip ? `\n💝 Чайові: <b>${money(b.tip)}</b> → разом ${money(payable(b) + b.tip)}` : ''}\n\nЯк оплатили?`, markup: payButtons(t) };
 }
 const closedText = r => r ? `✅ <b>Стіл ${tn(r.t)} закрито</b> — ${money(r.sum)}${r.tip ? ` + 💝 ${money(r.tip)} чайові` : ''}${r.disc ? ` (знижка ${money(r.disc)})` : ''} · ${payLabel(r.cash, r.card)}` : 'Стіл вже закритий.';
@@ -558,6 +564,7 @@ export async function handleUpdate(u, env) {
     else if (k === 'акція') { const dm = v.match(/^видалити\s+(\d+)$/i); r = dm ? await setSite(env, 'promoDel', s0.promos[+dm[1] - 1]?.id) : await setSite(env, 'promoAdd', { t: v.split(/\s+[—-]\s+/)[0], d: v.split(/\s+[—-]\s+/).slice(1).join(' — ') }); }
     else { const K = { 'телефон': 'phone', 'адреса': 'addr', 'опис': 'about', 'слоган': 'tagline', 'назва': 'name', 'інстаграм': 'insta', 'телеграм': 'tg', 'банкети': 'banquet', 'кальяни': 'hookah', 'відгуки': 'reviewsUrl' }[k]; if (!K) return send({ text: '⚠️ Невідоме поле. Напишіть «сайт» — список команд.' }); r = await setSite(env, K, v); }
     return send({ text: r.error ? '⚠️ ' + r.error : '✅ Збережено — уже на сайті' }); } }
+  { const r = await loyBotText(env, text === W.loy ? 'акції' : text, admin); if (r) return send(r); } // 🎁 клієнт 050… / клієнт Іван / акції (promo.js)
   if (text === W.go || low === '/go' || low === 'доставка') { const l = await goList(env, await openTables(env)); await send({ text: goText(l) }); for (const g of l) await send({ text: `<b>${tn(g.t)}</b> · ${esc(g.name)} · ${goStLabel(g.st)}`, markup: { inline_keyboard: [...goButtons(g), ...(admin ? [[{ text: '✏️ Змінити', callback_data: 'goe:' + g.t }]] : [])] } }); return; }
   { const m = text.match(/^доставка\s+(\S+)\s+(.+)$/i); if (m && admin) { // ⚙️ доставка мін 300 · доставка з 10:00 · доставка вимк
     const K = { 'увімк': ['on', 1], 'вимк': ['on', 0], 'з': 'from', 'до': 'to', 'мін': 'min', 'ціна': 'fee', 'безкоштовно': 'free', 'час': 'prep', 'телефон': 'phone', 'зона': 'zone', 'кешбек': 'cash', 'бонуси': 'bmax', 'курєр': 'cpay', "кур'єр": 'cpay' }[m[1].toLowerCase()];
@@ -679,6 +686,10 @@ async function handleCallback(q, env) {
       markup: { inline_keyboard: chunk(Object.entries(GO_F).filter(([f]) => g.kind === 'del' || !['addr', 'ent'].includes(f)).map(([f, t]) => ({ text: t, callback_data: `goef:${arg}:${f}` })), 3) } }); return answer(''); }
     if (!GO_F[oid]) return answer('');
     await env.DB.put('st:' + uid, `goe:${arg}:${oid}`, { expirationTtl: 600 }); await send({ text: `${GO_F[oid]}: ${GO_ASK[oid]}` }); return answer('');
+  }
+  if (['lcl', 'llv', 'lro'].includes(act)) { // 🎁 лояльність: картка клієнта, рівень, увімк/вимк акції
+    const r = await loyBotCb(env, act, arg, oid, admin, who); if (!r) return answer('');
+    if (r.send) await send(r.send); if (r.edit) await edit(r.edit.text, r.edit.markup); return answer(r.answer || '');
   }
   if (act === 'bkd') { if (!isDay(arg)) return answer(''); await booksSend(env, send, arg, arg); return answer(''); }
   if (act === 'bkdd') { await env.DB.put('st:' + uid, 'bkd', { expirationTtl: 600 }); await send({ text: '📆 Яка дата? <code>25.10</code> або період <code>25.10-30.10</code>' }); return answer(''); }

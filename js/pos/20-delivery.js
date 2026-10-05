@@ -36,8 +36,10 @@
     const r = await api('cliGet', { phone: ph }).catch(e => { toast('⚠️ ' + (e.message || 'номер?')); return null; }); if (!r) return;
     const c = r.cli || { n: 0, sum: 0, bal: 0 }, max = Math.min(c.bal || 0, Math.floor(b.total * (r.cfg.bmax || 0) / 100));
     if (!b.cli) await act('cliSet', { t, phone: r.phone });
-    const v = await choose(`🎁 ${c.name || fmtPh(r.phone)}`, `${c.n} замовл. · ${money(c.sum)} · бонусів ${money(c.bal || 0)} · кешбек ${r.cfg.cash}% нарахується при закритті`, [
-      ...(max > 0 ? [{ label: `Списати ${money(max)}`, val: 'use', cls: 'primary' }] : []), { label: '✕ Прибрати гостя', val: 'del', cls: 'red' }]);
+    if (!b.cli) await loadState().catch(() => {}); const pr = S.tables[t]?.promo; // 🎁 рівень і акції підставились сервером
+    const v = await choose(`🎁 ${c.name || fmtPh(r.phone)}`, `${pr?.lvn ? pr.lvn + ' · ' : ''}${c.n} замовл. · ${money(c.sum)} · бонусів ${money(c.bal || 0)}${c.bd ? ` · 🎂 ${c.bd.slice(3)}.${c.bd.slice(0, 2)}` : ''} · кешбек ${pr?.cash || r.cfg.cash}% нарахується при закритті${c.note ? ` · 📌 ${c.note}` : ''}`, [
+      ...(max > 0 ? [{ label: `Списати ${money(max)}`, val: 'use', cls: 'primary' }] : []), ...(r.cli ? [{ label: '👤 Картка клієнта', val: 'card' }] : []), { label: '✕ Прибрати гостя', val: 'del', cls: 'red' }]);
+    if (v === 'card') return loyCliCard(r.phone);
     if (v === 'use') await act('cliBonus', { t, sum: max }, '🎁 Бонуси списано'); else if (v === 'del') await act('cliSet', { t, phone: '' }, 'Прибрано');
     await loadState().catch(() => {});
   }

@@ -1,7 +1,7 @@
 // Черга друку для принтера в закладі (XP-80C через програму printer/varvar-print.ps1 на Windows).
 // Завдання = список рядків: [стиль, текст, текст-праворуч?]
 //   стилі: logo · big (великий жирний по центру) · c (по центру) · b (жирний) · l (звичайний) · lr (ліворуч + праворуч) · hr (риска) · gap
-import { hhmm, dayKey, discAmt } from './ops.js';
+import { hhmm, dayKey, discAmt, payable } from './ops.js';
 import { tn } from './tn.js';
 
 
@@ -66,6 +66,7 @@ export async function receipt(env, { table, bill, final, pay, by }) {
   const no = final ? await nextReceiptNo(env) : null;
   const fmt = t => new Date(t).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '');
   const count = [...agg.values()].reduce((s, a) => s + a.q, 0);
+  const pr = (bill.promo?.lines || []).filter(l => l.amt || !l.info); // 🎁 «подарунок: додайте» без суми теж друкуємо
   return [
     ['logo'],
     ['s', 'FOOD & BAR'],
@@ -79,10 +80,11 @@ export async function receipt(env, { table, bill, final, pay, by }) {
     ...[...agg].flatMap(([name, a]) => [['item', name, `${a.sum}`], ['sub', `${a.q} × ${Math.round(a.sum / a.q)} грн`]]),
     ['dbl'],
     ['lr', 'Позицій', String(count)],
-    ...(bill.disc ? [['lr', 'Сума', `${bill.total} грн`], ['lr', `Знижка ${bill.disc}%`, `−${discAmt(bill)} грн`]] : []),
-    ['total', final ? 'СПЛАЧЕНО' : 'ДО СПЛАТИ', `${bill.total - discAmt(bill)} грн`],
+    ...(bill.disc || pr.length || bill.bonus ? [['lr', 'Сума', `${bill.total} грн`]] : []), ...(bill.disc ? [['lr', `Знижка ${bill.disc}%`, `−${discAmt(bill)} грн`]] : []),
+    ...pr.map(l => ['lr', l.n, l.amt ? `−${l.amt} грн` : '']), ...(bill.bonus ? [['lr', bill.cert ? 'Сертифікат / бонуси' : 'Бонуси', `−${bill.bonus} грн`]] : []), // 🎁 акції й рівень (promo.js)
+    ['total', final ? 'СПЛАЧЕНО' : 'ДО СПЛАТИ', `${payable(bill)} грн`],
     ...(bill.tip ? [['lr', 'Чайові', `${bill.tip} грн`]] : []), ...(bill.ktip ? [['lr', 'Подяка кухні', `${bill.ktip} грн`]] : []),
-    ...(bill.tip || bill.ktip ? [['lr', 'Разом з чайовими', `${bill.total - discAmt(bill) + (bill.tip || 0) + (bill.ktip || 0)} грн`]] : []),
+    ...(bill.tip || bill.ktip ? [['lr', 'Разом з чайовими', `${payable(bill) + (bill.tip || 0) + (bill.ktip || 0)} грн`]] : []),
     ...(final && pay ? [['lr', 'Оплата', pay === 'card' ? 'Картка' : 'Готівка']] : []),
     ['gap'],
     ['c', 'Дякуємо, що завітали!'],

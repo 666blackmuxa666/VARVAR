@@ -1,6 +1,7 @@
 import { aiHelp } from './ai.js';
 import { tn } from './tn.js';
 import { goOrder, goInfo, reco } from './delivery.js';
+import { promoQuote, promoFill } from './promo.js';
 import { courUpdate } from './courier.js';
 import { guestBot, guestCallback, guestText, guestHello, sitePublic, bookCreate, bookStatus, bookPre, certAsk, certPublic, meStart, mePoll, meData, meLogout, cron } from './site.js';
 // VARVAR — Cloudflare Worker: прийом замовлень, перевірка Wi‑Fi закладу, Telegram.
@@ -20,7 +21,7 @@ const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;
 
 // 💸 запити, що працюють з базою, виконуються всередині Durable Object (store.js → Store.fetch):
 // там кожне читання/запис — локальне, а платний «запит до DO» — один на дію, а не 20–50
-const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|goinfo|reco|site|book|bookpre|cert|me|me\/start|me\/poll|me\/logout)$|tg$|tg2$|tg3$|__cron$)/;
+const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|goinfo|promo|reco|site|book|bookpre|cert|me|me\/start|me\/poll|me\/logout)$|tg$|tg2$|tg3$|__cron$)/;
 export default {
   async fetch(req, env) {
     const p = new URL(req.url).pathname;
@@ -41,11 +42,11 @@ export async function handle(req, env) {
       if (url.pathname === '/kitchen' || url.pathname === '/k') return new Response(KITCHEN_HTML, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' } }); // 👨‍🍳 старий iPad: http, без https
       if (url.pathname === '/api/status') {
         const table = tableNum(url.searchParams.get('table'), env);
-        const bill = table ? await getBill(env, table) : null;
+        const bill = table ? await getBill(env, table) : null; if (bill?.total) await promoFill(env, bill).catch(() => {}); // 🎁 акції — гостю теж
         // bill — актуальний рахунок (з урахуванням змін офіціанта: прибрані позиції, знижка, перенос)
         const si = await scanInfo(env, url.searchParams.get('device')), sc = si?.until || 0;
         return json({ inVenue: sc > Date.now() || await inVenue(env, ip), scanUntil: sc, scanT: sc > Date.now() ? si.t || 0 : 0, tableTotal: bill ? payable(bill) : undefined,
-          bill: bill && bill.total ? { items: billItems(bill).map(x => [x.name, x.q, x.sum]), gross: bill.total, disc: bill.disc || 0, pay: payable(bill), tip: bill.tip || 0, ktip: bill.ktip || 0 } : null });
+          bill: bill && bill.total ? { items: billItems(bill).map(x => [x.name, x.q, x.sum]), gross: bill.total, disc: bill.disc || 0, pay: payable(bill), ...(bill.promo?.sum ? { promo: bill.promo.lines.filter(l => l.amt).map(l => [l.n, l.amt]) } : {}), tip: bill.tip || 0, ktip: bill.ktip || 0 } : null });
       }
       if (url.pathname === '/api/scan' && req.method === 'POST') { // QR на столі → 1 година на замовлення
         const b = await req.json(); const dev = String(b.device || '').slice(0, 64);
@@ -95,6 +96,7 @@ export async function handle(req, env) {
       // 🛵 замовлення за посиланням (самовивіз / доставка)
       if (url.pathname === '/api/go' && req.method === 'POST') return json(...await goOrder(await req.json(), ip, env));
       if (url.pathname === '/api/goinfo') return json(await goInfo(env, url.searchParams.get('ph')));
+      if (url.pathname === '/api/promo' && req.method === 'POST') return json(await promoQuote(await req.json(), env)); // 🎁 знижки кошика ?go
       if (url.pathname === '/api/reco') return json(await reco(env));
       if (url.pathname === '/go') return Response.redirect((env.SITE_URL || 'https://666blackmuxa666.github.io/VARVAR/') + '?go' + (url.search ? '&' + url.search.slice(1) : ''), 302);
       if (url.pathname === '/api/call' && req.method === 'POST') return json(...await callWaiter(await req.json(), ip, env));
