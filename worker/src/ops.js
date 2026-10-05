@@ -2,7 +2,7 @@
 // Усе, що змінює столи/звіти/касу, — тут, щоб бот і POS завжди робили одне й те саме.
 import { getMenu, saveMenu, menuLock } from './menu.js';
 import { tn } from './tn.js';
-import { cliClose, goKitchen, goButtons } from './delivery.js';
+import { cliClose, goKitchen, goButtons, goGone } from './delivery.js';
 import { reviewQueue } from './site.js';
 import { courNotify } from './courier.js';
 import { queuePrint, kitchenTicket, receipt } from './print.js';
@@ -874,7 +874,12 @@ export async function rejectOrder(env, ...a) { // 🛵 доставка зник
   return o;
 }
 export async function addWaiterOrder(env, ...a) { return L(env, 'bills', () => _addWaiterOrder(env, ...a)); }
-export async function removeOne(env, ...a) { return L(env, 'bills', () => _removeOne(env, ...a)); }
+export async function removeOne(env, ...a) {
+  const b0 = +a[0] > 1000 ? await getBill(env, a[0]) : null, r = await L(env, 'bills', () => _removeOne(env, ...a));
+  if (b0?.go && r && !r.error) { const b1 = await getBill(env, a[0]); if (b1.total && billItems(b1).every(i => i.name.includes('Доставка'))) await L(env, 'bills', () => env.DB.delete('bill:' + a[0])); } // лишилась тільки доставка — чек зникає
+  if (b0?.go && r && !r.error && !(await getBill(env, a[0])).total) { await courNotify(env, a[0], 'gone', '', b0).catch(() => {}); await goGone(env, b0).catch(() => {}); } // прибрали все — доставка скасована
+  return r;
+}
 export async function closeTable(env, ...a) { return L(env, 'bills', () => _closeTable(env, ...a)); }
 export async function setDiscount(env, ...a) { return L(env, 'bills', () => _setDiscount(env, ...a)); }
 export async function setTip(env, ...a) { return L(env, 'bills', () => _setTip(env, ...a)); }
@@ -883,7 +888,7 @@ export async function restoreVoid(env, ...a) { return L(env, ['bills', 'void:' +
 export async function splitTable(env, ...a) { return L(env, 'bills', () => _splitTable(env, ...a)); }
 export async function deleteTable(env, ...a) {
   const b0 = a[0] > 1000 ? await getBill(env, a[0]) : null, r = await L(env, 'bills', () => _deleteTable(env, ...a));
-  if (r && b0?.go) await courNotify(env, a[0], 'gone', '', b0).catch(() => {}); // 🛵 кур'єру «скасовано»
+  if (r && b0?.go) { await courNotify(env, a[0], 'gone', '', b0).catch(() => {}); await goGone(env, b0).catch(() => {}); } // 🛵 кур'єру й гостю «скасовано»
   return r;
 }
 async function billBack(env, ...a) { return L(env, 'bills', () => _billBack(env, ...a)); }

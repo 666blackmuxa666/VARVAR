@@ -49,6 +49,12 @@ export const goStLabel = s => ST[s] || s;
 async function markOrd(env, oid, st, extra = {}) {
   if (!oid) return; await L(env, 'ord:' + oid, async () => { const o = await env.DB.get('ord:' + oid, 'json'); if (o) await env.DB.put('ord:' + oid, JSON.stringify({ ...o, g: st, gAt: Date.now(), ...extra }), { expirationTtl: BILL_TTL }); });
 }
+// 🛵 доставку скасовано в касі / боті (стіл видалено, відхилено, усе прибрано) — гість бачить «скасовано» і може замовити знову
+export async function goGone(env, b0) {
+  const g = b0?.go; if (!g?.oid) return;
+  await markOrd(env, g.oid, 'rej', { cancelled: 1 });
+  if (g.phone) { const { guestMsg } = await import('./site.js'); await guestMsg(env, g.phone, '😔 Ваше замовлення скасовано закладом. Якщо це помилка — зателефонуйте нам.').catch(() => {}); }
+}
 // змінити статус (каса, бот, кухня). done — закриває чек (pay: cash|card; онлайн-оплачене — завжди card)
 export async function goSet(env, t, st, who, { pay, cour } = {}) {
   if (!isGo(t) || !ST[st]) return null;
