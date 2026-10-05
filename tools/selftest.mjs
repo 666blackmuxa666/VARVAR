@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // 🧪 Автотести VARVAR — лише проти worker-test (http://localhost:8787) і сайту (http://localhost:8000).
-// Запуск: node tools/selftest.mjs [--api-only] [--ui-only]
+// Запуск: node tools/selftest.mjs [--api-only] [--ui-only] [--quiet] [--views=go,books] [--roles=admin,courier] [--widths=375,1280]
+// --quiet — друкує лише ❌ і підсумок (економить контекст агента); --views/--roles/--widths — лише свій розділ інтерфейсу
 // Змінні: API=http://localhost:8787 SITE=http://localhost:8000 CHROME=/шлях/до/chrome
 // Без залежностей: API — fetch, інтерфейс — безголовий Chrome через CDP (вбудований WebSocket Node 22+).
 import { spawn } from 'node:child_process';
@@ -10,7 +11,9 @@ import { join } from 'node:path';
 
 const API = process.env.API || 'http://localhost:8787';
 const SITE = process.env.SITE || 'http://localhost:8000';
-const ARGS = process.argv.slice(2);
+const ARGS = process.argv.slice(2), QUIET = ARGS.includes('--quiet');
+const opt = k => (ARGS.find(a => a.startsWith(`--${k}=`)) || '').split('=')[1]?.split(',').filter(Boolean);
+const ONLY_VIEWS = opt('views'), ONLY_ROLES = opt('roles'), ONLY_W = opt('widths')?.map(Number);
 const RUN = Date.now().toString(36).slice(-5);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const day = (d = 0) => new Date(Date.now() + 3 * 3600e3 + d * 864e5).toISOString().slice(0, 10); // Київ ≈ UTC+3
@@ -21,8 +24,8 @@ if (!/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(API)) { console
 // ---------- звіт ----------
 const results = [];
 let group = '';
-function sect(name) { group = name; console.log(`\n▶ ${name}`); }
-function rec(name, ok, info = '') { results.push({ group, name, ok }); console.log(`  ${ok ? '✅' : '❌'} ${name}${info ? ' — ' + info : ''}`); return ok; }
+function sect(name) { group = name; if (!QUIET) console.log(`\n▶ ${name}`); }
+function rec(name, ok, info = '') { results.push({ group, name, ok }); if (!QUIET || !ok) console.log(`  ${ok ? '✅' : '❌'} ${name}${info ? ' — ' + info : ''}`); return ok; }
 async function step(name, fn) {
   try { const r = await fn(); if (r === false) return rec(name, false); return rec(name, true, typeof r === 'string' ? r : ''); }
   catch (e) { return rec(name, false, String(e?.message || e).slice(0, 300)); }
@@ -339,7 +342,7 @@ const OVERFLOW_JS = `(() => {
   return bad.slice(0, 8);
 })()`;
 
-const WIDTHS = [375, 880, 1280];
+const WIDTHS = ONLY_W?.length ? ONLY_W : [375, 880, 1280];
 const TABS = ['cashTab', 'rTab', 'setTab', 'skTab', 'zpTab', 'crTab'];
 
 async function uiTests() {
@@ -383,12 +386,12 @@ async function uiTests() {
     for (const w of WIDTHS) {
       await b.send('Emulation.setDeviceMetricsOverride', { width: w, height: w < 600 ? 812 : 900, deviceScaleFactor: 1, mobile: w < 600 });
       for (const [role, label] of [['admin', '👑 адмін'], ['waiter', '🧑‍🍳 офіціант'], ['cook', '👨‍🍳 кухар'], ['courier', '🛵 кур\'єр']]) {
-        const u = users[role]; if (!u) continue;
+        const u = users[role]; if (!u || (ONLY_ROLES && !ONLY_ROLES.includes(role))) continue;
         b.errs.length = 0; await login(u);
         if (b.errs.length) rec(`${label} ${w}px · завантаження`, false, b.errs.slice(0, 3).join(' | '));
         const views = await b.ev(`[...new Set([...document.querySelectorAll('[data-a="view"][data-v]')].map(x => x.dataset.v))]`);
         if (!views.length) { rec(`${label} ${w}px · навігація`, false, 'немає кнопок розділів (вхід не вдався?)'); continue; }
-        for (const v of views) await checkView(label, w, v);
+        for (const v of views) if (!ONLY_VIEWS || ONLY_VIEWS.includes(v)) await checkView(label, w, v);
       }
     }
   } finally { b.close(); }
@@ -396,7 +399,7 @@ async function uiTests() {
 
 // ---------- запуск ----------
 (async () => {
-  console.log(`🧪 VARVAR selftest · API ${API} · сайт ${SITE} · прогін ${RUN}`);
+  if (!QUIET) console.log(`🧪 VARVAR selftest · API ${API} · сайт ${SITE} · прогін ${RUN}`);
   let ok = true;
   try {
     if (!ARGS.includes('--ui-only')) ok = await apiTests();
