@@ -445,8 +445,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   };
   applyLook();
   const NAV_COOK = [["kq", "\u{1F468}\u200D\u{1F373}", "\u0427\u0435\u0440\u0433\u0430"], ["calc", "\u{1F4E6}", "\u0421\u043A\u043B\u0430\u0434"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["hall", "\u{1FA91}", "\u0417\u0430\u043B"]];
-  const NAV_A = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["kq", "\u{1F468}\u200D\u{1F373}", "\u041A\u0443\u0445\u043D\u044F"], ["cash", "\u{1F4B0}", "\u041A\u0430\u0441\u0430"], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438"], ["calc", "\u{1F4E6}", "\u0421\u043A\u043B\u0430\u0434"], ["team", "\u{1F465}", "\u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B"], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442."]];
-  const NAV_W = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["closed", "\u{1F9FE}", "\u0427\u0435\u043A\u0438"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"]];
+  const NAV_A = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["books", "\u{1F4C5}", "\u0411\u0440\u043E\u043D\u0456"], ["kq", "\u{1F468}\u200D\u{1F373}", "\u041A\u0443\u0445\u043D\u044F"], ["cash", "\u{1F4B0}", "\u041A\u0430\u0441\u0430"], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438"], ["calc", "\u{1F4E6}", "\u0421\u043A\u043B\u0430\u0434"], ["team", "\u{1F465}", "\u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B"], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442."]];
+  const NAV_W = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["books", "\u{1F4C5}", "\u0411\u0440\u043E\u043D\u0456"], ["closed", "\u{1F9FE}", "\u0427\u0435\u043A\u0438"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"]];
   const NAV_COUR = [["go", "\u{1F6F5}", "\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0438"]];
   const navList = () => isCour() ? NAV_COUR : isCook() ? NAV_COOK : isAdmin() ? NAV_A : NAV_W;
   const NAV = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["closed", "\u{1F4DC}", "\u0417\u0430\u043A\u0440\u0438\u0442\u0456"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["cash", "\u{1F4B0}", "\u041A\u0430\u0441\u0430", 1], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438", 1], ["kq", "\u{1F468}\u200D\u{1F373}", "\u041A\u0443\u0445\u043D\u044F", 1], ["calc", "\u{1F9EE}", "\u0420\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043E\u043A", 1], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442.", 1]];
@@ -454,7 +454,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     var _a2, _b;
     const newCnt = S.events.filter((e) => e.k === "guest" && e.s === "new").length;
     const attNew = isAdmin() ? S.events.filter((e) => e.k === "att" && e.s === "new").length : 0;
-    setHTML($("#nav"), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` + navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? "on" : ""}${!isCook() && ["calc", "menu", "settings", "stop", "kq"].includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === "team" && attNew ? `<span class="badge">${attNew}</span>` : ""}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : ""}</button><button class="more-btn ${["calc", "menu", "settings", "stop", "kq"].includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><button class="me" data-a="zpMy" title="\u041C\u0456\u0439 \u043A\u0430\u0431\u0456\u043D\u0435\u0442"><i>${esc((((_a2 = S.me) == null ? void 0 : _a2.name) || "?").slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ""}</i><b>${esc((_b = S.me) == null ? void 0 : _b.name)}</b><small>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"} \xB7 \u043A\u0430\u0431\u0456\u043D\u0435\u0442</small></button><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
+    setHTML($("#nav"), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` + navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? "on" : ""}${!isCook() && ["calc", "menu", "settings", "stop", "kq"].includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === "team" && attNew ? `<span class="badge">${attNew}</span>` : ""}${v === "books" && (S.books || []).some((b) => b.st === "new") ? `<span class="badge">${S.books.filter((b) => b.st === "new").length}</span>` : ""}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : ""}</button><button class="more-btn ${["calc", "menu", "settings", "stop", "kq"].includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><button class="me" data-a="zpMy" title="\u041C\u0456\u0439 \u043A\u0430\u0431\u0456\u043D\u0435\u0442"><i>${esc((((_a2 = S.me) == null ? void 0 : _a2.name) || "?").slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ""}</i><b>${esc((_b = S.me) == null ? void 0 : _b.name)}</b><small>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"} \xB7 \u043A\u0430\u0431\u0456\u043D\u0435\u0442</small></button><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
   }
   function render() {
     renderNav();
@@ -778,16 +778,75 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     }).join("") || '<div class="muted">\u041D\u043E\u0432\u0438\u0445 \u0434\u043E\u0441\u0442\u0430\u0432\u043E\u043A \u043D\u0435\u043C\u0430\u0454 \u2014 \u0442\u0443\u0442 \u0437\u02BC\u044F\u0432\u043B\u044F\u0442\u044C\u0441\u044F, \u0449\u043E\u0439\u043D\u043E \u0430\u0434\u043C\u0456\u043D \u043F\u0440\u0438\u0439\u043C\u0435 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F.</div>'}</div>`;
   }
   const BKS = { new: "\u{1F195} \u043D\u043E\u0432\u0430", ok: "\u2705 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043E", no: "\u274C \u0432\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E", came: "\u{1FA91} \u043F\u0440\u0438\u0439\u0448\u043B\u0438", noshow: "\u{1F6AB} \u043D\u0435 \u043F\u0440\u0438\u0439\u0448\u043B\u0438", cancel: "\u21A9\uFE0F \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E" };
-  async function booksModal() {
-    const r = await api("bkList").catch(() => null);
-    if (!r) return;
-    const dd = (d) => d === todayK() ? "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : `${d.slice(8)}.${d.slice(5, 7)}`;
-    const body = `<div class="bk-list">${r.list.map((b) => {
+  const addD = (d, n) => iso(Date.parse(d + "T12:00:00") + n * 864e5);
+  async function loadBooks() {
+    S.bkDay || (S.bkDay = todayK());
+    const from = addD(todayK(), -7), to = addD(todayK(), 60);
+    S.data.bk = (await api("bkList", { from, to, all: true })).list;
+  }
+  const DOW = ["\u043D\u0434", "\u043F\u043D", "\u0432\u0442", "\u0441\u0440", "\u0447\u0442", "\u043F\u0442", "\u0441\u0431"];
+  function booksHTML() {
+    const L0 = S.data.bk;
+    if (!L0) return '<div class="head"><h1>\u0411\u0440\u043E\u043D\u0456</h1></div><div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
+    const day = S.bkDay, act2 = (b) => !["no", "cancel", "noshow"].includes(b.st), cnt = (d) => L0.filter((b) => b.date === d && act2(b));
+    const days = Array.from({ length: 21 }, (_, i) => addD(todayK(), i - 1));
+    const strip = `<div class="bk-days">${days.map((d) => {
+      const l = cnt(d), g = l.reduce((a, b) => a + b.people, 0), nw = l.some((b) => b.st === "new"), dt = /* @__PURE__ */ new Date(d + "T12:00:00");
+      return `<button class="bk-d${d === day ? " on" : ""}${d === todayK() ? " td" : ""}" data-a="bkDay" data-d="${d}"><small>${d === todayK() ? "\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : DOW[dt.getDay()]}</small><b>${d.slice(8)}.${d.slice(5, 7)}</b><span>${l.length ? `${l.length} \xB7 ${g}\u{1F464}` : "\u2014"}</span>${nw ? "<i></i>" : ""}</button>`;
+    }).join("")}<label class="bk-d pick" title="\u0406\u043D\u0448\u0430 \u0434\u0430\u0442\u0430"><small>\u0434\u0430\u0442\u0430</small><b>\u{1F4C6}</b><input type="date" data-a="bkDate" value="${day}"></label></div>`;
+    const newAll = L0.filter((b) => b.st === "new");
+    const list = L0.filter((b) => b.date === day && (S.bkAll || act2(b)));
+    const guests = list.filter(act2).reduce((a, b) => a + b.people, 0);
+    const card = (b) => {
       var _a2, _b;
-      return `<div class="kv bk-${b.st}"><span><b>${dd(b.date)} ${b.time}</b> \xB7 ${b.people} \u0433\u043E\u0441\u0442.${b.kind === "banquet" ? " \xB7 \u{1F389} \u0431\u0430\u043D\u043A\u0435\u0442" : ""}<br>${esc(b.name)} \xB7 <a href="tel:+${b.phone}">${fmtPh(b.phone)}</a>${b.t ? ` \xB7 \u{1FA91} ${b.t}` : ""}<br><small class="muted">${BKS[b.st]}${b.comment ? " \xB7 \u{1F4AC} " + esc(b.comment) : ""}${((_a2 = b.pre) == null ? void 0 : _a2.length) ? `<br>\u{1F37D} ${b.pre.map(esc).join(", ")}` : ""}</small></span>
-      <span class="kv-r">${b.st === "new" ? `<button class="btn sm green" data-a="bkSet" data-id="${b.id}" data-s="ok">\u2705</button><button class="btn sm red" data-a="bkSet" data-id="${b.id}" data-s="no">\u274C</button>` : b.st === "ok" ? `<button class="btn sm" data-a="bkTbl" data-id="${b.id}">\u{1FA91}</button>${((_b = b.pre) == null ? void 0 : _b.length) && !b.preSent ? `<button class="btn sm" data-a="bkSet" data-id="${b.id}" data-s="kit">\u{1F525}</button>` : ""}<button class="btn sm green" data-a="bkSet" data-id="${b.id}" data-s="came">\u041F\u0440\u0438\u0439\u0448\u043B\u0438</button><button class="btn sm red" data-a="bkSet" data-id="${b.id}" data-s="noshow">\u{1F6AB}</button>` : ""}</span></div>`;
-    }).join("") || '<div class="muted">\u0411\u0440\u043E\u043D\u0435\u0439 \u043D\u0430 2 \u0442\u0438\u0436\u043D\u0456 \u043D\u0435\u043C\u0430\u0454</div>'}</div>`;
-    await modal({ title: "\u{1F4C5} \u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F \xB7 14 \u0434\u043D\u0456\u0432", body, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+      return `<div class="bk-c st-${b.st}">
+      <div class="bk-t"><b>${b.time}</b><small>${b.people} \u{1F464}</small></div>
+      <div class="bk-m"><div class="bk-n"><b>${esc(b.name)}</b>${b.kind === "banquet" ? '<span class="chip">\u{1F389} \u0431\u0430\u043D\u043A\u0435\u0442</span>' : ""}<span class="chip bk-s">${BKS[b.st]}</span>${b.t ? `<span class="chip">\u{1FA91} ${b.t}</span>` : ""}${b.src === "\u043A\u0430\u0441\u0430" ? '<span class="chip">\u260E\uFE0F \u043A\u0430\u0441\u0430</span>' : ""}</div>
+        <a href="tel:+${b.phone}">\u{1F4DE} ${fmtPh(b.phone)}</a>${b.comment ? `<div class="muted">\u{1F4AC} ${esc(b.comment)}</div>` : ""}${b.note ? `<div class="bk-note">\u{1F4CC} ${esc(b.note)}</div>` : ""}${((_a2 = b.pre) == null ? void 0 : _a2.length) ? `<div class="bk-pre">\u{1F37D} ${b.pre.map(esc).join(" \xB7 ")}${b.preSent ? ' <span class="muted">\xB7 \u043D\u0430 \u043A\u0443\u0445\u043D\u0456</span>' : ""}</div>` : ""}
+        <div class="btnrow">${b.st === "new" ? `<button class="btn sm green" data-a="bkSet" data-id="${b.id}" data-s="ok">\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438</button><button class="btn sm red" data-a="bkSet" data-id="${b.id}" data-s="no">\u274C \u0412\u0456\u0434\u0445\u0438\u043B\u0438\u0442\u0438</button>` : ""}
+          ${b.st === "ok" ? `<button class="btn sm green" data-a="bkCame" data-id="${b.id}">\u{1FA91} \u041F\u0440\u0438\u0439\u0448\u043B\u0438</button><button class="btn sm" data-a="bkTbl" data-id="${b.id}">${b.t ? "\u{1F504} \u0421\u0442\u0456\u043B" : "\u{1FA91} \u0421\u0442\u0456\u043B"}</button>${((_b = b.pre) == null ? void 0 : _b.length) && !b.preSent ? `<button class="btn sm" data-a="bkSet" data-id="${b.id}" data-s="kit">\u{1F525} \u041D\u0430 \u043A\u0443\u0445\u043D\u044E</button>` : ""}<button class="btn sm" data-a="bkSet" data-id="${b.id}" data-s="noshow">\u{1F6AB} \u041D\u0435 \u043F\u0440\u0438\u0439\u0448\u043B\u0438</button>` : ""}
+          ${["no", "cancel", "noshow", "came"].includes(b.st) ? `<button class="btn sm" data-a="bkSet" data-id="${b.id}" data-s="ok">\u21A9\uFE0F \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438</button>` : ""}
+          <button class="btn sm" data-a="bkEd" data-id="${b.id}">\u270F\uFE0F</button>${["new", "ok"].includes(b.st) ? `<button class="btn sm red" data-a="bkSet" data-id="${b.id}" data-s="cancel" title="\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438">\u{1F5D1}</button>` : ""}</div></div></div>`;
+    };
+    return `<div class="rhead"><div><h1>\u0411\u0440\u043E\u043D\u0456</h1><span class="muted">${day === todayK() ? "\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : DOW[(/* @__PURE__ */ new Date(day + "T12:00:00")).getDay()] + ", " + day.slice(8) + "." + day.slice(5, 7)} \xB7 ${list.filter(act2).length} \u0431\u0440\u043E\u043D\u044C \xB7 ${guests} \u0433\u043E\u0441\u0442\u0435\u0439</span></div><button class="btn primary" data-a="bkNew">\u2795 \u0411\u0440\u043E\u043D\u044C</button></div>
+      ${newAll.length ? `<div class="bk-alert">\u{1F195} \u0427\u0435\u043A\u0430\u044E\u0442\u044C \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F: ${newAll.map((b) => `<button class="chip" data-a="bkDay" data-d="${b.date}">${b.date === todayK() ? "\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : b.date.slice(8) + "." + b.date.slice(5, 7)} ${b.time} \xB7 ${esc(b.name)}</button>`).join("")}</div>` : ""}
+      ${strip}<div class="seg rsec" style="margin:10px 0"><button class="${S.bkAll ? "" : "on"}" data-a="bkAll" data-v="">\u0410\u043A\u0442\u0438\u0432\u043D\u0456</button><button class="${S.bkAll ? "on" : ""}" data-a="bkAll" data-v="1">\u0423\u0441\u0456, \u0437 \u0432\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u0438\u043C\u0438</button></div>
+      <div class="bk-grid">${list.map(card).join("") || '<div class="muted" style="padding:20px 4px">\u041D\u0430 \u0446\u0435\u0439 \u0434\u0435\u043D\u044C \u0431\u0440\u043E\u043D\u0435\u0439 \u043D\u0435\u043C\u0430\u0454</div>'}</div>`;
+  }
+  async function bkForm(b) {
+    const v0 = b || { kind: "table", date: S.bkDay || todayK(), time: "19:00", people: 2, name: "", phone: "", comment: "", note: "", t: 0 };
+    const body = `<div class="form"><div class="seg" id="bkK"><button class="${v0.kind !== "banquet" ? "on" : ""}" data-k="table">\u{1F4C5} \u0421\u0442\u0456\u043B</button><button class="${v0.kind === "banquet" ? "on" : ""}" data-k="banquet">\u{1F389} \u0411\u0430\u043D\u043A\u0435\u0442</button></div>
+      <div class="frow"><label>\u0422\u0435\u043B\u0435\u0444\u043E\u043D<input id="bP" type="tel" inputmode="tel" value="${esc(v0.phone ? "0" + v0.phone.slice(3) : "")}"></label><label>\u0406\u043C\u02BC\u044F<input id="bN" value="${esc(v0.name)}"></label></div>
+      <div class="frow"><label>\u0414\u0430\u0442\u0430<input id="bD" type="date" value="${v0.date}"></label><label>\u0427\u0430\u0441<input id="bT" type="time" step="900" value="${v0.time}"></label></div>
+      <div class="frow"><label>\u0413\u043E\u0441\u0442\u0435\u0439<input id="bG" type="number" inputmode="numeric" min="1" max="60" value="${v0.people}"></label><label>\u0421\u0442\u0456\u043B<select id="bS"><option value="0">\u2014</option>${Array.from({ length: S.n }, (_, i) => i + 1).map((n) => `<option ${+v0.t === n ? "selected" : ""}>${n}</option>`).join("")}</select></label></div>
+      <label>\u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F \u0433\u043E\u0441\u0442\u044F<input id="bC" value="${esc(v0.comment || "")}"></label><label>\u{1F4CC} \u041D\u043E\u0442\u0430\u0442\u043A\u0430 \u0434\u043B\u044F \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\u0443<input id="bO" value="${esc(v0.note || "")}" placeholder="\u043D\u0430\u043F\u0440. \u0442\u043E\u0440\u0442 \u0441\u0432\u0456\u0439, VIP, \u0434\u0435\u043F\u043E\u0437\u0438\u0442"></label></div>`;
+    const pr = modal({ title: b ? "\u270F\uFE0F \u0411\u0440\u043E\u043D\u044C" : "\u2795 \u041D\u043E\u0432\u0430 \u0431\u0440\u043E\u043D\u044C", body, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+    let kind = v0.kind;
+    $("#bkK").onclick = (e) => {
+      var _a2;
+      const k = (_a2 = e.target.closest("[data-k]")) == null ? void 0 : _a2.dataset.k;
+      if (!k) return;
+      kind = k;
+      $("#bkK").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x.dataset.k === k));
+    };
+    if (!b) $("#bP").onchange = async () => {
+      var _a2;
+      const r2 = await api("cliGet", { phone: $("#bP").value }).catch(() => null);
+      if (((_a2 = r2 == null ? void 0 : r2.cli) == null ? void 0 : _a2.name) && !$("#bN").value) $("#bN").value = r2.cli.name;
+    };
+    const v = await pr;
+    if (v !== "ok") return closeModal();
+    const f = { kind, phone: $("#bP").value, name: $("#bN").value, date: $("#bD").value, time: $("#bT").value, people: $("#bG").value, t: +$("#bS").value, comment: $("#bC").value, note: $("#bO").value };
+    closeModal();
+    const r = b ? await act("bkEdit", { id: b.id, f }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E") : await act("bkNew", { f }, "\u{1F4C5} \u0411\u0440\u043E\u043D\u044C \u0441\u0442\u0432\u043E\u0440\u0435\u043D\u043E");
+    if (r) {
+      S.bkDay = r.b.date;
+      await loadBooks().catch(() => {
+      });
+      renderMain();
+      loadState().catch(() => {
+      });
+    }
   }
   async function certT(t) {
     const code = await ask("\u{1F39F} \u041A\u043E\u0434 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0430", "VV-XXXXX");
@@ -987,6 +1046,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
           S.data.skRep = await api("skReport", { from, to }, 3e4);
         } else await loadReport();
       }
+      if (S.view === "books") await loadBooks();
       if (S.view === "calc") await loadCalc();
       if (S.view === "team") {
         await loadPay();
@@ -1014,7 +1074,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       m.style.setProperty("--cols", c);
       m.style.setProperty("--rows", r);
     }
-    const html = (_b = (_a2 = { go: goHTML, kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, team: teamHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML })[v]) == null ? void 0 : _b.call(_a2);
+    const html = (_b = (_a2 = { books: booksHTML, go: goHTML, kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, team: teamHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML })[v]) == null ? void 0 : _b.call(_a2);
     const fid = (_c = document.activeElement) == null ? void 0 : _c.id, keep = ["stopSearch", "rQ", "skQ", "skQ2", "skCq"].includes(fid);
     const sx = [...m.querySelectorAll(".zp-grid, .sk-tbl, .chips.scroll, .seg")].map((e) => e.scrollLeft);
     setHTML(m, html || "");
@@ -2883,8 +2943,19 @@ ${g.sup}:
     clearTimeout(toastT);
     toastT = setTimeout(() => d.remove(), 2600);
   }
+  document.addEventListener("change", async (e) => {
+    var _a2, _b;
+    const el = e.target;
+    if (((_a2 = el.dataset) == null ? void 0 : _a2.a) !== "bkDate" || !el.value) return;
+    S.bkDay = el.value;
+    if (!((_b = S.data.bk) == null ? void 0 : _b.some((b) => b.date === el.value)) && (el.value < addD(todayK(), -7) || el.value > addD(todayK(), 60))) {
+      const r = await api("bkList", { from: el.value, to: el.value, all: true }).catch(() => null);
+      if (r) S.data.bk = [...S.data.bk.filter((b) => b.date !== el.value), ...r.list];
+    }
+    renderMain();
+  });
   document.addEventListener("click", async (e) => {
-    var _a2, _b, _c, _d, _e, _f, _g, _h, _i;
+    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j;
     const el = e.target.closest("[data-a]");
     if (!el) return;
     const a = el.dataset.a, t = S.open;
@@ -3100,23 +3171,63 @@ ${g.sup}:
         goNew();
         break;
       case "books":
-        booksModal();
+        S.view = "books";
+        renderNav();
+        renderMain();
+        loadView();
         break;
-      case "bkSet": {
-        if (await act("bkSet", { id: el.dataset.id, st: el.dataset.s }, BKS[el.dataset.s] || "\u{1F525} \u041D\u0430 \u043A\u0443\u0445\u043D\u044E")) {
-          closeModal();
+      case "bkDay":
+        S.bkDay = el.dataset.d;
+        renderMain();
+        break;
+      case "bkAll":
+        S.bkAll = !!el.dataset.v;
+        renderMain();
+        break;
+      case "bkNew":
+        bkForm();
+        break;
+      case "bkEd":
+        bkForm(S.data.bk.find((x) => x.id === el.dataset.id));
+        break;
+      case "bkCame": {
+        const b = S.data.bk.find((x) => x.id === el.dataset.id);
+        let tt = b.t;
+        if (!tt) {
+          tt = await pickTable(`\u{1FA91} ${b.name}: \u0437\u0430 \u044F\u043A\u0438\u0439 \u0441\u0442\u0456\u043B?`, "\u0411\u0440\u043E\u043D\u044C \u0437\u0430\u043A\u0440\u0438\u0454\u0442\u044C\u0441\u044F \u044F\u043A \xAB\u043F\u0440\u0438\u0439\u0448\u043B\u0438\xBB");
+          if (!tt) break;
+        }
+        if (await act("bkSet", { id: b.id, st: "came", t: tt }, "\u{1FA91} \u0413\u043E\u0441\u0442\u0456 \u043F\u0440\u0438\u0439\u0448\u043B\u0438")) {
+          await loadBooks();
           loadState().catch(() => {
           });
-          if (el.closest(".bk-list")) booksModal();
+          if (((_f = b.pre) == null ? void 0 : _f.length) && !b.preSent && await confirmBox("\u{1F37D} \u041F\u0435\u0440\u0435\u0434\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", "\u0412\u0456\u0434\u043F\u0440\u0430\u0432\u0438\u0442\u0438 \u043D\u0430 \u043A\u0443\u0445\u043D\u044E \u0437\u0430\u0440\u0430\u0437?")) await act("bkSet", { id: b.id, st: "kit" }, "\u{1F525} \u041D\u0430 \u043A\u0443\u0445\u043D\u0456");
+          S.view = "hall";
+          renderNav();
+          renderMain();
+          openTable(tt);
+        }
+        break;
+      }
+      case "bkSet": {
+        if (el.dataset.s === "cancel" && !await confirmBox("\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438 \u0431\u0440\u043E\u043D\u044C?")) break;
+        if (await act("bkSet", { id: el.dataset.id, st: el.dataset.s }, BKS[el.dataset.s] || "\u{1F525} \u041D\u0430 \u043A\u0443\u0445\u043D\u044E")) {
+          loadState().catch(() => {
+          });
+          if (S.view === "books") {
+            await loadBooks();
+            renderMain();
+          }
         }
         break;
       }
       case "bkTbl": {
         const n = await pickTable("\u{1FA91} \u0421\u0442\u0456\u043B \u0434\u043B\u044F \u0431\u0440\u043E\u043D\u0456", "\u041F\u043B\u0438\u0442\u043A\u0430 \u0441\u0442\u043E\u043B\u0430 \u043F\u043E\u043A\u0430\u0436\u0435 \u0447\u0430\u0441 \u0431\u0440\u043E\u043D\u0456");
-        if (n && await act("bkSet", { id: el.dataset.id, st: "ok", t: n }, "\u{1FA91} \u0421\u0442\u0456\u043B \u043F\u0440\u0438\u0437\u043D\u0430\u0447\u0435\u043D\u043E")) {
+        if (n && await act("bkEdit", { id: el.dataset.id, f: { t: n } }, "\u{1FA91} \u0421\u0442\u0456\u043B \u043F\u0440\u0438\u0437\u043D\u0430\u0447\u0435\u043D\u043E")) {
           loadState().catch(() => {
           });
-          booksModal();
+          await loadBooks();
+          renderMain();
         }
         break;
       }
@@ -3134,7 +3245,7 @@ ${g.sup}:
         break;
       }
       case "siteSet": {
-        const k = el.dataset.k, cur = (_f = S.data.site) == null ? void 0 : _f[k];
+        const k = el.dataset.k, cur = (_g = S.data.site) == null ? void 0 : _g[k];
         const v = ["about", "banquet", "hookah"].includes(k) ? await askLong(el.dataset.l || k, String(cur != null ? cur : "")) : await askVal(el.dataset.l || k, String(cur != null ? cur : ""), ["rating", "ratingN"].includes(k) ? "number" : "text");
         if (v == null) break;
         const r = await act("siteSet", { k, v }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E \u2014 \u0443\u0436\u0435 \u043D\u0430 \u0441\u0430\u0439\u0442\u0456");
@@ -3233,7 +3344,7 @@ ${g.sup}:
         }
         break;
       case "goCourSet": {
-        const n = await ask("\u{1F464} \u041A\u0443\u0440'\u0454\u0440 (\u0456\u043C\u02BC\u044F)", ((_h = (_g = S.tables[t]) == null ? void 0 : _g.go) == null ? void 0 : _h.cour) || "");
+        const n = await ask("\u{1F464} \u041A\u0443\u0440'\u0454\u0440 (\u0456\u043C\u02BC\u044F)", ((_i = (_h = S.tables[t]) == null ? void 0 : _h.go) == null ? void 0 : _i.cour) || "");
         if (n != null && await act("goCour", { t, n }, "\u2714")) loadState().catch(() => {
         });
         break;
@@ -3246,7 +3357,7 @@ ${g.sup}:
         });
         break;
       case "goCfg": {
-        const k = el.dataset.k, cur = (_i = S.data.gocfg) == null ? void 0 : _i[k];
+        const k = el.dataset.k, cur = (_j = S.data.gocfg) == null ? void 0 : _j[k];
         const v = ["on", "del", "pick"].includes(k) ? cur ? 0 : 1 : await ask(el.dataset.l || k, String(cur != null ? cur : ""), ["phone", "zone", "from", "to"].includes(k) ? "text" : "number");
         if (v == null) break;
         const r = await act("goCfgSet", { k, v }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");

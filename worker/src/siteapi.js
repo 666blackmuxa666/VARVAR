@@ -1,6 +1,6 @@
 // 🖥 каса: сайт-візитка, броні, сертифікати (op: site*, bk*, cert*)
-import { esc, notify } from './ops.js';
-import { getSite, setSite, bookList, bookSet, bkLabel, certList, certPay, certUse, getCert, ratings } from './site.js';
+import { esc, notify, isDay } from './ops.js';
+import { getSite, setSite, bookList, bookSet, bkLabel, certList, certPay, certUse, getCert, ratings, bookEditFields, bookManual } from './site.js';
 
 export async function siteApi(b, env, me, t) {
   const who = me.name, admin = me.role === 'admin', ok = (x = {}) => [{ ok: true, ...x }, 200], bad = (e, s = 400) => [{ error: e }, s];
@@ -15,7 +15,9 @@ export async function siteApi(b, env, me, t) {
       const id = 'site-' + crypto.randomUUID().slice(0, 8); await env.DB.put('img:' + id, bytes.buffer);
       const url = `${env.SELF_URL}/img/${id}`, s = await setSite(env, b.hero ? 'hero' : 'photoAdd', url); return ok({ site: s, url });
     }
-    case 'bkList': return ok({ list: await bookList(env) });
+    case 'bkList': return ok({ list: await bookList(env, isDay(b.from) ? b.from : undefined, isDay(b.to) ? b.to : undefined, !!b.all) });
+    case 'bkEdit': { const r = await bookEditFields(env, String(b.id), b.f || {}, who); return r.error ? bad(r.error) : ok({ b: r }); }
+    case 'bkNew': { const r = await bookManual(env, b.f || {}, who); return r.error ? bad(r.error) : ok({ b: r }); }
     case 'bkSet': { const r = await bookSet(env, String(b.id), String(b.st), who, { t: +b.t || 0 }); if (!r) return bad('Не знайдено'); if (r.error) return bad(r.error); if (b.st !== 'kit') await notify(env, `🖥 📅 Бронь ${r.time} · ${esc(r.name)} — ${bkLabel(b.st)} (${esc(who)})`); return ok({ b: r }); }
     case 'certList': if (!admin) return needA(); return ok({ list: await certList(env) });
     case 'certPay': { if (!admin) return needA(); const c = await certPay(env, String(b.code), b.how === 'no' ? 'no' : b.how === 'card' ? 'card' : 'cash', who); return c ? ok({ c }) : bad('Не знайдено або вже оброблено'); }

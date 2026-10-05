@@ -112,10 +112,38 @@ export async function bookSet(env, id, st, who, { t } = {}) {
   return x;
 }
 // список для каси: сьогодні + 14 днів
-export async function bookList(env) {
-  const now = new Date(), ms = [...new Set([0, 1].map(i => new Date(now.getFullYear(), now.getMonth() + i, 1).toLocaleDateString('sv-SE').slice(0, 7)))];
-  const today = dayKey(), lim = new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10);
-  return (await Promise.all(ms.map(m => getBk(env, m)))).flat().filter(b => b.date >= today && b.date <= lim && b.st !== 'cancel').sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+// список за датами. Запис живе в місяці свого id (дата створення), навіть якщо дату броні змінили, — тому скануємо ширше
+const monRange = (a, b) => { const out = []; const d = new Date(a.slice(0, 7) + '-01T12:00:00Z'), e = b.slice(0, 7); while (out.length < 8) { const m = d.toISOString().slice(0, 7); out.push(m); if (m >= e) break; d.setUTCMonth(d.getUTCMonth() + 1); } return out; };
+const addDays = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+export async function bookList(env, from = dayKey(), to = addDays(dayKey(), 14), all = false) {
+  const ms = monRange(addDays(from, -62), to);
+  return (await Promise.all(ms.map(m => getBk(env, m)))).flat().filter(b => b.date >= from && b.date <= to && (all || b.st !== 'cancel')).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+}
+// ✏️ редагування з каси (будь-які поля) і ➕ бронь по телефону
+const vDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d || ''), vTime = t => /^\d{1,2}:\d{2}$/.test(t || '');
+export async function bookEditFields(env, id, f, who) {
+  const ph = f.phone != null ? normPhone(f.phone) : undefined; if (f.phone != null && !ph) return { error: 'Невірний телефон' };
+  if (f.date != null && !vDate(f.date)) return { error: 'Невірна дата' }; if (f.time != null && !vTime(f.time)) return { error: 'Невірний час' };
+  const x = await bkEdit(env, id, y => {
+    if (f.name != null) y.name = String(f.name).trim().slice(0, 40) || y.name; if (ph) y.phone = ph; if (f.date) y.date = f.date; if (f.time) y.time = f.time.padStart(5, '0');
+    if (f.people != null) y.people = Math.max(1, Math.min(60, parseInt(f.people, 10) || y.people)); if (f.comment != null) y.comment = String(f.comment).trim().slice(0, 300);
+    if (f.kind) y.kind = f.kind === 'banquet' ? 'banquet' : 'table'; if (f.t != null) y.t = +f.t || 0; if (f.note != null) y.note = String(f.note).trim().slice(0, 300);
+    if (f.date || f.time) { delete y.remA; delete y.remG; } y.edBy = who; y.edAt = Date.now();
+  });
+  if (!x) return { error: 'Не знайдено' };
+  if (x.mid) await tg(env, 'editMessageText', { chat_id: env.CHAT_ID, message_id: x.mid, text: `${bkText(x)}\n\n✏️ змінено — <b>${esc(who)}</b>`, parse_mode: 'HTML', reply_markup: { inline_keyboard: bkButtons(x) } }).catch(() => {});
+  if (f.date || f.time) await guestMsg(env, x.phone, `✏️ Вашу бронь змінено: <b>${x.date.slice(8)}.${x.date.slice(5, 7)} о ${x.time}</b>, ${x.people} гост.`);
+  return x;
+}
+export async function bookManual(env, f, who) {
+  const phone = normPhone(f.phone), name = String(f.name || '').trim().slice(0, 40);
+  if (!phone || !name) return { error: "Вкажіть ім'я і телефон" }; if (!vDate(f.date) || !vTime(f.time)) return { error: 'Вкажіть дату й час' };
+  const x = { id: f.date.replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 6), kind: f.kind === 'banquet' ? 'banquet' : 'table', name, phone, date: f.date, time: f.time.padStart(5, '0'), people: Math.max(1, Math.min(60, parseInt(f.people, 10) || 2)), comment: String(f.comment || '').trim().slice(0, 300), note: String(f.note || '').trim().slice(0, 300), t: +f.t || 0, st: 'ok', at: Date.now(), src: 'каса', by: who };
+  await L(env, 'book:' + f.date.slice(0, 7), async () => { const l = await getBk(env, f.date.slice(0, 7)); l.push(x); await env.DB.put('book:' + f.date.slice(0, 7), JSON.stringify(l)); });
+  await cliTouch(env, phone, c => { if (!c.name) c.name = name; });
+  await notify(env, `📅 Нова бронь (каса, ${esc(who)}): <b>${x.date.slice(8)}.${x.date.slice(5, 7)} ${x.time}</b> · ${x.people} гост. · ${esc(name)} ${fmtPhone(phone)}${x.t ? ` · стіл ${x.t}` : ''}`);
+  await guestMsg(env, phone, `✅ Вас забронювано: ${x.date.slice(8)}.${x.date.slice(5, 7)} о ${x.time}, ${x.people} гост. Чекаємо!`);
+  return x;
 }
 
 // ---------- 🎁 сертифікати ----------
