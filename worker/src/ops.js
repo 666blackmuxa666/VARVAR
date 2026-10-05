@@ -248,7 +248,7 @@ async function _closeTable(env, t, who, pay = 'cash', print = true) {
   ]);
   return { t, sum, cash, card, disc, tip };
 }
-export const payLabel = (cash, card) => card ? '💳 карта' : '💵 готівка';
+export const payLabel = (cash, card) => card && cash ? '💵+💳 змішано' : card ? '💳 карта' : '💵 готівка';
 
 export async function precheck(env, t, who) {
   const b = await getBill(env, t); if (!b.total) return false;
@@ -406,6 +406,57 @@ async function _delClosed(env, ref, day = dayKey()) {
   if (x.dishes?.length) await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q: -q, sum: -sum })), day, { stock: false }); // страву віддали — продукти витрачені
   for (const [n, v] of Object.entries(tipSplitOf(x))) await addTipBal(env, n, -v);
   return x;
+}
+// ✏️ редагування закритого чека адміном: позиції, знижка, чайові, оплата, офіціант, стіл — day:/dish:/tipbal/склад коригуються різницею
+// p: { items?: [[назва, к-сть, сума]], disc?: %, tip?: грн, pay?: cash|card|mix, cash?: грн (для mix), w?: офіціант, t?: стіл }
+async function _editClosed(env, ref, p, who, day = dayKey()) {
+  const k = 'closed:' + day, list = await getClosed(env, day), x = findClosed(list, ref);
+  if (!x) return { error: 'Чек не знайдено' };
+  if (x.del || x.rm) return { error: 'Чек знято з виручки — спершу поверніть' };
+  const sumS = l => l.reduce((a, d) => a + d[2], 0), old = { ...x, dishes: x.dishes || [] }, what = [];
+  const oTip = x.tip || 0, oNet = x.sum - oTip, oCard = x.card || 0, oCash = x.cash ?? x.sum - oCard;
+  const oGross = old.dishes.length ? sumS(old.dishes) : (x.gross ?? oNet + (x.discSum || 0));
+  const other = Math.max(0, oGross - (x.discSum || 0) - oNet); // 🎁 бонуси / сертифікат — лишаються як були
+  let dishes = old.dishes;
+  if (Array.isArray(p.items)) {
+    dishes = p.items.slice(0, 200).map(d => [String(d[0] || '').trim().slice(0, 80), Math.round(+d[1] || 0), Math.round(+d[2] || 0)]).filter(d => d[0] && d[1] > 0 && d[2] >= 0);
+    if (!dishes.length) return { error: 'У чеку має лишитись хоч одна позиція (або видаліть чек з виручки)' };
+  }
+  const gross = dishes.length ? sumS(dishes) : oGross;
+  const pct = p.disc != null ? Math.max(0, Math.min(100, Math.round(+p.disc || 0))) : (x.disc || 0);
+  const discSum = !pct ? 0 : pct === (x.disc || 0) && gross === oGross && x.discSum != null ? x.discSum : Math.round(gross * pct / 100);
+  const net = Math.max(0, gross - discSum - other);
+  const tip = p.tip != null ? Math.max(0, Math.min(10000, Math.round(+p.tip || 0))) : oTip, sum = net + tip;
+  const pay = ['cash', 'card', 'mix'].includes(p.pay) ? p.pay : oCard && oCash ? 'mix' : oCard ? 'card' : 'cash';
+  const cash = pay === 'cash' ? sum : pay === 'card' ? 0 : Math.max(0, Math.min(sum, Math.round(p.cash != null ? +p.cash || 0 : oCash))), card = sum - cash;
+  const w = p.w != null && String(p.w).trim() ? String(p.w).trim().slice(0, 40) : x.w || x.by || '';
+  const t = p.t != null && +p.t > 0 && +p.t < 100000 ? Math.round(+p.t) : x.t;
+  // що змінилось у стравах (для журналу, dish: і складу)
+  const agg = l => { const m = new Map(); for (const [n, q, s] of l) { const a = m.get(n) || [0, 0]; m.set(n, [a[0] + q, a[1] + s]); } return m; };
+  const A0 = agg(old.dishes), A1 = agg(dishes), dd = [];
+  for (const n of new Set([...A0.keys(), ...A1.keys()])) { const a = A0.get(n) || [0, 0], b = A1.get(n) || [0, 0]; if (a[0] !== b[0] || a[1] !== b[1]) dd.push({ n, q: b[0] - a[0], sum: b[1] - a[1] }); }
+  dd.forEach(d => what.push(d.q > 0 ? `+${d.q}× ${d.n}` : d.q < 0 ? `${d.q}× ${d.n}` : `${d.n}: сума ${d.sum > 0 ? '+' : ''}${d.sum}`));
+  if (pct !== (x.disc || 0)) what.push(pct ? `знижка ${pct}%` : 'знижку прибрано');
+  if (tip !== oTip) what.push(`чайові ${oTip} → ${tip}`);
+  if (cash !== oCash || card !== oCard) what.push(pay === 'mix' ? `оплата: 💵 ${cash} + 💳 ${card}` : pay === 'card' ? 'оплата: 💳 картка' : 'оплата: 💵 готівка');
+  if (w !== (x.w || x.by || '')) what.push(`офіціант: ${w}`);
+  if (t !== x.t) what.push(`стіл ${x.t} → ${t}`);
+  if (!what.length) return { x, what: [] };
+  // чайові: перерахувати розподіл, якщо змінились сума чи офіціант
+  const oSplit = tipSplitOf(x); let split = oSplit;
+  if (tip !== oTip || w !== (x.w || x.by || '')) { const kt = Math.min(x.ktip || 0, tip); split = tip ? await splitTip(env, w, tip - kt, kt) : {}; }
+  Object.assign(x, { t, w, sum, cash, card, dishes });
+  if (pct) Object.assign(x, { disc: pct, discSum, gross }); else { delete x.disc; delete x.discSum; delete x.gross; }
+  if (tip) Object.assign(x, { tip, tipSplit: split }); else { delete x.tip; delete x.tipSplit; delete x.ktip; }
+  if (x.ktip && x.ktip > tip) x.ktip = tip;
+  (x.edits = x.edits || []).push({ at: hhmm(), ts: Date.now(), by: who || '', what: what.join(', ') });
+  await env.DB.put(k, JSON.stringify(list));
+  await bump(env, 'day:' + day, d => { d.closed = (d.closed || 0) + sum - old.sum; d.cash = (d.cash || 0) + cash - oCash; d.card = (d.card || 0) + card - oCard;
+    d.disc = Math.max(0, (d.disc || 0) + discSum - (old.discSum || 0)); d.tip = Math.max(0, (d.tip || 0) + tip - oTip); });
+  if (dd.length) await addDishes(env, dd, day); // топ страв того дня + склад: додане списується, прибране повертається
+  if (split !== oSplit) { for (const [n, v] of Object.entries(oSplit)) await addTipBal(env, n, -v); for (const [n, v] of Object.entries(split)) await addTipBal(env, n, v); }
+  await logEvent(env, { k: 'shift', by: who, text: `✏️ Чек стола ${tn(x.t)} (${x.at}${day !== dayKey() ? ', ' + day : ''}): ${what.join(', ')} · було ${old.sum} → ${sum} грн` });
+  return { x, what, was: old.sum };
 }
 // ↩️ повернути закритий рахунок у виручку (скасувати «видалити з виручки»)
 async function _restoreClosed(env, ref, who, day = dayKey()) {
@@ -680,14 +731,21 @@ export async function dayZ(env, who, print = true, day = dayKey()) {
   await logEvent(env, { k: 'shift', by: who, text: `🧾 Z-звіт за ${day}: ${z.total} грн · чеків ${z.checks}` });
   return z;
 }
+// 🖨 X-звіт: друк поточного Z за день без закриття (запис z: не створюється)
+export async function dayX(env, who, day = dayKey()) {
+  const z = { ...(await dayZData(env, day)), closed: Date.now(), closedBy: who || '' };
+  await queuePrint(env, 'z', zDayTicket(z, true));
+  await logEvent(env, { k: 'shift', by: who, text: `🖨 X-звіт за ${day}: ${z.total} грн · чеків ${z.checks}` });
+  return z;
+}
 const dm = d => d.split('-').reverse().join('.');
 export const zDayText = z => [`🧾 <b>Z-звіт за ${dm(z.day)}</b>`, '',
   `Чеків: ${z.checks} · виручка <b>${money(z.total)}</b>`, `💵 Готівка: ${money(z.cash)}`, `💳 Картка: ${money(z.card)}`,
   z.disc ? `🏷 Знижки: ${money(z.disc)}` : '', z.tip ? `💝 Чайові (не виручка, персоналу): ${money(z.tip)}${Object.keys(z.tipBy || {}).length ? '\n' + Object.entries(z.tipBy).map(([n, s]) => `   👤 ${esc(n)}: ${money(s)}`).join('\n') : ''}` : '', `💸 Витрати: ${money(z.exCash + z.exCard)}${z.exCard ? ` (з картки ${money(z.exCard)})` : ''}`,
   z.mvCash || z.mvCard ? `🔁 Рух коштів: готівка ${z.mvCash >= 0 ? '+' : ''}${money(z.mvCash)}${z.mvCard ? `, картка ${z.mvCard >= 0 ? '+' : ''}${money(z.mvCard)}` : ''}` : '',
   `📈 Чистими: <b>${money(z.net)}</b>`, z.openTables ? `\n⚠️ Ще відкрито столів: ${z.openTables} (${money(z.openSum)})` : ''].filter(x => x !== '').join('\n');
-function zDayTicket(z) {
-  return [['invb', 'Z-ЗВІТ'], ['c', dm(z.day)], ['gap'], ['lr', 'Надруковано', fmtDT(z.closed)], ['lr', 'Хто', z.closedBy || '—'], ['dbl'],
+function zDayTicket(z, x) {
+  return [['invb', x ? 'X-ЗВІТ' : 'Z-ЗВІТ'], ['c', dm(z.day)], ['gap'], ['lr', 'Надруковано', fmtDT(z.closed)], ['lr', 'Хто', z.closedBy || '—'], ['dbl'],
     ['lr', 'Чеків', String(z.checks)], ['lr', 'Готівка', `${z.cash} грн`], ['lr', 'Картка', `${z.card} грн`], ...(z.disc ? [['lr', 'Знижки', `${z.disc} грн`]] : []), ...(z.tip ? [['lr', '− Чайові (персоналу)', `${z.tip} грн`]] : []),
     ['total', 'ВИРУЧКА', `${z.total} грн`], ['dbl'],
     ['lr', 'Витрати (готівка)', `${z.exCash} грн`], ...(z.exCard ? [['lr', 'Витрати (картка)', `${z.exCard} грн`]] : []),
@@ -946,6 +1004,7 @@ export async function addTipBal(env, ...a) { return L(env, 'tipbal', () => _addT
 export async function payTips(env, ...a) { return L(env, ['tipbal', 'tippay:' + dayKey(), 'mov:' + dayKey()], () => _payTips(env, ...a)); }
 const cDay = d => isDay(d) && d <= dayKey() ? d : dayKey();
 export async function delClosed(env, ref, day) { day = cDay(day); return L(env, 'closed:' + day, () => _delClosed(env, ref, day)); }
+export async function editClosed(env, ref, p, who, day) { day = cDay(day); return L(env, 'closed:' + day, () => _editClosed(env, ref, p || {}, who, day)); }
 export async function restoreClosed(env, ref, who, day) { day = cDay(day); return L(env, 'closed:' + day, () => _restoreClosed(env, ref, who, day)); }
 export async function reopenClosed(env, ref, who, day) { day = cDay(day); return L(env, ['bills', 'closed:' + day], () => _reopenClosed(env, ref, who, day)); }
 export async function restoreTable(env, ref, who, day) { day = cDay(day); return L(env, ['bills', 'closed:' + day, 'void:' + day], () => _restoreTable(env, ref, who, day)); }

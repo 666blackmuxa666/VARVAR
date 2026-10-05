@@ -1315,6 +1315,9 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         await act("expenseBack", { i: +el.dataset.i }, "\u21A9\uFE0F \u0412\u0456\u0434\u043D\u043E\u0432\u043B\u0435\u043D\u043E");
         loadView();
         break;
+      case "cEdit":
+        cEdit(el.dataset.ref, el.dataset.d || void 0);
+        break;
       case "cPrint":
         act("closedPrint", { ref: el.dataset.ref, day: S.data.cday }, "\u{1F5A8} \u0427\u0435\u043A \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u043E");
         break;
@@ -2122,16 +2125,16 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       return s + ((_a2 = x.cash) != null ? _a2 : x.sum);
     }, 0))}</b></div><div class="stat">\u{1F4B3}<b class="money">${money(ok.reduce((s, x) => s + (x.card || 0), 0))}</b></div></div>
       <div class="cards">${[...l].reverse().map((x, i) => {
-      var _a2, _b, _c, _d, _e, _f;
+      var _a2, _b, _c, _d, _e, _f, _g;
       const ref = x.id || l.length - 1 - i;
       return `<div class="card" style="${gone(x) ? "opacity:.45" : ""}"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
         <h3 style="margin:0;flex:1">${x.at} \xB7 \u0421\u0442\u0456\u043B ${tn(x.t)} \xB7 <span class="money">${money(x.sum)}</span> ${x.reopen ? "\u21A9\uFE0F \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u043E \u0437\u043D\u043E\u0432\u0443" : x.restored ? "\u21A9\uFE0F \u0441\u0442\u0456\u043B \u0432\u0456\u0434\u043D\u043E\u0432\u043B\u0435\u043D\u043E" : x.del ? "\u{1F5D1} \u0441\u0442\u0456\u043B \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E" : x.rm ? "\u{1F9F9} \u0437\u043D\u044F\u0442\u043E \u0437 \u0432\u0438\u0440\u0443\u0447\u043A\u0438" : payL(x)}${x.disc ? ` \xB7 \u0437\u043D\u0438\u0436\u043A\u0430 ${x.disc}%` : ""}</h3><span class="muted">${esc(x.by || "")}</span>
-        ${!gone(x) && ((_a2 = x.dishes) == null ? void 0 : _a2.length) ? `<button class="btn sm" data-a="cPrint" data-ref="${ref}">\u{1F5A8} \u0427\u0435\u043A</button>` : ""}${!gone(x) && isAdmin() ? `<button class="btn sm red" data-a="cDel" data-ref="${ref}">\u{1F5D1} \u0417 \u0432\u0438\u0440\u0443\u0447\u043A\u0438</button>` : ""}
+        ${!gone(x) && ((_a2 = x.dishes) == null ? void 0 : _a2.length) ? `<button class="btn sm" data-a="cPrint" data-ref="${ref}">\u{1F5A8} \u0427\u0435\u043A</button>` : ""}${!gone(x) && isAdmin() ? `<button class="btn sm" data-a="cEdit" data-ref="${ref}" data-d="${S.data.cday || ""}">\u270F\uFE0F \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438</button>` : ""}${!gone(x) && isAdmin() ? `<button class="btn sm red" data-a="cDel" data-ref="${ref}">\u{1F5D1} \u0417 \u0432\u0438\u0440\u0443\u0447\u043A\u0438</button>` : ""}
         ${isAdmin() && !x.del && !x.reopen && ((_b = x.dishes) == null ? void 0 : _b.length) ? `<button class="btn sm" data-a="cReopen" data-ref="${ref}">\u21A9\uFE0F \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u0437\u043D\u043E\u0432\u0443</button>` : ""}
         ${isAdmin() && x.rm && !x.reopen && !x.del ? `<button class="btn sm green" data-a="cBack" data-ref="${ref}">\u21A9\uFE0F \u0423 \u0432\u0438\u0440\u0443\u0447\u043A\u0443</button>` : ""}
         ${isAdmin() && x.del && !x.restored && (((_c = x.dishes) == null ? void 0 : _c.length) || ((_d = x.voids) == null ? void 0 : _d.length)) ? `<button class="btn sm green" data-a="tBack" data-ref="${ref}">\u21A9\uFE0F \u0412\u0456\u0434\u043D\u043E\u0432\u0438\u0442\u0438 \u0441\u0442\u0456\u043B</button>` : ""}</div>
-        ${((_e = x.dishes) == null ? void 0 : _e.length) ? `<div class="muted" style="margin-top:8px">${x.dishes.map(([n, q, s]) => `${q}\xD7 ${esc(n)} \u2014 ${s}`).join(" \xB7 ")}</div>` : ""}${x.tip ? `<div class="muted" style="margin-top:4px">\u{1F49D} \u0432 \u0442.\u0447. \u0447\u0430\u0439\u043E\u0432\u0456 ${money(x.tip)}</div>` : ""}
-        ${((_f = x.voids) == null ? void 0 : _f.length) ? `<div class="voids">\u{1F6AB} \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E:${x.voids.map((v) => `<div>${v.at} \xB7 \u2212${money(v.sum)} ${esc(v.name)} \u2014 <i>${esc(v.reason)}</i> <span class="muted">(${esc(v.by)})</span></div>`).join("")}</div>` : ""}</div>`;
+        ${((_e = x.dishes) == null ? void 0 : _e.length) ? `<div class="muted" style="margin-top:8px">${x.dishes.map(([n, q, s]) => `${q}\xD7 ${esc(n)} \u2014 ${s}`).join(" \xB7 ")}</div>` : ""}${x.tip ? `<div class="muted" style="margin-top:4px">\u{1F49D} \u0432 \u0442.\u0447. \u0447\u0430\u0439\u043E\u0432\u0456 ${money(x.tip)}</div>` : ""}${((_f = x.edits) == null ? void 0 : _f.length) ? `<div class="muted" style="margin-top:4px;font-size:12px">\u270F\uFE0F \u0437\u043C\u0456\u043D\u0435\u043D\u043E ${x.edits.length}\xD7 \xB7 ${esc(x.edits[x.edits.length - 1].by)} ${x.edits[x.edits.length - 1].at}</div>` : ""}
+        ${((_g = x.voids) == null ? void 0 : _g.length) ? `<div class="voids">\u{1F6AB} \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E:${x.voids.map((v) => `<div>${v.at} \xB7 \u2212${money(v.sum)} ${esc(v.name)} \u2014 <i>${esc(v.reason)}</i> <span class="muted">(${esc(v.by)})</span></div>`).join("")}</div>` : ""}</div>`;
     }).join("") || `<div class="muted">${isToday ? "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0437\u0430\u043A\u0440\u0438\u0442\u0438\u0445 \u0440\u0430\u0445\u0443\u043D\u043A\u0456\u0432 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454" : "\u0426\u044C\u043E\u0433\u043E \u0434\u043D\u044F \u0437\u0430\u043A\u0440\u0438\u0442\u0438\u0445 \u0440\u0430\u0445\u0443\u043D\u043A\u0456\u0432 \u043D\u0435\u043C\u0430\u0454"}</div>`}</div>${(S.data.cvoids || []).length ? `<div class="card"><h3>\u{1F6AB} \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u0456 \u0441\u0442\u0440\u0430\u0432\u0438 ${dTitle} <span class="muted">\xB7 ${S.data.cvoids.length}</span></h3>${[...S.data.cvoids].reverse().map((v) => `<div class="kv"><span>${v.at} \xB7 \u0441\u0442\u0456\u043B ${tn(v.t)} \xB7 <b>${esc(v.name)}</b> \u2014 <i>${esc(v.reason || "")}</i> <span class="muted">(${esc(v.by || "")})</span></span><span class="kv-r"><b class="money">${money(v.sum)}</b>${isToday && isAdmin() ? `<button class="btn sm green" data-a="vBack" data-ts="${v.ts}">\u21A9\uFE0F \u041D\u0430 \u0441\u0442\u0456\u043B</button>` : ""}</span></div>`).join("")}</div>` : ""}`;
   }
   function goBlock(t, g, b) {
@@ -2620,7 +2623,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       <div class="bal-c tot"><span>\u{1F4B0} \u0420\u0430\u0437\u043E\u043C</span><b class="money">${money(B.total)}</b><small>${B.tipOwed ? `\u0437 \u043D\u0438\u0445 \u0447\u0430\u0439\u043E\u0432\u0456 ${money(B.tipOwed)} \xB7 \u0432\u0456\u043B\u044C\u043D\u0438\u0445 <b>${money(B.free)}</b>` : `\u0437 ${B.from ? B.from.split("-").reverse().join(".") : "\u2014"}`}</small></div></div>` : "";
     const hero = `<div class="cash-hero on"><div class="hero-main"><div class="muted">${today}</div><div class="hero-l">\u0412\u0438\u0440\u0443\u0447\u043A\u0430 \u0437\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</div><div class="hero-n money">${money(z.total)}</div>${z.tip ? `<div class="muted" style="font-size:13px">\u0431\u0435\u0437 \u0447\u0430\u0439\u043E\u0432\u0438\u0445 \xB7 + \u{1F49D} ${money(z.tip)} \u0447\u0430\u0439\u043E\u0432\u0456 \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\u0443</div>` : ""}
         <div class="split"><div class="bar2"><i style="width:${pc}%"></i></div><div class="split-l"><span>\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 <b class="money">${money(z.cash)}</b></span><span>\u{1F4B3} \u041A\u0430\u0440\u0442\u043A\u0430 <b class="money">${money(z.card)}</b></span></div></div></div>
-      <button class="btn primary zbtn" data-a="zDay">\u{1F9FE} Z-\u0437\u0432\u0456\u0442<small>\u043D\u0430\u0434\u0440\u0443\u043A\u0443\u0432\u0430\u0442\u0438 \u0439 \u043D\u0430\u0434\u0456\u0441\u043B\u0430\u0442\u0438</small></button></div>`;
+      <button class="btn primary zbtn" data-a="zDay">\u{1F9FE} Z-\u0437\u0432\u0456\u0442<small>\u043F\u0435\u0440\u0435\u0433\u043B\u044F\u043D\u0443\u0442\u0438 \xB7 \u0434\u0440\u0443\u043A \xB7 \u0437\u0430\u043A\u0440\u0438\u0442\u0438 \u0434\u0435\u043D\u044C</small></button></div>`;
     const tiles = [["\u{1F9FE} \u0427\u0435\u043A\u0456\u0432", z.checks], ["\xD8 \u0421\u0435\u0440\u0435\u0434\u043D\u0456\u0439 \u0447\u0435\u043A", z.checks ? money(z.total / z.checks) : "\u2014"], ["\u{1F3F7} \u0417\u043D\u0438\u0436\u043A\u0438", money(z.disc)], ["\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456", money(z.tip || 0)], ["\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438", money(z.exCash + z.exCard)], ["\u{1F4C8} \u0427\u0438\u0441\u0442\u0438\u043C\u0438", money(z.net), "green"], ["\u23F3 \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u043E \u0432 \u0437\u0430\u043B\u0456", z.openTables ? `${money(z.openSum)} \xB7 ${z.openTables} \u0441\u0442.` : "\u2014"]];
     const tilesH = `<div class="widgets">${tiles.map(([l, v, c]) => `<div class="widget ${c || ""}"><span>${l}</span><b class="money">${v}</b></div>`).join("")}</div>`;
     const ops = `<div class="card"><h3>\u26A1 \u041E\u043F\u0435\u0440\u0430\u0446\u0456\u0457</h3><div class="opsg"><button class="btn" data-a="expense">\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0430</button><button class="btn" data-a="cMove" data-t="+">\u2795 \u0412\u043D\u0435\u0441\u0442\u0438</button><button class="btn" data-a="cMove" data-t="-">\u2796 \u0412\u0438\u043B\u0443\u0447\u0438\u0442\u0438</button><button class="btn" data-a="cMove" data-t="x">\u{1F501} \u041E\u0431\u043C\u0456\u043D</button></div>
@@ -2688,12 +2691,6 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       loadView();
     }
   }
-  async function zDay() {
-    const v = await choose("\u{1F9FE} Z-\u0437\u0432\u0456\u0442 \u0437\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456", "\u041F\u0456\u0434\u0441\u0443\u043C\u043E\u043A \u0434\u043D\u044F: \u0447\u0435\u043A\u0438, \u0433\u043E\u0442\u0456\u0432\u043A\u0430, \u043A\u0430\u0440\u0442\u043A\u0430, \u0437\u043D\u0438\u0436\u043A\u0438, \u0432\u0438\u0442\u0440\u0430\u0442\u0438", [{ label: "\u{1F5A8} \u041D\u0430\u0434\u0440\u0443\u043A\u0443\u0432\u0430\u0442\u0438 \u0439 \u043D\u0430\u0434\u0456\u0441\u043B\u0430\u0442\u0438 \u0432 Telegram", val: "p", cls: "primary" }, { label: "\u{1F4F2} \u041B\u0438\u0448\u0435 \u0432 Telegram", val: "n" }]);
-    if (!v) return;
-    const r = await act("zDay", { print: v === "p" }, v === "p" ? "\u{1F9FE} Z-\u0437\u0432\u0456\u0442 \u043D\u0430\u0434\u0440\u0443\u043A\u043E\u0432\u0430\u043D\u043E" : "\u{1F9FE} Z-\u0437\u0432\u0456\u0442 \u043D\u0430\u0434\u0456\u0441\u043B\u0430\u043D\u043E");
-    if (r) loadView();
-  }
   async function shOpen() {
     var _a2;
     const last = (_a2 = await api("shift").catch(() => null)) == null ? void 0 : _a2.last;
@@ -2715,6 +2712,111 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       loadState().catch(() => {
       });
       if (S.view === "cash") loadView();
+    }
+  }
+  async function zDay() {
+    const r = await api("shift").catch(() => null), z = r == null ? void 0 : r.z;
+    if (!z) return toast("\u041D\u0435 \u0432\u0434\u0430\u043B\u043E\u0441\u044F \u0437\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0438\u0442\u0438");
+    const kv = (l, v2, st = "") => `<div class="kv"${st}><span>${l}</span><b class="money">${v2}</b></div>`, sg = (n) => (n > 0 ? "+" : "") + money(n);
+    const B = r.bal, tb = Object.entries(z.tipBy || {});
+    const body = `<div class="card" style="margin:0 0 10px">${kv("\u{1F9FE} \u0427\u0435\u043A\u0456\u0432", z.checks)}${kv("\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430", money(z.cash))}${kv("\u{1F4B3} \u041A\u0430\u0440\u0442\u043A\u0430", money(z.card))}${z.disc ? kv("\u{1F3F7} \u0417\u043D\u0438\u0436\u043A\u0438", money(z.disc)) : ""}
+        ${kv('<b>\u{1F4C8} \u0412\u0438\u0440\u0443\u0447\u043A\u0430</b> <small class="muted">\u0431\u0435\u0437 \u0447\u0430\u0439\u043E\u0432\u0438\u0445</small>', money(z.total), ' style="font-size:17px"')}</div>
+      ${z.tip ? `<div class="card" style="margin:0 0 10px">${kv("\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456 (\u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\u0443)", money(z.tip))}${tb.map(([n, v2]) => kv("\u{1F464} " + esc(n), money(v2))).join("")}</div>` : ""}
+      <div class="card" style="margin:0 0 10px">${kv("\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438" + (z.exCard ? ` <small class="muted">\u0437 \u043A\u0430\u0440\u0442\u043A\u0438 ${money(z.exCard)}</small>` : ""), money(z.exCash + z.exCard))}${z.mvCash ? kv("\u{1F501} \u0420\u0443\u0445 \u0433\u043E\u0442\u0456\u0432\u043A\u0438", sg(z.mvCash)) : ""}${z.mvCard ? kv("\u{1F501} \u0420\u0443\u0445 \u043A\u0430\u0440\u0442\u043A\u0438", sg(z.mvCard)) : ""}${z.salOut ? kv("\u{1F477} \u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430", money(z.salOut)) : ""}
+        ${kv("<b>\u{1F4B0} \u0427\u0438\u0441\u0442\u0438\u043C\u0438</b>", money(z.net))}${B ? kv("\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 \u0432 \u043A\u0430\u0441\u0456 \u0437\u0430\u0440\u0430\u0437", money(B.cash)) + kv("\u{1F4B3} \u041D\u0430 \u043A\u0430\u0440\u0442\u0446\u0456 \u0437\u0430\u0440\u0430\u0437", money(B.card)) : ""}</div>
+      ${z.openTables ? `<div class="muted" style="color:var(--red)">\u26A0\uFE0F \u0429\u0435 \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u043E \u0441\u0442\u043E\u043B\u0456\u0432: ${z.openTables} \u043D\u0430 ${money(z.openSum)}</div>` : ""}`;
+    const v = await modal({ title: `\u{1F9FE} Z-\u0437\u0432\u0456\u0442 \xB7 ${z.day.split("-").reverse().join(".")}`, body, buttons: [{ label: "\u{1F5A8} \u041D\u0430\u0434\u0440\u0443\u043A\u0443\u0432\u0430\u0442\u0438", val: "x", cls: "primary" }, { label: "\u{1F512} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0434\u0435\u043D\u044C", val: "z", cls: "green" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0432\u0456\u043A\u043D\u043E", val: null }] });
+    if (v === "x") await act("zX", {}, "\u{1F5A8} X-\u0437\u0432\u0456\u0442 \u043D\u0430\u0434\u0440\u0443\u043A\u043E\u0432\u0430\u043D\u043E (\u0434\u0435\u043D\u044C \u043D\u0435 \u0437\u0430\u043A\u0440\u0438\u0442\u043E)");
+    if (v === "z") {
+      const p = await choose("\u{1F512} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0434\u0435\u043D\u044C?", `Z-\u0437\u0432\u0456\u0442 ${money(z.total)} \u0437\u0430\u043F\u0438\u0448\u0435\u0442\u044C\u0441\u044F \u0432 \u0456\u0441\u0442\u043E\u0440\u0456\u044E \u0439 \u043F\u0456\u0434\u0435 \u0432 Telegram`, [{ label: "\u{1F5A8} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0439 \u043D\u0430\u0434\u0440\u0443\u043A\u0443\u0432\u0430\u0442\u0438", val: "p", cls: "primary" }, { label: "\u{1F4F2} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0431\u0435\u0437 \u0434\u0440\u0443\u043A\u0443", val: "n" }]);
+      if (p && await act("zDay", { print: p === "p" }, "\u{1F512} \u0414\u0435\u043D\u044C \u0437\u0430\u043A\u0440\u0438\u0442\u043E \xB7 Z-\u0437\u0432\u0456\u0442 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) loadView();
+    }
+  }
+  async function cEdit(ref, day) {
+    var _a2, _b, _c;
+    const [cl, st] = await Promise.all([api("closed", { day }).catch(() => null), api("staff").catch(() => null)]);
+    if (!S.menu) await loadMenu().catch(() => {
+    });
+    const l = (cl == null ? void 0 : cl.list) || [], x = l.find((e) => e.id === ref) || (/^\d+$/.test(ref) ? l[+ref] : null);
+    if (!x) return toast("\u0427\u0435\u043A \u043D\u0435 \u0437\u043D\u0430\u0439\u0434\u0435\u043D\u043E");
+    if (x.del || x.rm) return toast("\u0427\u0435\u043A \u0437\u043D\u044F\u0442\u043E \u0437 \u0432\u0438\u0440\u0443\u0447\u043A\u0438 \u2014 \u0441\u043F\u0435\u0440\u0448\u0443 \u043F\u043E\u0432\u0435\u0440\u043D\u0456\u0442\u044C");
+    const E = { items: (x.dishes || []).map((d) => [...d]), disc: x.disc || 0, tip: x.tip || 0, pay: x.card && ((_a2 = x.cash) != null ? _a2 : 0) ? "mix" : x.card ? "card" : "cash", cash: (_b = x.cash) != null ? _b : x.sum, w: x.w || x.by || "", t: x.t };
+    const opts = itemsAll().flatMap((it) => it.variants ? it.variants.map((v) => [`${it.name.uk} ${v.v} ${it.size || "\u043B"}`.trimEnd(), v.p]) : [[it.name.uk, it.price]]);
+    const names = [...new Set(((st == null ? void 0 : st.staff) || []).filter((s) => s.role !== "courier").map((s) => s.name))];
+    const calc = () => {
+      var _a3;
+      const g = E.items.reduce((a, d) => a + d[2], 0), oG = (x.dishes || []).reduce((a, d) => a + d[2], 0) || ((_a3 = x.gross) != null ? _a3 : x.sum - (x.tip || 0) + (x.discSum || 0)), other = Math.max(0, oG - (x.discSum || 0) - (x.sum - (x.tip || 0)));
+      const ds = !E.disc ? 0 : E.disc === (x.disc || 0) && g === oG && x.discSum != null ? x.discSum : Math.round(g * E.disc / 100);
+      return { g, ds, other, sum: Math.max(0, g - ds - other) + E.tip };
+    };
+    const draw = () => {
+      const c = calc(), m = $("#ceBody");
+      if (!m) return;
+      m.innerHTML = `<div class="card" style="margin:0 0 10px">${E.items.map(([n, q, s], i) => `<div class="kv"><span>${esc(n)}</span><span class="kv-r" style="flex-wrap:nowrap;gap:4px"><button class="btn sm" data-ce="m" data-i="${i}">\u2212</button><b>${q}</b><button class="btn sm" data-ce="p" data-i="${i}">+</button><b class="money" style="min-width:64px;text-align:right">${money(s)}</b><button class="xb" data-ce="x" data-i="${i}">\u2715</button></span></div>`).join("") || '<div class="muted">\u041F\u043E\u0440\u043E\u0436\u043D\u044C\u043E</div>'}
+        <div class="frow" style="margin-top:8px"><select id="ceAdd" style="flex:1;min-width:0"><option value="">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438 \u0441\u0442\u0440\u0430\u0432\u0443 \u0437 \u043C\u0435\u043D\u044E\u2026</option>${opts.map(([n, p2], i) => `<option value="${i}">${esc(n)} \u2014 ${p2}</option>`).join("")}</select></div></div>
+        <div class="form"><label>\u{1F3F7} \u0417\u043D\u0438\u0436\u043A\u0430, %<input id="ceDisc" inputmode="numeric" value="${E.disc}"></label><label>\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456, \u20B4<input id="ceTip" inputmode="decimal" value="${E.tip}"></label>
+        <label>\u{1F4B3} \u041E\u043F\u043B\u0430\u0442\u0430<select id="cePay">${[["cash", "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430"], ["card", "\u{1F4B3} \u041A\u0430\u0440\u0442\u043A\u0430"], ["mix", "\u{1F4B5}+\u{1F4B3} \u0417\u043C\u0456\u0448\u0430\u043D\u043E"]].map(([k, n]) => `<option value="${k}" ${E.pay === k ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+        ${E.pay === "mix" ? `<label>\u{1F4B5} \u0417 \u043D\u0438\u0445 \u0433\u043E\u0442\u0456\u0432\u043A\u043E\u044E, \u20B4<input id="ceCash" inputmode="decimal" value="${E.cash}"></label>` : ""}
+        <label>\u{1F464} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442<select id="ceW">${[.../* @__PURE__ */ new Set([E.w, ...names])].filter(Boolean).map((n) => `<option ${n === E.w ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label><label>\u{1FA91} \u0421\u0442\u0456\u043B<input id="ceT" inputmode="numeric" value="${E.t}"></label></div>
+        <div class="kv" style="font-size:18px;margin-top:8px"><span><b>\u0420\u0430\u0437\u043E\u043C</b> <small class="muted">${c.ds ? `\u0437\u043D\u0438\u0436\u043A\u0430 \u2212${money(c.ds)}` : ""}${c.other ? ` \xB7 \u0431\u043E\u043D\u0443\u0441\u0438 \u2212${money(c.other)}` : ""}${E.tip ? ` \xB7 \u{1F49D} ${money(E.tip)}` : ""}</small></span><b class="money">${money(c.sum)}</b></div>
+        <div class="muted" style="font-size:12px">\u0411\u0443\u043B\u043E ${money(x.sum)}. \u0412\u0438\u0440\u0443\u0447\u043A\u0430 \u0434\u043D\u044F, \u0433\u043E\u0442\u0456\u0432\u043A\u0430/\u043A\u0430\u0440\u0442\u043A\u0430, \u0442\u043E\u043F \u0441\u0442\u0440\u0430\u0432, \u0447\u0430\u0439\u043E\u0432\u0456 \u0439 \u0441\u043A\u043B\u0430\u0434 \u0432\u0438\u043F\u0440\u0430\u0432\u043B\u044F\u0442\u044C\u0441\u044F \u043D\u0430 \u0440\u0456\u0437\u043D\u0438\u0446\u044E.</div>
+        ${(x.edits || []).length ? `<div class="muted" style="font-size:12px;margin-top:6px">\u270F\uFE0F ${x.edits.map((e) => `${e.at} ${esc(e.by)}: ${esc(e.what)}`).join("<br>\u270F\uFE0F ")}</div>` : ""}`;
+    };
+    const num = (id) => {
+      var _a3;
+      return +String(((_a3 = $(id)) == null ? void 0 : _a3.value) || 0).replace(",", ".") || 0;
+    };
+    const read = () => {
+      if (!$("#ceDisc")) return;
+      E.disc = Math.max(0, Math.min(100, Math.round(num("#ceDisc"))));
+      E.tip = Math.max(0, Math.round(num("#ceTip")));
+      E.pay = $("#cePay").value;
+      if ($("#ceCash")) E.cash = Math.round(num("#ceCash"));
+      E.w = $("#ceW").value;
+      E.t = Math.round(num("#ceT")) || x.t;
+    };
+    const p = modal({ title: `\u270F\uFE0F \u0427\u0435\u043A \xB7 \u0441\u0442\u0456\u043B ${tn(x.t)} \xB7 ${x.at}`, body: '<div id="ceBody"></div>', buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: 1, cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }] });
+    draw();
+    const box = $("#modal");
+    box.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-ce]");
+      if (!b) return;
+      read();
+      const i = +b.dataset.i, d = E.items[i], u = d[1] ? d[2] / d[1] : 0;
+      if (b.dataset.ce === "p") {
+        d[1]++;
+        d[2] = Math.round(u * d[1]);
+      } else if (b.dataset.ce === "m" && d[1] > 1) {
+        d[1]--;
+        d[2] = Math.round(u * d[1]);
+      } else E.items.splice(i, 1);
+      draw();
+    });
+    box.addEventListener("change", (e) => {
+      read();
+      if (e.target.id === "ceAdd" && e.target.value !== "") {
+        const [n, pr] = opts[+e.target.value], d = E.items.find((z) => z[0] === n);
+        if (d) {
+          d[2] += Math.round(d[2] / d[1]);
+          d[1]++;
+        } else E.items.push([n, 1, pr]);
+      }
+      draw();
+    });
+    box.addEventListener("input", (e) => {
+      if (["ceDisc", "ceTip", "ceCash"].includes(e.target.id)) {
+        read();
+        const c = calc(), t = box.querySelector('.kv[style*="18px"] b.money');
+        if (t) t.textContent = money(c.sum);
+      }
+    });
+    if (!await p) return;
+    if (!E.items.length) return toast("\u0427\u0435\u043A \u0431\u0435\u0437 \u043F\u043E\u0437\u0438\u0446\u0456\u0439 \u2014 \u043A\u0440\u0430\u0449\u0435 \xAB\u{1F5D1} \u0417 \u0432\u0438\u0440\u0443\u0447\u043A\u0438\xBB");
+    const r = await act("closedEdit", { ref: x.id || ref, day: cl.day, p: { items: E.items, disc: E.disc, tip: E.tip, pay: E.pay, cash: E.cash, w: E.w, t: E.t } });
+    if (r) {
+      toast(((_c = r.what) == null ? void 0 : _c.length) ? "\u270F\uFE0F \u0427\u0435\u043A \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E" : "\u0411\u0435\u0437 \u0437\u043C\u0456\u043D");
+      S.data.range = null;
+      loadView();
     }
   }
   function perRange(p) {
@@ -2975,7 +3077,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       if (sortable) body = `<div class="chips" style="margin-bottom:10px"><button class="chip ${R.sort !== "q" ? "on" : ""}" data-a="rSort" data-s="s">\u0417\u0430 \u0441\u0443\u043C\u043E\u044E</button><button class="chip ${R.sort === "q" ? "on" : ""}" data-a="rSort" data-s="q">\u0417\u0430 \u043A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044E</button></div>` + body;
     } else if (["checks", "exp", "mov", "z"].includes(T)) {
       const xb = (kind, x, back) => `<button class="xb${back ? " back" : ""}" data-a="${back ? "rBack" : "rDel"}" data-k="${kind}" data-d="${x.d}" data-i="${kind === "checks" ? esc(x.id || "") : x.i}" title="${back ? "\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438" : "\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438"}">${back ? "\u21A9\uFE0F" : "\u{1F5D1}"}</button>`;
-      const line = (kind, x, l, v, back) => `<div class="kv rrow${back ? " del" : ""}"><span>${l}</span><span class="kv-r"><b class="money">${v}</b>${kind !== "checks" || x.id ? xb(kind, x, back) : ""}</span></div>`;
+      const line = (kind, x, l, v, back) => `<div class="kv rrow${back ? " del" : ""}"><span>${l}</span><span class="kv-r"><b class="money">${v}</b>${kind === "checks" && !back && x.id && isAdmin() ? `<button class="xb" data-a="cEdit" data-ref="${esc(x.id)}" data-d="${x.d}" title="\u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u0439 \u0440\u0435\u0434\u0430\u0433\u0443\u0432\u0430\u0442\u0438">\u270F\uFE0F</button>` : ""}${kind !== "checks" || x.id ? xb(kind, x, back) : ""}</span></div>`;
       const dd = (d) => d.slice(8) + "." + d.slice(5, 7);
       let act2 = [], gone = [], empty = "";
       if (T === "checks") {
