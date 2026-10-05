@@ -4,7 +4,7 @@
     return `<div class="go-card"><div class="go-h"><b>${esc(g.name || '—')}</b>${g.phone ? `<a class="btn sm" href="tel:+${g.phone}">📞 ${fmtPh(g.phone)}</a>` : ''}${t !== -1 ? `<span class="chip">${GOST[g.st] || g.st}</span>` : ''}</div>
       ${g.kind === 'del' ? `<div>📍 ${map ? `<a href="${map}" target="_blank" rel="noopener">${esc(g.addr)}</a>` : '—'}${g.ent ? ` · ${esc(g.ent)}` : ''}</div>` : ''}
       <div class="muted">${g.when ? `🕐 на <b>${g.when}</b> · ` : ''}${g.pay === 'online' ? (g.paid ? '💳 оплачено онлайн' : '⏳ очікує онлайн-оплату') : g.pay === 'card' ? '💳 картка при отриманні' : '💵 готівка'}${g.change ? ` · решта з <b>${g.change}</b>` : ''}${g.cut ? ` · 🍴 ${g.cut}` : ''}${g.cour ? ` · 🛵 ${esc(g.cour)}` : ''}${g.src ? ` · ${esc(g.src)}` : ''}</div>
-      ${t !== -1 ? `<div class="btnrow">${nx}${g.kind === 'del' && isAdmin() ? '<button class="btn sm" data-a="goCourSet">👤 Кур\'єр</button>' : ''}<button class="btn sm green" data-a="goDone">🤝 Видано · ${money(b?.pay2 || 0)}</button></div>` : ''}</div>`;
+      ${t !== -1 ? `<div class="btnrow">${nx}${g.kind === 'del' && isAdmin() ? '<button class="btn sm" data-a="goCourSet">👤 Кур\'єр</button>' : ''}${isAdmin() ? '<button class="btn sm" data-a="goEdit">✏️ Змінити</button>' : ''}<button class="btn sm green" data-a="goDone">🤝 Видано · ${money(b?.pay2 || 0)}</button></div>` : ''}</div>`;
   }
   async function goNew(kind0 = 'pick', fromT = 0) {
     const body = `<div class="form"><div class="seg" id="gKind"><button class="${kind0 === 'pick' ? 'on' : ''}" data-k="pick">🥡 Самовивіз</button><button class="${kind0 === 'del' ? 'on' : ''}" data-k="del">🛵 Доставка</button></div>
@@ -91,3 +91,35 @@
       <div class="card"><h3>🛵 Кур'єри</h3><div class="muted set-note">Реєстрація в касі кодом <b>${esc(S.data.staff?.reg?.courier || '1114')}</b> → у своєму екрані кур'єр натискає «✈️ Підключити Telegram». Бот кур'єрів: ${S.data.cours?.bot ? `<a href="https://t.me/${esc(S.data.cours.bot)}" target="_blank" rel="noopener">@${esc(S.data.cours.bot)}</a>` : '—'}</div>
         ${(S.data.cours?.list || []).map(c => `<div class="kv"><span>${esc(c.name)}</span><span class="kv-r">${c.tg ? '✈️ Telegram підключено' : '<span class="muted">без Telegram</span>'}</span></div>`).join('') || '<div class="muted">Кур\'єрів ще немає</div>'}</div></div>`;
   }
+  // 🗺 зал: кнопка «Карта доставок» над рядом Д-/С- і підпис плитки Д- (хто везе, скільки в дорозі)
+  function goMapBtn(gos) { const n = gos.filter(b => b.t < 2000 && b.go.addr && !['new', 'done', 'rej'].includes(b.go.st)).length;
+    return n && isAdmin() ? `<div class="btnrow go-map"><button class="btn sm" data-a="goMap">🗺 Карта доставок · ${n}</button></div>` : ''; }
+  function goTileInfo(g) { if (g.kind !== 'del' || !g.cour) return '';
+    return ` · 🛵 ${esc(g.cour)}${g.st === 'road' && g.roadAt ? ` · ${minsAgo(g.roadAt)} хв` : ''}`; }
+  async function goEdit(t) {
+    const g = S.tables[t]?.go; if (!g) return;
+    const body = `<div class="form"><label>Імʼя<input id="eN" value="${esc(g.name || '')}"></label><label>Телефон<input id="eP" type="tel" value="${esc(g.phone ? '+' + g.phone : '')}"></label>
+      ${g.kind === 'del' ? `<label>Адреса<input id="eA" value="${esc(g.addr || '')}"></label><label>Підʼїзд / поверх<input id="eE" value="${esc(g.ent || '')}"></label>` : ''}
+      <label>На котру<input id="eW" placeholder="19:30" value="${esc(g.when || '')}"></label><label>Коментар<input id="eC" value="${esc(g.note || '')}"></label></div>`;
+    const v = await modal({ title: `✏️ ${tn(t)}`, body, buttons: [{ label: '💾 Зберегти', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
+    if (v !== 'ok') return closeModal();
+    const d = { t, name: $('#eN').value, phone: $('#eP').value, when: $('#eW').value, note: $('#eC').value, ...(g.kind === 'del' ? { addr: $('#eA').value, ent: $('#eE').value } : {}) }; closeModal();
+    if (await act('goEdit', d, '✏️ Збережено · кур\'єру надіслано')) loadState().catch(() => {});
+  }
+  async function goMap() { const r = await api('goMap').catch(e => { toast('⚠️ ' + (e.message || 'Помилка')); return null; }); if (r?.url) open(r.url, '_blank', 'noopener'); }
+  // 🛵 звіт по кур'єрах за місяць (Звіти → Персонал → Кур'єри)
+  async function loadCourRep(m) { S.data.courRep = { m, wait: 1 }; renderMain(); S.data.courRep = await api('courRep', { m }).catch(() => ({ m, list: [] })); renderMain(); }
+  function courRepHTML() {
+    const R = S.data.courRep; if (!R) { setTimeout(() => loadCourRep(new Date().toISOString().slice(0, 7))); return '<div class="muted">Завантаження…</div>'; }
+    const sh = d => { const [y, mo] = R.m.split('-').map(Number), x = new Date(Date.UTC(y, mo - 1 + d, 1)); return x.toISOString().slice(0, 7); };
+    const PR = { noans: '📵', addr: '📍', refuse: '🙅' }, mn = v => v == null ? '—' : v + ' хв';
+    const nav = `<div class="btnrow"><button class="btn sm" data-a="crRepM" data-m="${sh(-1)}">‹</button><b>🛵 ${R.m}</b><button class="btn sm" data-a="crRepM" data-m="${sh(1)}">›</button></div>`;
+    if (R.wait) return nav + '<div class="muted">Завантаження…</div>';
+    if (!R.list.length) return nav + '<div class="card"><div class="muted">Доставок за місяць немає</div></div>';
+    return nav + `<div class="dash">${R.list.map(x => { const pr = Object.entries(x.prob || {}), pn = pr.reduce((a, p) => a + p[1], 0);
+      return `<div class="card"><h3>🛵 ${esc(x.name)}</h3><div class="kv"><span>📦 Доставок</span><b>${x.n}</b></div><div class="kv"><span>💰 Сума чеків</span><b class="money">${money(x.sum)}</b></div>
+        <div class="kv"><span>🛣 Поїхав → видано, сер.</span><b>${mn(x.road)}</b></div><div class="kv"><span>⏱ Замовлення → видано, сер.</span><b>${mn(x.tot)}</b></div>
+        <div class="kv"><span>⏰ Запізнення (пізніше «на котру»)</span><b>${x.late}</b></div><div class="kv"><span>⚠️ Проблеми</span><b>${pn ? pr.map(([k, q]) => `${PR[k] || '⚠️'} ${q}`).join(' ') : 0}</b></div></div>`; }).join('')}</div>`;
+  }
+  document.addEventListener('click', e => { const el = e.target.closest('[data-a]'); if (!el) return; const a = el.dataset.a;
+    if (a === 'goMap') goMap(); else if (a === 'crRepM') loadCourRep(el.dataset.m); else if (a === 'goEdit') goEdit(S.open); });

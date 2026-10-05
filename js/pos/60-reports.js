@@ -29,8 +29,8 @@
     S.data.range = res || S.data.range || { checks: [], exp: [], z: [] };
   }
   // ---------- 📊 звіти: розділи · порівняння з попереднім періодом · графіки ----------
-  const SECS = [['overview', '📈 Огляд', ['overview']], ['sales', '🍽 Продажі', ['dishes', 'cats', 'groups', 'tables', 'days', 'wd']], ['staff', '👥 Персонал', ['waiters', 'tips', 'ctrl', 'kitchen']], ['money', '💰 Гроші', ['checks', 'exp', 'mov', 'z']]];
-  const TABS = { dishes: '🍽 Страви', cats: '📂 Категорії', groups: '🍳 Кухня/бар', tables: '🪑 Столи', days: '📅 Дні', wd: '🗓 Дні тижня', waiters: '👤 Офіціанти', tips: '💝 Чайові', ctrl: '🕵️ Контроль', kitchen: '⏱ Кухня', checks: '🧾 Чеки', exp: '💸 Витрати', mov: '🔁 Рух коштів', z: '🔒 Z-звіти' };
+  const SECS = [['overview', '📈 Огляд', ['overview']], ['sales', '🍽 Продажі', ['dishes', 'cats', 'groups', 'tables', 'days', 'wd']], ['staff', '👥 Персонал', ['waiters', 'tips', 'ctrl', 'kitchen', 'cour']], ['money', '💰 Гроші', ['checks', 'exp', 'mov', 'z']]];
+  const TABS = { dishes: '🍽 Страви', cats: '📂 Категорії', groups: '🍳 Кухня/бар', tables: '🪑 Столи', days: '📅 Дні', wd: '🗓 Дні тижня', waiters: '👤 Офіціанти', tips: '💝 Чайові', ctrl: '🕵️ Контроль', kitchen: '⏱ Кухня', cour: '🛵 Кур\'єри', checks: '🧾 Чеки', exp: '💸 Витрати', mov: '🔁 Рух коштів', z: '🔒 Z-звіти' };
   const WD = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'], wdOf = d => (new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7;
   const hOrd = h => { const n = parseInt(h, 10) || 0; return n < 3 ? n + 24 : n; }; // робочий день — з 03:00: 00–02 год ідуть після 23
   const addDays = (d, n) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
@@ -106,6 +106,7 @@
     const days = daysIn(from, to), byDay = new Map(grpBy(c => c.d));
     const waiterOf = c => c.w || c.by || '—';
     const T = R.tab; let body = '';
+    if (T === 'cour') return head + nav + courRepHTML();
     if (T === 'overview') {
       // графік виручки: по днях (≤ 62 дні), по місяцях (довше) або по годинах (1 день)
       let chart, ctitle;

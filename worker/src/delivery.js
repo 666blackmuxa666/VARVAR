@@ -1,9 +1,10 @@
 // 🛵 Замовлення за посиланням: самовивіз і доставка. Кожне — «віртуальний стіл» (tn.js): звичайний bill: з полем go,
 // тож працюють усі дії столу (дозамовлення, знижка, скасування, кухня, склад, закриття, звіти).
 import { getMenu, priceMap } from './menu.js';
-import { tg, esc, hhmm, dayKey, getBill, putBill, billItems, payable, logEvent, addStat, addDishes, L, editEv, closeTable, notify } from './ops.js';
+import { tg, esc, hhmm, dayKey, getBill, putBill, billItems, payable, logEvent, addStat, addDishes, L, editEv, closeTable, notify, openTables } from './ops.js';
 import { GO_DEL, GO_PICK, isGo, tn } from './tn.js';
 import { courNotify } from './courier.js';
+import { getSite } from './site.js';
 
 const BILL_TTL = 2 * 86400;
 // ⚙️ налаштування доставки (окремо від cfg — тут є текст і час)
@@ -188,6 +189,24 @@ export async function goApi(b, env, me, t) {
       const r = await L(env, 'bills', async () => { const x = await getBill(env, t); if (!x.go) return null; x.go.cour = name; await putBill(env, t, x); return x.go; });
       if (r) await logEvent(env, { k: 'go', t, by: who, s: 'acc', text: `🛵 ${tn(t)} → кур'єр ${name || '—'}` });
       return ok({ go: r });
+    }
+    case 'goMap': { // 🗺 маршрут через усі активні доставки (від закладу)
+      if (!admin) return bad('admin', 403);
+      const s = await getSite(env), geo = Array.isArray(s.geo) ? s.geo.join(',') : '', list = (await openTables(env)).filter(r => isGo(r.t) && r.t < 2000 && r.b.go?.addr && !['new', 'done', 'rej'].includes(r.b.go.st)).sort((a, c) => (a.b.go.roadAt || 9e15) - (c.b.go.roadAt || 9e15) || a.t - c.t);
+      if (!list.length) return bad('Немає активних доставок');
+      const pts = list.slice(0, 10).map(r => r.b.go.addr + ', Поляниця'), dest = pts.pop(), e = encodeURIComponent;
+      return ok({ n: list.length, url: `https://www.google.com/maps/dir/?api=1${geo ? '&origin=' + e(geo) : ''}&destination=${e(dest)}${pts.length ? '&waypoints=' + e(pts.join('|')) : ''}&travelmode=driving` });
+    }
+    case 'goEdit': { // ✏️ адмін змінює клієнта/адресу → кур'єру сповіщення
+      if (!admin) return bad('admin', 403);
+      const F = { name: 40, addr: 200, ent: 60, when: 5, note: 300 }, ch = [];
+      const r = await L(env, 'bills', async () => { const x = await getBill(env, t); if (!x.go) return null;
+        for (const k of Object.keys(F)) if (b[k] != null) { let v = String(b[k]).trim().slice(0, F[k]); if (k === 'when' && v && !/^\d{1,2}:\d{2}$/.test(v)) continue; if (v !== (x.go[k] || '')) { x.go[k] = v; ch.push(k === 'addr' ? '📍 ' + v : k === 'name' ? '👤 ' + v : k === 'when' ? '🕐 ' + (v || 'якнайшвидше') : k === 'ent' ? '🚪 ' + v : '💬 ' + v); } }
+        if (b.phone != null) { const ph = normPhone(b.phone); if (ph && ph !== x.go.phone) { x.go.phone = ph; x.cli = ph; ch.push('📞 ' + fmtPhone(ph)); } }
+        if (ch.length) await putBill(env, t, x); return x.go; });
+      if (!r) return bad('Немає замовлення');
+      if (ch.length) { await logEvent(env, { k: 'go', t, by: who, s: 'acc', text: `✏️ ${tn(t)} змінено: ${ch.join(' · ')}` }); await courNotify(env, t, 'upd', ch.join(' · ')).catch(() => {}); }
+      return ok({ go: r, ch });
     }
     case 'goCfg': return ok({ cfg: await getGoCfg(env) });
     case 'goCfgSet': { if (!admin) return bad('admin', 403); const c = await setGoCfg(env, String(b.k), b.v); if (c.error) return bad(c.error); return ok({ cfg: c }); }

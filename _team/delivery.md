@@ -14,10 +14,10 @@
   - `goOrder` (сайт, `/api/go`): валідація, антиспам 3/10 хв (`gorl:`), ціни з меню, доставка платна до `free`, бонуси ≤ `bmax`%, створює bill + `ord:` + подію `guest` + повідомлення в чат з `acc:/rej:`.
   - `goFromPos/goAttach` → доставка з каси (рядок «🛵 Доставка», одразу `accAt`, кур'єрам).
   - `goList/goText/goButtons` (бот), `reco` (пари страв за 30 днів, кеш `reco`), `goInfo` (`/api/goinfo`).
-  - `goApi` → op каси `goSt, goCour, goCfg, goCfgSet, cliGet, cliSet, cliBonus`.
+  - `goApi` → op каси `goSt, goCour, goMap (🗺 маршрут від getSite().geo через ≤10 активних доставок, адмін), goEdit (✏️ ім'я/телефон/адреса/під'їзд/час/коментар, адмін → courNotify 'upd'), goCfg, goCfgSet, cliGet, cliSet, cliBonus`.
 - `worker/src/courier.js` — бот кур'єрів (`COURIER_BOT_TOKEN`, `/tg3`).
-  - `courBot` (вебхук + ім'я бота), `courLinkUrl` (одноразове посилання прив'язки), `courNotify(t, kind)` (new/remind/taken/refresh/ready/msg/upd/gone), `courDay` (доставки, готівка, заробіток), `courCashGive`, `courShiftEnd`, `courWatch` (cron: 3 хв — нагадати кур'єрам, 5 хв — адміну), `courAct(take|road|done|eta|prob|km)`, `courUpdate` (кнопки, фото), `multiRoute`.
-- `js/pos/20-delivery.js` — у касі: `goBlock/goHTML` (картка доставки на столі), `goNew` (☎️ нова, `S.goDraft`, t=-1), `goDone`, `goSetHTML` (налаштування доставки), `courCard/loadCour` (екран кур'єра: «нові/мої», звук), `renderSheet`.
+  - `courBot` (вебхук + ім'я бота), `courLinkUrl` (одноразове посилання прив'язки), `courNotify(t, kind, extra, pre)` (new/remind/taken/refresh/ready/msg/upd/gone; `pre` — рахунок до видалення для 'gone'; без кур'єра upd/gone правлять «🆕» у всіх), `courDay` (доставки, готівка, заробіток), `courCashGive`, `courShiftEnd`, `courWatch` (cron: 3 хв — нагадати кур'єрам, 5 хв — адміну), `courAct(take|road|done|eta|prob|km)`, `courUpdate` (кнопки, фото), `multiRoute`, `courRep(m)` — звіт за місяць з `closed:` (доставок, сума, сер. road→done, at→done, запізнення > when+5 хв за Києвом, проблеми `gt.prob`).
+- `js/pos/20-delivery.js` — у касі: `goBlock/goHTML` (картка доставки на столі), `goNew` (☎️ нова, `S.goDraft`, t=-1), `goDone`, `goSetHTML` (налаштування доставки), `courCard/loadCour` (екран кур'єра: «нові/мої», звук), `renderSheet`, `goMapBtn/goTileInfo` (виклик із `10-hall.js`: кнопка «🗺 Карта доставок» над рядом Д-/С-, на плитці Д- кур'єр і хв у дорозі), `goEdit`, `courRepHTML/loadCourRep` (вкладка Звіти → Персонал → 🛵 Кур'єри). Кліки `goMap/goEdit/crRepM` — власний `document` listener у цьому файлі (без правок 00-core).
 - `js/app.js` режим `?go` — `GO=qs.has('go')`, `goInit` (`/api/goinfo`, `/api/reco`), `goCart/goForm/goRead`, `goBal` (бонуси за телефоном), відправка `/api/go`, `goPoll` (статус через `/api/orders`), історія в `localStorage` (`goHist`, `goName`…). `?go&book=ID` — передзамовлення до броні (розділ «Сайт»).
 
 ## Ключі бази
@@ -28,7 +28,7 @@
 - `courtg` → `{ ім'я: chat_id }`; `ctl:<код>` → ім'я (15 хв); `cmsg:<t>` → `{ ім'я: message_id }`; `cph:<chat>` → t (очікує фото); `ccash:<день>` → `{ ім'я:{sum,by,at} }`; `g3hook`, `cbotname`; `reco`.
 
 ## API і маршрути
-- `/api/pos`: префікс `go*`/`cli*` → `goApi`; `courMe, courTg, courAct, courList (адмін), courCash (адмін)`; `order` з `b.go` і t=0 → нова доставка з каси.
+- `/api/pos`: префікс `go*`/`cli*` → `goApi`; `courMe, courTg, courAct, courList (адмін), courCash (адмін), courRep {m:'YYYY-MM'} (адмін)`; `order` з `b.go` і t=0 → нова доставка з каси.
 - Роль courier: лише `logout, state, goSt, goCour, zpIn, zpOut, zpMy, courMe, courTg, courAct`; `goSt` лише `road|done` і лише своя доставка.
 - index.js: `POST /api/go`, `/api/goinfo?ph=`, `/api/reco`, `/api/orders?ids=`, `/go` → редірект на сайт `?go`, `POST /tg3` (бот кур'єрів), cron `/__cron` → `courWatch`.
 
@@ -43,6 +43,8 @@
 - Персонал/ЗП: ставка доставки `staff.pay.dlv` або `cpay`.
 
 ## Тонкі місця
+- 'gone': обгортки `rejectOrder`/`deleteTable` в ops.js читають рахунок ДО видалення і передають у `courNotify(...,'gone','',b0)` — працює однаково з каси й бота.
+- `goEdit` поки лише в касі — у боті персоналу ще немає (паритет — TODO).
 - Номери: 1001–1999 доставка, 2001–2999 самовивіз; `isGo(t)` = t>1000. Скрізь показ через `tn()`; у ES5-кухні — власна `tnm`.
 - Кур'єрам ідуть лише доставки (`t ≤ 2000`), самовивіз — ні.
 - Будь-яка зміна `bill.go` — під `L('bills')`; `ord:` — під `L('ord:'+oid)`; `goAlloc` — під `goseq` (у `goOrder` він усередині `bills`).
