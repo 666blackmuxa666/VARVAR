@@ -2141,18 +2141,28 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   function goBlock(t, g, b) {
     const map = g.addr ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(g.addr)}` : "";
     const nx = t === -1 ? "" : [["cook", "\u{1F525} \u0413\u043E\u0442\u0443\u0454\u0442\u044C\u0441\u044F"], ["ready", "\u{1F37D} \u0413\u043E\u0442\u043E\u0432\u043E"], ...g.kind === "del" ? [["road", "\u{1F6F5} \u041F\u043E\u0457\u0445\u0430\u0432"]] : []].filter(([s]) => s !== g.st).map(([s, l]) => `<button class="btn sm" data-a="goSt" data-s="${s}">${l}</button>`).join("");
-    return `<div class="go-card"><div class="go-h"><b>${esc(g.name || "\u2014")}</b>${g.phone ? `<a class="btn sm" href="tel:+${g.phone}">\u{1F4DE} ${fmtPh(g.phone)}</a>` : ""}${t !== -1 ? `<span class="chip">${GOST[g.st] || g.st}</span>` : ""}</div>
-      ${g.kind === "del" ? `<div>\u{1F4CD} ${map ? `<a href="${map}" target="_blank" rel="noopener">${esc(g.addr)}</a>` : "\u2014"}${g.ent ? ` \xB7 ${esc(g.ent)}` : ""}</div>` : ""}
-      <div class="muted">${g.when ? `\u{1F550} \u043D\u0430 <b>${g.when}</b> \xB7 ` : ""}${g.pay === "online" ? g.paid ? "\u{1F4B3} \u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u043E\u043D\u043B\u0430\u0439\u043D" : "\u23F3 \u043E\u0447\u0456\u043A\u0443\u0454 \u043E\u043D\u043B\u0430\u0439\u043D-\u043E\u043F\u043B\u0430\u0442\u0443" : g.pay === "card" ? "\u{1F4B3} \u043A\u0430\u0440\u0442\u043A\u0430 \u043F\u0440\u0438 \u043E\u0442\u0440\u0438\u043C\u0430\u043D\u043D\u0456" : "\u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u0430"}${g.change ? ` \xB7 \u0440\u0435\u0448\u0442\u0430 \u0437 <b>${g.change}</b>` : ""}${g.cut ? ` \xB7 \u{1F374} ${g.cut}` : ""}${g.cour ? ` \xB7 \u{1F6F5} ${esc(g.cour)}` : ""}${g.src ? ` \xB7 ${esc(g.src)}` : ""}</div>
-      ${t !== -1 ? `<div class="btnrow">${nx}${g.kind === "del" && isAdmin() ? `<button class="btn sm" data-a="goCourSet">\u{1F464} \u041A\u0443\u0440'\u0454\u0440</button>` : ""}${isAdmin() ? '<button class="btn sm" data-a="goEdit">\u270F\uFE0F \u0417\u043C\u0456\u043D\u0438\u0442\u0438</button>' : ""}<button class="btn sm green" data-a="goDone">\u{1F91D} \u0412\u0438\u0434\u0430\u043D\u043E \xB7 ${money((b == null ? void 0 : b.pay2) || 0)}</button></div>` : ""}</div>`;
+    const pay = g.pay === "online" ? g.paid ? "\u{1F4B3} \u043E\u043D\u043B\u0430\u0439\u043D \u2713" : "\u23F3 \u043E\u043D\u043B\u0430\u0439\u043D" : g.pay === "card" ? "\u{1F4B3} \u043A\u0430\u0440\u0442\u043A\u0430" : "\u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u0430";
+    const tags = [g.when ? `\u{1F550} <b>${g.when}</b>` : "\u26A1 \u0448\u0432\u0438\u0434\u043A\u043E", pay + (g.change ? ` \xB7 \u0437 ${g.change}` : ""), g.cut ? `\u{1F374} ${g.cut}` : "", g.cour ? `\u{1F6F5} ${esc(g.cour)}` : "", g.src ? esc(g.src) : ""].filter(Boolean).map((x) => `<span class="chip sm">${x}</span>`).join("");
+    return `<div class="go-card"><div class="go-h"><b>${g.kind === "del" ? "\u{1F6F5}" : "\u{1F961}"} ${esc(g.name || "\u2014")}</b>${t !== -1 ? `<span class="chip sm on">${GOST[g.st] || g.st}</span>` : ""}${g.phone ? `<a class="btn sm go-ph" href="tel:+${g.phone}">\u{1F4DE} ${fmtPh(g.phone)}</a>` : ""}</div>
+      ${g.kind === "del" ? `<div class="go-adr">\u{1F4CD} ${map ? `<a href="${map}" target="_blank" rel="noopener">${esc(g.addr)}</a>` : "\u2014"}${g.ent ? ` <span class="muted">\xB7 ${esc(g.ent)}</span>` : ""}</div>` : ""}
+      <div class="chips">${tags}</div>${g.note ? `<div class="muted">\u{1F4AC} ${esc(g.note)}</div>` : ""}
+      ${t !== -1 ? `<div class="btnrow">${nx}${g.kind === "del" && isAdmin() ? `<button class="btn sm" data-a="goCourSet">\u{1F464} \u041A\u0443\u0440'\u0454\u0440</button>` : ""}${isAdmin() ? '<button class="btn sm" data-a="goEdit">\u270F\uFE0F</button>' : ""}<button class="btn sm green" data-a="goDone">\u{1F91D} \u0412\u0438\u0434\u0430\u043D\u043E \xB7 ${money((b == null ? void 0 : b.pay2) || 0)}</button></div>` : ""}</div>`;
   }
   async function goNew(kind0 = "pick", fromT = 0) {
-    const body = `<div class="form"><div class="seg" id="gKind"><button class="${kind0 === "pick" ? "on" : ""}" data-k="pick">\u{1F961} \u0421\u0430\u043C\u043E\u0432\u0438\u0432\u0456\u0437</button><button class="${kind0 === "del" ? "on" : ""}" data-k="del">\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430</button></div>
-      <label>\u0422\u0435\u043B\u0435\u0444\u043E\u043D<input id="gP" type="tel" inputmode="tel" placeholder="050 123 45 67"></label><div id="gCli" class="muted" style="font-size:13px"></div>
-      <label>\u0406\u043C\u02BC\u044F<input id="gN"></label><label id="gAL" ${kind0 === "del" ? "" : "hidden"}>\u0410\u0434\u0440\u0435\u0441\u0430<input id="gA" list="gAdr"><datalist id="gAdr"></datalist></label>
-      <div class="frow"><label>\u041D\u0430 \u043A\u043E\u0442\u0440\u0443 (\u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)<input id="gW" placeholder="19:30"></label><label>\u041E\u043F\u043B\u0430\u0442\u0430<select id="gPay"><option value="cash">\u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u0430</option><option value="card">\u{1F4B3} \u043A\u0430\u0440\u0442\u043A\u0430</option></select></label></div></div>`;
-    const pr = modal({ title: kind0 === "del" ? "\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430" : "\u{1F961} \u0421\u0430\u043C\u043E\u0432\u0438\u0432\u0456\u0437", body, buttons: [{ label: "\u0414\u0430\u043B\u0456 \u2192 \u043C\u0435\u043D\u044E", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
-    let kind = kind0;
+    const hm = (m) => {
+      const d2 = new Date(Date.now() + m * 6e4);
+      return `${d2.getHours()}:${String(d2.getMinutes()).padStart(2, "0")}`;
+    };
+    const chip = (grp, v2, l, on) => `<button class="chip sm${on ? " on" : ""}" data-g="${grp}" data-v="${v2}">${l}</button>`;
+    const body = `<div class="gof"><div class="seg" id="gKind"><button class="${kind0 === "pick" ? "on" : ""}" data-k="pick">\u{1F961} \u0421\u0430\u043C\u043E\u0432\u0438\u0432\u0456\u0437</button><button class="${kind0 === "del" ? "on" : ""}" data-k="del">\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430</button></div>
+      <div class="gof-r"><input id="gP" type="tel" inputmode="tel" placeholder="\u{1F4DE} \u0422\u0435\u043B\u0435\u0444\u043E\u043D 050 123 45 67" autocomplete="off"><input id="gN" placeholder="\u{1F464} \u0406\u043C\u02BC\u044F"></div>
+      <div id="gCli" class="gof-cli" hidden></div>
+      <div id="gAL" class="gof-r" ${kind0 === "del" ? "" : "hidden"}><input id="gA" placeholder="\u{1F4CD} \u0410\u0434\u0440\u0435\u0441\u0430"><input id="gE" class="gof-s" placeholder="\u{1F6AA} \u041F\u0456\u0434\u02BC\u0457\u0437\u0434, \u043F\u043E\u0432\u0435\u0440\u0445"></div>
+      <div id="gAdr" class="chips scroll" hidden></div>
+      <div class="gof-l">\u{1F550} \u041A\u043E\u043B\u0438</div><div class="chips" id="gWc">${chip("w", "", "\u26A1 \u041E\u0434\u0440\u0430\u0437\u0443", 1)}${chip("w", 30, "+30 \u0445\u0432")}${chip("w", 60, "+60 \u0445\u0432")}${chip("w", "own", "\u270F\uFE0F \u0421\u0432\u0456\u0439")}<input id="gW" class="gof-t" placeholder="19:30" inputmode="numeric" hidden></div>
+      <div class="gof-l">\u{1F4B0} \u041E\u043F\u043B\u0430\u0442\u0430</div><div class="chips" id="gPc">${chip("p", "cash", "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430", 1)}${chip("p", "card", "\u{1F4B3} \u041A\u0430\u0440\u0442\u043A\u0430")}<input id="gCh" class="gof-t" placeholder="\u0440\u0435\u0448\u0442\u0430 \u0437\u2026" inputmode="numeric"></div></div>`;
+    const pr = modal({ title: "\u260E\uFE0F \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0437 \u0441\u043E\u0431\u043E\u044E", body, buttons: [{ label: "\u0414\u0430\u043B\u0456 \u2192 \u043C\u0435\u043D\u044E", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+    let kind = kind0, when = "", pay = "cash";
     $("#gKind").onclick = (e) => {
       var _a2;
       const k = (_a2 = e.target.closest("[data-k]")) == null ? void 0 : _a2.dataset.k;
@@ -2160,26 +2170,60 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       kind = k;
       $("#gKind").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x.dataset.k === k));
       $("#gAL").hidden = k !== "del";
+      $("#gAdr").hidden = k !== "del" || !$("#gAdr").innerHTML;
+    };
+    const pick = (box, el) => box.querySelectorAll("[data-g]").forEach((x) => x.classList.toggle("on", x === el));
+    $("#gWc").onclick = (e) => {
+      const el = e.target.closest("[data-g]");
+      if (!el) return;
+      pick($("#gWc"), el);
+      const v2 = el.dataset.v;
+      $("#gW").hidden = v2 !== "own";
+      when = v2 === "own" ? "" : v2 ? hm(+v2) : "";
+      if (v2 === "own") $("#gW").focus();
+      else $("#gW").value = when;
+    };
+    $("#gPc").onclick = (e) => {
+      const el = e.target.closest("[data-g]");
+      if (!el) return;
+      pick($("#gPc"), el);
+      pay = el.dataset.v;
+      $("#gCh").hidden = pay !== "cash";
+    };
+    $("#gAdr").onclick = (e) => {
+      const el = e.target.closest("[data-v]");
+      if (!el) return;
+      $("#gA").value = el.dataset.v;
+      pick($("#gAdr"), el);
     };
     $("#gP").onchange = async () => {
-      var _a2;
-      const r = await api("cliGet", { phone: $("#gP").value }).catch(() => null);
+      var _a2, _b;
+      const r = await api("cliGet", { phone: $("#gP").value }).catch(() => null), box = $("#gCli");
+      box.hidden = false;
       if (!(r == null ? void 0 : r.cli)) {
-        $("#gCli").textContent = r ? "\u{1F195} \u043D\u043E\u0432\u0438\u0439 \u043A\u043B\u0456\u0454\u043D\u0442" : "\u26A0\uFE0F \u043D\u043E\u043C\u0435\u0440?";
+        box.textContent = r ? "\u{1F195} \u041D\u043E\u0432\u0438\u0439 \u043A\u043B\u0456\u0454\u043D\u0442" : "\u26A0\uFE0F \u041F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435 \u043D\u043E\u043C\u0435\u0440";
+        $("#gAdr").hidden = true;
         return;
       }
       const c = r.cli;
       if (!$("#gN").value) $("#gN").value = c.name || "";
-      $("#gAdr").innerHTML = (c.addr || []).map((a) => `<option value="${esc(a)}">`).join("");
-      if (!$("#gA").value && ((_a2 = c.addr) == null ? void 0 : _a2[0])) $("#gA").value = c.addr[0];
-      $("#gCli").innerHTML = `\u{1F464} ${esc(c.name || "")} \xB7 ${c.n} \u0437\u0430\u043C\u043E\u0432\u043B. \xB7 ${money(c.sum)} \xB7 \u{1F381} ${money(c.bal || 0)}`;
+      box.innerHTML = `\u{1F464} <b>${esc(c.name || "\u041A\u043B\u0456\u0454\u043D\u0442")}</b> \xB7 ${c.n} \u0437\u0430\u043C\u043E\u0432\u043B. \xB7 \u{1F381} <b>${money(c.bal || 0)}</b>`;
+      $("#gAdr").innerHTML = (c.addr || []).map((a, i) => `<button class="chip sm${i ? "" : " on"}" data-v="${esc(a)}">\u{1F4CD} ${esc(a)}</button>`).join("");
+      $("#gAdr").hidden = kind !== "del" || !((_a2 = c.addr) == null ? void 0 : _a2.length);
+      if (!$("#gA").value && ((_b = c.addr) == null ? void 0 : _b[0])) $("#gA").value = c.addr[0];
     };
+    setTimeout(() => {
+      var _a2;
+      return (_a2 = $("#gP")) == null ? void 0 : _a2.focus();
+    }, 50);
     const v = await pr;
     if (v !== "ok") return closeModal();
-    const d = { kind, phone: $("#gP").value, name: $("#gN").value.trim(), addr: $("#gA").value.trim(), when: $("#gW").value.trim(), pay: $("#gPay").value };
+    if ($("#gW").hidden === false) when = $("#gW").value.trim();
+    const d = { kind, phone: $("#gP").value, name: $("#gN").value.trim(), addr: $("#gA").value.trim(), ent: $("#gE").value.trim(), when, pay, change: pay === "cash" ? +$("#gCh").value || 0 : 0 };
     closeModal();
     if (!d.name) return toast("\u26A0\uFE0F \u0412\u043A\u0430\u0436\u0456\u0442\u044C \u0456\u043C\u02BC\u044F");
     if (kind === "del" && !d.addr) return toast("\u26A0\uFE0F \u0412\u043A\u0430\u0436\u0456\u0442\u044C \u0430\u0434\u0440\u0435\u0441\u0443");
+    if (d.when && !/^\d{1,2}:\d{2}$/.test(d.when)) return toast("\u26A0\uFE0F \u0427\u0430\u0441 \u0443 \u0444\u043E\u0440\u043C\u0430\u0442\u0456 19:30");
     S.goDraft = d;
     S.tw[-1] = true;
     if (fromT) {
@@ -2248,13 +2292,13 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   }
   const minsAgo = (ts) => ts ? Math.max(0, Math.round((Date.now() - ts) / 6e4)) : 0;
   function goHTML() {
-    var _a2, _b;
+    var _a2, _b, _c;
     const me = (_a2 = S.me) == null ? void 0 : _a2.name, C = S.data.cour, all = Object.values(S.tables).filter((b) => b.t > 1e3 && b.t < 2e3 && b.go && !["new", "done", "rej"].includes(b.go.st));
     const fresh = all.filter((b) => !b.go.cour), mine = all.filter((b) => b.go.cour === me).sort((a, b) => (a.go.takeAt || 0) - (b.go.takeAt || 0));
     const seen = S.courSeen || (S.courSeen = /* @__PURE__ */ new Set());
     if (S.courReady && fresh.some((b) => !seen.has(b.t)) || mine.some((b) => b.go.st === "ready" && !seen.has("r" + b.t))) {
       ding();
-      (_b = navigator.vibrate) == null ? void 0 : _b.call(navigator, [200, 100, 200]);
+      ((_b = navigator.userActivation) == null ? void 0 : _b.hasBeenActive) && ((_c = navigator.vibrate) == null ? void 0 : _c.call(navigator, [200, 100, 200]));
     }
     fresh.forEach((b) => seen.add(b.t));
     mine.forEach((b) => {

@@ -1,25 +1,43 @@
   function goBlock(t, g, b) {
     const map = g.addr ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(g.addr)}` : '';
     const nx = t === -1 ? '' : [['cook', '🔥 Готується'], ['ready', '🍽 Готово'], ...(g.kind === 'del' ? [['road', '🛵 Поїхав']] : [])].filter(([s]) => s !== g.st).map(([s, l]) => `<button class="btn sm" data-a="goSt" data-s="${s}">${l}</button>`).join('');
-    return `<div class="go-card"><div class="go-h"><b>${esc(g.name || '—')}</b>${g.phone ? `<a class="btn sm" href="tel:+${g.phone}">📞 ${fmtPh(g.phone)}</a>` : ''}${t !== -1 ? `<span class="chip">${GOST[g.st] || g.st}</span>` : ''}</div>
-      ${g.kind === 'del' ? `<div>📍 ${map ? `<a href="${map}" target="_blank" rel="noopener">${esc(g.addr)}</a>` : '—'}${g.ent ? ` · ${esc(g.ent)}` : ''}</div>` : ''}
-      <div class="muted">${g.when ? `🕐 на <b>${g.when}</b> · ` : ''}${g.pay === 'online' ? (g.paid ? '💳 оплачено онлайн' : '⏳ очікує онлайн-оплату') : g.pay === 'card' ? '💳 картка при отриманні' : '💵 готівка'}${g.change ? ` · решта з <b>${g.change}</b>` : ''}${g.cut ? ` · 🍴 ${g.cut}` : ''}${g.cour ? ` · 🛵 ${esc(g.cour)}` : ''}${g.src ? ` · ${esc(g.src)}` : ''}</div>
-      ${t !== -1 ? `<div class="btnrow">${nx}${g.kind === 'del' && isAdmin() ? '<button class="btn sm" data-a="goCourSet">👤 Кур\'єр</button>' : ''}${isAdmin() ? '<button class="btn sm" data-a="goEdit">✏️ Змінити</button>' : ''}<button class="btn sm green" data-a="goDone">🤝 Видано · ${money(b?.pay2 || 0)}</button></div>` : ''}</div>`;
+    const pay = g.pay === 'online' ? (g.paid ? '💳 онлайн ✓' : '⏳ онлайн') : g.pay === 'card' ? '💳 картка' : '💵 готівка';
+    const tags = [g.when ? `🕐 <b>${g.when}</b>` : '⚡ швидко', pay + (g.change ? ` · з ${g.change}` : ''), g.cut ? `🍴 ${g.cut}` : '', g.cour ? `🛵 ${esc(g.cour)}` : '', g.src ? esc(g.src) : ''].filter(Boolean).map(x => `<span class="chip sm">${x}</span>`).join('');
+    return `<div class="go-card"><div class="go-h"><b>${g.kind === 'del' ? '🛵' : '🥡'} ${esc(g.name || '—')}</b>${t !== -1 ? `<span class="chip sm on">${GOST[g.st] || g.st}</span>` : ''}${g.phone ? `<a class="btn sm go-ph" href="tel:+${g.phone}">📞 ${fmtPh(g.phone)}</a>` : ''}</div>
+      ${g.kind === 'del' ? `<div class="go-adr">📍 ${map ? `<a href="${map}" target="_blank" rel="noopener">${esc(g.addr)}</a>` : '—'}${g.ent ? ` <span class="muted">· ${esc(g.ent)}</span>` : ''}</div>` : ''}
+      <div class="chips">${tags}</div>${g.note ? `<div class="muted">💬 ${esc(g.note)}</div>` : ''}
+      ${t !== -1 ? `<div class="btnrow">${nx}${g.kind === 'del' && isAdmin() ? '<button class="btn sm" data-a="goCourSet">👤 Кур\'єр</button>' : ''}${isAdmin() ? '<button class="btn sm" data-a="goEdit">✏️</button>' : ''}<button class="btn sm green" data-a="goDone">🤝 Видано · ${money(b?.pay2 || 0)}</button></div>` : ''}</div>`;
   }
+  // ☎️ нове «з собою» / доставка: телефон → клієнт (імʼя, бонуси, адреси чипами), час і оплата чипами
   async function goNew(kind0 = 'pick', fromT = 0) {
-    const body = `<div class="form"><div class="seg" id="gKind"><button class="${kind0 === 'pick' ? 'on' : ''}" data-k="pick">🥡 Самовивіз</button><button class="${kind0 === 'del' ? 'on' : ''}" data-k="del">🛵 Доставка</button></div>
-      <label>Телефон<input id="gP" type="tel" inputmode="tel" placeholder="050 123 45 67"></label><div id="gCli" class="muted" style="font-size:13px"></div>
-      <label>Імʼя<input id="gN"></label><label id="gAL" ${kind0 === 'del' ? '' : 'hidden'}>Адреса<input id="gA" list="gAdr"><datalist id="gAdr"></datalist></label>
-      <div class="frow"><label>На котру (необовʼязково)<input id="gW" placeholder="19:30"></label><label>Оплата<select id="gPay"><option value="cash">💵 готівка</option><option value="card">💳 картка</option></select></label></div></div>`;
-    const pr = modal({ title: kind0 === 'del' ? '🛵 Доставка' : '🥡 Самовивіз', body, buttons: [{ label: 'Далі → меню', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
-    let kind = kind0;
-    $('#gKind').onclick = e => { const k = e.target.closest('[data-k]')?.dataset.k; if (!k) return; kind = k; $('#gKind').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.k === k)); $('#gAL').hidden = k !== 'del'; };
-    $('#gP').onchange = async () => { const r = await api('cliGet', { phone: $('#gP').value }).catch(() => null); if (!r?.cli) { $('#gCli').textContent = r ? '🆕 новий клієнт' : '⚠️ номер?'; return; }
-      const c = r.cli; if (!$('#gN').value) $('#gN').value = c.name || ''; $('#gAdr').innerHTML = (c.addr || []).map(a => `<option value="${esc(a)}">`).join(''); if (!$('#gA').value && c.addr?.[0]) $('#gA').value = c.addr[0];
-      $('#gCli').innerHTML = `👤 ${esc(c.name || '')} · ${c.n} замовл. · ${money(c.sum)} · 🎁 ${money(c.bal || 0)}`; };
+    const hm = m => { const d = new Date(Date.now() + m * 60e3); return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
+    const chip = (grp, v, l, on) => `<button class="chip sm${on ? ' on' : ''}" data-g="${grp}" data-v="${v}">${l}</button>`;
+    const body = `<div class="gof"><div class="seg" id="gKind"><button class="${kind0 === 'pick' ? 'on' : ''}" data-k="pick">🥡 Самовивіз</button><button class="${kind0 === 'del' ? 'on' : ''}" data-k="del">🛵 Доставка</button></div>
+      <div class="gof-r"><input id="gP" type="tel" inputmode="tel" placeholder="📞 Телефон 050 123 45 67" autocomplete="off"><input id="gN" placeholder="👤 Імʼя"></div>
+      <div id="gCli" class="gof-cli" hidden></div>
+      <div id="gAL" class="gof-r" ${kind0 === 'del' ? '' : 'hidden'}><input id="gA" placeholder="📍 Адреса"><input id="gE" class="gof-s" placeholder="🚪 Підʼїзд, поверх"></div>
+      <div id="gAdr" class="chips scroll" hidden></div>
+      <div class="gof-l">🕐 Коли</div><div class="chips" id="gWc">${chip('w', '', '⚡ Одразу', 1)}${chip('w', 30, '+30 хв')}${chip('w', 60, '+60 хв')}${chip('w', 'own', '✏️ Свій')}<input id="gW" class="gof-t" placeholder="19:30" inputmode="numeric" hidden></div>
+      <div class="gof-l">💰 Оплата</div><div class="chips" id="gPc">${chip('p', 'cash', '💵 Готівка', 1)}${chip('p', 'card', '💳 Картка')}<input id="gCh" class="gof-t" placeholder="решта з…" inputmode="numeric"></div></div>`;
+    const pr = modal({ title: '☎️ Замовлення з собою', body, buttons: [{ label: 'Далі → меню', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
+    let kind = kind0, when = '', pay = 'cash';
+    $('#gKind').onclick = e => { const k = e.target.closest('[data-k]')?.dataset.k; if (!k) return; kind = k; $('#gKind').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.k === k)); $('#gAL').hidden = k !== 'del'; $('#gAdr').hidden = k !== 'del' || !$('#gAdr').innerHTML; };
+    const pick = (box, el) => box.querySelectorAll('[data-g]').forEach(x => x.classList.toggle('on', x === el));
+    $('#gWc').onclick = e => { const el = e.target.closest('[data-g]'); if (!el) return; pick($('#gWc'), el); const v = el.dataset.v; $('#gW').hidden = v !== 'own'; when = v === 'own' ? '' : v ? hm(+v) : ''; if (v === 'own') $('#gW').focus(); else $('#gW').value = when; };
+    $('#gPc').onclick = e => { const el = e.target.closest('[data-g]'); if (!el) return; pick($('#gPc'), el); pay = el.dataset.v; $('#gCh').hidden = pay !== 'cash'; };
+    $('#gAdr').onclick = e => { const el = e.target.closest('[data-v]'); if (!el) return; $('#gA').value = el.dataset.v; pick($('#gAdr'), el); };
+    $('#gP').onchange = async () => { const r = await api('cliGet', { phone: $('#gP').value }).catch(() => null), box = $('#gCli'); box.hidden = false;
+      if (!r?.cli) { box.textContent = r ? '🆕 Новий клієнт' : '⚠️ Перевірте номер'; $('#gAdr').hidden = true; return; }
+      const c = r.cli; if (!$('#gN').value) $('#gN').value = c.name || '';
+      box.innerHTML = `👤 <b>${esc(c.name || 'Клієнт')}</b> · ${c.n} замовл. · 🎁 <b>${money(c.bal || 0)}</b>`;
+      $('#gAdr').innerHTML = (c.addr || []).map((a, i) => `<button class="chip sm${i ? '' : ' on'}" data-v="${esc(a)}">📍 ${esc(a)}</button>`).join(''); $('#gAdr').hidden = kind !== 'del' || !c.addr?.length;
+      if (!$('#gA').value && c.addr?.[0]) $('#gA').value = c.addr[0]; };
+    setTimeout(() => $('#gP')?.focus(), 50);
     const v = await pr; if (v !== 'ok') return closeModal();
-    const d = { kind, phone: $('#gP').value, name: $('#gN').value.trim(), addr: $('#gA').value.trim(), when: $('#gW').value.trim(), pay: $('#gPay').value }; closeModal();
+    if ($('#gW').hidden === false) when = $('#gW').value.trim();
+    const d = { kind, phone: $('#gP').value, name: $('#gN').value.trim(), addr: $('#gA').value.trim(), ent: $('#gE').value.trim(), when, pay, change: pay === 'cash' ? +$('#gCh').value || 0 : 0 }; closeModal();
     if (!d.name) return toast('⚠️ Вкажіть імʼя'); if (kind === 'del' && !d.addr) return toast('⚠️ Вкажіть адресу');
+    if (d.when && !/^\d{1,2}:\d{2}$/.test(d.when)) return toast('⚠️ Час у форматі 19:30');
     S.goDraft = d; S.tw[-1] = true;
     if (fromT) { S.carts[-1] = S.carts[fromT] || {}; S.coms[-1] = S.coms[fromT] || ''; S.packAdj[-1] = S.packAdj[fromT] || 0; S.ur[-1] = S.ur[fromT]; S.carts[fromT] = {}; S.coms[fromT] = ''; S.tw[fromT] = false; S.packAdj[fromT] = 0; saveCarts(); }
     openTable(-1); S.mobileMenu = !fromT; renderSheet();
@@ -49,7 +67,7 @@
   function goHTML() {
     const me = S.me?.name, C = S.data.cour, all = Object.values(S.tables).filter(b => b.t > 1000 && b.t < 2000 && b.go && !['new', 'done', 'rej'].includes(b.go.st));
     const fresh = all.filter(b => !b.go.cour), mine = all.filter(b => b.go.cour === me).sort((a, b) => (a.go.takeAt || 0) - (b.go.takeAt || 0));
-    const seen = (S.courSeen ||= new Set()); if (S.courReady && fresh.some(b => !seen.has(b.t)) || mine.some(b => b.go.st === 'ready' && !seen.has('r' + b.t))) { ding(); navigator.vibrate?.([200, 100, 200]); }
+    const seen = (S.courSeen ||= new Set()); if (S.courReady && fresh.some(b => !seen.has(b.t)) || mine.some(b => b.go.st === 'ready' && !seen.has('r' + b.t))) { ding(); navigator.userActivation?.hasBeenActive && navigator.vibrate?.([200, 100, 200]); }
     fresh.forEach(b => seen.add(b.t)); mine.forEach(b => { if (b.go.st === 'ready') seen.add('r' + b.t); }); S.courReady = true;
     const tab = S.courTab || (mine.length ? 'mine' : 'new');
     const items = b => b.items.filter(i => !i.name.includes('Доставка')).map(i => `${i.q}× ${esc(i.name)}`).join(', ');
