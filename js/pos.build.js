@@ -832,24 +832,30 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   function siteHTML() {
     const s = S.data.site;
     if (!s) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
-    const row = (k, l, v, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ""}</span><span class="kv-r"><b class="st-v">${v}</b><button class="btn sm" data-a="siteSet" data-k="${k}" data-l="${esc(l)}">\u0437\u043C\u0456\u043D\u0438\u0442\u0438</button></span></div>`;
-    const cut = (x) => esc(String(x || "\u2014").slice(0, 60)) + (String(x || "").length > 60 ? "\u2026" : "");
     const U = "https://666blackmuxa666.github.io/VARVAR/about.html";
-    return `<div class="grid2 set">
-      <div class="card"><h3>\u{1F310} \u0412\u0456\u0437\u0438\u0442\u043A\u0430</h3><div class="btnrow" style="margin-bottom:8px"><a class="btn sm primary" href="${U}" target="_blank" rel="noopener">\u{1F517} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u0441\u0430\u0439\u0442</a><button class="btn sm" data-a="siteCopy">\u{1F4CB} \u041F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F</button></div>
-        ${row("name", "\u041D\u0430\u0437\u0432\u0430", cut(s.name))}${row("tagline", "\u0421\u043B\u043E\u0433\u0430\u043D", cut(s.tagline))}${row("about", "\u041F\u0440\u043E \u043D\u0430\u0441", cut(s.about))}${row("phone", "\u{1F4DE} \u0422\u0435\u043B\u0435\u0444\u043E\u043D", esc(s.phone))}${row("addr", "\u{1F4CD} \u0410\u0434\u0440\u0435\u0441\u0430", cut(s.addr))}${row("from", "\u{1F550} \u0412\u0456\u0434\u043A\u0440\u0438\u0432\u0430\u0454\u043C\u043E\u0441\u044C", s.from)}${row("to", "\u{1F550} \u0417\u0430\u0447\u0438\u043D\u044F\u0454\u043C\u043E\u0441\u044C", s.to)}</div>
-      <div class="card"><h3>\u{1F517} \u041F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F \u0439 \u0432\u0456\u0434\u0433\u0443\u043A\u0438</h3>${row("insta", "Instagram", cut(s.insta), "\u043D\u0430\u043F\u0440. https://instagram.com/varvar")}${row("tg", "Telegram-\u043A\u0430\u043D\u0430\u043B", cut(s.tg))}${row("gmaps", "Google Maps", cut(s.gmaps))}${row("reviewsUrl", "\u041F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F \u043D\u0430 \u0432\u0456\u0434\u0433\u0443\u043A\u0438", cut(s.reviewsUrl))}${row("rating", "\u2B50 \u0420\u0435\u0439\u0442\u0438\u043D\u0433 Google", s.rating || "\u2014")}${row("ratingN", "\u041A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044C \u0432\u0456\u0434\u0433\u0443\u043A\u0456\u0432", s.ratingN)}
-        <div class="muted set-note" style="margin-top:8px">\u0426\u0438\u0442\u0430\u0442\u0438 \u0432\u0456\u0434\u0433\u0443\u043A\u0456\u0432</div>${s.quotes.map((q, i) => `<div class="kv"><span>\xAB${esc(q.t)}\xBB <small class="muted">\u2014 ${esc(q.a)}</small></span><button class="btn sm red" data-a="siteDel" data-k="quoteDel" data-v="${i}">\u{1F5D1}</button></div>`).join("")}<button class="btn sm" data-a="siteQuote">\u2795 \u0426\u0438\u0442\u0430\u0442\u0430</button></div>
-      <div class="card"><h3>\u{1F389} \u0410\u043A\u0446\u0456\u0457 \u0442\u0430 \u043F\u043E\u0434\u0456\u0457</h3>${s.promos.map((p) => `<div class="kv"><span><b>${esc(p.t)}</b><br><small class="muted">${esc(p.d)}</small></span><button class="btn sm red" data-a="siteDel" data-k="promoDel" data-v="${p.id}">\u{1F5D1}</button></div>`).join("") || '<div class="muted">\u041D\u0435\u043C\u0430\u0454 \u2014 \u0431\u043B\u043E\u043A \u043D\u0430 \u0441\u0430\u0439\u0442\u0456 \u043F\u0440\u0438\u0445\u043E\u0432\u0430\u043D\u0438\u0439</div>'}<button class="btn sm primary" data-a="sitePromo">\u2795 \u0410\u043A\u0446\u0456\u044F</button></div>
-      <div class="card"><h3>\u{1F4F7} \u0424\u043E\u0442\u043E</h3><div class="site-ph">${s.hero ? `<div><img src="${esc(s.hero)}"><small>\u0433\u043E\u043B\u043E\u0432\u043D\u0435</small></div>` : ""}${s.photos.map((u) => `<div><img src="${esc(u)}"><button class="btn sm red" data-a="siteDel" data-k="photoDel" data-v="${esc(u)}">\u{1F5D1}</button></div>`).join("")}</div>
-        <div class="btnrow"><button class="btn sm primary" data-a="siteImg" data-h="1">\u{1F5BC} \u0413\u043E\u043B\u043E\u0432\u043D\u0435 \u0444\u043E\u0442\u043E</button><button class="btn sm" data-a="siteImg">\u2795 \u0423 \u0433\u0430\u043B\u0435\u0440\u0435\u044E</button></div></div>
-      <div class="card"><h3>\u{1F37D} \u0425\u0456\u0442\u0438 \u043D\u0430 \u0441\u0430\u0439\u0442\u0456</h3><div class="muted set-note">${s.hits.length ? s.hits.map((id) => {
-      var _a2;
-      return esc(((_a2 = itemsAll().find((i) => i.id === id)) == null ? void 0 : _a2.name.uk) || id);
-    }).join(", ") : "\u0410\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u043D\u043E \u2014 \u0441\u0442\u0440\u0430\u0432\u0438 \u0437 \u0444\u043E\u0442\u043E"}</div><button class="btn sm" data-a="siteHits">\u270F\uFE0F \u041E\u0431\u0440\u0430\u0442\u0438 \u0441\u0442\u0440\u0430\u0432\u0438</button></div>
-      <div class="card"><h3>\u{1F389} \u0411\u0430\u043D\u043A\u0435\u0442\u0438 \xB7 \u{1F4A8} \u041A\u0430\u043B\u044C\u044F\u043D\u0438</h3>${row("banquet", "\u0411\u0430\u043D\u043A\u0435\u0442\u0438", cut(s.banquet))}${row("hookah", "\u041A\u0430\u043B\u044C\u044F\u043D\u0438", cut(s.hookah))}</div>
-      <div class="card"><h3>\u2699\uFE0F \u0424\u0443\u043D\u043A\u0446\u0456\u0457</h3>${row("bookOn", "\u{1F4C5} \u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F \u0437 \u0441\u0430\u0439\u0442\u0443", s.bookOn ? "\u0443\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u043E" : "\u0432\u0438\u043C\u043A\u043D\u0435\u043D\u043E", "1 \u2014 \u0443\u0432\u0456\u043C\u043A\u043D\u0443\u0442\u0438, 0 \u2014 \u0432\u0438\u043C\u043A\u043D\u0443\u0442\u0438")}${row("certOn", "\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438 \u0437 \u0441\u0430\u0439\u0442\u0443", s.certOn ? "\u0443\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u043E" : "\u0432\u0438\u043C\u043A\u043D\u0435\u043D\u043E", "1 / 0")}
-        <button class="btn sm" data-a="certs" style="margin-top:8px">\u{1F39F} \u0423\u0441\u0456 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438</button>${S.data.rates ? `<div class="muted set-note" style="margin-top:8px">\u2B50 \u041E\u0446\u0456\u043D\u043A\u0438 \u0433\u043E\u0441\u0442\u0435\u0439 \u0437\u0430 30 \u0434\u043D\u0456\u0432: <b>${S.data.rates.avg || "\u2014"}</b> (${S.data.rates.n})</div>` : ""}</div></div>`;
+    const f = (k, ic, l, v, ph) => `<button class="sf press" data-a="siteSet" data-k="${k}" data-l="${esc(l)}"><i>${ic}</i><span><small>${l}</small><b class="${v ? "" : "muted"}">${v ? esc(v) : esc(ph || "\u043D\u0435 \u0432\u043A\u0430\u0437\u0430\u043D\u043E")}</b></span><em>\u270F\uFE0F</em></button>`;
+    const sw2 = (k, l, hint) => `<button class="sf press" data-a="siteTgl" data-k="${k}"><span><b>${l}</b><small>${hint}</small></span><span class="switch ${s[k] ? "on" : ""}"></span></button>`;
+    const item = (id) => itemsAll().find((i) => i.id === id);
+    return `<div class="site-top card"><div><h3>\u{1F310} \u0421\u0430\u0439\u0442-\u0432\u0456\u0437\u0438\u0442\u043A\u0430</h3><span class="muted">\u0417\u043C\u0456\u043D\u0438 \u0437\u02BC\u044F\u0432\u043B\u044F\u044E\u0442\u044C\u0441\u044F \u043D\u0430 \u0441\u0430\u0439\u0442\u0456 \u043E\u0434\u0440\u0430\u0437\u0443</span></div><div class="btnrow"><a class="btn sm primary" href="${U}" target="_blank" rel="noopener">\u{1F517} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438</a><button class="btn sm" data-a="siteCopy">\u{1F4CB} \u041F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F</button></div></div>
+    <div class="grid2 set">
+      <div class="card"><h3>\u{1F3F7} \u041E\u0441\u043D\u043E\u0432\u043D\u0435</h3>${f("name", "\u{1F37D}", "\u041D\u0430\u0437\u0432\u0430", s.name)}${f("tagline", "\u2728", "\u0421\u043B\u043E\u0433\u0430\u043D", s.tagline)}${f("about", "\u{1F4DD}", "\u041F\u0440\u043E \u043D\u0430\u0441", s.about)}</div>
+      <div class="card"><h3>\u{1F4CD} \u041A\u043E\u043D\u0442\u0430\u043A\u0442\u0438</h3>${f("phone", "\u{1F4DE}", "\u0422\u0435\u043B\u0435\u0444\u043E\u043D", s.phone)}${f("addr", "\u{1F4CD}", "\u0410\u0434\u0440\u0435\u0441\u0430", s.addr)}
+        <div class="sf2">${f("from", "\u{1F550}", "\u0412\u0456\u0434\u043A\u0440\u0438\u0432\u0430\u0454\u043C\u043E\u0441\u044C", s.from)}${f("to", "\u{1F559}", "\u0417\u0430\u0447\u0438\u043D\u044F\u0454\u043C\u043E\u0441\u044C", s.to)}</div></div>
+      <div class="card"><h3>\u{1F4F7} \u0424\u043E\u0442\u043E</h3>
+        <button class="site-hero press" data-a="siteImg" data-h="1" style="${s.hero ? `background-image:url('${esc(s.hero)}')` : ""}"><span>${s.hero ? "\u{1F504} \u0417\u0430\u043C\u0456\u043D\u0438\u0442\u0438 \u0433\u043E\u043B\u043E\u0432\u043D\u0435 \u0444\u043E\u0442\u043E" : "\u{1F5BC} \u0414\u043E\u0434\u0430\u0442\u0438 \u0433\u043E\u043B\u043E\u0432\u043D\u0435 \u0444\u043E\u0442\u043E"}</span></button>
+        <div class="site-gal">${s.photos.map((u) => `<div style="background-image:url('${esc(u)}')"><button data-a="siteDel" data-k="photoDel" data-v="${esc(u)}" title="\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438">\u2715</button></div>`).join("")}<button class="add press" data-a="siteImg">\uFF0B<small>\u0433\u0430\u043B\u0435\u0440\u0435\u044F</small></button></div></div>
+      <div class="card"><h3>\u{1F37D} \u0425\u0456\u0442\u0438 \u043C\u0435\u043D\u044E</h3><div class="site-hits">${s.hits.length ? s.hits.map((id) => {
+      const it = item(id);
+      return it ? `<span>${it.img ? `<i style="background-image:url('${esc(it.img)}')"></i>` : ""}${esc(it.name.uk)}</span>` : "";
+    }).join("") : '<span class="muted">\u0410\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u043D\u043E \u2014 \u0441\u0442\u0440\u0430\u0432\u0438 \u0437 \u0444\u043E\u0442\u043E</span>'}</div><button class="btn sm" data-a="siteHits" style="margin-top:10px">\u270F\uFE0F \u041E\u0431\u0440\u0430\u0442\u0438 \u0441\u0442\u0440\u0430\u0432\u0438</button></div>
+      <div class="card"><h3>\u{1F389} \u0410\u043A\u0446\u0456\u0457 \u0442\u0430 \u043F\u043E\u0434\u0456\u0457</h3>${s.promos.map((p) => `<div class="site-promo"><div><b>${esc(p.t)}</b>${p.d ? `<small>${esc(p.d)}</small>` : ""}</div><button class="btn sm red" data-a="siteDel" data-k="promoDel" data-v="${p.id}">\u{1F5D1}</button></div>`).join("") || '<div class="muted set-note">\u041D\u0435\u043C\u0430\u0454 \u2014 \u0431\u043B\u043E\u043A \u043D\u0430 \u0441\u0430\u0439\u0442\u0456 \u043F\u0440\u0438\u0445\u043E\u0432\u0430\u043D\u0438\u0439</div>'}<button class="btn sm primary" data-a="sitePromo">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438 \u0430\u043A\u0446\u0456\u044E</button></div>
+      <div class="card"><h3>\u2B50 \u0412\u0456\u0434\u0433\u0443\u043A\u0438</h3><div class="sf2">${f("rating", "\u2B50", "\u0420\u0435\u0439\u0442\u0438\u043D\u0433 Google", s.rating ? String(s.rating) : "", "\u2014")}${f("ratingN", "\u{1F4AC}", "\u0412\u0456\u0434\u0433\u0443\u043A\u0456\u0432", s.ratingN ? String(s.ratingN) : "", "0")}</div>
+        ${s.quotes.map((q, i) => `<div class="site-promo"><div><i>\xAB${esc(q.t)}\xBB</i><small>\u2014 ${esc(q.a)}</small></div><button class="btn sm red" data-a="siteDel" data-k="quoteDel" data-v="${i}">\u{1F5D1}</button></div>`).join("")}<button class="btn sm" data-a="siteQuote">\u2795 \u0426\u0438\u0442\u0430\u0442\u0430 \u0432\u0456\u0434\u0433\u0443\u043A\u0443</button>
+        ${S.data.rates ? `<div class="site-rate"><b>${S.data.rates.avg || "\u2014"}</b><span>\u043E\u0446\u0456\u043D\u043A\u0430 \u0433\u043E\u0441\u0442\u0435\u0439 \u0443 \u0431\u043E\u0442\u0456 \u0437\u0430 30 \u0434\u043D\u0456\u0432 \xB7 ${S.data.rates.n} \u043E\u0446\u0456\u043D\u043E\u043A</span></div>` : ""}</div>
+      <div class="card"><h3>\u{1F517} \u0421\u043E\u0446\u043C\u0435\u0440\u0435\u0436\u0456 \u0439 \u043A\u0430\u0440\u0442\u0438</h3>${f("insta", "\u{1F4F8}", "Instagram", s.insta, "https://instagram.com/\u2026")}${f("tg", "\u2708\uFE0F", "Telegram-\u043A\u0430\u043D\u0430\u043B", s.tg, "https://t.me/\u2026")}${f("gmaps", "\u{1F5FA}", "Google Maps", s.gmaps)}${f("reviewsUrl", "\u270D\uFE0F", "\u041F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F \xAB\u0417\u0430\u043B\u0438\u0448\u0438\u0442\u0438 \u0432\u0456\u0434\u0433\u0443\u043A\xBB", s.reviewsUrl)}</div>
+      <div class="card"><h3>\u{1F389} \u0411\u0430\u043D\u043A\u0435\u0442\u0438 \xB7 \u{1F4A8} \u041A\u0430\u043B\u044C\u044F\u043D\u0438</h3>${f("banquet", "\u{1F389}", "\u0411\u0430\u043D\u043A\u0435\u0442\u0438 \u0439 \u043A\u0435\u0439\u0442\u0435\u0440\u0438\u043D\u0433", s.banquet)}${f("hookah", "\u{1F4A8}", "\u041A\u0430\u043B\u044C\u044F\u043D\u0438", s.hookah)}</div>
+      <div class="card"><h3>\u2699\uFE0F \u0424\u0443\u043D\u043A\u0446\u0456\u0457 \u0441\u0430\u0439\u0442\u0443</h3>${sw2("bookOn", "\u{1F4C5} \u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F", "\u0424\u043E\u0440\u043C\u0430 \u0431\u0440\u043E\u043D\u0456 \u0439 \u0431\u0430\u043D\u043A\u0435\u0442\u0456\u0432 \u043D\u0430 \u0441\u0430\u0439\u0442\u0456")}${sw2("certOn", "\u{1F39F} \u041F\u043E\u0434\u0430\u0440\u0443\u043D\u043A\u043E\u0432\u0456 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438", "\u0417\u0430\u044F\u0432\u043A\u0438 \u043D\u0430 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 \u0437 \u0441\u0430\u0439\u0442\u0443")}<button class="btn sm" data-a="certs" style="margin-top:10px">\u{1F39F} \u0423\u0441\u0456 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438</button></div>
+    </div>`;
   }
   async function sendCart() {
     const t = S.open, cart = cartOf(t), pk = packItem(), pq = pk ? packQ(t) : 0, items = [...Object.values(cart).map((x) => ({ id: x.id, v: x.v, q: x.q })), ...pq ? [{ id: pk.id, q: pq }] : []];
@@ -2819,6 +2825,22 @@ ${g.sup}:
   };
   const choose = (title, text, opts) => modal({ title, text, buttons: [...opts, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }] });
   const confirmBox = (title, text = "") => modal({ title, text, buttons: [{ label: "\u0422\u0430\u043A", val: true, cls: "red" }, { label: "\u041D\u0456", val: null }] });
+  async function askVal(title, val = "", type = "text") {
+    const v = await modal({ title, body: `<input id="askIn" type="${type}" value="${esc(val)}" ${type === "number" ? 'inputmode="decimal" step="0.1"' : ""}>`, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+    setTimeout(() => {
+      var _a2;
+      return (_a2 = $("#askIn")) == null ? void 0 : _a2.focus();
+    }, 50);
+    const x = v === "ok" ? $("#askIn").value.trim() : null;
+    closeModal();
+    return x;
+  }
+  async function askLong(title, val = "") {
+    const v = await modal({ title, body: `<textarea id="askIn" rows="7" style="width:100%">${esc(val)}</textarea>`, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+    const x = v === "ok" ? $("#askIn").value.trim() : null;
+    closeModal();
+    return x;
+  }
   async function ask(title, ph = "", type = "text") {
     const v = await modal({ title, body: `<input id="askIn" type="${type}" placeholder="${esc(ph)}" ${type === "number" ? 'inputmode="decimal"' : ""}>`, buttons: [{ label: "OK", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
     const x = v === "ok" ? $("#askIn").value.trim() : null;
@@ -3113,9 +3135,17 @@ ${g.sup}:
       }
       case "siteSet": {
         const k = el.dataset.k, cur = (_f = S.data.site) == null ? void 0 : _f[k];
-        const v = await ask(el.dataset.l || k, String(cur != null ? cur : ""), ["rating", "ratingN", "bookOn", "certOn"].includes(k) ? "number" : "text");
+        const v = ["about", "banquet", "hookah"].includes(k) ? await askLong(el.dataset.l || k, String(cur != null ? cur : "")) : await askVal(el.dataset.l || k, String(cur != null ? cur : ""), ["rating", "ratingN"].includes(k) ? "number" : "text");
         if (v == null) break;
         const r = await act("siteSet", { k, v }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E \u2014 \u0443\u0436\u0435 \u043D\u0430 \u0441\u0430\u0439\u0442\u0456");
+        if (r) {
+          S.data.site = r.site;
+          renderMain();
+        }
+        break;
+      }
+      case "siteTgl": {
+        const k = el.dataset.k, r = await act("siteSet", { k, v: S.data.site[k] ? 0 : 1 }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
         if (r) {
           S.data.site = r.site;
           renderMain();

@@ -423,21 +423,28 @@
   }
   function siteHTML() {
     const s = S.data.site; if (!s) return '<div class="muted">Завантаження…</div>';
-    const row = (k, l, v, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ''}</span><span class="kv-r"><b class="st-v">${v}</b><button class="btn sm" data-a="siteSet" data-k="${k}" data-l="${esc(l)}">змінити</button></span></div>`;
-    const cut = x => esc(String(x || '—').slice(0, 60)) + (String(x || '').length > 60 ? '…' : '');
     const U = 'https://666blackmuxa666.github.io/VARVAR/about.html';
-    return `<div class="grid2 set">
-      <div class="card"><h3>🌐 Візитка</h3><div class="btnrow" style="margin-bottom:8px"><a class="btn sm primary" href="${U}" target="_blank" rel="noopener">🔗 Відкрити сайт</a><button class="btn sm" data-a="siteCopy">📋 Посилання</button></div>
-        ${row('name', 'Назва', cut(s.name))}${row('tagline', 'Слоган', cut(s.tagline))}${row('about', 'Про нас', cut(s.about))}${row('phone', '📞 Телефон', esc(s.phone))}${row('addr', '📍 Адреса', cut(s.addr))}${row('from', '🕐 Відкриваємось', s.from)}${row('to', '🕐 Зачиняємось', s.to)}</div>
-      <div class="card"><h3>🔗 Посилання й відгуки</h3>${row('insta', 'Instagram', cut(s.insta), 'напр. https://instagram.com/varvar')}${row('tg', 'Telegram-канал', cut(s.tg))}${row('gmaps', 'Google Maps', cut(s.gmaps))}${row('reviewsUrl', 'Посилання на відгуки', cut(s.reviewsUrl))}${row('rating', '⭐ Рейтинг Google', s.rating || '—')}${row('ratingN', 'Кількість відгуків', s.ratingN)}
-        <div class="muted set-note" style="margin-top:8px">Цитати відгуків</div>${s.quotes.map((q, i) => `<div class="kv"><span>«${esc(q.t)}» <small class="muted">— ${esc(q.a)}</small></span><button class="btn sm red" data-a="siteDel" data-k="quoteDel" data-v="${i}">🗑</button></div>`).join('')}<button class="btn sm" data-a="siteQuote">➕ Цитата</button></div>
-      <div class="card"><h3>🎉 Акції та події</h3>${s.promos.map(p => `<div class="kv"><span><b>${esc(p.t)}</b><br><small class="muted">${esc(p.d)}</small></span><button class="btn sm red" data-a="siteDel" data-k="promoDel" data-v="${p.id}">🗑</button></div>`).join('') || '<div class="muted">Немає — блок на сайті прихований</div>'}<button class="btn sm primary" data-a="sitePromo">➕ Акція</button></div>
-      <div class="card"><h3>📷 Фото</h3><div class="site-ph">${s.hero ? `<div><img src="${esc(s.hero)}"><small>головне</small></div>` : ''}${s.photos.map(u => `<div><img src="${esc(u)}"><button class="btn sm red" data-a="siteDel" data-k="photoDel" data-v="${esc(u)}">🗑</button></div>`).join('')}</div>
-        <div class="btnrow"><button class="btn sm primary" data-a="siteImg" data-h="1">🖼 Головне фото</button><button class="btn sm" data-a="siteImg">➕ У галерею</button></div></div>
-      <div class="card"><h3>🍽 Хіти на сайті</h3><div class="muted set-note">${s.hits.length ? s.hits.map(id => esc(itemsAll().find(i => i.id === id)?.name.uk || id)).join(', ') : 'Автоматично — страви з фото'}</div><button class="btn sm" data-a="siteHits">✏️ Обрати страви</button></div>
-      <div class="card"><h3>🎉 Банкети · 💨 Кальяни</h3>${row('banquet', 'Банкети', cut(s.banquet))}${row('hookah', 'Кальяни', cut(s.hookah))}</div>
-      <div class="card"><h3>⚙️ Функції</h3>${row('bookOn', '📅 Бронювання з сайту', s.bookOn ? 'увімкнено' : 'вимкнено', '1 — увімкнути, 0 — вимкнути')}${row('certOn', '🎟 Сертифікати з сайту', s.certOn ? 'увімкнено' : 'вимкнено', '1 / 0')}
-        <button class="btn sm" data-a="certs" style="margin-top:8px">🎟 Усі сертифікати</button>${S.data.rates ? `<div class="muted set-note" style="margin-top:8px">⭐ Оцінки гостей за 30 днів: <b>${S.data.rates.avg || '—'}</b> (${S.data.rates.n})</div>` : ''}</div></div>`;
+    // рядок-поле: тап — редагувати; довгий текст — 2 рядки прев'ю
+    const f = (k, ic, l, v, ph) => `<button class="sf press" data-a="siteSet" data-k="${k}" data-l="${esc(l)}"><i>${ic}</i><span><small>${l}</small><b class="${v ? '' : 'muted'}">${v ? esc(v) : esc(ph || 'не вказано')}</b></span><em>✏️</em></button>`;
+    const sw = (k, l, hint) => `<button class="sf press" data-a="siteTgl" data-k="${k}"><span><b>${l}</b><small>${hint}</small></span><span class="switch ${s[k] ? 'on' : ''}"></span></button>`;
+    const item = id => itemsAll().find(i => i.id === id);
+    return `<div class="site-top card"><div><h3>🌐 Сайт-візитка</h3><span class="muted">Зміни зʼявляються на сайті одразу</span></div><div class="btnrow"><a class="btn sm primary" href="${U}" target="_blank" rel="noopener">🔗 Відкрити</a><button class="btn sm" data-a="siteCopy">📋 Посилання</button></div></div>
+    <div class="grid2 set">
+      <div class="card"><h3>🏷 Основне</h3>${f('name', '🍽', 'Назва', s.name)}${f('tagline', '✨', 'Слоган', s.tagline)}${f('about', '📝', 'Про нас', s.about)}</div>
+      <div class="card"><h3>📍 Контакти</h3>${f('phone', '📞', 'Телефон', s.phone)}${f('addr', '📍', 'Адреса', s.addr)}
+        <div class="sf2">${f('from', '🕐', 'Відкриваємось', s.from)}${f('to', '🕙', 'Зачиняємось', s.to)}</div></div>
+      <div class="card"><h3>📷 Фото</h3>
+        <button class="site-hero press" data-a="siteImg" data-h="1" style="${s.hero ? `background-image:url('${esc(s.hero)}')` : ''}"><span>${s.hero ? '🔄 Замінити головне фото' : '🖼 Додати головне фото'}</span></button>
+        <div class="site-gal">${s.photos.map(u => `<div style="background-image:url('${esc(u)}')"><button data-a="siteDel" data-k="photoDel" data-v="${esc(u)}" title="Прибрати">✕</button></div>`).join('')}<button class="add press" data-a="siteImg">＋<small>галерея</small></button></div></div>
+      <div class="card"><h3>🍽 Хіти меню</h3><div class="site-hits">${s.hits.length ? s.hits.map(id => { const it = item(id); return it ? `<span>${it.img ? `<i style="background-image:url('${esc(it.img)}')"></i>` : ''}${esc(it.name.uk)}</span>` : ''; }).join('') : '<span class="muted">Автоматично — страви з фото</span>'}</div><button class="btn sm" data-a="siteHits" style="margin-top:10px">✏️ Обрати страви</button></div>
+      <div class="card"><h3>🎉 Акції та події</h3>${s.promos.map(p => `<div class="site-promo"><div><b>${esc(p.t)}</b>${p.d ? `<small>${esc(p.d)}</small>` : ''}</div><button class="btn sm red" data-a="siteDel" data-k="promoDel" data-v="${p.id}">🗑</button></div>`).join('') || '<div class="muted set-note">Немає — блок на сайті прихований</div>'}<button class="btn sm primary" data-a="sitePromo">➕ Додати акцію</button></div>
+      <div class="card"><h3>⭐ Відгуки</h3><div class="sf2">${f('rating', '⭐', 'Рейтинг Google', s.rating ? String(s.rating) : '', '—')}${f('ratingN', '💬', 'Відгуків', s.ratingN ? String(s.ratingN) : '', '0')}</div>
+        ${s.quotes.map((q, i) => `<div class="site-promo"><div><i>«${esc(q.t)}»</i><small>— ${esc(q.a)}</small></div><button class="btn sm red" data-a="siteDel" data-k="quoteDel" data-v="${i}">🗑</button></div>`).join('')}<button class="btn sm" data-a="siteQuote">➕ Цитата відгуку</button>
+        ${S.data.rates ? `<div class="site-rate"><b>${S.data.rates.avg || '—'}</b><span>оцінка гостей у боті за 30 днів · ${S.data.rates.n} оцінок</span></div>` : ''}</div>
+      <div class="card"><h3>🔗 Соцмережі й карти</h3>${f('insta', '📸', 'Instagram', s.insta, 'https://instagram.com/…')}${f('tg', '✈️', 'Telegram-канал', s.tg, 'https://t.me/…')}${f('gmaps', '🗺', 'Google Maps', s.gmaps)}${f('reviewsUrl', '✍️', 'Посилання «Залишити відгук»', s.reviewsUrl)}</div>
+      <div class="card"><h3>🎉 Банкети · 💨 Кальяни</h3>${f('banquet', '🎉', 'Банкети й кейтеринг', s.banquet)}${f('hookah', '💨', 'Кальяни', s.hookah)}</div>
+      <div class="card"><h3>⚙️ Функції сайту</h3>${sw('bookOn', '📅 Бронювання', 'Форма броні й банкетів на сайті')}${sw('certOn', '🎟 Подарункові сертифікати', 'Заявки на сертифікат з сайту')}<button class="btn sm" data-a="certs" style="margin-top:10px">🎟 Усі сертифікати</button></div>
+    </div>`;
   }
   async function sendCart() {
     const t = S.open, cart = cartOf(t), pk = packItem(), pq = pk ? packQ(t) : 0, items = [...Object.values(cart).map(x => ({ id: x.id, v: x.v, q: x.q })), ...(pq ? [{ id: pk.id, q: pq }] : [])];
@@ -1582,6 +1589,14 @@
   const closeModal = () => $('#modal')?.remove();
   const choose = (title, text, opts) => modal({ title, text, buttons: [...opts, { label: 'Скасувати', val: null }] });
   const confirmBox = (title, text = '') => modal({ title, text, buttons: [{ label: 'Так', val: true, cls: 'red' }, { label: 'Ні', val: null }] });
+  async function askVal(title, val = '', type = 'text') { // поле з поточним значенням (можна стерти — порожнє)
+    const v = await modal({ title, body: `<input id="askIn" type="${type}" value="${esc(val)}" ${type === 'number' ? 'inputmode="decimal" step="0.1"' : ''}>`, buttons: [{ label: '💾 Зберегти', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
+    setTimeout(() => $('#askIn')?.focus(), 50); const x = v === 'ok' ? $('#askIn').value.trim() : null; closeModal(); return x;
+  }
+  async function askLong(title, val = '') { // довгий текст — багаторядкове поле з поточним значенням
+    const v = await modal({ title, body: `<textarea id="askIn" rows="7" style="width:100%">${esc(val)}</textarea>`, buttons: [{ label: '💾 Зберегти', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
+    const x = v === 'ok' ? $('#askIn').value.trim() : null; closeModal(); return x;
+  }
   async function ask(title, ph = '', type = 'text') {
     const v = await modal({ title, body: `<input id="askIn" type="${type}" placeholder="${esc(ph)}" ${type === 'number' ? 'inputmode="decimal"' : ''}>`, buttons: [{ label: 'OK', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
     const x = v === 'ok' ? $('#askIn').value.trim() : null; closeModal(); return x || null;
@@ -1655,7 +1670,8 @@
       case 'certPay': if (await act('certPay', { code: el.dataset.c, how: el.dataset.h }, el.dataset.h === 'no' ? '❌ Скасовано' : '🎟 Сертифікат активовано')) loadState().catch(() => {}); break;
       case 'certT': certT(t); break;
       case 'certs': { const r = await api('certList').catch(() => null); if (!r) break; await modal({ title: '🎟 Сертифікати', body: `<div class="bk-list">${r.list.map(c => `<div class="kv"><span><b>${c.code}</b> · ${money(c.sum)}${c.left !== c.sum ? ` · залишок ${money(c.left)}` : ''}<br><small class="muted">від ${esc(c.from)}${c.to ? ' для ' + esc(c.to) : ''} · ${fmtPh(c.phone)} · ${{ new: '⏳ не оплачено', ok: '✅ активний', no: '❌ скасовано' }[c.st]}</small></span>${c.st === 'new' ? `<span class="kv-r"><button class="btn sm green" data-a="certPay" data-c="${c.code}" data-h="cash">💵</button><button class="btn sm" data-a="certPay" data-c="${c.code}" data-h="card">💳</button></span>` : ''}</div>`).join('') || '<div class="muted">Ще немає</div>'}</div>`, buttons: [{ label: 'Закрити', val: null }] }); break; }
-      case 'siteSet': { const k = el.dataset.k, cur = S.data.site?.[k]; const v = await ask(el.dataset.l || k, String(cur ?? ''), ['rating', 'ratingN', 'bookOn', 'certOn'].includes(k) ? 'number' : 'text'); if (v == null) break; const r = await act('siteSet', { k, v }, '💾 Збережено — уже на сайті'); if (r) { S.data.site = r.site; renderMain(); } break; }
+      case 'siteSet': { const k = el.dataset.k, cur = S.data.site?.[k]; const v = ['about', 'banquet', 'hookah'].includes(k) ? await askLong(el.dataset.l || k, String(cur ?? '')) : await askVal(el.dataset.l || k, String(cur ?? ''), ['rating', 'ratingN'].includes(k) ? 'number' : 'text'); if (v == null) break; const r = await act('siteSet', { k, v }, '💾 Збережено — уже на сайті'); if (r) { S.data.site = r.site; renderMain(); } break; }
+      case 'siteTgl': { const k = el.dataset.k, r = await act('siteSet', { k, v: S.data.site[k] ? 0 : 1 }, '💾 Збережено'); if (r) { S.data.site = r.site; renderMain(); } break; }
       case 'siteDel': { const r = await act('siteSet', { k: el.dataset.k, v: el.dataset.v }, '🗑 Прибрано'); if (r) { S.data.site = r.site; renderMain(); } break; }
       case 'sitePromo': { const tt = await ask('🎉 Назва акції', 'Щасливі години 15–17'); if (!tt) break; const d = await ask('Опис (необовʼязково)', '−20% на коктейлі'); const r = await act('siteSet', { k: 'promoAdd', v: { t: tt, d: d || '' } }, '🎉 Додано'); if (r) { S.data.site = r.site; renderMain(); } break; }
       case 'siteQuote': { const tt = await ask('💬 Текст відгуку'); if (!tt) break; const a = await ask('Автор', 'Олена, Google'); const r = await act('siteSet', { k: 'quoteAdd', v: { t: tt, a: a || '' } }, '💬 Додано'); if (r) { S.data.site = r.site; renderMain(); } break; }
