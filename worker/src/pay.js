@@ -2,6 +2,7 @@
 // премії / штрафи / аванси / виплати (з каси або картки → рух грошей). Спільне для каси й бота.
 import { L, dayKey, hhmm, esc, money, notify, getStaff, getCfg, logEvent, editEv, reportRange, groupOf, dishResolver, tipBalances, delMove, restoreMove, TZ, isDay } from './ops.js';
 import { getMenu } from './menu.js';
+import { getGoCfg } from './delivery.js';
 
 const uid = () => crypto.randomUUID().replace(/-/g, '').slice(0, 8);
 const mon = (d = dayKey()) => d.slice(0, 7);
@@ -119,7 +120,7 @@ export async function setStaffPay(env, id, p) {
   return L(env, 'staff', async () => {
     const l = await getStaff(env), s = l.find(x => x.id === id); if (!s) return null;
     const num = v => Math.max(0, r0(v)), pf = v => Math.max(0, Math.min(100, Math.round((+v || 0) * 10) / 10));
-    s.pay = { rate: num(p.rate), pct: pf(p.pct), base: BASES[p.base] ? p.base : 'all', dayRev: num(p.dayRev), dayBonus: num(p.dayBonus), monRev: num(p.monRev), monBonus: num(p.monBonus) };
+    s.pay = { rate: num(p.rate), pct: pf(p.pct), base: BASES[p.base] ? p.base : 'all', dayRev: num(p.dayRev), dayBonus: num(p.dayBonus), monRev: num(p.monRev), monBonus: num(p.monBonus), ...(p.dlv !== undefined && p.dlv !== '' ? { dlv: num(p.dlv) } : {}) };
     await env.DB.put('staff', JSON.stringify(l)); return s;
   });
 }
@@ -127,7 +128,7 @@ export async function setStaffPay(env, id, p) {
 // ---------- 🧮 відомість за місяць ----------
 export async function payroll(env, m = mon()) {
   const days = daysOf(m), [st, att, plan, ops, menu, tb] = await Promise.all([getStaff(env), getAtt(env, m), getPlan(env, m), getOps(env, m), getMenu(env), tipBalances(env)]);
-  const r = await reportRange(env, days[0], days[days.length - 1]), res = dishResolver(menu);
+  const r = await reportRange(env, days[0], days[days.length - 1]), res = dishResolver(menu), gc = await getGoCfg(env);
   const rev = {}; // rev[day] = { all, own: {name}, kitchen }
   for (const c of r.checks) { const x = rev[c.d] ||= { all: 0, own: {}, kitchen: 0 }, v = c.sum - (c.tip || 0); x.all += v; const w = c.w || c.by || ''; x.own[w] = (x.own[w] || 0) + v;
     for (const [n, , s] of c.dishes) if (groupOf(res(n)?.cat) === 'kitchen' || res(n)?.cat === 'inshe-food') x.kitchen += s; }
@@ -140,8 +141,9 @@ export async function payroll(env, m = mon()) {
     const dayB = p.dayRev && p.dayBonus ? mine.filter(d => baseOf(d) >= p.dayRev).length * p.dayBonus : 0, monB = p.monRev && p.monBonus && baseSum >= p.monRev ? p.monBonus : 0;
     const my = ops.filter(o => o.n === s.name && !o.del), sum = t => my.filter(o => o.t === t).reduce((a, o) => a + o.sum, 0);
     const shifts = mine.length, rate = shifts * (p.rate || 0), pct = r0(baseSum * (p.pct || 0) / 100);
-    const earned = rate + pct + dayB + monB + sum('bonus') - sum('fine');
-    return { id: s.id, n: s.name, role: s.role, pay: p, shifts, hours, late: mine.filter(d => att[d][s.name].late).length, absent: days.filter(d => plan[d]?.[s.name] && d < dayKey() && !(att[d]?.[s.name]?.ok === 1)).length,
+    const dlvN = r.checks.filter(c => c.go === 'del' && c.cour === s.name).length, dlv = dlvN * (p.dlv ?? gc.cpay); // 🛵 оплата кур'єру за доставку
+    const earned = rate + pct + dayB + monB + dlv + sum('bonus') - sum('fine');
+    return { id: s.id, n: s.name, role: s.role, pay: p, dlvN, dlv, shifts, hours, late: mine.filter(d => att[d][s.name].late).length, absent: days.filter(d => plan[d]?.[s.name] && d < dayKey() && !(att[d]?.[s.name]?.ok === 1)).length,
       pending: days.filter(d => att[d]?.[s.name]?.ok === 0).length, baseSum: r0(baseSum), rate, pct, dayB, monB, bonus: sum('bonus'), fine: sum('fine'), adv: sum('adv'), paid: sum('paid'), earned, due: earned - sum('adv') - sum('paid'),
       tips: tb[s.name] || 0, toMon: p.monRev && p.monBonus && baseSum < p.monRev ? r0(p.monRev - baseSum) : 0, revPerShift: shifts ? r0(mine.reduce((a, d) => a + (rev[d]?.all || 0), 0) / shifts) : 0, revPerHour: hours ? r0(mine.reduce((a, d) => a + (rev[d]?.all || 0), 0) / hours) : 0 };
   });

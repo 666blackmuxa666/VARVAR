@@ -1,6 +1,7 @@
 // Замовлення офіціанта кнопками: стіл → категорія → страва → (розмір) → кількість → знову категорії.
 // Чернетка одна на офіціанта: KV ob:<uid> {table, items:[{name,price,q}], com, mid, chat}; повідомлення редагується на місці.
 import { getMenu } from './menu.js';
+import { tn } from './tn.js';
 import { GROUPS, groupOf, getFav, toggleFav } from './ops.js';
 
 const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -14,7 +15,7 @@ const sum = ob => ob.items.reduce((s, i) => s + i.price * i.q, 0);
 
 function head(ob) {
   const list = ob.items.length ? ob.items.map(i => `${i.q}× ${esc(i.name)} — ${i.price * i.q}`).join('\n') : '<i>поки порожньо — оберіть категорію</i>';
-  return `🧾 <b>Стіл ${ob.table}</b> — нове замовлення${ob.tw ? ' · 🥡 <b>З СОБОЮ</b>' : ''}${ob.ur ? ' · ⚡ <b>ТЕРМІНОВО</b>' : ''}\n\n${list}${ob.com ? `\n💬 ${esc(ob.com)}` : ''}${ob.items.length ? `\n\nСума: <b>${sum(ob)} грн</b>` : ''}`;
+  return `🧾 <b>Стіл ${tn(ob.table)}</b> — нове замовлення${ob.tw ? ' · 🥡 <b>З СОБОЮ</b>' : ''}${ob.ur ? ' · ⚡ <b>ТЕРМІНОВО</b>' : ''}\n\n${list}${ob.com ? `\n💬 ${esc(ob.com)}` : ''}${ob.items.length ? `\n\nСума: <b>${sum(ob)} грн</b>` : ''}`;
 }
 
 export async function tablePick(env, openTables, tables) {

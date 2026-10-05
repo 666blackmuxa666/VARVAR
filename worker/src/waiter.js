@@ -4,6 +4,7 @@
 //   пепсі 0.5 4  ← для напоїв з розмірами можна вказати розмір
 // Бот показує розпізнане з цінами → «✅ Додати до столу».
 import { getMenu } from './menu.js';
+import { tn } from './tn.js';
 
 const norm = s => String(s).toLowerCase().replace(/[ʼ'’`"«»\-–—.,!?()]/g, ' ').replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
 const TR = { а: 'a', б: 'b', в: 'v', г: 'h', ґ: 'g', д: 'd', е: 'e', є: 'ie', ж: 'zh', з: 'z', и: 'y', і: 'i', ї: 'i', й: 'i', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'shch', ь: '', ю: 'iu', я: 'ia', ы: 'y', э: 'e', ъ: '' };
@@ -72,7 +73,7 @@ export function parseWaiterOrder(menu, text, maxTables) {
   if (rows.length < 2) return null;
   const tm = rows[0].toLowerCase().match(/^(?:стіл|стол|table|№)?\s*№?\s*(\d{1,3})$/);
   if (!tm) return null;
-  const table = +tm[1]; if (table < 1 || table > maxTables) return { error: `Столу ${table} немає (столи 1–${maxTables}).` };
+  const table = +tm[1]; if (table < 1 || table > maxTables) return { error: `Столу ${tn(table)} немає (столи 1–${maxTables}).` };
   const items = [], bad = [];
   for (const row of rows.slice(1)) {
     let s = row.replace(/[×x*]\s*(\d+)\s*$/i, ' $1').replace(/^(\d+)\s*[×x*]?\s+(?=\D)/, (_, n) => `\u0000${n} `);
@@ -104,6 +105,6 @@ export function draftText(d) {
     return `${i.unsure ? '⚠️' : '✅'} ${base}${notes ? ` <i>(${notes})</i>` : ''}`;
   });
   const bad = d.bad.map(b => `❓ «${b.row}» — не знайшов${b.guesses.length ? ` (може: ${b.guesses.join(', ')}?)` : ''}`);
-  return [`🧾 <b>Стіл ${d.table}</b> — замовлення від офіціанта`, '', ...lines, ...bad, '', ok.length ? `Сума: <b>${sum} грн</b>` : 'Нічого додати.',
+  return [`🧾 <b>Стіл ${tn(d.table)}</b> — замовлення від офіціанта`, '', ...lines, ...bad, '', ok.length ? `Сума: <b>${sum} грн</b>` : 'Нічого додати.',
     bad.length || d.items.some(i => i.unsure) ? '\n<i>Якщо щось не так — виправте текст і надішліть ще раз.</i>' : ''].filter(x => x !== '').join('\n');
 }

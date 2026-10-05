@@ -2,6 +2,7 @@
 // Завдання = список рядків: [стиль, текст, текст-праворуч?]
 //   стилі: logo · big (великий жирний по центру) · c (по центру) · b (жирний) · l (звичайний) · lr (ліворуч + праворуч) · hr (риска) · gap
 import { hhmm, dayKey, discAmt } from './ops.js';
+import { tn } from './tn.js';
 
 
 // черга живе в Durable Object: програма друку чекає на /pull (long-poll), і чек віддається миттєво
@@ -41,7 +42,7 @@ export class PrintQ {
 export function kitchenTicket({ table, kind, lines, comment, by, urgent }) {
   return [
     ...(urgent ? [['invb', '!!! ТЕРМІНОВО !!!']] : []),
-    ['invb', `СТІЛ ${table}`],
+    ['invb', +table > 1000 ? `${+table > 2000 ? 'САМОВИВІЗ' : 'ДОСТАВКА'} ${tn(table)}` : `СТІЛ ${table}`],
     ['c', `${kind}  ·  ${hhmm()}`],
     ...(by ? [['c', `Замовив: ${by}`]] : []),
     ['dbl'],
@@ -71,7 +72,7 @@ export async function receipt(env, { table, bill, final, pay, by }) {
     ['inv', final ? `ЧЕК № ${no}` : 'ПРЕЧЕК'],
     ...(final ? [] : [['s', 'не є фіскальним чеком']]),
     ['gap'],
-    ['lr', 'Стіл', String(table)],
+    ['lr', +table > 2000 ? 'Самовивіз' : +table > 1000 ? 'Доставка' : 'Стіл', String(tn(table))],
     ...(bill.opened ? [['lr', 'Відкрито', fmt(bill.opened)]] : []),
     ['lr', final ? 'Закрито' : 'Надруковано', fmt(Date.now())],
     ['dbl'],

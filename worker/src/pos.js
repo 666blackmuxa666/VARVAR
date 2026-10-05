@@ -1,6 +1,8 @@
 // API касової програми (pos.html). POST /api/pos {op, ...} з заголовком Authorization: Bearer <token>.
 // Живі оновлення: WebSocket /api/pos/live?token=… (див. store.js). Логіка — спільна з ботом (ops.js).
 import { getMenu, saveMenu, addCategory, menuLock } from './menu.js';
+import { tn, isGo } from './tn.js';
+import { goFromPos, goAttach, goButtons, fmtPhone, goApi } from './delivery.js';
 import { queuePrint, printStatus } from './print.js';
 import { QR_PRINT, TEST_JOB } from './bot.js';
 import { storeStub } from './store.js';
@@ -13,11 +15,11 @@ import {
   topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenClosed, markCook, kitchenPct, getCfg, setCfg, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, delZ, restoreZ, editEv, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents, logEvent,
 } from './ops.js';
 
-const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400, cook: 30 * 86400 };
+const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400, cook: 30 * 86400, courier: 30 * 86400 };
 const tokenOf = req => (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
 async function session(env, token) { return /^[a-f0-9]{32}$/.test(token || '') ? env.DB.get('pos:' + token, 'json') : null; }
 const ipKey = ip => ip.includes(':') ? ip.split(':').slice(0, 4).join(':') + '::/64' : ip;
-const tgBtns = t => ({ inline_keyboard: [[{ text: `🪑 Стіл ${t}`, callback_data: 'tbl:' + t }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + t }]] });
+const tgBtns = t => ({ inline_keyboard: [[{ text: `🪑 Стіл ${tn(t)}`, callback_data: 'tbl:' + t }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + t }]] });
 
 export async function posLive(req, env, url) {
   if (!(await session(env, url.searchParams.get('token')))) return new Response('forbidden', { status: 403 });
@@ -42,6 +44,10 @@ export async function posApi(b, req, env) {
   if (/^zp[A-Z]/.test(b.op || '')) return payApi(b, env, me); // 👷 зміни й зарплата
   if (me.role === 'cook' && !['logout', 'state', 'menu', 'fav', 'order', 'accept', 'reject', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'printTest'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
 
+  // 🛵 кур'єр: лише свої доставки
+  if (me.role === 'courier' && !['logout', 'state', 'goSt', 'goCour'].includes(b.op)) return [{ error: 'Кур\'єр — лише доставки' }, 403];
+  if (/^go[A-Z]|^cli[A-Z]/.test(b.op || '')) return goApi(b, env, me, t);
+
   switch (b.op) {
     case 'logout': await env.DB.delete('pos:' + token); return ok();
     case 'state': {
@@ -63,28 +69,32 @@ export async function posApi(b, req, env) {
     case 'order': {
       const items = await itemsFromMenu(env, b.items);
       const comment = String(b.comment || '').trim().slice(0, 200);
-      if (!t || t > tablesCount(env)) return [{ error: 'table' }, 400];
-      const r = await addWaiterOrder(env, { table: t, items }, who, comment, 'каса', !!b.urgent);
+      let T = t, go = null;
+      if (!T && b.go) ({ t: T, go } = await goFromPos(env, b.go, who)); // ☎️ нова доставка/самовивіз з каси
+      if (!T || (T > tablesCount(env) && !isGo(T))) return [{ error: 'table' }, 400];
+      const r = await addWaiterOrder(env, { table: T, items }, who, [go ? 'З СОБОЮ' : '', go?.when ? 'НА ' + go.when : '', comment].filter(Boolean).join(' · '), 'каса', !!b.urgent);
+      if (r && go) { await goAttach(env, T, go); r.t = T; }
+      if (r && go) { await notify(env, `☎️ ${go.kind === 'del' ? '🛵 ДОСТАВКА' : '🥡 САМОВИВІЗ'} <b>${tn(T)}</b> з каси (${esc(who)})\n👤 ${esc(go.name)} ${fmtPhone(go.phone)}${go.addr ? `\n📍 ${esc(go.addr)}` : ''}\n${r.lines.map(esc).join('\n')}\nСума: <b>${money(r.total)}</b>`, { inline_keyboard: goButtons({ ...go, t: T }) }); return ok(r); }
       if (!r) return [{ error: 'empty' }, 400];
-      await notify(env, `🖥 <b>Стіл ${t}</b> — ${r.prev?.length ? '<b>➕ ДОЗАМОВЛЕННЯ</b>' : 'замовлення'} з каси (${esc(who)})\n${r.lines.map(esc).join('\n')}${comment ? `\n💬 ${esc(comment)}` : ''}\nСума: <b>${money(r.sum)}</b> · разом за стіл: <b>${money(r.total)}</b>`, tgBtns(t));
+      await notify(env, `🖥 <b>Стіл ${tn(t)}</b> — ${r.prev?.length ? '<b>➕ ДОЗАМОВЛЕННЯ</b>' : 'замовлення'} з каси (${esc(who)})\n${r.lines.map(esc).join('\n')}${comment ? `\n💬 ${esc(comment)}` : ''}\nСума: <b>${money(r.sum)}</b> · разом за стіл: <b>${money(r.total)}</b>`, tgBtns(t));
       return ok(r);
     }
-    case 'remove': { const r = await removeOne(env, t, String(b.name), who, b.reason); if (r?.error) return [{ error: r.error }, 400]; if (r) await notify(env, `🖥 ✏️ Стіл ${t}: скасовано 1× ${esc(r.name)} (−${r.unit} грн)\n❓ Причина: <i>${esc(r.reason)}</i> — ${esc(who)}`); return ok({ r }); }
+    case 'remove': { const r = await removeOne(env, t, String(b.name), who, b.reason); if (r?.error) return [{ error: r.error }, 400]; if (r) await notify(env, `🖥 ✏️ Стіл ${tn(t)}: скасовано 1× ${esc(r.name)} (−${r.unit} грн)\n❓ Причина: <i>${esc(r.reason)}</i> — ${esc(who)}`); return ok({ r }); }
     case 'precheck': return ok({ done: await precheck(env, t, who) });
     case 'close': {
       const r = await closeTable(env, t, who, b.pay === 'card' ? 'card' : 'cash', b.print !== false);
-      if (r) await notify(env, `🖥 ✅ <b>Стіл ${t} закрито</b> — ${money(r.sum)}${r.disc ? ` (знижка ${money(r.disc)})` : ''} · ${payLabel(r.cash, r.card)}${b.print === false ? ' · без чека' : ''} — ${esc(who)}`);
+      if (r) await notify(env, `🖥 ✅ <b>Стіл ${tn(t)} закрито</b> — ${money(r.sum)}${r.disc ? ` (знижка ${money(r.disc)})` : ''} · ${payLabel(r.cash, r.card)}${b.print === false ? ' · без чека' : ''} — ${esc(who)}`);
       return ok({ r });
     }
-    case 'discount': { const r = await setDiscount(env, t, b.pct, who, admin); if (r?.error) return [{ error: r.error }, 400]; if (r) await notify(env, `🖥 % Стіл ${t}: ${r.disc ? `знижка ${r.disc}% — до сплати ${money(payable(r))}` : 'знижку прибрано'} — ${esc(who)}`); return ok(); }
-    case 'tip': { if (+b.sum || !admin) return [{ error: 'Чайові додає лише гість. Прибрати може адміністратор.' }, 403]; const r = await setTip(env, t, b.sum, who); if (r) await notify(env, `🖥 💝 Стіл ${t}: ${r.tip ? `чайові ${money(r.tip)}` : 'чайові прибрано'} — ${esc(who)}`); return ok(); }
-    case 'split': { const r = await splitTable(env, t, b.items, +b.to, who); if (!r) return [{ error: 'Нічого не перенесено' }, 400]; await notify(env, `🖥 ✂️ Стіл ${t} розділено → <b>стіл ${r.to}</b> (${money(r.sum)}): ${esc(r.lines.join(', '))} — ${esc(who)}`, tgBtns(r.to)); return ok({ r }); }
-    case 'move': { const r = await moveTable(env, t, +b.to, who); if (r) await notify(env, `🖥 ${r.merged ? `🔗 Стіл ${t} об'єднано зі столом ${b.to}` : `↔️ Стіл ${t} перенесено на стіл ${b.to}`} — ${esc(who)}`, tgBtns(+b.to)); return ok({ r }); }
+    case 'discount': { const r = await setDiscount(env, t, b.pct, who, admin); if (r?.error) return [{ error: r.error }, 400]; if (r) await notify(env, `🖥 % Стіл ${tn(t)}: ${r.disc ? `знижка ${r.disc}% — до сплати ${money(payable(r))}` : 'знижку прибрано'} — ${esc(who)}`); return ok(); }
+    case 'tip': { if (+b.sum || !admin) return [{ error: 'Чайові додає лише гість. Прибрати може адміністратор.' }, 403]; const r = await setTip(env, t, b.sum, who); if (r) await notify(env, `🖥 💝 Стіл ${tn(t)}: ${r.tip ? `чайові ${money(r.tip)}` : 'чайові прибрано'} — ${esc(who)}`); return ok(); }
+    case 'split': { const r = await splitTable(env, t, b.items, +b.to, who); if (!r) return [{ error: 'Нічого не перенесено' }, 400]; await notify(env, `🖥 ✂️ Стіл ${tn(t)} розділено → <b>стіл ${tn(r.to)}</b> (${money(r.sum)}): ${esc(r.lines.join(', '))} — ${esc(who)}`, tgBtns(r.to)); return ok({ r }); }
+    case 'move': { const r = await moveTable(env, t, +b.to, who); if (r) await notify(env, `🖥 ${r.merged ? `🔗 Стіл ${tn(t)} об'єднано зі столом ${tn(b.to)}` : `↔️ Стіл ${tn(t)} перенесено на стіл ${tn(b.to)}`} — ${esc(who)}`, tgBtns(+b.to)); return ok({ r }); }
     case 'accept': return ok({ done: await acceptOrder(env, String(b.oid), who) });
     case 'reject': { const o = await rejectOrder(env, String(b.oid), who); return o ? ok() : [{ error: 'Вже прийнято або відхилено' }, 400]; }
     case 'delete': {
       if (!admin) return needAdmin();
-      const r = await deleteTable(env, t, who, b.reason); if (r) await notify(env, `🖥 🗑 <b>Стіл ${t} видалено</b> (${money(r.sum)}) — у виручку не піде · ${esc(who)}`);
+      const r = await deleteTable(env, t, who, b.reason); if (r) await notify(env, `🖥 🗑 <b>Стіл ${tn(t)} видалено</b> (${money(r.sum)}) — у виручку не піде · ${esc(who)}`);
       return ok({ r });
     }
 
@@ -106,12 +116,12 @@ export async function posApi(b, req, env) {
 
     // ---- закриті ----
     case 'closed': { const day = isDay(b.day) && b.day <= dayKey() ? b.day : dayKey(); return ok({ day, today: dayKey(), list: await getClosed(env, day), voids: (await getVoids(env, day)).filter(v => !v.table) }); }
-    case 'voidBack': { if (!admin) return needAdmin(); const v = await restoreVoid(env, +b.ts, who); if (!v) return [{ error: 'Вже повернуто' }, 400]; await notify(env, `🖥 ↩️ <b>Стіл ${v.t}</b>: повернуто скасоване ${esc(v.name)} (${money(v.sum)}) — ${esc(who)}`, tgBtns(v.t)); return ok({ v }); }
+    case 'voidBack': { if (!admin) return needAdmin(); const v = await restoreVoid(env, +b.ts, who); if (!v) return [{ error: 'Вже повернуто' }, 400]; await notify(env, `🖥 ↩️ <b>Стіл ${tn(v.t)}</b>: повернуто скасоване ${esc(v.name)} (${money(v.sum)}) — ${esc(who)}`, tgBtns(v.t)); return ok({ v }); }
     case 'closedPrint': return ok({ done: await reprintClosed(env, String(b.ref), who, isDay(b.day) ? b.day : undefined) });
-    case 'closedBack': { if (!admin) return needAdmin(); const x = await restoreClosed(env, String(b.ref), who, b.day); if (x) await notify(env, `🖥 ↩️ Рахунок стола ${x.t} (${money(x.sum)}, ${x.at}) повернуто у виручку — ${esc(who)}`); return ok({ x }); }
-    case 'closedReopen': { if (!admin) return needAdmin(); const x = await reopenClosed(env, String(b.ref), who, b.day); if (x) await notify(env, `🖥 ↩️ <b>Стіл ${x.t}</b>: закритий рахунок (${money(x.sum)}, ${x.at}) відкрито знову — ${esc(who)}`, tgBtns(x.t)); return ok({ x }); }
-    case 'tableBack': { if (!admin) return needAdmin(); const x = await restoreTable(env, String(b.ref), who, b.day); if (x) await notify(env, `🖥 ↩️ <b>Стіл ${x.t}</b> відновлено (${money(x.sum)}) — ${esc(who)}`, tgBtns(x.t)); return ok({ x }); }
-    case 'closedDel': { if (!admin) return needAdmin(); const x = await delClosed(env, String(b.ref), b.day); if (x) await notify(env, `🖥 🧹 Закритий рахунок стола ${x.t} (${money(x.sum)}, ${x.at}) видалено з виручки — ${esc(who)}`); return ok({ x }); }
+    case 'closedBack': { if (!admin) return needAdmin(); const x = await restoreClosed(env, String(b.ref), who, b.day); if (x) await notify(env, `🖥 ↩️ Рахунок стола ${tn(x.t)} (${money(x.sum)}, ${x.at}) повернуто у виручку — ${esc(who)}`); return ok({ x }); }
+    case 'closedReopen': { if (!admin) return needAdmin(); const x = await reopenClosed(env, String(b.ref), who, b.day); if (x) await notify(env, `🖥 ↩️ <b>Стіл ${tn(x.t)}</b>: закритий рахунок (${money(x.sum)}, ${x.at}) відкрито знову — ${esc(who)}`, tgBtns(x.t)); return ok({ x }); }
+    case 'tableBack': { if (!admin) return needAdmin(); const x = await restoreTable(env, String(b.ref), who, b.day); if (x) await notify(env, `🖥 ↩️ <b>Стіл ${tn(x.t)}</b> відновлено (${money(x.sum)}) — ${esc(who)}`, tgBtns(x.t)); return ok({ x }); }
+    case 'closedDel': { if (!admin) return needAdmin(); const x = await delClosed(env, String(b.ref), b.day); if (x) await notify(env, `🖥 🧹 Закритий рахунок стола ${tn(x.t)} (${money(x.sum)}, ${x.at}) видалено з виручки — ${esc(who)}`); return ok({ x }); }
   }
 
   // ---- далі лише адміністратор ----
@@ -186,8 +196,8 @@ async function adminRest(b, env, who, ip, ok) {
     case 'wifiClear': await env.DB.put('venue_ips', '[]'); await notify(env, `🖥 📶 Усі мережі закладу скинуто — ${esc(who)}`); return ok();
 
     // персонал і паролі
-    case 'staff': return ok({ staff: (await getStaff(env)).map(({ pin, ...s }) => s), waiters: await loggedWaiters(env), reg: { admin: await regCode(env, 'admin'), waiter: await regCode(env, 'waiter'), cook: await regCode(env, 'cook') }, kpct: await kitchenPct(env), cfg: await getCfg(env), cooks: (await env.DB.get('cooks:' + dayKey(), 'json')) || [] });
-    case 'regCode': { const c = String(b.code || '').trim(); if (!/^\d{4}$/.test(c)) return [{ error: 'Код — 4 цифри' }, 400]; await env.DB.put('reg_' + (['admin', 'cook'].includes(b.role) ? b.role : 'waiter'), c); return ok(); }
+    case 'staff': return ok({ staff: (await getStaff(env)).map(({ pin, ...s }) => s), waiters: await loggedWaiters(env), reg: { admin: await regCode(env, 'admin'), waiter: await regCode(env, 'waiter'), cook: await regCode(env, 'cook'), courier: await regCode(env, 'courier') }, kpct: await kitchenPct(env), cfg: await getCfg(env), cooks: (await env.DB.get('cooks:' + dayKey(), 'json')) || [] });
+    case 'regCode': { const c = String(b.code || '').trim(); if (!/^\d{4}$/.test(c)) return [{ error: 'Код — 4 цифри' }, 400]; await env.DB.put('reg_' + (['admin', 'cook', 'courier'].includes(b.role) ? b.role : 'waiter'), c); return ok(); }
     case 'staffAdd': { const r = await addStaff(env, b.name, b.pin, b.role); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 👥 Додано працівника <b>${esc(r.s.name)}</b> (${r.s.role === 'admin' ? 'адмін' : 'офіціант'}) — ${esc(who)}`); return ok(); }
     case 'cfgSet': { const c = await setCfg(env, String(b.k), b.v); if (c.error) return [{ error: c.error }, 400]; await notify(env, `🖥 ⚙️ Налаштування: ${esc(String(b.k))} = <b>${c[b.k]}</b> — ${esc(who)}`); return ok({ cfg: c }); }
     case 'kitchenPct': { const v = Math.round(+b.pct); if (!(v >= 0 && v <= 100)) return [{ error: 'Від 0 до 100' }, 400]; await env.DB.put('kitchen_pct', String(v)); await notify(env, `🖥 👨‍🍳 Частка кухні від чайових: <b>${v}%</b> — ${esc(who)}`); return ok(); }
@@ -203,7 +213,7 @@ async function adminRest(b, env, who, ip, ok) {
 async function register(b, env) {
   const role = await regRole(env, b.code); if (!role) return [{ error: 'Невірний код реєстрації' }, 401];
   const r = await addStaff(env, b.name, b.pin, role); if (r.error) return [{ error: r.error }, 400];
-  await notify(env, `👥 Новий працівник: <b>${esc(r.s.name)}</b> (${role === 'admin' ? 'адміністратор' : role === 'cook' ? 'кухар' : 'офіціант'}) — зареєструвався в касі`);
+  await notify(env, `👥 Новий працівник: <b>${esc(r.s.name)}</b> (${role === 'admin' ? 'адміністратор' : role === 'cook' ? 'кухар' : role === 'courier' ? 'кур\'єр' : 'офіціант'}) — зареєструвався в касі`);
   const me = { name: r.s.name, role, sid: r.s.id };
   const token = [...crypto.getRandomValues(new Uint8Array(16))].map(x => x.toString(16).padStart(2, '0')).join('');
   await env.DB.put('pos:' + token, JSON.stringify({ ...me, at: Date.now() }), { expirationTtl: SESSION_TTL[role] });

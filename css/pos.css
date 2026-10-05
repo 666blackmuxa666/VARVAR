@@ -667,3 +667,15 @@ body.noanim .tbl.calling,body.noanim .ev.call:not(.acc){outline:3px solid #ffd60
 .lk-row{display:flex;flex-wrap:wrap;gap:6px}.lk-o{padding:8px 12px;border-radius:11px;background:var(--card2);border:2px solid transparent;font-size:14px}
 .lk-acc{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}.lk-dot{width:34px;height:34px;border-radius:50%;border:3px solid var(--card2)}.lk-dot.on{border-color:var(--text)}
 .zp-pend{max-height:55vh;overflow:auto}.kpi.press{cursor:pointer}
+
+/* 🛵 доставка і самовивіз */
+.go-strip{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 10px;scrollbar-width:none}.go-strip::-webkit-scrollbar{display:none}
+.go-t{flex:none;min-width:150px;height:64px;display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto auto;align-content:center;gap:0 8px;text-align:left;padding:6px 12px;border-radius:14px;background:var(--card);border:2px solid var(--line2);font-size:13px}
+.go-t b{font-size:15px}.go-t span{grid-column:1;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px}.go-t small{grid-column:1/-1;color:var(--muted)}.go-t i{font-style:normal;grid-row:1;grid-column:2;font-weight:700}
+.go-t.add{display:flex;align-items:center;gap:8px;border-style:dashed;color:var(--accent);min-width:auto}
+.go-t.st-new{border-color:#ffd60a;animation:callbl 1s ease-in-out infinite alternate}.go-t.st-new.late{border-color:#ff453a;animation-name:callred}
+.go-t.st-cook{border-color:var(--orange)}.go-t.st-ready{border-color:var(--green);background:#30d15818}.go-t.st-road{border-color:var(--blue)}
+.go-card{background:var(--card2);border-radius:14px;padding:10px 12px;margin-bottom:8px;display:grid;gap:6px;font-size:14px}.go-card a{color:var(--accent)}
+.go-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.go-h b{font-size:16px}
+.go-list{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}.go-c{display:grid;gap:6px}.go-c a{color:var(--accent)}.go-c.st-ready{border:2px solid var(--green)}
+#gKind{display:flex;gap:6px}#gKind button{flex:1}

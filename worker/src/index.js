@@ -1,4 +1,6 @@
 import { aiHelp } from './ai.js';
+import { tn } from './tn.js';
+import { goOrder, goInfo, reco } from './delivery.js';
 // VARVAR — Cloudflare Worker: прийом замовлень, перевірка Wi‑Fi закладу, Telegram.
 // Secrets: BOT_TOKEN, CHAT_ID, ADMIN_PIN, TG_SECRET   Vars: ALLOWED_ORIGIN, TABLES, SELF_URL   KV: DB
 import { getMenu, priceMap } from './menu.js';
@@ -16,7 +18,7 @@ const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;
 
 // 💸 запити, що працюють з базою, виконуються всередині Durable Object (store.js → Store.fetch):
 // там кожне читання/запис — локальне, а платний «запит до DO» — один на дію, а не 20–50
-const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai)$|tg$)/;
+const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|goinfo|reco)$|tg$)/;
 export default {
   async fetch(req, env) {
     const p = new URL(req.url).pathname;
@@ -67,11 +69,16 @@ export async function handle(req, env) {
       if (url.pathname === '/api/orders') { // статуси замовлень гостя: ?ids=a,b
         const ids = (url.searchParams.get('ids') || '').split(',').filter(x => /^[a-z0-9]{6,12}$/.test(x)).slice(0, 20);
         const out = {}, all = ids.length ? await env.DB.getMany(ids.map(id => 'ord:' + id), 'json') : []; // один запит замість N
-        ids.forEach((id, i) => { const o = all[i]; out[id] = o && { s: o.s, t: o.t, by: o.by, at: o.at }; });
+        ids.forEach((id, i) => { const o = all[i]; out[id] = o && { s: o.s, t: o.t, by: o.by, at: o.at, ...(o.go ? { g: o.g || o.s, no: tn(o.t), eta: o.eta, gAt: o.gAt } : {}) }; });
         return json(out);
       }
       if (url.pathname === '/api/pos/live') return posLive(req, env, url);
       if (url.pathname === '/api/pos' && req.method === 'POST') return json(...await posApi(await req.json(), req, env));
+      // 🛵 замовлення за посиланням (самовивіз / доставка)
+      if (url.pathname === '/api/go' && req.method === 'POST') return json(...await goOrder(await req.json(), ip, env));
+      if (url.pathname === '/api/goinfo') return json(await goInfo(env, url.searchParams.get('ph')));
+      if (url.pathname === '/api/reco') return json(await reco(env));
+      if (url.pathname === '/go') return Response.redirect((env.SITE_URL || 'https://666blackmuxa666.github.io/VARVAR/') + '?go' + (url.search ? '&' + url.search.slice(1) : ''), 302);
       if (url.pathname === '/api/call' && req.method === 'POST') return json(...await callWaiter(await req.json(), ip, env));
       if (url.pathname === '/api/order' && req.method === 'POST') return json(...await order(await req.json(), ip, env));
       if (url.pathname === '/api/admin' && req.method === 'POST') return json(...await admin(await req.json(), ip, env));
@@ -120,7 +127,7 @@ async function callWaiter(b, ip, env) {
   if (!(sc?.until > Date.now()) && !(await inVenue(env, ip))) return [{ error: 'not_in_venue' }, 403];
   const rk = 'callrl:' + String(b.device || ip).slice(0, 64); if (await env.DB.get(rk)) return [{ error: 'wait' }, 429];
   await env.DB.put(rk, '1', { expirationTtl: 60 });
-  const oid = crypto.randomUUID().replace(/-/g, '').slice(0, 10), html = `🔔🔔 <b>Стіл ${table} кличе офіціанта</b>`;
+  const oid = crypto.randomUUID().replace(/-/g, '').slice(0, 10), html = `🔔🔔 <b>Стіл ${tn(table)} кличе офіціанта</b>`;
   const r = await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: html, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '✅ Іду', callback_data: `acc:${table}:${oid}` }]] } });
   const mid = (await r.json().catch(() => ({})))?.result?.message_id;
   await env.DB.put('ord:' + oid, JSON.stringify({ s: 'new', t: table, mid, html }), { expirationTtl: BILL_TTL });
@@ -186,7 +193,7 @@ async function orderRaw(b, ip, env) {
   const prevBlock = prev.length ? ['', '📋 <b>Вже замовлено раніше:</b>', ...prev.flatMap(o => [`<i>${o.at} ${esc(o.kind)}</i>`, ...o.lines.map(esc)])] : [];
   const isMore = prev.length > 0 && lines.length;
   const msg = [
-    `🪑 <b>Стіл ${table}</b> — ${TYPES[type]}`,
+    `🪑 <b>Стіл ${tn(table)}</b> — ${TYPES[type]}`,
     lines.length ? (isMore ? '➕ <b>Дозамовили:</b>' : '') : '',
     ...lines.map(l => isMore ? `<b>${esc(l)}</b>` : esc(l)),
     lines.length ? `Сума: <b>${sum} грн</b>` : '',
@@ -220,7 +227,7 @@ async function warnNotInVenue(env, table, ip, dev = '') {
   if (!(await env.DB.get(dk))) { await env.DB.put(dk, '1', { expirationTtl: 300 }); await logEvent(env, { k: 'noscan', t: table }); }
   if (await env.DB.get('warned')) return;
   await env.DB.put('warned', '1', { expirationTtl: 1800 });
-  await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: `🚫📵 Стіл ${table}: гість пробує замовити, але не відсканував QR-код (або минула година). Підійдіть і підкажіть відсканувати QR на столі 📷` });
+  await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: `🚫📵 Стіл ${tn(table)}: гість пробує замовити, але не відсканував QR-код (або минула година). Підійдіть і підкажіть відсканувати QR на столі 📷` });
 }
 
 async function admin(b, ip, env) {

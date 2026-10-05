@@ -24,6 +24,8 @@
   let scanUntil = store.get('scan', 0), lockT = store.get('lockT', 0);
   const lockOn = () => lockT && scanUntil > Date.now();
   const qs = new URLSearchParams(location.search), qk = qs.get('k'), qt = qs.get('t');
+  const GO = qs.has('go'); // 🛵 замовлення за посиланням: лише з собою (самовивіз / доставка)
+  if (GO) { tw = true; document.body.classList.add('go'); }
   const scanP = qk ? fetch(C.api + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ k: qk, t: qt, device }) })
     .then(r => r.json()).then(d => { if (d.until) { scanUntil = d.until; lockT = d.t || 0; store.set('scan', d.until); store.set('lockT', lockT); if (lockT) { table = String(lockT); store.set('table', table); } } }).catch(() => {}) : Promise.resolve();
   if (qk) { const u = new URL(location.href); u.searchParams.delete('k'); u.searchParams.delete('t'); history.replaceState(null, '', u.pathname + u.search + u.hash); }
@@ -112,7 +114,7 @@
   // ---------- кошик ----------
   function renderFab() {
     const n = cartEntries().reduce((s, [, q]) => s + q, 0);
-    $('#fab').hidden = n === 0 && !hist.orders.length;
+    $('#fab').hidden = n === 0 && !(GO ? goHist.length : hist.orders.length);
     $('#fabCount').textContent = n;
     $('#fabSum').textContent = n ? money(cartSum()) : t('cart');
   }
@@ -146,6 +148,7 @@
          <button class="btn alt" data-send="order_check" ${hasItems ? '' : 'disabled'}>${t('orderCheck')}</button>`
       : `<button class="btn" data-send="reorder" ${hasItems ? '' : 'disabled'}>${t('reorder')}</button>
          <button class="btn alt" data-send="check">${t('check')}</button>`;
+    if (GO) goCart(rows);
   }
   // ---------- статус замовлення (офіціант натиснув «Прийняв» у Telegram) ----------
   const badge = o => !o.id ? '' : o.s === 'acc' ? `<span class="st ok">✅ ${t('accShort')}</span>` : `<span class="st wait">⏳ ${t('waitShort')}</span>`;
@@ -174,6 +177,7 @@
       : (last.type === 'call' ? t('waitCall') : last.type === 'check' ? t('waitCheck') : t('waitOrder'));
   }
   async function pollOrders() {
+    if (GO) return goPoll();
     const pending = (hist.reqs || []).filter(r => r.s !== 'acc');
     if (!pending.length) return;
     try {
@@ -233,6 +237,7 @@
     return { status: r.status, data: await r.json().catch(() => ({})) };
   }
   async function syncStatus() {
+    if (GO) { if (!$('#sheet').hidden) renderCart(); renderFab(); return; }
     try {
       await scanP;
       const { data } = await api('/api/status?device=' + device + (table ? '&table=' + table : ''));
@@ -311,11 +316,114 @@
     save(); refreshButtons(); renderFab(); $('#aiModal').hidden = true; openSheet();
   }
 
+  // ---------- 🛵 доставка і самовивіз (?go) ----------
+  let goCfg = null, goHist = store.get('goHist', []), reco = {}, gf = { kind: store.get('goKind', 'pick'), name: store.get('goName', ''), phone: store.get('goPhone', ''), addr: store.get('goAddr', ''), ent: store.get('goEnt', ''), when: '', cut: 0, pay: 'cash', change: 0, bonus: 0, bal: 0, useB: false };
+  const goSave = () => { store.set('goHist', goHist.slice(-20)); ['kind', 'name', 'phone', 'addr', 'ent'].forEach(k => store.set('go' + k[0].toUpperCase() + k.slice(1), gf[k])); };
+  const byUk = n => Object.values(byId).find(it => it.name.uk === n);
+  const goFood = () => cartEntries().reduce((s, [k, q]) => s + priceOf(k) * q, 0) + packSum();
+  const goFee = () => gf.kind === 'del' && goCfg && !(goCfg.free && goFood() >= goCfg.free) ? goCfg.fee : 0;
+  const goBonus = () => gf.useB ? Math.min(gf.bal, Math.floor(goFood() * (goCfg?.bmax || 0) / 100)) : 0;
+  const goTotal = () => goFood() + goFee() - goBonus();
+  const GST = { new: ['⏳', 'goStNew'], acc: ['✅', 'goStAcc'], cook: ['🔥', 'goStCook'], ready: ['🍽', 'goStReady'], road: ['🛵', 'goStRoad'], done: ['🤝', 'goStDone'], rej: ['❌', 'goStRej'] };
+  async function goInit() {
+    $('#callBtn').hidden = true;
+    try { goCfg = (await api('/api/goinfo')).data; } catch {}
+    try { reco = (await api('/api/reco')).data || {}; } catch {}
+    if (goCfg && !goCfg[gf.kind]) gf.kind = goCfg.del ? 'del' : 'pick';
+    const bar = $('#wifiBanner');
+    if (goCfg && (!goCfg.on || !goCfg.open)) { bar.hidden = false; bar.textContent = !goCfg.on ? '⛔ ' + t('goOff') : `🕐 ${t('goClosed')} ${goCfg.from}–${goCfg.to}`; }
+    else if (goCfg) { bar.hidden = false; bar.className = 'wifi-banner go-ok'; bar.textContent = `🥡 ${t('goHello')}${goCfg.del ? ' · 🛵 ' + t('goDel') : ''}`; }
+    goPoll(); renderFab();
+  }
+  function goWhenOpts() {
+    if (!goCfg) return [];
+    const kn = new Date().toLocaleTimeString('en-GB', { timeZone: 'Europe/Kyiv', hour: '2-digit', minute: '2-digit', hour12: false }).split(':').map(Number), now = { getHours: () => kn[0] % 24, getMinutes: () => kn[1] }, step = 15, start = Math.ceil((now.getHours() * 60 + now.getMinutes() + goCfg.prep) / step) * step, [fh, fm] = goCfg.from.split(':').map(Number), [th, tm] = goCfg.to.split(':').map(Number), a = fh * 60 + fm, b = th * 60 + tm > a ? th * 60 + tm : 24 * 60 + th * 60 + tm;
+    const out = []; for (let m = Math.max(start, a + goCfg.prep); m <= b - 15 && out.length < 48; m += step) { const h = Math.floor(m / 60) % 24; out.push(`${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`); }
+    return out;
+  }
+  function goCart(rows) {
+    $('.table-row').hidden = true;
+    const recs = []; for (const [k] of rows) for (const n of reco[byId[k.split('|')[0]]?.name.uk] || []) { const it = byUk(n); if (it && !it.variants && !cart[it.id] && !recs.includes(it)) recs.push(it); }
+    const toFree = goCfg && gf.kind === 'del' && goCfg.free ? goCfg.free - goFood() : 0;
+    $('#twBox').innerHTML = (recs.length ? `<div class="go-reco"><div class="cl-title">💡 ${t('goReco')}</div><div class="go-chips">${recs.slice(0, 4).map(it => `<button class="go-chip" data-add="${it.id}" data-label="${esc(itemName(it))}">+ ${esc(itemName(it))} · ${it.price}</button>`).join('')}</div></div>` : '')
+      + (rows.length && toFree > 0 ? `<div class="go-hint">🛵 ${t('goToFree')} <b>${money(toFree)}</b></div>` : '');
+    const act = goHist.filter(o => !['done', 'rej'].includes(o.g) && Date.now() - o.ts < 12 * 3600e3), old = goHist.filter(o => !act.includes(o)).slice(-5).reverse();
+    $('#history').innerHTML = (act.length ? `<div class="hist"><div class="hist-title">📦 ${t('goActive')}</div>${act.map(o => `<button class="go-ord" data-go-st="${o.id}"><b>${o.no}</b> · ${GST[o.g || 'new'][0]} ${t(GST[o.g || 'new'][1])}<span>${money(o.sum)}</span></button>`).join('')}</div>` : '')
+      + (old.length ? `<div class="hist"><div class="hist-title">🔁 ${t('goMine')}</div>${old.map(o => `<div class="go-old"><span>${o.at} · ${o.items.map(([k, q]) => `${q}× ${esc(byId[k.split('|')[0]] ? labelOf(k) : '…')}`).join(', ')}</span><button class="btn ghost sm" data-go-rep="${o.id}">${t('goRepeat')}</button></div>`).join('')}</div>` : '');
+    const ok = rows.length && goCfg?.on && (goCfg.del || goCfg.pick);
+    $('#actions').innerHTML = `<button class="btn" data-go-out ${ok ? '' : 'disabled'}>${t('goCheckout')}${rows.length ? ' · ' + money(goFood()) : ''}</button>`;
+  }
+  function goForm() {
+    const c = goCfg || {}, sum = goFood(), min = c.min && sum < c.min, w = goWhenOpts();
+    $('#goBody').innerHTML = `<div class="seg2">${c.pick ? `<button class="${gf.kind === 'pick' ? 'on' : ''}" data-go-k="pick">🥡 ${t('goPick')}</button>` : ''}${c.del ? `<button class="${gf.kind === 'del' ? 'on' : ''}" data-go-k="del">🛵 ${t('goDel')}${c.fee ? `<small>${c.free ? `${money(c.fee)} · ${t('goFreeFrom')} ${money(c.free)}` : money(c.fee)}</small>` : ''}</button>` : ''}</div>
+      <input id="gName" placeholder="${t('goName')}" value="${esc(gf.name)}" autocomplete="name">
+      <input id="gPhone" type="tel" placeholder="${t('goPhone')}" value="${esc(gf.phone)}" autocomplete="tel" inputmode="tel">
+      ${gf.kind === 'del' ? `<input id="gAddr" placeholder="${t('goAddr')}" value="${esc(gf.addr)}" autocomplete="street-address"><input id="gEnt" placeholder="${t('goEnt')}" value="${esc(gf.ent)}">${c.zone ? `<div class="go-note">📍 ${esc(c.zone)}</div>` : ''}` : ''}
+      <label class="go-row"><span>🕐 ${t(gf.kind === 'del' ? 'goWhenDel' : 'goWhen')}</span><select id="gWhen">${c.open ? `<option value="">${t('goAsap')} (~${c.prep} ${t('goMin')})</option>` : ''}${w.map(x => `<option ${gf.when === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+      <label class="go-row"><span>🍴 ${t('goCut')}</span><span class="qty"><button data-go-cut="-1">−</button><b>${gf.cut}</b><button data-go-cut="1">+</button></span></label>
+      <div class="go-sub">${t('goPay')}</div>
+      <div class="seg2"><button class="${gf.pay === 'cash' ? 'on' : ''}" data-go-p="cash">💵 ${t('goCash')}</button><button class="${gf.pay === 'card' ? 'on' : ''}" data-go-p="card">💳 ${t('goCard')}</button></div>
+      ${gf.pay === 'cash' ? `<label class="go-row"><span>💵 ${t('goChange')}</span><select id="gChange">${[0, 200, 500, 1000].map(v => `<option value="${v}" ${gf.change === v ? 'selected' : ''}>${v ? `${t('goFrom')} ${v}` : t('goNoChange')}</option>`).join('')}</select></label>` : ''}
+      ${gf.bal > 0 && c.bmax ? `<label class="go-row go-bonus"><span>🎁 ${t('goBonus')} <b>${money(gf.bal)}</b></span><input type="checkbox" id="gUseB" ${gf.useB ? 'checked' : ''}></label>` : c.cash ? `<div class="go-note">🎁 ${t('goCashback')} ${c.cash}%</div>` : ''}
+      <div class="go-sum"><div><span>${t('goFood')}</span><b>${money(sum)}</b></div>${goFee() ? `<div><span>🛵 ${t('goDel')}</span><b>${money(goFee())}</b></div>` : gf.kind === 'del' ? `<div><span>🛵 ${t('goDel')}</span><b>0</b></div>` : ''}${goBonus() ? `<div><span>🎁 ${t('goBonusUse')}</span><b>−${money(goBonus())}</b></div>` : ''}<div class="tot"><span>${t('total')}</span><b>${money(goTotal())}</b></div></div>
+      ${min ? `<div class="go-err">${t('goMinSum')} ${money(c.min)}</div>` : ''}<div class="msg" id="goMsg"></div>
+      <button class="btn" data-go-send ${min ? 'disabled' : ''}>${t('goSend')} · ${money(goTotal())}</button>`;
+  }
+  const goRead = () => { const v = id => $('#' + id)?.value.trim(); gf.name = v('gName') ?? gf.name; gf.phone = v('gPhone') ?? gf.phone; if ($('#gAddr')) { gf.addr = v('gAddr'); gf.ent = v('gEnt'); } if ($('#gWhen')) gf.when = $('#gWhen').value; if ($('#gChange')) gf.change = +$('#gChange').value; if ($('#gUseB')) gf.useB = $('#gUseB').checked; };
+  async function goBal() { const d = gf.phone.replace(/\D/g, ''); if (d.length < 10) return; try { const r = (await api('/api/goinfo?ph=' + encodeURIComponent(gf.phone))).data; const b = r.bal || 0; if (b !== gf.bal) { gf.bal = b; goForm(); } } catch {} }
+  async function goSend() {
+    goRead(); goSave(); const m = $('#goMsg');
+    if (!gf.name || gf.phone.replace(/\D/g, '').length < 10) { m.textContent = t('goNeedContact'); return; }
+    if (gf.kind === 'del' && gf.addr.length < 5) { m.textContent = t('goNeedAddr'); return; }
+    if (busy) return; busy = true; m.textContent = '…';
+    const items = cartEntries();
+    try {
+      const { status, data } = await api('/api/go', { kind: gf.kind, name: gf.name, phone: gf.phone, addr: gf.addr, ent: gf.ent, when: gf.when, cut: gf.cut, pay: gf.pay, change: gf.change, bonus: goBonus(), comment: $('#comment').value, device, src: qs.get('src') || '',
+        items: [...items.map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; }), ...(packId && packQty() ? [{ id: packId, q: packQty() }] : [])] });
+      if (status !== 200) { m.textContent = { closed: `${t('goClosed')} ${data.from}–${data.to}`, min: `${t('goMinSum')} ${money(data.min || 0)}`, rate: t('wait'), contact: t('goNeedContact'), addr: t('goNeedAddr'), off: t('goOff') }[data.error] || t('error'); return; }
+      goHist.push({ id: data.id, no: data.no, ts: Date.now(), at: new Date().toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' }), sum: data.sum, items: items.map(([k, q]) => [k, q]), g: 'new', eta: Date.now() + data.eta * 60e3 });
+      cart = {}; packAdj = 0; gf.useB = false; gf.bal = 0; $('#comment').value = ''; save(); goSave();
+      $('#goModal').hidden = true; refreshButtons(); renderFab(); renderCart(); goShow(data.id);
+    } catch { m.textContent = t('error'); } finally { busy = false; }
+  }
+  function goShow(id) {
+    const o = goHist.find(x => x.id === id); if (!o) return; const g = o.g || 'new', steps = ['new', 'acc', 'cook', 'ready', ...(o.no.startsWith('Д') ? ['road'] : []), 'done'];
+    $('#goBody').innerHTML = `<div class="go-big">${GST[g][0]}</div><h3 class="go-no">${t('goOrder')} ${o.no}</h3><p class="go-st">${t(GST[g][1])}</p>
+      ${g === 'rej' ? '' : `<div class="go-steps">${steps.map(s => `<i class="${steps.indexOf(s) <= steps.indexOf(g) ? 'on' : ''}" title="${t(GST[s][1])}">${GST[s][0]}</i>`).join('')}</div>`}
+      ${o.eta && !['done', 'rej'].includes(g) ? `<p class="go-note">${t('goEta')} ~${new Date(o.eta).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' })}</p>` : ''}
+      ${goCfg?.phone ? `<a class="btn ghost" href="tel:${esc(goCfg.phone.replace(/[^\d+]/g, ''))}">📞 ${esc(goCfg.phone)}</a>` : ''}<button class="btn alt" data-close>${t('goOk')}</button>`;
+    $('#goModal').hidden = false; $('#goModal').dataset.show = id;
+  }
+  async function goPoll() {
+    const act = goHist.filter(o => !['done', 'rej'].includes(o.g) && Date.now() - o.ts < 12 * 3600e3); if (!act.length) { $('#orderStatus').hidden = true; return; }
+    try { const { data } = await api('/api/orders?ids=' + act.map(o => o.id).join(','));
+      for (const o of act) { const x = data[o.id]; if (x && x.g && x.g !== o.g) { o.g = x.g; navigator.vibrate?.(80); } } goSave(); } catch {}
+    const last = act[act.length - 1], bar = $('#orderStatus'); bar.hidden = false; bar.className = 'order-status ' + (['ready', 'road', 'done'].includes(last.g) ? 'ok' : 'wait'); bar.textContent = `${last.no} · ${GST[last.g || 'new'][0]} ${t(GST[last.g || 'new'][1])}`; bar.dataset.go = last.id;
+    if (!$('#goModal').hidden && $('#goModal').dataset.show) goShow($('#goModal').dataset.show);
+    if (!$('#sheet').hidden) renderCart();
+  }
+  function goClick(el) {
+    const d = el.dataset;
+    if ('goOut' in d) { goRead(); goForm(); delete $('#goModal').dataset.show; $('#goModal').hidden = false; goBal(); return true; }
+    if (d.goK) { goRead(); gf.kind = d.goK; goForm(); return true; }
+    if (d.goP) { goRead(); gf.pay = d.goP; goForm(); return true; }
+    if (d.goCut) { goRead(); gf.cut = Math.max(0, Math.min(20, gf.cut + +d.goCut)); goForm(); return true; }
+    if ('goSend' in d) { goSend(); return true; }
+    if (d.goSt) { goShow(d.goSt); return true; }
+    if (el.id === 'orderStatus' && el.dataset.go) { goShow(el.dataset.go); return true; }
+    if (d.goRep) { const o = goHist.find(x => x.id === d.goRep); if (o) { o.items.forEach(([k, q]) => { const it = byId[k.split('|')[0]]; if (it) cart[k] = (cart[k] || 0) + q; }); save(); refreshButtons(); renderFab(); renderCart(); } return true; }
+    if (el.id === 'callBtn' || el.id === 'wifiBanner') return true;
+    return false;
+  }
+  document.addEventListener('change', e => { if (!GO) return; if (e.target.id === 'gUseB' || e.target.id === 'gWhen' || e.target.id === 'gChange') { goRead(); goForm(); } });
+  document.addEventListener('focusout', e => { if (GO && e.target.id === 'gPhone') { goRead(); goBal(); } });
+
   // ---------- події ----------
   document.addEventListener('click', e => {
     const el = e.target.closest('button, [data-close], #wifiBanner, #orderStatus');
     if (!el || (el.id !== 'lang' && !el.dataset.lang)) $('#langs').hidden = true;
     if (!el) return;
+    if (GO && goClick(el)) return;
     if (el.id === 'callBtn') callWaiter();
     else if ('ai' in el.dataset) aiOpen();
     else if (el.dataset.aiA != null) aiStep(el.dataset.aiA);
@@ -323,7 +431,7 @@
     else if ('aiAgain' in el.dataset) aiOpen();
     else if (el.dataset.add) change(el.dataset.add, 1);
     else if (el.dataset.pk) { if (packQty() + +el.dataset.pk >= 0) packAdj += +el.dataset.pk; renderCart(); renderFab(); }
-    else if ('tw' in el.dataset) { packAdj = 0; tw = !tw; store.set('tw', tw); renderCart(); renderFab(); }
+    else if ('tw' in el.dataset && !GO) { packAdj = 0; tw = !tw; store.set('tw', tw); renderCart(); renderFab(); }
     else if (el.dataset.inc) change(el.dataset.inc, 1);
     else if (el.dataset.dec) change(el.dataset.dec, -1);
     else if (el.dataset.send) send(el.dataset.send);
@@ -348,6 +456,6 @@
     menu = m;
     m.categories.forEach(c => c.items.forEach(it => { byId[it.id] = it; catOf[it.id] = c.id; }));
     packId = (m.categories.find(c => c.id === 'upakuvannia')?.items || [])[0]?.id || null;
-    renderMenu(); syncStatus(); renderStatus(); pollOrders();
+    renderMenu(); syncStatus(); renderStatus(); pollOrders(); if (GO) goInit();
   });
 })();
