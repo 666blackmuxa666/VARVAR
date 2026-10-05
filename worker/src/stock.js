@@ -138,14 +138,17 @@ export async function consume(env, items) {
   if (!todo.length) return;
   const low = await lk(env, async () => {
     const l = await getIng(env), im = new Map(l.map(x => [x.id, x])), uk = 'use:' + dayKey(), use = (await env.DB.get(uk, 'json')) || {}, ch = new Set();
+    const calc = (await getCfg(env)).semiCalc ?? 1;
+    // 📐 режим «розрахунок»: заготовка (соус, тісто) не тримається на складі — при продажі розкладається на продукти свого рецепту
+    const eat = (id, qq, w, depth = 0) => {
+      const x = im.get(id); if (!x) return; const sc = x.semi && calc && depth < 3 && cards['semi:' + id];
+      if (sc && sc.yield > 0 && sc.items?.length) { const k2 = qq / sc.yield; for (const z of sc.items) eat(z.id, r3((+z.q || 0) * k2), z.wh || sc.wh || w, depth + 1); return; }
+      const c = unitCost(x.id, im, cards); x.st[w] = r3((x.st[w] || 0) - qq); ch.add(x.id);
+      const key = x.id + '@' + w, a = use[key] || [0, 0]; use[key] = [r3(a[0] + qq), r2(a[1] + qq * c)];
+    };
     for (const { r, card, k } of todo) {
       const dw = card.wh || whOfCat(r.cat);
-      for (const ln of card.items || []) {
-        const x = im.get(ln.id); if (!x) continue;
-        const w = ln.wh || dw, qq = r3((+ln.q || 0) * k), c = unitCost(x.id, im, cards);
-        x.st[w] = r3((x.st[w] || 0) - qq); ch.add(x.id);
-        const key = x.id + '@' + w, a = use[key] || [0, 0]; use[key] = [r3(a[0] + qq), r2(a[1] + qq * c)];
-      }
+      for (const ln of card.items || []) eat(ln.id, r3((+ln.q || 0) * k), ln.wh || dw);
     }
     const low = lowCheck(l, ch);
     await Promise.all([putIng(env, l), env.DB.put(uk, JSON.stringify(use), { expirationTtl: 400 * 86400 })]);
@@ -158,10 +161,14 @@ export async function wasteDish(env, items, reason, who) {
   const cards = await getCards(env); if (!Object.keys(cards).length) return;
   const res = cardResolver(await getMenu(env));
   await lk(env, async () => {
-    const l = await getIng(env), im = new Map(l.map(x => [x.id, x])), rows = [];
+    const l = await getIng(env), im = new Map(l.map(x => [x.id, x])), rows = [], calc = (await getCfg(env)).semiCalc ?? 1;
     for (const { n, q } of items) {
       const r = res(n), f = cardFor(cards, r); if (!f || f.card.draft) continue;
-      for (const ln of f.card.items || []) { const x = im.get(ln.id); if (!x) continue; const w = ln.wh || f.card.wh || whOfCat(r.cat), qq = r3((+ln.q || 0) * f.k * q); x.st[w] = r3((x.st[w] || 0) - qq); rows.push(row('off', x, w, -qq, who, `скасовано: ${n} · ${String(reason || '').slice(0, 50)}`)); }
+      const note = `скасовано: ${n} · ${String(reason || '').slice(0, 50)}`;
+      const eat = (id, qq, w, depth = 0) => { const x = im.get(id); if (!x) return; const sc = x.semi && calc && depth < 3 && cards['semi:' + id]; // 📐 як у consume
+        if (sc && sc.yield > 0 && sc.items?.length) { for (const z of sc.items) eat(z.id, r3((+z.q || 0) * qq / sc.yield), z.wh || sc.wh || w, depth + 1); return; }
+        x.st[w] = r3((x.st[w] || 0) - qq); rows.push(row('off', x, w, -qq, who, note)); };
+      for (const ln of f.card.items || []) eat(ln.id, r3((+ln.q || 0) * f.k * q), ln.wh || f.card.wh || whOfCat(r.cat));
     }
     if (rows.length) { await jr(env, rows); await putIng(env, l); }
   });

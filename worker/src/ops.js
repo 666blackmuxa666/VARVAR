@@ -216,8 +216,8 @@ async function _addVoid(env, v) { const k = 'void:' + dayKey(), l = await getVoi
 // максимальна знижка для офіціанта (адмін — будь-яка)
 export const WAITER_DISC_MAX = 20;
 // ⚙️ налаштування системи (змінюються в касі «Налаштування» і в боті)
-export const CFG_DEF = { discMax: WAITER_DISC_MAX, scanMin: 60, foodCost: 30, priceAlert: 5, lateMin: 10, lateFine: 0, dayH: 3, autoZ: 0, zPrint: 1, zTg: 1, zRemind: 1 };
-export const CFG_LIM = { discMax: [0, 100], scanMin: [10, 600], foodCost: [5, 90], priceAlert: [1, 100], lateMin: [0, 120], lateFine: [0, 5000], dayH: [0, 8], autoZ: [0, 1], zPrint: [0, 1], zTg: [0, 1], zRemind: [0, 1] };
+export const CFG_DEF = { discMax: WAITER_DISC_MAX, scanMin: 60, foodCost: 30, priceAlert: 5, lateMin: 10, lateFine: 0, dayH: 3, autoZ: 0, zPrint: 1, zTg: 1, zRemind: 1, semiCalc: 1 };
+export const CFG_LIM = { discMax: [0, 100], scanMin: [10, 600], foodCost: [5, 90], priceAlert: [1, 100], lateMin: [0, 120], lateFine: [0, 5000], dayH: [0, 8], autoZ: [0, 1], zPrint: [0, 1], zTg: [0, 1], zRemind: [0, 1], semiCalc: [0, 1] };
 export const getCfg = async env => ({ ...CFG_DEF, ...((await env.DB.get('cfg', 'json')) || {}) });
 export async function setCfg(env, k, v) {
   if (!CFG_LIM[k]) return { error: 'Невідоме налаштування' };
