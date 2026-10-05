@@ -843,6 +843,51 @@ async function _delStaff(env, id) {
   const list = await getStaff(env); const n = list.filter(s => s.id !== id);
   await env.DB.put('staff', JSON.stringify(n)); return n.length !== list.length;
 }
+// ✏️ зміна працівника: імʼя / PIN / роль. ver++ → чинні сесії каси закриваються (pos.js порівнює ver), привʼязки «зміна» в боті (tgs:) — теж
+async function _editStaff(env, id, f) {
+  const list = await getStaff(env), s = list.find(x => x.id === id); if (!s) return { error: 'Працівника не знайдено' };
+  const old = s.name;
+  if (f.name != null) { const n = String(f.name).trim().slice(0, 30); if (!n) return { error: 'Порожнє імʼя' };
+    if (n === KITCHEN_POOL || n === '—') return { error: 'Таке імʼя зайняте' };
+    if (list.some(x => x.id !== id && x.name.toLowerCase() === n.toLowerCase())) return { error: 'Працівник з таким імʼям уже є — додайте прізвище або букву.' }; s.name = n; }
+  if (f.pin != null) { const pin = String(f.pin).trim(); if (!/^\d{4}$/.test(pin)) return { error: 'PIN — 4 цифри' };
+    if (await regRole(env, pin)) return { error: 'Цей код — для реєстрації. Оберіть інший PIN.' };
+    const h = await pinHash(pin); if (list.some(x => x.id !== id && x.pin === h)) return { error: 'Такий PIN уже є — оберіть інший.' }; s.pin = h; }
+  if (f.role != null) s.role = ['admin', 'cook', 'courier'].includes(f.role) ? f.role : 'waiter';
+  s.ver = (s.ver || 0) + 1;
+  await env.DB.put('staff', JSON.stringify(list));
+  return { ok: true, s, old };
+}
+// перейменування: імʼя — ключ у графіку, ЗП, чайових, чеках, доставках → переносимо всі записи, кожен ключ під своїм замком
+const REN_TTL = { 'gridx:': 400 * 86400, 'seen:': 400 * 86400, 'cooks:': 3 * 86400 };
+export async function renameRefs(env, a, b) {
+  if (!a || !b || a === b) return 0; let n = 0;
+  const sw = v => v === a ? b : v, mv = o => { if (o && a in o) { o[b] = typeof o[a] === 'number' ? (o[b] || 0) + o[a] : o[a]; delete o[a]; return 1; } return 0; };
+  const arr = v => { const j = JSON.stringify(v); v.forEach((x, i) => { v[i] = sw(x); }); return JSON.stringify(v) !== j; };
+  const each = async (prefix, fn) => { for (const k of (await env.DB.list({ prefix })).keys.map(x => x.name)) await L(env, k, async () => {
+    const v = await env.DB.get(k, 'json'); if (v && fn(v)) { await env.DB.put(k, JSON.stringify(v), REN_TTL[prefix] ? { expirationTtl: REN_TTL[prefix] } : undefined); n++; } }); };
+  await each('att:', v => Object.values(v).reduce((c, d) => c + mv(d), 0));
+  await each('plan:', v => Object.values(v).reduce((c, d) => c + mv(d), 0));
+  await each('pay:', v => v.reduce((c, o) => c + (o.n === a ? (o.n = b, 1) : 0), 0));
+  await each('gridx:', v => arr(v.add || []) + arr(v.hide || []));
+  await each('seen:', arr);
+  await each('cooks:', arr);
+  await each('closed:', v => v.reduce((c, x) => { const j = JSON.stringify(x); x.w = sw(x.w); x.by = sw(x.by); if (x.cour) x.cour = sw(x.cour); if (x.tipSplit) mv(x.tipSplit); return c + (JSON.stringify(x) !== j); }, 0));
+  for (const k of ['swaps', 'tipbal', 'courtg']) await L(env, k, async () => { const v = await env.DB.get(k, 'json'); if (!v) return;
+    const ch = Array.isArray(v) ? v.reduce((c, x) => { const j = x.from + x.to; x.from = sw(x.from); x.to = sw(x.to); return c + (j !== x.from + x.to); }, 0) : mv(v);
+    if (ch) { await env.DB.put(k, JSON.stringify(v)); n++; } });
+  await L(env, 'bills', async () => { for (const k of (await env.DB.list({ prefix: 'bill:' })).keys.map(x => x.name)) { const x = await env.DB.get(k, 'json'); if (!x) continue;
+    const j = JSON.stringify(x); x.waiter = sw(x.waiter); if (x.go?.cour) x.go.cour = sw(x.go.cour); if (JSON.stringify(x) !== j) { await env.DB.put(k, JSON.stringify(x), { expirationTtl: BILL_TTL }); n++; } } });
+  for (const k of (await env.DB.list({ prefix: 'wlog:' })).keys.map(x => x.name)) { const x = await env.DB.get(k, 'json'); if (x?.name === a) { x.name = b; await env.DB.put(k, JSON.stringify(x)); } }
+  return n;
+}
+async function dropTgLinks(env, id) { const keys = (await env.DB.list({ prefix: 'tgs:' })).keys.map(k => k.name), v = keys.length ? await env.DB.getMany(keys) : []; for (let i = 0; i < keys.length; i++) if (v[i] === id) await env.DB.delete(keys[i]); }
+export async function editStaff(env, id, f) {
+  const r = await L(env, 'staff', () => _editStaff(env, id, f)); if (r.error) return r;
+  if (r.old !== r.s.name) r.moved = await renameRefs(env, r.old, r.s.name);
+  await dropTgLinks(env, id);
+  return r;
+}
 export const loggedWaiters = async env => {
   const keys = (await env.DB.list({ prefix: 'wlog:' })).keys.map(k => k.name);
   const v = keys.length ? await env.DB.getMany(keys, 'json') : [];

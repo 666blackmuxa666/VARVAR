@@ -1410,7 +1410,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         if (await confirmBox("\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438 \u043E\u0441\u0442\u0430\u043D\u043D\u044E \u0437\u043C\u0456\u043D\u0443 \u043C\u0435\u043D\u044E?")) act("menuUndo", {}, "\u21A9\uFE0F \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E");
         break;
       case "staffAdd": {
-        const v = await modal({ title: "\u2795 \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A", body: '<div class="form"><input id="sName" placeholder="\u0406\u043C\u02BC\u044F"><input id="sPin" inputmode="numeric" maxlength="4" placeholder="PIN \u2014 4 \u0446\u0438\u0444\u0440\u0438"></div>', buttons: [{ label: "\u{1F9D1}\u200D\u{1F373} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442", val: "waiter", cls: "primary" }, { label: "\u{1F510} \u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440", val: "admin" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+        const v = await modal({ title: "\u2795 \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A", body: '<div class="form"><input id="sName" placeholder="\u0406\u043C\u02BC\u044F"><input id="sPin" inputmode="numeric" maxlength="4" placeholder="PIN \u2014 4 \u0446\u0438\u0444\u0440\u0438"></div>', buttons: [{ label: "\u{1F9D1}\u200D\u{1F373} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442", val: "waiter", cls: "primary" }, { label: "\u{1F510} \u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440", val: "admin" }, { label: "\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u0430\u0440", val: "cook" }, { label: "\u{1F6F5} \u041A\u0443\u0440'\u0454\u0440", val: "courier" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
         const name = v && $("#sName").value, p = v && $("#sPin").value;
         closeModal();
         if (v) {
@@ -1448,7 +1448,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         break;
       }
       case "regSet": {
-        const v = await ask(`\u041D\u043E\u0432\u0438\u0439 \u043A\u043E\u0434 \u0440\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u0457 (${el.dataset.r === "admin" ? "\u0430\u0434\u043C\u0456\u043D" : el.dataset.r === "cook" ? "\u043A\u0443\u0445\u0430\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"})`, "4 \u0446\u0438\u0444\u0440\u0438", "number");
+        const v = await ask(`\u041D\u043E\u0432\u0438\u0439 \u043A\u043E\u0434 \u0440\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u0457 (${{ admin: "\u0430\u0434\u043C\u0456\u043D", cook: "\u043A\u0443\u0445\u0430\u0440", courier: "\u043A\u0443\u0440'\u0454\u0440" }[el.dataset.r] || "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"})`, "4 \u0446\u0438\u0444\u0440\u0438", "number");
         if (v) {
           await act("regCode", { role: el.dataset.r, code: v }, "\u{1F195} \u041A\u043E\u0434 \u0437\u043C\u0456\u043D\u0435\u043D\u043E");
           loadView();
@@ -3110,11 +3110,15 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const SS = [["rules", "\u2699\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438"], ["site", "\u{1F310} \u0421\u0430\u0439\u0442"], ["go", "\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430"], ["look", "\u{1F3A8} \u0412\u0438\u0433\u043B\u044F\u0434"], ["printer", "\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["test", "\u{1F9EA} \u0422\u0435\u0441\u0442"]], cur = only || ((SS0) => SS0.includes(S.setTab) ? S.setTab : "rules")(["rules", "site", "go", "look", "printer", "test"]);
     const part = {};
     part.people = `<div class="grid2 set">
-      <div class="card"><h3>\u{1F465} \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B <span class="muted">\xB7 ${staff ? staff.length : "\u2026"}</span></h3>
-        <div class="scrollbox">${staff ? staff.map((s) => `<div class="kv"><span>${esc(s.name)} <span class="muted">\xB7 ${ROLE[s.role] || ROLE.waiter}</span></span><button class="btn sm red" data-a="staffDel" data-id="${s.id}">\u{1F5D1}</button></div>`).join("") || '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454</div>' : "\u2026"}</div>
-        <button class="btn sm primary" style="margin-top:10px" data-a="staffAdd">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430</button></div>
+      ${[["admin", "\u{1F510} \u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440\u0438"], ["waiter", "\u{1F9D1}\u200D\u{1F373} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0438"], ["cook", "\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u043D\u044F"], ["courier", "\u{1F6F5} \u041A\u0443\u0440'\u0454\u0440\u0438"]].map(([r, t]) => {
+      const l = staff ? staff.filter((s) => (ROLE[s.role] ? s.role : "waiter") === r) : null;
+      return `<div class="card"><h3>${t} <span class="muted">\xB7 ${l ? l.length : "\u2026"}</span></h3>
+        <div class="scrollbox">${l ? l.map((s) => `<div class="kv stf-row"><span class="stf-n">${esc(s.name)}</span><span class="kv-r"><button class="btn sm" data-a="stfName" data-id="${s.id}" title="\u0417\u043C\u0456\u043D\u0438\u0442\u0438 \u0456\u043C\u02BC\u044F">\u270F\uFE0F</button><button class="btn sm" data-a="stfPin" data-id="${s.id}" title="\u0417\u043C\u0456\u043D\u0438\u0442\u0438 PIN">\u{1F511}</button><button class="btn sm" data-a="stfRole" data-id="${s.id}" title="\u0417\u043C\u0456\u043D\u0438\u0442\u0438 \u0440\u043E\u043B\u044C">\u{1F504}</button><button class="btn sm red" data-a="staffDel" data-id="${s.id}" title="\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438">\u{1F5D1}</button></span></div>`).join("") || '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454</div>' : "\u2026"}</div></div>`;
+    }).join("")}
+      <div class="card"><h3>\u2795 \u041D\u043E\u0432\u0438\u0439 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A</h3><div class="muted set-note">\u0410\u0431\u043E \u0441\u0430\u043C \u2014 \u043A\u043E\u0434\u043E\u043C \u0440\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u0457 \u0432 \u043A\u0430\u0441\u0456.</div>
+        <button class="btn sm primary" data-a="staffAdd">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430</button></div>
       <div class="card"><h3>\u{1F195} \u041A\u043E\u0434\u0438 \u0440\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u0457</h3><div class="muted set-note">\u041D\u043E\u0432\u0438\u0439 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A \u0432\u0432\u043E\u0434\u0438\u0442\u044C \u043A\u043E\u0434 \u0437\u0430\u043C\u0456\u0441\u0442\u044C PIN \u2192 \u043F\u0438\u0448\u0435 \u0456\u043C\u02BC\u044F \u0456 \u043F\u0440\u0438\u0434\u0443\u043C\u0443\u0454 \u0441\u0432\u0456\u0439 PIN.</div>
-        ${(st == null ? void 0 : st.reg) ? row("\u{1F510} \u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440", esc(st.reg.admin), ch("regSet", ' data-r="admin"')) + row("\u{1F9D1}\u200D\u{1F373} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442", esc(st.reg.waiter), ch("regSet", ' data-r="waiter"')) + row("\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u0430\u0440", esc(st.reg.cook || "1113"), ch("regSet", ' data-r="cook"')) : "\u2026"}</div>
+        ${(st == null ? void 0 : st.reg) ? row("\u{1F510} \u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440", esc(st.reg.admin), ch("regSet", ' data-r="admin"')) + row("\u{1F9D1}\u200D\u{1F373} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442", esc(st.reg.waiter), ch("regSet", ' data-r="waiter"')) + row("\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u0430\u0440", esc(st.reg.cook || "1113"), ch("regSet", ' data-r="cook"')) + row("\u{1F6F5} \u041A\u0443\u0440'\u0454\u0440", esc(st.reg.courier || "1114"), ch("regSet", ' data-r="courier"')) : "\u2026"}</div>
       <div class="card"><h3>\u{1F916} \u0423\u0432\u0456\u0439\u0448\u043B\u0438 \u0432 Telegram-\u0431\u043E\u0442</h3><div class="scrollbox">${st ? st.waiters.map((w) => `<div class="kv"><span>${esc(w.name || w.uid)}</span><button class="btn sm red" data-a="wOut" data-uid="${w.uid}">\u0412\u0438\u0439\u0442\u0438</button></div>`).join("") || '<div class="muted">\u041D\u0456\u043A\u043E\u0433\u043E</div>' : "\u2026"}</div></div>
       <div class="card"><h3>\u{1F511} \u041F\u0430\u0440\u043E\u043B\u0456</h3><div class="muted set-note">\u041F\u0430\u0440\u043E\u043B\u044C \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430 \u2014 \u0432\u0445\u0456\u0434 \u0443 \u0431\u043E\u0442 \u0456 \u043A\u0430\u0441\u0443; \u043F\u0430\u0440\u043E\u043B\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \u2014 \u0430\u0434\u043C\u0456\u043D-\u0444\u0443\u043D\u043A\u0446\u0456\u0457.</div>
         <div class="btnrow"><button class="btn sm" data-a="wPass">\u041F\u0430\u0440\u043E\u043B\u044C \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430</button><button class="btn sm" data-a="aPass">\u041F\u0430\u0440\u043E\u043B\u044C \u0430\u0434\u043C\u0456\u043D\u0430</button></div></div></div>`;
@@ -4496,6 +4500,28 @@ ${g.sup}:
         break;
       }
     }
+  });
+  const ROLES = [["admin", "\u{1F510} \u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440"], ["waiter", "\u{1F9D1}\u200D\u{1F373} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"], ["cook", "\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u0430\u0440"], ["courier", "\u{1F6F5} \u041A\u0443\u0440'\u0454\u0440"]];
+  document.addEventListener("click", async (e) => {
+    var _a2;
+    const el = e.target.closest("[data-a]");
+    if (!el || !/^stf(Name|Pin|Role)$/.test(el.dataset.a)) return;
+    const s = (((_a2 = S.data.staff) == null ? void 0 : _a2.staff) || []).find((x) => x.id === el.dataset.id);
+    if (!s) return;
+    let f = null;
+    if (el.dataset.a === "stfName") {
+      const v = await askVal("\u270F\uFE0F \u041D\u043E\u0432\u0435 \u0456\u043C\u02BC\u044F (\u0433\u0440\u0430\u0444\u0456\u043A, \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0430 \u0439 \u0447\u0430\u0439\u043E\u0432\u0456 \u043F\u0435\u0440\u0435\u0439\u0434\u0443\u0442\u044C)", s.name);
+      if (v && v.trim() !== s.name) f = { name: v.trim() };
+    }
+    if (el.dataset.a === "stfPin") {
+      const v = await ask(`\u{1F511} \u041D\u043E\u0432\u0438\u0439 PIN: ${s.name}`, "4 \u0446\u0438\u0444\u0440\u0438 \xB7 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430 \u0432\u0438\u0439\u0434\u0435 \u0437 \u043A\u0430\u0441\u0438", "tel");
+      if (v) f = { pin: String(v) };
+    }
+    if (el.dataset.a === "stfRole") {
+      const v = await choose(`\u{1F504} \u0420\u043E\u043B\u044C: ${s.name}`, "\u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430 \u0432\u0438\u0439\u0434\u0435 \u0437 \u043A\u0430\u0441\u0438 \u2014 \u0443\u0432\u0456\u0439\u0434\u0435 \u0437\u043D\u043E\u0432\u0443 \u0437 \u043D\u043E\u0432\u0438\u043C\u0438 \u043F\u0440\u0430\u0432\u0430\u043C\u0438", ROLES.filter(([r]) => r !== (s.role || "waiter")).map(([val, label]) => ({ label, val })));
+      if (v) f = { role: v };
+    }
+    if (f && await act("staffEdit", __spreadValues({ id: s.id }, f), f.name ? "\u270F\uFE0F \u0406\u043C\u02BC\u044F \u0437\u043C\u0456\u043D\u0435\u043D\u043E" : f.pin ? "\u{1F511} PIN \u0437\u043C\u0456\u043D\u0435\u043D\u043E" : "\u{1F504} \u0420\u043E\u043B\u044C \u0437\u043C\u0456\u043D\u0435\u043D\u043E")) loadView();
   });
   if (S.token) start();
   else showLogin();
