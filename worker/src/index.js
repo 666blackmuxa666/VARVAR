@@ -23,10 +23,26 @@ const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;
 // 💸 запити, що працюють з базою, виконуються всередині Durable Object (store.js → Store.fetch):
 // там кожне читання/запис — локальне, а платний «запит до DO» — один на дію, а не 20–50
 const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|goinfo|promo|reco|site|book|bookpre|cert|me|me\/start|me\/poll|me\/logout)$|tg$|tg2$|tg3$|__cron$)/;
+// 💾 кеш у пам'яті воркера для однакових для всіх відповідей (на *.workers.dev кеш Cloudflare не працює).
+// Економить запити до Durable Object: меню відкривають сотні гостей, а змінюється воно рідко. Стоп-лист сервер
+// все одно перевіряє при замовленні (priceMap пропускає hidden), тож 20 с затримки безпечні.
+const MEM = new Map(), TTL = { '/api/menu': 20, '/api/site': 60, '/api/reco': 600, '/api/goinfo': 30, '/k': 3600, '/kitchen': 3600 };
+async function cached(req, run) {
+  const u = new URL(req.url), ttl = req.method === 'GET' && TTL[u.pathname];
+  if (!ttl || u.searchParams.has('ph') || u.searchParams.has('nocache')) return run();
+  const key = u.pathname + u.search + '|' + (req.headers.get('Origin') || ''), hit = MEM.get(key);
+  if (hit && hit.exp > Date.now()) return new Response(hit.body, { status: 200, headers: { ...hit.headers, 'x-cache': 'HIT' } });
+  const r = await run(); if (r.status !== 200) return r;
+  const body = await r.arrayBuffer(), headers = Object.fromEntries(r.headers);
+  if (MEM.size > 200) MEM.clear();
+  MEM.set(key, { body, headers, exp: Date.now() + ttl * 1000 });
+  return new Response(body, { status: 200, headers: { ...headers, 'x-cache': 'MISS' } });
+}
 export default {
   async fetch(req, env) {
     const p = new URL(req.url).pathname;
-    if (IN_STORE.test(p) && req.method !== 'OPTIONS') return env.STORE.get(env.STORE.idFromName('main')).fetch(req);
+    if (IN_STORE.test(p) && req.method !== 'OPTIONS') return cached(req, () => env.STORE.get(env.STORE.idFromName('main')).fetch(req));
+    if (TTL[p]) return cached(req, () => handle(req, { ...env, DB: storeDB(env.DB, env.STORE) }));
     return handle(req, { ...env, DB: storeDB(env.DB, env.STORE) });
   },
   // ⏰ кожні 5 хв: нагадування про броні, запити відгуків (виконується всередині Store)
