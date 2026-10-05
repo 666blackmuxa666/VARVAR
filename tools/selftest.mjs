@@ -153,6 +153,8 @@ async function apiTests() {
   await step('bkList: на старій даті більше нема', async () => { const r = await posOk(A, 'bkList', { from: d0, to: d0 }); must(!r.list.some(b => b.id === bid), 'дубль на старій даті'); });
   await step('GET /api/book?id статус', async () => { const r = await http('/api/book?id=' + bid); must(!r.j.error, JSON.stringify(r.j)); });
 
+  await loyTests(A, W, dish);
+
   sect('Права ролей (очікуємо 403)');
   let G2 = 0; // відкрита доставка, щоб кур'єр не міг поставити їй чужий статус
   { const r = await http('/api/go', { kind: 'del', name: 'QA Права', phone: '0670002' + String(Math.floor(Math.random() * 900) + 100), addr: 'вул. Тестова 2', when: '12:00', pay: 'cash', items: [{ id: dish.id, q: 1 }], device: 'qa2-' + RUN }); G2 = r.j.t || 0; }
@@ -168,6 +170,72 @@ async function apiTests() {
   if (G2) await pos(A, 'delete', { t: G2, reason: 'QA тест' });
   await step('без токена → 401', async () => { const r = await pos('', 'state'); must(r.status === 401, 'статус ' + r.status); });
   return true;
+}
+
+// 🎁 лояльність (promo.js): рівень → автознижка, без складання з ручною, щасливі години, кошик сайту, звіт
+async function loyTests(A, W, dish) {
+  sect('🎁 Лояльність: рівні й акції');
+  const freeT = async () => { const s = await posOk(W, 'state'); const busy = new Set(s.tables.map(x => x.t)); for (let t = s.n; t >= 1; t--) if (!busy.has(t)) return t; throw new Error('усі столи зайняті'); };
+  const tbl = async t => (await posOk(W, 'state')).tables.find(x => x.t === t);
+  let cfg0 = null, off = [], lvId = 'qa' + RUN, hid = '';
+  const ok0 = await step('loyGet: рівні й акції', async () => { const r = await posOk(A, 'loyGet'); cfg0 = r.cfg; must(Array.isArray(cfg0.levels) && cfg0.levels.length, 'немає рівнів'); return `${cfg0.levels.length} рівнів · ${cfg0.rules.length} акцій`; });
+  if (!ok0) return;
+  // ізоляція: вимикаємо чужі акції, вмикаємо модуль, стеля 50%
+  for (const r of cfg0.rules.filter(r => r.on)) { await posOk(A, 'loyRuleOn', { id: r.id, on: false }); off.push(r.id); }
+  await posOk(A, 'loySet', { on: 1, max: 50 });
+  const ph = '0670004' + String(Math.floor(Math.random() * 900) + 100);
+  try {
+    await step('рівень вручну (QA −10%) → клієнту', async () => {
+      await posOk(A, 'loyLevel', { lv: { id: lvId, name: 'QA ' + RUN, e: '🧪', man: 1, pct: 10 } });
+      const r = await posOk(A, 'loyCliSet', { phone: ph, f: { lvl: lvId, name: 'QA Лояльний', bd: '01.01', note: 'QA' } }); must(r.cli.lvl === lvId, 'lvl=' + r.cli.lvl); return r.cli.lvn;
+    });
+    let T = 0, total = 0;
+    await step('телефон гостя на столі → знижка рівня сама', async () => {
+      T = await freeT(); const o = await posOk(W, 'order', { t: T, items: [{ id: dish.id, q: 2 }] }); total = o.total;
+      await posOk(W, 'cliSet', { t: T, phone: ph }); const b = await tbl(T);
+      const l = b.promo?.lines?.find(x => x.k === 'lvl:' + lvId); must(l, 'немає рядка рівня: ' + JSON.stringify(b.promo));
+      must(l.amt === Math.round(total * 0.1) && b.pay2 === total - l.amt, `amt ${l.amt}, pay2 ${b.pay2}, total ${total}`); return `${l.n} −${l.amt}`;
+    });
+    await step('ручна знижка 15% більша → рівень не складається', async () => {
+      await posOk(A, 'discount', { t: T, pct: 15 }); const b = await tbl(T);
+      must(!b.promo?.lines?.some(x => x.k === 'lvl:' + lvId), 'рівень склався з ручною'); must(b.pay2 === total - Math.round(total * 0.15), 'pay2 ' + b.pay2);
+      await posOk(A, 'discount', { t: T, pct: 0 });
+    });
+    await step('закриття → у чеку promo, сума зі знижкою, історія клієнта', async () => {
+      const r = await posOk(W, 'close', { t: T, pay: 'cash', print: false }); must(r.r.sum === total - Math.round(total * 0.1), 'sum ' + r.r.sum);
+      const c = (await posOk(A, 'closed')).list.filter(x => x.t === T).pop(); must(c?.promo?.some(p => p.k === 'lvl:' + lvId), 'closed.promo: ' + JSON.stringify(c?.promo));
+      const k = await posOk(A, 'loyCliGet', { phone: ph }); must(k.cli.n >= 1 && k.cli.h?.[0]?.pr === Math.round(total * 0.1), 'cli: ' + JSON.stringify(k.cli).slice(0, 160)); return `${r.r.sum} грн`;
+    });
+    const kv = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Kyiv', hour: '2-digit', minute: '2-digit', weekday: 'short', hour12: false }).formatToParts(new Date()), P = Object.fromEntries(kv.map(x => [x.type, x.value]));
+    const hh = h => String((h + 24) % 24).padStart(2, '0') + ':' + P.minute, H = +P.hour % 24, dow = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(P.weekday) + 1;
+    const happy = { type: 'happy', name: 'QA щасливі ' + RUN, pct: 20, from: hh(H - 1), to: hh(H + 1), days: [], where: ['hall', 'pick'] };
+    await step('щасливі години −20% (зараз) → на столі без телефону', async () => {
+      const r = await posOk(A, 'loyRule', { rule: happy }); hid = r.cfg.rules.find(x => x.name === happy.name)?.id; must(hid, 'акцію не створено');
+      T = await freeT(); const o = await posOk(W, 'order', { t: T, items: [{ id: dish.id, q: 1 }] }); const b = await tbl(T);
+      const l = b.promo?.lines?.find(x => x.k === hid); must(l && l.amt === Math.round(o.total * 0.2), 'promo: ' + JSON.stringify(b.promo)); return `${l.n} −${l.amt}`;
+    });
+    await step('інший день тижня → акція не діє', async () => {
+      await posOk(A, 'loyRule', { rule: { ...happy, id: hid, days: [dow % 7 + 1] } }); const b = await tbl(T); must(!b.promo?.lines?.some(x => x.k === hid), 'діє не в свій день');
+      await posOk(A, 'loyRule', { rule: { ...happy, id: hid } }); await pos(A, 'delete', { t: T, reason: 'QA лояльність' });
+    });
+    await step('кошик сайту /api/promo: самовивіз — так, доставка — ні (умова «де»)', async () => {
+      const a = await http('/api/promo', { kind: 'pick', items: [{ id: dish.id, q: 1 }] }), d = await http('/api/promo', { kind: 'del', items: [{ id: dish.id, q: 1 }] });
+      must(a.j.sum === Math.round(dish.price * 0.2), 'pick ' + JSON.stringify(a.j)); must(!d.j.sum, 'del ' + JSON.stringify(d.j)); return `−${a.j.sum}`;
+    });
+    await step('/api/go: сервер сам рахує акцію (клієнту не довіряємо)', async () => {
+      const r = await http('/api/go', { kind: 'pick', name: 'QA Акція', phone: ph, when: '12:00', pay: 'cash', items: [{ id: dish.id, q: 1 }], device: 'qa-loy-' + RUN, promo: 99999 });
+      must(r.status === 200 && r.j.ok, `${r.status} ${JSON.stringify(r.j)}`); const exp = Math.round(dish.price * 0.2) + Math.round(dish.price * 0.1);
+      must(r.j.promo === exp && r.j.sum === dish.price - exp, `promo ${r.j.promo} sum ${r.j.sum}, очікували −${exp}`); await pos(A, 'delete', { t: r.j.t, reason: 'QA лояльність' }); return `${r.j.no} −${r.j.promo}`;
+    });
+    await step('звіт loyRep за сьогодні', async () => { const r = await posOk(A, 'loyRep', { from: day(), to: day() }); must(r.sum > 0 && r.list.some(x => x.k === 'lvl:' + lvId), JSON.stringify(r).slice(0, 200)); return `${r.sum} грн знижок`; });
+    await step('клієнти: пошук і фільтр за рівнем', async () => { const r = await posOk(W, 'loyCli', { f: lvId }); must(r.list.some(x => x.phone.endsWith(ph.slice(1))), 'не знайдено'); });
+    for (const [op, b] of [['loyRule', { rule: happy }], ['loyRep', {}], ['loyLevel', { del: lvId }], ['loyOff', { t: 1, off: 1 }]]) await step(`waiter ✗ ${op}`, async () => { const r = await pos(W, op, b); must(r.status === 403, 'статус ' + r.status); });
+  } finally {
+    if (hid) await pos(A, 'loyRule', { del: hid });
+    await pos(A, 'loyCliSet', { phone: ph, f: { lvl: '' } }); await pos(A, 'loyLevel', { del: lvId });
+    for (const id of off) await pos(A, 'loyRuleOn', { id, on: true });
+    if (cfg0) await pos(A, 'loySet', { on: cfg0.on, max: cfg0.max });
+  }
 }
 
 async function cleanup() {
@@ -256,6 +324,10 @@ async function uiTests() {
       await b.ev(`(() => { const x = [...document.querySelectorAll('#main [data-a="${a}"]')].find(x => (x.dataset.t ?? x.dataset.s ?? '') === ${JSON.stringify(t)}); x && x.click(); return 1; })()`);
       await sleep(1300);
       for (const o of await b.ev(OVERFLOW_JS)) over.push(`[${a}=${t}] ${o}`);
+      for (const s2 of await b.ev(`[...document.querySelectorAll('#main [data-a="loyTab"]')].map(x => x.dataset.s)`)) { // 🎁 підвкладки лояльності
+        await b.ev(`(() => { const x = document.querySelector('#main [data-a="loyTab"][data-s="${s2}"]'); x && x.click(); return 1; })()`); await sleep(1300);
+        for (const o of await b.ev(OVERFLOW_JS)) over.push(`[${a}=${t}/loy=${s2}] ${o}`);
+      }
     }
     const errs = b.errs.slice(before);
     const empty = await b.ev(`(document.querySelector('#main')?.innerText || '').trim().length`);

@@ -4,6 +4,7 @@ import { getMenu, saveMenu, addCategory, menuLock } from './menu.js';
 import { tn, isGo } from './tn.js';
 import { goFromPos, goAttach, goButtons, fmtPhone, goApi } from './delivery.js';
 import { siteApi } from './siteapi.js';
+import { loyApi, promoFillMany } from './promo.js';
 import { bookList } from './site.js';
 import { courDay, courBot, courLinkUrl, courAct, courCashGive, courWatch, getLinks, multiRoute, courRep } from './courier.js';
 import { queuePrint, printStatus } from './print.js';
@@ -50,6 +51,7 @@ export async function posApi(b, req, env) {
   // 🛵 кур'єр: лише свої доставки
   if (me.role === 'courier' && !['logout', 'state', 'goSt', 'goCour', 'zpIn', 'zpOut', 'zpMy', 'courMe', 'courTg', 'courAct'].includes(b.op)) return [{ error: 'Кур\'єр — лише доставки' }, 403];
   if (/^go[A-Z]|^cli[A-Z]/.test(b.op || '')) return goApi(b, env, me, t);
+  if (/^loy[A-Z]/.test(b.op || '')) return loyApi(b, env, me, t); // 🎁 лояльність: рівні, акції, клієнти, звіт (promo.js)
   if (/^(bk|site|cert)[A-Z]/.test(b.op || '')) return siteApi(b, env, me, t);
   if (/^cour[A-Z]/.test(b.op || '')) { // 🛵 кур'єр
     if (b.op === 'courMe') return ok({ day: await courDay(env, b.n && admin ? String(b.n) : who), route: await multiRoute(env, who), bot: env.COURIER_BOT_TOKEN ? await courBot(env) : '', linked: !!(await getLinks(env))[who] });
@@ -75,6 +77,7 @@ export async function posApi(b, req, env) {
       const mine = cl.filter(x => !x.del && !x.rm);
       const myTip = { sum: (await tipBalances(env))[me.name] || 0, today: mine.reduce((a, x) => a + ((x.tipSplit || {})[me.name] || (!x.tipSplit && x.by === me.name ? x.tip || 0 : 0)), 0) }; // накопичені, ще не видані
       const books = me.role === 'courier' ? [] : (await bookList(env)).filter(x => x.date === dayKey() && ['new', 'ok'].includes(x.st)).map(x => ({ id: x.id, time: x.time, name: x.name, people: x.people, t: x.t || 0, st: x.st, pre: (x.pre || []).length }));
+      await promoFillMany(env, rows.map(r => r.b)); // 🎁 акції/рівень — для показу суми на столі
       return ok({ me, shift, myTip, myAtt, books, cfg: await getCfg(env), n: tablesCount(env), tables: rows.map(r => ({ t: r.t, ...r.b, items: billItems(r.b), pay2: payable(r.b) })), events: events.slice(-120), printer: pr, now: Date.now() });
     }
     case 'menu': { const menu = await getMenu(env); return ok({ menu, fav: await getFav(env), groups: GROUPS.map(g => ({ ...g, cats: menu.categories.filter(c => groupOf(c.id) === g.id).map(c => c.id) })) }); }

@@ -4,6 +4,7 @@ import { getMenu, saveMenu, menuLock } from './menu.js';
 import { tn } from './tn.js';
 import { cliClose, goKitchen, goButtons, goGone } from './delivery.js';
 import { reviewQueue } from './site.js';
+import { promoFill, promoClose } from './promo.js';
 import { courNotify } from './courier.js';
 import { queuePrint, kitchenTicket, receipt } from './print.js';
 import { consume, wasteDish } from './stock.js';
@@ -29,7 +30,7 @@ export const getBill = async (env, t) => (await env.DB.get('bill:' + t, 'json'))
 export const putBill = (env, t, b) => b.total > 0 ? env.DB.put('bill:' + t, JSON.stringify(b), { expirationTtl: BILL_TTL }) : env.DB.delete('bill:' + t);
 // discSum — знижка фіксованою сумою (після об'єднання столів з різними знижками); інакше — відсоток від суми
 export const discAmt = b => b.discSum != null ? Math.max(0, Math.min(b.total || 0, b.discSum)) : Math.round((b.total || 0) * (b.disc || 0) / 100);
-export const payable = b => Math.max(0, (b.total || 0) - discAmt(b) - (b.bonus || 0)); // 🎁 bonus — списані бонуси клієнта
+export const payable = b => Math.max(0, (b.total || 0) - discAmt(b) - (b.bonus || 0) - (b.promo?.sum || 0)); // 🎁 bonus — списані бонуси клієнта; promo — акції/рівень (promo.js)
 export async function openTables(env) {
   const keys = (await env.DB.list({ prefix: 'bill:' })).keys.map(k => k.name);
   const bills = keys.length ? await env.DB.getMany(keys, 'json') : [];
@@ -226,6 +227,7 @@ export async function setCfg(env, k, v) {
 async function _closeTable(env, t, who, pay = 'cash', print = true) {
   const bill = await getBill(env, t);
   if (!bill.total) return null;
+  await promoFill(env, bill).catch(() => {}); // 🎁 акції й рівень — рахуються наново саме зараз (promo.js)
   // чайові входять у виручку тим способом, яким заплатив гість; при видачі списуються з готівки або картки
   const tip = (bill.tip || 0) + (bill.ktip || 0), sum = payable(bill) + tip, disc = discAmt(bill);
   const card = pay === 'card' ? sum : 0, cash = sum - card;
@@ -240,8 +242,8 @@ async function _closeTable(env, t, who, pay = 'cash', print = true) {
   await Promise.all([
     kq,
     (async () => { if (tipSplit) for (const [n, v] of Object.entries(tipSplit)) await addTipBal(env, n, v); })(), // один ключ — по черзі
-    (async () => { if (bill.cli) { await cliClose(env, bill.cli, sum - tip, (bill.bonus || 0) - (bill.cert?.sum || 0), bill.go?.name).catch(() => {}); await reviewQueue(env, bill.cli, sum).catch(() => {}); } })(),
-    logClosed(env, { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), t, sum, cash, card, ...(bill.go ? { go: bill.go.kind, ...(bill.go.cour ? { cour: bill.go.cour } : {}), ...(bill.go.fee ? { fee: bill.go.fee } : {}), gt: { at: bill.go.at, acc: bill.go.accAt, take: bill.go.takeAt, road: bill.go.roadAt, done: Date.now(), when: bill.go.when || '', prob: bill.go.prob?.k || '' } } : {}), ...(bill.bonus ? { bonus: bill.bonus } : {}), ...(bill.cert ? { cert: bill.cert } : {}), ...(bill.cli ? { cli: bill.cli } : {}), at: hhmm(), by: who || '', w: waiter, orders: bill.orders || 0, dishes, ...(tip ? { tip, tipSplit, ...(bill.ktip ? { ktip: bill.ktip } : {}) } : {}), ...(bill.voids?.length ? { voids: bill.voids } : {}), ...(disc ? { gross: bill.total, disc: bill.disc, discSum: disc } : {}) }),
+    (async () => { if (bill.cli) { await cliClose(env, bill.cli, sum - tip, (bill.bonus || 0) - (bill.cert?.sum || 0), bill.go?.name, bill.promo?.cash).catch(() => {}); await promoClose(env, bill, sum - tip).catch(() => {}); await reviewQueue(env, bill.cli, sum).catch(() => {}); } })(),
+    logClosed(env, { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), t, sum, cash, card, ...(bill.go ? { go: bill.go.kind, ...(bill.go.cour ? { cour: bill.go.cour } : {}), ...(bill.go.fee ? { fee: bill.go.fee } : {}), gt: { at: bill.go.at, acc: bill.go.accAt, take: bill.go.takeAt, road: bill.go.roadAt, done: Date.now(), when: bill.go.when || '', prob: bill.go.prob?.k || '' } } : {}), ...(bill.bonus ? { bonus: bill.bonus } : {}), ...(bill.cert ? { cert: bill.cert } : {}), ...(bill.cli ? { cli: bill.cli } : {}), ...(bill.promo?.sum ? { promo: bill.promo.lines.filter(l => l.amt).map(({ k, n, amt }) => ({ k, n, amt })), promoSum: bill.promo.sum } : {}), at: hhmm(), by: who || '', w: waiter, orders: bill.orders || 0, dishes, ...(tip ? { tip, tipSplit, ...(bill.ktip ? { ktip: bill.ktip } : {}) } : {}), ...(bill.voids?.length ? { voids: bill.voids } : {}), ...(bill.promo?.sum && !disc ? { gross: bill.total } : {}), ...(disc ? { gross: bill.total, disc: bill.disc, discSum: disc } : {}) }),
     logEvent(env, { k: 'close', t, by: who, sum, pay, print }),
   ]);
   return { t, sum, cash, card, disc, tip };
@@ -249,7 +251,7 @@ async function _closeTable(env, t, who, pay = 'cash', print = true) {
 export const payLabel = (cash, card) => card ? '💳 карта' : '💵 готівка';
 
 export async function precheck(env, t, who) {
-  const b = await getBill(env, t); if (!b.total) return false;
+  const b = await getBill(env, t); if (!b.total) return false; await promoFill(env, b).catch(() => {});
   await queuePrint(env, 'precheck', await receipt(env, { table: +t, bill: b, final: false, by: who }));
   await logEvent(env, { k: 'pre', t, by: who });
   return true;
@@ -459,7 +461,7 @@ async function _restoreTable(env, ref, who, day = dayKey()) {
 export async function reprintClosed(env, ref, who, day = dayKey()) {
   const x = await closedRec(env, ref, day);
   if (!x?.dishes?.length) return false;
-  const bill = { total: x.gross || (x.sum - (x.tip || 0)), disc: x.disc, ...(x.discSum != null ? { discSum: x.discSum } : {}), tip: (x.tip || 0) - (x.ktip || 0), ktip: x.ktip, log: [{ lines: x.dishes.map(([n, q, sum]) => `${q}× ${n} — ${sum}`) }] };
+  const bill = { total: x.gross || (x.sum - (x.tip || 0)), ...(x.promo ? { promo: { lines: x.promo, sum: x.promoSum || 0 } } : {}), ...(x.bonus ? { bonus: x.bonus } : {}), disc: x.disc, ...(x.discSum != null ? { discSum: x.discSum } : {}), tip: (x.tip || 0) - (x.ktip || 0), ktip: x.ktip, log: [{ lines: x.dishes.map(([n, q, sum]) => `${q}× ${n} — ${sum}`) }] };
   await queuePrint(env, 'receipt', await receipt(env, { table: x.t, bill, final: true, pay: x.card ? 'card' : 'cash', by: who }));
   return true;
 }

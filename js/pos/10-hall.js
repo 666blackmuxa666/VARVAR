@@ -78,7 +78,7 @@
     const pk = packItem(), pq = pk ? packQ(t) : 0;
     const cartSum = cartRows.reduce((s, [, x]) => s + x.price * x.q, 0) + (pq ? pq * pk.price : 0);
     const G = b?.go || (t === -1 ? S.goDraft : null);
-    setHTML($('#shHead'), `<h2>${t === -1 ? `${G.kind === 'del' ? '🛵' : '🥡'} Нове: ${esc(G.name || '')}` : G ? `${G.kind === 'del' ? '🛵' : '🥡'} ${tn(t)}` : `Стіл ${tn(t)}`}</h2>${b ? `<span class="total money">${money(b.pay2)}</span>${b.disc ? `<span class="chip">−${b.disc}%</span>` : ''}${b.tip ? `<span class="chip tipc">💝 ${money(b.tip)}</span>` : ''}<span class="muted hide-s">з ${b.opened ? hhmm(b.opened) : '—'} · ${b.orders} замовл.</span>${b.check ? '<span class="chip" style="background:var(--orange);color:#000">🧾 чек</span>' : ''}` : '<span class="muted">новий</span>'}
+    setHTML($('#shHead'), `<h2>${t === -1 ? `${G.kind === 'del' ? '🛵' : '🥡'} Нове: ${esc(G.name || '')}` : G ? `${G.kind === 'del' ? '🛵' : '🥡'} ${tn(t)}` : `Стіл ${tn(t)}`}</h2>${b ? `<span class="total money">${money(b.pay2)}</span>${b.disc ? `<span class="chip">−${b.disc}%</span>` : ''}${b.promo?.lvn ? `<span class="chip" data-a="loyCliT">${esc(b.promo.lvn)}</span>` : ''}${b.tip ? `<span class="chip tipc">💝 ${money(b.tip)}</span>` : ''}<span class="muted hide-s">з ${b.opened ? hhmm(b.opened) : '—'} · ${b.orders} замовл.</span>${b.check ? '<span class="chip" style="background:var(--orange);color:#000">🧾 чек</span>' : ''}` : '<span class="muted">новий</span>'}
         <span class="sp"></span><div class="tabs2"><button class="${S.mobileMenu ? '' : 'on'}" data-a="tab" data-m="0">Рахунок${cartRows.length ? ` (${cartRows.reduce((s, [, x]) => s + x.q, 0)})` : ''}</button><button class="${S.mobileMenu ? 'on' : ''}" data-a="tab" data-m="1">Меню</button></div>
         <button class="close-x" data-a="closeSheet">✕</button>`);
     const pend = S.events.filter(e => e.k === 'guest' && e.s === 'new' && +e.t === t);
@@ -86,7 +86,9 @@
     $('#shBody').className = 'sheet-body' + (S.mobileMenu ? ' show-menu' : '');
     // рахунок
     const billRows = b ? b.items.map(it => `<div class="row"><div class="nm">${esc(it.name)}<small>${it.q} × ${Math.round(it.sum / it.q)} ₴</small></div><b class="money">${it.sum}</b><button class="rb minus" data-a="rm" data-name="${esc(it.name)}" title="Прибрати 1">−</button></div>`).join('') : '<div class="muted" style="padding:8px 4px">Рахунок порожній — оберіть страви в меню</div>';
-    const discRow = b?.disc ? `<div class="row"><div class="nm">Знижка ${b.disc}%</div><b class="money" style="color:var(--green)">−${b.total - b.pay2}</b><button class="rb minus" data-a="discSet" data-p="0">×</button></div>` : '';
+    const discRow = b?.disc ? `<div class="row"><div class="nm">Знижка ${b.disc}%</div><b class="money" style="color:var(--green)">−${b.discSum != null ? Math.min(b.total, b.discSum) : Math.round(b.total * b.disc / 100)}</b><button class="rb minus" data-a="discSet" data-p="0">×</button></div>` : '';
+    // 🎁 акції й рівень клієнта (рахує сервер, promo.js); адмін може вимкнути на цьому столі
+    const promoRow = b?.promoOff ? `<div class="row"><div class="nm muted">🎁 Акції на столі вимкнено</div>${isAdmin() ? '<button class="rb plus" data-a="loyOff" data-off="0" title="Повернути">↺</button>' : ''}</div>` : (b?.promo?.lines || []).filter(l => l.amt || !l.info).map((l, i) => `<div class="row"><div class="nm">${esc(l.n)}</div><b class="money" style="color:var(--green)">${l.amt ? '−' + l.amt : ''}</b>${isAdmin() && i === 0 ? '<button class="rb minus" data-a="loyOff" data-off="1" title="Без акцій">×</button>' : ''}</div>`).join('');
     const bonRow = b?.bonus ? `<div class="row"><div class="nm">${b.cert ? `🎟 Сертифікат ${esc(b.cert.code)}${b.bonus > b.cert.sum ? ' + 🎁 бонуси' : ''}` : '🎁 Бонуси'}</div><b class="money" style="color:var(--green)">−${b.bonus}</b><button class="rb minus" data-a="cliBon0">×</button></div>` : '';
     const tipRow = b?.tip ? `<div class="row"><div class="nm">💝 Чайові<small>входять у виручку</small></div><b class="money" style="color:#ff7aa8">+${b.tip}</b>${isAdmin() ? '<button class="rb minus" data-a="tipSet" data-v="0">×</button>' : ''}</div>` : '';
     const comments = b ? b.log.filter(o => o.comment).map(o => `<div class="muted" style="padding:2px 6px">💬 ${esc(o.comment)}</div>`).join('') : '';
@@ -97,7 +99,7 @@
       <button class="btn" data-a="move">↔️ Перенести</button><button class="btn" data-a="split">✂️ Розділити</button>${t < 1000 ? `<button class="btn" data-a="cliT">🎁 ${b.cli ? 'Гість' : 'Бонуси'}</button>` : ''}<button class="btn" data-a="certT">🎟 Сертифікат</button>${isAdmin() ? '<button class="btn red" data-a="delTable">🗑 Видалити</button>' : '<button class="btn" data-a="mobileMenu">➕ Додати</button>'}
       <button class="btn green wide" data-a="closeT">💰 Закрити рахунок · ${money(b.pay2)}</button></div>` : '';
     const keepBill = $('#shBill .scroll')?.scrollTop, focusCom = document.activeElement?.id === 'cartCom';
-    setHTML($('#shBill'), `<div class="scroll"><h3>Рахунок</h3>${billRows}${discRow}${bonRow}${tipRow}${comments}</div>${cartHTML}${actions}`);
+    setHTML($('#shBill'), `<div class="scroll"><h3>Рахунок</h3>${billRows}${discRow}${promoRow}${bonRow}${tipRow}${comments}</div>${cartHTML}${actions}`);
     if (keepBill) $('#shBill .scroll').scrollTop = keepBill;
     if (focusCom) { const s = $('#cartCom'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
     // меню: групи → категорії → страви (кількість у кошику малюється окремо, щоб фото не перемальовувались)
