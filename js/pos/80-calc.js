@@ -140,13 +140,14 @@
     const opt = l => `<option value="">— оберіть продукт —</option><option value="__new">${l.add ? `➕ Новий: ${esc(l.add.n)} (${l.add.u})` : '➕ Створити новий продукт…'}</option>${ing.map(x => `<option value="${x.id}" ${l.id === x.id ? 'selected' : ''}>${esc(x.n)} (${x.u})</option>`).join('')}`;
     const pkOpt = l => { const x = im.get(l.id), u = x?.u || l.add?.u || 'од.', pks = [{ n: u, f: 1 }, ...(x?.pk || [])]; if (l.f && !pks.some(p => p.f === +l.f)) pks.push({ n: '×' + l.f, f: +l.f }); return pks.map(p => `<option value="${p.f}" ${(+l.f || 1) === p.f ? 'selected' : ''}>${esc(p.n)}${p.f !== 1 ? ` (${p.f} ${u})` : ''}</option>`).join('') + '<option value="?">інша…</option>'; };
     const rows = d.lines.map((l, i) => { const st = l.add ? 'new' : !l.id ? 'none' : l.ok === 'guess' ? 'guess' : 'ok', x = im.get(l.id);
-      return `<div class="dl ${st}"><div class="dl-src">${i + 1}. ${l.n ? esc(l.n) : '<i class="muted">новий рядок</i>'}${l.u || l.price ? ` <span class="muted">· ${esc(l.q0 ?? l.q)} ${esc(l.u || '')}${l.price ? ' × ' + l.price : ''}</span>` : ''}${st === 'guess' ? ' <span class="warn">перевірте продукт</span>' : st === 'none' ? ' <span class="warn">оберіть продукт</span>' : ''}</div>
+      return `<div class="dl ${st}"><div class="dl-src">${i + 1}. ${l.n ? esc(l.n) : '<i class="muted">новий рядок</i>'}${l.u || l.price ? ` <span class="muted">· ${esc(l.q0 ?? l.q)} ${esc(l.u || '')}${l.price ? ' × ' + l.price : ''}</span>` : ''}${st === 'guess' ? ` <span class="warn">❓ перевірте${l.sc ? ' · ' + Math.round(l.sc * 100) + '%' : ''}</span>` : st === 'none' ? ' <span class="warn">оберіть продукт</span>' : ''}</div>
+        ${(st === 'guess' || st === 'new') && l.c?.length ? `<div class="chips dl-c">${st === 'new' ? '<span class="muted">схоже на:</span>' : ''}${l.c.map(c => `<button class="chip ${c.id === l.id ? 'on' : ''}" data-a="skDlCand" data-i="${i}" data-id="${c.id}">${esc(c.n)} <small class="muted">${Math.round(c.sc * 100)}%</small></button>`).join('')}${st === 'guess' ? `<button class="chip" data-a="skDlCand" data-i="${i}" data-id="__new">➕ Новий</button>` : ''}</div>` : ''}
         <div class="dl-f"><button class="pk-b ${l.id || l.add ? '' : 'empty'}" data-a="skDlPick" data-i="${i}">${x ? esc(x.n) + ` <span class="muted">${x.u}</span>` : l.add ? `➕ ${esc(l.add.n)} <span class="muted">${l.add.u}</span>` : '🔎 Оберіть продукт…'}</button><input data-dl="${i}" data-k="q" inputmode="decimal" value="${l.q ?? ''}" placeholder="К-сть"><select data-dl="${i}" data-k="f">${pkOpt(l)}</select><input data-dl="${i}" data-k="sum" inputmode="decimal" value="${l.sum ?? ''}" placeholder="Сума ₴"><button class="xb" data-a="skDlDel" data-i="${i}" title="Прибрати рядок">✕</button></div>
         <div class="dl-h muted" id="dlh${i}">${lineHint(l, x, adm)}</div></div>`; }).join('');
     const sups = Object.keys(S.data.skInv?.sups || {});
     return `<div class="card"><div class="rhead"><h3 style="margin:0">🧾 ${d.src === 'photo' ? 'Розпізнана накладна — перевірте' : 'Нова накладна'}</h3><button class="btn sm" data-a="skDraftX">✕ Скасувати</button></div>
       <div class="frow"><label>Постачальник<input id="dSup" list="supL" value="${esc(d.sup || '')}" data-dh="sup" placeholder="напр. Метро"><datalist id="supL">${sups.map(s => `<option value="${esc(s)}">`).join('')}</datalist></label><label>№ документа<input id="dNo" value="${esc(d.no || '')}" data-dh="no"></label><label>Дата<input id="dDate" value="${esc(d.date || '')}" data-dh="date" placeholder="ДД.ММ.РРРР"></label></div></div>
-      <div class="card"><h3>Позиції <span class="muted">· ${d.lines.length}</span> <span class="muted" style="font-weight:400;font-size:12px">🟢 впізнано · 🟡 перевірте · 🔵 новий — створиться сам</span></h3>${rows || '<div class="muted">Додайте позиції</div>'}
+      <div class="card"><h3>Позиції <span class="muted">· ${d.lines.length}</span> <span class="muted" style="font-weight:400;font-size:12px">🟢 впізнано · 🟡 ❓ перевірте — тапніть правильний · 🔵 новий — створиться сам</span></h3>${rows || '<div class="muted">Додайте позиції</div>'}
         <div class="btnrow"><button class="btn sm" data-a="skDlAdd">➕ Рядок</button><button class="btn sm" data-a="skScan">🔎 Сканувати штрихкод</button></div></div>
       <div class="card"><div class="kv tot"><span>Разом за позиціями</span><b class="money" id="dSum">${money(sum)}</b></div>${d.total ? `<div class="kv ${Math.abs(diff) > 1 ? 'bad' : ''}" id="dTot"><span>У документі</span><b class="money">${money(d.total)}${Math.abs(diff) > 1 ? ` · різниця ${money(diff)}` : ' ✅'}</b></div>` : ''}
         <div class="muted" style="font-size:12px;margin:10px 0 6px">Оплата:</div>
@@ -182,7 +183,7 @@
       const images = await Promise.all(files.map(f => shrink(f, 1800, .82)));
       const r = await api('skInvParse', { images }, 75000);
       if (!S.data.sk) S.data.sk = await api('skData');
-      S.sk.draft = { sup: r.sup, no: r.no, date: r.date, total: r.total, src: 'photo', lines: r.lines.map(l => ({ ...l, q0: l.q, f: l.add ? l.f : skAutoF(l) })) };
+      S.sk.draft = { sup: r.sup, no: r.no, date: r.date, total: r.total, src: 'photo', lines: r.lines.map(l => ({ ...l, q0: l.q, f: l.add || (l.f && l.f !== 1) ? l.f : skAutoF(l) })) };
       if (!S.data.skInv) S.data.skInv = await api('skInvList').catch(() => null);
     } catch (e) { toast('⚠️ ' + errText(e.message)); }
     S.sk.busy = false; renderMain();
@@ -453,6 +454,10 @@
         if (id === '__new') { const nw = await skNewIng(l.n || '', l.u || 'кг', 'k'); if (nw) { l.add = nw; l.id = null; } }
         else { l.id = id; delete l.add; const x = S.data.sk.ing.find(y => y.id === id); if (dl) { l.ok = 'ok'; l.f = skAutoF(l); } else if (x && l.loss == null && x.loss) l.loss = x.loss; }
         renderMain(); break; }
+      case 'skDlCand': { const l = K.draft.lines[+el.dataset.i]; if (!l) break; const id = el.dataset.id; // вибір кандидата одним тапом (запамʼятається в al при записі)
+        if (id === '__new') { const nw = await skNewIng(l.p || l.n || '', l.pu || l.u || 'кг', l.bar ? 'b' : 'k'); if (!nw) break; l.add = nw; l.id = null; }
+        else { l.id = id; delete l.add; l.f = skAutoF(l); }
+        l.ok = 'ok'; delete l.c; renderMain(); break; }
       case 'skDlDel': K.draft.lines.splice(+el.dataset.i, 1); renderMain(); break;
       case 'skDlAdd': K.draft.lines.push({ id: null, n: '', q: '', f: 1, sum: '' }); renderMain(); break;
       case 'skDraftX': if (await confirmBox('Скасувати накладну?', 'Внесене не збережеться')) { K.draft = null; renderMain(); loadView(); } break;

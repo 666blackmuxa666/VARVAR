@@ -8,7 +8,7 @@ import { guestBot, guestCallback, guestText, guestHello, sitePublic, bookCreate,
 import { getMenu, priceMap } from './menu.js';
 import { handleUpdate } from './bot.js';
 import { KITCHEN_HTML } from './kitchen.js';
-import { tg, esc, getBill, putBill, addStat, addDishes, hhmm, logEvent, billItems, payable, addKitchen, getCfg } from './ops.js';
+import { setDayH, tg, esc, getBill, putBill, addStat, addDishes, hhmm, logEvent, billItems, payable, addKitchen, getCfg } from './ops.js';
 import { posApi, posLive } from './pos.js';
 import { queuePrint, kitchenTicket, printApi } from './print.js';
 export { PrintQ } from './print.js';
@@ -31,6 +31,7 @@ export default {
   async scheduled(ev, env, ctx) { ctx.waitUntil(env.STORE.get(env.STORE.idFromName('main')).fetch(new Request('https://in/__cron', { headers: { 'x-cron': '1' } }))); },
 };
 export async function handle(req, env) {
+  if (env.INSTORE) setDayH((await getCfg(env).catch(() => ({}))).dayH ?? 3); // межа робочого дня з налаштувань
   {
     const url = new URL(req.url), cors = corsHeaders(req, env);
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });

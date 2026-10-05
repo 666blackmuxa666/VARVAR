@@ -113,12 +113,14 @@ export async function invPhoto(m, env, uid) {
   await env.DB.put(k, JSON.stringify(d), { expirationTtl: 900 });
   return draftView(d);
 }
-const OK = { mem: '🟢', name: '🟢', guess: '🟡', '': '🔵' };
+const OK = { bc: '🟢', mem: '🟢', name: '🟢', sure: '🟢', ok: '🟢', guess: '❓', '': '🔵' };
 function draftView(d) {
   const sum = d.lines.reduce((a, l) => a + (+l.sum || 0), 0);
-  return { text: `🧾 <b>Накладна</b> ${esc(d.sup || '')}${d.no ? ' №' + esc(d.no) : ''}\n\n${d.lines.map((l, i) => `${OK[l.ok || ''] || '🔵'} ${i + 1}. ${esc(l.n)} — ${l.q} ${esc(l.u || '')} · ${money(l.sum)}`).join('\n')}\n\nРазом: <b>${money(sum)}</b>${d.total && Math.abs(d.total - sum) > 1 ? ` · ⚠️ у документі ${money(d.total)}` : ''}\n🟢 впізнано · 🟡 схоже (перевірте) · 🔵 новий продукт — створю сам\nНаступна сторінка — ще одне фото з підписом «накладна». Точно зіставити — у касі (🧮 → 🧾).`,
-    markup: { inline_keyboard: [[{ text: '✅ Записати · 💵 з каси', callback_data: 'skis:cash' }, { text: '💳 з картки', callback_data: 'skis:card' }], [{ text: '⏳ В борг', callback_data: 'skis:debt' }, { text: '❌ Скасувати', callback_data: 'skix' }]] } };
+  return { text: `🧾 <b>Накладна</b> ${esc(d.sup || '')}${d.no ? ' №' + esc(d.no) : ''}\n\n${d.lines.map((l, i) => `${OK[l.ok || ''] || '🔵'} ${i + 1}. ${esc(l.n)}${l.ok === 'guess' && l.id ? ` → <b>${esc(l.c?.find(c => c.id === l.id)?.n || '')}</b>?` : ''} — ${l.q} ${esc(l.u || '')} · ${money(l.sum)}`).join('\n')}\n\nРазом: <b>${money(sum)}</b>${d.total && Math.abs(d.total - sum) > 1 ? ` · ⚠️ у документі ${money(d.total)}` : ''}\n🟢 впізнано · ❓ перевірте — оберіть кнопкою нижче · 🔵 новий продукт — створю сам\nНаступна сторінка — ще одне фото з підписом «накладна». Точно зіставити — у касі (🧮 → 🧾).`,
+    markup: { inline_keyboard: [...candRows(d), [{ text: '✅ Записати · 💵 з каси', callback_data: 'skis:cash' }, { text: '💳 з картки', callback_data: 'skis:card' }], [{ text: '⏳ В борг', callback_data: 'skis:debt' }, { text: '❌ Скасувати', callback_data: 'skix' }]] } };
 }
+// ❓ сумнівні рядки: кнопки 2–3 кандидатів + «новий» (skim:<рядок>:<id|new>); вибір запамʼятається в al при записі
+const candRows = d => d.lines.map((l, i) => (l.ok === 'guess' || (!l.id && l.ok === '')) && l.c?.length ? [...l.c.slice(0, 3).map(c => ({ text: `${i + 1}. ${c.id === l.id ? '✅ ' : ''}${c.n}`.slice(0, 40), callback_data: `skim:${i}:${c.id}` })), ...(l.id ? [{ text: `${i + 1}. ➕ новий`, callback_data: `skim:${i}:new` }] : [])] : null).filter(Boolean).slice(0, 10);
 const unitOf = u => /^(л|мл|l|ml)/i.test(u || '') ? 'л' : /^(шт|уп|ящ|пач|пл|бут|бан|pcs)/i.test(u || '') ? 'шт' : 'кг';
 
 // кнопки «sk…»; повертає { text, markup, edit? } або null
@@ -144,6 +146,12 @@ export async function stockCallback(act, arg, env, uid, who) {
 }
 export async function stockCallbackW(act, arg, opt, env, uid, who) { // з записом
   if (act === 'skipp') { const r = await invPay(env, arg, opt === 'card' ? 'card' : 'cash', who); return { text: r ? `💸 Оплачено: ${esc(r.sup)} ${money(r.total)} ${opt === 'card' ? 'з картки' : 'з каси'} — записано у витрати` : 'Вже оплачено' }; }
+  if (act === 'skim') { // вибір кандидата для рядка чернетки
+    const k = 'invd:' + uid, d = await env.DB.get(k, 'json'), l = d?.lines[+arg]; if (!l) return { text: 'Чернетка застаріла — надішліть фото ще раз' };
+    if (opt === 'new') { l.id = null; l.add ||= { n: (l.p || l.n).slice(0, 60), u: l.pu || unitOf(l.u), home: l.bar ? 'b' : 'k', cat: l.cat || 'Інше' }; l.ok = ''; }
+    else { const c = l.c?.find(z => z.id === opt); if (c) { l.id = opt; delete l.add; l.f = /^(г|гр|мл)\.?$/i.test(l.u || '') && c.u !== 'шт' ? 0.001 : l.pq && l.pu === c.u ? l.pq : 1; l.ok = 'ok'; } }
+    delete l.c; await env.DB.put(k, JSON.stringify(d), { expirationTtl: 900 }); return draftView(d);
+  }
   if (act === 'skix') { await env.DB.delete('invd:' + uid); return { text: '❌ Накладну скасовано' }; }
   if (act === 'skis') {
     const d = await env.DB.get('invd:' + uid, 'json'); if (!d) return { text: 'Чернетка застаріла — надішліть фото ще раз' };
