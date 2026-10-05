@@ -258,9 +258,10 @@ export async function guestBot(m, env) {
     if (m.contact.user_id !== uid) { await gtg(env, 'sendMessage', { chat_id: chat, text: 'Потрібен саме ваш номер — натисніть кнопку «📱 Поділитися номером».' }); return true; }
     const ph = normPhone(m.contact.phone_number); if (!ph) { await gtg(env, 'sendMessage', { chat_id: chat, text: 'Підтримуються українські номери (+380).', reply_markup: { remove_keyboard: true } }); return true; }
     await cliTouch(env, ph, c => { c.chat = chat; if (!c.name) c.name = m.from?.first_name || ''; });
+    const gbm = await import('./guestbot.js'); await gbm.linkChat(env, chat, ph);
     const n = await env.DB.get('glu:' + uid);
     if (n && await env.DB.get('gl:' + n)) { const tok = [...crypto.getRandomValues(new Uint8Array(16))].map(x => x.toString(16).padStart(2, '0')).join(''); await env.DB.put('gs:' + tok, ph, { expirationTtl: 30 * 86400 }); await env.DB.put('gl:' + n, JSON.stringify({ token: tok }), { expirationTtl: 300 }); }
-    await gtg(env, 'sendMessage', { chat_id: chat, text: `✅ Готово! Номер ${fmtPhone(ph)} підключено.\nПоверніться на сайт — кабінет відкриється сам. Сюди надходитимуть підтвердження броні, нагадування й бонуси.`, reply_markup: { remove_keyboard: true } });
+    await gbm.showMenu(env, chat, `✅ Готово! Номер ${fmtPhone(ph)} підключено.${n ? '\nПоверніться на сайт — кабінет відкриється сам.' : ''}\nТут — ваші бонуси, замовлення, броні й сертифікати 👇`);
     return true;
   }
   return false;
@@ -272,6 +273,7 @@ export async function cron(env) {
   const now = Date.now(), out = [];
   await (await import('./courier.js')).courWatch(env).catch(() => {}); // 🛵 ніхто не взяв доставку
   await autoDay(env).catch(e => console.log('autoZ', e.message)); // 🌙 автоматичний Z за минулий день
+  await (await import('./guestbot.js')).gbDaily(env).catch(e => console.log('gbDaily', e.message)); // 🎂 ДН + 👋 «сплячі»
   // відгуки
   const due = await L(env, 'revq', async () => { const q = (await env.DB.get('revq', 'json')) || [], d = q.filter(x => x.at <= now); if (d.length) await env.DB.put('revq', JSON.stringify(q.filter(x => x.at > now))); return d; });
   for (const r of due) { await guestMsg(env, r.ph, '🙏 Дякуємо, що завітали у Varvar! Як вам усе сподобалось?', { inline_keyboard: [[1, 2, 3, 4, 5].map(n => ({ text: '⭐'.repeat(n === 5 ? 1 : 0) + n, callback_data: `rv:${r.id}:${n}` }))] }); await env.DB.put('rvph:' + r.id, r.ph, { expirationTtl: 7 * 86400 }); out.push('rv'); }

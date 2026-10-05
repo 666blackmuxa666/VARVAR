@@ -284,6 +284,17 @@ async function loyTests(A, W, dish) {
     for (const id of off) await pos(A, 'loyRuleOn', { id, on: true });
     if (cfg0) await pos(A, 'loySet', { on: cfg0.on, max: cfg0.max });
   }
+
+  sect('🤖 Бот гостей: налаштування, розсилка, відповідь');
+  let gb0 = null;
+  try {
+    await step('gbGet', async () => { const r = await posOk(A, 'gbGet'); gb0 = r.cfg; must(r.cfg && r.aud, 'немає cfg'); return `підключено ${r.linked}`; });
+    await step('gbSet: погане значення → 400', async () => { const r = await pos(A, 'gbSet', { f: { sleepDays: 1 } }); must(r.status === 400, String(r.status)); });
+    await step('gbSet: вимкнути статус і назад', async () => { const r = await posOk(A, 'gbSet', { f: { stat: false, sleepBon: 50 } }); must(r.cfg.stat === 0 && r.cfg.sleepBon === 50, JSON.stringify(r.cfg)); });
+    await step('gbCount', async () => { const r = await posOk(A, 'gbCount', { f: 'sleep' }); must(typeof r.n === 'number', 'n'); return `${r.n} отримувачів`; });
+    await step('gbReply: гість без бота → 400', async () => { const r = await pos(W, 'gbReply', { ph: '380000000000', text: 'тест' }); must(r.status === 400, String(r.status)); });
+    for (const op of ['gbSet', 'gbCast', 'gbCount']) await step(`waiter ✗ ${op}`, async () => { const r = await pos(W, op, { f: {} }); must(r.status === 403, String(r.status)); });
+  } finally { if (gb0) await pos(A, 'gbSet', { f: { stat: gb0.stat, sleepBon: gb0.sleepBon } }); }
 }
 
 async function cleanup() {

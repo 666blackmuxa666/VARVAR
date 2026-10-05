@@ -111,7 +111,7 @@ export async function promoQuote(b, env) {
 }
 
 // ---------- 👥 клієнти ----------
-async function allCli(env) {
+export async function allCli(env) {
   const keys = (await env.DB.list({ prefix: 'cli:' })).keys.map(k => k.name), vals = keys.length ? await env.DB.getMany(keys, 'json') : [];
   return keys.map((k, i) => ({ phone: k.slice(4), ...(vals[i] || {}) })).filter(c => c.phone);
 }
@@ -208,6 +208,10 @@ export async function loyBotText(env, text, admin) {
     return { text: `👥 Знайдено ${l.length}:`, markup: kbOf(l.slice(0, 12).map(c => [{ text: `${c.lvn ? c.lvn.split(' ')[0] + ' ' : ''}${c.name || '—'} · ${fmtPhone(c.phone)}`.slice(0, 60), callback_data: 'lcl:' + c.phone }])) };
   }
   if (/^(акції|акции|\/promo|лояльність)$/i.test(text.trim())) return rulesBot(env, admin);
+  m = text.match(/^розсилка\s+([\s\S]{3,})$/i); // 📣 розсилка гостям у бот (усім, хто підключив Telegram)
+  if (m) { if (!admin) return { text: '🔐 Лише для адміністратора' }; const { castCount } = await import('./guestbot.js'), c = await castCount(env, 'all'), id = crypto.randomUUID().slice(0, 8);
+    await env.DB.put('lcs:' + id, m[1].trim(), { expirationTtl: 3600 });
+    return { text: `📣 <b>Розсилка гостям</b> (${c.n} отримувачів)${c.wait ? `\n⏳ Можна через ${c.wait} хв` : ''}\n\n${esc(m[1].trim())}`, markup: kbOf([[{ text: `📣 Надіслати ${c.n}`, callback_data: 'lcs:' + id }]]) }; }
   return null;
 }
 async function cliBotCard(env, ph, admin) {
@@ -221,7 +225,7 @@ async function rulesBot(env, admin) {
   const c = await getLoy(env);
   return { text: [`🎁 <b>Лояльність</b> ${c.on ? '✅' : '⛔ вимкнено'} · стеля ${c.max}%`, '', '<b>Рівні:</b>', ...c.levels.map(l => `${l.e} ${esc(l.name)} — ${l.man ? 'вручну' : [l.n ? `від ${l.n} візитів` : '', l.sum ? `від ${money(l.sum)}` : ''].filter(Boolean).join(' або ') || 'усі'}${l.pct ? ` · −${l.pct}%` : ''}${l.cash ? ` · кешбек ${l.cash}%` : ''}`),
     '', '<b>Акції:</b>', ...(c.rules.length ? c.rules.map(r => `${r.on ? '✅' : '⛔'} ${esc(ruleLabel(r))} <i>${RULE_T[r.type]}${r.type === 'happy' ? ` · ${(r.days?.length ? r.days.map(d => DAYS[d]).join(',') : 'щодня')} ${r.from}–${r.to}` : ''}</i>`) : ['— ще немає (додати — у касі «⚙️ Налаштування → 🎁 Лояльність»)']),
-    '', '🔎 Клієнт: <code>клієнт 0501234567</code> або <code>клієнт Іван</code>'].join('\n'),
+    '', '🔎 Клієнт: <code>клієнт 0501234567</code> або <code>клієнт Іван</code>', admin ? '📣 Розсилка гостям у бот: <code>розсилка Сьогодні −20% на бургери!</code>' : ''].join('\n'),
     markup: admin && c.rules.length ? kbOf(c.rules.map(r => [{ text: `${r.on ? '⛔ Вимкнути' : '✅ Увімкнути'}: ${ruleLabel(r)}`.slice(0, 60), callback_data: `lro:${r.id}:${r.on ? 0 : 1}` }])) : undefined };
 }
 // callback: lcl:<тел> — картка; llv:<тел>:<рівень|-> — рівень; lro:<id>:<0|1> — акція
@@ -229,6 +233,7 @@ export async function loyBotCb(env, act, arg, opt, admin, who) {
   if (act === 'lcl') return { send: await cliBotCard(env, arg, admin) };
   if (!admin) return { answer: '🔐 Лише для адміністратора' };
   if (act === 'llv') { const r = await cliEdit(env, arg, { lvl: opt === '-' ? '' : opt }, true); if (r.error) return { answer: r.error }; return { edit: await cliBotCard(env, arg, admin), answer: `🏅 ${r.lvn || 'авто'}` }; }
+  if (act === 'lcs') { const tx = await env.DB.get('lcs:' + arg); if (!tx) return { answer: '⌛ Застаріло' }; await env.DB.delete('lcs:' + arg); const r = await (await import('./guestbot.js')).cast(env, 'all', tx, who); return r.error ? { answer: r.error.slice(0, 190) } : { edit: { text: `📣 Надіслано ${r.n} з ${r.of}\n\n${esc(tx)}` }, answer: '📣 Надіслано' }; }
   if (act === 'lro') { const r = await loyRuleOn(env, arg, opt === '1'); if (r.error) return { answer: r.error }; return { edit: await rulesBot(env, admin), answer: r.on ? '✅ Увімкнено' : '⛔ Вимкнено' }; }
   return null;
 }

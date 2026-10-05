@@ -370,6 +370,7 @@ async function tgLogin(env, uid, s, chat) {
 export async function handleUpdate(u, env) {
   if (u.callback_query) return handleCallback(u.callback_query, env);
   const m = u.message; if (!m) return;
+  if (m.reply_to_message && m.text && await (await import('./guestbot.js')).staffReply(m, env, m.from?.first_name || '')) return; // 💬 відповідь гостю
   const uid = m.from?.id, chat = m.chat.id, who = m.from?.first_name || '';
   const admin = await isAdmin(env, uid);
   const waiter = admin || await isWaiter(env, uid);
@@ -678,7 +679,7 @@ async function handleCallback(q, env) {
     if (!GO_F[oid]) return answer('');
     await env.DB.put('st:' + uid, `goe:${arg}:${oid}`, { expirationTtl: 600 }); await send({ text: `${GO_F[oid]}: ${GO_ASK[oid]}` }); return answer('');
   }
-  if (['lcl', 'llv', 'lro'].includes(act)) { // 🎁 лояльність: картка клієнта, рівень, увімк/вимк акції
+  if (['lcl', 'llv', 'lro', 'lcs'].includes(act)) { // 🎁 лояльність: картка клієнта, рівень, увімк/вимк акції
     const r = await loyBotCb(env, act, arg, oid, admin, who); if (!r) return answer('');
     if (r.send) await send(r.send); if (r.edit) await edit(r.edit.text, r.edit.markup); return answer(r.answer || '');
   }

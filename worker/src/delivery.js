@@ -31,7 +31,9 @@ export async function cliTouch(env, ph, fn) { return L(env, 'cli:' + ph, async (
 // чек закрито: списані бонуси — з балансу, кешбек — на баланс
 export async function cliClose(env, ph, paid, used, name, lvCash) {
   if (!ph) return null; const pct = lvCash > 0 ? lvCash : (await getGoCfg(env)).cash, add = Math.floor(paid * pct / 100);
-  return cliTouch(env, ph, c => { c.bal = Math.max(0, (c.bal || 0) - (used || 0)) + add; c.n++; c.sum += paid; c.last = Date.now(); if (name) c.name = name; c.lastAdd = add; });
+  const c = await cliTouch(env, ph, c => { c.bal = Math.max(0, (c.bal || 0) - (used || 0)) + add; c.n++; c.sum += paid; c.last = Date.now(); if (name) c.name = name; c.lastAdd = add; });
+  await (await import('./guestbot.js')).bonusMsg(env, ph, add, c.bal).catch(() => {}); // 🤖 «+N бонусів»
+  return c;
 }
 
 // ---------- номер віртуального стола ----------
@@ -69,6 +71,7 @@ export async function goSet(env, t, st, who, { pay, cour } = {}) {
   const b = await L(env, 'bills', async () => { const b = await getBill(env, t); if (!b.go) return null; b.go.st = st; if (st === 'road' && !b.go.roadAt) b.go.roadAt = Date.now(); if (cour !== undefined && cour !== b.go.cour) { b.go.cour = cour || ''; if (cour) b.go.takeAt ||= Date.now(); } await putBill(env, t, b); return b; });
   if (!b) return null;
   await markOrd(env, b.go.oid, st);
+  if (b0.go.st !== st) await (await import('./guestbot.js')).goStatusMsg(env, t, b.go, st).catch(() => {}); // 🤖 гостю в Telegram
   if (st === 'road' || st === 'ready') await logEvent(env, { k: 'go', t, by: who, s: 'acc', text: `${st === 'road' ? '🛵' : '🍽'} ${tn(t)} ${b.go.name || ''} — ${goStLabel(st)}${b.go.cour ? ' · ' + b.go.cour : ''}` });
   return b.go;
 }
@@ -125,7 +128,7 @@ export async function goOrder(b, ip, env) {
     logEvent(env, { k: 'guest', t, oid, s: 'new', kind: `${TYPES[kind]}${when ? ' на ' + when : ''}`, lines, comment: [name, fmtPhone(phone), kind === 'del' ? addr : '', pl, change ? `решта з ${change}` : ''].filter(Boolean).join(' · '), sum: sum + fee - bonus - pr, go: kind }),
     addStat(env, 'orders', 1), addDishes(env, sold),
     env.DB.put(rk, String(rn + 1), { expirationTtl: 600 }),
-    cliTouch(env, phone, x => { x.name = name; if (addr && !x.addr.includes(addr)) x.addr = [addr, ...x.addr].slice(0, 5); }),
+    cliTouch(env, phone, x => { x.name = name; if (addr && !x.addr.includes(addr)) x.addr = [addr, ...x.addr].slice(0, 5); x.lastGo = { at: Date.now(), lines: lines.slice(0, 20), items: b.items.slice(0, 40).map(i => ({ id: String(i.id).slice(0, 40), ...(i.v ? { v: String(i.v).slice(0, 20) } : {}), q: Math.min(50, parseInt(i.q, 10) || 1) })) }; }), // 🔁 «Повторити» в боті
   ]);
   const res = await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: msg, parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: { inline_keyboard: [[
     { text: '✅ Прийняв', callback_data: `acc:${t}:${oid}` }, { text: '❌ Відхилити', callback_data: `rej:${t}:${oid}` }]] } }).catch(() => null);

@@ -971,7 +971,7 @@ export async function logEvent(env, ...a) { return L(env, 'ev:' + dayKey(), () =
 export async function acceptOrder(env, ...a) {
   const ok = await L(env, 'ord:' + a[0], () => _acceptOrder(env, ...a));
   // хто прийняв замовлення гостя — офіціант стола (якщо ще не призначений); окремо від замка ord: — без взаємного блокування з rejectOrder
-  if (ok && a[1]) { const o = await env.DB.get('ord:' + a[0], 'json'); if (o?.t) await L(env, 'bills', async () => { const b = await getBill(env, o.t); if (b.total > 0 && (!b.waiter || b.go?.st === 'new')) { if (!b.waiter) b.waiter = a[1]; if (b.go?.st === 'new') { b.go.st = 'acc'; b.go.accAt = Date.now(); } await putBill(env, o.t, b); } }); if (o?.go) await courNotify(env, o.t, 'new').catch(() => {}); }
+  if (ok && a[1]) { const o = await env.DB.get('ord:' + a[0], 'json'); if (o?.t) await L(env, 'bills', async () => { const b = await getBill(env, o.t); if (b.total > 0 && (!b.waiter || b.go?.st === 'new')) { if (!b.waiter) b.waiter = a[1]; if (b.go?.st === 'new') { b.go.st = 'acc'; b.go.accAt = Date.now(); } await putBill(env, o.t, b); } }); if (o?.go) { await courNotify(env, o.t, 'new').catch(() => {}); const g = (await getBill(env, o.t)).go; if (g) await (await import('./guestbot.js')).goStatusMsg(env, o.t, g, 'acc').catch(() => {}); } }
   return ok;
 }
 export async function rejectOrder(env, ...a) { // 🛵 доставка зникла — кур'єру «скасовано» (рахунок читаємо до видалення)

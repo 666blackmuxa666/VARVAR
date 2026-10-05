@@ -126,7 +126,7 @@ export async function handle(req, env) {
       }
       if (url.pathname === '/tg2' && req.method === 'POST') { // 👤 бот гостей
         if (req.headers.get('X-Telegram-Bot-Api-Secret-Token') !== env.TG_SECRET) return new Response('no', { status: 403 });
-        const u = await req.json(); if (u.callback_query) await guestCallback(u.callback_query, env); else if (u.message && !(await guestBot(u.message, env)) && !(await guestText(u.message, env)) && u.message.text) await guestHello(u.message, env);
+        const u = await req.json(); if (u.callback_query) await guestCallback(u.callback_query, env); else if (u.message && !(await guestBot(u.message, env)) && !(await (await import('./guestbot.js')).guestMenu(u.message, env)) && !(await guestText(u.message, env)) && u.message.text) await guestHello(u.message, env);
         return new Response('ok');
       }
       if (url.pathname === '/tg' && req.method === 'POST') {

@@ -8,6 +8,7 @@
       if (!S.data.loy || part === 'cfg') S.data.loy = await api('loyGet');
       const t = S.loyTab || 'cli';
       if (t === 'cli' && part !== 'cfg') S.data.loyCli = (await api('loyCli', { q: S.loyQ || '', f: S.loyF || 'all' })).list;
+      if (t === 'bot' && isAdmin() && part !== 'cfg') S.data.gb = await api('gbGet');
       if (t === 'rep' && isAdmin()) { const [from, to] = loyRange(); S.data.loyRep = await api('loyRep', { from, to }, 30000); }
     } catch (e) { toast('⚠️ ' + errText(e.message)); }
     if (S.view === 'settings') renderMain();
@@ -16,7 +17,7 @@
   function loyHTML() {
     const D = S.data.loy; if (!D) { if (!S._loyL) { S._loyL = 1; loadLoy().finally(() => { S._loyL = 0; }); } return '<div class="muted">Завантаження…</div>'; }
     const c = D.cfg, tab = S.loyTab || 'cli', adm = isAdmin();
-    const TABS = [['cli', '👥 Клієнти'], ['lvl', '🏅 Рівні'], ['rules', '🎯 Акції'], ...(adm ? [['rep', '📊 Звіт']] : [])];
+    const TABS = [['cli', '👥 Клієнти'], ['lvl', '🏅 Рівні'], ['rules', '🎯 Акції'], ...(adm ? [['rep', '📊 Звіт'], ['bot', '🤖 Бот гостей']] : [])];
     const seg = `<div class="seg wrap" style="margin:12px 0">${TABS.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-a="loyTab" data-s="${k}">${l}</button>`).join('')}</div>`;
     let body = '';
     if (tab === 'lvl') body = `<div class="grid2 set">
@@ -27,6 +28,13 @@
         <button class="sf press" data-a="loyOn" ${adm ? '' : 'disabled'}><span><b>🎁 Акції й рівні</b><small>Автоматично в залі, з собою і в доставці (сайт ?go теж)</small></span><span class="switch ${c.on ? 'on' : ''}"></span></button>
         <div class="kv"><span>🧢 Стеля всіх знижок разом<br><small class="muted">від суми страв у чеку</small></span><span class="kv-r"><b>${c.max}%</b>${adm ? '<button class="btn sm" data-a="loyMax">змінити</button>' : ''}</span></div>
         <div class="muted set-note" style="margin-top:8px">💸 Кешбек рівня замінює загальний кешбек (⚙️ → 🛵 Доставка → Бонуси), якщо більший за 0.</div></div></div>`;
+    if (tab === 'bot') { const G = S.data.gb; body = !G ? '<div class="muted">…</div>' : (() => { const g = G.cfg, sw = (k, t, d) => `<button class="sf press" data-a="gbSw" data-k="${k}"><span><b>${t}</b><small>${d}</small></span><span class="switch ${g[k] ? 'on' : ''}"></span></button>`, kv = (k, t, v) => `<div class="kv"><span>${t}</span><span class="kv-r"><b>${esc(String(v))}</b><button class="btn sm" data-a="gbEd" data-k="${k}">✏️</button></span></div>`, tx = (k, v) => `<div class="kv"><span style="min-width:0;overflow-wrap:anywhere">✍️ Текст<br><small class="muted">${esc(v)}</small></span><span class="kv-r"><button class="btn sm" data-a="gbEd" data-k="${k}">✏️</button></span></div>`;
+      return `<div class="grid2 set">
+      <div class="card"><h3>📣 Розсилка</h3><div class="muted set-note">Повідомлення в бот гостям, які підключили Telegram: <b>${G.linked}</b>. Під текстом — кнопка «🍔 Замовити».</div>
+        <button class="btn primary" data-a="gbCast">📣 Нова розсилка</button>${kv('gap', '⏳ Не частіше ніж раз на, год', g.gap)}</div>
+      <div class="card"><h3>🤖 Що бот робить сам</h3>${sw('stat', '🛵 Статус замовлення', 'Прийнято · готується · готово · кур\'єр виїхав')}${sw('bon', '🎁 Нараховані бонуси', '«+35 бонусів, на рахунку 210» після закриття чека')}${sw('chat', '💬 Чат з адміністратором', 'Повідомлення гостя — у стрічку й групу, відповідь — кнопкою «↩️ Відповісти»')}</div>
+      <div class="card"><h3>🎂 День народження</h3>${sw('bd', '🎂 Вітати в день народження', 'Гість вказує дату в боті. Знижка — акцією «🎂 День народження»')}${tx('bdText', g.bdText)}</div>
+      <div class="card"><h3>👋 «Сплячі» гості</h3>${sw('sleep', '👋 Нагадувати тим, хто давно не був', 'Раз на день, о 11:00–20:00; одному гостю — не частіше ніж раз на 2 періоди')}${kv('sleepDays', '📆 Не був днів', g.sleepDays)}${kv('sleepBon', '🎁 Подарувати бонусів', g.sleepBon)}${tx('sleepText', g.sleepText)}</div></div>`; })(); }
     if (tab === 'rules') body = `<div class="grid2 set">${c.rules.map(r => `<div class="card"><h3>${r.on ? '' : '⛔ '}${esc(ruleName(r))}</h3>
         <div class="kv"><span>${D.T[r.type] || r.type}</span>${adm ? `<span class="switch ${r.on ? 'on' : ''}" data-a="loyRuleOn" data-id="${r.id}" role="switch"></span>` : `<b>${r.on ? '✅' : '⛔'}</b>`}</div>
         <div class="muted set-note">${esc(ruleWhat(r, D))}</div>
@@ -129,5 +137,12 @@
     if (a === 'loyOn') { const r = await act('loySet', { on: !S.data.loy.cfg.on }); if (r) { S.data.loy.cfg = r.cfg; renderMain(); } return; }
     if (a === 'loyMax') { const v = await askVal('🧢 Стеля всіх знижок, %', S.data.loy.cfg.max, 'number'); if (v == null) return; const r = await act('loySet', { max: v }, '💾 Збережено'); if (r) { S.data.loy.cfg = r.cfg; renderMain(); } return; }
     if (a === 'loyOff') { await act('loyOff', { t: S.open, off: d.off === '1' }, d.off === '1' ? '🎁 Акції на столі вимкнено' : '🎁 Акції повернуто'); return loadState().catch(() => {}); }
+    if (a === 'gbSw') { const k = d.k, r = await act('gbSet', { f: { [k]: !S.data.gb.cfg[k] } }); if (r) { S.data.gb.cfg = r.cfg; renderMain(); } return; }
+    if (a === 'gbEd') { const k = d.k, txt = /Text$/.test(k), v = await askVal({ bdText: '🎂 Текст привітання', sleepText: '👋 Текст для «сплячих»', sleepDays: '📆 Скільки днів не був', sleepBon: '🎁 Бонусів у подарунок', gap: '⏳ Годин між розсилками' }[k], S.data.gb.cfg[k], txt ? 'text' : 'number'); if (v == null) return; const r = await act('gbSet', { f: { [k]: v } }, '💾 Збережено'); if (r) { S.data.gb.cfg = r.cfg; renderMain(); } return; }
+    if (a === 'gbCast') { const A = S.data.gb.aud, lv = S.data.loy.cfg.levels; const f = await choose('📣 Кому надіслати?', 'Лише тим, хто підключив бот гостей', [...Object.entries(A).map(([val, l]) => ({ label: l[0].toUpperCase() + l.slice(1), val })), ...lv.map(l => ({ label: `${l.e} ${l.name}`, val: l.id }))]); if (!f) return;
+      const c = await api('gbCount', { f }).catch(e => { toast('⚠️ ' + errText(e.message)); return null; }); if (!c) return; if (c.wait) return toast(`⏳ Наступна розсилка — через ${c.wait} хв`); if (!c.n) return toast('Нікого немає в цій групі');
+      const text = await ask(`📣 Текст розсилки (${c.n} гостей)`, 'Сьогодні −20% на бургери! 🍔'); if (!text) return;
+      if (!(await confirmBox(`📣 Надіслати ${c.n} гостям?`, text))) return; toast('📣 Надсилаю…'); const r = await api('gbCast', { f, text }, 180000).catch(e => { toast('⚠️ ' + errText(e.message)); return null; }); if (r) toast(`📣 Надіслано ${r.n} з ${r.of}`); return; }
+    if (a === 'gbReply') { const text = await ask('↩️ Відповідь гостю в Telegram', 'Текст'); if (text) await act('gbReply', { ph: d.ph, text }, '✅ Надіслано'); return; }
     if (a === 'loyCliT') { const ph = S.tables[S.open]?.cli; if (ph) loyCliCard(ph); }
   });

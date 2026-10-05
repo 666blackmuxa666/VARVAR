@@ -1823,6 +1823,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     go: esc(e.text),
     book: esc(e.text),
     cert: esc(e.text),
+    gchat: esc(e.text),
     att: `\u{1F7E2} ${esc(e.n)} \u043D\u0430 \u0437\u043C\u0456\u043D\u0456${e.late ? ` \xB7 \u23F0 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F ${e.late} \u0445\u0432` : ""}`,
     swap: esc(e.text)
   })[e.k] || esc(e.text || e.k);
@@ -1834,7 +1835,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       const lines = rdy || (((_c = e.lines) == null ? void 0 : _c.length) ? `${add ? '<div class="addtag">\u2795 \u0414\u041E\u0417\u0410\u041C\u041E\u0412\u041B\u0415\u041D\u041D\u042F</div>' : ""}<div class="lines${add ? " add" : ""}">${e.lines.map(esc).join("\n")}</div>` : "");
       const by = e.by && !["waiter"].includes(e.k) ? ` \xB7 ${esc(e.by)}` : "";
       const zb = e.k === "att" ? `<div class="act">${e.s === "acc" ? `<span class="muted">\u2705 ${esc(e.accBy || "")}</span>` : e.s === "rej" ? `<span class="bad">\u274C ${esc(e.accBy || "")}</span>` : isAdmin() ? `<button class="btn sm green" data-a="zpConf" data-d="${e.day}" data-n="${esc(e.n)}" data-h="o">\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438</button>${e.late && ((_d = S.cfg) == null ? void 0 : _d.lateFine) ? `<button class="btn sm" data-a="zpConf" data-d="${e.day}" data-n="${esc(e.n)}" data-h="f">\u2705 + \u0448\u0442\u0440\u0430\u0444</button>` : ""}<button class="btn sm red" data-a="zpConf" data-d="${e.day}" data-n="${esc(e.n)}" data-h="n">\u274C</button>` : '<span class="muted">\u0447\u0435\u043A\u0430\u0454 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F</span>'}</div>` : e.k === "swap" && !e.old ? e.s === "ask" && e.n === ((_e = S.me) == null ? void 0 : _e.name) ? `<div class="act"><button class="btn sm green" data-a="zpSw" data-id="${e.sw}" data-s="agree">\u041F\u043E\u0433\u043E\u0434\u0436\u0443\u044E\u0441\u044C</button><button class="btn sm red" data-a="zpSw" data-id="${e.sw}" data-s="no">\u041D\u0456</button></div>` : e.s === "agreed" && isAdmin() ? `<div class="act"><button class="btn sm green" data-a="zpSw" data-id="${e.sw}" data-s="ok">\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438 \u043E\u0431\u043C\u0456\u043D</button><button class="btn sm red" data-a="zpSw" data-id="${e.sw}" data-s="no">\u274C</button></div>` : "" : "";
-      const sb = e.k === "book" && e.s === "new" ? `<div class="act"><button class="btn sm green" data-a="bkSet" data-id="${e.bid}" data-s="ok">\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438</button><button class="btn sm red" data-a="bkSet" data-id="${e.bid}" data-s="no">\u274C</button><button class="btn sm" data-a="books">\u{1F4C5} \u0423\u0441\u0456 \u0431\u0440\u043E\u043D\u0456</button></div>` : e.k === "cert" && e.s === "new" && isAdmin() ? `<div class="act"><button class="btn sm green" data-a="certPay" data-c="${e.code}" data-h="cash">\u{1F4B5} \u041E\u043F\u043B\u0430\u0447\u0435\u043D\u043E</button><button class="btn sm" data-a="certPay" data-c="${e.code}" data-h="card">\u{1F4B3}</button><button class="btn sm red" data-a="certPay" data-c="${e.code}" data-h="no">\u274C</button></div>` : (e.k === "book" || e.k === "cert") && e.s !== "new" ? `<div class="act"><span class="muted">${e.s === "rej" ? "\u274C" : "\u2705"} ${esc(e.accBy || "")}</span></div>` : "";
+      const sb = e.k === "book" && e.s === "new" ? `<div class="act"><button class="btn sm green" data-a="bkSet" data-id="${e.bid}" data-s="ok">\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438</button><button class="btn sm red" data-a="bkSet" data-id="${e.bid}" data-s="no">\u274C</button><button class="btn sm" data-a="books">\u{1F4C5} \u0423\u0441\u0456 \u0431\u0440\u043E\u043D\u0456</button></div>` : e.k === "cert" && e.s === "new" && isAdmin() ? `<div class="act"><button class="btn sm green" data-a="certPay" data-c="${e.code}" data-h="cash">\u{1F4B5} \u041E\u043F\u043B\u0430\u0447\u0435\u043D\u043E</button><button class="btn sm" data-a="certPay" data-c="${e.code}" data-h="card">\u{1F4B3}</button><button class="btn sm red" data-a="certPay" data-c="${e.code}" data-h="no">\u274C</button></div>` : e.k === "gchat" && !e.out ? `<div class="act"><button class="btn sm primary" data-a="gbReply" data-ph="${e.ph}">\u21A9\uFE0F \u0412\u0456\u0434\u043F\u043E\u0432\u0456\u0441\u0442\u0438</button></div>` : (e.k === "book" || e.k === "cert") && e.s !== "new" ? `<div class="act"><span class="muted">${e.s === "rej" ? "\u274C" : "\u2705"} ${esc(e.accBy || "")}</span></div>` : "";
       const btns = isCour() ? "" : sb || zb || (e.k === "noscan" ? `<div class="act"><button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${tn(e.t)}</button></div>` : e.k === "guest" || e.k === "check" || e.k === "call" ? `<div class="act">${e.s === "acc" ? `<span class="muted">\u2705 ${esc(e.accBy || "\u043F\u0440\u0438\u0439\u043D\u044F\u0442\u043E")}</span>` : e.s === "rej" ? `<span style="color:var(--red,#ff453a)">\u274C \u0432\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E \xB7 ${esc(e.accBy || "")}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432</button>${e.k === "guest" ? `<button class="btn sm red" data-a="reject" data-oid="${e.oid}">\u274C \u0412\u0456\u0434\u0445\u0438\u043B\u0438\u0442\u0438</button>` : ""}`}<button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${tn(e.t)}</button></div>` : "");
       const fresh = S.shown.size && !S.shown.has(e.id) ? " fresh" : "";
       return `<div class="ev ${e.k}${e.k === "call" && e.s === "new" && Date.now() - e.ts > 6e4 ? " late" : ""}${e.s === "acc" || e.s === "rej" ? " acc" : ""}${e.s === "rej" ? " rej" : ""}${fresh}"><div class="top"><b>${evTitle(e)}</b><span class="tm">${e.at}${by}</span></div>${lines}${e.comment ? `<div class="com">\u{1F4AC} ${esc(e.comment)}</div>` : ""}${e.sum && ["guest", "waiter"].includes(e.k) ? `<div class="muted">\u0421\u0443\u043C\u0430 ${money(e.sum)}</div>` : ""}${btns}</div>`;
@@ -3380,6 +3381,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       if (!S.data.loy || part === "cfg") S.data.loy = await api("loyGet");
       const t = S.loyTab || "cli";
       if (t === "cli" && part !== "cfg") S.data.loyCli = (await api("loyCli", { q: S.loyQ || "", f: S.loyF || "all" })).list;
+      if (t === "bot" && isAdmin() && part !== "cfg") S.data.gb = await api("gbGet");
       if (t === "rep" && isAdmin()) {
         const [from, to] = loyRange();
         S.data.loyRep = await api("loyRep", { from, to }, 3e4);
@@ -3405,7 +3407,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
     }
     const c = D.cfg, tab = S.loyTab || "cli", adm = isAdmin();
-    const TABS2 = [["cli", "\u{1F465} \u041A\u043B\u0456\u0454\u043D\u0442\u0438"], ["lvl", "\u{1F3C5} \u0420\u0456\u0432\u043D\u0456"], ["rules", "\u{1F3AF} \u0410\u043A\u0446\u0456\u0457"], ...adm ? [["rep", "\u{1F4CA} \u0417\u0432\u0456\u0442"]] : []];
+    const TABS2 = [["cli", "\u{1F465} \u041A\u043B\u0456\u0454\u043D\u0442\u0438"], ["lvl", "\u{1F3C5} \u0420\u0456\u0432\u043D\u0456"], ["rules", "\u{1F3AF} \u0410\u043A\u0446\u0456\u0457"], ...adm ? [["rep", "\u{1F4CA} \u0417\u0432\u0456\u0442"], ["bot", "\u{1F916} \u0411\u043E\u0442 \u0433\u043E\u0441\u0442\u0435\u0439"]] : []];
     const seg = `<div class="seg wrap" style="margin:12px 0">${TABS2.map(([k, l]) => `<button class="${tab === k ? "on" : ""}" data-a="loyTab" data-s="${k}">${l}</button>`).join("")}</div>`;
     let body = "";
     if (tab === "lvl") body = `<div class="grid2 set">
@@ -3416,6 +3418,18 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         <button class="sf press" data-a="loyOn" ${adm ? "" : "disabled"}><span><b>\u{1F381} \u0410\u043A\u0446\u0456\u0457 \u0439 \u0440\u0456\u0432\u043D\u0456</b><small>\u0410\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u043D\u043E \u0432 \u0437\u0430\u043B\u0456, \u0437 \u0441\u043E\u0431\u043E\u044E \u0456 \u0432 \u0434\u043E\u0441\u0442\u0430\u0432\u0446\u0456 (\u0441\u0430\u0439\u0442 ?go \u0442\u0435\u0436)</small></span><span class="switch ${c.on ? "on" : ""}"></span></button>
         <div class="kv"><span>\u{1F9E2} \u0421\u0442\u0435\u043B\u044F \u0432\u0441\u0456\u0445 \u0437\u043D\u0438\u0436\u043E\u043A \u0440\u0430\u0437\u043E\u043C<br><small class="muted">\u0432\u0456\u0434 \u0441\u0443\u043C\u0438 \u0441\u0442\u0440\u0430\u0432 \u0443 \u0447\u0435\u043A\u0443</small></span><span class="kv-r"><b>${c.max}%</b>${adm ? '<button class="btn sm" data-a="loyMax">\u0437\u043C\u0456\u043D\u0438\u0442\u0438</button>' : ""}</span></div>
         <div class="muted set-note" style="margin-top:8px">\u{1F4B8} \u041A\u0435\u0448\u0431\u0435\u043A \u0440\u0456\u0432\u043D\u044F \u0437\u0430\u043C\u0456\u043D\u044E\u0454 \u0437\u0430\u0433\u0430\u043B\u044C\u043D\u0438\u0439 \u043A\u0435\u0448\u0431\u0435\u043A (\u2699\uFE0F \u2192 \u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430 \u2192 \u0411\u043E\u043D\u0443\u0441\u0438), \u044F\u043A\u0449\u043E \u0431\u0456\u043B\u044C\u0448\u0438\u0439 \u0437\u0430 0.</div></div></div>`;
+    if (tab === "bot") {
+      const G = S.data.gb;
+      body = !G ? '<div class="muted">\u2026</div>' : (() => {
+        const g = G.cfg, sw2 = (k, t, d) => `<button class="sf press" data-a="gbSw" data-k="${k}"><span><b>${t}</b><small>${d}</small></span><span class="switch ${g[k] ? "on" : ""}"></span></button>`, kv = (k, t, v) => `<div class="kv"><span>${t}</span><span class="kv-r"><b>${esc(String(v))}</b><button class="btn sm" data-a="gbEd" data-k="${k}">\u270F\uFE0F</button></span></div>`, tx = (k, v) => `<div class="kv"><span style="min-width:0;overflow-wrap:anywhere">\u270D\uFE0F \u0422\u0435\u043A\u0441\u0442<br><small class="muted">${esc(v)}</small></span><span class="kv-r"><button class="btn sm" data-a="gbEd" data-k="${k}">\u270F\uFE0F</button></span></div>`;
+        return `<div class="grid2 set">
+      <div class="card"><h3>\u{1F4E3} \u0420\u043E\u0437\u0441\u0438\u043B\u043A\u0430</h3><div class="muted set-note">\u041F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u043D\u044F \u0432 \u0431\u043E\u0442 \u0433\u043E\u0441\u0442\u044F\u043C, \u044F\u043A\u0456 \u043F\u0456\u0434\u043A\u043B\u044E\u0447\u0438\u043B\u0438 Telegram: <b>${G.linked}</b>. \u041F\u0456\u0434 \u0442\u0435\u043A\u0441\u0442\u043E\u043C \u2014 \u043A\u043D\u043E\u043F\u043A\u0430 \xAB\u{1F354} \u0417\u0430\u043C\u043E\u0432\u0438\u0442\u0438\xBB.</div>
+        <button class="btn primary" data-a="gbCast">\u{1F4E3} \u041D\u043E\u0432\u0430 \u0440\u043E\u0437\u0441\u0438\u043B\u043A\u0430</button>${kv("gap", "\u23F3 \u041D\u0435 \u0447\u0430\u0441\u0442\u0456\u0448\u0435 \u043D\u0456\u0436 \u0440\u0430\u0437 \u043D\u0430, \u0433\u043E\u0434", g.gap)}</div>
+      <div class="card"><h3>\u{1F916} \u0429\u043E \u0431\u043E\u0442 \u0440\u043E\u0431\u0438\u0442\u044C \u0441\u0430\u043C</h3>${sw2("stat", "\u{1F6F5} \u0421\u0442\u0430\u0442\u0443\u0441 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", "\u041F\u0440\u0438\u0439\u043D\u044F\u0442\u043E \xB7 \u0433\u043E\u0442\u0443\u0454\u0442\u044C\u0441\u044F \xB7 \u0433\u043E\u0442\u043E\u0432\u043E \xB7 \u043A\u0443\u0440'\u0454\u0440 \u0432\u0438\u0457\u0445\u0430\u0432")}${sw2("bon", "\u{1F381} \u041D\u0430\u0440\u0430\u0445\u043E\u0432\u0430\u043D\u0456 \u0431\u043E\u043D\u0443\u0441\u0438", "\xAB+35 \u0431\u043E\u043D\u0443\u0441\u0456\u0432, \u043D\u0430 \u0440\u0430\u0445\u0443\u043D\u043A\u0443 210\xBB \u043F\u0456\u0441\u043B\u044F \u0437\u0430\u043A\u0440\u0438\u0442\u0442\u044F \u0447\u0435\u043A\u0430")}${sw2("chat", "\u{1F4AC} \u0427\u0430\u0442 \u0437 \u0430\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440\u043E\u043C", "\u041F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u043D\u044F \u0433\u043E\u0441\u0442\u044F \u2014 \u0443 \u0441\u0442\u0440\u0456\u0447\u043A\u0443 \u0439 \u0433\u0440\u0443\u043F\u0443, \u0432\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u044C \u2014 \u043A\u043D\u043E\u043F\u043A\u043E\u044E \xAB\u21A9\uFE0F \u0412\u0456\u0434\u043F\u043E\u0432\u0456\u0441\u0442\u0438\xBB")}</div>
+      <div class="card"><h3>\u{1F382} \u0414\u0435\u043D\u044C \u043D\u0430\u0440\u043E\u0434\u0436\u0435\u043D\u043D\u044F</h3>${sw2("bd", "\u{1F382} \u0412\u0456\u0442\u0430\u0442\u0438 \u0432 \u0434\u0435\u043D\u044C \u043D\u0430\u0440\u043E\u0434\u0436\u0435\u043D\u043D\u044F", "\u0413\u0456\u0441\u0442\u044C \u0432\u043A\u0430\u0437\u0443\u0454 \u0434\u0430\u0442\u0443 \u0432 \u0431\u043E\u0442\u0456. \u0417\u043D\u0438\u0436\u043A\u0430 \u2014 \u0430\u043A\u0446\u0456\u0454\u044E \xAB\u{1F382} \u0414\u0435\u043D\u044C \u043D\u0430\u0440\u043E\u0434\u0436\u0435\u043D\u043D\u044F\xBB")}${tx("bdText", g.bdText)}</div>
+      <div class="card"><h3>\u{1F44B} \xAB\u0421\u043F\u043B\u044F\u0447\u0456\xBB \u0433\u043E\u0441\u0442\u0456</h3>${sw2("sleep", "\u{1F44B} \u041D\u0430\u0433\u0430\u0434\u0443\u0432\u0430\u0442\u0438 \u0442\u0438\u043C, \u0445\u0442\u043E \u0434\u0430\u0432\u043D\u043E \u043D\u0435 \u0431\u0443\u0432", "\u0420\u0430\u0437 \u043D\u0430 \u0434\u0435\u043D\u044C, \u043E 11:00\u201320:00; \u043E\u0434\u043D\u043E\u043C\u0443 \u0433\u043E\u0441\u0442\u044E \u2014 \u043D\u0435 \u0447\u0430\u0441\u0442\u0456\u0448\u0435 \u043D\u0456\u0436 \u0440\u0430\u0437 \u043D\u0430 2 \u043F\u0435\u0440\u0456\u043E\u0434\u0438")}${kv("sleepDays", "\u{1F4C6} \u041D\u0435 \u0431\u0443\u0432 \u0434\u043D\u0456\u0432", g.sleepDays)}${kv("sleepBon", "\u{1F381} \u041F\u043E\u0434\u0430\u0440\u0443\u0432\u0430\u0442\u0438 \u0431\u043E\u043D\u0443\u0441\u0456\u0432", g.sleepBon)}${tx("sleepText", g.sleepText)}</div></div>`;
+      })();
+    }
     if (tab === "rules") body = `<div class="grid2 set">${c.rules.map((r) => `<div class="card"><h3>${r.on ? "" : "\u26D4 "}${esc(ruleName(r))}</h3>
         <div class="kv"><span>${D.T[r.type] || r.type}</span>${adm ? `<span class="switch ${r.on ? "on" : ""}" data-a="loyRuleOn" data-id="${r.id}" role="switch"></span>` : `<b>${r.on ? "\u2705" : "\u26D4"}</b>`}</div>
         <div class="muted set-note">${esc(ruleWhat(r, D))}</div>
@@ -3647,6 +3661,51 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       await act("loyOff", { t: S.open, off: d.off === "1" }, d.off === "1" ? "\u{1F381} \u0410\u043A\u0446\u0456\u0457 \u043D\u0430 \u0441\u0442\u043E\u043B\u0456 \u0432\u0438\u043C\u043A\u043D\u0435\u043D\u043E" : "\u{1F381} \u0410\u043A\u0446\u0456\u0457 \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E");
       return loadState().catch(() => {
       });
+    }
+    if (a === "gbSw") {
+      const k = d.k, r = await act("gbSet", { f: { [k]: !S.data.gb.cfg[k] } });
+      if (r) {
+        S.data.gb.cfg = r.cfg;
+        renderMain();
+      }
+      return;
+    }
+    if (a === "gbEd") {
+      const k = d.k, txt = /Text$/.test(k), v = await askVal({ bdText: "\u{1F382} \u0422\u0435\u043A\u0441\u0442 \u043F\u0440\u0438\u0432\u0456\u0442\u0430\u043D\u043D\u044F", sleepText: "\u{1F44B} \u0422\u0435\u043A\u0441\u0442 \u0434\u043B\u044F \xAB\u0441\u043F\u043B\u044F\u0447\u0438\u0445\xBB", sleepDays: "\u{1F4C6} \u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u0434\u043D\u0456\u0432 \u043D\u0435 \u0431\u0443\u0432", sleepBon: "\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0456\u0432 \u0443 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A", gap: "\u23F3 \u0413\u043E\u0434\u0438\u043D \u043C\u0456\u0436 \u0440\u043E\u0437\u0441\u0438\u043B\u043A\u0430\u043C\u0438" }[k], S.data.gb.cfg[k], txt ? "text" : "number");
+      if (v == null) return;
+      const r = await act("gbSet", { f: { [k]: v } }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
+      if (r) {
+        S.data.gb.cfg = r.cfg;
+        renderMain();
+      }
+      return;
+    }
+    if (a === "gbCast") {
+      const A = S.data.gb.aud, lv = S.data.loy.cfg.levels;
+      const f = await choose("\u{1F4E3} \u041A\u043E\u043C\u0443 \u043D\u0430\u0434\u0456\u0441\u043B\u0430\u0442\u0438?", "\u041B\u0438\u0448\u0435 \u0442\u0438\u043C, \u0445\u0442\u043E \u043F\u0456\u0434\u043A\u043B\u044E\u0447\u0438\u0432 \u0431\u043E\u0442 \u0433\u043E\u0441\u0442\u0435\u0439", [...Object.entries(A).map(([val, l]) => ({ label: l[0].toUpperCase() + l.slice(1), val })), ...lv.map((l) => ({ label: `${l.e} ${l.name}`, val: l.id }))]);
+      if (!f) return;
+      const c = await api("gbCount", { f }).catch((e2) => {
+        toast("\u26A0\uFE0F " + errText(e2.message));
+        return null;
+      });
+      if (!c) return;
+      if (c.wait) return toast(`\u23F3 \u041D\u0430\u0441\u0442\u0443\u043F\u043D\u0430 \u0440\u043E\u0437\u0441\u0438\u043B\u043A\u0430 \u2014 \u0447\u0435\u0440\u0435\u0437 ${c.wait} \u0445\u0432`);
+      if (!c.n) return toast("\u041D\u0456\u043A\u043E\u0433\u043E \u043D\u0435\u043C\u0430\u0454 \u0432 \u0446\u0456\u0439 \u0433\u0440\u0443\u043F\u0456");
+      const text = await ask(`\u{1F4E3} \u0422\u0435\u043A\u0441\u0442 \u0440\u043E\u0437\u0441\u0438\u043B\u043A\u0438 (${c.n} \u0433\u043E\u0441\u0442\u0435\u0439)`, "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u221220% \u043D\u0430 \u0431\u0443\u0440\u0433\u0435\u0440\u0438! \u{1F354}");
+      if (!text) return;
+      if (!await confirmBox(`\u{1F4E3} \u041D\u0430\u0434\u0456\u0441\u043B\u0430\u0442\u0438 ${c.n} \u0433\u043E\u0441\u0442\u044F\u043C?`, text)) return;
+      toast("\u{1F4E3} \u041D\u0430\u0434\u0441\u0438\u043B\u0430\u044E\u2026");
+      const r = await api("gbCast", { f, text }, 18e4).catch((e2) => {
+        toast("\u26A0\uFE0F " + errText(e2.message));
+        return null;
+      });
+      if (r) toast(`\u{1F4E3} \u041D\u0430\u0434\u0456\u0441\u043B\u0430\u043D\u043E ${r.n} \u0437 ${r.of}`);
+      return;
+    }
+    if (a === "gbReply") {
+      const text = await ask("\u21A9\uFE0F \u0412\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u044C \u0433\u043E\u0441\u0442\u044E \u0432 Telegram", "\u0422\u0435\u043A\u0441\u0442");
+      if (text) await act("gbReply", { ph: d.ph, text }, "\u2705 \u041D\u0430\u0434\u0456\u0441\u043B\u0430\u043D\u043E");
+      return;
     }
     if (a === "loyCliT") {
       const ph = (_b = S.tables[S.open]) == null ? void 0 : _b.cli;

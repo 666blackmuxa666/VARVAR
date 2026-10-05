@@ -57,3 +57,10 @@
 6. «Сайт»: змінити слоган і фото → `/api/site` віддає нове.
 
 - 🎁 Акції й рівні клієнтів — `_team/loyalty.md` (`promo.js`): `/api/promo` для кошика `?go`, `/api/status` віддає `bill.promo`.
+
+## 🤖 Бот гостей — `worker/src/guestbot.js` (2026-10-05)
+- Меню-кнопки (reply keyboard), прив'язка `gch:<chat>` → телефон (ставиться при «Поділитися номером»); стан `gst:<chat>` = bd | chat.
+- Налаштування `gbot` (каса → Гості й акції → 🤖 Бот гостей, op `gb*`): stat, bon, chat, bd/bdText, sleep/sleepDays/sleepBon/sleepText, gap.
+- Статус замовлення: `goSet` (зміна st) і `acceptOrder` → `goStatusMsg`. Бонуси: `cliClose` → `bonusMsg`. 🔁 `cli.lastGo` → `index.html?go&rep=id|v*q,…`.
+- Чат: гість → група (`gchm:<mid>` → тел.) + стрічка `k:'gchat'`; відповідь — reply у групі (bot.js → `staffReply`) або «↩️ Відповісти» в стрічці (`gbReply`).
+- Розсилка: каса `gbCast` / бот персоналу «розсилка <текст>» (`lcs:`), пауза `gcastAt` + gap. Щодня (cron 11–20) `gbDaily`: ДН і «сплячі» (+бонуси, `cli.sleepAt`).

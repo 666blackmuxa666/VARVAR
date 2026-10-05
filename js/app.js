@@ -466,6 +466,10 @@
     menu = m;
     m.categories.forEach(c => c.items.forEach(it => { byId[it.id] = it; catOf[it.id] = c.id; }));
     packId = (m.categories.find(c => c.id === 'upakuvannia')?.items || [])[0]?.id || null;
+    if (GO && qs.get('rep')) { // 🔁 «Повторити» з бота гостей: ?go&rep=id|v*q,…
+      cart = {}; qs.get('rep').split(',').forEach(x => { const [k, q] = x.split('*'), [id, v] = k.split('|'), it = byId[id]; if (it && id !== packId && +q > 0 && (v ? it.variants?.some(y => y.v === v) : !it.variants?.length)) cart[k] = (cart[k] || 0) + Math.min(50, +q); });
+      save(); history.replaceState(null, '', location.pathname + '?go');
+    }
     renderMenu(); syncStatus(); renderStatus(); pollOrders(); if (GO) goInit();
   });
 })();
