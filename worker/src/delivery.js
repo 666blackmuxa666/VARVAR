@@ -135,7 +135,7 @@ export async function goOrder(b, ip, env) {
 export async function goFromPos(env, g, who) {
   const kind = g.kind === 'del' ? 'del' : 'pick', phone = normPhone(g.phone), c = await getGoCfg(env);
   const t = await goAlloc(env, kind);
-  const go = { kind, name: String(g.name || '').trim().slice(0, 40), phone, addr: String(g.addr || '').trim().slice(0, 200), ent: '', when: /^\d{1,2}:\d{2}$/.test(g.when || '') ? g.when : '', pay: g.pay === 'card' ? 'card' : 'cash', change: Math.max(0, +g.change || 0), cut: 0, note: '', fee: kind === 'del' ? c.fee : 0, st: 'acc', at: Date.now(), src: 'каса', by: who };
+  const go = { kind, name: String(g.name || '').trim().slice(0, 40), phone, addr: String(g.addr || '').trim().slice(0, 200), ent: String(g.ent || '').trim().slice(0, 60), when: /^\d{1,2}:\d{2}$/.test(g.when || '') ? g.when : '', pay: g.pay === 'card' ? 'card' : 'cash', change: Math.max(0, +g.change || 0), cut: 0, note: '', fee: kind === 'del' ? c.fee : 0, st: 'acc', at: Date.now(), src: 'каса', by: who };
   return { t, go };
 }
 // після першого замовлення з каси — дописати go і рядок доставки
