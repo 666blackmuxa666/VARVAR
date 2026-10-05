@@ -170,6 +170,17 @@ export async function goInfo(env, ph) {
 }
 
 // ---------- 🖥 API каси: go* / cli* ----------
+// ✏️ адмін змінює клієнта/адресу → кур'єру сповіщення (каса goEdit і бот)
+export async function goEdit(env, t, b, who) {
+  const F = { name: 40, addr: 200, ent: 60, when: 5, note: 300 }, ch = [];
+  const r = await L(env, 'bills', async () => { const x = await getBill(env, t); if (!x.go) return null;
+    for (const k of Object.keys(F)) if (b[k] != null) { let v = String(b[k]).trim().slice(0, F[k]); if (k === 'when' && v && !/^\d{1,2}:\d{2}$/.test(v)) continue; if (v !== (x.go[k] || '')) { x.go[k] = v; ch.push(k === 'addr' ? '📍 ' + v : k === 'name' ? '👤 ' + v : k === 'when' ? '🕐 ' + (v || 'якнайшвидше') : k === 'ent' ? '🚪 ' + v : '💬 ' + v); } }
+    if (b.phone != null) { const ph = normPhone(b.phone); if (ph && ph !== x.go.phone) { x.go.phone = ph; x.cli = ph; ch.push('📞 ' + fmtPhone(ph)); } }
+    if (ch.length) await putBill(env, t, x); return x.go; });
+  if (!r) return { error: 'Немає замовлення' };
+  if (ch.length) { await logEvent(env, { k: 'go', t, by: who, s: 'acc', text: `✏️ ${tn(t)} змінено: ${ch.join(' · ')}` }); await courNotify(env, t, 'upd', ch.join(' · ')).catch(() => {}); }
+  return { go: r, ch };
+}
 export async function goApi(b, env, me, t) {
   const who = me.name, admin = me.role === 'admin', ok = (x = {}) => [{ ok: true, ...x }, 200], bad = (e, s = 400) => [{ error: e }, s];
   switch (b.op) {
@@ -197,17 +208,7 @@ export async function goApi(b, env, me, t) {
       const pts = list.slice(0, 10).map(r => r.b.go.addr + ', Поляниця'), dest = pts.pop(), e = encodeURIComponent;
       return ok({ n: list.length, url: `https://www.google.com/maps/dir/?api=1${geo ? '&origin=' + e(geo) : ''}&destination=${e(dest)}${pts.length ? '&waypoints=' + e(pts.join('|')) : ''}&travelmode=driving` });
     }
-    case 'goEdit': { // ✏️ адмін змінює клієнта/адресу → кур'єру сповіщення
-      if (!admin) return bad('admin', 403);
-      const F = { name: 40, addr: 200, ent: 60, when: 5, note: 300 }, ch = [];
-      const r = await L(env, 'bills', async () => { const x = await getBill(env, t); if (!x.go) return null;
-        for (const k of Object.keys(F)) if (b[k] != null) { let v = String(b[k]).trim().slice(0, F[k]); if (k === 'when' && v && !/^\d{1,2}:\d{2}$/.test(v)) continue; if (v !== (x.go[k] || '')) { x.go[k] = v; ch.push(k === 'addr' ? '📍 ' + v : k === 'name' ? '👤 ' + v : k === 'when' ? '🕐 ' + (v || 'якнайшвидше') : k === 'ent' ? '🚪 ' + v : '💬 ' + v); } }
-        if (b.phone != null) { const ph = normPhone(b.phone); if (ph && ph !== x.go.phone) { x.go.phone = ph; x.cli = ph; ch.push('📞 ' + fmtPhone(ph)); } }
-        if (ch.length) await putBill(env, t, x); return x.go; });
-      if (!r) return bad('Немає замовлення');
-      if (ch.length) { await logEvent(env, { k: 'go', t, by: who, s: 'acc', text: `✏️ ${tn(t)} змінено: ${ch.join(' · ')}` }); await courNotify(env, t, 'upd', ch.join(' · ')).catch(() => {}); }
-      return ok({ go: r, ch });
-    }
+    case 'goEdit': { if (!admin) return bad('admin', 403); const r = await goEdit(env, t, b, who); return r.error ? bad(r.error) : ok(r); }
     case 'goCfg': return ok({ cfg: await getGoCfg(env) });
     case 'goCfgSet': { if (!admin) return bad('admin', 403); const c = await setGoCfg(env, String(b.k), b.v); if (c.error) return bad(c.error); return ok({ cfg: c }); }
     case 'cliGet': { const ph = normPhone(b.phone); if (!ph) return bad('Невірний номер'); const c = await getCli(env, ph); return ok({ phone: ph, cli: c, cfg: await getGoCfg(env) }); }
@@ -219,8 +220,8 @@ export async function goApi(b, env, me, t) {
     case 'cliBonus': {
       const c = await getGoCfg(env);
       const r = await L(env, 'bills', async () => { const x = await getBill(env, t); if (!x.total || !x.cli) return { error: 'Спершу вкажіть телефон гостя' };
-        const cl = await getCli(env, x.cli), sum = Math.max(0, Math.round(+b.sum || 0)), max = Math.min(cl?.bal || 0, Math.floor(x.total * c.bmax / 100));
-        if (sum > max) return { error: `Можна списати до ${max} грн` }; if (sum) x.bonus = sum; else delete x.bonus; await putBill(env, t, x); return { bonus: sum }; });
+    const cl = await getCli(env, x.cli), sum = Math.max(0, Math.round(+b.sum || 0)), max = Math.min(cl?.bal || 0, Math.floor(x.total * c.bmax / 100));
+    if (sum > max) return { error: `Можна списати до ${max} грн` }; if (sum) x.bonus = sum; else delete x.bonus; await putBill(env, t, x); return { bonus: sum }; });
       return r.error ? bad(r.error) : ok(r);
     }
   }
