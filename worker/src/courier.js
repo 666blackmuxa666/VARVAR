@@ -49,9 +49,9 @@ const kbMine = (t, b) => ({ inline_keyboard: [
   [{ text: '💬 Кухні: буду за 5 хв', callback_data: `cb:${t}:km:soon` }, { text: '💬 Я на місці', callback_data: `cb:${t}:km:here` }]] });
 
 // головна точка: подія доставки → кур'єрам
-export async function courNotify(env, t, kind, extra = '') {
+export async function courNotify(env, t, kind, extra = '', pre = null) { // pre — рахунок до видалення (для 'gone')
   if (!isGo(t) || +t > 2000 || !env.COURIER_BOT_TOKEN) return; // лише доставки
-  const b = await getBill(env, t); if (!b.go) return;
+  const b = pre || await getBill(env, t); if (!b.go) return;
   const mk = 'cmsg:' + t, msgs = (await env.DB.get(mk, 'json')) || {};
   const save = () => env.DB.put(mk, JSON.stringify(msgs), { expirationTtl: 2 * 86400 });
   if (kind === 'new' || kind === 'remind') {
@@ -63,6 +63,14 @@ export async function courNotify(env, t, kind, extra = '') {
     return save();
   }
   const links = await getLinks(env), me = b.go.cour;
+  if (kind === 'gone' && !me) { // ще ніхто не взяв — прибрати «🆕» у всіх
+    for (const [n, mid] of Object.entries(msgs)) if (links[n]) await ctg(env, 'editMessageText', { chat_id: links[n], message_id: mid, text: `❌ ${tn(t)} скасовано адміністратором`, parse_mode: 'HTML' }).catch(() => {});
+    return env.DB.delete(mk);
+  }
+  if (kind === 'upd' && !me) { // нові картки без кур'єра — оновити текст
+    for (const [n, mid] of Object.entries(msgs)) if (links[n]) await ctg(env, 'editMessageText', { chat_id: links[n], message_id: mid, text: `🆕 ${card(t, b)}\n✏️ ${esc(extra)}`, parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: kbNew(t, b) }).catch(() => {});
+    return;
+  }
   if (kind === 'taken') { // іншим — «узяв», тому, хто взяв, — пульт
     for (const [n, mid] of Object.entries(msgs)) if (links[n]) await ctg(env, 'editMessageText', { chat_id: links[n], message_id: mid, text: `${card(t, b)}\n\n${n === me ? '✋ <b>Ваша доставка</b>' : `✋ Узяв <b>${esc(me)}</b>`}`, parse_mode: 'HTML', disable_web_page_preview: true, ...(n === me ? { reply_markup: kbMine(t, b) } : {}) }).catch(() => {});
     if (me && links[me] && !msgs[me]) { const r = await ctg(env, 'sendMessage', { chat_id: links[me], text: `${card(t, b)}\n\n✋ <b>Ваша доставка</b>`, parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: kbMine(t, b) }).then(r => r.json()).catch(() => null); if (r?.result) msgs[me] = r.result.message_id; }
@@ -72,6 +80,28 @@ export async function courNotify(env, t, kind, extra = '') {
   if (kind === 'refresh' && msgs[me]) return ctg(env, 'editMessageText', { chat_id: links[me], message_id: msgs[me], text: `${card(t, b)}\n\n✋ <b>Ваша доставка</b>${extra ? '\n' + extra : ''}`, parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: kbMine(t, b) }).catch(() => {});
   const txt = { ready: `🍽 <b>${tn(t)} ГОТОВО — забирай!</b>`, msg: `👨‍🍳 Кухня → ${tn(t)}: <b>${esc(extra)}</b>`, upd: `✏️ ${tn(t)} змінено: ${esc(extra)}`, gone: `❌ ${tn(t)} скасовано адміністратором` }[kind];
   if (txt) await ctg(env, 'sendMessage', { chat_id: links[me], text: txt, parse_mode: 'HTML' }).catch(() => {});
+  if (kind === 'upd' && msgs[me]) await ctg(env, 'editMessageText', { chat_id: links[me], message_id: msgs[me], text: `${card(t, b)}\n\n✋ <b>Ваша доставка</b>`, parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: kbMine(t, b) }).catch(() => {});
+  if (kind === 'gone') { if (msgs[me]) await ctg(env, 'editMessageText', { chat_id: links[me], message_id: msgs[me], text: `❌ <s>${tn(t)}</s> скасовано`, parse_mode: 'HTML' }).catch(() => {}); await env.DB.delete(mk); }
+}
+
+// ---------- 📊 звіт по кур'єрах за місяць (closed: з cour і gt) ----------
+export async function courRep(env, m) {
+  if (!/^\d{4}-\d{2}$/.test(m || '')) m = dayKey().slice(0, 7);
+  const n = new Date(Date.UTC(+m.slice(0, 4), +m.slice(5), 0)).getUTCDate(), days = Array.from({ length: n }, (_, i) => `${m}-${String(i + 1).padStart(2, '0')}`).filter(d => d <= dayKey());
+  const lists = days.length ? await env.DB.getMany(days.map(d => 'closed:' + d), 'json') : [];
+  const by = {}, mins = (a, b) => a && b && b > a ? (b - a) / 60e3 : null;
+  days.forEach((d, i) => { for (const c of lists[i] || []) {
+    if (c.go !== 'del' || !c.gt) continue;
+    const x = by[c.cour || '—'] ||= { n: 0, sum: 0, fee: 0, road: [], tot: [], late: 0, prob: {} };
+    x.n++; x.sum += c.sum || 0; x.fee += c.fee || 0;
+    const r = mins(c.gt.road, c.gt.done), t = mins(c.gt.at, c.gt.done); if (r != null) x.road.push(r); if (t != null) x.tot.push(t);
+    if (c.gt.when && /^\d{1,2}:\d{2}$/.test(c.gt.when)) { // запізнення: видано пізніше «на котру» (+5 хв допуску), за київським часом
+      const [h, mm] = c.gt.when.split(':').map(Number), dn = new Date(c.gt.done).toLocaleTimeString('uk-UA', { timeZone: 'Europe/Kyiv', hour: '2-digit', minute: '2-digit', hour12: false }).split(':').map(Number);
+      let diff = dn[0] * 60 + dn[1] - (h * 60 + mm); if (diff < -720) diff += 1440; if (diff > 5) x.late++; }
+    if (c.gt.prob) x.prob[c.gt.prob] = (x.prob[c.gt.prob] || 0) + 1;
+  } });
+  const avg = a => a.length ? Math.round(a.reduce((s, v) => s + v, 0) / a.length) : null;
+  return { m, list: Object.entries(by).map(([name, x]) => ({ name, n: x.n, sum: x.sum, fee: x.fee, road: avg(x.road), tot: avg(x.tot), late: x.late, prob: x.prob })).sort((a, b) => b.n - a.n) };
 }
 
 // ---------- 💵 готівка на руках і підсумок дня ----------

@@ -5,7 +5,7 @@ import { tn, isGo } from './tn.js';
 import { goFromPos, goAttach, goButtons, fmtPhone, goApi } from './delivery.js';
 import { siteApi } from './siteapi.js';
 import { bookList } from './site.js';
-import { courDay, courBot, courLinkUrl, courAct, courCashGive, courWatch, getLinks, multiRoute } from './courier.js';
+import { courDay, courBot, courLinkUrl, courAct, courCashGive, courWatch, getLinks, multiRoute, courRep } from './courier.js';
 import { queuePrint, printStatus } from './print.js';
 import { QR_PRINT, TEST_JOB } from './bot.js';
 import { storeStub } from './store.js';
@@ -56,6 +56,7 @@ export async function posApi(b, req, env) {
     if (b.op === 'courTg') return ok(await courLinkUrl(env, who));
     if (b.op === 'courAct') { const r = await courAct(env, t, who, String(b.act), b.arg); return r.error ? [{ error: r.error }, 400] : ok(r); }
     if (b.op === 'courList') { if (!admin) return needAdmin(); const st = (await getStaff(env)).filter(s => s.role === 'courier'), links = await getLinks(env); return ok({ list: await Promise.all(st.map(async s => ({ ...(await courDay(env, s.name)), name: s.name, tg: !!links[s.name] }))), bot: env.COURIER_BOT_TOKEN ? await courBot(env) : '' }); }
+    if (b.op === 'courRep') { if (!admin) return needAdmin(); return ok(await courRep(env, String(b.m || ''))); }
     if (b.op === 'courCash') { if (!admin) return needAdmin(); const r = await courCashGive(env, String(b.n), +b.sum, who); await logEvent(env, { k: 'shift', by: who, text: `💵 Отримано від кур'єра ${b.n}: ${+b.sum} ₴` }); return ok({ r }); }
   }
 

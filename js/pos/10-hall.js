@@ -12,8 +12,8 @@
       return `<button class="tbl ${cls}${calls[t] ? ' calling' : ''}" data-a="table" data-t="${t}">${bell(t)}${tag}<div class="n">${t}</div><div class="st">${b.orders} замовл.${b.disc ? ` · −${b.disc}%` : ''}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">з ${b.opened ? hhmm(b.opened) : '—'}</div></button>`;
     }).join('');
     const gos = list.filter(b => b.t > 1000 && b.go);
-    const strip = !gos.length ? '' : `<div class="go-strip">${gos.map(b => { const g = b.go, late = g.st === 'new' && Date.now() - g.at > 60e3;
-      return `<button class="go-t st-${g.st}${pending.has(b.t) ? ' new' : ''}${late ? ' late' : ''}" data-a="table" data-t="${b.t}"><b>${g.kind === 'del' ? '🛵' : '🥡'} ${tn(b.t)}</b><span>${esc(g.name || '')}</span><small>${GOST[g.st] || g.st}${g.when ? ' · на ' + g.when : ''}${g.cour ? ' · ' + esc(g.cour) : ''}</small><i class="money">${money(b.pay2)}</i></button>`; }).join('')}</div>`;
+    const strip = !gos.length ? '' : `${goMapBtn(gos)}<div class="go-strip">${gos.map(b => { const g = b.go, late = g.st === 'new' && Date.now() - g.at > 60e3;
+      return `<button class="go-t st-${g.st}${pending.has(b.t) ? ' new' : ''}${late ? ' late' : ''}" data-a="table" data-t="${b.t}"><b>${g.kind === 'del' ? '🛵' : '🥡'} ${tn(b.t)}</b><span>${esc(g.name || '')}</span><small>${GOST[g.st] || g.st}${g.when ? ' · на ' + g.when : ''}${goTileInfo(g)}</small><i class="money">${money(b.pay2)}</i></button>`; }).join('')}</div>`;
     return `<div class="head"><h1>Зал</h1><div class="stat tipstat" title="Накопичено, ще не видано">💝 Мої чайові<b class="money">${money(S.myTip?.sum || 0)}</b></div><div class="stat">У залі<b class="money">${money(sum)}</b></div>
       ${(S.books || []).length ? `<button class="btn${S.books.some(b => b.st === 'new') ? ' red' : ''}" data-a="books">📅 ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="Бронювання">📅</button>`}<button class="btn primary" data-a="newOrder">➕ Замовлення</button></div>${strip}<div class="tables">${tiles}</div>`;
   }

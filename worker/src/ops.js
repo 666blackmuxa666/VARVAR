@@ -867,7 +867,12 @@ export async function acceptOrder(env, ...a) {
   if (ok && a[1]) { const o = await env.DB.get('ord:' + a[0], 'json'); if (o?.t) await L(env, 'bills', async () => { const b = await getBill(env, o.t); if (b.total > 0 && (!b.waiter || b.go?.st === 'new')) { if (!b.waiter) b.waiter = a[1]; if (b.go?.st === 'new') { b.go.st = 'acc'; b.go.accAt = Date.now(); } await putBill(env, o.t, b); } }); if (o?.go) await courNotify(env, o.t, 'new').catch(() => {}); }
   return ok;
 }
-export async function rejectOrder(env, ...a) { return L(env, ['ord:' + a[0], 'bills'], () => _rejectOrder(env, ...a)); }
+export async function rejectOrder(env, ...a) { // 🛵 доставка зникла — кур'єру «скасовано» (рахунок читаємо до видалення)
+  const o0 = /^[a-z0-9]{6,12}$/.test(a[0] || '') ? await env.DB.get('ord:' + a[0], 'json') : null, b0 = o0?.go && o0.t ? await getBill(env, o0.t) : null;
+  const o = await L(env, ['ord:' + a[0], 'bills'], () => _rejectOrder(env, ...a));
+  if (o && b0?.go && !(await getBill(env, o0.t)).total) await courNotify(env, o0.t, 'gone', '', b0).catch(() => {});
+  return o;
+}
 export async function addWaiterOrder(env, ...a) { return L(env, 'bills', () => _addWaiterOrder(env, ...a)); }
 export async function removeOne(env, ...a) { return L(env, 'bills', () => _removeOne(env, ...a)); }
 export async function closeTable(env, ...a) { return L(env, 'bills', () => _closeTable(env, ...a)); }
@@ -876,7 +881,11 @@ export async function setTip(env, ...a) { return L(env, 'bills', () => _setTip(e
 export async function moveTable(env, ...a) { return L(env, 'bills', () => _moveTable(env, ...a)); }
 export async function restoreVoid(env, ...a) { return L(env, ['bills', 'void:' + dayKey()], () => _restoreVoid(env, ...a)); }
 export async function splitTable(env, ...a) { return L(env, 'bills', () => _splitTable(env, ...a)); }
-export async function deleteTable(env, ...a) { return L(env, 'bills', () => _deleteTable(env, ...a)); }
+export async function deleteTable(env, ...a) {
+  const b0 = a[0] > 1000 ? await getBill(env, a[0]) : null, r = await L(env, 'bills', () => _deleteTable(env, ...a));
+  if (r && b0?.go) await courNotify(env, a[0], 'gone', '', b0).catch(() => {}); // 🛵 кур'єру «скасовано»
+  return r;
+}
 async function billBack(env, ...a) { return L(env, 'bills', () => _billBack(env, ...a)); }
 async function addVoid(env, ...a) { return L(env, 'void:' + dayKey(), () => _addVoid(env, ...a)); }
 export async function markCook(env, ...a) { return L(env, 'cooks:' + dayKey(), () => _markCook(env, ...a)); }
