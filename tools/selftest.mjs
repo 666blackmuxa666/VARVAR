@@ -91,6 +91,33 @@ async function apiTests() {
     const c = await posOk(A, 'closed'); must(c.list.some(x => x.t === T), 'немає в closed'); return `${r.r.sum} грн`;
   });
 
+  sect('Каса: редагування чека й Z-звіт');
+  {
+    let ref = '', d0 = null, x0 = null;
+    const dayOf = async () => (await posOk(A, 'shift')).day;
+    await step('знайти закритий чек стола', async () => { const c = await posOk(A, 'closed'); x0 = [...c.list].reverse().find(x => x.t === T && !x.del && !x.rm); must(x0?.id, 'немає чека'); ref = x0.id; d0 = await dayOf(); return `${x0.sum} грн`; });
+    await step('closedEdit: −1 страва, +чайові 50, картка, знижка 10% → day: зійшовся', async () => {
+      must(ref, 'немає чека'); const items = x0.dishes.map(d => [...d]); const i = items.findIndex(d => d[1] > 1); must(i >= 0, 'немає позиції з к-стю > 1');
+      items[i][2] = items[i][2] / items[i][1] * (items[i][1] - 1); items[i][1]--;
+      const r = await posOk(A, 'closedEdit', { ref, p: { items, tip: 50, pay: 'card', disc: 10 } }), x = r.x;
+      const g = items.reduce((a, d) => a + d[2], 0), want = g - Math.round(g / 10) + 50;
+      must(x.sum === want && x.card === want && !x.cash && x.tip === 50 && x.disc === 10 && x.edits?.length === 1, 'запис: ' + JSON.stringify(x).slice(0, 300));
+      const d1 = await dayOf(), dd = f => (d1[f] || 0) - (d0[f] || 0);
+      must(dd('cash') + dd('card') === want - x0.sum, `виручка Δ${dd('cash') + dd('card')} ≠ ${want - x0.sum}`); must(dd('card') === want - (x0.card || 0), `card Δ${dd('card')}`); must(dd('cash') === -(x0.cash ?? x0.sum), `cash Δ${dd('cash')}`);
+      must(dd('tip') === 50 - (x0.tip || 0), `tip Δ${dd('tip')}`); must(dd('disc') === Math.round(g / 10) - (x0.discSum || 0), `disc Δ${dd('disc')}`);
+      return `${x0.sum} → ${want} грн`;
+    });
+    await step('closedEdit: повернути як було (готівка, без знижки й чайових) → day: як до правки', async () => {
+      must(ref, 'немає чека'); const r = await posOk(A, 'closedEdit', { ref, p: { items: x0.dishes, tip: 0, pay: 'cash', disc: 0 } });
+      must(r.x.sum === x0.sum && r.x.edits?.length === 2, 'сума ' + r.x.sum); const d1 = await dayOf();
+      for (const f of ['cash', 'card', 'tip', 'disc']) must((d1[f] || 0) === (d0[f] || 0), `${f}: ${d1[f]} ≠ ${d0[f]}`);
+    });
+    await step('closedEdit: офіціант ✗ (403), порожній чек ✗ (400)', async () => {
+      must((await pos(W, 'closedEdit', { ref, p: { tip: 1 } })).status === 403, 'офіціант пройшов'); must((await pos(A, 'closedEdit', { ref, p: { items: [] } })).status === 400, 'порожній пройшов');
+    });
+    await step('zX: друк X-звіту не створює запису z:', async () => { const n0 = (await posOk(A, 'report', { from: d0.day, to: d0.day })).z?.length || 0; const r = await posOk(A, 'zX'); must(r.z?.day, 'немає z'); const n1 = (await posOk(A, 'report', { from: d0.day, to: d0.day })).z?.length || 0; must(n0 === n1, `z: ${n0} → ${n1}`); });
+  }
+
   sect('Доставка ?go → кур\'єр');
   let G = 0, oid = '';
   await step('POST /api/go (доставка)', async () => {

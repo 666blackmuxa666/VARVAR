@@ -151,7 +151,7 @@
     } else if (['checks', 'exp', 'mov', 'z'].includes(T)) {
       // 💰 Гроші: кожен запис можна видалити (🗑) і повернути (↩️) — за будь-який день
       const xb = (kind, x, back) => `<button class="xb${back ? ' back' : ''}" data-a="${back ? 'rBack' : 'rDel'}" data-k="${kind}" data-d="${x.d}" data-i="${kind === 'checks' ? esc(x.id || '') : x.i}" title="${back ? 'Повернути' : 'Видалити'}">${back ? '↩️' : '🗑'}</button>`;
-      const line = (kind, x, l, v, back) => `<div class="kv rrow${back ? ' del' : ''}"><span>${l}</span><span class="kv-r"><b class="money">${v}</b>${kind !== 'checks' || x.id ? xb(kind, x, back) : ''}</span></div>`;
+      const line = (kind, x, l, v, back) => `<div class="kv rrow${back ? ' del' : ''}"><span>${l}</span><span class="kv-r"><b class="money">${v}</b>${kind === 'checks' && !back && x.id && isAdmin() ? `<button class="xb" data-a="cEdit" data-ref="${esc(x.id)}" data-d="${x.d}" title="Відкрити й редагувати">✏️</button>` : ''}${kind !== 'checks' || x.id ? xb(kind, x, back) : ''}</span></div>`;
       const dd = d => d.slice(8) + '.' + d.slice(5, 7);
       let act = [], gone = [], empty = '';
       if (T === 'checks') { act = [...checks].reverse().slice(0, 300).map(c => line('checks', c, `${dd(c.d)} ${c.at} · стіл ${tn(c.t)} · ${esc(waiterOf(c))} ${c.card ? '💳' : '💵'}${c.disc ? ' 🏷' : ''}${c.tip ? ` · 💝 ${money(c.tip)}` : ''}<br><small class="muted">${c.ds.map(([nm, qq]) => `${qq}× ${esc(nm)}`).join(', ')}</small>`, money(c.val)));

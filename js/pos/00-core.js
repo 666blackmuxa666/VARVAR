@@ -438,6 +438,7 @@
       case 'tBack': if (await confirmBox('Відновити видалений стіл?', 'Страви повернуться на стіл')) { const r = await act('tableBack', { ref: el.dataset.ref, day: S.data.cday }, '↩️ Стіл відновлено'); loadView(); loadState().catch(() => {}); if (r?.x) openTable(r.x.t); } break;
       case 'movBack': await act('moveBack', { i: +el.dataset.i }, '↩️ Відновлено'); loadView(); break;
       case 'expBack': await act('expenseBack', { i: +el.dataset.i }, '↩️ Відновлено'); loadView(); break;
+      case 'cEdit': cEdit(el.dataset.ref, el.dataset.d || undefined); break;
       case 'cPrint': act('closedPrint', { ref: el.dataset.ref, day: S.data.cday }, '🖨 Чек відправлено'); break;
       case 'cDay': { const v = +el.dataset.v, base = S.data.cday || S.data.ctoday; if (!v || !base) S.cday = ''; else { const d = new Date(base + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + v); const k = d.toISOString().slice(0, 10); S.cday = k >= S.data.ctoday ? '' : k; } S.data.closed = null; renderMain(); loadView(); break; }
       case 'cDel': if (await confirmBox('Видалити рахунок з виручки?', 'Сума, страви й замовлення віднімуться зі звітів')) await act('closedDel', { ref: el.dataset.ref, day: S.data.cday }, '🧹 Видалено з виручки'); loadView(); break;

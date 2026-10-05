@@ -15,7 +15,7 @@ import {
   L, tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
   precheck, setDiscount, splitTable, restoreVoid, getVoids, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
   reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, tipBalances, payTips, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenPct, rejectOrder, kitchenStats, getKq, kitchenDone, kitchenStart, restoreClosed, reopenClosed, restoreTable, restoreExpense, balances, reconcile, WAITER_DISC_MAX, getCfg, setCfg, CFG_LIM, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
-  getMov, delMove, restoreMove, delZ, restoreZ, pinHash, isDay,
+  getMov, delMove, restoreMove, delZ, restoreZ, pinHash, isDay, editClosed, dayX, notify,
 } from './ops.js';
 export { tg, esc, hhmm, getBill } from './ops.js';
 export { addStat, addDishes } from './ops.js';
@@ -150,7 +150,7 @@ async function cashView(env) {
       z.mvCash || z.mvCard ? `🔁 Рух коштів: готівка ${money(z.mvCash)}${z.mvCard ? `, картка ${money(z.mvCard)}` : ''}` : '',
       z.openTables ? `⏳ Ще відкрито в залі: ${money(z.openSum)} (${z.openTables} ст.)` : '',
       ...(tb.length ? ['\n💝 <b>Чайові до видачі</b> (не виручка):', ...tb.map(([n, v]) => `👤 ${esc(n)}: ${money(v)}`)] : [])].filter(x => x !== '').join('\n'),
-    markup: { inline_keyboard: [[{ text: '🧾 Z-звіт (друк)', callback_data: 'zday' }], [{ text: '🔁 Рух коштів', callback_data: 'mvl' }, { text: '🔒 Закриття каси (Z)', callback_data: 'zl' }], [{ text: '💸 Витрати сьогодні', callback_data: 'exlist' }], [{ text: '➕ Внести', callback_data: 'cmvp' }, { text: '➖ Вилучити', callback_data: 'cmvm' }, { text: '🔁 Обмін', callback_data: 'cmvx' }], [{ text: `👨‍🍳 Частка кухні від чайових: ${await kitchenPct(env)}%`, callback_data: 'kpct' }], ...await (async () => { const c = await getCfg(env); return [[{ text: `🏷 Макс. знижка офіціанта: ${c.discMax}%`, callback_data: 'cfg:discMax' }], [{ text: `⏱ Замовлення після QR: ${c.scanMin} хв`, callback_data: 'cfg:scanMin' }]]; })(), [{ text: '✏️ Звірити готівку', callback_data: 'rcn:cash' }, { text: '✏️ Звірити картку', callback_data: 'rcn:card' }], ...tb.map(([n, v]) => [{ text: `💝 Видано: ${n} · ${v}`, callback_data: ('tpay:' + n).slice(0, 60) }])] },
+    markup: { inline_keyboard: [[{ text: '🧾 Z-звіт', callback_data: 'zday' }], [{ text: '🔁 Рух коштів', callback_data: 'mvl' }, { text: '🔒 Закриття каси (Z)', callback_data: 'zl' }], [{ text: '💸 Витрати сьогодні', callback_data: 'exlist' }], [{ text: '➕ Внести', callback_data: 'cmvp' }, { text: '➖ Вилучити', callback_data: 'cmvm' }, { text: '🔁 Обмін', callback_data: 'cmvx' }], [{ text: `👨‍🍳 Частка кухні від чайових: ${await kitchenPct(env)}%`, callback_data: 'kpct' }], ...await (async () => { const c = await getCfg(env); return [[{ text: `🏷 Макс. знижка офіціанта: ${c.discMax}%`, callback_data: 'cfg:discMax' }], [{ text: `⏱ Замовлення після QR: ${c.scanMin} хв`, callback_data: 'cfg:scanMin' }]]; })(), [{ text: '✏️ Звірити готівку', callback_data: 'rcn:cash' }, { text: '✏️ Звірити картку', callback_data: 'rcn:card' }], ...tb.map(([n, v]) => [{ text: `💝 Видано: ${n} · ${v}`, callback_data: ('tpay:' + n).slice(0, 60) }])] },
   };
 }
 async function expListView(env) {
@@ -227,8 +227,17 @@ async function closedOne(env, ref) {
     text: `🧾 <b>Стіл ${tn(x.t)}</b> · закрито о ${x.at}${x.by ? ` · ${esc(x.by)}` : ''}\n\n${lines.length ? lines.map(esc).join('\n') : '<i>(перелік страв не збережено — рахунок закрито до оновлення)</i>'}\n\n${x.disc ? `Сума ${money(x.gross)} − знижка ${x.disc}%\n` : ''}Разом: <b>${money(x.sum)}</b>${x.tip ? ` (в т.ч. 💝 чайові ${money(x.tip)})` : ''} · ${payLabel(x.cash ?? x.sum, x.card || 0)}${x.voids?.length ? `\n\n🚫 <b>Скасування:</b>\n${x.voids.map(v => `${v.at} −${v.sum} ${esc(v.name)} — <i>${esc(v.reason)}</i> (${esc(v.by)})`).join('\n')}` : ''}${gone ? '\n\n🗑 Видалено з виручки' : ''}`,
     markup: { inline_keyboard: [[...(lines.length ? [{ text: '🖨 Друкувати чек', callback_data: 'cvp:' + ref }] : []), ...(gone ? [] : [{ text: '🗑 Видалити з виручки', callback_data: 'dc:' + ref }])],
       [...(!x.del && !x.reopen && lines.length ? [{ text: '↩️ Відкрити знову', callback_data: 'cvro:' + ref }] : []), ...(x.rm && !x.reopen && !x.del ? [{ text: '↩️ Повернути у виручку', callback_data: 'cvbk:' + ref }] : []), ...(x.del && !x.restored && lines.length ? [{ text: '↩️ Відновити стіл', callback_data: 'tbk:' + ref }] : [])],
+      ...(gone ? [] : [[{ text: '✏️ Редагувати чек', callback_data: 'ce:' + ref }]]),
       [{ text: '⬅️ Назад', callback_data: 'cvb' }]] },
   };
+}
+// ✏️ редагування закритого чека (паритет з касою): − кількість, ✕ позиція, спосіб оплати
+async function ceView(env, ref, note = '') {
+  const x = await closedRec(env, ref); if (!x || x.del || x.rm) return { text: 'Чек не знайдено або знято з виручки.' };
+  const d = x.dishes || [];
+  return { text: `${note ? note + '\n\n' : ''}✏️ <b>Чек стола ${tn(x.t)}</b> · ${x.at}\n\n${d.map(([n, q, s], i) => `${i + 1}. ${q}× ${esc(n)} — ${s}`).join('\n')}\n\nРазом: <b>${money(x.sum)}</b>${x.tip ? ` (💝 ${money(x.tip)})` : ''} · ${payLabel(x.cash ?? x.sum, x.card || 0)}${x.edits?.length ? '\n\n' + x.edits.slice(-5).map(e => `✏️ ${e.at} ${esc(e.by)}: ${esc(e.what)}`).join('\n') : ''}\n\n<i>Додати страву, знижку, чайові, офіціанта, стіл — у касі (Каса → Чеки → ✏️).</i>`,
+    markup: { inline_keyboard: [...d.slice(0, 20).map(([n, q], i) => [{ text: `${i + 1}. ${n}`.slice(0, 30), callback_data: 'cv:' + ref }, ...(q > 1 ? [{ text: '➖ 1', callback_data: `cem:${ref}:${i}` }] : []), ...(d.length > 1 ? [{ text: '✕', callback_data: `cex:${ref}:${i}` }] : [])]),
+      [{ text: '💵 Готівка', callback_data: `cep:${ref}:cash` }, { text: '💳 Картка', callback_data: `cep:${ref}:card` }], [{ text: '⬅️ До чека', callback_data: 'cv:' + ref }]] } };
 }
 async function topView(env) {
   const rows = (await topData(env)).slice(0, 20);
@@ -796,7 +805,7 @@ async function handleCallback(q, env) {
     const v = await stopView(env); await edit(v.text, v.markup); return answer(it ? `${it.name.uk} знову в меню` : 'Не знайдено');
   }
   // лише адміністратор
-  if (['del', 'delok', 'wifiask', 'wifiok', 'dc', 'dcok', 'cv', 'cvb', 'cvp', 'rst1', 'rst2', 'exs', 'exdel', 'exdelok', 'float', 'exlist', 'shop', 'shopl', 'shcl', 'cmv', 'cmvx', 'cmvp', 'cmvm', 'zday', 'rcn', 'kpct', 'cfg', 'cvro', 'cvbk', 'vbk', 'tbk', 'exbk', 'tpay', 'tpc', 'tpk', 'rp', 'stfadd', 'stfdel', 'wout', 'mvl', 'mvdel', 'mvdok', 'mvbk', 'zl', 'zv', 'zdel', 'zdok', 'zbk'].includes(act) && !admin) return answer('🔐 Лише для адміністратора');
+  if (['del', 'delok', 'wifiask', 'wifiok', 'dc', 'dcok', 'cv', 'cvb', 'cvp', 'rst1', 'rst2', 'exs', 'exdel', 'exdelok', 'float', 'exlist', 'shop', 'shopl', 'shcl', 'cmv', 'cmvx', 'cmvp', 'cmvm', 'zday', 'rcn', 'kpct', 'cfg', 'cvro', 'cvbk', 'vbk', 'tbk', 'exbk', 'tpay', 'tpc', 'tpk', 'rp', 'stfadd', 'stfdel', 'wout', 'mvl', 'mvdel', 'mvdok', 'mvbk', 'zl', 'zv', 'zdel', 'zdok', 'zbk', 'ce', 'cem', 'cex', 'cep', 'zdx', 'zdz', 'zdzp', 'zdzn'].includes(act) && !admin) return answer('🔐 Лише для адміністратора');
   if (act === 'del') {
     const b = await getBill(env, arg);
     if (!b.total) return answer(`Стіл ${tn(arg)} вже порожній`);
@@ -838,7 +847,19 @@ async function handleCallback(q, env) {
     if (act.endsWith('ok')) await edit(ok ? '🗑 Видалено.' : 'Вже видалено.');
     return answer(ok ? (act.endsWith('ok') ? 'Видалено' : 'Повернуто') : 'Без змін'); }
   if (act === 'zv') { const z = isDay(oid) && (await getZs(env, oid))[+arg]; if (!z) return answer('Не знайдено'); await send({ text: (z.del ? '🗑 <b>(видалено)</b>\n' : '') + zText(z) }); return answer(''); }
-  if (act === 'zday') { const z = await dayZ(env, who, true); await send({ text: zDayText(z) + '\n\n🖨 Надруковано' }); return answer('Z-звіт'); }
+  if (act === 'zday') { const z = await dayZData(env); await send({ text: zDayText(z).replace('Z-звіт за', 'Z-звіт (поточний) за'), markup: { inline_keyboard: [[{ text: '🖨 Надрукувати', callback_data: 'zdx' }, { text: '🔒 Закрити день', callback_data: 'zdz' }]] } }); return answer(''); }
+  if (act === 'zdx') { const z = await dayX(env, who); return answer(`🖨 X-звіт надруковано · ${money(z.total)}`); }
+  if (act === 'zdz') { await send({ text: '🔒 Закрити день? Z-звіт запишеться в історію.', markup: { inline_keyboard: [[{ text: '🖨 Закрити й надрукувати', callback_data: 'zdzp' }], [{ text: '📲 Закрити без друку', callback_data: 'zdzn' }, { text: 'Ні', callback_data: 'no' }]] } }); return answer(''); }
+  if (act === 'zdzp' || act === 'zdzn') { const z = await dayZ(env, who, act === 'zdzp'); await edit(zDayText(z) + `\n\n🔒 День закрито${act === 'zdzp' ? ' · 🖨 надруковано' : ''}`); return answer('Z-звіт'); }
+  if (act === 'ce') { const v = await ceView(env, arg); await edit(v.text, v.markup); return answer(''); }
+  if (act === 'cem' || act === 'cex' || act === 'cep') {
+    const x = await closedRec(env, arg); if (!x) return answer('Не знайдено');
+    let p; if (act === 'cep') p = { pay: oid === 'card' ? 'card' : 'cash' };
+    else { const items = (x.dishes || []).map(d => [...d]), i = +oid, d = items[i]; if (!d) return answer('');
+      if (act === 'cem' && d[1] > 1) { d[2] = Math.round(d[2] / d[1] * (d[1] - 1)); d[1]--; } else items.splice(i, 1); p = { items }; }
+    const r = await editClosed(env, arg, p, who); if (r.error) return answer(r.error);
+    if (r.what.length) await notify(env, `✏️ <b>Чек стола ${tn(r.x.t)}</b> (${r.x.at}) змінено: ${esc(r.what.join(', '))}\nБуло ${money(r.was)} → <b>${money(r.x.sum)}</b> — ${esc(who)}`);
+    const v = await ceView(env, arg, r.what.length ? '✅ ' + esc(r.what.join(', ')) : ''); await edit(v.text, v.markup); return answer(r.what.length ? 'Збережено' : 'Без змін'); }
   if (act === 'cfg' && CFG_NAME[arg]) { await env.DB.put('st:' + uid, 'cfg:' + arg, { expirationTtl: 600 }); await send({ text: `⚙️ ${CFG_NAME[arg]}: зараз <b>${(await getCfg(env))[arg]}</b>\nНапишіть нове значення (${CFG_LIM[arg].join('–')}):` }); return answer(''); }
   if (act === 'kpct') { await env.DB.put('st:' + uid, 'kpct', { expirationTtl: 600 }); await send({ text: `👨‍🍳 Зараз кухні йде <b>${await kitchenPct(env)}%</b> від чайових офіціанта (+ «подяка кухні» від гостя), порівну між кухарями на зміні.\nНапишіть новий відсоток (0–100):` }); return answer(''); }
   if (act === 'rcn') { await env.DB.put('st:' + uid, 'rcn:' + arg, { expirationTtl: 600 }); const b = await balances(env);

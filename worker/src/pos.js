@@ -15,7 +15,7 @@ import { aiInvoice, aiCard } from './ai.js';
 import {
   esc, money, hhmm, dayKey, isDay, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, setTip, moveTable, splitTable, restoreVoid, getVoids, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
-  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenClosed, markCook, kitchenPct, getCfg, setCfg, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, delZ, restoreZ, editEv, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents, logEvent,
+  topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenClosed, markCook, kitchenPct, getCfg, setCfg, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, editClosed, dayX, reopenClosed, restoreTable, restoreExpense, restoreMove, delZ, restoreZ, editEv, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, getEvents, logEvent,
 } from './ops.js';
 
 const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400, cook: 30 * 86400, courier: 30 * 86400 };
@@ -136,6 +136,8 @@ export async function posApi(b, req, env) {
     case 'closedBack': { if (!admin) return needAdmin(); const x = await restoreClosed(env, String(b.ref), who, b.day); if (x) await notify(env, `🖥 ↩️ Рахунок стола ${tn(x.t)} (${money(x.sum)}, ${x.at}) повернуто у виручку — ${esc(who)}`); return ok({ x }); }
     case 'closedReopen': { if (!admin) return needAdmin(); const x = await reopenClosed(env, String(b.ref), who, b.day); if (x) await notify(env, `🖥 ↩️ <b>Стіл ${tn(x.t)}</b>: закритий рахунок (${money(x.sum)}, ${x.at}) відкрито знову — ${esc(who)}`, tgBtns(x.t)); return ok({ x }); }
     case 'tableBack': { if (!admin) return needAdmin(); const x = await restoreTable(env, String(b.ref), who, b.day); if (x) await notify(env, `🖥 ↩️ <b>Стіл ${tn(x.t)}</b> відновлено (${money(x.sum)}) — ${esc(who)}`, tgBtns(x.t)); return ok({ x }); }
+    case 'closedEdit': { if (!admin) return needAdmin(); const r = await editClosed(env, String(b.ref), b.p, who, b.day); if (r.error) return [{ error: r.error }, 400];
+      if (r.what.length) await notify(env, `🖥 ✏️ <b>Чек стола ${tn(r.x.t)}</b> (${r.x.at}${isDay(b.day) && b.day !== dayKey() ? ', ' + b.day : ''}) змінено: ${esc(r.what.join(', '))}\nБуло ${money(r.was)} → <b>${money(r.x.sum)}</b> · ${payLabel(r.x.cash, r.x.card)} — ${esc(who)}`); return ok({ x: r.x, what: r.what }); }
     case 'closedDel': { if (!admin) return needAdmin(); const x = await delClosed(env, String(b.ref), b.day); if (x) await notify(env, `🖥 🧹 Закритий рахунок стола ${tn(x.t)} (${money(x.sum)}, ${x.at}) видалено з виручки — ${esc(who)}`); return ok({ x }); }
   }
 
@@ -143,6 +145,7 @@ export async function posApi(b, req, env) {
   if (!admin) return needAdmin();
   switch (b.op) {
     case 'shift': { const day = await cashData(env); return ok({ tipbal: await tipBalances(env), tippay: (await env.DB.get('tippay:' + day.day, 'json')) || [], z: await dayZData(env), day, exp: day.exp, mov: day.mov, last: await lastZ(env), bal: await balances(env), closed: await getClosed(env) }); }
+    case 'zX': { const z = await dayX(env, who); await notify(env, `🖥 🖨 X-звіт надруковано (день не закрито): виручка ${money(z.total)} · чеків ${z.checks} — ${esc(who)}`); return ok({ z }); }
     case 'zDay': { const z = await dayZ(env, who, b.print !== false); await notify(env, `🖥 ${zDayText(z)}\n— ${esc(who)}`); return ok({ z }); }
     case 'tipPay': { const s = await payTips(env, String(b.name), who, b.src); if (!s) return [{ error: 'Нема що видавати' }, 400]; await notify(env, `🖥 💝 Видано чайові: <b>${esc(b.name)}</b> — ${money(s)} ${b.src === 'card' ? '💳 з картки' : '💵 готівкою'} · ${esc(who)}`); return ok({ sum: s }); }
     case 'cashMove': { const e = await addMove(env, { type: b.type, sum: +b.sum, note: b.note, by: who }); if (!e) return [{ error: 'Потрібна сума' }, 400]; await notify(env, `🖥 ${MOVE_ALL[e.type]}: <b>${money(e.sum)}</b>${e.note ? ` — ${esc(e.note)}` : ''} · ${esc(who)}`); return ok(); }

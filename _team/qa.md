@@ -17,6 +17,7 @@
 - Стіл: офіціант замовляє страву + напій → сума з меню → на кухні картка лише зі стравою → `kStart`/`kDone` → `close` готівкою → стіл зник, є в `closed`.
 - Доставка: `POST /api/go` (Д‑N) → адмін `accept` (go.st=acc) → кур'єр `courAct take/road/done cash` → чек закрито, `/api/orders` = done, `courMe` показує готівку.
 - Скасування доставки в касі: (1) `/api/go` → `accept` → `kStart` → `delete` стола 10xx → `/api/orders` g=`rej`; (2) `/api/go` → `accept` → `remove` кожної страви → рахунок зник, g=`rej`; (3) той самий пристрій знову робить `/api/go` → 200.
+- Каса: закритий чек стола → `closedEdit` (−1 страва, чайові 50, картка, знижка 10%) → дельти `shift.day` cash/card/tip/disc зійшлися; повернути як було → `day:` як до правки; офіціант 403, порожній чек 400; `zX` не додає запису `z:`.
 - Бронь: `POST /api/book` (+3 дні) → `bkSet ok` → `bkEdit` дата +100 днів → `bkList` знаходить на новій даті й не на старій → `GET /api/book?id`.
 - Права: кур'єр/кухар/офіціант отримують 403 на чужі op (close, shift, order, bkList, skData, goSt, staff, delete, zpGrid, courList); без токена — 401.
 
