@@ -526,6 +526,7 @@ body.cook .more-btn { display: none !important; }
 .sk-busy { padding: 18px; text-align: center; font-weight: 700; color: var(--accent); animation: pulse 1.6s infinite; }
 /* накладна: рядки */
 .dl { border-left: 4px solid var(--line2); padding: 8px 0 8px 10px; margin: 0 0 8px; }
+.dl-c { margin: 4px 0 6px; gap: 6px; align-items: center; } .dl-c .chip { background: var(--card2); border: 1px solid var(--line2); padding: 5px 10px; font-size: 13px; white-space: normal; text-align: left; }
 .dl.ok { border-color: var(--green); } .dl.guess { border-color: var(--orange); } .dl.none { border-color: var(--red); } .dl.new { border-color: var(--blue); }
 .dl-src { font-size: 13px; margin-bottom: 6px; }
 .dl-f { display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(70px, .8fr) minmax(80px, 1fr) minmax(80px, 1fr) auto; gap: 6px; align-items: center; }
