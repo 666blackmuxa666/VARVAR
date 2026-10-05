@@ -10,7 +10,7 @@
       hHook: 'Кальяни', hBanq: 'Банкети й кейтеринг', banqBtn: 'Залишити заявку', hBook: 'Бронювання столу', kTable: 'Стіл', kBanq: 'Банкет', fName: "Ваше ім'я", fPhone: 'Телефон', fCom: 'Побажання (необовʼязково)',
       bookSend: 'Забронювати', hCert: 'Подарунковий сертифікат', certTxt: 'Найкращий подарунок після катання — вечеря у Varvar. Залиште заявку, адміністратор зв’яжеться щодо оплати й надішле сертифікат.',
       own: 'Своя', certOwn: 'Сума, ₴', certFrom: 'Від кого', certTo: 'Кому (необовʼязково)', certSend: 'Замовити сертифікат', hRev: 'Відгуки', revAll: 'Усі відгуки на Google', revWrite: 'Залишити відгук', hCont: 'Контакти', daily: 'Щодня',
-      openTill: 'Відчинено до', closedTill: 'Зачинено · відчиняємось о', bookOk: 'Заявку прийнято!', bookOkT: 'Підтвердимо найближчим часом. Статус оновлюється тут.', pre: '🍽 Обрати страви заздалегідь', preT: 'Кухня почне готувати до вашого приходу',
+      openNow: 'Відчинено', closedNow: 'Зачинено', bookOk: 'Заявку прийнято!', bookOkT: 'Підтвердимо найближчим часом. Статус оновлюється тут.', pre: '🍽 Обрати страви заздалегідь', preT: 'Кухня почне готувати до вашого приходу',
       st: { new: '⏳ Чекає підтвердження', ok: '✅ Підтверджено', no: '❌ Відхилено — зателефонуйте нам', came: '🪑 Ви в нас!', noshow: '—', cancel: '↩️ Скасовано' },
       err: 'Помилка — спробуйте ще раз', errC: "Вкажіть ім'я і телефон", errD: 'Перевірте дату й час', rate: 'Забагато заявок — спробуйте пізніше', certOk: '🎟 Заявку прийнято! Адміністратор зателефонує щодо оплати.',
       meT: 'Кабінет гостя', meIn: 'Увійдіть через Telegram — номер підтверджує сам Telegram, без SMS.', meBtn: 'Увійти через Telegram', meWait: 'Натисніть «Start» у боті й поділіться номером… чекаємо', bal: 'бонусів', vis: 'візитів', spent: 'витрачено',
@@ -20,7 +20,7 @@
       hHook: 'Hookahs', hBanq: 'Banquets & catering', banqBtn: 'Send request', hBook: 'Book a table', kTable: 'Table', kBanq: 'Banquet', fName: 'Your name', fPhone: 'Phone', fCom: 'Wishes (optional)',
       bookSend: 'Book', hCert: 'Gift certificate', certTxt: 'The best gift after skiing — dinner at Varvar. Leave a request and we will contact you about payment.',
       own: 'Custom', certOwn: 'Amount, ₴', certFrom: 'From', certTo: 'To (optional)', certSend: 'Order certificate', hRev: 'Reviews', revAll: 'All reviews on Google', revWrite: 'Write a review', hCont: 'Contacts', daily: 'Daily',
-      openTill: 'Open till', closedTill: 'Closed · opens at', bookOk: 'Request received!', bookOkT: 'We will confirm shortly. Status updates here.', pre: '🍽 Pre-order dishes', preT: 'The kitchen will start before you arrive',
+      openNow: 'Open', closedNow: 'Closed', bookOk: 'Request received!', bookOkT: 'We will confirm shortly. Status updates here.', pre: '🍽 Pre-order dishes', preT: 'The kitchen will start before you arrive',
       st: { new: '⏳ Awaiting confirmation', ok: '✅ Confirmed', no: '❌ Declined — please call us', came: '🪑 Welcome!', noshow: '—', cancel: '↩️ Cancelled' },
       err: 'Error — please try again', errC: 'Enter name and phone', errD: 'Check date and time', rate: 'Too many requests — try later', certOk: '🎟 Request received! We will call you about payment.',
       meT: 'Guest account', meIn: 'Sign in with Telegram — your number is verified by Telegram, no SMS.', meBtn: 'Sign in with Telegram', meWait: 'Press «Start» in the bot and share your number… waiting', bal: 'bonuses', vis: 'visits', spent: 'spent',
@@ -41,9 +41,9 @@
   function render() {
     const s = S, tel = 'tel:' + s.phone.replace(/[^\d+]/g, ''), maps = s.gmaps || `https://www.google.com/maps?q=${s.geo[0]},${s.geo[1]}`;
     $('#sName').textContent = s.name; $('#sTag').textContent = s.tagline; $('#sAddr').textContent = s.addr; $('#sAbout').textContent = s.about;
-    if (s.hero) $('#heroBg').style.backgroundImage = `url("${s.hero}")`;
-    const op = isOpen(s), bd = $('#openBadge'); bd.className = 'badge' + (op ? '' : ' off'); bd.textContent = op ? `🟢 ${t('openTill')} ${s.to}` : `🔴 ${t('closedTill')} ${s.from}`;
-    ['#callA', '#dockCall'].forEach(x => { $(x).href = tel; }); ['#routeA', '#routeB'].forEach(x => { $(x).href = maps; });
+    if (s.hero) { $('#heroBg').style.backgroundImage = `url("${s.hero}")`; $('.hero').classList.add('ph'); }
+    const op = isOpen(s), bd = $('#openBadge'); bd.className = 'badge' + (op ? '' : ' off'); bd.textContent = `${op ? '🟢 ' + t('openNow') : '🔴 ' + t('closedNow')} · ${s.from}–${s.to}`;
+    $('#callA').href = tel; ['#routeA', '#routeB'].forEach(x => { $(x).href = maps; });
     $('#cAddr').textContent = s.addr; $('#cHours').textContent = `${s.from}–${s.to}`; $('#cPhone').textContent = s.phone.replace(/^\+380(\d{2})(\d{3})(\d{2})(\d{2})$/, '+380 $1 $2 $3 $4'); $('#cPhone').href = tel;
     $('#socials').innerHTML = [s.insta && `<a href="${esc(s.insta)}" target="_blank" rel="noopener">Instagram</a>`, s.tg && `<a href="${esc(s.tg)}" target="_blank" rel="noopener">Telegram</a>`].filter(Boolean).join('');
     $('#map').src = `https://www.google.com/maps?q=${s.geo[0]},${s.geo[1]}&z=16&output=embed`;

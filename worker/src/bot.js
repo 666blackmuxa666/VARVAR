@@ -3,7 +3,7 @@
 // Уся логіка — у ops.js (та сама, що в касовій програмі POS).
 import { getMenu, handleMenuText, handleMenuPhoto, HELP as MENU_HELP } from './menu.js';
 import { tn, isGo } from './tn.js';
-import { guestBot, guestText, guestCallback, bookList, bookSet, bkLabel, bkButtons, certPay, getSite, setSite } from './site.js';
+import { bookList, bookSet, bkLabel, bkButtons, certPay, getSite, setSite } from './site.js';
 import { goSet, goStLabel, goButtons, goList, goText, setGoCfg, goFromPos, goAttach, normPhone, fmtPhone } from './delivery.js';
 import { parseWaiterOrder, draftText } from './waiter.js';
 import { tablePick, catsView, obCallback, getOb, putOb } from './orderui.js';
@@ -270,11 +270,9 @@ const tablesGrid = (env, act, skip) => chunk(Array.from({ length: tablesCount(en
 export async function handleUpdate(u, env) {
   if (u.callback_query) return handleCallback(u.callback_query, env);
   const m = u.message; if (!m) return;
-  if (await guestBot(m, env)) return; // 👤 гість входить у кабінет через Telegram
   const uid = m.from?.id, chat = m.chat.id, who = m.from?.first_name || '';
   const admin = await isAdmin(env, uid);
   const waiter = admin || await isWaiter(env, uid);
-  if (!waiter && await guestText(m, env)) return; // текст відгуку після низької оцінки
   // вхід закінчився сам (12 год) — прибираємо, що лишилось від сесії
   if (!admin && uid && await env.DB.get('admmsg:' + uid) && await env.DB.get('st:' + uid) !== 'login') await purgeAdminChat(env, uid);
   let track = admin; // повідомлення цієї взаємодії належать адмін-сесії
@@ -523,7 +521,6 @@ export async function handleUpdate(u, env) {
 async function handleCallback(q, env) {
   const chat = q.message?.chat?.id, mid = q.message?.message_id, uid = q.from?.id;
   const answer = (text) => tg(env, 'answerCallbackQuery', { callback_query_id: q.id, text });
-  if (/^(rv|bkg):/.test(q.data || '') && await guestCallback(q, env)) return; // гість: оцінка візиту / нагадування про бронь
   const admin = await isAdmin(env, uid);
   if (!admin && !(await isWaiter(env, uid))) return answer('🔑 Спершу увійдіть: напишіть боту і введіть пароль офіціанта');
   const edit = (text, markup) => tg(env, 'editMessageText', { chat_id: chat, message_id: mid, text, parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: markup || { inline_keyboard: [] } });

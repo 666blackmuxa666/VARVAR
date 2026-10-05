@@ -4,6 +4,9 @@ import { getMenu, priceMap } from './menu.js';
 import { tg, esc, hhmm, dayKey, L, logEvent, editEv, notify, addWaiterOrder, getBill, putBill, money, TZ, addMove } from './ops.js';
 import { normPhone, fmtPhone, getCli, cliTouch } from './delivery.js';
 
+// бот для гостей (окремий від бота персоналу): вхід у кабінет, нагадування, відгуки
+const gtg = (env, m, b) => tg({ ...env, BOT_TOKEN: env.GUEST_BOT_TOKEN || env.BOT_TOKEN }, m, b);
+
 // ---------- дані візитки ----------
 export const SITE_DEF = {
   name: 'Varvar Food Bar', tagline: 'Смачна їжа, кальяни й затишок у серці Буковелю',
@@ -157,8 +160,13 @@ const SITE = () => 'https://666blackmuxa666.github.io/VARVAR/';
 export const certPublic = async (env, code) => { const c = await getCert(env, code); return c && c.st === 'ok' ? { code: c.code, sum: c.sum, left: c.left, from: c.from, to: c.to } : null; };
 
 // ---------- 👤 кабінет гостя: вхід через Telegram (номер підтверджує сам Telegram — без SMS) ----------
-export async function botName(env) { let n = await env.DB.get('botname'); if (!n) { const r = await tg(env, 'getMe', {}).then(r => r.json()).catch(() => null); n = r?.result?.username || ''; if (n) await env.DB.put('botname', n, { expirationTtl: 7 * 86400 }); } return n; }
-export async function meStart(env) { const n = crypto.randomUUID().replace(/-/g, '').slice(0, 16); await env.DB.put('gl:' + n, JSON.stringify({ at: Date.now() }), { expirationTtl: 900 }); return { nonce: n, bot: await botName(env) }; }
+export async function botName(env) {
+  if (env.GUEST_BOT_TOKEN && (await env.DB.get('g2hook')) !== env.SELF_URL) { // вебхук бота гостей — один раз, з сервера (секрет не виходить назовні)
+    const r = await gtg(env, 'setWebhook', { url: env.SELF_URL + '/tg2', secret_token: env.TG_SECRET, allowed_updates: ['message', 'callback_query'] }).then(r => r.json()).catch(() => null);
+    if (r?.ok) await env.DB.put('g2hook', env.SELF_URL); else env.__hookErr = r?.description || 'fetch failed';
+  }
+  let n = await env.DB.get('gbotname'); if (!n) { const r = await gtg(env, 'getMe', {}).then(r => r.json()).catch(() => null); n = r?.result?.username || ''; if (n) await env.DB.put('gbotname', n, { expirationTtl: 7 * 86400 }); } return n; }
+export async function meStart(env) { const n = crypto.randomUUID().replace(/-/g, '').slice(0, 16); await env.DB.put('gl:' + n, JSON.stringify({ at: Date.now() }), { expirationTtl: 900 }); const bot = await botName(env); return { nonce: n, bot, ...(env.__hookErr ? { hookErr: env.__hookErr } : {}) }; }
 export async function mePoll(env, n) { if (!/^[a-f0-9]{16}$/.test(n || '')) return null; const x = await env.DB.get('gl:' + n, 'json'); if (!x?.token) return { wait: 1 }; await env.DB.delete('gl:' + n); return { token: x.token }; }
 const meSess = async (env, tok) => /^[a-f0-9]{32}$/.test(tok || '') ? env.DB.get('gs:' + tok) : null;
 export async function meData(env, tok) {
@@ -175,25 +183,25 @@ export async function meData(env, tok) {
 }
 export async function meLogout(env, tok) { if (/^[a-f0-9]{32}$/.test(tok || '')) await env.DB.delete('gs:' + tok); }
 // повідомлення гостю в Telegram (якщо підключив)
-export async function guestMsg(env, ph, text, markup) { const c = await getCli(env, ph); if (!c?.chat) return; await tg(env, 'sendMessage', { chat_id: c.chat, text, parse_mode: 'HTML', disable_web_page_preview: true, ...(markup ? { reply_markup: markup } : {}) }).catch(() => {}); }
+export async function guestMsg(env, ph, text, markup) { const c = await getCli(env, ph); if (!c?.chat) return; await gtg(env, 'sendMessage', { chat_id: c.chat, text, parse_mode: 'HTML', disable_web_page_preview: true, ...(markup ? { reply_markup: markup } : {}) }).catch(() => {}); }
 
 // бот: гість (не персонал) — /start login_<nonce> → «поділитись номером» → прив'язка chat_id до телефону
 export async function guestBot(m, env) {
   const uid = m.from?.id, chat = m.chat.id, text = (m.text || '').trim();
   const lg = text.match(/^\/start (?:login_)?([a-f0-9]{16})$/);
   if (lg) {
-    if (!(await env.DB.get('gl:' + lg[1]))) { await tg(env, 'sendMessage', { chat_id: chat, text: '⌛ Посилання застаріло — натисніть «Увійти» на сайті ще раз.' }); return true; }
+    if (!(await env.DB.get('gl:' + lg[1]))) { await gtg(env, 'sendMessage', { chat_id: chat, text: '⌛ Посилання застаріло — натисніть «Увійти» на сайті ще раз.' }); return true; }
     await env.DB.put('glu:' + uid, lg[1], { expirationTtl: 900 });
-    await tg(env, 'sendMessage', { chat_id: chat, text: '👋 Щоб увійти в кабінет гостя Varvar, поділіться своїм номером (кнопка нижче). Так ми бачимо ваші бонуси, броні й замовлення.', reply_markup: { keyboard: [[{ text: '📱 Поділитися номером', request_contact: true }]], resize_keyboard: true, one_time_keyboard: true } });
+    await gtg(env, 'sendMessage', { chat_id: chat, text: '👋 Щоб увійти в кабінет гостя Varvar, поділіться своїм номером (кнопка нижче). Так ми бачимо ваші бонуси, броні й замовлення.', reply_markup: { keyboard: [[{ text: '📱 Поділитися номером', request_contact: true }]], resize_keyboard: true, one_time_keyboard: true } });
     return true;
   }
   if (m.contact) {
-    if (m.contact.user_id !== uid) { await tg(env, 'sendMessage', { chat_id: chat, text: 'Потрібен саме ваш номер — натисніть кнопку «📱 Поділитися номером».' }); return true; }
-    const ph = normPhone(m.contact.phone_number); if (!ph) { await tg(env, 'sendMessage', { chat_id: chat, text: 'Підтримуються українські номери (+380).', reply_markup: { remove_keyboard: true } }); return true; }
+    if (m.contact.user_id !== uid) { await gtg(env, 'sendMessage', { chat_id: chat, text: 'Потрібен саме ваш номер — натисніть кнопку «📱 Поділитися номером».' }); return true; }
+    const ph = normPhone(m.contact.phone_number); if (!ph) { await gtg(env, 'sendMessage', { chat_id: chat, text: 'Підтримуються українські номери (+380).', reply_markup: { remove_keyboard: true } }); return true; }
     await cliTouch(env, ph, c => { c.chat = chat; if (!c.name) c.name = m.from?.first_name || ''; });
     const n = await env.DB.get('glu:' + uid);
     if (n && await env.DB.get('gl:' + n)) { const tok = [...crypto.getRandomValues(new Uint8Array(16))].map(x => x.toString(16).padStart(2, '0')).join(''); await env.DB.put('gs:' + tok, ph, { expirationTtl: 30 * 86400 }); await env.DB.put('gl:' + n, JSON.stringify({ token: tok }), { expirationTtl: 300 }); }
-    await tg(env, 'sendMessage', { chat_id: chat, text: `✅ Готово! Номер ${fmtPhone(ph)} підключено.\nПоверніться на сайт — кабінет відкриється сам. Сюди надходитимуть підтвердження броні, нагадування й бонуси.`, reply_markup: { remove_keyboard: true } });
+    await gtg(env, 'sendMessage', { chat_id: chat, text: `✅ Готово! Номер ${fmtPhone(ph)} підключено.\nПоверніться на сайт — кабінет відкриється сам. Сюди надходитимуть підтвердження броні, нагадування й бонуси.`, reply_markup: { remove_keyboard: true } });
     return true;
   }
   return false;
@@ -217,8 +225,8 @@ export async function cron(env) {
 const isDST = d => { const y = +d.slice(0, 4), last = m => { const x = new Date(Date.UTC(y, m, 31)); x.setUTCDate(31 - x.getUTCDay()); return x.toISOString().slice(0, 10); }; return d >= last(2) && d < last(9); };
 // гість натиснув кнопку (відгук / нагадування) — до перевірки персоналу
 export async function guestCallback(q, env) {
-  const [act, id, v] = (q.data || '').split(':'), chat = q.message?.chat.id, answer = t => tg(env, 'answerCallbackQuery', { callback_query_id: q.id, text: t || '' });
-  const edit = (text, markup) => tg(env, 'editMessageText', { chat_id: chat, message_id: q.message.message_id, text, parse_mode: 'HTML', disable_web_page_preview: true, ...(markup ? { reply_markup: markup } : {}) });
+  const [act, id, v] = (q.data || '').split(':'), chat = q.message?.chat.id, answer = t => gtg(env, 'answerCallbackQuery', { callback_query_id: q.id, text: t || '' });
+  const edit = (text, markup) => gtg(env, 'editMessageText', { chat_id: chat, message_id: q.message.message_id, text, parse_mode: 'HTML', disable_web_page_preview: true, ...(markup ? { reply_markup: markup } : {}) });
   if (act === 'rv') {
     const ph = await env.DB.get('rvph:' + id); if (!ph) { await answer('Дякуємо!'); return true; }
     const n = Math.max(1, Math.min(5, +v || 0)), s = await getSite(env), m = dayKey().slice(0, 7);
@@ -242,6 +250,12 @@ export async function guestText(m, env) {
   const ph = await env.DB.get('rvtxt:' + m.from?.id); if (!ph || !m.text || m.text.startsWith('/')) return false;
   await env.DB.delete('rvtxt:' + m.from.id);
   await notify(env, `📝 Відгук гостя ${fmtPhone(ph)}:\n<i>${esc(m.text.slice(0, 800))}</i>`); await logEvent(env, { k: 'shift', text: `📝 Відгук гостя: ${m.text.slice(0, 200)}` });
-  await tg(env, 'sendMessage', { chat_id: m.chat.id, text: '🙏 Дякуємо! Передали власнику.' }); return true;
+  await gtg(env, 'sendMessage', { chat_id: m.chat.id, text: '🙏 Дякуємо! Передали власнику.' }); return true;
 }
 export async function ratings(env, from, to) { const ms = [...new Set([from.slice(0, 7), to.slice(0, 7)])]; const l = (await Promise.all(ms.map(m => env.DB.get('rate:' + m, 'json')))).flat().filter(x => x && x.d >= from && x.d <= to); return { n: l.length, avg: l.length ? Math.round(l.reduce((a, x) => a + x.n, 0) / l.length * 10) / 10 : 0 }; }
+
+// будь-яке інше повідомлення гостя — коротка довідка
+export async function guestHello(m, env) {
+  const s = await getSite(env);
+  await gtg(env, 'sendMessage', { chat_id: m.chat.id, text: `👋 Це бот гостей <b>${esc(s.name)}</b>.\nТут приходять підтвердження броні, нагадування й бонуси.\n\n🌐 Сайт: https://666blackmuxa666.github.io/VARVAR/about.html\n📞 ${esc(s.phone)}`, parse_mode: 'HTML', disable_web_page_preview: true });
+}
