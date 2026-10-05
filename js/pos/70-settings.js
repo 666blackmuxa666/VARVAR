@@ -53,10 +53,14 @@
       <div class="card"><h3>🤖 Увійшли в Telegram-бот</h3><div class="scrollbox">${st ? st.waiters.map(w => `<div class="kv"><span>${esc(w.name || w.uid)}</span><button class="btn sm red" data-a="wOut" data-uid="${w.uid}">Вийти</button></div>`).join('') || '<div class="muted">Нікого</div>' : '…'}</div></div>
       <div class="card"><h3>🔑 Паролі</h3><div class="muted set-note">Пароль офіціанта — вхід у бот і касу; пароль адміна — адмін-функції.</div>
         <div class="btnrow"><button class="btn sm" data-a="wPass">Пароль офіціанта</button><button class="btn sm" data-a="aPass">Пароль адміна</button></div></div></div>`;
+    const tg = (k, l, hint) => `<div class="kv press" data-a="cfgTgl" data-k="${k}"><span>${l}<br><small class="muted">${hint}</small></span><span class="switch ${c[k] ?? 0 ? 'on' : ''}"></span></div>`;
     part.rules = `<div class="grid2 set">
       <div class="card"><h3>💰 Гроші</h3>
         ${row('🏷 Макс. знижка офіціанта', (c.discMax ?? 20) + '%', ch('cfg', ' data-k="discMax"'), 'Більшу знижку дає лише адміністратор')}
         ${row('👨‍🍳 Частка кухні від чайових', (st?.kpct ?? 20) + '%', ch('kpct'), `Плюс «подяка кухні» від гостя; порівну між кухарями на зміні${st?.cooks?.length ? ` (зараз: ${st.cooks.map(esc).join(', ')})` : ' (сьогодні ще нікого — піде в «👨‍🍳 Кухня»)'}`)}</div>
+      <div class="card"><h3>🌙 День і Z-звіт</h3>
+        ${row('🕒 Робочий день закінчується о', String(c.dayH ?? 3).padStart(2, '0') + ':00', ch('cfg', ' data-k="dayH"'), 'Чеки до цієї години рахуються в попередній день (0–8)')}
+        ${tg('autoZ', '🤖 Автоматичний Z-звіт', 'Сам закриває день, якщо Z не закрили вручну')}${tg('zPrint', '🖨 Друкувати авто-Z', 'На принтері каси')}${tg('zTg', '✈️ Надсилати Z у Telegram', 'Звіт приходить у групу персоналу')}${tg('zRemind', '🔔 Нагадувати про незакритий Z', 'Якщо автоматичний Z вимкнено')}</div>
       <div class="card"><h3>👷 Зміни</h3>
         ${row('⏰ Запізнення рахується після', (c.lateMin ?? 10) + ' хв', ch('cfg', ' data-k="lateMin"'), 'Від запланованого часу початку зміни')}
         ${row('➖ Штраф за запізнення', (c.lateFine ?? 0) + ' ₴', ch('cfg', ' data-k="lateFine"'), '0 — без штрафу; адмін вирішує кнопкою «✅ + штраф»')}</div>

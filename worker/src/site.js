@@ -264,6 +264,7 @@ export async function reviewQueue(env, ph, sum) { if (!ph) return; const c = awa
 export async function cron(env) {
   const now = Date.now(), out = [];
   await (await import('./courier.js')).courWatch(env).catch(() => {}); // 🛵 ніхто не взяв доставку
+  await autoDay(env).catch(e => console.log('autoZ', e.message)); // 🌙 автоматичний Z за минулий день
   // відгуки
   const due = await L(env, 'revq', async () => { const q = (await env.DB.get('revq', 'json')) || [], d = q.filter(x => x.at <= now); if (d.length) await env.DB.put('revq', JSON.stringify(q.filter(x => x.at > now))); return d; });
   for (const r of due) { await guestMsg(env, r.ph, '🙏 Дякуємо, що завітали у Varvar! Як вам усе сподобалось?', { inline_keyboard: [[1, 2, 3, 4, 5].map(n => ({ text: '⭐'.repeat(n === 5 ? 1 : 0) + n, callback_data: `rv:${r.id}:${n}` }))] }); await env.DB.put('rvph:' + r.id, r.ph, { expirationTtl: 7 * 86400 }); out.push('rv'); }
@@ -311,4 +312,14 @@ export async function ratings(env, from, to) { const ms = [...new Set([from.slic
 export async function guestHello(m, env) {
   const s = await getSite(env);
   await gtg(env, 'sendMessage', { chat_id: m.chat.id, text: `👋 Це бот гостей <b>${esc(s.name)}</b>.\nТут приходять підтвердження броні, нагадування й бонуси.\n\n🌐 Сайт: https://666blackmuxa666.github.io/VARVAR/about.html\n📞 ${esc(s.phone)}`, parse_mode: 'HTML', disable_web_page_preview: true });
+}
+
+// 🌙 минув робочий день: автоматичний Z (якщо увімкнено) або нагадування адміну (якщо Z не закрили)
+async function autoDay(env) {
+  const o = await import('./ops.js'), c = await o.getCfg(env), prev = o.dayKey(Date.now() - 864e5), flag = 'autoz:' + prev;
+  if (await env.DB.get(flag)) return; const d = await env.DB.get('day:' + prev, 'json'); if (!d || !d.tables) { await env.DB.put(flag, '-', { expirationTtl: 3 * 86400 }); return; }
+  if ((await env.DB.get('z:' + prev, 'json'))?.length) { await env.DB.put(flag, 'had', { expirationTtl: 3 * 86400 }); return; }
+  await env.DB.put(flag, '1', { expirationTtl: 3 * 86400 });
+  if (c.autoZ) { const z = await o.dayZ(env, '🌙 авто', !!c.zPrint, prev); if (c.zTg) await notify(env, `🌙 <b>Автоматичний Z-звіт</b>\n${o.zDayText ? o.zDayText(z) : `${prev}: ${z.total} грн · чеків ${z.checks}`}`); }
+  else if (c.zRemind) await notify(env, `🌙 День ${prev.slice(8)}.${prev.slice(5, 7)} закінчився, а Z-звіт не закрито. Каса → «🧾 Z-звіт», або увімкніть автоматичний Z у Налаштуваннях.`);
 }

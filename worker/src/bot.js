@@ -648,7 +648,7 @@ async function handleCallback(q, env) {
   if (/^sk/.test(act)) { // 🧮 розрахунок
     if (!admin) return answer('🔐 Лише для адміністратора');
     const r = (await stockCallback(act, arg, env, uid, who)) || (await stockCallbackW(act, arg, oid, env, uid, who)) || (await stockCallbackX(act, arg, env, uid, who));
-    if (r) { if (['skis', 'skix', 'skipp'].includes(act)) await edit(r.text, r.markup); else await send(r); }
+    if (r) { if (['skis', 'skix', 'skipp', 'skim'].includes(act)) await edit(r.text, r.markup); else await send(r); }
     return answer('');
   }
   if (act === 'bk') { // 📅 бронь: ok / no / came / noshow / kit
