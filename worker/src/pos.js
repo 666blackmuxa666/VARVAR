@@ -59,6 +59,7 @@ export async function posApi(b, req, env) {
     if (b.op === 'courCash') { if (!admin) return needAdmin(); const r = await courCashGive(env, String(b.n), +b.sum, who); await logEvent(env, { k: 'shift', by: who, text: `💵 Отримано від кур'єра ${b.n}: ${+b.sum} ₴` }); return ok({ r }); }
   }
 
+  if (['move', 'split'].includes(b.op) && !(+b.to >= 1 && +b.to <= tablesCount(env))) return [{ error: 'Переносити можна лише на стіл залу' }, 400]; // не на 1005 / 99999
   switch (b.op) {
     case 'logout': await env.DB.delete('pos:' + token); return ok();
     case 'state': {

@@ -334,7 +334,7 @@ async function _moveTable(env, a, b, who) {
   await env.DB.delete('bill:' + a);
   await kqMut(env, l => { for (const e of l) if (!e.done && e.t === a) e.t = b; }); // кухня бачить новий номер стола
   // статуси замовлень гостей переходять на новий стіл
-  await logEvent(env, { k: 'move', t: b, from: a, by: who, text: merged ? `стіл ${tn(a)} об'єднано зі столом ${tn(b)}` : `стіл ${tn(a)} → ${b}` });
+  await logEvent(env, { k: 'move', t: b, from: a, by: who, text: merged ? `стіл ${tn(a)} об'єднано зі столом ${tn(b)}` : `стіл ${tn(a)} → ${tn(b)}` });
   return { merged };
 }
 
