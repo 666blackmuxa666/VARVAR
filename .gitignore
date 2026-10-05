@@ -8,3 +8,4 @@ worker/.dev.vars
 worker/.tgsecret
 printer/varvar-print.config.json
 printer/*.zip
+js/pos.joined.tmp.js
