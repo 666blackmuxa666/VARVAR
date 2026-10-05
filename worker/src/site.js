@@ -107,6 +107,8 @@ export async function bookPre(b, env) {
   await notify(env, `🍽 Передзамовлення до броні ${x.date.slice(8)}.${x.date.slice(5, 7)} о ${x.time} · ${esc(x.name)}:\n${lines.map(esc).join('\n')}`, { inline_keyboard: bkButtons(x) });
   return [{ ok: true, n: lines.length }, 200];
 }
+// пошук броні за id (з індексом bkm:) — для бота, без обмеження «14 днів»
+export const bookGet = (env, id) => /^\d{8}[a-f0-9]{6}$/.test(id || '') ? bkFind(env, id) : null;
 export async function bookStatus(env, id) {
   if (!/^\d{8}[a-f0-9]{6}$/.test(id || '')) return null; const x = await bkFind(env, id);
   return x && { st: x.st, date: x.date, time: x.time, people: x.people, kind: x.kind, pre: x.pre || [] };

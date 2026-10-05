@@ -4,17 +4,18 @@
 import { getMenu, handleMenuText, handleMenuPhoto, HELP as MENU_HELP } from './menu.js';
 import { tn, isGo } from './tn.js';
 import { courCashGive } from './courier.js';
-import { bookList, bookSet, bkLabel, bkButtons, certPay, getSite, setSite } from './site.js';
+import { bookList, bookSet, bookGet, bookManual, bookEditFields, bkLabel, bkButtons, certPay, getSite, setSite } from './site.js';
 import { goSet, goStLabel, goButtons, goList, goText, setGoCfg, goFromPos, goAttach, normPhone, fmtPhone } from './delivery.js';
 import { parseWaiterOrder, draftText } from './waiter.js';
 import { tablePick, catsView, obCallback, getOb, putOb } from './orderui.js';
 import { queuePrint, printStatus } from './print.js';
 import { payroll, payText, payOp, attConfirm, swapStep, shiftIn, shiftOut, getAtt } from './pay.js';
-import { calcView, stockCmd, invPhoto, stockCallback, stockCallbackW } from './stockbot.js';
+import { calcView, stockCmd, invPhoto, stockCallback, stockCallbackW, stockCallbackX, stockState } from './stockbot.js';
 import {
   L, tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
   precheck, setDiscount, splitTable, restoreVoid, getVoids, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
   reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, tipBalances, payTips, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenPct, rejectOrder, kitchenStats, getKq, kitchenDone, kitchenStart, restoreClosed, reopenClosed, restoreTable, restoreExpense, balances, reconcile, WAITER_DISC_MAX, getCfg, setCfg, CFG_LIM, zText, reportBreakdown, samePass, adminPass, waiterPass, isAdmin, isWaiter, getStaff, addStaff, delStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
+  getMov, delMove, restoreMove, delZ, restoreZ, pinHash, isDay,
 } from './ops.js';
 export { tg, esc, hhmm, getBill } from './ops.js';
 export { addStat, addDishes } from './ops.js';
@@ -149,7 +150,7 @@ async function cashView(env) {
       z.mvCash || z.mvCard ? `🔁 Рух коштів: готівка ${money(z.mvCash)}${z.mvCard ? `, картка ${money(z.mvCard)}` : ''}` : '',
       z.openTables ? `⏳ Ще відкрито в залі: ${money(z.openSum)} (${z.openTables} ст.)` : '',
       ...(tb.length ? ['\n💝 <b>Чайові до видачі</b> (не виручка):', ...tb.map(([n, v]) => `👤 ${esc(n)}: ${money(v)}`)] : [])].filter(x => x !== '').join('\n'),
-    markup: { inline_keyboard: [[{ text: '🧾 Z-звіт (друк)', callback_data: 'zday' }], [{ text: '💸 Витрати сьогодні', callback_data: 'exlist' }], [{ text: '➕ Внести', callback_data: 'cmvp' }, { text: '➖ Вилучити', callback_data: 'cmvm' }, { text: '🔁 Обмін', callback_data: 'cmvx' }], [{ text: `👨‍🍳 Частка кухні від чайових: ${await kitchenPct(env)}%`, callback_data: 'kpct' }], ...await (async () => { const c = await getCfg(env); return [[{ text: `🏷 Макс. знижка офіціанта: ${c.discMax}%`, callback_data: 'cfg:discMax' }], [{ text: `⏱ Замовлення після QR: ${c.scanMin} хв`, callback_data: 'cfg:scanMin' }]]; })(), [{ text: '✏️ Звірити готівку', callback_data: 'rcn:cash' }, { text: '✏️ Звірити картку', callback_data: 'rcn:card' }], ...tb.map(([n, v]) => [{ text: `💝 Видано: ${n} · ${v}`, callback_data: ('tpay:' + n).slice(0, 60) }])] },
+    markup: { inline_keyboard: [[{ text: '🧾 Z-звіт (друк)', callback_data: 'zday' }], [{ text: '🔁 Рух коштів', callback_data: 'mvl' }, { text: '🔒 Закриття каси (Z)', callback_data: 'zl' }], [{ text: '💸 Витрати сьогодні', callback_data: 'exlist' }], [{ text: '➕ Внести', callback_data: 'cmvp' }, { text: '➖ Вилучити', callback_data: 'cmvm' }, { text: '🔁 Обмін', callback_data: 'cmvx' }], [{ text: `👨‍🍳 Частка кухні від чайових: ${await kitchenPct(env)}%`, callback_data: 'kpct' }], ...await (async () => { const c = await getCfg(env); return [[{ text: `🏷 Макс. знижка офіціанта: ${c.discMax}%`, callback_data: 'cfg:discMax' }], [{ text: `⏱ Замовлення після QR: ${c.scanMin} хв`, callback_data: 'cfg:scanMin' }]]; })(), [{ text: '✏️ Звірити готівку', callback_data: 'rcn:cash' }, { text: '✏️ Звірити картку', callback_data: 'rcn:card' }], ...tb.map(([n, v]) => [{ text: `💝 Видано: ${n} · ${v}`, callback_data: ('tpay:' + n).slice(0, 60) }])] },
   };
 }
 async function expListView(env) {
@@ -268,6 +269,70 @@ export const TEST_JOB = TEST_PRINT;
 const tablesGrid = (env, act, skip) => chunk(Array.from({ length: tablesCount(env) }, (_, i) => i + 1).filter(n => n !== skip).map(n => ({ text: String(n), callback_data: `${act}:${n}` })), 5);
 
 // ---------- повідомлення ----------
+// ---------- 📅 броні: дати, ➕ по телефону, ✏️ редагування (ті самі bookManual / bookEditFields, що й у касі) ----------
+const dm = d => `${d.slice(8)}.${d.slice(5, 7)}`;
+const addD = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+// «25.10» / «25.10.26» / «2026-10-25» → YYYY-MM-DD; без року — найближча (до місяця назад — цей рік)
+function parseDay(s) {
+  s = String(s || '').trim(); if (isDay(s)) return s;
+  const m = s.match(/^(\d{1,2})[./](\d{1,2})(?:[./](\d{2}|\d{4}))?$/); if (!m) return null;
+  const t = dayKey(), y = m[3] ? (m[3].length === 2 ? '20' + m[3] : m[3]) : t.slice(0, 4);
+  let d = `${y}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`; if (!m[3] && d < addD(t, -31)) d = `${+y + 1}${d.slice(4)}`;
+  return isDay(d) && new Date(d + 'T12:00:00Z').toISOString().slice(0, 10) === d ? d : null;
+}
+const bkLine = b => `${b.kind === 'banquet' ? '🎉' : '📅'} <b>${dm(b.date)} ${b.time}</b> · ${b.people} гост. · ${esc(b.name)} ${fmtPhone(b.phone)} · ${bkLabel(b.st)}${b.t ? ` · 🪑 стіл ${b.t}` : ''}${b.comment ? `\n💬 ${esc(b.comment)}` : ''}${b.note ? `\n📝 ${esc(b.note)}` : ''}${b.pre?.length ? `\n🍽 ${b.pre.map(esc).join(', ')}` : ''}`;
+const bkKb = b => ({ inline_keyboard: [...bkButtons(b), [{ text: '✏️ Змінити', callback_data: 'bke:' + b.id }]] });
+async function booksSend(env, send, from = dayKey(), to = addD(dayKey(), 14)) {
+  const l = await bookList(env, from, to), one = from === to, title = one ? `📅 Броні на ${dm(from)}` : `📅 Броні ${dm(from)}–${dm(to)}`;
+  const nav = { inline_keyboard: [[{ text: '◀️ ' + dm(addD(from, -1)), callback_data: 'bkd:' + addD(from, -1) }, { text: 'Сьогодні', callback_data: 'bkd:' + dayKey() }, { text: dm(addD(to, 1)) + ' ▶️', callback_data: 'bkd:' + addD(to, 1) }],
+    [{ text: '📆 Інша дата', callback_data: 'bkdd' }, { text: '➕ Нова бронь', callback_data: 'bkn' }]] };
+  for (const b of l.slice(0, 20)) await send({ text: bkLine(b), markup: bkKb(b) });
+  return send({ text: `${title}: ${l.length ? l.length + (l.length > 20 ? ' (показано 20)' : '') : 'немає'}\nТекстом: <code>броні 25.10</code> · <code>броні 25.10-30.10</code>`, markup: nav });
+}
+const BK_NEW_HELP = '➕ <b>Бронь по телефону</b> — одним рядком:\n<code>25.10 19:30 4 Олена 0671234567</code>\nможна дописати <code>стіл 5</code> і коментар у кінці: <code>… стіл 5 день народження</code>';
+async function bookNew(env, text, who) {
+  const m = text.trim().match(/^(\S+)\s+(\d{1,2}[:.]\d{2})\s+(\d{1,2})\s+(.+?)\s+(\+?[\d()-]{9,})(?:\s+(?:стіл|стол)\s*(\d+))?(?:\s+([\s\S]+))?$/i);
+  if (!m) return { text: '⚠️ Не зрозумів.\n\n' + BK_NEW_HELP };
+  const date = parseDay(m[1]); if (!date) return { text: '⚠️ Невірна дата. Формат: <code>25.10</code>' };
+  const x = await bookManual(env, { date, time: m[2].replace('.', ':'), people: m[3], name: m[4], phone: m[5], t: m[6] || 0, comment: m[7] || '' }, who);
+  return x.error ? { text: '⚠️ ' + x.error } : { text: '✅ Бронь записано\n' + bkLine(x), markup: bkKb(x) };
+}
+const BK_F = { date: '📆 Дата', time: '🕐 Час', people: '👥 Гостей', t: '🪑 Стіл', note: '📝 Нотатка', name: "👤 Імʼя", phone: '📞 Телефон' };
+const BK_ASK = { date: 'Нова дата, напр. <code>25.10</code>', time: 'Новий час, напр. <code>19:30</code>', people: 'Скільки гостей?', t: 'Номер стола (<code>0</code> — без стола)', note: 'Нотатка для персоналу (<code>-</code> — прибрати)', name: "Імʼя гостя", phone: 'Телефон гостя' };
+async function bookEditText(env, id, f, v, who) {
+  v = v.trim(); let val = v;
+  if (f === 'date') { val = parseDay(v); if (!val) return { text: '⚠️ Невірна дата. Формат: <code>25.10</code>' }; }
+  if (f === 'time') val = v.replace('.', ':');
+  if (f === 'people' && !(+v > 0)) return { text: '⚠️ Напишіть число гостей' };
+  if (f === 't') { if (!/^\d+$/.test(v)) return { text: '⚠️ Напишіть номер стола числом' }; val = +v; }
+  if (f === 'note' && v === '-') val = '';
+  const x = await bookEditFields(env, id, { [f]: val }, who);
+  return x.error ? { text: '⚠️ ' + x.error } : { text: '✏️ Змінено\n' + bkLine(x), markup: bkKb(x) };
+}
+
+// ---------- 🔁 рух коштів і 🔒 Z-звіти: перегляд, видалення / повернення (delMove/restoreMove, delZ/restoreZ — як у касі) ----------
+const dayNav = (act, day) => [{ text: '◀️ ' + dm(addD(day, -1)), callback_data: `${act}:${addD(day, -1)}` }, ...(day < dayKey() ? [{ text: dm(addD(day, 1)) + ' ▶️', callback_data: `${act}:${addD(day, 1)}` }] : [])];
+async function movView(env, day = dayKey()) {
+  const l = await getMov(env, day);
+  return { text: `🔁 <b>Рух коштів за ${dm(day)}</b>\n` + (l.length ? l.map(m => `${m.del ? '🗑 <s>' : ''}${m.at} · ${MOVE_ALL[m.type] || m.type} · ${money(m.sum)}${m.note ? ' · ' + esc(m.note) : ''}${m.by ? ' · ' + esc(m.by) : ''}${m.del ? '</s>' : ''}`).join('\n') : 'Записів немає.'),
+    markup: { inline_keyboard: [...chunk(l.map((m, i) => ({ text: `${m.del ? '↩️' : '🗑'} ${m.at} ${m.sum}`, callback_data: `${m.del ? 'mvbk' : 'mvdel'}:${i}:${day}` })), 3), dayNav('mvl', day)] } };
+}
+const getZs = async (env, day) => (await env.DB.get('z:' + day, 'json')) || [];
+async function zListView(env, day = dayKey()) {
+  const l = await getZs(env, day);
+  return { text: `🔒 <b>Закриття каси за ${dm(day)}</b>\n` + (l.length ? l.map((z, i) => `${z.del ? '🗑 <s>' : ''}${i + 1}) ${hhmm(z.opened)}–${hhmm(z.closed)} · виручка ${money(z.total)} · в касі ${money(z.inBox)}${z.diff ? ` · різниця ${z.diff > 0 ? '+' : ''}${z.diff}` : ''}${z.closedBy ? ' · ' + esc(z.closedBy) : ''}${z.del ? '</s>' : ''}`).join('\n') : 'Закриттів немає.'),
+    markup: { inline_keyboard: [...l.map((z, i) => [{ text: `🧾 ${i + 1}) деталі`, callback_data: `zv:${i}:${day}` }, z.del ? { text: '↩️ Повернути', callback_data: `zbk:${i}:${day}` } : { text: '🗑 Видалити', callback_data: `zdel:${i}:${day}` }]), dayNav('zl', day)] } };
+}
+
+// ---------- 👤 Telegram ↔ працівник (tgs:<uid> → id у staff; привʼязка — вибір себе зі списку + свій PIN каси) ----------
+const meStaff = async (env, uid) => { const id = uid && await env.DB.get('tgs:' + uid); return id ? (await getStaff(env)).find(s => s.id === id) || null : null; };
+const pickMeView = async env => { const st = await getStaff(env); return st.length ? { text: '👤 Хто ви? Оберіть себе — далі введіть свій PIN каси (один раз, потім бот вас памʼятає).', markup: { inline_keyboard: chunk(st.map(s => ({ text: s.name, callback_data: 'tgl:' + s.id })), 2) } } : { text: 'Персоналу ще немає — адмін додає в «👥 Персонал».' }; };
+async function shiftToggle(env, s) {
+  const a = (await getAtt(env))[dayKey()]?.[s.name], out = a?.in && !a.out;
+  const r = out ? await shiftOut(env, s.name) : await shiftIn(env, s.name);
+  return { text: r.error ? '⚠️ ' + r.error : out ? `🔴 <b>${esc(s.name)}</b>: зміну закінчено` : `🟢 <b>${esc(s.name)}</b>: зміну почато — адмін підтвердить` };
+}
+
 export async function handleUpdate(u, env) {
   if (u.callback_query) return handleCallback(u.callback_query, env);
   const m = u.message; if (!m) return;
@@ -291,7 +356,7 @@ export async function handleUpdate(u, env) {
   const state = uid && await env.DB.get('st:' + uid);
   if (state && text && !text.startsWith('/') && !Object.values(W).concat(Object.values(A)).includes(text)) {
     await env.DB.delete('st:' + uid);
-    if (['login', 'newpass', 'wlogin', 'newwpass', 'stfadd'].includes(state)) await tg(env, 'deleteMessage', { chat_id: chat, message_id: m.message_id }); // прибираємо паролі/PIN з чату
+    if (['login', 'newpass', 'wlogin', 'newwpass', 'stfadd'].includes(state) || state.startsWith('tgpin:')) await tg(env, 'deleteMessage', { chat_id: chat, message_id: m.message_id }); // прибираємо паролі/PIN з чату
     if (state === 'wlogin') {
       if (await tooMany()) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' }, { remove_keyboard: true });
       if (!samePass(text, await waiterPass(env)) && !samePass(text, await adminPass(env))) {
@@ -315,6 +380,17 @@ export async function handleUpdate(u, env) {
       return send({ text: `✅ Вітаю, ${esc(who)}! Ви в режимі адміністратора.\n\n` + ADMIN_HELP(env) }, ADMIN_KB);
     }
     if (state?.startsWith('bkt:') && waiter) { const r = await bookSet(env, state.slice(4), 'kit', who, { t: +text }); return send({ text: r?.error ? '⚠️ ' + r.error : `🔥 Передзамовлення відправлено на кухню · стіл ${+text}` }); }
+    if (state === 'bkd' && waiter) { const [a, b] = text.split(/\s*[-–]\s*/).map(parseDay); if (!a || (text.match(/[-–]/) && !b)) return send({ text: '⚠️ Формат: <code>25.10</code> або <code>25.10-30.10</code>' }); return booksSend(env, send, a, b && b > a ? b : a); }
+    if (state === 'bkn' && waiter) return send(await bookNew(env, text, who));
+    if (state.startsWith('bke:') && waiter) { const [, id, f] = state.split(':'); return send(await bookEditText(env, id, f, text, who)); }
+    if (state.startsWith('tgpin:') && waiter) { // 👤 привʼязка до працівника: PIN каси
+      const s = (await getStaff(env)).find(z => z.id === state.slice(6)); if (!s) return send({ text: 'Не знайдено' });
+      if (+(await env.DB.get('fail:' + uid) || 0) >= 5) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' });
+      if (s.pin !== await pinHash(text)) { await fail(); return send({ text: '❌ PIN не підходить. Напишіть «зміна», щоб спробувати ще раз.' }); }
+      await env.DB.put('tgs:' + uid, s.id);
+      return send({ text: `✅ Ви — <b>${esc(s.name)}</b>. Тепер «зміна» починає / закінчує вашу зміну.` });
+    }
+    if (state.startsWith('sk') && admin) { const r = await stockState(state, text, env, uid, who); if (r) return send(r); }
     if (state === 'gocon' && waiter) { // контакти для С‑/Д‑ з бота
       const p = await env.DB.get('gopend:' + uid, 'json'); await env.DB.delete('st:' + uid); if (!p) return send({ text: '⌛ Замовлення застаріло.' });
       const [name, phone, ...ad] = text.split(',').map(x => x.trim()), addr = ad.join(', ');
@@ -438,8 +514,9 @@ export async function handleUpdate(u, env) {
     return send({ text: `🖨 <b>Принтер</b>: ${ok ? '✅ на звʼязку' : seen ? `❌ немає звʼязку з ${hhmm(seen)}` : '❌ програма друку ще не запускалась'}\nУ черзі: ${q}`, markup: { inline_keyboard: [[{ text: '🖨 Тестовий друк', callback_data: 'ptest' }, { text: '🔳 QR меню', callback_data: 'pqr' }]] } });
   }
   if (text === W.kitchen || low === '/kitchen') return send(await kitchenView(env));
-  if (text === W.book || low === '/book' || low === 'броні') { const l = await bookList(env); if (!l.length) return send({ text: '📅 Броней на найближчі 2 тижні немає.' });
-    for (const b of l.slice(0, 15)) await send({ text: `${b.kind === 'banquet' ? '🎉' : '📅'} <b>${b.date.slice(8)}.${b.date.slice(5, 7)} ${b.time}</b> · ${b.people} гост. · ${esc(b.name)} ${fmtPhone(b.phone)} · ${bkLabel(b.st)}${b.comment ? `\n💬 ${esc(b.comment)}` : ''}${b.pre?.length ? `\n🍽 ${b.pre.map(esc).join(', ')}` : ''}`, markup: { inline_keyboard: bkButtons(b) } }); return; }
+  if (text === W.book || low === '/book' || low === 'броні') return booksSend(env, send);
+  if ((x = text.match(/^броні\s+(\S+?)(?:\s*[-–]\s*(\S+))?$/i))) { const a = parseDay(x[1]), b = x[2] ? parseDay(x[2]) : a; if (!a || !b) return send({ text: '⚠️ Формат: <code>броні 25.10</code> або <code>броні 25.10-30.10</code>' }); return booksSend(env, send, a, b > a ? b : a); }
+  if ((x = text.match(/^бронь\s+([\s\S]+)$/i))) return send(await bookNew(env, x[1], who));
   { const m2 = text.match(/^сайт(?:\s+(\S+)\s*([\s\S]*))?$/i); if (m2 && admin) { // 🌐 сайт телефон … · сайт години 11:00-23:00 · сайт акція Назва — опис · сайт акція видалити N
     const k = (m2[1] || '').toLowerCase(), v = (m2[2] || '').trim(), s0 = await getSite(env);
     if (!k) return send({ text: `🌐 <b>Сайт-візитка</b>\n${esc(s0.name)} · ${esc(s0.phone)} · ${s0.from}–${s0.to}\n📍 ${esc(s0.addr)}\n⭐ ${s0.rating || '—'} (${s0.ratingN})\nАкції: ${s0.promos.map((p, i) => `${i + 1}) ${esc(p.t)}`).join('; ') || '—'}\n\nКоманди: <code>сайт телефон …</code>, <code>сайт адреса …</code>, <code>сайт години 11:00-23:00</code>, <code>сайт опис …</code>, <code>сайт рейтинг 4.8 120</code>, <code>сайт інстаграм …</code>, <code>сайт акція Назва — опис</code>, <code>сайт акція видалити 1</code>\n${'https://666blackmuxa666.github.io/VARVAR/about.html'}` });
@@ -491,11 +568,12 @@ export async function handleUpdate(u, env) {
     return send({ text: `✔ ${{ bonus: '➕ Премія', fine: '➖ Штраф', adv: '💵 Аванс' }[t]}: <b>${esc(n)}</b> ${money(r.op.sum)}${t === 'adv' ? (card ? ' з картки' : ' з каси') : ''}${note ? ' · ' + esc(note) : ''}` });
   }
   if (low === '/зміна' || low === 'зміна' || low === '/shift') {
-    const st = await getStaff(env); if (!st.some(z => z.name === who)) return send({ text: `Почати зміну можна в касі (кнопка «🟢 Почати зміну») — імʼя в Telegram «${esc(who)}» не збігається з жодним працівником.` });
-    const a = (await getAtt(env))[dayKey()]?.[who];
-    const r = a?.in && !a.out ? await shiftOut(env, who) : await shiftIn(env, who);
-    return send({ text: r.error ? '⚠️ ' + r.error : a?.in && !a.out ? '🔴 Зміну закінчено' : '🟢 Зміну почато — адмін підтвердить' });
+    let me = await meStaff(env, uid);
+    if (!me) { const st = await getStaff(env), byName = st.filter(z => z.name.toLowerCase() === who.toLowerCase()); if (byName.length !== 1) return send(await pickMeView(env)); return send({ text: `👤 Ви — <b>${esc(byName[0].name)}</b>? Підтвердіть PIN каси (один раз).`, markup: { inline_keyboard: [[{ text: '✅ Так, це я', callback_data: 'tgl:' + byName[0].id }, { text: 'Ні, інший', callback_data: 'tgw' }]] } }); }
+    return send(await shiftToggle(env, me));
   }
+  if (low === 'хто я' || low === '/me') { const me = await meStaff(env, uid); return send(me ? { text: `👤 Ви — <b>${esc(me.name)}</b>`, markup: { inline_keyboard: [[{ text: '🔓 Відвʼязати', callback_data: 'tgu' }]] } } : await pickMeView(env)); }
+
 
   // --- 🧮 розрахунок: склад, списання, заготовки, інвентаризація, техкарти ---
   if (text === A.calc) return send(await calcView(env));
@@ -553,15 +631,24 @@ async function handleCallback(q, env) {
   }
   if (/^sk/.test(act)) { // 🧮 розрахунок
     if (!admin) return answer('🔐 Лише для адміністратора');
-    const r = (await stockCallback(act, arg, env, uid, who)) || (await stockCallbackW(act, arg, oid, env, uid, who));
+    const r = (await stockCallback(act, arg, env, uid, who)) || (await stockCallbackW(act, arg, oid, env, uid, who)) || (await stockCallbackX(act, arg, env, uid, who));
     if (r) { if (['skis', 'skix', 'skipp'].includes(act)) await edit(r.text, r.markup); else await send(r); }
     return answer('');
   }
   if (act === 'bk') { // 📅 бронь: ok / no / came / noshow / kit
-    if (oid === 'kit') { const b0 = (await bookList(env)).find(x => x.id === arg); if (!b0?.t) { await env.DB.put('st:' + uid, 'bkt:' + arg, { expirationTtl: 600 }); await send({ text: '🪑 Номер стола для передзамовлення?' }); return answer(''); } }
+    if (oid === 'kit') { const b0 = await bookGet(env, arg); if (b0 && !b0.t) { await env.DB.put('st:' + uid, 'bkt:' + arg, { expirationTtl: 600 }); await send({ text: '🪑 Номер стола для передзамовлення?' }); return answer(''); } }
     const r = await bookSet(env, arg, oid, who); if (!r || r.error) return answer(r?.error || 'Не знайдено');
     return answer(bkLabel(oid === 'kit' ? 'ok' : oid));
   }
+  if (act === 'bkd') { if (!isDay(arg)) return answer(''); await booksSend(env, send, arg, arg); return answer(''); }
+  if (act === 'bkdd') { await env.DB.put('st:' + uid, 'bkd', { expirationTtl: 600 }); await send({ text: '📆 Яка дата? <code>25.10</code> або період <code>25.10-30.10</code>' }); return answer(''); }
+  if (act === 'bkn') { await env.DB.put('st:' + uid, 'bkn', { expirationTtl: 900 }); await send({ text: BK_NEW_HELP }); return answer(''); }
+  if (act === 'bke') { const b = await bookGet(env, arg); if (!b) return answer('Не знайдено');
+    await send({ text: '✏️ Що змінити?\n' + bkLine(b), markup: { inline_keyboard: chunk(Object.entries(BK_F).map(([f, t]) => ({ text: t, callback_data: `bkef:${b.id}:${f}` })), 3) } }); return answer(''); }
+  if (act === 'bkef') { if (!BK_F[oid] || !await bookGet(env, arg)) return answer('Не знайдено'); await env.DB.put('st:' + uid, `bke:${arg}:${oid}`, { expirationTtl: 600 }); await send({ text: `${BK_F[oid]}: ${BK_ASK[oid]}` }); return answer(''); }
+  if (act === 'tgl') { const s = (await getStaff(env)).find(z => z.id === arg); if (!s) return answer('Не знайдено'); await env.DB.put('st:' + uid, 'tgpin:' + s.id, { expirationTtl: 300 }); await send({ text: `🔑 <b>${esc(s.name)}</b>: введіть свій PIN каси (повідомлення одразу видалиться)` }); return answer(''); }
+  if (act === 'tgw') { await send(await pickMeView(env)); return answer(''); }
+  if (act === 'tgu') { await env.DB.delete('tgs:' + uid); await edit('🔓 Відвʼязано. «зміна» — привʼязати знову.'); return answer(''); }
   if (act === 'cc') { // 🛵 адмін отримав готівку від кур'єра
     if (!admin) return answer('🔐 Лише для адміністратора');
     const n = decodeURIComponent(arg), r = await courCashGive(env, n, +oid, who); await edit(`${q.message?.text ? esc(q.message.text) : ''}\n\n✅ Отримав ${oid} ₴ — <b>${esc(who)}</b>`); return answer(r ? 'Записано' : '');
@@ -692,7 +779,7 @@ async function handleCallback(q, env) {
     const v = await stopView(env); await edit(v.text, v.markup); return answer(it ? `${it.name.uk} знову в меню` : 'Не знайдено');
   }
   // лише адміністратор
-  if (['del', 'delok', 'wifiask', 'wifiok', 'dc', 'dcok', 'cv', 'cvb', 'cvp', 'rst1', 'rst2', 'exs', 'exdel', 'exdelok', 'float', 'exlist', 'shop', 'shopl', 'shcl', 'cmv', 'cmvx', 'cmvp', 'cmvm', 'zday', 'rcn', 'kpct', 'cfg', 'cvro', 'cvbk', 'vbk', 'tbk', 'exbk', 'tpay', 'tpc', 'tpk', 'rp', 'stfadd', 'stfdel', 'wout'].includes(act) && !admin) return answer('🔐 Лише для адміністратора');
+  if (['del', 'delok', 'wifiask', 'wifiok', 'dc', 'dcok', 'cv', 'cvb', 'cvp', 'rst1', 'rst2', 'exs', 'exdel', 'exdelok', 'float', 'exlist', 'shop', 'shopl', 'shcl', 'cmv', 'cmvx', 'cmvp', 'cmvm', 'zday', 'rcn', 'kpct', 'cfg', 'cvro', 'cvbk', 'vbk', 'tbk', 'exbk', 'tpay', 'tpc', 'tpk', 'rp', 'stfadd', 'stfdel', 'wout', 'mvl', 'mvdel', 'mvdok', 'mvbk', 'zl', 'zv', 'zdel', 'zdok', 'zbk'].includes(act) && !admin) return answer('🔐 Лише для адміністратора');
   if (act === 'del') {
     const b = await getBill(env, arg);
     if (!b.total) return answer(`Стіл ${tn(arg)} вже порожній`);
@@ -726,6 +813,14 @@ async function handleCallback(q, env) {
   if (act === 'tpay') { const name = q.data.slice(5); const b = await tipBalances(env); if (!b[name]) return answer('Нема що видавати');
     await send({ text: `💝 Видати чайові <b>${esc(name)}</b> — ${money(b[name])}\nЗвідки списати?`, markup: { inline_keyboard: [[{ text: '💵 Готівкою з каси', callback_data: ('tpc:' + name).slice(0, 60) }, { text: '💳 З картки', callback_data: ('tpk:' + name).slice(0, 60) }], [{ text: 'Скасувати', callback_data: 'no' }]] } }); return answer(''); }
   if (act === 'tpc' || act === 'tpk') { const name = q.data.slice(4); const s = await payTips(env, name, who, act === 'tpk' ? 'card' : 'cash'); if (!s) return answer('Нема що видавати'); await edit(`💝 Видано чайові: <b>${esc(name)}</b> — ${money(s)} ${act === 'tpk' ? '💳 з картки' : '💵 готівкою'}`); return answer('Видано'); }
+  if (act === 'mvl' || act === 'zl') { const d = isDay(arg) ? arg : dayKey(), v = act === 'mvl' ? await movView(env, d) : await zListView(env, d); if (arg) await edit(v.text, v.markup); else await send(v); return answer(''); }
+  if (act === 'mvdel' || act === 'zdel') { if (!isDay(oid)) return answer(''); await confirm(act === 'mvdel' ? '🗑 Видалити цей запис руху коштів? Залишки перерахуються.' : '🗑 Видалити це закриття каси (Z)?', `${act === 'mvdel' ? 'mvdok' : 'zdok'}:${arg}:${oid}`); return answer(''); }
+  if (['mvdok', 'mvbk', 'zdok', 'zbk'].includes(act)) { if (!isDay(oid)) return answer('');
+    const ok = await { mvdok: delMove, mvbk: restoreMove, zdok: delZ, zbk: restoreZ }[act](env, +arg, oid);
+    const v = act[0] === 'm' ? await movView(env, oid) : await zListView(env, oid); await (act.endsWith('ok') ? send(v) : edit(v.text, v.markup));
+    if (act.endsWith('ok')) await edit(ok ? '🗑 Видалено.' : 'Вже видалено.');
+    return answer(ok ? (act.endsWith('ok') ? 'Видалено' : 'Повернуто') : 'Без змін'); }
+  if (act === 'zv') { const z = isDay(oid) && (await getZs(env, oid))[+arg]; if (!z) return answer('Не знайдено'); await send({ text: (z.del ? '🗑 <b>(видалено)</b>\n' : '') + zText(z) }); return answer(''); }
   if (act === 'zday') { const z = await dayZ(env, who, true); await send({ text: zDayText(z) + '\n\n🖨 Надруковано' }); return answer('Z-звіт'); }
   if (act === 'cfg' && CFG_NAME[arg]) { await env.DB.put('st:' + uid, 'cfg:' + arg, { expirationTtl: 600 }); await send({ text: `⚙️ ${CFG_NAME[arg]}: зараз <b>${(await getCfg(env))[arg]}</b>\nНапишіть нове значення (${CFG_LIM[arg].join('–')}):` }); return answer(''); }
   if (act === 'kpct') { await env.DB.put('st:' + uid, 'kpct', { expirationTtl: 600 }); await send({ text: `👨‍🍳 Зараз кухні йде <b>${await kitchenPct(env)}%</b> від чайових офіціанта (+ «подяка кухні» від гостя), порівну між кухарями на зміні.\nНапишіть новий відсоток (0–100):` }); return answer(''); }

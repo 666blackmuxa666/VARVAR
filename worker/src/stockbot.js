@@ -1,7 +1,7 @@
 // 🧮 Розрахунок у Telegram-боті (паритет з касою): залишки, закупівля, накладні з фото, списання, заготовки, інвентаризація, техкарти, фудкост.
 import { esc, money, tg, dayKey } from './ops.js';
 import { getMenu } from './menu.js';
-import { WH, fq, norm, getIng, getCards, purchaseList, purchaseText, adjust, transfer, produce, invoiceSave, invList, invPay, matchLines, countSave, countFinish, countGet, cardSave, cardResolver, cardCost, unitCost, costReport, r3 } from './stock.js';
+import { WH, fq, norm, getIng, getCards, purchaseList, purchaseText, adjust, transfer, produce, invoiceSave, invList, invPay, matchLines, countSave, countFinish, countGet, ingSave, cardSave, cardResolver, cardCost, unitCost, costReport, r3 } from './stock.js';
 import { aiInvoice } from './ai.js';
 
 export const CALC_HELP = `🧮 <b>Розрахунок — команди</b>
@@ -12,6 +12,7 @@ export const CALC_HELP = `🧮 <b>Розрахунок — команди</b>
 <code>заготовка соус зелений 3</code>
 <code>інв кухня філе 14.5</code> … <code>інв кухня кінець</code>
 <code>техкарта Курочка: коржик 1, філе 130 г, салат 30 г</code>
+<code>штрихкод 4820000123456 сир фета</code> — привʼязати (без назви — знайти продукт)
 <code>залишки</code> · <code>закупівля</code>
 Кількість можна в г / мл: <code>250 г</code>`;
 
@@ -19,13 +20,15 @@ const tot = x => r3((x.st?.k || 0) + (x.st?.b || 0));
 // «сир фета 0.3 кг зіпсувався» → { x, q, rest }
 function findQ(l, s) {
   const m = String(s).match(/^(.+?)\s+(\d+(?:[.,]\d+)?)\s*(кг|г|гр|л|мл|шт)?\.?(?:\s+(.*))?$/i); if (!m) return null;
-  const name = norm(m[1]), cands = l.filter(x => !x.off);
-  const x = cands.find(y => norm(y.n) === name) || cands.find(y => norm(y.n).startsWith(name)) || cands.find(y => norm(y.n).includes(name)) || cands.find(y => name.split(' ').every(w => norm(y.n).includes(w)));
-  if (!x) return { miss: m[1] };
-  let q = +m[2].replace(',', '.'); const u = (m[3] || '').toLowerCase();
-  if ((u === 'г' || u === 'гр') && x.u === 'кг') q /= 1000; if (u === 'мл' && x.u === 'л') q /= 1000;
-  return { x, q: r3(q), rest: (m[4] || '').trim() };
+  const x = pick(l, m[1]); if (!x) return { miss: m[1] };
+  return { x, q: toU(x, m[2], m[3]), rest: (m[4] || '').trim() };
 }
+function pick(l, s) {
+  const name = norm(s), cands = l.filter(x => !x.off);
+  return cands.find(y => norm(y.n) === name) || cands.find(y => norm(y.n).startsWith(name)) || cands.find(y => norm(y.n).includes(name)) || cands.find(y => name.split(' ').every(w => norm(y.n).includes(w)));
+}
+// «250 г» для продукту в кг → 0.25
+function toU(x, n, u) { let q = +String(n).replace(',', '.'); u = (u || '').toLowerCase(); if ((u === 'г' || u === 'гр') && x.u === 'кг') q /= 1000; if (u === 'мл' && x.u === 'л') q /= 1000; return r3(q); }
 
 export async function calcView(env) {
   const [l, buy, inv] = await Promise.all([getIng(env), purchaseList(env), invList(env, 1)]);
@@ -34,7 +37,8 @@ export async function calcView(env) {
   return { text: [`🧮 <b>Розрахунок</b>`, `📦 На складах: <b>${money(val)}</b> · продуктів ${live.length}`,
     low.length ? `⚠️ Нижче мінімуму: ${low.slice(0, 8).map(i => esc(i.n)).join(', ')}${low.length > 8 ? '…' : ''}` : '✅ Усього вистачає',
     debts.length ? `💸 Борги постачальникам: ${debts.map(([n, s]) => `${esc(n)} ${money(s.debt)}`).join(', ')}` : '', '', CALC_HELP].filter(x => x !== '').join('\n'),
-    markup: { inline_keyboard: [[{ text: '📦 Залишки', callback_data: 'skst' }, { text: '🛒 Закупівля', callback_data: 'skbuy' }], [{ text: '🧾 Накладні', callback_data: 'skinvl' }, { text: '📊 Фудкост · 7 днів', callback_data: 'skrep:w' }]] } };
+    markup: { inline_keyboard: [[{ text: '📦 Залишки', callback_data: 'skst' }, { text: '🛒 Закупівля', callback_data: 'skbuy' }], [{ text: '🧾 Накладні', callback_data: 'skinvl' }, { text: '📊 Фудкост · 7 днів', callback_data: 'skrep:w' }],
+      [{ text: '📝 Інвентаризація', callback_data: 'skcnm' }, { text: '🍳 Заготовки', callback_data: 'skprl' }], [{ text: '🔗 Штрихкод', callback_data: 'skbc' }]] } };
 }
 export async function stockText(env) {
   const l = (await getIng(env)).filter(x => !x.off).sort((a, b) => (a.cat || '').localeCompare(b.cat || '') || a.n.localeCompare(b.n));
@@ -81,6 +85,7 @@ export async function stockCmd(text, env, who) {
     const d = await countSave(env, wh, { [f.x.id]: f.q }, who), sys = f.x.st?.[wh] || 0, diff = r3(f.q - sys);
     return { text: `📝 ${WH[wh]}: <b>${esc(f.x.n)}</b> факт ${fq(f.q, f.x.u)} (система ${fq(sys, f.x.u)}${diff ? `, ${diff > 0 ? '+' : ''}${fq(diff, f.x.u)}` : ', ✓'})\nВнесено позицій: ${Object.keys(d.f).length}. Закінчити: <code>інв ${wh === 'b' ? 'бар' : 'кухня'} кінець</code>` };
   }
+  if ((m = t.match(/^(?:штрихкод|шк)\s+(\d{6,})\s*(.*)$/i))) return bcBind(env, m[1], m[2].trim(), who);
   if ((m = t.match(/^техкарта\s+(.+?)\s*:\s*(.+)$/is))) {
     const menu = await getMenu(env), res = cardResolver(menu), r = res(m[1].trim()) || (() => { const n = norm(m[1]); const it = menu.categories.flatMap(c => c.items).find(i => norm(i.name.uk) === n); return it ? { key: it.id, name: it.name.uk } : null; })();
     if (!r) return { text: `❓ Немає в меню страви «${esc(m[1])}»` };
@@ -148,5 +153,57 @@ export async function stockCallbackW(act, arg, opt, env, uid, who) { // з за�
     await env.DB.delete('invd:' + uid);
     return { text: `✅ Накладну записано: ${esc(r.inv.sup)} — ${money(r.inv.total)} · ${r.inv.lines.length} поз. · ${{ cash: '💵 з каси', card: '💳 з картки', debt: '⏳ в борг' }[r.inv.pay]}${r.alerts.length ? `\n🔺 Подорожчало: ${r.alerts.map(a => `${esc(a.n)} +${a.pct}%`).join(', ')}` : ''}` };
   }
+  return null;
+}
+
+// ---------- 📝 інвентаризація, 🍳 заготовки, 🔗 штрихкоди — кнопками (паритет з касою) ----------
+const ST_TTL = { expirationTtl: 1800 };
+async function countView(env, wh) {
+  const [d, l] = await Promise.all([countGet(env, wh), getIng(env)]), im = new Map(l.map(x => [x.id, x])), rows = Object.entries(d.f).map(([id, q]) => [im.get(id), q]).filter(([x]) => x);
+  return { text: [`📝 <b>Інвентаризація · ${WH[wh]}</b>`, rows.length ? rows.map(([x, q]) => { const sys = r3(x.st?.[wh] || 0), df = r3(q - sys); return `• ${esc(x.n)} — факт ${fq(q, x.u)} (система ${fq(sys, x.u)}${df ? `, ${df > 0 ? '+' : ''}${fq(df, x.u)}` : ', ✓'})`; }).join('\n') : 'Ще нічого не внесено.',
+    '', 'Надсилайте факт рядками: <code>філе 14.5</code>, <code>лимон 800 г</code> (можна кілька рядків в одному повідомленні). Не внесені продукти не змінюються.'].join('\n').slice(0, 4000),
+    markup: { inline_keyboard: [[{ text: '✅ Завершити й записати', callback_data: 'skcf:' + wh }, { text: '🔄 Оновити', callback_data: 'skcn:' + wh }]] } };
+}
+async function bcBind(env, code, name, who) {
+  const l = await getIng(env), had = l.find(y => !y.off && (y.bc || []).includes(code));
+  if (!name) return { text: had ? `🔎 ${code} → <b>${esc(had.n)}</b> (${fq(tot(had), had.u)})` : `❓ Штрихкод ${code} ні до чого не привʼязаний. Напишіть: <code>штрихкод ${code} назва продукту</code>` };
+  const x = pick(l, name); if (!x) return { text: `❓ Не знайшов продукт «${esc(name)}»` };
+  if (had && had.id !== x.id) return { text: `⚠️ Цей штрихкод уже привʼязаний до «${esc(had.n)}»` };
+  if (had) return { text: `✔ Вже привʼязано до <b>${esc(x.n)}</b>` };
+  const r = await ingSave(env, { ...x, bc: [...(x.bc || []), code] }, who); if (r.error) return { text: '⚠️ ' + r.error };
+  return { text: `🔗 Штрихкод ${code} привʼязано: <b>${esc(r.x.n)}</b>` };
+}
+// кнопки (з записом стану очікування вводу st:<uid>)
+export async function stockCallbackX(act, arg, env, uid, who) {
+  if (act === 'skcnm') return { text: '📝 Інвентаризація — який склад?', markup: { inline_keyboard: [[{ text: WH.k, callback_data: 'skcn:k' }, { text: WH.b, callback_data: 'skcn:b' }]] } };
+  if (act === 'skcn') { const wh = arg === 'b' ? 'b' : 'k'; await env.DB.put('st:' + uid, 'skcn:' + wh, ST_TTL); return countView(env, wh); }
+  if (act === 'skcf') { const wh = arg === 'b' ? 'b' : 'k', r = await countFinish(env, wh, who); if (r.error) return { text: '⚠️ ' + r.error }; await env.DB.delete('st:' + uid);
+    return { text: `📝 Інвентаризацію (${WH[wh]}) завершено: позицій ${r.doc.lines.length} · нестача ${money(-r.doc.short)} · надлишок ${money(r.doc.over)}` }; }
+  if (act === 'skprl') { const l = (await getIng(env)).filter(x => x.semi && !x.off), cards = await getCards(env);
+    if (!l.length) return { text: '🍳 Заготовок немає — створіть у касі: 🧮 Розрахунок → 🍳 Заготовки' };
+    return { text: '🍳 <b>Заготовки</b> — що приготували? (⚠️ — немає техкарти)', markup: { inline_keyboard: l.slice(0, 40).map(x => [{ text: `${cards['semi:' + x.id]?.yield > 0 ? '' : '⚠️ '}${x.n} · ${fq(tot(x), x.u)}`.slice(0, 60), callback_data: 'skpr:' + x.id }]) } }; }
+  if (act === 'skpr') { const x = (await getIng(env)).find(y => y.id === arg && y.semi); if (!x) return { text: 'Не знайдено' };
+    await env.DB.put('st:' + uid, 'skpr:' + x.id, ST_TTL); return { text: `🍳 <b>${esc(x.n)}</b>: скільки приготували? (у ${x.u}, можна <code>500 г</code>)` }; }
+  if (act === 'skbc') { await env.DB.put('st:' + uid, 'skbc', ST_TTL); return { text: '🔗 Надішліть штрихкод і назву продукту: <code>4820000123456 сир фета</code>\nАбо лише код — покажу, до чого привʼязаний.' }; }
+  return null;
+}
+// текст у стані очікування (st: бот уже видалив); null — не наш стан
+export async function stockState(state, text, env, uid, who) {
+  const [k, a] = state.split(':');
+  if (k === 'skcn') {
+    const wh = a === 'b' ? 'b' : 'k', l = await getIng(env), f = {}, miss = [];
+    for (const ln of text.split('\n').map(s => s.trim()).filter(Boolean)) { const x = findQ(l, ln); if (!x || x.miss) miss.push(ln); else f[x.x.id] = x.q; }
+    if (!Object.keys(f).length) return null; // жодного продукту — це не факт інвентаризації: режим знято, текст обробляється як звичайно
+    await env.DB.put('st:' + uid, state, ST_TTL); // далі приймаємо рядки, поки не «Завершити»
+    await countSave(env, wh, f, who);
+    const v = await countView(env, wh); if (miss.length) v.text = `❓ Не зрозумів: ${miss.map(esc).join(', ')}\n\n` + v.text; return v;
+  }
+  if (k === 'skpr') {
+    const x = (await getIng(env)).find(y => y.id === a); if (!x) return { text: 'Не знайдено' };
+    const m = text.match(/^(\d+(?:[.,]\d+)?)\s*(кг|г|гр|л|мл|шт)?\.?$/i); if (!m) return null;
+    const q = toU(x, m[1], m[2]), r = await produce(env, { id: x.id, q }, who); if (r.error) return { text: '⚠️ ' + r.error };
+    return { text: `🍳 Приготовано: <b>${esc(r.x.n)}</b> +${fq(q, x.u)} · собівартість ${money(r.cost)} (сировина списана за техкартою)\nЗалишок: ${fq(tot(r.x), r.x.u)}` };
+  }
+  if (k === 'skbc') { const m = text.match(/^(\d{6,})\s*(.*)$/); if (!m) return null; return bcBind(env, m[1], m[2].trim(), who); }
   return null;
 }
