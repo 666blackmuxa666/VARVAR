@@ -111,6 +111,33 @@ async function apiTests() {
     });
   } else rec('кур\'єр не зареєстрований — сценарій пропущено', false);
 
+  sect('Скасування доставки в касі → гість бачить «скасовано»');
+  const dev = 'qa-cx-' + RUN, goNew = (n = 1) => http('/api/go', { kind: 'del', name: 'QA Скасування', phone: '0670003' + String(Math.floor(Math.random() * 900) + 100), addr: 'вул. Тестова 3', when: '12:00', pay: 'cash', items: [{ id: dish.id, q: n }, { id: drink.id, q: 1 }], device: dev });
+  const gStatus = async id => { const o = await http('/api/orders?ids=' + id); const x = Array.isArray(o.j) ? o.j.find(y => y.id === id) || o.j[0] : o.j[id] || o.j.list?.find?.(y => y.id === id) || o.j; return { x, raw: JSON.stringify(o.j).slice(0, 200) }; };
+  await step('(1) /api/go → accept → kStart → delete стола → g=rej', async () => {
+    const r = await goNew(); must(r.status === 200 && r.j.ok, `go ${r.status} ${JSON.stringify(r.j)}`); const t = r.j.t, id = r.j.id;
+    await posOk(A, 'accept', { oid: id });
+    const k = (await posOk(A, 'kitchen')).list.filter(e => e.t === t && !e.done).pop(); must(k, 'немає картки на кухні'); await posOk(A, 'kStart', { id: k.id });
+    await posOk(A, 'delete', { t, reason: 'QA скасування' });
+    const s = await posOk(A, 'state'); must(!s.tables.some(x => x.t === t), 'рахунок ' + t + ' лишився');
+    const g = await gStatus(id); must(g.x?.g === 'rej', 'orders: ' + g.raw); return r.j.no;
+  });
+  await step('(2) /api/go → accept → remove кожної страви → рахунок зник, g=rej', async () => {
+    const r = await goNew(2); must(r.status === 200 && r.j.ok, `go ${r.status} ${JSON.stringify(r.j)}`); const t = r.j.t, id = r.j.id;
+    await posOk(A, 'accept', { oid: id });
+    for (let i = 0; i < 10; i++) {
+      const b = (await posOk(A, 'state')).tables.find(x => x.t === t); if (!b) break;
+      const it = b.items.find(x => !/Доставка/.test(x.name)); if (!it) throw new Error('лишився рахунок лише з доставкою: ' + JSON.stringify(b.items));
+      await posOk(A, 'remove', { t, name: it.name, reason: 'QA скасування' });
+    }
+    const s = await posOk(A, 'state'); must(!s.tables.some(x => x.t === t), 'рахунок ' + t + ' лишився');
+    const g = await gStatus(id); must(g.x?.g === 'rej', 'orders: ' + g.raw); return r.j.no;
+  });
+  await step('(3) той самий пристрій знову робить /api/go → 200', async () => {
+    const r = await goNew(); must(r.status === 200 && r.j.ok, `${r.status} ${JSON.stringify(r.j)}`);
+    await pos(A, 'delete', { t: r.j.t, reason: 'QA прибирання' }); return r.j.no;
+  });
+
   sect('Броні');
   let bid = '';
   const d0 = day(3), d1 = day(103);
