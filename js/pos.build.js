@@ -2331,6 +2331,34 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     };
     return head + tabs + `<div class="cr-cols t-${tab}"><section class="c-new"><h3>\u{1F195} \u041D\u043E\u0432\u0456</h3>${col.new}</section><section class="c-mine"><h3>\u{1F6F5} \u041C\u043E\u0457</h3>${col.mine}</section><section class="c-done"><h3>\u2705 \u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456</h3><div class="card">${col.done}</div></section></div>`;
   }
+  function goCtlHTML() {
+    var _a2;
+    if (!S.data.courAt || Date.now() - S.data.courAt > 3e4) {
+      S.data.courAt = Date.now();
+      api("courList").then((r) => {
+        S.data.cours = r;
+        if (S.view === "kq") renderMain();
+      }).catch(() => {
+      });
+    }
+    const all = Object.values(S.tables).filter((b) => b.t > 1e3 && b.t < 2e3 && b.go && !["done", "rej"].includes(b.go.st)).sort((a, b) => (a.go.accAt || a.go.at || 0) - (b.go.accAt || b.go.at || 0));
+    const fresh = all.filter((b) => !b.go.cour), act2 = all.filter((b) => b.go.cour);
+    const items = (b) => b.items.filter((i) => !i.name.includes("\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430")).map((i) => `${i.q}\xD7 ${esc(i.name)}`).join(", ");
+    const card = (b) => {
+      const g = b.go, late = g.st === "new" || !g.cour && minsAgo(g.accAt || g.at) >= 3;
+      return `<div class="cr-c st-${g.st}${g.prob ? " prob" : ""}${late && !g.cour ? " late" : ""}" data-t="${b.t}"><div class="cr-h"><b>${tn(b.t)}</b><span class="chip sm">${g.when ? "\u{1F550} " + g.when : "\u26A1"}</span><span class="chip sm">${GOST[g.st] || g.st}</span><small>${minsAgo(g.accAt || g.at)} \u0445\u0432</small></div>
+        <div>${g.cour ? `\u{1F6F5} <b>${esc(g.cour)}</b>${g.st === "road" && g.roadAt ? ` \xB7 \u0432 \u0434\u043E\u0440\u043E\u0437\u0456 ${minsAgo(g.roadAt)} \u0445\u0432` : ""}${g.etaC ? ` \xB7 \u23F1 \u0431\u0443\u0434\u0443 \u043E ${hhmm(g.etaC)}` : ""}` : "\u26A0\uFE0F <b>\u043A\u0443\u0440'\u0454\u0440\u0430 \u043D\u0435\u043C\u0430\u0454</b>"}</div>
+        ${g.prob ? `<div class="cr-prob">\u26A0\uFE0F ${esc(g.prob.text)}</div>` : ""}<div class="cr-addr">\u{1F4CD} ${esc(g.addr || "\u2014")}${g.ent ? ` \xB7 ${esc(g.ent)}` : ""} \xB7 \u{1F464} ${esc(g.name || "")}</div>
+        <div class="muted">\u{1F37D} ${items(b)}</div>
+        <div class="btnrow"><button class="btn sm${g.cour ? "" : " primary"}" data-a="goCourSet" data-t="${b.t}">\u{1F464} ${g.cour ? "\u0417\u043C\u0456\u043D\u0438\u0442\u0438 \u043A\u0443\u0440'\u0454\u0440\u0430" : "\u041F\u0440\u0438\u0437\u043D\u0430\u0447\u0438\u0442\u0438"}</button><button class="btn sm" data-a="table" data-t="${b.t}">\u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438</button></div></div>`;
+    };
+    const C = ((_a2 = S.data.cours) == null ? void 0 : _a2.list) || [], done = C.flatMap((c) => (c.list || []).map((x) => __spreadProps(__spreadValues({}, x), { n: c.name }))).sort((a, b) => (b.at || "").localeCompare(a.at || ""));
+    const route = act2.some((b) => b.go.addr) && all.length ? `<button class="btn sm" data-a="goMap">\u{1F5FA} \u041A\u0430\u0440\u0442\u0430 \xB7 ${act2.length + fresh.length}</button>` : "";
+    return `<div class="khead" style="margin-top:22px"><h1>\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0438 <span class="muted">${all.length}</span></h1><div class="btnrow">${route}</div></div>
+      <div class="cr-cols t-all"><section><h3>\u{1F195} \u041D\u043E\u0432\u0456${fresh.length ? ` \xB7 ${fresh.length}` : ""}</h3>${fresh.map(card).join("") || '<div class="cr-empty">\u041D\u043E\u0432\u0438\u0445 \u043D\u0435\u043C\u0430\u0454</div>'}</section>
+      <section><h3>\u{1F6F5} \u0412 \u0440\u043E\u0431\u043E\u0442\u0456${act2.length ? ` \xB7 ${act2.length}` : ""}</h3>${act2.map(card).join("") || '<div class="cr-empty">\u041D\u0456\u0445\u0442\u043E \u043D\u0435 \u0457\u0434\u0435</div>'}</section>
+      <section><h3>\u2705 \u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \xB7 ${done.length}</h3><div class="card">${done.map((x) => `<div class="kv"><span><b>${tn(x.t)}</b> \xB7 ${x.at} \xB7 ${esc(x.n)}${x.mins != null ? ` \xB7 ${x.mins} \u0445\u0432` : ""}</span><b class="money">${money(x.sum)} ${x.pay === "card" ? "\u{1F4B3}" : "\u{1F4B5}"}</b></div>`).join("") || '<div class="cr-empty">\u0429\u0435 \u043D\u0456\u0447\u043E\u0433\u043E</div>'}</div></section></div>`;
+  }
   function courCard() {
     var _a2, _b;
     const L = ((_b = (_a2 = S.data.cours) == null ? void 0 : _a2.list) == null ? void 0 : _b.filter((c) => c.n || c.left)) || [];
@@ -2655,7 +2683,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     };
     return `<div class="khead"><h1>\u{1F468}\u200D\u{1F373} \u0427\u0435\u0440\u0433\u0430 <span class="muted">${act0.length}</span></h1>${isCook() ? `<div class="stat tipstat">\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456<b class="money">${money(((_a2 = S.myTip) == null ? void 0 : _a2.sum) || 0)}</b></div>` : ""}<button class="btn" data-a="skKStock">\u{1F4E6} \u0421\u043A\u043B\u0430\u0434</button><button class="btn" data-a="view" data-v="stop">\u26D4 \u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442</button></div>
       <div class="kq f${S.kFont}">${act0.length ? act0.map(card).join("") : '<div class="kempty">\u2705 \u0427\u0435\u0440\u0433\u0430 \u043F\u043E\u0440\u043E\u0436\u043D\u044F</div>'}</div>
-      ${done.length ? `<h3 class="muted" style="margin:18px 0 8px">\u041E\u0441\u0442\u0430\u043D\u043D\u0456 \u0433\u043E\u0442\u043E\u0432\u0456</h3><div class="kdone">${done.map((e) => `<div class="kd">\u0421\u0442\u0456\u043B ${tn(e.t)} \xB7 ${e.items.filter((x) => !x.cancel).map((x) => `${x.q}\xD7 ${esc(x.n)}`).join(", ")}${e.cancelled ? " \xB7 \u274C \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E" : ` \xB7 ${Math.round((e.doneAt - e.ts) / 6e4)} \u0445\u0432`} <button class="btn sm" data-a="kUndo" data-id="${e.id}">\u21A9\uFE0F</button></div>`).join("")}</div>` : ""}`;
+      ${done.length ? `<h3 class="muted" style="margin:18px 0 8px">\u041E\u0441\u0442\u0430\u043D\u043D\u0456 \u0433\u043E\u0442\u043E\u0432\u0456</h3><div class="kdone">${done.map((e) => `<div class="kd">\u0421\u0442\u0456\u043B ${tn(e.t)} \xB7 ${e.items.filter((x) => !x.cancel).map((x) => `${x.q}\xD7 ${esc(x.n)}`).join(", ")}${e.cancelled ? " \xB7 \u274C \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E" : ` \xB7 ${Math.round((e.doneAt - e.ts) / 6e4)} \u0445\u0432`} <button class="btn sm" data-a="kUndo" data-id="${e.id}">\u21A9\uFE0F</button></div>`).join("")}</div>` : ""}${isAdmin() ? goCtlHTML() : ""}`;
   }
   function cashHTML() {
     const ctab = S.cashTab || "day", cseg = `<div class="seg rsec cseg">${[["day", "\u{1F4B0} \u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456"], ["checks", "\u{1F9FE} \u0427\u0435\u043A\u0438"]].map(([k, l]) => `<button class="${ctab === k ? "on" : ""}" data-a="cashTab" data-t="${k}">${l}</button>`).join("")}</div>`;
@@ -4667,7 +4695,7 @@ ${g.sup}:
     if (!G) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
     const people = G.staff.filter((s) => {
       var _a2, _b;
-      return !(G.hide || []).includes(s.name) && (((_a2 = s.pay) == null ? void 0 : _a2.rate) || ((_b = s.pay) == null ? void 0 : _b.pct) || (G.seen || []).includes(s.name) || G.days.some((d) => {
+      return s.role !== "courier" && !(G.hide || []).includes(s.name) && (((_a2 = s.pay) == null ? void 0 : _a2.rate) || ((_b = s.pay) == null ? void 0 : _b.pct) || (G.seen || []).includes(s.name) || G.days.some((d) => {
         var _a3, _b2;
         return ((_a3 = G.att[d]) == null ? void 0 : _a3[s.name]) || ((_b2 = G.plan[d]) == null ? void 0 : _b2[s.name]);
       }));
