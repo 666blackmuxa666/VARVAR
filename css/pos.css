@@ -733,7 +733,8 @@ body.noanim .tbl.calling,body.noanim .ev.call:not(.acc){outline:3px solid #ffd60
 .jr .jt { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .cash-grid > *, .opsg > *, .kpis > *, .pills > *, .mini > *, .ctrl-g > *, .actions > *, .widgets > *, .bal > *, .dash > *, .grid2 > *, .frow > * { min-width: 0; }
 /* 🛵 екран кур'єра */
-body.cour .app { grid-template-columns: var(--nav) 1fr; } body.cour #feed, body.cour .feed-btn { display: none !important; }
+@media (min-width: 981px) { body.cour .app { grid-template-columns: var(--nav) 1fr; } } /* на вузьких — звичайна мобільна розкладка */
+body.cour #feed, body.cour .feed-btn { display: none !important; }
 .cr-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; } .cr-top h1 { margin: 0; }
 .cr-k { grid-template-columns: repeat(3, 1fr) !important; }
 .cr-tabs { display: none; margin-bottom: 10px; } .cr-tabs .blink { animation: callbl 1s ease-in-out infinite alternate; }
@@ -750,3 +751,7 @@ body.cour .app { grid-template-columns: var(--nav) 1fr; } body.cour #feed, body.
 .cr-take { min-height: 60px; font-size: 19px; } .cr-route { width: 100%; }
 .cr-empty { text-align: center; color: var(--muted); padding: 30px 10px; background: var(--card); border-radius: 18px; }
 @media (max-width: 900px) { .cr-tabs { display: flex; } .cr-cols { grid-template-columns: 1fr; } .cr-cols h3 { display: none; } .cr-cols > section { display: none; } .cr-cols.t-new .c-new, .cr-cols.t-mine .c-mine, .cr-cols.t-done .c-done { display: grid; } .cr-k .kpi b { font-size: 18px; } }
+/* 🛵 підсумок кур'єра на вузьких екранах: не стискати плитки */
+.cr-k { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+.cr-k .kpi { min-width: 0; padding: 10px; } .cr-k .kpi span { font-size: 12px; line-height: 1.2; overflow-wrap: break-word; }
+@media (max-width: 520px) { .cr-k { grid-template-columns: 1fr 1fr !important; } .cr-k .kpi:first-child { grid-column: 1 / -1; } }
