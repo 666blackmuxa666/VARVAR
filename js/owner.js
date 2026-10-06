@@ -96,7 +96,7 @@
     return `<div class="card venue"><div class="h"><b>${esc(v.name || meta.name)}</b><span class="st ${meta.status || v.status}">${ST[meta.status || v.status] || ''}</span></div>
       ${v.error ? '<div class="muted">❗ немає даних</div>' : `<div class="rev money">${money(t.rev)}</div><div class="muted">${t.n || 0} чеків${t.n ? ' · середній ' + money(t.rev / t.n) : ''}${t.go ? ` · 🛵 ${t.go}` : ''}</div>
       <div class="chips"><span class="chip">🪑 ${n.tables || 0} столів · ${money(n.openSum)}</span><span class="chip">👥 ${(n.onShift || []).length} на зміні</span>${n.inbox ? `<span class="chip bad">✉️ ${n.inbox}</span>` : ''}<span class="chip ${n.printer ? 'ok' : 'bad'}">🖨 ${n.printer ? 'ок' : 'офлайн'}</span>${n.zToday ? '<span class="chip ok">Z закрито</span>' : ''}</div>`}
-      <div class="btnrow"><button class="btn primary sm" data-a="enter" data-v="${v.id}">Увійти в касу →</button><button class="btn sm" data-a="vinfo" data-v="${v.id}">⚙️</button></div></div>`;
+      <div class="btnrow"><button class="btn primary sm" data-a="enter" data-v="${v.id}">Увійти в касу →</button><button class="btn sm" data-a="copy" data-u="${esc(absOf(v.id, 'pos.html'))}" title="Скопіювати посилання каси для персоналу">🔗 Каса</button><button class="btn sm" data-a="vinfo" data-v="${v.id}">⚙️</button></div></div>`;
   }
   function analytics() {
     const [f, t] = range(S.per);
@@ -117,9 +117,11 @@
   function venues() {
     return `<h2>🏪 Мої заклади</h2><div class="grid">${S.venues.map(v => `<div class="card venue"><div class="h"><b>${esc(v.name)}</b><span class="st ${v.status}">${ST[v.status] || ''}</span></div>
       <div class="muted">${esc(v.city || '')}${v.city ? ' · ' : ''}адреса: <b>${esc(v.id)}</b>${S.seen[v.id] ? ` · заходили ${new Date(S.seen[v.id]).toLocaleDateString('uk-UA')}` : ''}</div>
-      <div class="btnrow"><button class="btn primary sm" data-a="enter" data-v="${v.id}">Увійти в касу →</button><button class="btn sm" data-a="vinfo" data-v="${v.id}">🔑 Коди й боти</button><a class="btn sm ghost" href="${esc(siteOf(v.id, 'about.html'))}" target="_blank">🌐 Сайт</a></div></div>`).join('') || '<div class="muted">Закладів ще немає</div>'}</div>
+      <div class="btnrow"><button class="btn primary sm" data-a="enter" data-v="${v.id}">Увійти в касу →</button><button class="btn sm" data-a="vinfo" data-v="${v.id}">🔑 Коди й боти</button><a class="btn sm ghost" href="${esc(siteOf(v.id, 'about.html'))}" target="_blank">🌐 Сайт</a></div>
+      <div class="kv"><span>🔗 Каса для персоналу<br><small class="muted">${esc(absOf(v.id, 'pos.html'))}</small></span><button class="btn sm" data-a="copy" data-u="${esc(absOf(v.id, 'pos.html'))}">Копіювати</button></div><div class="kv"><span>🌐 Сайт для гостей<br><small class="muted">${esc(absOf(v.id, 'about.html'))}</small></span><button class="btn sm" data-a="copy" data-u="${esc(absOf(v.id, 'about.html'))}">Копіювати</button></div></div>`).join('') || '<div class="muted">Закладів ще немає</div>'}</div>
       <h2>🔐 Акаунт</h2><div class="card"><div class="kv"><span>${esc(S.me.name)}<br><small class="muted">${esc(S.me.email)}</small></span><button class="btn sm" data-a="pass">Змінити пароль</button></div></div>`;
   }
+  const absOf = (id, page) => location.origin + siteOf(id, page) + (id === 'varvar' && page === 'pos.html' ? '?venue=varvar' : ''); // VARVAR — явно, щоб пристрій «забув» інший заклад // повна адреса для персоналу / гостей
   const siteOf = (id, page) => location.pathname.replace(/owner\.html$/, '') + page + (id === 'varvar' ? '' : '?venue=' + id);
   function platform() {
     const P = S.plat;
@@ -175,6 +177,7 @@
     if (a === 'perGo') { S.from = $('#pf').value; S.to = $('#pt').value; if (S.from > S.to) [S.from, S.to] = [S.to, S.from]; return load(); }
     if (a === 'enter') { el.disabled = true; try { const r = await api('enter', { venue: d.v }); location.href = `${POS}?venue=${encodeURIComponent(d.v)}#tok=${r.token}&me=${encodeURIComponent(JSON.stringify(r.me))}`; } catch (x) { toast('⚠️ ' + x.message); el.disabled = false; } return; }
     if (a === 'vinfo') return vinfo(d.v);
+    if (a === 'copy') { try { await navigator.clipboard.writeText(d.u); toast('🔗 Скопійовано — надішліть персоналу'); } catch { prompt('Скопіюйте посилання:', d.u); } return; }
     if (a === 'pass') return modal('🔐 Новий пароль', '<input name="p" type="password" placeholder="Від 8 символів" minlength="8" required autocomplete="new-password">', async f => { await api('pass', { pass: f.p.value }); toast('✅ Пароль змінено — увійдіть знову'); logout(true); });
     if (a === 'anew') return modal('👤 Новий власник', '<label>Ім\'я<input name="n" required></label><label>Email<input name="e" type="email" required></label><label>Тимчасовий пароль<input name="p" required minlength="8" autocomplete="off"></label><div class="muted" style="font-size:13px">Передайте власнику email і пароль — він змінить пароль у кабінеті.</div>', async f => { await api('acctNew', { name: f.n.value, email: f.e.value, pass: f.p.value }); toast('✅ Власника створено'); await reload(); });
     if (a === 'apass') return modal('🔑 Новий пароль для ' + esc(d.e), '<input name="p" required minlength="8" autocomplete="off" placeholder="Від 8 символів">', async f => { await api('acctPass', { email: d.e, pass: f.p.value }); toast('✅ Пароль змінено'); });
