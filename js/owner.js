@@ -57,7 +57,7 @@
     const [f, t] = S.tab === 'home' ? [today(), today()] : range(S.per);
     S.sum = null; render();
     try {
-      const reqs = [api('sum', { from: f, to: t })];
+      const reqs = [api('sum', { from: f, to: t, pnl: S.tab === 'an' })];
       if (S.tab === 'home') { const w = addD(today(), -7); reqs.push(api('sum', { from: w, to: w })); }
       const [a, b] = await Promise.all(reqs); S.sum = a.list; S.prev = b?.list || null;
     } catch (e) { if (e.message !== 'auth') toast('⚠️ ' + e.message); S.sum = []; }
@@ -110,9 +110,22 @@
     const rank = [...S.sum].sort((a, b) => (b.tot?.rev || 0) - (a.tot?.rev || 0));
     return `<h2>📊 Аналітика</h2>${seg}<div class="kpis">${kpi('Виручка', money(T.rev))}${kpi('Чеків', T.n || 0)}${kpi('Середній чек', T.n ? money(T.rev / T.n) : '—')}${kpi('🛵 Доставка', money(T.goRev), `${T.go || 0} замовлень`)}${kpi('Чайові', money(T.tip))}${kpi('Витрати з каси', money(T.exp))}</div>
       <div style="margin-top:12px">${chart}</div>
+      ${pnlHTML()}
       <h2>🏆 Порівняння закладів</h2><div class="card tbl"><table><thead><tr><th>Заклад</th><th>Виручка</th><th>Чеків</th><th>Сер. чек</th><th>Чайові</th><th>Знижки</th><th>🛵</th><th>✏️ Відміни</th><th>🗑 Видал.</th><th>Витрати</th></tr></thead>
       <tbody>${rank.map((v, i) => row(`${['🥇', '🥈', '🥉'][i] || ''} ${esc(v.name)}`, v.tot || {})).join('')}${S.sum.length > 1 ? row('Разом', T, 'sum') : ''}</tbody></table></div>
-      <div class="muted" style="font-size:12px;margin-top:8px">Період: ${f.split('-').reverse().join('.')} – ${t.split('-').reverse().join('.')}. Фудкост, ЗП й прибуток (P&L) — наступний етап.</div>`;
+      <div class="muted" style="font-size:12px;margin-top:8px">Період: ${f.split('-').reverse().join('.')} – ${t.split('-').reverse().join('.')}. Прибуток: собівартість — за техкартами складу, зарплата — фонд місяця пропорційно дням (≈), витрати — з каси.</div>`;
+  }
+  // 💰 P&L по закладах і разом
+  function pnlHTML() {
+    const L = S.sum.filter(v => v.pnl && !v.pnl.error); if (!L.length) return '';
+    const T = L.reduce((a, v) => { for (const k of ['rev', 'cogs', 'pay', 'exp', 'profit', 'noCard']) a[k] = (a[k] || 0) + v.pnl[k]; return a; }, {});
+    const pct = (a, b) => b ? Math.round(a / b * 1000) / 10 + '%' : '—';
+    const row = (nm, p, cls = '') => `<tr class="${cls}"><td>${nm}</td><td class="money">${money(p.rev)}</td><td class="money">${money(p.cogs)} <small class="muted">${pct(p.cogs, p.rev - (p.noCard || 0))}</small></td><td class="money">${money(p.pay)} <small class="muted">${pct(p.pay, p.rev)}</small></td><td class="money">${money(p.exp)}</td><td class="money" style="color:${p.profit >= 0 ? 'var(--green)' : 'var(--red)'}"><b>${money(p.profit)}</b> <small class="muted">${pct(p.profit, p.rev)}</small></td></tr>`;
+    const top = L.length === 1 ? L[0].pnl.top : [];
+    return `<h2>💰 Прибуток (P&L)</h2><div class="kpis">${kpi('Чистий прибуток', money(T.profit), 'маржа ' + pct(T.profit, T.rev))}${kpi('Собівартість', money(T.cogs), 'фудкост ' + pct(T.cogs, T.rev - T.noCard))}${kpi('Зарплата ≈', money(T.pay), pct(T.pay, T.rev) + ' від виручки')}${kpi('Витрати з каси', money(T.exp))}</div>
+      <div class="card tbl" style="margin-top:12px"><table><thead><tr><th>Заклад</th><th>Виручка</th><th>Собівартість</th><th>Зарплата ≈</th><th>Витрати</th><th>Прибуток</th></tr></thead><tbody>${L.map(v => row(esc(v.name), v.pnl)).join('')}${L.length > 1 ? row('Разом', T, 'sum') : ''}</tbody></table></div>
+      ${T.noCard ? `<div class="alert" style="margin-top:8px">⚠️ Продажі без техкарти: ${money(T.noCard)} — їх собівартість не врахована. Заповніть техкарти (каса → 📦 Склад), щоб прибуток був точним.</div>` : ''}
+      ${top.length ? `<div class="card tbl" style="margin-top:12px"><h3>🏆 Що приносить найбільше грошей</h3><table><thead><tr><th>Страва</th><th>Продано</th><th>Виручка</th><th>Собівартість</th><th>Заробили</th></tr></thead><tbody>${top.map(x => `<tr><td>${esc(x.n)}</td><td>${x.q}</td><td class="money">${money(x.rev)}</td><td class="money">${money(x.cost)}</td><td class="money"><b>${money(x.m)}</b></td></tr>`).join('')}</tbody></table></div>` : ''}`;
   }
   function venues() {
     return `<h2>🏪 Мої заклади</h2><div class="grid">${S.venues.map(v => `<div class="card venue"><div class="h"><b>${esc(v.name)}</b><span class="st ${v.status}">${ST[v.status] || ''}</span></div>

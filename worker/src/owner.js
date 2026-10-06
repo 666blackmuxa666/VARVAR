@@ -66,7 +66,7 @@ export async function intApi(req, env, path) {
       staff: st.length, bots: { staff: !!sec.BOT_TOKEN, guest: !!sec.GUEST_BOT_TOKEN, courier: !!sec.COURIER_BOT_TOKEN, group: !!sec.CHAT_ID }, printer: pr.seen ? Date.now() - pr.seen < 120e3 ? 1 : 0.5 : 0, printKey: env.VENUE === MAIN ? '' : sec.PRINT_KEY || '', go: g.on ? 1 : 0, site: !!(s.about || s.hero) }, 200];
   }
   if (path === '/__int/brand') { if (env.VENUE === MAIN) return [{ error: 'VARVAR — окреме оформлення' }, 400]; return [await (await import('./brand.js')).brandVenue(env), 200]; }
-  if (path === '/__int/sum') return [await venueSum(env, b.from, b.to), 200];
+  if (path === '/__int/sum') { const r = await venueSum(env, b.from, b.to); if (b.pnl) r.pnl = await pnl(env, r).catch(e => ({ error: e.message })); return [r, 200]; }
   if (path === '/__int/codes') return [{ codes: Object.fromEntries(await Promise.all(['admin', 'waiter', 'cook', 'courier'].map(async r => [r, await env.DB.get('reg_' + r)]))) }, 200];
   return [{ error: 'unknown' }, 404];
 }
@@ -86,6 +86,29 @@ async function venueSum(env, from, to) {
   const pr = await printStatus(env).catch(() => ({})), gin = await env.DB.get('gin', 'json') || {};
   const now = { tables: open.filter(r => r.t < 1000).length, go: open.filter(r => r.t > 1000).length, openSum: open.reduce((a, r) => a + payable(r.b), 0), onShift, printer: pr.seen && Date.now() - pr.seen < 120e3 ? 1 : 0, printQ: pr.q || 0, inbox: Object.values(gin).filter(x => x.open).length, zToday: R.z.some(z => z.d === today) };
   return { from, to, days, tot, now, name: (await env.DB.get('cfg:venue', 'json'))?.name || '' };
+}
+
+// 💰 P&L: виручка − собівартість (техкарти) − зарплата (≈ пропорційно дням) − витрати з каси = прибуток
+async function pnl(env, S) {
+  const { getMenu } = await import('./menu.js'), st = await import('./stock.js'), { payroll } = await import('./pay.js');
+  const R = await reportRange(env, S.from, S.to), [menu, cards, ing] = await Promise.all([getMenu(env), st.getCards(env), st.getIng(env)]);
+  const res = st.cardResolver(menu), im = new Map(ing.map(x => [x.id, x])), memo = new Map();
+  let cogs = 0, noCard = 0; const top = {};
+  for (const c of R.checks) for (const [n, q, sum] of c.dishes || []) {
+    if (!memo.has(n)) { const f = st.cardFor(cards, res(n)); memo.set(n, f ? st.cardCost(f.card, im, cards) * f.k : null); }
+    const u = memo.get(n); if (u == null || !(u > 0)) { noCard += sum || 0; continue; }
+    cogs += u * q; const t = top[n] ||= { n, q: 0, rev: 0, cost: 0 }; t.q += q; t.rev += sum || 0; t.cost += u * q;
+  }
+  // зарплата: фонд місяця × частка днів періоду
+  let pay = 0; const months = [...new Set([S.from.slice(0, 7), S.to.slice(0, 7)])];
+  for (const m of months) {
+    const p = await payroll(env, m).catch(() => null); if (!p) continue;
+    const dim = new Date(+m.slice(0, 4), +m.slice(5, 7), 0).getDate(), a = S.from > m + '-01' ? +S.from.slice(8) : 1, z = S.to < m + '-' + dim ? +S.to.slice(8) : dim, today = dayKey(), elapsed = today.slice(0, 7) === m ? +today.slice(8) : dim;
+    pay += p.fund * Math.max(0, Math.min(z, elapsed) - a + 1) / Math.max(1, elapsed);
+  }
+  const rev = S.tot.rev || 0, exp = S.tot.exp || 0, profit = rev - cogs - pay - exp, r = x => Math.round(x);
+  return { rev, cogs: r(cogs), noCard: r(noCard), fc: rev ? Math.round(cogs / (rev - noCard || 1) * 1000) / 10 : 0, pay: r(pay), payPct: rev ? Math.round(pay / rev * 1000) / 10 : 0, exp: r(exp), profit: r(profit), margin: rev ? Math.round(profit / rev * 1000) / 10 : 0,
+    top: Object.values(top).map(t => ({ ...t, cost: r(t.cost), m: r(t.rev - t.cost) })).sort((a, b) => b.m - a.m).slice(0, 10) };
 }
 
 // ---------- /api/owner (поза закладом) ----------
@@ -111,7 +134,7 @@ export async function ownerApi(req, env) {
     case 'me': return ok({ me, venues: await mine(), seen: await H.seenAll() });
     case 'sum': { // аналітика: кожен заклад рахує сам, паралельно
       const vs = (await mine()).filter(v => v.status !== 'off' && (!b.venues?.length || b.venues.includes(v.id))); // ⛔ вимкнені — не в аналітиці
-      const out = await Promise.all(vs.map(async v => ({ ...(await callVenue(env, v.id, '/__int/sum', { from: b.from, to: b.to }).catch(e => ({ error: e.message }))), id: v.id, name: v.name, status: v.status })));
+      const out = await Promise.all(vs.map(async v => ({ ...(await callVenue(env, v.id, '/__int/sum', { from: b.from, to: b.to, pnl: !!b.pnl }).catch(e => ({ error: e.message }))), id: v.id, name: v.name, status: v.status })));
       return ok({ list: out });
     }
     case 'enter': { if (!isVenueId(b.venue) || !(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/login', { name: me.name, email: me.email }); await H.seen(b.venue); return r.token ? ok({ token: r.token, me: r.me, venue: b.venue }) : bad(r.error || 'Не вдалось'); }
