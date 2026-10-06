@@ -54,7 +54,9 @@ export async function intApi(req, env, path) {
     const has = await saveSecrets(env, f);
     if (f.BOT_TOKEN) await fetch(`https://api.telegram.org/bot${f.BOT_TOKEN}/setWebhook`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: env.SELF_URL + '/tg', secret_token: env.TG_SECRET, allowed_updates: ['message', 'callback_query', 'my_chat_member'] }) }).catch(() => {});
     if (f.GUEST_BOT_TOKEN) await env.DB.delete('g2hook'); if (f.COURIER_BOT_TOKEN) await env.DB.delete('g3hook'); // вебхуки гостей/кур'єрів поставляться самі з новим env
-    return [{ ok: true, has, names }, 200];
+    const { venueEnv } = await import('./venue.js'), e2 = { ...(await venueEnv(env, env.VENUE, env.DB)), DB: env.DB }; const br = await (await import('./brand.js')).brandVenue(e2).catch(() => null); // 🎨 одразу оформити нових ботів
+    if (f.GUEST_BOT_TOKEN) await (await import('./site.js')).botName(e2).catch(() => {}); if (f.COURIER_BOT_TOKEN) await (await import('./courier.js')).courBot?.(e2).catch(() => {});
+    return [{ ok: true, has, names, brand: br?.out }, 200];
   }
   if (path === '/__int/ready') { // 🚀 чек-лист запуску закладу
     const { getSecrets } = await import('./venue.js'), sec = env.VENUE === MAIN ? { BOT_TOKEN: env.BOT_TOKEN, GUEST_BOT_TOKEN: env.GUEST_BOT_TOKEN, COURIER_BOT_TOKEN: env.COURIER_BOT_TOKEN, CHAT_ID: env.CHAT_ID } : await getSecrets(env);
@@ -63,6 +65,7 @@ export async function intApi(req, env, path) {
     return [{ name: s.name, logo: !!s.logo, contacts: !!(s.phone && s.addr), items: m.categories.filter(x => !x.tech).reduce((a, x) => a + x.items.length, 0), cats: m.categories.filter(x => !x.tech).length, tables: c.tables || +env.TABLES || 15,
       staff: st.length, bots: { staff: !!sec.BOT_TOKEN, guest: !!sec.GUEST_BOT_TOKEN, courier: !!sec.COURIER_BOT_TOKEN, group: !!sec.CHAT_ID }, printer: pr.seen ? Date.now() - pr.seen < 120e3 ? 1 : 0.5 : 0, printKey: env.VENUE === MAIN ? '' : sec.PRINT_KEY || '', go: g.on ? 1 : 0, site: !!(s.about || s.hero) }, 200];
   }
+  if (path === '/__int/brand') { if (env.VENUE === MAIN) return [{ error: 'VARVAR — окреме оформлення' }, 400]; return [await (await import('./brand.js')).brandVenue(env), 200]; }
   if (path === '/__int/sum') return [await venueSum(env, b.from, b.to), 200];
   if (path === '/__int/codes') return [{ codes: Object.fromEntries(await Promise.all(['admin', 'waiter', 'cook', 'courier'].map(async r => [r, await env.DB.get('reg_' + r)]))) }, 200];
   return [{ error: 'unknown' }, 404];
@@ -112,6 +115,7 @@ export async function ownerApi(req, env) {
       return ok({ list: out });
     }
     case 'enter': { if (!isVenueId(b.venue) || !(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/login', { name: me.name, email: me.email }); await H.seen(b.venue); return r.token ? ok({ token: r.token, me: r.me, venue: b.venue }) : bad(r.error || 'Не вдалось'); }
+    case 'brand': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/brand', {}); return r.error ? bad(r.error) : ok(r); }
     case 'ready': { if (!(await may(b.venue))) return bad('Немає доступу', 403); return ok(await callVenue(env, b.venue, '/__int/ready', {})); }
     case 'codes': { if (!(await may(b.venue))) return bad('Немає доступу', 403); return ok(await callVenue(env, b.venue, '/__int/codes', {})); }
     case 'secrets': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/secrets', b.f || {}); return r.error ? bad(r.error) : ok(r); }

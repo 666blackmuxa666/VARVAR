@@ -88,7 +88,7 @@ window.OWNV = ctx => {
     bots(v) {
       const b = v.d.ready.bots, st = x => x ? '✅ підключено' : '⬜ ні';
       if (v.id === 'varvar') return `<div class="card">VARVAR: боти підключені на сервері (${st(b.staff)} персоналу · ${st(b.guest)} гостей · ${st(b.courier)} кур'єрів).</div>`;
-      return `<div class="grid"><div class="card"><h3>🤖 Стан</h3><div class="kv"><span>🧑‍🍳 Бот персоналу</span><b>${st(b.staff)}</b></div><div class="kv"><span>👥 Група персоналу</span><b>${b.group ? '✅ підключена' : '⬜ додайте бота в групу'}</b></div><div class="kv"><span>🍔 Бот гостей</span><b>${st(b.guest)}</b></div><div class="kv"><span>🛵 Бот кур'єрів</span><b>${st(b.courier)}</b></div></div>
+      return `<div class="grid"><div class="card"><h3>🤖 Стан</h3><div class="kv"><span>🧑‍🍳 Бот персоналу</span><b>${st(b.staff)}</b></div><div class="kv"><span>👥 Група персоналу</span><b>${b.group ? '✅ підключена' : '⬜ додайте бота в групу'}</b></div><div class="kv"><span>🍔 Бот гостей</span><b>${st(b.guest)}</b></div><div class="kv"><span>🛵 Бот кур'єрів</span><b>${st(b.courier)}</b></div>${b.staff || b.guest || b.courier ? '<button class="btn sm" data-a="vbrand" style="margin-top:10px">🎨 Оформити ботів (назва й логотип закладу)</button><div class="muted" style="font-size:12px;margin-top:4px">Робиться само при підключенні; натисніть, якщо змінили назву чи логотип.</div>' : ''}</div>
         <div class="card"><h3>➕ Підключити / замінити</h3><ol class="muted" style="font-size:13px;padding-left:18px;margin:0 0 10px"><li>Telegram → <a href="https://t.me/BotFather" target="_blank">@BotFather</a> → /newbot → назва й ім'я бота</li><li>Скопіюйте токен (виглядає як 123456:ABC…) і вставте нижче</li><li>Бота персоналу додайте у вашу робочу групу — вона підключиться сама</li></ol>
         <form id="vbf" style="display:grid;gap:8px"><input name="BOT_TOKEN" placeholder="🧑‍🍳 Токен бота персоналу" autocomplete="off"><input name="GUEST_BOT_TOKEN" placeholder="🍔 Токен бота гостей" autocomplete="off"><input name="COURIER_BOT_TOKEN" placeholder="🛵 Токен бота кур'єрів" autocomplete="off"><div class="err" id="vberr"></div><button class="btn primary">💾 Перевірити й зберегти</button></form></div></div>`;
     },
@@ -134,6 +134,7 @@ window.OWNV = ctx => {
     if (a === 'vcfgTgl') return act(() => vapi(id, 'cfgSet', { k: d.k, v: d.on === '1' ? 0 : 1 }), '💾 Збережено');
     if (a === 'vreg') { const x = await ask('Новий код (4–8 цифр)', v.d.reg?.[d.r], 'tel'); if (x == null) return; return act(() => vapi(id, 'regCode', { role: d.r, code: x }), '🔑 Код змінено'); }
     if (a === 'vstaffDel') { if (!confirm(`Видалити ${d.n}? Працівника одразу викине з каси.`)) return; return act(() => vapi(id, 'staffDel', { id: d.id }), '🗑 Видалено'); }
+    if (a === 'vbrand') { el.disabled = true; try { const r = await api('brand', { venue: id }); toast(r.logo ? '🎨 Готово — назви, описи й аватарки оновлено' : '🎨 Назви й описи оновлено (додайте логотип для аватарки)'); } catch (x) { toast('⚠️ ' + x.message); } el.disabled = false; return; }
     if (a === 'vprintTest') return act(() => vapi(id, 'printTest'), '🧾 Тест відправлено');
     if (a === 'vprintCfg') { const blob = new Blob([JSON.stringify({ api: d.u, key: d.k, printer: '' }, null, 2)], { type: 'application/json' }); const l = document.createElement('a'); l.href = URL.createObjectURL(blob); l.download = 'varvar-print.config.json'; l.click(); return; }
     // меню
@@ -160,7 +161,7 @@ window.OWNV = ctx => {
   document.addEventListener('submit', async e => {
     if (e.target.id !== 'vbf' || !S.cfgV) return; e.preventDefault(); const f = e.target, err = $('#vberr'), x = {};
     for (const k of ['BOT_TOKEN', 'GUEST_BOT_TOKEN', 'COURIER_BOT_TOKEN']) if (f[k].value.trim()) x[k] = f[k].value.trim(); if (!Object.keys(x).length) return; err.textContent = '…';
-    try { const r = await api('secrets', { venue: S.cfgV.id, f: x }); toast('✅ Підключено: ' + Object.values(r.names).map(n => '@' + n).join(', ')); load(); } catch (y) { err.textContent = y.message; }
+    try { const r = await api('secrets', { venue: S.cfgV.id, f: x }); toast('✅ Підключено й оформлено: ' + Object.values(r.names).map(n => '@' + n).join(', ')); load(); } catch (y) { err.textContent = y.message; }
   });
   return { view, open: (id, sec = 'start') => { S.cfgV = { id, sec }; S.tab = 'cfg'; load(); } };
 };
