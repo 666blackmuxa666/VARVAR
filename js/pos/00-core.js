@@ -1,7 +1,7 @@
   // 🏪 заклад: ?v=<заклад> (з кабінету власника) запам'ятовується на цьому пристрої; без нього — VARVAR
   // параметр саме ?venue= (?v= у старих посиланнях — це номер версії для оновлення!); назва закладу обов'язково з літерою
   const okV = x => /^(?=.*[a-z])[a-z0-9][a-z0-9-]{1,30}$/.test(x || '') && x !== 'varvar';
-  const VENUE = (() => { const q = new URLSearchParams(location.search).get('venue'); try { if (q != null) { if (okV(q)) localStorage.setItem('pos_venue', q); else localStorage.removeItem('pos_venue'); } const s = localStorage.getItem('pos_venue') || ''; if (s && !okV(s)) { localStorage.removeItem('pos_venue'); return ''; } return s; } catch { return okV(q) ? q : ''; } })();
+  const VENUE = (() => { const q = new URLSearchParams(location.search).get('venue'); try { if (q != null) { if (okV(q)) localStorage.setItem('pos_venue2', q); else localStorage.removeItem('pos_venue2'); } localStorage.removeItem('pos_venue'); const s = localStorage.getItem('pos_venue2') || ''; if (s && !okV(s)) { localStorage.removeItem('pos_venue2'); return ''; } return s; } catch { return okV(q) ? q : ''; } })();
   const API = (new URLSearchParams(location.search).get('api') || (/workers\.dev$/.test(location.hostname) ? location.origin : 'https://varvar-menu.varvar.workers.dev')) + (VENUE ? '/v/' + VENUE : '');
   const $ = s => document.querySelector(s);
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -22,7 +22,7 @@
   // ---------- API ----------
   async function api(op, data = {}, ms = 12000) {
     const r = await withTimeout(fetch(API + '/api/pos', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + S.token }, body: JSON.stringify({ op, ...data }) }), ms);
-    if (r.status === 404 && VENUE) { try { localStorage.removeItem('pos_venue'); } catch {} location.replace(location.pathname); } // 🏪 заклад не знайдено — назад до VARVAR
+    if (r.status === 404 && VENUE) { try { localStorage.removeItem('pos_venue2'); } catch {} location.replace(location.pathname); } // 🏪 заклад не знайдено — назад до VARVAR
     const j = await r.json().catch(() => ({}));
     if (r.status === 401 && op !== 'login') { logout(true); throw new Error('auth'); }
     if (!r.ok) { const e = new Error(j.error || 'error'); e.data = j; throw e; }

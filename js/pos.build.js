@@ -24,12 +24,13 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const q = new URLSearchParams(location.search).get("venue");
     try {
       if (q != null) {
-        if (okV(q)) localStorage.setItem("pos_venue", q);
-        else localStorage.removeItem("pos_venue");
+        if (okV(q)) localStorage.setItem("pos_venue2", q);
+        else localStorage.removeItem("pos_venue2");
       }
-      const s = localStorage.getItem("pos_venue") || "";
+      localStorage.removeItem("pos_venue");
+      const s = localStorage.getItem("pos_venue2") || "";
       if (s && !okV(s)) {
-        localStorage.removeItem("pos_venue");
+        localStorage.removeItem("pos_venue2");
         return "";
       }
       return s;
@@ -121,7 +122,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const r = await withTimeout(fetch(API + "/api/pos", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + S.token }, body: JSON.stringify(__spreadValues({ op }, data)) }), ms);
     if (r.status === 404 && VENUE) {
       try {
-        localStorage.removeItem("pos_venue");
+        localStorage.removeItem("pos_venue2");
       } catch (e) {
       }
       location.replace(location.pathname);

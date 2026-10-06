@@ -48,7 +48,11 @@ export default {
     const { venue, path: p } = splitVenue(new URL(req0.url)), req = venue === MAIN ? new Request(req0) : stripVenue(req0, venue, p);
     if (venue === MAIN) { req.headers.delete('x-venue'); req.headers.delete('x-venue-init'); } // заклад визначає лише адреса, не заголовок від клієнта
     else req.headers.delete('x-venue-init');
-    if (IN_STORE.test(p) && req.method !== 'OPTIONS') return cached(req0, p, () => env.STORE.get(env.STORE.idFromName(doName(venue))).fetch(req));
+    if (IN_STORE.test(p) && req.method !== 'OPTIONS') return cached(req0, p, async () => {
+      const r = await env.STORE.get(env.STORE.idFromName(doName(venue))).fetch(req);
+      if (r.status !== 404 || venue === MAIN) return r;
+      return new Response(r.body, { status: 404, headers: { ...Object.fromEntries(r.headers), ...corsHeaders(req0, env) } }); // «закладу немає» — з CORS, щоб каса це побачила, а не «немає зв'язку»
+    });
     const DB = storeDB(env.DB, env.STORE, venue), run = async () => { const e = { ...(await venueEnv(env, venue, DB)), DB }; return ALS.run({ venue }, () => handle(req, e)); };
     if (TTL[p]) return cached(req0, p, run);
     return run();
