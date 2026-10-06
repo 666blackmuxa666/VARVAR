@@ -247,6 +247,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     S.myAtt = r.myAtt || null;
     S.books = r.books || [];
     S.bkNew = r.bkNew || 0;
+    S.gInN = r.gInN || 0;
     S.cfg = r.cfg || S.cfg;
     S.n = r.n;
     S.printer = r.printer;
@@ -1801,8 +1802,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       const g = b.go, late = g.st === "new" && Date.now() - g.at > 6e4;
       return `<button class="go-t st-${g.st}${pending.has(b.t) ? " new" : ""}${late ? " late" : ""}" data-a="table" data-t="${b.t}"><b>${g.kind === "del" ? "\u{1F6F5}" : "\u{1F961}"} ${tn(b.t)}</b><span>${esc(g.name || "")}</span><small>${GOST[g.st] || g.st}${g.when ? " \xB7 \u043D\u0430 " + g.when : ""}${goTileInfo(g)}</small><i class="money">${money(b.pay2)}</i></button>`;
     }).join("")}</div>`;
-    return `<div class="head"><h1>\u0417\u0430\u043B</h1><div class="stat tipstat" title="\u041D\u0430\u043A\u043E\u043F\u0438\u0447\u0435\u043D\u043E, \u0449\u0435 \u043D\u0435 \u0432\u0438\u0434\u0430\u043D\u043E">\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456<b class="money">${money(((_a2 = S.myTip) == null ? void 0 : _a2.sum) || 0)}</b></div><div class="stat">\u0423 \u0437\u0430\u043B\u0456<b class="money">${money(sum)}</b></div>
-      ${S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="\u041D\u043E\u0432\u0456 \u0431\u0440\u043E\u043D\u0456 \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C">\u{1F4C5} ${S.bkNew} \u043D\u043E\u0432.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">\u{1F4C5} ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="\u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F">\u{1F4C5}</button>`}</div>${strip}<div class="tables">${tiles}</div>`;
+    return `<div class="head"><h1>\u0417\u0430\u043B</h1><div class="stat tipstat" title="\u041D\u0430\u043A\u043E\u043F\u0438\u0447\u0435\u043D\u043E, \u0449\u0435 \u043D\u0435 \u0432\u0438\u0434\u0430\u043D\u043E">\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456<b class="money">${money(((_a2 = S.myTip) == null ? void 0 : _a2.sum) || 0)}</b></div>
+      ${inboxBtn()}${S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="\u041D\u043E\u0432\u0456 \u0431\u0440\u043E\u043D\u0456 \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C">\u{1F4C5} ${S.bkNew} \u043D\u043E\u0432.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">\u{1F4C5} ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="\u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F">\u{1F4C5}</button>`}</div>${strip}<div class="tables">${tiles}</div>`;
   }
   const evTitle = (e) => ({
     guest: `\u{1F6CE} \u0421\u0442\u0456\u043B ${tn(e.t)} \u2014 ${esc((e.kind || "\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F").toLowerCase())}`,
@@ -1835,7 +1836,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       const lines = rdy || (((_c = e.lines) == null ? void 0 : _c.length) ? `${add ? '<div class="addtag">\u2795 \u0414\u041E\u0417\u0410\u041C\u041E\u0412\u041B\u0415\u041D\u041D\u042F</div>' : ""}<div class="lines${add ? " add" : ""}">${e.lines.map(esc).join("\n")}</div>` : "");
       const by = e.by && !["waiter"].includes(e.k) ? ` \xB7 ${esc(e.by)}` : "";
       const zb = e.k === "att" ? `<div class="act">${e.s === "acc" ? `<span class="muted">\u2705 ${esc(e.accBy || "")}</span>` : e.s === "rej" ? `<span class="bad">\u274C ${esc(e.accBy || "")}</span>` : isAdmin() ? `<button class="btn sm green" data-a="zpConf" data-d="${e.day}" data-n="${esc(e.n)}" data-h="o">\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438</button>${e.late && ((_d = S.cfg) == null ? void 0 : _d.lateFine) ? `<button class="btn sm" data-a="zpConf" data-d="${e.day}" data-n="${esc(e.n)}" data-h="f">\u2705 + \u0448\u0442\u0440\u0430\u0444</button>` : ""}<button class="btn sm red" data-a="zpConf" data-d="${e.day}" data-n="${esc(e.n)}" data-h="n">\u274C</button>` : '<span class="muted">\u0447\u0435\u043A\u0430\u0454 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F</span>'}</div>` : e.k === "swap" && !e.old ? e.s === "ask" && e.n === ((_e = S.me) == null ? void 0 : _e.name) ? `<div class="act"><button class="btn sm green" data-a="zpSw" data-id="${e.sw}" data-s="agree">\u041F\u043E\u0433\u043E\u0434\u0436\u0443\u044E\u0441\u044C</button><button class="btn sm red" data-a="zpSw" data-id="${e.sw}" data-s="no">\u041D\u0456</button></div>` : e.s === "agreed" && isAdmin() ? `<div class="act"><button class="btn sm green" data-a="zpSw" data-id="${e.sw}" data-s="ok">\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438 \u043E\u0431\u043C\u0456\u043D</button><button class="btn sm red" data-a="zpSw" data-id="${e.sw}" data-s="no">\u274C</button></div>` : "" : "";
-      const sb = e.k === "book" && e.s === "new" ? `<div class="act"><button class="btn sm green" data-a="bkSet" data-id="${e.bid}" data-s="ok">\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438</button><button class="btn sm red" data-a="bkSet" data-id="${e.bid}" data-s="no">\u274C</button><button class="btn sm" data-a="books">\u{1F4C5} \u0423\u0441\u0456 \u0431\u0440\u043E\u043D\u0456</button></div>` : e.k === "cert" && e.s === "new" && isAdmin() ? `<div class="act"><button class="btn sm green" data-a="certPay" data-c="${e.code}" data-h="cash">\u{1F4B5} \u041E\u043F\u043B\u0430\u0447\u0435\u043D\u043E</button><button class="btn sm" data-a="certPay" data-c="${e.code}" data-h="card">\u{1F4B3}</button><button class="btn sm red" data-a="certPay" data-c="${e.code}" data-h="no">\u274C</button></div>` : e.k === "gchat" && !e.out ? `<div class="act"><button class="btn sm primary" data-a="gbReply" data-ph="${e.ph}">\u21A9\uFE0F \u0412\u0456\u0434\u043F\u043E\u0432\u0456\u0441\u0442\u0438</button></div>` : (e.k === "book" || e.k === "cert") && e.s !== "new" ? `<div class="act"><span class="muted">${e.s === "rej" ? "\u274C" : "\u2705"} ${esc(e.accBy || "")}</span></div>` : "";
+      const sb = e.k === "book" && e.s === "new" ? `<div class="act"><button class="btn sm green" data-a="bkSet" data-id="${e.bid}" data-s="ok">\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438</button><button class="btn sm red" data-a="bkSet" data-id="${e.bid}" data-s="no">\u274C</button><button class="btn sm" data-a="books">\u{1F4C5} \u0423\u0441\u0456 \u0431\u0440\u043E\u043D\u0456</button></div>` : e.k === "cert" && e.s === "new" && isAdmin() ? `<div class="act"><button class="btn sm green" data-a="certPay" data-c="${e.code}" data-h="cash">\u{1F4B5} \u041E\u043F\u043B\u0430\u0447\u0435\u043D\u043E</button><button class="btn sm" data-a="certPay" data-c="${e.code}" data-h="card">\u{1F4B3}</button><button class="btn sm red" data-a="certPay" data-c="${e.code}" data-h="no">\u274C</button></div>` : e.k === "gchat" && !e.out ? `<div class="act"><button class="btn sm primary" data-a="gbThread" data-ph="${e.ph}">\u21A9\uFE0F \u0412\u0456\u0434\u043F\u043E\u0432\u0456\u0441\u0442\u0438</button></div>` : (e.k === "book" || e.k === "cert") && e.s !== "new" ? `<div class="act"><span class="muted">${e.s === "rej" ? "\u274C" : "\u2705"} ${esc(e.accBy || "")}</span></div>` : "";
       const btns = isCour() ? "" : sb || zb || (e.k === "noscan" ? `<div class="act"><button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${tn(e.t)}</button></div>` : e.k === "guest" || e.k === "check" || e.k === "call" ? `<div class="act">${e.s === "acc" ? `<span class="muted">\u2705 ${esc(e.accBy || "\u043F\u0440\u0438\u0439\u043D\u044F\u0442\u043E")}</span>` : e.s === "rej" ? `<span style="color:var(--red,#ff453a)">\u274C \u0432\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E \xB7 ${esc(e.accBy || "")}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432</button>${e.k === "guest" ? `<button class="btn sm red" data-a="reject" data-oid="${e.oid}">\u274C \u0412\u0456\u0434\u0445\u0438\u043B\u0438\u0442\u0438</button>` : ""}`}<button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${tn(e.t)}</button></div>` : "");
       const fresh = S.shown.size && !S.shown.has(e.id) ? " fresh" : "";
       return `<div class="ev ${e.k}${e.k === "call" && e.s === "new" && Date.now() - e.ts > 6e4 ? " late" : ""}${e.s === "acc" || e.s === "rej" ? " acc" : ""}${e.s === "rej" ? " rej" : ""}${fresh}"><div class="top"><b>${evTitle(e)}</b><span class="tm">${e.at}${by}</span></div>${lines}${e.comment ? `<div class="com">\u{1F4AC} ${esc(e.comment)}</div>` : ""}${e.sum && ["guest", "waiter"].includes(e.k) ? `<div class="muted">\u0421\u0443\u043C\u0430 ${money(e.sum)}</div>` : ""}${btns}</div>`;
@@ -3376,6 +3377,40 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   const bdTxt = (bd) => bd ? `${bd.slice(3)}.${bd.slice(0, 2)}` : "";
   const ruleName = (r) => r.name || ({ cat: `\u2212${r.pct}%`, happy: `\u0429\u0430\u0441\u043B\u0438\u0432\u0456 \u0433\u043E\u0434\u0438\u043D\u0438 \u2212${r.pct}%`, nth: `\u041A\u043E\u0436\u043D\u0430 ${r.n}-\u0442\u0430 \u0432 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A`, sum: r.gift ? `\u0412\u0456\u0434 ${r.min} \u20B4 \u2014 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A` : `\u0412\u0456\u0434 ${r.min} \u20B4 \u2212${r.pct}%`, bday: `\u0414\u0435\u043D\u044C \u043D\u0430\u0440\u043E\u0434\u0436\u0435\u043D\u043D\u044F \u2212${r.pct}%` }[r.type] || "\u0410\u043A\u0446\u0456\u044F");
   const lvCond = (l) => l.man ? "\u043B\u0438\u0448\u0435 \u0432\u0440\u0443\u0447\u043D\u0443" : [l.n ? `\u0432\u0456\u0434 ${l.n} \u0432\u0456\u0437\u0438\u0442\u0456\u0432` : "", l.sum ? `\u0432\u0456\u0434 ${money(l.sum)}` : ""].filter(Boolean).join(" \u0430\u0431\u043E ") || "\u0443\u0441\u0456 \u043A\u043B\u0456\u0454\u043D\u0442\u0438";
+  const inboxBtn = () => S.gInN ? `<button class="btn red bk-blink" data-a="gbInbox" title="\u0413\u043E\u0441\u0442\u0456 \u043D\u0430\u043F\u0438\u0441\u0430\u043B\u0438 \u2014 \u0432\u0456\u0434\u043F\u0438\u0448\u0456\u0442\u044C">\u2709\uFE0F ${S.gInN}</button>` : `<button class="btn ghost" data-a="gbInbox" title="\u041F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u043D\u044F \u0433\u043E\u0441\u0442\u0435\u0439">\u2709\uFE0F</button>`;
+  const agoT = (at) => {
+    const m = Math.round((Date.now() - at) / 6e4);
+    return m < 1 ? "\u0449\u043E\u0439\u043D\u043E" : m < 60 ? m + " \u0445\u0432" : m < 1440 ? Math.round(m / 60) + " \u0433\u043E\u0434" : new Date(at).toLocaleDateString("uk-UA", { day: "2-digit", month: "2-digit" });
+  };
+  async function gbInbox() {
+    const r = await act("gbInbox", {});
+    if (!r) return;
+    const v = await modal({ title: "\u2709\uFE0F \u041F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u043D\u044F \u0433\u043E\u0441\u0442\u0435\u0439", body: `<div class="muted set-note">\u041F\u0438\u0448\u0443\u0442\u044C \u0443 \u0431\u043E\u0442 \u0433\u043E\u0441\u0442\u0435\u0439: \xAB\u{1F4AC} \u041D\u0430\u043F\u0438\u0441\u0430\u0442\u0438 \u043D\u0430\u043C\xBB, \u0432\u0456\u0434\u0433\u0443\u043A\u0438 \u0439 \u043D\u0438\u0437\u044C\u043A\u0456 \u043E\u0446\u0456\u043D\u043A\u0438 \u043F\u0456\u0441\u043B\u044F \u0432\u0456\u0437\u0438\u0442\u0443. \u{1F534} \u2014 \u0447\u0435\u043A\u0430\u044E\u0442\u044C \u0432\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u0456.</div><div class="bk-list">${r.list.map((x) => {
+      var _a2, _b, _c;
+      return `<button class="kv press inb${x.open ? " open" : ""}" data-a="gbThread" data-ph="${x.ph}" style="width:100%;text-align:left"><span style="min-width:0;overflow-wrap:anywhere">${x.open ? "\u{1F534} " : ""}<b>${esc(x.name || "\u2014")}</b> <small class="muted">${fmtPh(x.ph)}</small><br><small class="${x.open ? "" : "muted"}">${((_a2 = x.lastMsg) == null ? void 0 : _a2.f) === "s" ? "\u21A9\uFE0F " : ((_b = x.lastMsg) == null ? void 0 : _b.k) === "rev" ? "" : "\u{1F464} "}${esc((((_c = x.lastMsg) == null ? void 0 : _c.text) || "").slice(0, 90))}</small></span><span class="kv-r"><small class="muted">${agoT(x.last)}</small></span></button>`;
+    }).join("") || '<div class="muted">\u0429\u0435 \u043D\u0456\u0445\u0442\u043E \u043D\u0435 \u043F\u0438\u0441\u0430\u0432</div>'}</div>`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+  }
+  async function gbThread(ph) {
+    closeModal();
+    const r = await act("gbThread", { ph });
+    if (!r) return;
+    const x = r.th, c = r.cli;
+    const body = `<div class="muted" style="font-size:12px;margin-bottom:8px">\u{1F4DE} <a href="tel:+${x.ph}">${fmtPh(x.ph)}</a>${c ? ` \xB7 \u{1F9FE} ${c.n} \u0432\u0456\u0437\u0438\u0442\u0456\u0432 \xB7 ${money(c.sum)} \xB7 \u{1F381} ${money(c.bal)}` : ""}${c && !c.tg ? " \xB7 \u26A0\uFE0F \u0432\u0456\u0434\u043A\u043B\u044E\u0447\u0438\u0432 \u0431\u043E\u0442\u0430" : ""}</div>
+      <div class="chat">${x.msgs.map((m) => `<div class="msg ${m.f === "g" ? "in" : "out"}${m.sys ? " sys" : ""}${m.k === "rev" ? " rev" : ""}"><div>${esc(m.text)}</div><small>${m.f === "s" ? esc(m.by || "") + " \xB7 " : ""}${agoT(m.at)}</small></div>`).join("")}</div>`;
+    const v = await modal({ title: `\u2709\uFE0F ${x.name || fmtPh(x.ph)}`, body, buttons: [{ label: "\u21A9\uFE0F \u0412\u0456\u0434\u043F\u043E\u0432\u0456\u0441\u0442\u0438", val: "rep", cls: "primary" }, ...x.open ? [{ label: "\u2714\uFE0F \u0411\u0435\u0437 \u0432\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u0456", val: "close" }] : [], { label: "\u2190 \u0423\u0441\u0456", val: "back" }] });
+    if (v === "rep") {
+      const text = await ask("\u21A9\uFE0F \u0412\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u044C \u0433\u043E\u0441\u0442\u044E \u0432 Telegram", "\u0422\u0435\u043A\u0441\u0442");
+      if (text && await act("gbReply", { ph, text }, "\u2705 \u041D\u0430\u0434\u0456\u0441\u043B\u0430\u043D\u043E")) loadState().catch(() => {
+      });
+      return gbThread(ph);
+    }
+    if (v === "close") {
+      if (await act("gbClose", { ph }, "\u2714\uFE0F \u0417\u0430\u043A\u0440\u0438\u0442\u043E")) loadState().catch(() => {
+      });
+      return gbInbox();
+    }
+    if (v === "back") return gbInbox();
+  }
   async function loadLoy(part) {
     try {
       if (!S.data.loy || part === "cfg") S.data.loy = await api("loyGet");
@@ -3702,6 +3737,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       if (r) toast(`\u{1F4E3} \u041D\u0430\u0434\u0456\u0441\u043B\u0430\u043D\u043E ${r.n} \u0437 ${r.of}`);
       return;
     }
+    if (a === "gbInbox") return gbInbox();
+    if (a === "gbThread") return gbThread(d.ph);
     if (a === "gbReply") {
       const text = await ask("\u21A9\uFE0F \u0412\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u044C \u0433\u043E\u0441\u0442\u044E \u0432 Telegram", "\u0422\u0435\u043A\u0441\u0442");
       if (text) await act("gbReply", { ph: d.ph, text }, "\u2705 \u041D\u0430\u0434\u0456\u0441\u043B\u0430\u043D\u043E");

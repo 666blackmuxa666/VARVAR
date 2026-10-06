@@ -3,6 +3,22 @@
   const bdTxt = bd => bd ? `${bd.slice(3)}.${bd.slice(0, 2)}` : '';
   const ruleName = r => r.name || ({ cat: `−${r.pct}%`, happy: `Щасливі години −${r.pct}%`, nth: `Кожна ${r.n}-та в подарунок`, sum: r.gift ? `Від ${r.min} ₴ — подарунок` : `Від ${r.min} ₴ −${r.pct}%`, bday: `День народження −${r.pct}%` }[r.type] || 'Акція');
   const lvCond = l => l.man ? 'лише вручну' : [l.n ? `від ${l.n} візитів` : '', l.sum ? `від ${money(l.sum)}` : ''].filter(Boolean).join(' або ') || 'усі клієнти';
+  // ---------- ✉️ Вхідні від гостей (бот гостей: повідомлення, відгуки, низькі оцінки) ----------
+  const inboxBtn = () => S.gInN ? `<button class="btn red bk-blink" data-a="gbInbox" title="Гості написали — відпишіть">✉️ ${S.gInN}</button>` : `<button class="btn ghost" data-a="gbInbox" title="Повідомлення гостей">✉️</button>`;
+  const agoT = at => { const m = Math.round((Date.now() - at) / 60e3); return m < 1 ? 'щойно' : m < 60 ? m + ' хв' : m < 1440 ? Math.round(m / 60) + ' год' : new Date(at).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' }); };
+  async function gbInbox() {
+    const r = await act('gbInbox', {}); if (!r) return;
+    const v = await modal({ title: '✉️ Повідомлення гостей', body: `<div class="muted set-note">Пишуть у бот гостей: «💬 Написати нам», відгуки й низькі оцінки після візиту. 🔴 — чекають відповіді.</div><div class="bk-list">${r.list.map(x => `<button class="kv press inb${x.open ? ' open' : ''}" data-a="gbThread" data-ph="${x.ph}" style="width:100%;text-align:left"><span style="min-width:0;overflow-wrap:anywhere">${x.open ? '🔴 ' : ''}<b>${esc(x.name || '—')}</b> <small class="muted">${fmtPh(x.ph)}</small><br><small class="${x.open ? '' : 'muted'}">${x.lastMsg?.f === 's' ? '↩️ ' : x.lastMsg?.k === 'rev' ? '' : '👤 '}${esc((x.lastMsg?.text || '').slice(0, 90))}</small></span><span class="kv-r"><small class="muted">${agoT(x.last)}</small></span></button>`).join('') || '<div class="muted">Ще ніхто не писав</div>'}</div>`, buttons: [{ label: 'Закрити', val: null }] });
+  }
+  async function gbThread(ph) {
+    closeModal(); const r = await act('gbThread', { ph }); if (!r) return; const x = r.th, c = r.cli;
+    const body = `<div class="muted" style="font-size:12px;margin-bottom:8px">📞 <a href="tel:+${x.ph}">${fmtPh(x.ph)}</a>${c ? ` · 🧾 ${c.n} візитів · ${money(c.sum)} · 🎁 ${money(c.bal)}` : ''}${c && !c.tg ? ' · ⚠️ відключив бота' : ''}</div>
+      <div class="chat">${x.msgs.map(m => `<div class="msg ${m.f === 'g' ? 'in' : 'out'}${m.sys ? ' sys' : ''}${m.k === 'rev' ? ' rev' : ''}"><div>${esc(m.text)}</div><small>${m.f === 's' ? esc(m.by || '') + ' · ' : ''}${agoT(m.at)}</small></div>`).join('')}</div>`;
+    const v = await modal({ title: `✉️ ${x.name || fmtPh(x.ph)}`, body, buttons: [{ label: '↩️ Відповісти', val: 'rep', cls: 'primary' }, ...(x.open ? [{ label: '✔️ Без відповіді', val: 'close' }] : []), { label: '← Усі', val: 'back' }] });
+    if (v === 'rep') { const text = await ask('↩️ Відповідь гостю в Telegram', 'Текст'); if (text && await act('gbReply', { ph, text }, '✅ Надіслано')) loadState().catch(() => {}); return gbThread(ph); }
+    if (v === 'close') { if (await act('gbClose', { ph }, '✔️ Закрито')) loadState().catch(() => {}); return gbInbox(); }
+    if (v === 'back') return gbInbox();
+  }
   async function loadLoy(part) {
     try {
       if (!S.data.loy || part === 'cfg') S.data.loy = await api('loyGet');
@@ -143,6 +159,8 @@
       const c = await api('gbCount', { f }).catch(e => { toast('⚠️ ' + errText(e.message)); return null; }); if (!c) return; if (c.wait) return toast(`⏳ Наступна розсилка — через ${c.wait} хв`); if (!c.n) return toast('Нікого немає в цій групі');
       const text = await ask(`📣 Текст розсилки (${c.n} гостей)`, 'Сьогодні −20% на бургери! 🍔'); if (!text) return;
       if (!(await confirmBox(`📣 Надіслати ${c.n} гостям?`, text))) return; toast('📣 Надсилаю…'); const r = await api('gbCast', { f, text }, 180000).catch(e => { toast('⚠️ ' + errText(e.message)); return null; }); if (r) toast(`📣 Надіслано ${r.n} з ${r.of}`); return; }
+    if (a === 'gbInbox') return gbInbox();
+    if (a === 'gbThread') return gbThread(d.ph);
     if (a === 'gbReply') { const text = await ask('↩️ Відповідь гостю в Telegram', 'Текст'); if (text) await act('gbReply', { ph: d.ph, text }, '✅ Надіслано'); return; }
     if (a === 'loyCliT') { const ph = S.tables[S.open]?.cli; if (ph) loyCliCard(ph); }
   });

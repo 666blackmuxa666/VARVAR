@@ -298,7 +298,7 @@ export async function guestCallback(q, env) {
     await env.DB.delete('rvph:' + id);
     if (n >= 5) await edit(`⭐ Дякуємо за 5! Будемо дуже вдячні за відгук у Google — це допомагає нам рости 🙏`, { inline_keyboard: [[{ text: '✍️ Залишити відгук', url: s.reviewsUrl || s.gmaps }]] });
     else if (n >= 4) await edit('Дякуємо за оцінку! Чекаємо знову 🧡');
-    else { await edit('😔 Шкода, що не все сподобалось. Напишіть, будь ласка, що покращити — передамо власнику.'); await env.DB.put('rvtxt:' + q.from.id, ph, { expirationTtl: 86400 }); await notify(env, `⭐ Оцінка ${n}/5 від ${fmtPhone(ph)} — гість може дописати, що не так.`); }
+    else { await edit('😔 Шкода, що не все сподобалось. Напишіть, будь ласка, що покращити — передамо власнику.'); await env.DB.put('rvtxt:' + q.from.id, ph, { expirationTtl: 86400 }); await notify(env, `⭐ Оцінка ${n}/5 від ${fmtPhone(ph)} — гість може дописати, що не так.`); await (await import('./guestbot.js')).inAdd(env, ph, '', { f: 'g', k: 'rev', text: `⭐ Оцінка ${n}/5 після візиту` }, true); }
     await answer(''); return true;
   }
   if (act === 'bkg') {
@@ -313,7 +313,7 @@ export async function guestCallback(q, env) {
 export async function guestText(m, env) {
   const ph = await env.DB.get('rvtxt:' + m.from?.id); if (!ph || !m.text || m.text.startsWith('/')) return false;
   await env.DB.delete('rvtxt:' + m.from.id);
-  await notify(env, `📝 Відгук гостя ${fmtPhone(ph)}:\n<i>${esc(m.text.slice(0, 800))}</i>`); await logEvent(env, { k: 'shift', text: `📝 Відгук гостя: ${m.text.slice(0, 200)}` });
+  await notify(env, `📝 Відгук гостя ${fmtPhone(ph)}:\n<i>${esc(m.text.slice(0, 800))}</i>`); await (await import('./guestbot.js')).inAdd(env, ph, '', { f: 'g', k: 'rev', text: '📝 ' + m.text.slice(0, 1500) }, true); await logEvent(env, { k: 'shift', text: `📝 Відгук гостя: ${m.text.slice(0, 200)}` });
   await gtg(env, 'sendMessage', { chat_id: m.chat.id, text: '🙏 Дякуємо! Передали власнику.' }); return true;
 }
 export async function ratings(env, from, to) { const ms = [...new Set([from.slice(0, 7), to.slice(0, 7)])]; const l = (await Promise.all(ms.map(m => env.DB.get('rate:' + m, 'json')))).flat().filter(x => x && x.d >= from && x.d <= to); return { n: l.length, avg: l.length ? Math.round(l.reduce((a, x) => a + x.n, 0) / l.length * 10) / 10 : 0 }; }

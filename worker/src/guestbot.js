@@ -88,18 +88,45 @@ export async function guestMenu(m, env) {
   return false;
 }
 
+// ---------- ✉️ вхідні: листування з гостями (ключ gin: { тел: { ph, name, last, open, msgs[] } }) ----------
+// open — гість чекає відповіді (✉️ червоний у касі). k: 'msg' | 'rev' (відгук / низька оцінка)
+const inGet = async env => (await env.DB.get('gin', 'json')) || {};
+export async function inAdd(env, ph, name, m, open) {
+  return L(env, 'gin', async () => {
+    const all = await inGet(env), x = all[ph] ||= { ph, name: '', msgs: [] };
+    if (name) x.name = name; x.msgs.push({ at: Date.now(), ...m }); x.msgs = x.msgs.slice(-40); x.last = Date.now(); x.open = open ? 1 : 0;
+    const keys = Object.keys(all); if (keys.length > 300) keys.sort((a, b) => all[a].last - all[b].last).slice(0, keys.length - 300).forEach(k => delete all[k]);
+    await env.DB.put('gin', JSON.stringify(all));
+  });
+}
+export const inOpenN = async env => Object.values(await inGet(env)).filter(x => x.open).length;
+async function inClose(env, ph, who) { return L(env, 'gin', async () => { const all = await inGet(env), x = all[ph]; if (!x) return false; x.open = 0; x.msgs.push({ at: Date.now(), f: 's', by: who, text: '✔️ закрито без відповіді', sys: 1 }); await env.DB.put('gin', JSON.stringify(all)); return true; }); }
+
+// 🤖 бот персоналу: «вхідні» — кожна невідписана розмова окремим повідомленням; «Відповісти» на нього → гостю
+export async function inboxBot(env, chat) {
+  const l = Object.values(await inGet(env)).filter(x => x.open).sort((a, b) => a.last - b.last);
+  if (!l.length) { await tg(env, 'sendMessage', { chat_id: chat, text: '✉️ Невідписаних повідомлень гостей немає 👌' }); return; }
+  for (const x of l.slice(0, 15)) {
+    const r = await tg(env, 'sendMessage', { chat_id: chat, parse_mode: 'HTML', text: `✉️ <b>${esc(x.name || '—')}</b> · ${fmtPhone(x.ph)}\n${x.msgs.slice(-4).map(m => `${m.f === 'g' ? '👤' : '↩️'} ${esc(m.text.slice(0, 400))}`).join('\n')}\n\n<i>↩️ «Відповісти» на це повідомлення — текст піде гостю</i>`, reply_markup: { inline_keyboard: [[{ text: '✔️ Закрити без відповіді', callback_data: 'gic:' + x.ph }]] } }).catch(() => null);
+    const mid = r && await r.json().then(j => j.result?.message_id).catch(() => null); if (mid) await env.DB.put('gchm:' + mid, x.ph, { expirationTtl: 7 * 86400 });
+  }
+}
+export const inboxClose = (env, ph, who) => inClose(env, ph, who);
+
 // ---------- 💬 чат гість ⇄ адміністратор ----------
 async function chatIn(env, ph, nm, text) {
   const c = await getCli(env, ph), name = c?.name || nm;
   const r = await notify(env, `💬 <b>Гість пише</b> · ${esc(name)} · ${fmtPhone(ph)}\n${esc(text.slice(0, 1500))}\n\n<i>↩️ Відповісти — «Відповісти» на це повідомлення</i>`).catch(() => null);
   const mid = r && await r.json().then(j => j.result?.message_id).catch(() => null);
   if (mid) await env.DB.put('gchm:' + mid, ph, { expirationTtl: 7 * 86400 });
+  await inAdd(env, ph, name, { f: 'g', text: text.slice(0, 1500) }, true);
   await logEvent(env, { k: 'gchat', ph, text: `💬 ${name} (${fmtPhone(ph)}): ${text.slice(0, 300)}` });
 }
 // відповідь з каси або з групи персоналу (reply на повідомлення гостя)
 export async function chatReply(env, ph, text, who) {
   const c = await getCli(env, ph); if (!c?.chat) return false;
   await say(env, c.chat, `💬 <b>Varvar:</b> ${esc(text.slice(0, 1500))}`);
+  await inAdd(env, ph, c.name || '', { f: 's', by: who, text: text.slice(0, 1500) }, false);
   await env.DB.put('gst:' + c.chat, 'chat', { expirationTtl: 3 * 3600 }); // гість може відповісти одразу
   await logEvent(env, { k: 'gchat', ph, out: 1, text: `↩️ ${who} → ${c.name || fmtPhone(ph)}: ${text.slice(0, 300)}` });
   return true;
@@ -177,6 +204,9 @@ export async function gbApi(b, env, me) {
     case 'gbSet': { if (!admin) return bad('admin', 403); const c = await setGb(env, b.f || {}); return c.error ? bad(c.error) : ok({ cfg: c }); }
     case 'gbCount': { if (!admin) return bad('admin', 403); return ok(await castCount(env, String(b.f || 'all'))); }
     case 'gbCast': { if (!admin) return bad('admin', 403); const r = await cast(env, String(b.f || 'all'), b.text, me.name); return r.error ? bad(r.error) : ok(r); }
+    case 'gbInbox': { const all = Object.values(await inGet(env)).sort((a, b) => b.open - a.open || b.last - a.last); return ok({ list: all.slice(0, 100).map(({ msgs, ...x }) => ({ ...x, lastMsg: msgs[msgs.length - 1] })) }); }
+    case 'gbThread': { const x = (await inGet(env))[String(b.ph || '')]; if (!x) return bad('Не знайдено'); const c = await getCli(env, x.ph); return ok({ th: x, cli: c ? { n: c.n || 0, sum: c.sum || 0, bal: c.bal || 0, tg: !!c.chat } : null }); }
+    case 'gbClose': return (await inClose(env, String(b.ph || ''), me.name)) ? ok() : bad('Не знайдено');
     case 'gbReply': { const r = await chatReply(env, String(b.ph || ''), String(b.text || '').trim(), me.name); return r ? ok() : bad('Гість відключив бота'); }
   }
   return null;

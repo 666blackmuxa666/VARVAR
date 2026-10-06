@@ -558,6 +558,7 @@ export async function handleUpdate(u, env) {
     else if (k === 'акція') { const dm = v.match(/^видалити\s+(\d+)$/i); r = dm ? await setSite(env, 'promoDel', s0.promos[+dm[1] - 1]?.id) : await setSite(env, 'promoAdd', { t: v.split(/\s+[—-]\s+/)[0], d: v.split(/\s+[—-]\s+/).slice(1).join(' — ') }); }
     else { const K = { 'телефон': 'phone', 'адреса': 'addr', 'опис': 'about', 'слоган': 'tagline', 'назва': 'name', 'інстаграм': 'insta', 'телеграм': 'tg', 'банкети': 'banquet', 'кальяни': 'hookah', 'відгуки': 'reviewsUrl' }[k]; if (!K) return send({ text: '⚠️ Невідоме поле. Напишіть «сайт» — список команд.' }); r = await setSite(env, K, v); }
     return send({ text: r.error ? '⚠️ ' + r.error : '✅ Збережено — уже на сайті' }); } }
+  if (/^(вхідні|✉️|\/inbox)$/i.test(text.trim())) { if (!waiter) return send({ text: '🔐 Спершу увійдіть своїм PIN' }); await (await import('./guestbot.js')).inboxBot(env, chat); return; } // ✉️ невідписані повідомлення гостей
   if (/^(побажання|\/idea)/i.test(text)) { const r = await (await import('./ideas.js')).ideaBot(env, text, await meStaff(env, uid), admin); if (r) return send(r); } // 💡 побажання розробнику
   { const r = await loyBotText(env, text === W.loy ? 'акції' : text, admin); if (r) return send(r); } // 🎁 клієнт 050… / клієнт Іван / акції (promo.js)
   if (text === W.go || low === '/go' || low === 'доставка') { const l = await goList(env, await openTables(env)); await send({ text: goText(l) }); for (const g of l) await send({ text: `<b>${tn(g.t)}</b> · ${esc(g.name)} · ${goStLabel(g.st)}`, markup: { inline_keyboard: [...goButtons(g), ...(admin ? [[{ text: '✏️ Змінити', callback_data: 'goe:' + g.t }]] : [])] } }); return; }
@@ -680,6 +681,7 @@ async function handleCallback(q, env) {
     if (!GO_F[oid]) return answer('');
     await env.DB.put('st:' + uid, `goe:${arg}:${oid}`, { expirationTtl: 600 }); await send({ text: `${GO_F[oid]}: ${GO_ASK[oid]}` }); return answer('');
   }
+  if (act === 'gic') { await (await import('./guestbot.js')).inboxClose(env, arg, who); await edit(esc(q.message.text || '') + '\n\n✔️ Закрито — ' + esc(who)); return answer('✔️'); }
   if (act === 'idx' || act === 'idd') { const I = await import('./ideas.js'), me = await meStaff(env, uid); if (!me) return answer('🔐 Увійдіть PIN');
     const r = act === 'idx' ? await I.ideaDel(env, arg, me.name, admin) : await I.ideaDone(env, arg, admin); if (r.error) return answer(r.error);
     const v = await I.ideaBotList(env, me, admin); await edit(v.text, v.markup); return answer(act === 'idx' ? '🗑 Видалено' : '✅'); }
