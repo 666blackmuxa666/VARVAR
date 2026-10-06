@@ -273,6 +273,7 @@ export async function cron(env) {
   const now = Date.now(), out = [];
   await (await import('./courier.js')).courWatch(env).catch(() => {}); // 🛵 ніхто не взяв доставку
   await autoDay(env).catch(e => console.log('autoZ', e.message)); // 🌙 автоматичний Z за минулий день
+  await (await import('./brand.js')).brandBots(env).catch(e => console.log('brand', e.message)); // 🎨 аватари й описи ботів (раз на версію)
   await (await import('./guestbot.js')).gbDaily(env).catch(e => console.log('gbDaily', e.message)); // 🎂 ДН + 👋 «сплячі»
   // відгуки
   const due = await L(env, 'revq', async () => { const q = (await env.DB.get('revq', 'json')) || [], d = q.filter(x => x.at <= now); if (d.length) await env.DB.put('revq', JSON.stringify(q.filter(x => x.at > now))); return d; });
