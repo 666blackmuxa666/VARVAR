@@ -162,7 +162,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   }
   const dots = () => {
     const d = $("#dots");
-    const len = 4;
+    const len = Math.max(4, pin.length);
     d.innerHTML = Array.from({ length: len }, (_, i) => `<i class="${i < pin.length ? "on" : ""}"></i>`).join("");
   };
   async function tryLogin(body) {
@@ -203,12 +203,10 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   function pinKey(k) {
     if (k === "c") pin = "";
     else if (k === "b") pin = pin.slice(0, -1);
-    else if (pin.length < 4) pin += k;
+    else if (pin.length < 12) pin += k;
     dots();
-    if (pin.length === 4) {
-      clearTimeout(tryLogin.t);
-      tryLogin.t = setTimeout(() => tryLogin({ pin }), 150);
-    }
+    clearTimeout(tryLogin.t);
+    if (pin.length >= 4) tryLogin.t = setTimeout(() => tryLogin({ pin }), pin.length === 4 ? 900 : 1200);
   }
   let regCodeV = "";
   function showReg(role, code) {

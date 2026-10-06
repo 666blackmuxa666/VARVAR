@@ -39,7 +39,7 @@
     $('#app').hidden = true; $('#login').hidden = false; $('#lErr').textContent = msg; pin = ''; dots();
     $('#keypad').innerHTML = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button data-k="${n}">${n}</button>`).join('') + '<button class="fn" data-k="c">Стерти</button><button data-k="0">0</button><button class="fn" data-k="b">⌫</button>';
   }
-  const dots = () => { const d = $('#dots'); const len = 4; d.innerHTML = Array.from({ length: len }, (_, i) => `<i class="${i < pin.length ? 'on' : ''}"></i>`).join(''); };
+  const dots = () => { const d = $('#dots'); const len = Math.max(4, pin.length); d.innerHTML = Array.from({ length: len }, (_, i) => `<i class="${i < pin.length ? 'on' : ''}"></i>`).join(''); };
   async function tryLogin(body) {
     $('#lErr').style.color = 'var(--muted)'; $('#lErr').textContent = 'Перевіряю…';
     try {
@@ -60,9 +60,10 @@
   });
   $('#keypad').addEventListener('click', e => { const k = e.target.closest('[data-k]')?.dataset.k; if (k) pinKey(k); });
   function pinKey(k) {
-    if (k === 'c') pin = ''; else if (k === 'b') pin = pin.slice(0, -1); else if (pin.length < 4) pin += k;
-    dots();
-    if (pin.length === 4) { clearTimeout(tryLogin.t); tryLogin.t = setTimeout(() => tryLogin({ pin }), 150); }
+    // PIN — 4 цифри, коди реєстрації нових закладів — 6+: після паузи пробуємо будь-яку довжину від 4 (наступна цифра скасовує спробу)
+    if (k === 'c') pin = ''; else if (k === 'b') pin = pin.slice(0, -1); else if (pin.length < 12) pin += k;
+    dots(); clearTimeout(tryLogin.t);
+    if (pin.length >= 4) tryLogin.t = setTimeout(() => tryLogin({ pin }), pin.length === 4 ? 900 : 1200);
   }
   // реєстрація: код 1119 (адмін) / 1112 (офіціант) → імʼя + свій PIN
   let regCodeV = '';
