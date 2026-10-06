@@ -204,7 +204,7 @@ export async function bdGiftHere(env, t, phone, name, who) {
   const { normPhone } = await import('./delivery.js'), ph = phone ? normPhone(phone) : ''; if (phone && !ph) return { error: 'Невірний номер' };
   const y = dayKey().slice(0, 4);
   if (ph) { const c = await getCli(env, ph); if (c?.bdY === y) return { error: `${c.name || fmtPhone(ph)} уже отримував подарунок на ДН цього року` }; }
-  const { certGift, certUse, certDel } = await import('./site.js'), x = await certGift(env, { phone: ph, name: name || '', gift: g.n, items: g.items, sum: g.p, days: 1 });
+  const { certGift, certUse, certDel } = await import('./site.js'), x = await certGift(env, { phone: ph, name: name || '', gift: g.n, items: g.items, sum: g.p, days: 1, here: 1 });
   const r = await certUse(env, t, x.code, who); if (r.error) { await certDel(env, x.code); return { error: r.error }; }
   if (ph) await cliTouch(env, ph, c => { c.bdY = y; if (name && !c.name) c.name = name; });
   await logEvent(env, { k: 'cert', code: x.code, s: 'ok', t, text: `🎂 Подарунок на ДН у рахунку стола ${tn(t)}: ${g.cat} −${r.use} ₴${name || ph ? ` · ${name || ''} ${ph ? fmtPhone(ph) : ''}` : ''} — ${who}` });

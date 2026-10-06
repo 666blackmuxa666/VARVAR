@@ -307,7 +307,7 @@ async function loyTests(A, W, dish) {
     await posOk(A, 'order', { t: T, items: [{ id: hk.id, q: 1 }] });
     const ph = '06799' + String(RUN).replace(/\D/g, '').padEnd(5, '1').slice(0, 5);
     try { const r = await posOk(A, 'certBd', { t: T, phone: ph, name: 'QA' }); must(r.use === hk.price, `знято ${r.use}, а кальян ${hk.price}`);
-      const again = await pos(A, 'certBd', { t: T, phone: ph }); must(again.status === 400, 'вдруге дозволило'); return `${hk.name.uk} −${r.use}`; }
+      const again = await pos(A, 'certBd', { t: T, phone: ph }); must(again.status === 400, 'вдруге дозволило'); await posOk(A, 'certOff', { t: T }); const b0 = (await posOk(A, 'state')).tables.find(x => x.t === T); must(!b0.cert && !b0.bonus, 'сертифікат лишився в рахунку'); const re = await posOk(A, 'certBd', { t: T, phone: ph }); must(re.use === hk.price, 'після «прибрати» не можна вибити знову'); return `${hk.name.uk} −${r.use}`; }
     finally { await pos(A, 'delete', { t: T, reason: 'QA' }); }
   });
 

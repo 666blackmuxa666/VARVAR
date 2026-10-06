@@ -1,6 +1,6 @@
 // 🖥 каса: сайт-візитка, броні, сертифікати (op: site*, bk*, cert*)
 import { esc, notify, isDay } from './ops.js';
-import { getSite, setSite, bookList, bookSet, bkLabel, certList, certPay, certDel, certUse, getCert, ratings, bookEditFields, bookManual } from './site.js';
+import { getSite, setSite, bookList, bookSet, bkLabel, certList, certPay, certDel, certOff, certUse, getCert, ratings, bookEditFields, bookManual } from './site.js';
 
 export async function siteApi(b, env, me, t) {
   const who = me.name, admin = me.role === 'admin', ok = (x = {}) => [{ ok: true, ...x }, 200], bad = (e, s = 400) => [{ error: e }, s];
@@ -24,6 +24,7 @@ export async function siteApi(b, env, me, t) {
     case 'certDel': { if (!admin) return needA(); if (!(await certDel(env, b.code))) return bad('Не знайдено'); await notify(env, `🖥 🗑 Сертифікат ${esc(String(b.code).toUpperCase())} видалено — ${esc(who)}`); return ok({}); }
     case 'certGet': { const c = await getCert(env, b.code); return c ? ok({ c: { code: c.code, sum: c.sum, left: c.left, st: c.st, from: c.from, to: c.to } }) : bad('Не знайдено'); }
     case 'certBd': { const r = await (await import('./guestbot.js')).bdGiftHere(env, t, b.phone || '', String(b.name || '').trim().slice(0, 40), who); return r.error ? bad(r.error) : ok(r); }
+    case 'certOff': { const r = await certOff(env, t, who); if (!r) return bad('На рахунку немає сертифіката'); await notify(env, `🖥 ↩️ ${r.c?.gift ? '🎂 Подарунок на ДН' : 'Сертифікат ' + esc(r.code)} прибрано з рахунку стола ${t} — ${esc(who)}`).catch(() => {}); return ok({ sum: r.sum }); }
     case 'certUse': { const r = await certUse(env, t, b.code, who); if (r.error) return bad(r.error); await notify(env, `🖥 🎁 Сертифікат ${esc(String(b.code).toUpperCase())}: −${r.use} грн на стіл ${t} (залишок ${r.left}) — ${esc(who)}`); return ok(r); }
     case 'siteRates': return ok(await ratings(env, String(b.from), String(b.to)));
   }

@@ -211,11 +211,24 @@ export async function certUse(env, t, code, who) {
   });
 }
 // 🎂 подарунковий сертифікат на ДН (бот гостей): позиція з меню, діє N днів, оплачено «подарунок»
-export async function certGift(env, { phone, name, gift, items, sum, days }) {
-  const code = certCode(), c = { code, sum, left: sum, from: 'Varvar 🎂', to: name || '', phone, note: '', st: 'ok', paid: 'gift', gift, items, at: Date.now(), exp: Date.now() + days * 864e5, uses: [] };
+export async function certGift(env, { phone, name, gift, items, sum, days, here }) {
+  const code = certCode(), c = { ...(here ? { here: 1 } : {}), code, sum, left: sum, from: 'Varvar 🎂', to: name || '', phone, note: '', st: 'ok', paid: 'gift', gift, items, at: Date.now(), exp: Date.now() + days * 864e5, uses: [] };
   await env.DB.put('cert:' + code, JSON.stringify(c));
   await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; l.push(code); await env.DB.put('certs', JSON.stringify(l.slice(-500))); });
   return c;
+}
+// ✕ прибрати сертифікат з рахунку (передумали): сума повертається на сертифікат; подарунок ДН, вибитий у рахунку, — зникає, і гість знову може його отримати
+export async function certOff(env, t, who) {
+  const r = await L(env, 'bills', async () => {
+    const b = await getBill(env, t); if (!b.cert) return null; const { code, sum } = b.cert;
+    b.bonus = Math.max(0, (b.bonus || 0) - sum); if (!b.bonus) delete b.bonus; delete b.cert; await putBill(env, t, b);
+    const c = await L(env, 'cert:' + code, async () => { const c = await getCert(env, code); if (!c) return null; c.left = Math.min(c.sum, c.left + sum); c.uses = (c.uses || []).filter(u => !(u.t === t && u.d === dayKey())); await env.DB.put('cert:' + code, JSON.stringify(c)); return c; });
+    return { code, sum, c };
+  });
+  if (!r) return null;
+  if (r.c?.here && r.c.left === r.c.sum) { await certDel(env, r.code); if (r.c.phone) await cliTouch(env, r.c.phone, x => { delete x.bdY; }); }
+  await logEvent(env, { k: 'cert', code: r.code, s: 'ok', t, text: `↩️ ${r.c?.gift ? '🎂 Подарунок на ДН' : '🎟 Сертифікат ' + r.code} прибрано з рахунку стола ${t} (+${r.sum} ₴ назад) — ${who}` });
+  return r;
 }
 export async function certDel(env, code) {
   code = String(code || '').toUpperCase().trim();

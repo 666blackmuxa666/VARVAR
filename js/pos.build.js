@@ -1159,10 +1159,17 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       case "cliT":
         cliT(t);
         break;
-      case "cliBon0":
-        if (await act("cliBonus", { t, sum: 0 })) loadState().catch(() => {
+      case "cliBon0": {
+        const b = S.tables[t];
+        if (b == null ? void 0 : b.cert) {
+          if (!await confirmBox(b.cert.code && b.bonus > b.cert.sum ? "\u21A9\uFE0F \u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 \u0456 \u0431\u043E\u043D\u0443\u0441\u0438 \u0437 \u0440\u0430\u0445\u0443\u043D\u043A\u0443?" : "\u21A9\uFE0F \u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 \u0437 \u0440\u0430\u0445\u0443\u043D\u043A\u0443?")) break;
+          if (!await act("certOff", { t }, "\u21A9\uFE0F \u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E")) break;
+          if (b.bonus > b.cert.sum && b.cli) await act("cliBonus", { t, sum: 0 });
+        } else if (!await act("cliBonus", { t, sum: 0 })) break;
+        loadState().catch(() => {
         });
         break;
+      }
       case "goCfg": {
         const k = el.dataset.k, cur = (_n = S.data.gocfg) == null ? void 0 : _n[k];
         const v = ["on", "del", "pick"].includes(k) ? cur ? 0 : 1 : await ask(el.dataset.l || k, String(cur != null ? cur : ""), ["phone", "zone", "from", "to"].includes(k) ? "text" : "number");

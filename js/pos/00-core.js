@@ -402,7 +402,7 @@
       case 'goRoad': if (await act('goSt', { t: +el.dataset.t, st: 'road' }, '🛵 В дорозі')) { await loadState().catch(() => {}); renderMain(); } break;
       case 'goCourSet': { const n = await ask('👤 Кур\'єр (імʼя)', S.tables[t]?.go?.cour || ''); if (n != null && await act('goCour', { t, n }, '✔')) loadState().catch(() => {}); break; }
       case 'cliT': cliT(t); break;
-      case 'cliBon0': if (await act('cliBonus', { t, sum: 0 })) loadState().catch(() => {}); break;
+      case 'cliBon0': { const b = S.tables[t]; if (b?.cert) { if (!(await confirmBox(b.cert.code && b.bonus > b.cert.sum ? '↩️ Прибрати сертифікат і бонуси з рахунку?' : '↩️ Прибрати сертифікат з рахунку?'))) break; if (!(await act('certOff', { t }, '↩️ Прибрано'))) break; if (b.bonus > b.cert.sum && b.cli) await act('cliBonus', { t, sum: 0 }); } else if (!(await act('cliBonus', { t, sum: 0 }))) break; loadState().catch(() => {}); break; }
       case 'goCfg': { const k = el.dataset.k, cur = S.data.gocfg?.[k]; const v = ['on', 'del', 'pick'].includes(k) ? (cur ? 0 : 1) : await ask(el.dataset.l || k, String(cur ?? ''), ['phone', 'zone', 'from', 'to'].includes(k) ? 'text' : 'number'); if (v == null) break;
         const r = await act('goCfgSet', { k, v }, '💾 Збережено'); if (r) { S.data.gocfg = r.cfg; renderMain(); } break; }
       case 'goLink': { const u = 'https://666blackmuxa666.github.io/VARVAR/' + '?go' + (el.dataset.src ? '&src=' + el.dataset.src : ''); try { await navigator.clipboard.writeText(u); toast('📋 Скопійовано: ' + u); } catch { await ask('Посилання', u); } break; }
