@@ -4,7 +4,7 @@
     const G = S.data.zp; if (!G) return '<div class="muted">Завантаження…</div>';
     const people = G.staff.filter(s => s.role !== 'courier' && !(G.hide || []).includes(s.name) && (s.pay?.rate || s.pay?.pct || (G.seen || []).includes(s.name) || G.days.some(d => G.att[d]?.[s.name] || G.plan[d]?.[s.name]))).map(s => s.name); // зі ставкою — завжди в графіку
     const rows = G.rows.filter(r => people.includes(r.n) || r.paid || r.adv || r.bonus || r.fine), due = rows.reduce((a, r) => a + Math.max(0, r.due), 0), pend = rows.reduce((a, r) => a + r.pending, 0);
-    const tab = S.zpTab || 'grid', TABS = [['grid', '📅 Графік'], ['pay', '💰 Зарплата'], ['ops', '🧾 Операції'], ['eff', '📊 Ефективність'], ['people', '👥 Працівники']];
+    const tab = S.zpTab || 'grid', TABS = [['grid', '📅 Графік'], ['pay', '💰 Зарплата'], ['ops', '🧾 Операції'], ['eff', '📊 Ефективність'], ['people', '👥 Працівники'], ['ideas', '💡 Побажання']];
     const top = `<div class="zp-top"><button class="btn sm" data-a="zpM" data-d="-1">◀</button><b>${monName(G.m)}</b><button class="btn sm" data-a="zpM" data-d="1">▶</button></div>
       <div class="kpis"><div class="kpi accent"><span>До виплати</span><b class="money">${money(due)}</b></div><div class="kpi"><span>Фонд оплати</span><b class="money">${money(G.fund)}</b><small class="muted">${G.fundPct}% від виручки</small></div>
         <div class="kpi"><span>Виручка місяця</span><b class="money">${money(G.revenue)}</b></div><div class="kpi ${pend ? 'red press' : ''}"${pend ? ' data-a="zpPend"' : ''}><span>Чекає ✅</span><b>${pend}</b><small class="muted">${pend ? 'натисніть, щоб підтвердити' : 'усе підтверджено'}</small></div></div>
@@ -25,6 +25,7 @@
               ${r.toMon ? `<div class="muted" style="font-size:12px">🎯 до місячного бонусу ще ${money(r.toMon)}</div>` : ''}${r.tips ? `<div class="muted" style="font-size:12px">💝 чайові окремо: ${money(r.tips)}</div>` : ''}${r.late || r.absent ? `<div class="warn" style="font-size:12px">${r.late ? `⏰ запізнень ${r.late}` : ''}${r.late && r.absent ? ' · ' : ''}${r.absent ? `🚫 прогулів ${r.absent}` : ''}</div>` : ''}</div>
               <div class="zp-det-b"><button class="btn sm" data-a="zpOpN" data-t="bonus" data-n="${esc(r.n)}">➕ Премія</button><button class="btn sm" data-a="zpOpN" data-t="fine" data-n="${esc(r.n)}">➖ Штраф</button><button class="btn sm" data-a="zpOpN" data-t="adv" data-n="${esc(r.n)}">💵 Аванс</button><button class="btn sm" data-a="zpSet" data-id="${r.id}">⚙️ Ставка</button></div></div>` : ''}`; }).join('') || '<div class="muted">Немає працівників у графіку</div>'}
         <div class="muted" style="font-size:12px;margin-top:8px">Натисніть на рядок — деталі, премія, штраф, аванс, ставка. 💸 — видати весь залишок (з каси або картки).</div></div>`;
+    } else if (tab === 'ideas') { const l = S.data.ideas; if (!l) ideasLoad(); body = `<div class="card"><h3>💡 Побажання персоналу щодо системи</h3><div class="muted set-note">Пишуть з особистого кабінету (👤 → «💡 Побажання») або в боті: <code>побажання текст</code>. ✅ — зроблено, 🗑 — видалити.</div>${!l ? '<div class="muted">…</div>' : l.length ? l.map(ideaRow).join('') : '<div class="muted">Поки порожньо</div>'}</div>`;
     } else if (tab === 'people') { body = settingsHTML('people');
     } else if (tab === 'ops') {
       const OPN = { bonus: '➕ Премія', fine: '➖ Штраф', adv: '💵 Аванс', paid: '💸 Виплата' };
@@ -85,6 +86,14 @@
     if (!v) return; if (!(sum > 0)) return toast('⚠️ Вкажіть суму');
     if (await act('zpOp', { n, t, sum, note, ...(money_ ? { src: v } : {}) }, money_ ? `💸 Видано ${money(sum)} ${v === 'card' ? 'з картки' : 'з каси'}` : '✔ Записано')) loadView();
   }
+  const ideaRow = x => `<div class="kv idea" data-idea="${x.id}"><span style="min-width:0;overflow-wrap:anywhere">${x.done ? '✅ ' : ''}${esc(x.text)}<br><small class="muted">${esc(x.by)} · ${new Date(x.at).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' })}</small></span><span class="kv-r">${isAdmin() ? `<button class="btn sm" data-a="ideaDone" data-id="${x.id}">${x.done ? '↩️' : '✅'}</button>` : ''}<button class="btn sm red" data-a="ideaDel" data-id="${x.id}">🗑</button></span></div>`;
+  async function ideasLoad() { if (S._idL) return; S._idL = 1; try { S.data.ideas = (await api('ideaList')).list; } catch { S.data.ideas = []; } S._idL = 0; if (S.view === 'team') renderMain(); }
+  async function ideasMy() { // 👤 особистий кабінет → свої побажання розробнику
+    const l = (await act('ideaList', {}))?.list; if (!l) return; const mine = l.filter(x => x.by === S.me?.name);
+    const v = await modal({ title: '💡 Побажання розробнику', body: `<div class="muted set-note">Що незручно, чого не вистачає, що змінити в касі чи боті — напишіть, розробник побачить і врахує.</div>${mine.length ? mine.map(ideaRow).join('') : '<div class="muted">Ви ще нічого не писали</div>'}`, buttons: [{ label: '✍️ Написати', val: 'add', cls: 'primary' }, { label: 'Закрити', val: null }] });
+    if (v !== 'add') return; const text = await ask('💡 Ваше побажання', 'Напр.: зробити кнопку … більшою'); if (!text) return ideasMy();
+    if (await act('ideaAdd', { text }, '💡 Дякуємо! Передано розробнику')) { S.data.ideas = null; ideasMy(); }
+  }
   async function zpMy() {
     const r = await act('zpMy', {}); if (!r) return; const w = r.row, me = S.me?.name;
     const lnx = (l, v) => `<div class="kv"><span>${l}</span><b class="money">${v}</b></div>`;
@@ -96,7 +105,8 @@
       ${asks.map(s => `<div class="card zp-ask">🔁 <b>${esc(s.from)}</b> просить вийти за нього ${s.day.slice(8)}.${s.day.slice(5, 7)} о ${s.time}<div class="btnrow"><button class="btn sm green" data-a="zpSw" data-id="${s.id}" data-s="agree">Погоджуюсь</button><button class="btn sm red" data-a="zpSw" data-id="${s.id}" data-s="no">Ні</button></div></div>`).join('')}
       <h3 style="margin:14px 0 6px">Графік · ${monName(r.m)}</h3>${gridHTML(r.grid, r.grid.people, false, me)}<div class="muted" style="font-size:11px;margin-top:4px">✅ був · ● заплановано · 🕓 чекає · ⏰ запізнення · 🚫 прогул</div>
       ${r.swaps.filter(s => s.from === me).map(s => `<div class="muted" style="font-size:12px">🔁 ${s.day.slice(8)}.${s.day.slice(5, 7)} → ${esc(s.to)}: ${s.st === 'ask' ? 'чекає згоди' : 'чекає адміна'}</div>`).join('')}`;
-    const v = await modal({ title: `👤 ${me}`, body, buttons: [{ label: '🔁 Попросити обмін', val: 'swap' }, { label: 'Закрити', val: null }] });
+    const v = await modal({ title: `👤 ${me}`, body, buttons: [{ label: '🔁 Попросити обмін', val: 'swap' }, { label: '💡 Побажання', val: 'idea' }, { label: 'Закрити', val: null }] });
+    if (v === 'idea') return ideasMy();
     if (v === 'swap') {
       const future = r.days.filter(x => x.plan && x.d >= todayK()); if (!future.length) return toast('У вашому плані немає майбутніх змін');
       const d = await choose('🔁 Яку зміну віддати?', '', future.map(x => ({ label: `${x.d.slice(8)}.${x.d.slice(5, 7)} ${WDL[new Date(x.d + 'T12:00:00Z').getUTCDay()]} · ${x.plan}`, val: x.d }))); if (!d) return;
@@ -112,6 +122,8 @@
       case 'zpIn': closeModal(); if (await act('zpIn', {}, '🟢 Зміну почато — адмін підтвердить')) { await loadState().catch(() => {}); renderNav(); } break;
       case 'zpOut': closeModal(); if (await confirmBox('🔴 Закінчити зміну?')) { if (await act('zpOut', {}, '🔴 Зміну закінчено')) { await loadState().catch(() => {}); renderNav(); } } break;
       case 'zpMy': zpMy(); break;
+      case 'ideaDel': if (await confirmBox('🗑 Видалити побажання?') && await act('ideaDel', { id: D.id }, '🗑 Видалено')) { el.closest('[data-idea]')?.remove(); if (S.data.ideas) S.data.ideas = S.data.ideas.filter(x => x.id !== D.id); } break;
+      case 'ideaDone': { const r = await act('ideaDone', { id: D.id }); if (r) { const x = S.data.ideas?.find(y => y.id === D.id); if (x) x.done = r.x.done; renderMain(); } break; }
       case 'zpM': S.zpM = monAdd(S.zpM || curMon(), +D.d); S.data.zp = null; renderMain(); loadView(); break;
       case 'zpCell': zpCell(D.d, D.n); break;
       case 'zpPend': zpPend(); break;

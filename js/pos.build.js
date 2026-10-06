@@ -4770,7 +4770,7 @@ ${g.sup}:
       }));
     }).map((s) => s.name);
     const rows = G.rows.filter((r) => people.includes(r.n) || r.paid || r.adv || r.bonus || r.fine), due = rows.reduce((a, r) => a + Math.max(0, r.due), 0), pend = rows.reduce((a, r) => a + r.pending, 0);
-    const tab = S.zpTab || "grid", TABS2 = [["grid", "\u{1F4C5} \u0413\u0440\u0430\u0444\u0456\u043A"], ["pay", "\u{1F4B0} \u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430"], ["ops", "\u{1F9FE} \u041E\u043F\u0435\u0440\u0430\u0446\u0456\u0457"], ["eff", "\u{1F4CA} \u0415\u0444\u0435\u043A\u0442\u0438\u0432\u043D\u0456\u0441\u0442\u044C"], ["people", "\u{1F465} \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0438"]];
+    const tab = S.zpTab || "grid", TABS2 = [["grid", "\u{1F4C5} \u0413\u0440\u0430\u0444\u0456\u043A"], ["pay", "\u{1F4B0} \u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430"], ["ops", "\u{1F9FE} \u041E\u043F\u0435\u0440\u0430\u0446\u0456\u0457"], ["eff", "\u{1F4CA} \u0415\u0444\u0435\u043A\u0442\u0438\u0432\u043D\u0456\u0441\u0442\u044C"], ["people", "\u{1F465} \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0438"], ["ideas", "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F"]];
     const top = `<div class="zp-top"><button class="btn sm" data-a="zpM" data-d="-1">\u25C0</button><b>${monName(G.m)}</b><button class="btn sm" data-a="zpM" data-d="1">\u25B6</button></div>
       <div class="kpis"><div class="kpi accent"><span>\u0414\u043E \u0432\u0438\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(due)}</b></div><div class="kpi"><span>\u0424\u043E\u043D\u0434 \u043E\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(G.fund)}</b><small class="muted">${G.fundPct}% \u0432\u0456\u0434 \u0432\u0438\u0440\u0443\u0447\u043A\u0438</small></div>
         <div class="kpi"><span>\u0412\u0438\u0440\u0443\u0447\u043A\u0430 \u043C\u0456\u0441\u044F\u0446\u044F</span><b class="money">${money(G.revenue)}</b></div><div class="kpi ${pend ? "red press" : ""}"${pend ? ' data-a="zpPend"' : ""}><span>\u0427\u0435\u043A\u0430\u0454 \u2705</span><b>${pend}</b><small class="muted">${pend ? "\u043D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C, \u0449\u043E\u0431 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438" : "\u0443\u0441\u0435 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043E"}</small></div></div>
@@ -4793,6 +4793,10 @@ ${g.sup}:
               <div class="zp-det-b"><button class="btn sm" data-a="zpOpN" data-t="bonus" data-n="${esc(r.n)}">\u2795 \u041F\u0440\u0435\u043C\u0456\u044F</button><button class="btn sm" data-a="zpOpN" data-t="fine" data-n="${esc(r.n)}">\u2796 \u0428\u0442\u0440\u0430\u0444</button><button class="btn sm" data-a="zpOpN" data-t="adv" data-n="${esc(r.n)}">\u{1F4B5} \u0410\u0432\u0430\u043D\u0441</button><button class="btn sm" data-a="zpSet" data-id="${r.id}">\u2699\uFE0F \u0421\u0442\u0430\u0432\u043A\u0430</button></div></div>` : ""}`;
       }).join("") || '<div class="muted">\u041D\u0435\u043C\u0430\u0454 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0456\u0432 \u0443 \u0433\u0440\u0430\u0444\u0456\u043A\u0443</div>'}
         <div class="muted" style="font-size:12px;margin-top:8px">\u041D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \u043D\u0430 \u0440\u044F\u0434\u043E\u043A \u2014 \u0434\u0435\u0442\u0430\u043B\u0456, \u043F\u0440\u0435\u043C\u0456\u044F, \u0448\u0442\u0440\u0430\u0444, \u0430\u0432\u0430\u043D\u0441, \u0441\u0442\u0430\u0432\u043A\u0430. \u{1F4B8} \u2014 \u0432\u0438\u0434\u0430\u0442\u0438 \u0432\u0435\u0441\u044C \u0437\u0430\u043B\u0438\u0448\u043E\u043A (\u0437 \u043A\u0430\u0441\u0438 \u0430\u0431\u043E \u043A\u0430\u0440\u0442\u043A\u0438).</div></div>`;
+    } else if (tab === "ideas") {
+      const l = S.data.ideas;
+      if (!l) ideasLoad();
+      body = `<div class="card"><h3>\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\u0443 \u0449\u043E\u0434\u043E \u0441\u0438\u0441\u0442\u0435\u043C\u0438</h3><div class="muted set-note">\u041F\u0438\u0448\u0443\u0442\u044C \u0437 \u043E\u0441\u043E\u0431\u0438\u0441\u0442\u043E\u0433\u043E \u043A\u0430\u0431\u0456\u043D\u0435\u0442\u0443 (\u{1F464} \u2192 \xAB\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F\xBB) \u0430\u0431\u043E \u0432 \u0431\u043E\u0442\u0456: <code>\u043F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F \u0442\u0435\u043A\u0441\u0442</code>. \u2705 \u2014 \u0437\u0440\u043E\u0431\u043B\u0435\u043D\u043E, \u{1F5D1} \u2014 \u0432\u0438\u0434\u0430\u043B\u0438\u0442\u0438.</div>${!l ? '<div class="muted">\u2026</div>' : l.length ? l.map(ideaRow).join("") : '<div class="muted">\u041F\u043E\u043A\u0438 \u043F\u043E\u0440\u043E\u0436\u043D\u044C\u043E</div>'}</div>`;
     } else if (tab === "people") {
       body = settingsHTML("people");
     } else if (tab === "ops") {
@@ -4897,6 +4901,35 @@ ${g.sup}:
     if (!(sum > 0)) return toast("\u26A0\uFE0F \u0412\u043A\u0430\u0436\u0456\u0442\u044C \u0441\u0443\u043C\u0443");
     if (await act("zpOp", __spreadValues({ n, t, sum, note }, money_ ? { src: v } : {}), money_ ? `\u{1F4B8} \u0412\u0438\u0434\u0430\u043D\u043E ${money(sum)} ${v === "card" ? "\u0437 \u043A\u0430\u0440\u0442\u043A\u0438" : "\u0437 \u043A\u0430\u0441\u0438"}` : "\u2714 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E")) loadView();
   }
+  const ideaRow = (x) => `<div class="kv idea" data-idea="${x.id}"><span style="min-width:0;overflow-wrap:anywhere">${x.done ? "\u2705 " : ""}${esc(x.text)}<br><small class="muted">${esc(x.by)} \xB7 ${new Date(x.at).toLocaleDateString("uk-UA", { day: "2-digit", month: "2-digit" })}</small></span><span class="kv-r">${isAdmin() ? `<button class="btn sm" data-a="ideaDone" data-id="${x.id}">${x.done ? "\u21A9\uFE0F" : "\u2705"}</button>` : ""}<button class="btn sm red" data-a="ideaDel" data-id="${x.id}">\u{1F5D1}</button></span></div>`;
+  async function ideasLoad() {
+    if (S._idL) return;
+    S._idL = 1;
+    try {
+      S.data.ideas = (await api("ideaList")).list;
+    } catch (e) {
+      S.data.ideas = [];
+    }
+    S._idL = 0;
+    if (S.view === "team") renderMain();
+  }
+  async function ideasMy() {
+    var _a2;
+    const l = (_a2 = await act("ideaList", {})) == null ? void 0 : _a2.list;
+    if (!l) return;
+    const mine = l.filter((x) => {
+      var _a3;
+      return x.by === ((_a3 = S.me) == null ? void 0 : _a3.name);
+    });
+    const v = await modal({ title: "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F \u0440\u043E\u0437\u0440\u043E\u0431\u043D\u0438\u043A\u0443", body: `<div class="muted set-note">\u0429\u043E \u043D\u0435\u0437\u0440\u0443\u0447\u043D\u043E, \u0447\u043E\u0433\u043E \u043D\u0435 \u0432\u0438\u0441\u0442\u0430\u0447\u0430\u0454, \u0449\u043E \u0437\u043C\u0456\u043D\u0438\u0442\u0438 \u0432 \u043A\u0430\u0441\u0456 \u0447\u0438 \u0431\u043E\u0442\u0456 \u2014 \u043D\u0430\u043F\u0438\u0448\u0456\u0442\u044C, \u0440\u043E\u0437\u0440\u043E\u0431\u043D\u0438\u043A \u043F\u043E\u0431\u0430\u0447\u0438\u0442\u044C \u0456 \u0432\u0440\u0430\u0445\u0443\u0454.</div>${mine.length ? mine.map(ideaRow).join("") : '<div class="muted">\u0412\u0438 \u0449\u0435 \u043D\u0456\u0447\u043E\u0433\u043E \u043D\u0435 \u043F\u0438\u0441\u0430\u043B\u0438</div>'}`, buttons: [{ label: "\u270D\uFE0F \u041D\u0430\u043F\u0438\u0441\u0430\u0442\u0438", val: "add", cls: "primary" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+    if (v !== "add") return;
+    const text = await ask("\u{1F4A1} \u0412\u0430\u0448\u0435 \u043F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F", "\u041D\u0430\u043F\u0440.: \u0437\u0440\u043E\u0431\u0438\u0442\u0438 \u043A\u043D\u043E\u043F\u043A\u0443 \u2026 \u0431\u0456\u043B\u044C\u0448\u043E\u044E");
+    if (!text) return ideasMy();
+    if (await act("ideaAdd", { text }, "\u{1F4A1} \u0414\u044F\u043A\u0443\u0454\u043C\u043E! \u041F\u0435\u0440\u0435\u0434\u0430\u043D\u043E \u0440\u043E\u0437\u0440\u043E\u0431\u043D\u0438\u043A\u0443")) {
+      S.data.ideas = null;
+      ideasMy();
+    }
+  }
   async function zpMy() {
     var _a2, _b;
     const r = await act("zpMy", {});
@@ -4911,7 +4944,8 @@ ${g.sup}:
       ${asks.map((s) => `<div class="card zp-ask">\u{1F501} <b>${esc(s.from)}</b> \u043F\u0440\u043E\u0441\u0438\u0442\u044C \u0432\u0438\u0439\u0442\u0438 \u0437\u0430 \u043D\u044C\u043E\u0433\u043E ${s.day.slice(8)}.${s.day.slice(5, 7)} \u043E ${s.time}<div class="btnrow"><button class="btn sm green" data-a="zpSw" data-id="${s.id}" data-s="agree">\u041F\u043E\u0433\u043E\u0434\u0436\u0443\u044E\u0441\u044C</button><button class="btn sm red" data-a="zpSw" data-id="${s.id}" data-s="no">\u041D\u0456</button></div></div>`).join("")}
       <h3 style="margin:14px 0 6px">\u0413\u0440\u0430\u0444\u0456\u043A \xB7 ${monName(r.m)}</h3>${gridHTML(r.grid, r.grid.people, false, me)}<div class="muted" style="font-size:11px;margin-top:4px">\u2705 \u0431\u0443\u0432 \xB7 \u25CF \u0437\u0430\u043F\u043B\u0430\u043D\u043E\u0432\u0430\u043D\u043E \xB7 \u{1F553} \u0447\u0435\u043A\u0430\u0454 \xB7 \u23F0 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F \xB7 \u{1F6AB} \u043F\u0440\u043E\u0433\u0443\u043B</div>
       ${r.swaps.filter((s) => s.from === me).map((s) => `<div class="muted" style="font-size:12px">\u{1F501} ${s.day.slice(8)}.${s.day.slice(5, 7)} \u2192 ${esc(s.to)}: ${s.st === "ask" ? "\u0447\u0435\u043A\u0430\u0454 \u0437\u0433\u043E\u0434\u0438" : "\u0447\u0435\u043A\u0430\u0454 \u0430\u0434\u043C\u0456\u043D\u0430"}</div>`).join("")}`;
-    const v = await modal({ title: `\u{1F464} ${me}`, body, buttons: [{ label: "\u{1F501} \u041F\u043E\u043F\u0440\u043E\u0441\u0438\u0442\u0438 \u043E\u0431\u043C\u0456\u043D", val: "swap" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+    const v = await modal({ title: `\u{1F464} ${me}`, body, buttons: [{ label: "\u{1F501} \u041F\u043E\u043F\u0440\u043E\u0441\u0438\u0442\u0438 \u043E\u0431\u043C\u0456\u043D", val: "swap" }, { label: "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F", val: "idea" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+    if (v === "idea") return ideasMy();
     if (v === "swap") {
       const future = r.days.filter((x) => x.plan && x.d >= todayK());
       if (!future.length) return toast("\u0423 \u0432\u0430\u0448\u043E\u043C\u0443 \u043F\u043B\u0430\u043D\u0456 \u043D\u0435\u043C\u0430\u0454 \u043C\u0430\u0439\u0431\u0443\u0442\u043D\u0456\u0445 \u0437\u043C\u0456\u043D");
@@ -4924,6 +4958,7 @@ ${g.sup}:
     }
   }
   document.addEventListener("click", async (e) => {
+    var _a2, _b;
     const el = e.target.closest("[data-a]");
     if (!el || !/^zp/.test(el.dataset.a)) return;
     const a = el.dataset.a, D = el.dataset;
@@ -4949,6 +4984,21 @@ ${g.sup}:
       case "zpMy":
         zpMy();
         break;
+      case "ideaDel":
+        if (await confirmBox("\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u043F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F?") && await act("ideaDel", { id: D.id }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) {
+          (_a2 = el.closest("[data-idea]")) == null ? void 0 : _a2.remove();
+          if (S.data.ideas) S.data.ideas = S.data.ideas.filter((x) => x.id !== D.id);
+        }
+        break;
+      case "ideaDone": {
+        const r = await act("ideaDone", { id: D.id });
+        if (r) {
+          const x = (_b = S.data.ideas) == null ? void 0 : _b.find((y) => y.id === D.id);
+          if (x) x.done = r.x.done;
+          renderMain();
+        }
+        break;
+      }
       case "zpM":
         S.zpM = monAdd(S.zpM || curMon(), +D.d);
         S.data.zp = null;

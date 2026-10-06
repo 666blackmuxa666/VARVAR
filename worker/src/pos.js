@@ -47,11 +47,12 @@ export async function posApi(b, req, env) {
   // 🧮 Розрахунок: склад, техкарти, накладні, інвентаризація — свої права (адмін / кухар)
   if (/^sk[A-Z]/.test(b.op || '')) return stockApi(b, env, me, { invoice: aiInvoice, card: aiCard });
   if (/^zp[A-Z]/.test(b.op || '')) return payApi(b, env, me); // 👷 зміни й зарплата
-  if (me.role === 'cook' && !['logout', 'state', 'menu', 'fav', 'order', 'accept', 'reject', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'printTest'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
+  if (me.role === 'cook' && !['logout', 'state', 'menu', 'fav', 'order', 'accept', 'reject', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'printTest', 'ideaAdd', 'ideaList', 'ideaDel'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
 
   // 🛵 кур'єр: лише свої доставки
-  if (me.role === 'courier' && !['logout', 'state', 'goSt', 'goCour', 'zpIn', 'zpOut', 'zpMy', 'courMe', 'courTg', 'courAct'].includes(b.op)) return [{ error: 'Кур\'єр — лише доставки' }, 403];
+  if (me.role === 'courier' && !['logout', 'state', 'goSt', 'goCour', 'zpIn', 'zpOut', 'zpMy', 'ideaAdd', 'ideaList', 'ideaDel', 'courMe', 'courTg', 'courAct'].includes(b.op)) return [{ error: 'Кур\'єр — лише доставки' }, 403];
   if (/^go[A-Z]|^cli[A-Z]/.test(b.op || '')) return goApi(b, env, me, t);
+  if (/^idea[A-Z]/.test(b.op || '')) return (await import('./ideas.js')).ideaApi(b, env, me); // 💡 побажання розробнику
   if (/^gb[A-Z]/.test(b.op || '')) return (await import('./guestbot.js')).gbApi(b, env, me); // 🤖 бот гостей
   if (/^loy[A-Z]/.test(b.op || '')) return loyApi(b, env, me, t); // 🎁 лояльність: рівні, акції, клієнти, звіт (promo.js)
   if (/^(bk|site|cert)[A-Z]/.test(b.op || '')) return siteApi(b, env, me, t);

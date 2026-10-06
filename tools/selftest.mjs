@@ -295,6 +295,15 @@ async function loyTests(A, W, dish) {
     await step('gbReply: гість без бота → 400', async () => { const r = await pos(W, 'gbReply', { ph: '380000000000', text: 'тест' }); must(r.status === 400, String(r.status)); });
     for (const op of ['gbSet', 'gbCast', 'gbCount']) await step(`waiter ✗ ${op}`, async () => { const r = await pos(W, op, { f: {} }); must(r.status === 403, String(r.status)); });
   } finally { if (gb0) await pos(A, 'gbSet', { f: { stat: gb0.stat, sleepBon: gb0.sleepBon } }); }
+
+  sect('💡 Побажання розробнику');
+  let iid = '';
+  await step('waiter: ideaAdd', async () => { const r = await posOk(W, 'ideaAdd', { text: 'QA побажання ' + RUN }); iid = r.x.id; must(iid, 'id'); });
+  await step('waiter бачить своє, адмін — усі', async () => { const w = await posOk(W, 'ideaList'), a = await posOk(A, 'ideaList'); must(w.list.some(x => x.id === iid) && a.list.some(x => x.id === iid), 'немає в списку'); });
+  await step('waiter ✗ ideaDone', async () => { const r = await pos(W, 'ideaDone', { id: iid }); must(r.status === 400, String(r.status)); });
+  await step('admin: ideaDone', async () => { const r = await posOk(A, 'ideaDone', { id: iid }); must(r.x.done, 'done'); });
+  await step('waiter: ideaDel своє', async () => { await posOk(W, 'ideaDel', { id: iid }); const a = await posOk(A, 'ideaList'); must(!a.list.some(x => x.id === iid), 'не видалено'); iid = ''; });
+  if (iid) await pos(A, 'ideaDel', { id: iid });
 }
 
 async function cleanup() {
