@@ -67,7 +67,7 @@ window.OWNV = ctx => {
     },
     menu(v) {
       const cats = v.d.menu.categories.filter(c => !c.tech), q = (S.mq || '').toLowerCase();
-      return `<div class="btnrow" style="margin-bottom:10px"><button class="btn primary sm" data-a="mItem">➕ Страва</button><button class="btn sm" data-a="mCat">📂 Розділ</button><button class="btn sm" data-a="mImport">📥 Імпорт з Excel / Google</button><input id="mq" placeholder="🔎 Пошук" value="${esc(S.mq || '')}" style="max-width:220px;min-height:34px;padding:6px 12px"></div>
+      return `<div class="btnrow" style="margin-bottom:10px"><button class="btn primary sm" data-a="mItem">➕ Страва</button><button class="btn sm" data-a="mCat">📂 Розділ</button><button class="btn sm" data-a="mImport">📥 Імпорт з Excel / Google</button><button class="btn sm" data-a="mTpl">🧩 Шаблон</button><input id="mq" placeholder="🔎 Пошук" value="${esc(S.mq || '')}" style="max-width:220px;min-height:34px;padding:6px 12px"></div>
         ${cats.length ? cats.map(c => { const items = c.items.filter(i => !q || i.name.uk.toLowerCase().includes(q)); if (q && !items.length) return ''; return `<div class="card" style="margin-bottom:10px"><h3>${esc(c.name.uk)} <span class="muted">· ${c.items.length}</span></h3>${items.map(i => `<div class="kv"><span style="display:flex;gap:10px;align-items:center"><button data-a="mPhoto" data-id="${i.id}" title="Фото" style="flex:none;width:44px;height:44px;border-radius:10px;background:var(--card2) center/cover;${i.img ? `background-image:url('${esc(i.img)}')` : ''}">${i.img ? '' : '📷'}</button><span>${i.hidden ? '⛔ ' : ''}${esc(i.name.uk)}${i.size ? ` <small class="muted">${esc(i.size)}</small>` : ''}${i.desc?.uk ? `<br><small class="muted">${esc(i.desc.uk.slice(0, 80))}</small>` : ''}</span></span><span style="display:flex;gap:6px;align-items:center"><b class="money">${i.variants ? i.variants.map(x => x.p).join(' / ') : money(i.price)}</b><button class="btn sm" data-a="mItem" data-id="${i.id}">✏️</button><button class="btn sm red" data-a="mDel" data-id="${i.id}">🗑</button></span></div>`).join('') || '<div class="muted">порожньо</div>'}</div>`; }).join('') : '<div class="card muted">Меню порожнє — додайте страви або імпортуйте таблицю.</div>'}
         <div class="btnrow"><button class="btn sm ghost" data-a="mUndo">↩️ Відмінити останню зміну</button></div>`;
     },
@@ -101,6 +101,14 @@ window.OWNV = ctx => {
     },
   };
 
+  // 🧩 шаблони меню за типом закладу — швидкий старт (ціни потім змінити)
+  const T = (cat, list) => list.map(([name, price, size]) => ({ cat, name, price, size: size || '' }));
+  const TPL = {
+    cafe: ['☕ Кав\'ярня', [...T('Кава', [['Еспресо', 45, '30 мл'], ['Американо', 50, '200 мл'], ['Капучино', 65, '250 мл'], ['Лате', 70, '300 мл'], ['Флет уайт', 75, '200 мл'], ['Раф', 85, '300 мл']]), ...T('Чай та інше', [['Чай чорний / зелений', 45, '400 мл'], ['Какао', 65, '300 мл'], ['Лимонад', 80, '400 мл']]), ...T('Десерти', [['Чізкейк', 120, '150 г'], ['Круасан', 65], ['Брауні', 90]])]],
+    bar: ['🍸 Бар', [...T('Коктейлі', [['Апероль шприц', 210], ['Мохіто', 190], ['Негроні', 220], ['Маргарита', 200]]), ...T('Пиво', [['Світле розливне', 75, '500 мл'], ['Темне розливне', 85, '500 мл'], ['Сидр', 95, '330 мл']]), ...T('Закуски', [['Сирна тарілка', 290], ['Крильця BBQ', 240], ['Картопля фрі', 110], ['Грінки з часником', 120]])]],
+    pizza: ['🍕 Піцерія', [...T('Піца', [['Маргарита', 210, '30 см'], ['Пепероні', 260, '30 см'], ['Чотири сири', 290, '30 см'], ['Гавайська', 260, '30 см'], ['М\'ясна', 310, '30 см']]), ...T('Салати', [['Цезар з куркою', 210], ['Грецький', 180]]), ...T('Напої', [['Кола', 55, '500 мл'], ['Сік', 60, '250 мл']])]],
+    rest: ['🍽 Ресторан', [...T('Закуски', [['Брускети', 160], ['Сирна тарілка', 320]]), ...T('Салати', [['Цезар', 220], ['Грецький', 190]]), ...T('Супи', [['Борщ', 150, '350 г'], ['Крем-суп грибний', 160, '300 г']]), ...T('Основні страви', [['Стейк зі свинини', 320, '250 г'], ['Куряче філе гриль', 260], ['Паста карбонара', 240]]), ...T('Десерти', [['Тірамісу', 150], ['Чізкейк', 140]]), ...T('Напої', [['Лимонад', 90, '400 мл'], ['Американо', 50]])]],
+  };
   // 🧱 конструктор сайту: порядок і показ блоків
   const BL = { about: '📝 Про нас', promos: '🎉 Акції', menu: '🍽 Хіти меню', gallery: '📷 Галерея', hookah: '💨 Кальяни', banquet: '🥂 Банкети', book: '📅 Бронювання', cert: '🎟 Сертифікати', reviews: '⭐ Відгуки', contacts: '📍 Контакти й карта' };
   const blocksOf = s => { const l = (s.blocks || []).filter(b => BL[b.id]); for (const id of Object.keys(BL)) if (!l.some(b => b.id === id)) l.push({ id, on: 1 }); return l; };
@@ -157,6 +165,8 @@ window.OWNV = ctx => {
       return modal(it ? '✏️ ' + esc(it.name.uk) : '➕ Нова страва', `<label>Назва<input name="n" required value="${esc(it?.name.uk || '')}"></label><label>Розділ<select name="c">${cats.map(c => `<option value="${c.id}" ${c === cat ? 'selected' : ''}>${esc(c.name.uk)}</option>`).join('')}</select></label><label>Ціна, ₴<input name="p" type="number" min="1" required value="${it?.price || ''}"></label><label>Вага / об'єм<input name="s" value="${esc(it?.size || '')}" placeholder="350 г"></label><label>Опис<input name="d" value="${esc(it?.desc?.uk || '')}"></label>`,
         async f => { await vapi(id, 'menuSave', { item: { id: it?.id, cat: f.c.value, name: f.n.value, price: f.p.value, size: f.s.value, desc: f.d.value } }); toast('💾 Збережено'); load(); });
     }
+    if (a === 'mTpl') { const k = await new Promise(res => { const bg = modal('🧩 Шаблон меню', `<div class="muted" style="font-size:13px;margin-bottom:8px">Додасть типові розділи й страви — потім змініть ціни, назви, фото.</div><div class="btnrow">${Object.entries(TPL).map(([k, [l, rows]]) => `<button type="button" class="btn" data-tpl="${k}">${l} · ${rows.length}</button>`).join('')}</div>`); bg.addEventListener('click', ev => { const b = ev.target.closest('[data-tpl]'); if (b) { bg.remove(); res(b.dataset.tpl); } }); });
+      if (!k) return; return act(() => vapi(id, 'menuImport', { rows: TPL[k][1] }), '🧩 Шаблон додано'); }
     if (a === 'mImport') {
       const bg = modal('📥 Імпорт меню з таблиці', `<div class="muted" style="font-size:13px">Скопіюйте рядки з Excel або Google Sheets (Ctrl+C) і вставте сюди. Стовпці: <b>Розділ · Назва · Ціна · Опис · Вага</b> — порядок і заголовки можна свої, ми впізнаємо. Наявні страви з такою самою назвою — оновлять ціну.</div><textarea id="mImp" rows="8" style="width:100%;font:inherit;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px" placeholder="Розділ	Назва	Ціна&#10;Бургери	Класичний	220&#10;Напої	Лимонад	90"></textarea><div id="mPrev" class="muted" style="font-size:13px;max-height:180px;overflow:auto"></div><label style="flex-direction:row;display:flex;gap:8px;align-items:center;color:var(--text)"><input type="checkbox" id="mRep" style="width:18px;height:18px"> Замінити все меню (інакше — додати)</label>`, async () => {
         const rows = parseTable($('#mImp').value); if (!rows.length) throw new Error('Не бачу рядків з назвою й ціною');
@@ -172,5 +182,13 @@ window.OWNV = ctx => {
     for (const k of ['BOT_TOKEN', 'GUEST_BOT_TOKEN', 'COURIER_BOT_TOKEN']) if (f[k].value.trim()) x[k] = f[k].value.trim(); if (!Object.keys(x).length) return; err.textContent = '…';
     try { const r = await api('secrets', { venue: S.cfgV.id, f: x }); toast('✅ Підключено й оформлено: ' + Object.values(r.names).map(n => '@' + n).join(', ')); load(); } catch (y) { err.textContent = y.message; }
   });
-  return { view, open: (id, sec = 'start') => { S.cfgV = { id, sec }; S.tab = 'cfg'; load(); } };
+  // 🎬 демо-заклад для показу клієнту: меню-шаблон + тексти сайту
+  async function demo(type = 'cafe') {
+    const id = 'demo-' + Math.random().toString(36).slice(2, 6), name = 'Демо · ' + TPL[type][0].replace(/^\S+\s/, '');
+    const r = await api('venueNew', { id, name, owner: S.me.email, city: 'Демо' });
+    await vapi(id, 'menuImport', { rows: TPL[type][1] });
+    for (const [k, v] of [['tagline', 'Смачно, швидко, з любов\'ю'], ['about', 'Демонстраційний заклад: так виглядатиме сайт вашого закладу — меню, замовлення з собою й доставка, бронювання, сертифікати.'], ['phone', '+380 00 000 00 00'], ['addr', 'вул. Демонстраційна, 1'], ['from', '09:00'], ['to', '22:00']]) await vapi(id, 'siteSet', { k, v }).catch(() => {});
+    return r;
+  }
+  return { view, demo, open: (id, sec = 'start') => { S.cfgV = { id, sec }; S.tab = 'cfg'; load(); } };
 };

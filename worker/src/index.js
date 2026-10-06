@@ -91,7 +91,7 @@ export async function handle(req, env) {
         return json({ ok: true, until, t: t || 0 });
       }
       if (url.pathname === '/api/ai' && req.method === 'POST') return json(...await aiHelp(await req.json(), env));
-      if (url.pathname === '/api/menu') return new Response(JSON.stringify(await getMenu(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'no-cache' } });
+      if (url.pathname === '/api/menu') return new Response(JSON.stringify(env.VENUE && env.VENUE !== MAIN ? { ...(await getMenu(env)), brand: await (async () => { const s = await (await import('./site.js')).getSite(env); return { name: s.name, logo: s.logo || '' }; })() } : await getMenu(env)), /* 🏪 назва закладу — разом з меню, без окремого запиту */ { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'no-cache' } });
       if (url.pathname.startsWith('/img/')) {
         const b = await env.DB.get('img:' + url.pathname.slice(5), 'arrayBuffer');
         if (b) return new Response(b, { headers: { 'content-type': new Uint8Array(b.slice(0, 4))[0] === 0x89 ? 'image/png' : 'image/jpeg', 'cache-control': 'public, max-age=31536000' } });

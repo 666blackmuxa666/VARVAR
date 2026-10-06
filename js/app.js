@@ -331,7 +331,7 @@
   const GST = { new: ['⏳', 'goStNew'], acc: ['✅', 'goStAcc'], cook: ['🔥', 'goStCook'], ready: ['🍽', 'goStReady'], road: ['🛵', 'goStRoad'], done: ['🤝', 'goStDone'], rej: ['❌', 'goStRej'] };
   async function goInit() {
     $('#callBtn').hidden = true;
-    { const a = document.createElement('a'); a.href = window.VARVAR.link('about.html'); a.className = 'lang'; a.style.cssText = 'text-decoration:none;color:inherit;margin-left:auto;margin-right:8px'; a.textContent = '← VARVAR'; $('.top').insertBefore(a, $('#lang')); }
+    { const a = document.createElement('a'); a.href = window.VARVAR.link('about.html'); a.className = 'lang'; a.style.cssText = 'text-decoration:none;color:inherit;margin-left:auto;margin-right:8px'; a.textContent = '← ' + (menu?.brand?.name || 'VARVAR'); $('.top').insertBefore(a, $('#lang')); }
     try { goCfg = (await api('/api/goinfo')).data; } catch {}
     try { reco = (await api('/api/reco')).data || {}; } catch {}
     if (goCfg && !goCfg[gf.kind]) gf.kind = goCfg.del ? 'del' : 'pick';
@@ -464,6 +464,7 @@
     m.categories.forEach(c => c.items = c.items.filter(it => !it.hidden));
     m.categories = m.categories.filter(c => c.items.length);
     menu = m;
+    if (m.brand?.name) { document.title = m.brand.name + ' — меню'; const h = $('.logo'); if (h) h.textContent = m.brand.name; document.querySelectorAll('a.lang[href*="about.html"]').forEach(a => { a.textContent = a.textContent.replace('VARVAR', m.brand.name); }); }
     m.categories.forEach(c => c.items.forEach(it => { byId[it.id] = it; catOf[it.id] = c.id; }));
     packId = (m.categories.find(c => c.id === 'upakuvannia')?.items || [])[0]?.id || null;
     if (GO && qs.get('rep')) { // 🔁 «Повторити» з бота гостей: ?go&rep=id|v*q,…
