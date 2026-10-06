@@ -70,6 +70,7 @@ export class Store extends DurableObject {
   async getMany(ks) { const m = new Map(); for (let i = 0; i < ks.length; i += 128) for (const [k, v] of await this.ctx.storage.get(ks.slice(i, i + 128))) m.set(k, v); return ks.map(k => { const r = m.get(k); return alive(r) ? r.v : null; }); }
   async put(k, v, ttl) { await this.ctx.storage.put(k, { v, e: ttl ? now() + ttl * 1000 : 0 }); this.changed([k]); }
   async del(k) { await this.ctx.storage.delete(k); this.changed([k]); }
+  async wipe() { await this.ctx.storage.deleteAll(); } // 🗑 видалення закладу (лише з консолі платформи)
   async delMany(ks) { for (let i = 0; i < ks.length; i += 128) await this.ctx.storage.delete(ks.slice(i, i + 128)); this.changed(ks); }
   // 🔒 черга на ключ: дії «прочитав → змінив → записав» з різних запитів ідуть строго по одній (без загублених змін)
   async lock(k) {

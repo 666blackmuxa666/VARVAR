@@ -112,7 +112,7 @@ export async function ownerApi(req, env) {
   // ---- консоль платформи ----
   if (!plat) return bad('Лише для платформи', 403);
   switch (b.op) {
-    case 'accts': return ok({ list: await H.acctList() });
+    case 'accts': return ok({ list: await H.acctList(), venues: await H.venueList() });
     case 'acctNew': { const a = await H.acctCreate({ email: b.email, name: b.name, pass: b.pass }); return a.error ? bad(a.error) : ok({ acct: a }); }
     case 'acctPass': { const r = await H.acctPass(b.email, b.pass); return r.error ? bad(r.error) : ok(); }
     case 'venueNew': {
@@ -120,6 +120,12 @@ export async function ownerApi(req, env) {
       const r = await callVenue(env, v.id, '/__int/init', { name: v.name }, true); if (r.error) return bad(r.error);
       return ok({ venue: v, codes: r.codes });
     }
+    case 'acctSet': { const a = await H.acctSet(b.email, b.f || {}); return a.error ? bad(a.error) : ok({ acct: a }); }
+    case 'acctDel': { const r = await H.acctDel(b.email); return r.error ? bad(r.error) : ok(); }
+    case 'grant': { const r = await H.grant(String(b.venue), b.email, !!b.on); return r.error ? bad(r.error) : ok({ acct: r }); }
+    case 'venueDel': { // 🗑 назавжди: запис у HUB + усі дані закладу (підтвердження — точна адреса закладу)
+      if (b.confirm !== b.id) return bad('Для підтвердження введіть адресу закладу'); const r = await H.venueDel(String(b.id)); if (r.error) return bad(r.error);
+      await env.STORE.get(env.STORE.idFromName(doName(String(b.id)))).wipe().catch(() => {}); return ok(); }
     case 'venueSet': { const v = await H.venueSet(String(b.id), b.f || {}); return v.error ? bad(v.error) : ok({ venue: v }); }
   }
   return bad('unknown');

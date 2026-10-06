@@ -67,11 +67,32 @@ export class Hub extends DurableObject {
   }
   async venueSet(id, f) {
     const v = await this.st.get('venue:' + id); if (!v) return { error: 'Немає закладу' };
+    if (id === MAIN && f.status === 'off') return { error: 'VARVAR не вимикається' };
     if (f.name != null) v.name = String(f.name).trim().slice(0, 60) || v.name;
     if (f.status && ['active', 'trial', 'off'].includes(f.status)) v.status = f.status;
     if (f.city != null) v.city = String(f.city).slice(0, 60);
-    if (f.owner) { const a = await this.st.get('acct:' + normEmail(f.owner)); if (!a) return { error: 'Немає власника' }; const old = await this.st.get('acct:' + v.owner); if (old) { old.venues = (old.venues || []).filter(x => x !== id); await this.st.put('acct:' + old.email, old); } a.venues = [...new Set([...(a.venues || []), id])]; await this.st.put('acct:' + a.email, a); v.owner = a.email; }
+    if (f.owner) { const a = await this.st.get('acct:' + normEmail(f.owner)); if (!a) return { error: 'Немає власника' }; const old = await this.st.get('acct:' + v.owner); if (old) { /* старий власник зберігає доступ як керуючий — забрати можна окремо */ } a.venues = [...new Set([...(a.venues || []), id])]; await this.st.put('acct:' + a.email, a); v.owner = a.email; }
     await this.st.put('venue:' + id, v); return v;
+  }
+  // ---- керування (консоль платформи) ----
+  async acctSet(email, f) { const a = await this.st.get('acct:' + normEmail(email)); if (!a) return { error: 'Немає акаунта' }; if (f.name != null) a.name = String(f.name).trim().slice(0, 60) || a.name; await this.st.put('acct:' + a.email, a); return pub(a); }
+  async acctDel(email) {
+    const a = await this.st.get('acct:' + normEmail(email)); if (!a) return { error: 'Немає акаунта' }; if (a.role === 'platform') return { error: 'Акаунт платформи не видаляється' };
+    const own = [...(await this.st.list({ prefix: 'venue:' })).values()].filter(v => v.owner === a.email); if (own.length) return { error: `Спершу передайте іншому власнику заклади: ${own.map(v => v.name).join(', ')}` };
+    await this.st.delete('acct:' + a.email); const s = await this.st.list({ prefix: 'sess:' }); for (const [k, v] of s) if (v.email === a.email) await this.st.delete(k); return { ok: true };
+  }
+  // доступ до закладу (керуючий, бухгалтер…) — бачить заклад у своєму кабінеті; власник лишається один
+  async grant(id, email, on) {
+    const v = await this.st.get('venue:' + id); if (!v) return { error: 'Немає закладу' };
+    const a = await this.st.get('acct:' + normEmail(email)); if (!a) return { error: 'Немає акаунта з таким email' };
+    if (!on && v.owner === a.email) return { error: 'Це власник — спершу передайте заклад іншому' };
+    a.venues = on ? [...new Set([...(a.venues || []), id])] : (a.venues || []).filter(x => x !== id); await this.st.put('acct:' + a.email, a); return pub(a);
+  }
+  async venueDel(id) {
+    if (id === MAIN) return { error: 'VARVAR не видаляється' };
+    const v = await this.st.get('venue:' + id); if (!v) return { error: 'Немає закладу' };
+    for (const [k, a] of await this.st.list({ prefix: 'acct:' })) if ((a.venues || []).includes(id)) { a.venues = a.venues.filter(x => x !== id); await this.st.put(k, a); }
+    await this.st.delete(['venue:' + id, 'seen:' + id]); return { ok: true };
   }
   async seen(id) { const k = 'seen:' + id; await this.st.put(k, Date.now()); }
   async seenAll() { return Object.fromEntries([...(await this.st.list({ prefix: 'seen:' }))].map(([k, v]) => [k.slice(5), v])); }
