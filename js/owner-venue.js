@@ -36,7 +36,7 @@ window.OWNV = ctx => {
   function view() {
     const v = V(), venue = S.venues.find(x => x.id === v.id) || { name: v.id };
     const tabs = `<div class="seg2">${SEC.map(([k, l]) => `<button class="${v.sec === k ? 'on' : ''}" data-a="vsec" data-s="${k}">${l}</button>`).join('')}</div>`;
-    const head = `<div class="btnrow" style="align-items:center;margin-bottom:10px"><h2 style="margin:0">⚙️</h2>${S.venues.length > 1 ? `<select id="vpick" style="max-width:320px;font-weight:700">${S.venues.map(x => `<option value="${x.id}" ${x.id === v.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>` : `<h2 style="margin:0">${esc(venue.name)}</h2>`}</div>${tabs}`;
+    const head = `<div class="btnrow" style="align-items:center;margin-bottom:10px">${S.venues.length > 1 ? '<button class="btn sm ghost" data-a="vpickBack">← Інший заклад</button>' : ''}<h2 style="margin:0">⚙️</h2>${S.venues.length > 1 ? `<select id="vpick" style="max-width:320px;font-weight:700">${S.venues.map(x => `<option value="${x.id}" ${x.id === v.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>` : `<h2 style="margin:0">${esc(venue.name)}</h2>`}</div>${tabs}`;
     if (!v.d) return head + '<div class="muted">Завантаження…</div>';
     if (v.d.err) return head + `<div class="alert red">${esc(v.d.err)}</div>`;
     return head + (SECV[v.sec] || (() => ''))(v, venue);
@@ -145,6 +145,7 @@ window.OWNV = ctx => {
   document.addEventListener('click', async e => {
     const el = e.target.closest('[data-a]'); if (!el || !S.cfgV) return; const a = el.dataset.a, d = el.dataset, v = S.cfgV, id = v.id;
     if (a === 'vsec') { v.sec = d.s; return load(); }
+    if (a === 'vpickBack') { S.cfgV = null; S.tab = 'cfg'; return render(); }
     if (a === 'vback') { S.cfgV = null; S.tab = 'ven'; return render(); }
     if (a === 'vsite') { const long = ['about', 'banquet', 'hookah'].includes(d.k), x = await ask(el.closest('.kv')?.querySelector('span')?.firstChild?.textContent || d.k, v.d.site[d.k], ['rating', 'ratingN', 'preMin'].includes(d.k) ? 'number' : 'text', long); if (x == null) return; return act(() => vapi(id, 'siteSet', { k: d.k, v: x }), '💾 Збережено'); }
     if (a === 'vblk') { const l = blocksOf(v.d.site), i = +d.i, m = +d.m; if (m) { const j = i + m; [l[i], l[j]] = [l[j], l[i]]; } else l[i].on = l[i].on ? 0 : 1; v.d.site.blocks = l; render(); try { v.d.site = (await vapi(id, 'siteSet', { k: 'blocks', v: l })).site; } catch (x) { toast('⚠️ ' + x.message); } return; }

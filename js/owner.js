@@ -51,7 +51,7 @@
   async function start() {
     if (!S.token) return renderLogin();
     try { const r = await api('me'); S.me = r.me; S.venues = r.venues; S.seen = r.seen || {}; } catch { return; }
-    if (S.tab === 'cfg' && !S.cfgV && S.venues.length) { const id = store.get('cfgV', ''); return VC.open(S.venues.some(v => v.id === id) ? id : S.venues[0].id); }
+    if (S.tab === 'cfg' && !S.cfgV && S.venues.length === 1) return VC.open(S.venues[0].id);
     render(); if (S.tab !== 'cfg') load();
   }
   async function load() {
@@ -129,6 +129,10 @@
       ${T.noCard ? `<div class="alert" style="margin-top:8px">⚠️ Продажі без техкарти: ${money(T.noCard)} — їх собівартість не врахована. Заповніть техкарти (каса → 📦 Склад), щоб прибуток був точним.</div>` : ''}
       ${top.length ? `<div class="card tbl" style="margin-top:12px"><h3>🏆 Що приносить найбільше грошей</h3><table><thead><tr><th>Страва</th><th>Продано</th><th>Виручка</th><th>Собівартість</th><th>Заробили</th></tr></thead><tbody>${top.map(x => `<tr><td>${esc(x.n)}</td><td>${x.q}</td><td class="money">${money(x.rev)}</td><td class="money">${money(x.cost)}</td><td class="money"><b>${money(x.m)}</b></td></tr>`).join('')}</tbody></table></div>` : ''}`;
   }
+  // ⚙️ Налаштування: спершу — який заклад
+  function pickVenue() {
+    return `<h2>⚙️ Який заклад налаштувати?</h2><div class="grid">${S.venues.map(v => `<button class="card venue" data-a="vcfgOpen" data-v="${v.id}" style="text-align:left;cursor:pointer"><div class="h"><b>${esc(v.name)}</b><span class="st ${v.status}">${ST[v.status] || ''}</span></div><div class="muted" style="font-size:13px">${esc(v.city || '')}${v.city ? ' · ' : ''}${esc(v.id)}</div><span class="btn sm primary" style="align-self:flex-start">Налаштувати →</span></button>`).join('') || '<div class="muted">Закладів ще немає</div>'}</div>`;
+  }
   function venues() {
     return `<h2>🏪 Мої заклади</h2><div class="grid">${S.venues.map(v => `<div class="card venue"><div class="h"><b>${esc(v.name)}</b><span class="st ${v.status}">${ST[v.status] || ''}</span></div>
       <div class="muted">${esc(v.city || '')}${v.city ? ' · ' : ''}адреса: <b>${esc(v.id)}</b>${S.seen[v.id] ? ` · заходили ${new Date(S.seen[v.id]).toLocaleDateString('uk-UA')}` : ''}</div>
@@ -159,7 +163,7 @@
     if (!TABS.some(x => x[0] === S.tab)) S.tab = 'home';
     app.innerHTML = `<header class="top"><div class="in"><img src="img/icon.png" alt=""><b>Кабінет власника</b><div class="who"><b>${esc(S.me.name)}</b><span class="muted">${plat ? '👑 платформа' : 'власник'} · <a href="#" data-a="help">🆘 допомога</a> · <a href="#" data-a="out">вийти</a></span></div></div>
       <nav class="tabs">${TABS.map(([k, l]) => `<button class="${S.tab === k ? 'on' : ''}" data-a="tab" data-t="${k}">${l}</button>`).join('')}<button data-a="reload">🔄</button></nav></header>
-      <main>${S.tab === 'cfg' ? (S.cfgV ? VC.view() : '<div class="muted">Завантаження…</div>') : S.tab === 'home' ? home() : S.tab === 'an' ? analytics() : S.tab === 'ven' ? venues() : platform()}</main>`;
+      <main>${S.tab === 'cfg' ? (S.cfgV ? VC.view() : pickVenue()) : S.tab === 'home' ? home() : S.tab === 'an' ? analytics() : S.tab === 'ven' ? venues() : platform()}</main>`;
   }
 
   // ---------- модалки ----------
@@ -187,7 +191,7 @@
     const reload = async () => { S.plat = null; await start(); S.tab = 'plat'; render(); };
     if (a === 'out') { e.preventDefault(); return logout(); }
     if (a === 'help') { e.preventDefault(); return modal('🆘 Допомога', '<div class="muted" style="font-size:13px">Напишіть, що не працює або що потрібно налаштувати — розробник отримає повідомлення в Telegram і зв\'яжеться з вами.</div><textarea name="t" rows="5" required style="width:100%;font:inherit;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px"></textarea>', async f => { await api('help', { text: f.t.value }); toast('🆘 Надіслано'); }); }
-    if (a === 'tab' && d.t === 'cfg') { store.set('tab', 'cfg'); const id = S.cfgV?.id || store.get('cfgV', '') || S.venues[0]?.id; if (!id) return toast('Закладів ще немає'); return VC.open(S.venues.some(v => v.id === id) ? id : S.venues[0].id, S.cfgV?.sec || 'start'); }
+    if (a === 'tab' && d.t === 'cfg') { store.set('tab', 'cfg'); S.cfgV = null; S.tab = 'cfg'; if (S.venues.length === 1) return VC.open(S.venues[0].id); return render(); } // спершу — вибір закладу
     if (a === 'tab') { S.cfgV = null; S.tab = d.t; store.set('tab', d.t); if (d.t === 'home' || d.t === 'an') return load(); return render(); }
     if (a === 'reload') { S.plat = null; return start(); }
     if (a === 'per') { S.per = d.p; if (d.p === 'own') return render(); return load(); }
