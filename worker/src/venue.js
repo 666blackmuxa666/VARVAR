@@ -9,11 +9,11 @@ export const ALS = new AsyncLocalStorage();
 export const cur = () => ALS.getStore() || {};
 export const venueId = () => cur().venue || MAIN;
 export const doName = v => !v || v === MAIN ? 'main' : 'v:' + v;
-export const isVenueId = v => /^[a-z0-9][a-z0-9-]{1,30}$/.test(v || '');
+export const isVenueId = v => /^(?=.*[a-z])[a-z0-9][a-z0-9-]{1,30}$/.test(v || ''); // з літерою — щоб не сплутати з номером версії
 
 // /v/<id>/rest → { venue: id, path: /rest }
 export function splitVenue(url) {
-  const m = url.pathname.match(/^\/v\/([a-z0-9][a-z0-9-]{1,30})(\/.*)?$/);
+  const m = url.pathname.match(/^\/v\/((?=[a-z0-9-]*[a-z])[a-z0-9][a-z0-9-]{1,30})(\/.*)?$/);
   return m ? { venue: m[1], path: m[2] || '/' } : { venue: MAIN, path: url.pathname };
 }
 // запит без префікса закладу, але з позначкою закладу в заголовку (для Store)
@@ -66,5 +66,5 @@ export async function saveSecrets(env, patch) {
 export const SITE_BASE = 'https://666blackmuxa666.github.io/VARVAR/';
 export function siteLink(path = '') {
   const v = venueId(); if (v === MAIN) return SITE_BASE + path;
-  const [p, h] = path.split('#'); return SITE_BASE + (p || '') + (p.includes('?') ? '&' : '?') + 'v=' + v + (h != null ? '#' + h : '');
+  const [p, h] = path.split('#'); return SITE_BASE + (p || '') + (p.includes('?') ? '&' : '?') + 'venue=' + v + (h != null ? '#' + h : '');
 }

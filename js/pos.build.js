@@ -19,16 +19,22 @@ var __spreadValues = (a, b) => {
 var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
 (() => {
   var _a;
+  const okV = (x) => /^(?=.*[a-z])[a-z0-9][a-z0-9-]{1,30}$/.test(x || "") && x !== "varvar";
   const VENUE = (() => {
-    const q = new URLSearchParams(location.search).get("v");
+    const q = new URLSearchParams(location.search).get("venue");
     try {
       if (q != null) {
-        if (/^[a-z0-9][a-z0-9-]{1,30}$/.test(q) && q !== "varvar") localStorage.setItem("pos_venue", q);
+        if (okV(q)) localStorage.setItem("pos_venue", q);
         else localStorage.removeItem("pos_venue");
       }
-      return localStorage.getItem("pos_venue") || "";
+      const s = localStorage.getItem("pos_venue") || "";
+      if (s && !okV(s)) {
+        localStorage.removeItem("pos_venue");
+        return "";
+      }
+      return s;
     } catch (e) {
-      return /^[a-z0-9][a-z0-9-]{1,30}$/.test(q || "") && q !== "varvar" ? q : "";
+      return okV(q) ? q : "";
     }
   })();
   const API = (new URLSearchParams(location.search).get("api") || (/workers\.dev$/.test(location.hostname) ? location.origin : "https://varvar-menu.varvar.workers.dev")) + (VENUE ? "/v/" + VENUE : "");
@@ -113,6 +119,13 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   };
   async function api(op, data = {}, ms = 12e3) {
     const r = await withTimeout(fetch(API + "/api/pos", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + S.token }, body: JSON.stringify(__spreadValues({ op }, data)) }), ms);
+    if (r.status === 404 && VENUE) {
+      try {
+        localStorage.removeItem("pos_venue");
+      } catch (e) {
+      }
+      location.replace(location.pathname);
+    }
     const j = await r.json().catch(() => ({}));
     if (r.status === 401 && op !== "login") {
       logout(true);

@@ -120,7 +120,7 @@
       <div class="btnrow"><button class="btn primary sm" data-a="enter" data-v="${v.id}">Увійти в касу →</button><button class="btn sm" data-a="vinfo" data-v="${v.id}">🔑 Коди й боти</button><a class="btn sm ghost" href="${esc(siteOf(v.id, 'about.html'))}" target="_blank">🌐 Сайт</a></div></div>`).join('') || '<div class="muted">Закладів ще немає</div>'}</div>
       <h2>🔐 Акаунт</h2><div class="card"><div class="kv"><span>${esc(S.me.name)}<br><small class="muted">${esc(S.me.email)}</small></span><button class="btn sm" data-a="pass">Змінити пароль</button></div></div>`;
   }
-  const siteOf = (id, page) => location.pathname.replace(/owner\.html$/, '') + page + (id === 'varvar' ? '' : '?v=' + id);
+  const siteOf = (id, page) => location.pathname.replace(/owner\.html$/, '') + page + (id === 'varvar' ? '' : '?venue=' + id);
   function platform() {
     const P = S.plat;
     if (!P) { api('accts').then(r => { S.plat = { accts: r.list }; render(); }).catch(e => toast('⚠️ ' + e.message)); return '<div class="muted">…</div>'; }
@@ -166,7 +166,7 @@
     if (a === 'reload') { S.plat = null; return start(); }
     if (a === 'per') { S.per = d.p; if (d.p === 'own') return render(); return load(); }
     if (a === 'perGo') { S.from = $('#pf').value; S.to = $('#pt').value; if (S.from > S.to) [S.from, S.to] = [S.to, S.from]; return load(); }
-    if (a === 'enter') { el.disabled = true; try { const r = await api('enter', { venue: d.v }); location.href = `${POS}?v=${encodeURIComponent(d.v)}#tok=${r.token}&me=${encodeURIComponent(JSON.stringify(r.me))}`; } catch (x) { toast('⚠️ ' + x.message); el.disabled = false; } return; }
+    if (a === 'enter') { el.disabled = true; try { const r = await api('enter', { venue: d.v }); location.href = `${POS}?venue=${encodeURIComponent(d.v)}#tok=${r.token}&me=${encodeURIComponent(JSON.stringify(r.me))}`; } catch (x) { toast('⚠️ ' + x.message); el.disabled = false; } return; }
     if (a === 'vinfo') return vinfo(d.v);
     if (a === 'pass') return modal('🔐 Новий пароль', '<input name="p" type="password" placeholder="Від 8 символів" minlength="8" required autocomplete="new-password">', async f => { await api('pass', { pass: f.p.value }); toast('✅ Пароль змінено — увійдіть знову'); logout(true); });
     if (a === 'anew') return modal('👤 Новий власник', '<label>Ім\'я<input name="n" required></label><label>Email<input name="e" type="email" required></label><label>Тимчасовий пароль<input name="p" required minlength="8" autocomplete="off"></label><div class="muted" style="font-size:13px">Передайте власнику email і пароль — він змінить пароль у кабінеті.</div>', async f => { await api('acctNew', { name: f.n.value, email: f.e.value, pass: f.p.value }); toast('✅ Власника створено'); S.plat = null; render(); });
@@ -174,7 +174,7 @@
     if (a === 'vnew') return modal('➕ Новий заклад', `<label>Назва<input name="n" required placeholder="Кав'ярня Ранок"></label><label>Адреса в системі (латиниця)<input name="i" required pattern="[a-z0-9][a-z0-9\\-]{1,30}" placeholder="ranok-lviv"></label><label>Місто<input name="c"></label><label>Власник<select name="o">${(S.plat?.accts || []).map(x => `<option value="${esc(x.email)}">${esc(x.name)} · ${esc(x.email)}</option>`).join('')}</select></label>`, async (f, bg) => {
       const r = await api('venueNew', { name: f.n.value, id: f.i.value.trim().toLowerCase(), city: f.c.value, owner: f.o.value });
       await start(); S.tab = 'plat'; render();
-      modal('✅ Заклад створено', `<div class="muted" style="margin-bottom:8px">Коди реєстрації персоналу (збережені й у «🔑 Коди й боти»):</div><div class="codes">${Object.entries(r.codes).map(([k, c]) => `<span>${ROLE[k]}</span><b>${c}</b>`).join('')}</div><div class="muted" style="margin-top:10px;font-size:13px">Каса: <b>pos.html?v=${esc(r.venue.id)}</b><br>Сайт: <b>about.html?v=${esc(r.venue.id)}</b></div>`); });
+      modal('✅ Заклад створено', `<div class="muted" style="margin-bottom:8px">Коди реєстрації персоналу (збережені й у «🔑 Коди й боти»):</div><div class="codes">${Object.entries(r.codes).map(([k, c]) => `<span>${ROLE[k]}</span><b>${c}</b>`).join('')}</div><div class="muted" style="margin-top:10px;font-size:13px">Каса: <b>pos.html?venue=${esc(r.venue.id)}</b><br>Сайт: <b>about.html?venue=${esc(r.venue.id)}</b></div>`); });
     if (a === 'vstat') { const v = S.venues.find(x => x.id === d.v); return modal('Статус · ' + esc(v.name), `<select name="s">${Object.entries(ST).map(([k, l]) => `<option value="${k}" ${v.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`, async f => { await api('venueSet', { id: d.v, f: { status: f.s.value } }); await start(); }); }
   });
   start();
