@@ -201,11 +201,21 @@ export async function certUse(env, t, code, who) {
   return L(env, ['bills', 'cert:' + code], async () => {
     const c = await getCert(env, code), b = await getBill(env, t);
     if (!c || c.st !== 'ok') return { error: 'Сертифікат не знайдено або не оплачено' }; if (!c.left) return { error: 'Сертифікат уже використано' }; if (!b.total) return { error: 'Стіл порожній' };
-    const already = b.cert?.code === code ? b.cert.sum : 0, use = Math.min(c.left + already, b.total - (b.bonus || 0) + already);
+    if (c.exp && Date.now() > c.exp) return { error: `Подарунок діяв до ${new Date(c.exp).toLocaleDateString('uk-UA', { timeZone: TZ })}` };
+    let cap = Infinity; // 🎂 подарунок (кальян): лише на цю позицію в рахунку, не більше її ціни
+    if (c.items?.length) { const { billItems } = await import('./ops.js'), it = billItems(b).filter(x => c.items.includes(x.name)).sort((a, z) => z.sum / z.q - a.sum / a.q)[0]; if (!it) return { error: `Спершу додайте в рахунок: ${c.gift}` }; cap = Math.round(it.sum / it.q); }
+    const already = b.cert?.code === code ? b.cert.sum : 0, use = Math.min(c.left + already, cap, b.total - (b.bonus || 0) + already);
     b.bonus = (b.bonus || 0) - already + use; b.cert = { code, sum: use }; c.left = c.left + already - use;
     c.uses = [...(c.uses || []).filter(u => u.t !== t || u.d !== dayKey()), { t, d: dayKey(), sum: use, by: who }];
     await putBill(env, t, b); await env.DB.put('cert:' + code, JSON.stringify(c)); return { use, left: c.left };
   });
+}
+// 🎂 подарунковий сертифікат на ДН (бот гостей): позиція з меню, діє N днів, оплачено «подарунок»
+export async function certGift(env, { phone, name, gift, items, sum, days }) {
+  const code = certCode(), c = { code, sum, left: sum, from: 'Varvar 🎂', to: name || '', phone, note: '', st: 'ok', paid: 'gift', gift, items, at: Date.now(), exp: Date.now() + days * 864e5, uses: [] };
+  await env.DB.put('cert:' + code, JSON.stringify(c));
+  await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; l.push(code); await env.DB.put('certs', JSON.stringify(l.slice(-500))); });
+  return c;
 }
 export async function certDel(env, code) {
   code = String(code || '').toUpperCase().trim();
@@ -261,7 +271,7 @@ export async function guestBot(m, env) {
     const gbm = await import('./guestbot.js'); await gbm.linkChat(env, chat, ph);
     const n = await env.DB.get('glu:' + uid);
     if (n && await env.DB.get('gl:' + n)) { const tok = [...crypto.getRandomValues(new Uint8Array(16))].map(x => x.toString(16).padStart(2, '0')).join(''); await env.DB.put('gs:' + tok, ph, { expirationTtl: 30 * 86400 }); await env.DB.put('gl:' + n, JSON.stringify({ token: tok }), { expirationTtl: 300 }); }
-    await gbm.showMenu(env, chat, `✅ Готово! Номер ${fmtPhone(ph)} підключено.${!was ? `\n🎁 Ви в програмі лояльності Varvar: бонуси з кожного замовлення, знижки постійним гостям, подарунок на день народження.${cc.n ? ` Уже враховано візитів: ${cc.n}.` : ''}${cc.bal ? ` На рахунку ${cc.bal} бонусів.` : ''}` : ''}${n ? '\nПоверніться на сайт — кабінет відкриється сам.' : ''}\nТут — ваші бонуси, замовлення, броні й сертифікати 👇`);
+    await gbm.showMenu(env, chat, `✅ Готово! Номер ${fmtPhone(ph)} підключено.${!was ? `\n🎁 Ви в програмі лояльності Varvar: бонуси з кожного замовлення, знижки постійним гостям, а на день народження — 🎁 кальян у подарунок (вкажіть дату: «🎂 День народження»).${cc.n ? ` Уже враховано візитів: ${cc.n}.` : ''}${cc.bal ? ` На рахунку ${cc.bal} бонусів.` : ''}` : ''}${n ? '\nПоверніться на сайт — кабінет відкриється сам.' : ''}\nТут — ваші бонуси, замовлення, броні й сертифікати 👇`);
     return true;
   }
   return false;

@@ -13,6 +13,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // ---------- ⚙️ налаштування (каса → Гості й акції → 🤖 Бот гостей) ----------
 export const GB_DEF = {
   stat: 1, bon: 1, chat: 1, // статус замовлення · «+N бонусів» · чат з адміністратором
+  bdGift: 'hookah-silver', bdGiftDays: 14, // 🎂 подарунок на ДН (id страви з меню; '' — без подарунка) і скільки днів діє
   bd: 1, bdText: '🎂 З днем народження! Команда Varvar бажає смачного року — чекаємо вас у гості 🧡',
   sleep: 0, sleepDays: 30, sleepBon: 100, sleepText: '👋 Давно вас не бачили! Тримайте подарунок — бонуси на наступне замовлення.',
   gap: 24, // годин між розсилками
@@ -22,7 +23,8 @@ export async function setGb(env, f) {
   return L(env, 'gbot', async () => {
     const c = await getGb(env);
     for (const k of ['stat', 'bon', 'chat', 'bd', 'sleep']) if (f[k] != null) c[k] = f[k] ? 1 : 0;
-    for (const [k, a, b] of [['sleepDays', 7, 365], ['sleepBon', 0, 5000], ['gap', 0, 720]]) if (f[k] != null) { const v = Math.round(+f[k]); if (!(v >= a && v <= b)) return { error: `${k}: від ${a} до ${b}` }; c[k] = v; }
+    if (f.bdGift != null) c.bdGift = String(f.bdGift).slice(0, 60);
+    for (const [k, a, b] of [['bdGiftDays', 1, 60], ['sleepDays', 7, 365], ['sleepBon', 0, 5000], ['gap', 0, 720]]) if (f[k] != null) { const v = Math.round(+f[k]); if (!(v >= a && v <= b)) return { error: `${k}: від ${a} до ${b}` }; c[k] = v; }
     for (const k of ['bdText', 'sleepText']) if (f[k] != null) { const v = String(f[k]).trim().slice(0, 600); if (!v) return { error: 'Текст порожній' }; c[k] = v; }
     await env.DB.put('gbot', JSON.stringify(c)); return c;
   });
@@ -38,7 +40,7 @@ export async function linkChat(env, chat, ph) { await env.DB.put('gch:' + chat, 
 
 export async function showMenu(env, chat, hello) {
   const ph = await phoneOf(env, chat);
-  if (!ph) return say(env, chat, `👋 Вітаємо у <b>Varvar Food Bar</b>!\nПоділіться номером — і тут будуть ваші бонуси, замовлення, броні й сертифікати.`, ASK_PHONE);
+  if (!ph) return say(env, chat, `👋 Вітаємо у <b>Varvar Food Bar</b>!\nПоділіться номером — і тут будуть ваші бонуси, замовлення, броні й сертифікати, а на день народження — 🎁 подарунок від нас.`, ASK_PHONE);
   return say(env, chat, hello || '👇 Оберіть, що потрібно:', KB);
 }
 
@@ -55,7 +57,8 @@ export async function guestMenu(m, env) {
     if (st === 'bd') {
       const r = await cliEdit(env, ph, { bd: text }, false);
       if (r.error) return say(env, chat, '📅 Напишіть дату так: <b>25.12</b>'), true;
-      await env.DB.delete('gst:' + chat); await say(env, chat, `🎂 Записали: <b>${bdText(r.bd)}</b>. У цей день чекайте на привітання!`, KB); return true;
+      await env.DB.delete('gst:' + chat); const g = await giftInfo(env); await say(env, chat, `🎂 Записали: <b>${bdText(r.bd)}</b>. ${g ? `У день народження надішлемо вам сертифікат — <b>${esc(g.n)} у подарунок</b> 🎁` : 'У цей день чекайте на привітання!'}`, KB);
+      if (r.bd === dayKey().slice(5)) await bdGreet(env, { ...(await getCli(env, ph)), phone: ph }); return true;
     }
     if (st === 'chat' && gb.chat && text) { await chatIn(env, ph, m.from?.first_name || '', text); await say(env, chat, '✅ Передали адміністратору — відповідь прийде сюди.'); return true; }
     return false;
@@ -79,7 +82,7 @@ export async function guestMenu(m, env) {
   }
   if (btn === 'bd') {
     if (c.bd) return say(env, chat, `🎂 Ваш день народження: <b>${bdText(c.bd)}</b>.\nЩоб змінити — напишіть нам «💬 Написати нам».`), true;
-    await env.DB.put('gst:' + chat, 'bd', { expirationTtl: 3600 }); return say(env, chat, '🎂 Коли ваш день народження? Напишіть дату, напр. <b>25.12</b>'), true;
+    await env.DB.put('gst:' + chat, 'bd', { expirationTtl: 3600 }); const g = await giftInfo(env); return say(env, chat, `🎂 Коли ваш день народження? Напишіть дату, напр. <b>25.12</b>${g ? `\n\n🎁 У ваш день надішлемо сертифікат — <b>${esc(g.n)} у подарунок!</b>` : ''}`), true;
   }
   if (btn === 'chat') {
     if (!gb.chat) return say(env, chat, `📞 Зателефонуйте нам: ${esc(s.phone)}`), true;
@@ -177,6 +180,23 @@ export async function cast(env, f, text, who) {
   return { n, of: l.length };
 }
 
+// ---------- 🎂 подарунок на день народження ----------
+async function giftInfo(env) {
+  const gb = await getGb(env); if (!gb.bdGift) return null;
+  const { getMenu } = await import('./menu.js'), m = await getMenu(env);
+  for (const c of m.categories) { const it = c.items.find(i => i.id === gb.bdGift); if (it) return { n: it.name.uk, p: it.price || 0, items: c.items.filter(i => typeof i.price === 'number' && i.price <= (it.price || 0) * 1.5 && !/з собою/i.test(i.name.uk)).map(i => i.name.uk), days: gb.bdGiftDays }; }
+  return null;
+}
+async function bdGreet(env, c, gb, bdRule) {
+  gb ||= await getGb(env); if (!bdRule) { const loy = await getLoy(env); bdRule = loy.on && loy.rules.find(r => r.type === 'bday' && r.on); }
+  const y = dayKey().slice(0, 4); if (c.bdY === y) return; await cliTouch(env, c.phone, x => { x.bdY = y; }); // раз на рік
+  const g = await giftInfo(env); let gift = '';
+  if (g && g.p > 0) { const { certGift } = await import('./site.js'), x = await certGift(env, { phone: c.phone, name: c.name, gift: g.n, items: g.items, sum: g.p, days: g.days });
+    gift = `\n\n🎁 <b>Ваш подарунок — ${esc(g.n)}!</b>\nСертифікат: <code>${x.code}</code>\nПокажіть цей код офіціанту. Діє до ${new Date(x.exp).toLocaleDateString('uk-UA', { timeZone: TZ, day: '2-digit', month: '2-digit' })}.`;
+    await logEvent(env, { k: 'cert', code: x.code, s: 'ok', text: `🎂 ${c.name || fmtPhone(c.phone)} — день народження: сертифікат ${x.code} на «${g.n}»` }); }
+  await say(env, c.chat, gb.bdText + gift + (bdRule ? `\n\n🎉 А ще <b>−${bdRule.pct}%</b> на замовлення в ці дні.` : ''), url('📅 Забронювати столик', SITE + 'about.html#book'));
+}
+
 // ---------- ⏰ щодня (Cron): дні народження + «сплячі» ----------
 export async function gbDaily(env) {
   const h = +new Date().toLocaleString('en-GB', { timeZone: TZ, hour: '2-digit', hour12: false });
@@ -186,7 +206,7 @@ export async function gbDaily(env) {
   let nb = 0, ns = 0;
   for (const c of await allCli(env)) {
     if (!c.chat) continue;
-    if (gb.bd && c.bd === md) { await say(env, c.chat, gb.bdText + (bdRule ? `\n\n🎁 Ваш подарунок: <b>−${bdRule.pct}%</b> на замовлення в ці дні — просто назвіть номер телефону.` : ''), url('🍔 Замовити', SITE + 'index.html?go')); nb++; }
+    if (gb.bd && c.bd === md) { await bdGreet(env, c, gb, bdRule); nb++; }
     else if (gb.sleep && c.last && now - c.last > gb.sleepDays * 864e5 && !(c.sleepAt && now - c.sleepAt < Math.max(60, gb.sleepDays * 2) * 864e5)) {
       const x = await cliTouch(env, c.phone, y => { y.sleepAt = now; if (gb.sleepBon) y.bal = (y.bal || 0) + gb.sleepBon; });
       await say(env, c.chat, `${gb.sleepText}${gb.sleepBon ? `\n\n🎁 +${money(gb.sleepBon)} бонусів — на рахунку <b>${money(x.bal)}</b>` : ''}`, url('🍔 Замовити', SITE + 'index.html?go')); ns++;
@@ -200,7 +220,7 @@ export async function gbDaily(env) {
 export async function gbApi(b, env, me) {
   const admin = me.role === 'admin', ok = (x = {}) => [{ ok: true, ...x }, 200], bad = (e, s = 400) => [{ error: e }, s];
   switch (b.op) {
-    case 'gbGet': return ok({ cfg: await getGb(env), linked: (await allCli(env)).filter(c => c.chat).length, aud: AUD });
+    case 'gbGet': { const { getMenu } = await import('./menu.js'), m = await getMenu(env); return ok({ gifts: m.categories.filter(c => !c.tech).flatMap(c => c.items.filter(i => typeof i.price === 'number').map(i => ({ id: i.id, n: i.name.uk, p: i.price, c: c.id }))), cfg: await getGb(env), linked: (await allCli(env)).filter(c => c.chat).length, aud: AUD }); }
     case 'gbSet': { if (!admin) return bad('admin', 403); const c = await setGb(env, b.f || {}); return c.error ? bad(c.error) : ok({ cfg: c }); }
     case 'gbCount': { if (!admin) return bad('admin', 403); return ok(await castCount(env, String(b.f || 'all'))); }
     case 'gbCast': { if (!admin) return bad('admin', 403); const r = await cast(env, String(b.f || 'all'), b.text, me.name); return r.error ? bad(r.error) : ok(r); }
