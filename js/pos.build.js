@@ -102,6 +102,27 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     ready: false,
     live: false
   };
+  S.brand = store.get("brand", null);
+  const brandImg = () => {
+    var _a2, _b;
+    return ((_a2 = S.brand) == null ? void 0 : _a2.logo) ? `<img class="own" src="${esc(S.brand.logo)}" alt="${esc(S.brand.name)}">` : !VENUE ? '<img src="printer/logo.png" alt="VARVAR">' : `<b class="brand-t">${esc((((_b = S.brand) == null ? void 0 : _b.name) || "?").split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase())}</b>`;
+  };
+  function applyBrand() {
+    var _a2, _b, _c;
+    const nm = ((_a2 = S.brand) == null ? void 0 : _a2.name) || (VENUE ? "" : "VARVAR");
+    document.title = (nm ? nm + " \u2014 " : "") + "\u043A\u0430\u0441\u0430";
+    const li = $(".logo-img");
+    if (li) {
+      if ((_b = S.brand) == null ? void 0 : _b.logo) {
+        li.src = S.brand.logo;
+        li.classList.add("own");
+        li.hidden = false;
+      } else if (VENUE) li.hidden = true;
+    }
+    const sub = $("#loginBrand");
+    if (sub) sub.textContent = VENUE || ((_c = S.brand) == null ? void 0 : _c.logo) ? nm : "";
+  }
+  applyBrand();
   const isAdmin = () => {
     var _a2;
     return ((_a2 = S.me) == null ? void 0 : _a2.role) === "admin";
@@ -282,6 +303,11 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     S.myAtt = r.myAtt || null;
     S.books = r.books || [];
     S.bkNew = r.bkNew || 0;
+    if (r.brand && JSON.stringify(r.brand) !== JSON.stringify(S.brand)) {
+      S.brand = r.brand;
+      store.set("brand", r.brand);
+      applyBrand();
+    }
     S.gInN = r.gInN || 0;
     S.cfg = r.cfg || S.cfg;
     S.n = r.n;
@@ -476,7 +502,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     var _a2, _b;
     const newCnt = S.events.filter((e) => e.k === "guest" && e.s === "new").length;
     const attNew = isAdmin() ? S.events.filter((e) => e.k === "att" && e.s === "new").length : 0;
-    setHTML($("#nav"), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` + navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? "on" : ""}${!isCook() && ["calc", "menu", "settings", "stop", "kq"].includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === "team" && attNew ? `<span class="badge">${attNew}</span>` : ""}${v === "books" && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ""}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : ""}</button><button class="more-btn ${["calc", "menu", "settings", "stop", "kq"].includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><button class="me" data-a="zpMy" title="\u041C\u0456\u0439 \u043A\u0430\u0431\u0456\u043D\u0435\u0442"><i>${esc((((_a2 = S.me) == null ? void 0 : _a2.name) || "?").slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ""}</i><b>${esc((_b = S.me) == null ? void 0 : _b.name)}</b><small>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : isCour() ? "\u043A\u0443\u0440'\u0454\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"} \xB7 \u043A\u0430\u0431\u0456\u043D\u0435\u0442</small></button><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
+    setHTML($("#nav"), `<div class="brand">${brandImg()}</div>` + navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? "on" : ""}${!isCook() && ["calc", "menu", "settings", "stop", "kq"].includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === "team" && attNew ? `<span class="badge">${attNew}</span>` : ""}${v === "books" && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ""}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : ""}</button><button class="more-btn ${["calc", "menu", "settings", "stop", "kq"].includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><button class="me" data-a="zpMy" title="\u041C\u0456\u0439 \u043A\u0430\u0431\u0456\u043D\u0435\u0442"><i>${esc((((_a2 = S.me) == null ? void 0 : _a2.name) || "?").slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ""}</i><b>${esc((_b = S.me) == null ? void 0 : _b.name)}</b><small>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : isCour() ? "\u043A\u0443\u0440'\u0454\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"} \xB7 \u043A\u0430\u0431\u0456\u043D\u0435\u0442</small></button><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
   }
   function render() {
     renderNav();
@@ -1058,6 +1084,11 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         const r = await act("siteSet", { k: el.dataset.k, v: el.dataset.v }, "\u{1F5D1} \u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
         if (r) {
           S.data.site = r.site;
+          if (el.dataset.k === "logo") {
+            S.brand = __spreadProps(__spreadValues({}, S.brand), { logo: "" });
+            store.set("brand", S.brand);
+            applyBrand();
+          }
           renderMain();
         }
         break;
@@ -1085,7 +1116,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         break;
       }
       case "siteImg":
-        siteImg(el.dataset.h);
+        siteImg(el.dataset.h, el.dataset.l);
         break;
       case "siteHits": {
         const sel = new Set(S.data.site.hits);
@@ -2619,7 +2650,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       });
     }
   }
-  async function siteImg(hero) {
+  async function siteImg(hero, logo) {
     const f = await new Promise((res) => {
       const i = document.createElement("input");
       i.type = "file";
@@ -2632,13 +2663,18 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       const im = new Image();
       im.onload = () => r2(im);
       im.src = URL.createObjectURL(f);
-    }), k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+    }), k = Math.min(1, (logo ? 512 : 1600) / Math.max(img.width, img.height)), c = document.createElement("canvas");
     c.width = img.width * k;
     c.height = img.height * k;
     c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-    const r = await act("sitePhoto", { data: c.toDataURL("image/jpeg", 0.82), hero: !!hero }, "\u{1F4F7} \u0424\u043E\u0442\u043E \u0434\u043E\u0434\u0430\u043D\u043E");
+    const r = await act("sitePhoto", { data: logo ? c.toDataURL("image/png") : c.toDataURL("image/jpeg", 0.82), hero: !!hero, logo: !!logo }, logo ? "\u{1F5BC} \u041B\u043E\u0433\u043E\u0442\u0438\u043F \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E" : "\u{1F4F7} \u0424\u043E\u0442\u043E \u0434\u043E\u0434\u0430\u043D\u043E");
     if (r) {
       S.data.site = r.site;
+      if (logo) {
+        S.brand = __spreadProps(__spreadValues({}, S.brand), { logo: r.url });
+        store.set("brand", S.brand);
+        applyBrand();
+      }
       renderMain();
     }
   }
@@ -2654,6 +2690,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       <div class="card"><h3>\u{1F3F7} \u041E\u0441\u043D\u043E\u0432\u043D\u0435</h3>${f("name", "\u{1F37D}", "\u041D\u0430\u0437\u0432\u0430", s.name)}${f("tagline", "\u2728", "\u0421\u043B\u043E\u0433\u0430\u043D", s.tagline)}${f("about", "\u{1F4DD}", "\u041F\u0440\u043E \u043D\u0430\u0441", s.about)}</div>
       <div class="card"><h3>\u{1F4CD} \u041A\u043E\u043D\u0442\u0430\u043A\u0442\u0438</h3>${f("phone", "\u{1F4DE}", "\u0422\u0435\u043B\u0435\u0444\u043E\u043D", s.phone)}${f("addr", "\u{1F4CD}", "\u0410\u0434\u0440\u0435\u0441\u0430", s.addr)}
         <div class="sf2">${f("from", "\u{1F550}", "\u0412\u0456\u0434\u043A\u0440\u0438\u0432\u0430\u0454\u043C\u043E\u0441\u044C", s.from)}${f("to", "\u{1F559}", "\u0417\u0430\u0447\u0438\u043D\u044F\u0454\u043C\u043E\u0441\u044C", s.to)}</div></div>
+      <div class="card"><h3>\u{1F5BC} \u041B\u043E\u0433\u043E\u0442\u0438\u043F \u0456 \u043D\u0430\u0437\u0432\u0430</h3><div style="display:flex;gap:14px;align-items:center"><button class="brand-up press" data-a="siteImg" data-l="1">${s.logo ? `<img src="${esc(s.logo)}" alt="">` : "<span>\u2795</span>"}</button><div class="muted" style="font-size:13px">\u041B\u043E\u0433\u043E\u0442\u0438\u043F \u0456 \u043D\u0430\u0437\u0432\u0430 \u0437\u0430\u043A\u043B\u0430\u0434\u0443 \u2014 \u0443 \u043A\u0430\u0441\u0456, \u043D\u0430 \u0441\u0430\u0439\u0442\u0456 \u0439 \u0443 \u0432\u0456\u043A\u043D\u0456 \u0432\u0445\u043E\u0434\u0443. \u041D\u0430\u0439\u043A\u0440\u0430\u0449\u0435 \u2014 \u043A\u0432\u0430\u0434\u0440\u0430\u0442\u043D\u0438\u0439 PNG.${s.logo ? '<br><button class="btn sm" data-a="siteDel" data-k="logo" data-v="" style="margin-top:8px">\u2715 \u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u043B\u043E\u0433\u043E\u0442\u0438\u043F</button>' : ""}</div></div></div>
       <div class="card"><h3>\u{1F4F7} \u0424\u043E\u0442\u043E</h3>
         <button class="site-hero press" data-a="siteImg" data-h="1" style="${s.hero ? `background-image:url('${esc(s.hero)}')` : ""}"><span>${s.hero ? "\u{1F504} \u0417\u0430\u043C\u0456\u043D\u0438\u0442\u0438 \u0433\u043E\u043B\u043E\u0432\u043D\u0435 \u0444\u043E\u0442\u043E" : "\u{1F5BC} \u0414\u043E\u0434\u0430\u0442\u0438 \u0433\u043E\u043B\u043E\u0432\u043D\u0435 \u0444\u043E\u0442\u043E"}</span></button>
         <div class="site-gal">${s.photos.map((u) => `<div style="background-image:url('${esc(u)}')"><button data-a="siteDel" data-k="photoDel" data-v="${esc(u)}" title="\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438">\u2715</button></div>`).join("")}<button class="add press" data-a="siteImg">\uFF0B<small>\u0433\u0430\u043B\u0435\u0440\u0435\u044F</small></button></div></div>

@@ -16,6 +16,15 @@
     token: store.get('token', ''), me: store.get('me', null), view: 'hall', n: 15, tables: {}, events: [], printer: {}, menu: null,
     tw: {}, packAdj: {}, open: 0, carts: store.get('carts', {}), coms: {}, grp: store.get('grp', ''), cat: '', q: '', fav: [], groups: [], photos: store.get('photos', true), shift: null, shown: new Set(), rep: { p: 'd', pay: '', by: '', grp: '', cat: '', t: '', q: '', tab: 'overview', sort: 's', fo: false }, mobileMenu: false, data: {}, kq: [], kqSeen: null, kqCanc: new Set(), ur: {}, kFont: store.get('kfont', 1), seen: new Set(), ready: false, live: false,
   };
+  // 🏪 бренд закладу (лого й назва) — приходить разом зі state, пам'ятається для вікна входу; VARVAR — свій логотип
+  S.brand = store.get('brand', null);
+  const brandImg = () => S.brand?.logo ? `<img class="own" src="${esc(S.brand.logo)}" alt="${esc(S.brand.name)}">` : !VENUE ? '<img src="printer/logo.png" alt="VARVAR">' : `<b class="brand-t">${esc((S.brand?.name || '?').split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase())}</b>`;
+  function applyBrand() {
+    const nm = S.brand?.name || (VENUE ? '' : 'VARVAR'); document.title = (nm ? nm + ' — ' : '') + 'каса';
+    const li = $('.logo-img'); if (li) { if (S.brand?.logo) { li.src = S.brand.logo; li.classList.add('own'); li.hidden = false; } else if (VENUE) li.hidden = true; }
+    const sub = $('#loginBrand'); if (sub) sub.textContent = VENUE || S.brand?.logo ? nm : '';
+  }
+  applyBrand();
   const isAdmin = () => S.me?.role === 'admin', isCook = () => S.me?.role === 'cook', isCour = () => S.me?.role === 'courier';
   const setHTML = (el, html) => { if (el && el._h !== html) { el._h = html; el.innerHTML = html; } };
 
@@ -101,7 +110,7 @@
     const my = ++stateSeq, r = await api('state');
     if (my < stateDone) return; // повільна стара відповідь не затирає новішу (стіл «повертався» після закриття)
     stateDone = my;
-    S.me = { ...S.me, ...r.me }; S.myTip = r.myTip; S.myAtt = r.myAtt || null; S.books = r.books || []; S.bkNew = r.bkNew || 0; S.gInN = r.gInN || 0; S.cfg = r.cfg || S.cfg; S.n = r.n; S.printer = r.printer; S.shift = r.shift;
+    S.me = { ...S.me, ...r.me }; S.myTip = r.myTip; S.myAtt = r.myAtt || null; S.books = r.books || []; S.bkNew = r.bkNew || 0; if (r.brand && JSON.stringify(r.brand) !== JSON.stringify(S.brand)) { S.brand = r.brand; store.set('brand', r.brand); applyBrand(); } S.gInN = r.gInN || 0; S.cfg = r.cfg || S.cfg; S.n = r.n; S.printer = r.printer; S.shift = r.shift;
     S.tables = Object.fromEntries(r.tables.map(b => [b.t, b]));
     const fresh = r.events.filter(e => !S.seen.has(e.id));
     if (S.ready && fresh.some(e => ['guest', 'check', 'call'].includes(e.k) || (!isCook() && ['ready', 'kmsg'].includes(e.k)))) ding();
@@ -200,7 +209,7 @@
   function renderNav() {
     const newCnt = S.events.filter(e => e.k === 'guest' && e.s === 'new').length;
     const attNew = isAdmin() ? S.events.filter(e => e.k === 'att' && e.s === 'new').length : 0;
-    setHTML($('#nav'), `<div class="brand"><img src="printer/logo.png" alt="VARVAR"></div>` +
+    setHTML($('#nav'), `<div class="brand">${brandImg()}</div>` +
       navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? 'on' : ''}${!isCook() && ['calc', 'menu', 'settings', 'stop', 'kq'].includes(v) ? ' more-i' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === 'team' && attNew ? `<span class="badge">${attNew}</span>` : ''}${v === 'books' && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ''}</button>`).join('') +
       `<button class="feed-btn" data-a="feed"><span class="ic">🔔</span>Стрічка${newCnt ? `<span class="badge">${newCnt}</span>` : ''}</button>` +
       `<button class="more-btn ${['calc', 'menu', 'settings', 'stop', 'kq'].includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><button class="me" data-a="zpMy" title="Мій кабінет"><i>${esc((S.me?.name || '?').slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ''}</i><b>${esc(S.me?.name)}</b><small>${isAdmin() ? 'адмін' : isCook() ? 'кухар' : isCour() ? 'кур\'єр' : 'офіціант'} · кабінет</small></button>` +
@@ -386,10 +395,10 @@
       case 'certs': { const r = await api('certList').catch(() => null); if (!r) break; await modal({ title: '🎟 Сертифікати', body: `<div class="bk-list">${r.list.map(c => `<div class="kv"><span><b>${c.code}</b> · ${money(c.sum)}${c.left !== c.sum ? ` · залишок ${money(c.left)}` : ''}<br><small class="muted">від ${esc(c.from)}${c.to ? ' для ' + esc(c.to) : ''} · ${fmtPh(c.phone)} · ${{ new: '⏳ не оплачено', ok: '✅ активний', no: '❌ скасовано' }[c.st]}</small></span>${c.st === 'new' ? `<span class="kv-r"><button class="btn sm green" data-a="certPay" data-c="${c.code}" data-h="cash">💵</button><button class="btn sm" data-a="certPay" data-c="${c.code}" data-h="card">💳</button><button class="btn sm red" data-a="certDel" data-c="${c.code}">🗑</button></span>` : `<span class="kv-r"><button class="btn sm red" data-a="certDel" data-c="${c.code}">🗑</button></span>`}</div>`).join('') || '<div class="muted">Ще немає</div>'}</div>`, buttons: [{ label: 'Закрити', val: null }] }); break; }
       case 'siteSet': { const k = el.dataset.k, cur = S.data.site?.[k]; const v = ['about', 'banquet', 'hookah'].includes(k) ? await askLong(el.dataset.l || k, String(cur ?? '')) : await askVal(el.dataset.l || k, String(cur ?? ''), ['rating', 'ratingN'].includes(k) ? 'number' : 'text'); if (v == null) break; const r = await act('siteSet', { k, v }, '💾 Збережено — уже на сайті'); if (r) { S.data.site = r.site; renderMain(); } break; }
       case 'siteTgl': { const k = el.dataset.k, r = await act('siteSet', { k, v: S.data.site[k] ? 0 : 1 }, '💾 Збережено'); if (r) { S.data.site = r.site; renderMain(); } break; }
-      case 'siteDel': { const r = await act('siteSet', { k: el.dataset.k, v: el.dataset.v }, '🗑 Прибрано'); if (r) { S.data.site = r.site; renderMain(); } break; }
+      case 'siteDel': { const r = await act('siteSet', { k: el.dataset.k, v: el.dataset.v }, '🗑 Прибрано'); if (r) { S.data.site = r.site; if (el.dataset.k === 'logo') { S.brand = { ...S.brand, logo: '' }; store.set('brand', S.brand); applyBrand(); } renderMain(); } break; }
       case 'sitePromo': { const tt = await ask('🎉 Назва акції', 'Щасливі години 15–17'); if (!tt) break; const d = await ask('Опис (необовʼязково)', '−20% на коктейлі'); const r = await act('siteSet', { k: 'promoAdd', v: { t: tt, d: d || '' } }, '🎉 Додано'); if (r) { S.data.site = r.site; renderMain(); } break; }
       case 'siteQuote': { const tt = await ask('💬 Текст відгуку'); if (!tt) break; const a = await ask('Автор', 'Олена, Google'); const r = await act('siteSet', { k: 'quoteAdd', v: { t: tt, a: a || '' } }, '💬 Додано'); if (r) { S.data.site = r.site; renderMain(); } break; }
-      case 'siteImg': siteImg(el.dataset.h); break;
+      case 'siteImg': siteImg(el.dataset.h, el.dataset.l); break;
       case 'siteHits': { const sel = new Set(S.data.site.hits);
         const v = await modal({ title: '🍽 Хіти на сайті', text: 'До 12 страв; порожньо — автоматично', body: `<div class="bk-list">${itemsAll().filter(i => !i.hidden).map(i => `<label class="kv"><span>${esc(i.name.uk)}${i.img ? ' 📷' : ''}</span><input type="checkbox" class="hitC" value="${i.id}" ${sel.has(i.id) ? 'checked' : ''} style="width:22px;height:22px"></label>`).join('')}</div>`, buttons: [{ label: '💾 Зберегти', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
         const ids = [...document.querySelectorAll('.hitC:checked')].map(x => x.value).slice(0, 12); closeModal(); if (v !== 'ok') break;

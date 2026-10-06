@@ -10,10 +10,10 @@ export async function siteApi(b, env, me, t) {
     case 'siteSet': { if (!admin) return needA(); const s = await setSite(env, String(b.k), b.v); if (s.error) return bad(s.error); await notify(env, `🖥 🌐 Сайт: змінено «${esc(String(b.k))}» — ${esc(who)}`); return ok({ site: s }); }
     case 'sitePhoto': {
       if (!admin) return needA();
-      const m = String(b.data || '').match(/^data:image\/(jpeg|png|webp);base64,(.+)$/); if (!m) return bad('image');
+      const m = String(b.data || '').match(/^data:image\/(jpeg|png|webp);base64,(.+)$/); if (!m) return bad('image'); // 🖼 logo — PNG (прозорий фон)
       const bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0)); if (bytes.length > 3e6) return bad('too_big');
       const id = 'site-' + crypto.randomUUID().slice(0, 8); await env.DB.put('img:' + id, bytes.buffer);
-      const url = `${env.SELF_URL}/img/${id}`, s = await setSite(env, b.hero ? 'hero' : 'photoAdd', url); return ok({ site: s, url });
+      const url = `${env.SELF_URL}/img/${id}`, s = await setSite(env, b.logo ? 'logo' : b.hero ? 'hero' : 'photoAdd', url); return ok({ site: s, url });
     }
     case 'bkList': return ok({ list: await bookList(env, isDay(b.from) ? b.from : undefined, isDay(b.to) ? b.to : undefined, !!b.all) });
     case 'bkEdit': { const r = await bookEditFields(env, String(b.id), b.f || {}, who); return r.error ? bad(r.error) : ok({ b: r }); }

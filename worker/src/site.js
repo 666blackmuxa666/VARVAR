@@ -20,7 +20,7 @@ export const SITE_DEF = {
   hookah: '4 види кальянів і понад 50 смаків тютюну. Кальянщик підбере міцність і смак.',
   preMin: 20, certOn: 1, bookOn: 1,
 };
-const TXT = ['name', 'tagline', 'about', 'phone', 'addr', 'insta', 'tg', 'gmaps', 'reviewsUrl', 'banquet', 'hookah', 'hero'];
+const TXT = ['name', 'tagline', 'about', 'phone', 'addr', 'insta', 'tg', 'gmaps', 'reviewsUrl', 'banquet', 'hookah', 'hero', 'logo'];
 export const getSite = async env => ({ ...SITE_DEF, ...((await env.DB.get('site', 'json')) || {}) });
 export async function setSite(env, k, v) {
   return L(env, 'site', async () => {

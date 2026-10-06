@@ -49,11 +49,11 @@
     if (!(await confirmBox(`🎟 ${g.c.code} — ${money(g.c.left)} з ${money(g.c.sum)}`, `Від ${g.c.from}${g.c.to ? ' для ' + g.c.to : ''}. Списати на цей рахунок?`))) return;
     const r = await act('certUse', { t, code }); if (r) { toast(`🎟 −${money(r.use)} · залишок ${money(r.left)}`); loadState().catch(() => {}); }
   }
-  async function siteImg(hero) {
+  async function siteImg(hero, logo) {
     const f = await new Promise(res => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.onchange = () => res(i.files[0]); i.click(); }); if (!f) return;
-    const img = await new Promise(r => { const im = new Image(); im.onload = () => r(im); im.src = URL.createObjectURL(f); }), k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+    const img = await new Promise(r => { const im = new Image(); im.onload = () => r(im); im.src = URL.createObjectURL(f); }), k = Math.min(1, (logo ? 512 : 1600) / Math.max(img.width, img.height)), c = document.createElement('canvas');
     c.width = img.width * k; c.height = img.height * k; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    const r = await act('sitePhoto', { data: c.toDataURL('image/jpeg', .82), hero: !!hero }, '📷 Фото додано'); if (r) { S.data.site = r.site; renderMain(); }
+    const r = await act('sitePhoto', { data: logo ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', .82), hero: !!hero, logo: !!logo }, logo ? '🖼 Логотип збережено' : '📷 Фото додано'); if (r) { S.data.site = r.site; if (logo) { S.brand = { ...S.brand, logo: r.url }; store.set('brand', S.brand); applyBrand(); } renderMain(); }
   }
   function siteHTML() {
     const s = S.data.site; if (!s) return '<div class="muted">Завантаження…</div>';
@@ -67,6 +67,7 @@
       <div class="card"><h3>🏷 Основне</h3>${f('name', '🍽', 'Назва', s.name)}${f('tagline', '✨', 'Слоган', s.tagline)}${f('about', '📝', 'Про нас', s.about)}</div>
       <div class="card"><h3>📍 Контакти</h3>${f('phone', '📞', 'Телефон', s.phone)}${f('addr', '📍', 'Адреса', s.addr)}
         <div class="sf2">${f('from', '🕐', 'Відкриваємось', s.from)}${f('to', '🕙', 'Зачиняємось', s.to)}</div></div>
+      <div class="card"><h3>🖼 Логотип і назва</h3><div style="display:flex;gap:14px;align-items:center"><button class="brand-up press" data-a="siteImg" data-l="1">${s.logo ? `<img src="${esc(s.logo)}" alt="">` : '<span>➕</span>'}</button><div class="muted" style="font-size:13px">Логотип і назва закладу — у касі, на сайті й у вікні входу. Найкраще — квадратний PNG.${s.logo ? '<br><button class="btn sm" data-a="siteDel" data-k="logo" data-v="" style="margin-top:8px">✕ Прибрати логотип</button>' : ''}</div></div></div>
       <div class="card"><h3>📷 Фото</h3>
         <button class="site-hero press" data-a="siteImg" data-h="1" style="${s.hero ? `background-image:url('${esc(s.hero)}')` : ''}"><span>${s.hero ? '🔄 Замінити головне фото' : '🖼 Додати головне фото'}</span></button>
         <div class="site-gal">${s.photos.map(u => `<div style="background-image:url('${esc(u)}')"><button data-a="siteDel" data-k="photoDel" data-v="${esc(u)}" title="Прибрати">✕</button></div>`).join('')}<button class="add press" data-a="siteImg">＋<small>галерея</small></button></div></div>
