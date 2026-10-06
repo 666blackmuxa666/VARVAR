@@ -158,6 +158,17 @@ export async function ownerApi(req, env) {
     case 'secrets': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/secrets', b.f || {}); return r.error ? bad(r.error) : ok(r); }
     case 'help': { const text = String(b.text || '').trim().slice(0, 1500); if (text.length < 3) return bad('Опишіть питання');
       await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `🆘 <b>Допомога з кабінету</b>\n👤 ${me.name} · ${me.email}\n🏪 ${me.venues.join(', ') || '—'}\n\n${text.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}` }).catch(() => {}); return ok(); }
+    case 'ask': { // 🧠 «Запитай у даних»: цифри закладів за цей і минулий місяць → ШІ відповідає лише з них
+      const q = String(b.q || '').trim().slice(0, 500); if (q.length < 3) return bad('Напишіть питання');
+      const t = new Date(), m0 = t.toLocaleDateString('sv-SE').slice(0, 7), pm = new Date(t.getFullYear(), t.getMonth(), 0).toLocaleDateString('sv-SE'), from = pm.slice(0, 7) + '-01', to = t.toLocaleDateString('sv-SE');
+      const vs = (await mine()).filter(v => v.status !== 'off'), data = await Promise.all(vs.map(async v => { const r = await callVenue(env, v.id, '/__int/sum', { from, to, pnl: true }).catch(() => null); return r && { заклад: v.name, дні: r.days, разом: r.tot, прибуток: r.pnl && { собівартість: r.pnl.cogs, зарплата: r.pnl.pay, витрати: r.pnl.exp, прибуток: r.pnl.profit, топ_страв: r.pnl.top }, ризики: (r.risk || []).map(x => x.text) }; }));
+      const prompt = `Ти — фінансовий аналітик мережі закладів харчування. Сьогодні ${to}. Дані (дні у форматі РРРР-ММ-ДД, суми в гривнях; rev — виручка, n — чеки, tip — чайові, disc — знижки, go/goRev — доставки/з собою, exp — витрати з каси) за період ${from} — ${to}:
+${JSON.stringify(data.filter(Boolean))}
+
+Питання власника: «${q}»
+
+Відповідай українською, коротко (до 8 речень), з конкретними цифрами лише з цих даних. Якщо даних не вистачає — так і скажи й порадь, що заповнити (техкарти, витрати тощо).`;
+      try { const r = await (await import('./ai.js')).aiAnswer(env, prompt); return ok({ answer: String(r.answer || '').slice(0, 3000) }); } catch (e) { return bad('ШІ зараз недоступний, спробуйте за хвилину'); } }
     case 'pass': { const r = await H.acctPass(me.email, b.pass); return r.error ? bad(r.error) : ok(); }
   }
   // ---- консоль платформи ----

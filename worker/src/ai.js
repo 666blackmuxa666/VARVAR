@@ -67,6 +67,9 @@ async function gemini(env, prompt, o = {}) {
   throw new Error(last);
 }
 
+// 🧠 кабінет власника: «Запитай у даних» — відповідь лише з переданих цифр
+export const aiAnswer = (env, prompt) => gemini(env, prompt, { schema: { type: 'OBJECT', properties: { answer: { type: 'STRING' } }, required: ['answer'] }, temperature: 0.2, timeout: 20000, prefer: ['gemini-2.5-flash', 'gemini-2.0-flash'] });
+
 // b: { lang, device, hist: [{ q, a }] }
 export async function aiHelp(b, env) {
   if (!env.GEMINI_API_KEY) return [{ error: 'off' }, 503];

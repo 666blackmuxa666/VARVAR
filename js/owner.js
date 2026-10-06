@@ -87,6 +87,7 @@
     const al = alerts(S.sum);
     return `<h2>🏠 Мережа сьогодні</h2><div class="kpis">
       ${kpi('Виручка', money(T.rev), delta(T.rev, P?.rev))}${kpi('Чеків', T.n || 0, T.n ? 'середній ' + money(T.rev / T.n) : '')}${kpi('Зараз у залах', money(now.open), `${now.tables} столів · ${now.go} доставок`)}${kpi('На зміні', now.staff, 'людей')}${kpi('Чайові', money(T.tip))}${kpi('Знижки', money(T.disc))}</div>
+      <h2>🧠 Запитай у даних</h2><form class="card" id="askF" style="display:grid;gap:8px"><div class="btnrow" style="flex-wrap:nowrap"><input name="q" placeholder="Напр.: який заклад заробив найбільше цього місяця і чому?" autocomplete="off"><button class="btn primary">Запитати</button></div><div class="muted" style="font-size:12px">${['Скільки заробили на доставці за тиждень?', 'Чому вчора впала виручка?', 'Які страви приносять найбільше грошей?'].map(x => `<a href="#" data-a="askEx" data-q="${esc(x)}" style="margin-right:10px">${esc(x)}</a>`).join('')}</div><div id="askA" style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(S.askA || '')}</div></form>
       <h2>🚨 Тривоги ${al.length ? `<span class="muted">(${al.length})</span>` : ''}</h2>${al.length ? al.map(([c, t]) => `<div class="alert ${c}">${t}</div>`).join('') : '<div class="card muted">Усе спокійно 👌</div>'}
       <h2>🏪 Заклади</h2><div class="grid">${S.sum.map(venueCard).join('')}</div>`;
   }
@@ -191,6 +192,7 @@
     if (a === 'perGo') { S.from = $('#pf').value; S.to = $('#pt').value; if (S.from > S.to) [S.from, S.to] = [S.to, S.from]; return load(); }
     if (a === 'enter') { el.disabled = true; try { const r = await api('enter', { venue: d.v }); location.href = `${POS}?venue=${encodeURIComponent(d.v)}#tok=${r.token}&me=${encodeURIComponent(JSON.stringify(r.me))}`; } catch (x) { toast('⚠️ ' + x.message); el.disabled = false; } return; }
     if (a === 'vinfo') return vinfo(d.v);
+    if (a === 'askEx') { e.preventDefault(); const f = $('#askF'); f.q.value = d.q; f.requestSubmit(); return; }
     if (a === 'vdemo') { el.disabled = true; toast('🎬 Створюю демо…'); try { const r = await VC.demo('cafe'); await start(); VC.open(r.venue.id, 'start'); toast('🎬 Демо готове — покажіть клієнту касу й сайт'); } catch (x) { toast('⚠️ ' + x.message); } el.disabled = false; return; }
     if (a === 'vcfgOpen') { window.scrollTo(0, 0); return VC.open(d.v); }
     if (a === 'copy') { try { await navigator.clipboard.writeText(d.u); toast('🔗 Скопійовано — надішліть персоналу'); } catch { prompt('Скопіюйте посилання:', d.u); } return; }
@@ -210,6 +212,7 @@
       bg.addEventListener('click', ev => { if (ev.target === bg || ev.target.closest('[data-x]')) render(); }); return; }
     if (a === 'vstat') { const v = S.venues.find(x => x.id === d.v); return modal('Статус · ' + esc(v.name), `<select name="s">${Object.entries(ST).map(([k, l]) => `<option value="${k}" ${v.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`, async f => { await api('venueSet', { id: d.v, f: { status: f.s.value } }); await start(); }); }
   });
+  document.addEventListener('submit', async e => { if (e.target.id !== 'askF') return; e.preventDefault(); const q = e.target.q.value.trim(); if (!q) return; const box = $('#askA'); box.textContent = '🧠 Думаю над цифрами…'; try { const r = await api('ask', { q }); S.askA = '🧠 ' + r.answer; box.textContent = S.askA; } catch (x) { box.textContent = '⚠️ ' + x.message; } });
   const VC = window.OWNV({ S, api, esc, money, toast, modal, render, API, $ });
   start();
 })();
