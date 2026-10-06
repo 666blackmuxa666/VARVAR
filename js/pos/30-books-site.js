@@ -55,19 +55,29 @@
     c.width = img.width * k; c.height = img.height * k; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
     const r = await act('sitePhoto', { data: logo ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', .82), hero: !!hero, logo: !!logo }, logo ? '🖼 Логотип збережено' : '📷 Фото додано'); if (r) { S.data.site = r.site; if (logo) { S.brand = { ...S.brand, logo: r.url }; store.set('brand', S.brand); applyBrand(); } renderMain(); }
   }
+  // 🏪 Налаштування → Заклад: назва й логотип (бренд у касі, на сайті, у вікні входу) — окремо від сайту-візитки
+  function venueHTML() {
+    const s = S.data.site; if (!s) return '<div class="muted">Завантаження…</div>';
+    const link = location.origin + location.pathname + (VENUE ? '?venue=' + VENUE : '');
+    return `<div class="grid2 set">
+      <div class="card"><h3>🏪 Заклад</h3><button class="sf press" data-a="siteSet" data-k="name" data-l="Назва закладу"><i>🍽</i><span><small>Назва закладу</small><b>${esc(s.name || 'не вказано')}</b></span><em>✏️</em></button>
+        <div class="muted set-note">Назва — у касі, у вікні входу, на сайті й у повідомленнях ботів гостям.</div></div>
+      <div class="card"><h3>🖼 Логотип</h3><div style="display:flex;gap:14px;align-items:center"><button class="brand-up press" data-a="siteImg" data-l="1">${s.logo ? `<img src="${esc(s.logo)}" alt="">` : '<span>➕</span>'}</button><div class="muted" style="font-size:13px">Найкраще — квадратний PNG.${s.logo ? '<br><button class="btn sm" data-a="siteDel" data-k="logo" data-v="" style="margin-top:8px">✕ Прибрати логотип</button>' : ''}</div></div></div>
+      <div class="card"><h3>🔗 Каса для персоналу</h3><div class="kv"><span style="min-width:0;overflow-wrap:anywhere"><small class="muted">${esc(link)}</small></span><button class="btn sm" data-a="copyLink" data-u="${esc(link)}">Копіювати</button></div>
+        <div class="muted set-note">Відкрийте на телефоні чи планшеті працівника — далі код реєстрації, ім'я й PIN.</div></div></div>`;
+  }
   function siteHTML() {
     const s = S.data.site; if (!s) return '<div class="muted">Завантаження…</div>';
-    const U = 'https://666blackmuxa666.github.io/VARVAR/about.html';
+    const U = 'https://666blackmuxa666.github.io/VARVAR/about.html' + (VENUE ? '?venue=' + VENUE : '');
     // рядок-поле: тап — редагувати; довгий текст — 2 рядки прев'ю
     const f = (k, ic, l, v, ph) => `<button class="sf press" data-a="siteSet" data-k="${k}" data-l="${esc(l)}"><i>${ic}</i><span><small>${l}</small><b class="${v ? '' : 'muted'}">${v ? esc(v) : esc(ph || 'не вказано')}</b></span><em>✏️</em></button>`;
     const sw = (k, l, hint) => `<button class="sf press" data-a="siteTgl" data-k="${k}"><span><b>${l}</b><small>${hint}</small></span><span class="switch ${s[k] ? 'on' : ''}"></span></button>`;
     const item = id => itemsAll().find(i => i.id === id);
     return `<div class="site-top card"><div><h3>🌐 Сайт-візитка</h3><span class="muted">Зміни зʼявляються на сайті одразу</span></div><div class="btnrow"><a class="btn sm primary" href="${U}" target="_blank" rel="noopener">🔗 Відкрити</a><button class="btn sm" data-a="siteCopy">📋 Посилання</button></div></div>
     <div class="grid2 set">
-      <div class="card"><h3>🏷 Основне</h3>${f('name', '🍽', 'Назва', s.name)}${f('tagline', '✨', 'Слоган', s.tagline)}${f('about', '📝', 'Про нас', s.about)}</div>
+      <div class="card"><h3>🏷 Основне</h3>${f('tagline', '✨', 'Слоган', s.tagline)}${f('about', '📝', 'Про нас', s.about)}</div>
       <div class="card"><h3>📍 Контакти</h3>${f('phone', '📞', 'Телефон', s.phone)}${f('addr', '📍', 'Адреса', s.addr)}
         <div class="sf2">${f('from', '🕐', 'Відкриваємось', s.from)}${f('to', '🕙', 'Зачиняємось', s.to)}</div></div>
-      <div class="card"><h3>🖼 Логотип і назва</h3><div style="display:flex;gap:14px;align-items:center"><button class="brand-up press" data-a="siteImg" data-l="1">${s.logo ? `<img src="${esc(s.logo)}" alt="">` : '<span>➕</span>'}</button><div class="muted" style="font-size:13px">Логотип і назва закладу — у касі, на сайті й у вікні входу. Найкраще — квадратний PNG.${s.logo ? '<br><button class="btn sm" data-a="siteDel" data-k="logo" data-v="" style="margin-top:8px">✕ Прибрати логотип</button>' : ''}</div></div></div>
       <div class="card"><h3>📷 Фото</h3>
         <button class="site-hero press" data-a="siteImg" data-h="1" style="${s.hero ? `background-image:url('${esc(s.hero)}')` : ''}"><span>${s.hero ? '🔄 Замінити головне фото' : '🖼 Додати головне фото'}</span></button>
         <div class="site-gal">${s.photos.map(u => `<div style="background-image:url('${esc(u)}')"><button data-a="siteDel" data-k="photoDel" data-v="${esc(u)}" title="Прибрати">✕</button></div>`).join('')}<button class="add press" data-a="siteImg">＋<small>галерея</small></button></div></div>

@@ -103,9 +103,13 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     live: false
   };
   S.brand = store.get("brand", null);
+  const brandIni = () => {
+    var _a2;
+    return esc((((_a2 = S.brand) == null ? void 0 : _a2.name) || "?").split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase());
+  };
   const brandImg = () => {
-    var _a2, _b;
-    return ((_a2 = S.brand) == null ? void 0 : _a2.logo) ? `<img class="own" src="${esc(S.brand.logo)}" alt="${esc(S.brand.name)}">` : !VENUE ? '<img src="printer/logo.png" alt="VARVAR">' : `<b class="brand-t">${esc((((_b = S.brand) == null ? void 0 : _b.name) || "?").split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase())}</b>`;
+    var _a2;
+    return ((_a2 = S.brand) == null ? void 0 : _a2.logo) ? `<img class="own" src="${esc(S.brand.logo)}" alt="" onerror="this.outerHTML='<b class=&quot;brand-t&quot;>${brandIni()}</b>'">` : !VENUE ? '<img src="printer/logo.png" alt="VARVAR">' : `<b class="brand-t">${brandIni()}</b>`;
   };
   function applyBrand() {
     var _a2, _b, _c;
@@ -1068,6 +1072,11 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         const r = await act("siteSet", { k, v }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E \u2014 \u0443\u0436\u0435 \u043D\u0430 \u0441\u0430\u0439\u0442\u0456");
         if (r) {
           S.data.site = r.site;
+          if (k === "name") {
+            S.brand = __spreadProps(__spreadValues({}, S.brand), { name: r.site.name });
+            store.set("brand", S.brand);
+            applyBrand();
+          }
           renderMain();
         }
         break;
@@ -1080,6 +1089,14 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         }
         break;
       }
+      case "copyLink":
+        try {
+          await navigator.clipboard.writeText(el.dataset.u);
+          toast("\u{1F517} \u0421\u043A\u043E\u043F\u0456\u0439\u043E\u0432\u0430\u043D\u043E");
+        } catch (e2) {
+          prompt("\u0421\u043A\u043E\u043F\u0456\u044E\u0439\u0442\u0435 \u043F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F:", el.dataset.u);
+        }
+        break;
       case "siteDel": {
         const r = await act("siteSet", { k: el.dataset.k, v: el.dataset.v }, "\u{1F5D1} \u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
         if (r) {
@@ -2678,19 +2695,29 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       renderMain();
     }
   }
+  function venueHTML() {
+    const s = S.data.site;
+    if (!s) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
+    const link = location.origin + location.pathname + (VENUE ? "?venue=" + VENUE : "");
+    return `<div class="grid2 set">
+      <div class="card"><h3>\u{1F3EA} \u0417\u0430\u043A\u043B\u0430\u0434</h3><button class="sf press" data-a="siteSet" data-k="name" data-l="\u041D\u0430\u0437\u0432\u0430 \u0437\u0430\u043A\u043B\u0430\u0434\u0443"><i>\u{1F37D}</i><span><small>\u041D\u0430\u0437\u0432\u0430 \u0437\u0430\u043A\u043B\u0430\u0434\u0443</small><b>${esc(s.name || "\u043D\u0435 \u0432\u043A\u0430\u0437\u0430\u043D\u043E")}</b></span><em>\u270F\uFE0F</em></button>
+        <div class="muted set-note">\u041D\u0430\u0437\u0432\u0430 \u2014 \u0443 \u043A\u0430\u0441\u0456, \u0443 \u0432\u0456\u043A\u043D\u0456 \u0432\u0445\u043E\u0434\u0443, \u043D\u0430 \u0441\u0430\u0439\u0442\u0456 \u0439 \u0443 \u043F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u043D\u044F\u0445 \u0431\u043E\u0442\u0456\u0432 \u0433\u043E\u0441\u0442\u044F\u043C.</div></div>
+      <div class="card"><h3>\u{1F5BC} \u041B\u043E\u0433\u043E\u0442\u0438\u043F</h3><div style="display:flex;gap:14px;align-items:center"><button class="brand-up press" data-a="siteImg" data-l="1">${s.logo ? `<img src="${esc(s.logo)}" alt="">` : "<span>\u2795</span>"}</button><div class="muted" style="font-size:13px">\u041D\u0430\u0439\u043A\u0440\u0430\u0449\u0435 \u2014 \u043A\u0432\u0430\u0434\u0440\u0430\u0442\u043D\u0438\u0439 PNG.${s.logo ? '<br><button class="btn sm" data-a="siteDel" data-k="logo" data-v="" style="margin-top:8px">\u2715 \u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u043B\u043E\u0433\u043E\u0442\u0438\u043F</button>' : ""}</div></div></div>
+      <div class="card"><h3>\u{1F517} \u041A\u0430\u0441\u0430 \u0434\u043B\u044F \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\u0443</h3><div class="kv"><span style="min-width:0;overflow-wrap:anywhere"><small class="muted">${esc(link)}</small></span><button class="btn sm" data-a="copyLink" data-u="${esc(link)}">\u041A\u043E\u043F\u0456\u044E\u0432\u0430\u0442\u0438</button></div>
+        <div class="muted set-note">\u0412\u0456\u0434\u043A\u0440\u0438\u0439\u0442\u0435 \u043D\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0456 \u0447\u0438 \u043F\u043B\u0430\u043D\u0448\u0435\u0442\u0456 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430 \u2014 \u0434\u0430\u043B\u0456 \u043A\u043E\u0434 \u0440\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u0457, \u0456\u043C'\u044F \u0439 PIN.</div></div></div>`;
+  }
   function siteHTML() {
     const s = S.data.site;
     if (!s) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
-    const U = "https://666blackmuxa666.github.io/VARVAR/about.html";
+    const U = "https://666blackmuxa666.github.io/VARVAR/about.html" + (VENUE ? "?venue=" + VENUE : "");
     const f = (k, ic, l, v, ph) => `<button class="sf press" data-a="siteSet" data-k="${k}" data-l="${esc(l)}"><i>${ic}</i><span><small>${l}</small><b class="${v ? "" : "muted"}">${v ? esc(v) : esc(ph || "\u043D\u0435 \u0432\u043A\u0430\u0437\u0430\u043D\u043E")}</b></span><em>\u270F\uFE0F</em></button>`;
     const sw2 = (k, l, hint) => `<button class="sf press" data-a="siteTgl" data-k="${k}"><span><b>${l}</b><small>${hint}</small></span><span class="switch ${s[k] ? "on" : ""}"></span></button>`;
     const item = (id) => itemsAll().find((i) => i.id === id);
     return `<div class="site-top card"><div><h3>\u{1F310} \u0421\u0430\u0439\u0442-\u0432\u0456\u0437\u0438\u0442\u043A\u0430</h3><span class="muted">\u0417\u043C\u0456\u043D\u0438 \u0437\u02BC\u044F\u0432\u043B\u044F\u044E\u0442\u044C\u0441\u044F \u043D\u0430 \u0441\u0430\u0439\u0442\u0456 \u043E\u0434\u0440\u0430\u0437\u0443</span></div><div class="btnrow"><a class="btn sm primary" href="${U}" target="_blank" rel="noopener">\u{1F517} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438</a><button class="btn sm" data-a="siteCopy">\u{1F4CB} \u041F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F</button></div></div>
     <div class="grid2 set">
-      <div class="card"><h3>\u{1F3F7} \u041E\u0441\u043D\u043E\u0432\u043D\u0435</h3>${f("name", "\u{1F37D}", "\u041D\u0430\u0437\u0432\u0430", s.name)}${f("tagline", "\u2728", "\u0421\u043B\u043E\u0433\u0430\u043D", s.tagline)}${f("about", "\u{1F4DD}", "\u041F\u0440\u043E \u043D\u0430\u0441", s.about)}</div>
+      <div class="card"><h3>\u{1F3F7} \u041E\u0441\u043D\u043E\u0432\u043D\u0435</h3>${f("tagline", "\u2728", "\u0421\u043B\u043E\u0433\u0430\u043D", s.tagline)}${f("about", "\u{1F4DD}", "\u041F\u0440\u043E \u043D\u0430\u0441", s.about)}</div>
       <div class="card"><h3>\u{1F4CD} \u041A\u043E\u043D\u0442\u0430\u043A\u0442\u0438</h3>${f("phone", "\u{1F4DE}", "\u0422\u0435\u043B\u0435\u0444\u043E\u043D", s.phone)}${f("addr", "\u{1F4CD}", "\u0410\u0434\u0440\u0435\u0441\u0430", s.addr)}
         <div class="sf2">${f("from", "\u{1F550}", "\u0412\u0456\u0434\u043A\u0440\u0438\u0432\u0430\u0454\u043C\u043E\u0441\u044C", s.from)}${f("to", "\u{1F559}", "\u0417\u0430\u0447\u0438\u043D\u044F\u0454\u043C\u043E\u0441\u044C", s.to)}</div></div>
-      <div class="card"><h3>\u{1F5BC} \u041B\u043E\u0433\u043E\u0442\u0438\u043F \u0456 \u043D\u0430\u0437\u0432\u0430</h3><div style="display:flex;gap:14px;align-items:center"><button class="brand-up press" data-a="siteImg" data-l="1">${s.logo ? `<img src="${esc(s.logo)}" alt="">` : "<span>\u2795</span>"}</button><div class="muted" style="font-size:13px">\u041B\u043E\u0433\u043E\u0442\u0438\u043F \u0456 \u043D\u0430\u0437\u0432\u0430 \u0437\u0430\u043A\u043B\u0430\u0434\u0443 \u2014 \u0443 \u043A\u0430\u0441\u0456, \u043D\u0430 \u0441\u0430\u0439\u0442\u0456 \u0439 \u0443 \u0432\u0456\u043A\u043D\u0456 \u0432\u0445\u043E\u0434\u0443. \u041D\u0430\u0439\u043A\u0440\u0430\u0449\u0435 \u2014 \u043A\u0432\u0430\u0434\u0440\u0430\u0442\u043D\u0438\u0439 PNG.${s.logo ? '<br><button class="btn sm" data-a="siteDel" data-k="logo" data-v="" style="margin-top:8px">\u2715 \u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u043B\u043E\u0433\u043E\u0442\u0438\u043F</button>' : ""}</div></div></div>
       <div class="card"><h3>\u{1F4F7} \u0424\u043E\u0442\u043E</h3>
         <button class="site-hero press" data-a="siteImg" data-h="1" style="${s.hero ? `background-image:url('${esc(s.hero)}')` : ""}"><span>${s.hero ? "\u{1F504} \u0417\u0430\u043C\u0456\u043D\u0438\u0442\u0438 \u0433\u043E\u043B\u043E\u0432\u043D\u0435 \u0444\u043E\u0442\u043E" : "\u{1F5BC} \u0414\u043E\u0434\u0430\u0442\u0438 \u0433\u043E\u043B\u043E\u0432\u043D\u0435 \u0444\u043E\u0442\u043E"}</span></button>
         <div class="site-gal">${s.photos.map((u) => `<div style="background-image:url('${esc(u)}')"><button data-a="siteDel" data-k="photoDel" data-v="${esc(u)}" title="\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438">\u2715</button></div>`).join("")}<button class="add press" data-a="siteImg">\uFF0B<small>\u0433\u0430\u043B\u0435\u0440\u0435\u044F</small></button></div></div>
@@ -3412,7 +3439,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const row = (l, v, btn, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ""}</span><span class="kv-r"><b>${v}</b>${btn}</span></div>`;
     const ch = (a, extra = "") => `<button class="btn sm" data-a="${a}"${extra}>\u0437\u043C\u0456\u043D\u0438\u0442\u0438</button>`;
     const staff = st ? [...st.staff].sort((a, b) => (a.role || "").localeCompare(b.role || "") || a.name.localeCompare(b.name)) : null;
-    const SS = [["rules", "\u2699\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438"], ["site", "\u{1F310} \u0421\u0430\u0439\u0442"], ["go", "\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430"], ["loy", "\u{1F381} \u041B\u043E\u044F\u043B\u044C\u043D\u0456\u0441\u0442\u044C"], ["look", "\u{1F3A8} \u0412\u0438\u0433\u043B\u044F\u0434"], ["printer", "\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["test", "\u{1F9EA} \u0422\u0435\u0441\u0442"]], cur = only || ((SS0) => SS0.includes(S.setTab) ? S.setTab : "rules")(["rules", "site", "go", "loy", "look", "printer", "test"]);
+    const SS = [["venue", "\u{1F3EA} \u0417\u0430\u043A\u043B\u0430\u0434"], ["rules", "\u2699\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438"], ["site", "\u{1F310} \u0421\u0430\u0439\u0442"], ["go", "\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430"], ["loy", "\u{1F381} \u041B\u043E\u044F\u043B\u044C\u043D\u0456\u0441\u0442\u044C"], ["look", "\u{1F3A8} \u0412\u0438\u0433\u043B\u044F\u0434"], ["printer", "\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["test", "\u{1F9EA} \u0422\u0435\u0441\u0442"]], cur = only || ((SS0) => SS0.includes(S.setTab) ? S.setTab : "rules")(["venue", "rules", "site", "go", "loy", "look", "printer", "test"]);
     const part = {};
     part.people = `<div class="grid2 set">
       ${[["admin", "\u{1F510} \u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440\u0438"], ["waiter", "\u{1F9D1}\u200D\u{1F373} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0438"], ["cook", "\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u043D\u044F"], ["courier", "\u{1F6F5} \u041A\u0443\u0440'\u0454\u0440\u0438"]].map(([r, t]) => {
@@ -3450,6 +3477,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         <div class="btnrow"><button class="btn sm primary" data-a="wifiAdd">\u2795 \u0426\u0435 \u043D\u0430\u0448\u0430 \u043C\u0435\u0440\u0435\u0436\u0430</button><button class="btn sm red" data-a="wifiClear">\u0421\u043A\u0438\u043D\u0443\u0442\u0438 \u0432\u0441\u0456</button></div></div></div>`;
     part.go = goSetHTML();
     part.site = siteHTML();
+    part.venue = venueHTML();
     part.loy = loyHTML();
     part.look = lookHTML();
     part.printer = printerCards();
