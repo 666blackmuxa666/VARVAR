@@ -36,7 +36,7 @@ window.OWNV = ctx => {
   function view() {
     const v = V(), venue = S.venues.find(x => x.id === v.id) || { name: v.id };
     const tabs = `<div class="seg2">${SEC.map(([k, l]) => `<button class="${v.sec === k ? 'on' : ''}" data-a="vsec" data-s="${k}">${l}</button>`).join('')}</div>`;
-    const head = `<div class="btnrow" style="align-items:center;margin-bottom:10px"><button class="btn sm ghost" data-a="vback">← Заклади</button><h2 style="margin:0">⚙️ ${esc(venue.name)}</h2></div>${tabs}`;
+    const head = `<div class="btnrow" style="align-items:center;margin-bottom:10px"><h2 style="margin:0">⚙️</h2>${S.venues.length > 1 ? `<select id="vpick" style="max-width:320px;font-weight:700">${S.venues.map(x => `<option value="${x.id}" ${x.id === v.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>` : `<h2 style="margin:0">${esc(venue.name)}</h2>`}</div>${tabs}`;
     if (!v.d) return head + '<div class="muted">Завантаження…</div>';
     if (v.d.err) return head + `<div class="alert red">${esc(v.d.err)}</div>`;
     return head + (SECV[v.sec] || (() => ''))(v, venue);
@@ -183,7 +183,7 @@ window.OWNV = ctx => {
       bg.querySelector('#mImp').addEventListener('input', ev => { const rows = parseTable(ev.target.value); $('#mPrev').innerHTML = rows.length ? `Знайдено ${rows.length} страв:<br>` + rows.slice(0, 30).map(r => `${esc(r.cat)} → <b>${esc(r.name)}</b> — ${esc(r.price)} ₴`).join('<br>') + (rows.length > 30 ? '<br>…' : '') : ''; });
     }
   });
-  document.addEventListener('change', e => { if (e.target.id === 'logM' && S.cfgV) { S.logM = e.target.value; load(); } });
+  document.addEventListener('change', e => { if (e.target.id === 'logM' && S.cfgV) { S.logM = e.target.value; load(); } if (e.target.id === 'vpick' && S.cfgV) { S.cfgV.id = e.target.value; try { localStorage.setItem('own_cfgV', JSON.stringify(e.target.value)); } catch {} load(); } });
   document.addEventListener('input', e => { if (e.target.id === 'logQ' && S.cfgV) { S.logQ = e.target.value; clearTimeout(S.lqT); S.lqT = setTimeout(() => { const p = e.target.selectionStart; render(); const i = $('#logQ'); if (i) { i.focus(); i.setSelectionRange(p, p); } }, 250); } });
   document.addEventListener('input', e => { if (e.target.id === 'mq' && S.cfgV) { S.mq = e.target.value; clearTimeout(S.mqT); S.mqT = setTimeout(() => { const p = e.target.selectionStart; render(); const i = $('#mq'); if (i) { i.focus(); i.setSelectionRange(p, p); } }, 250); } });
   document.addEventListener('submit', async e => {
@@ -199,5 +199,5 @@ window.OWNV = ctx => {
     for (const [k, v] of [['tagline', 'Смачно, швидко, з любов\'ю'], ['about', 'Демонстраційний заклад: так виглядатиме сайт вашого закладу — меню, замовлення з собою й доставка, бронювання, сертифікати.'], ['phone', '+380 00 000 00 00'], ['addr', 'вул. Демонстраційна, 1'], ['from', '09:00'], ['to', '22:00']]) await vapi(id, 'siteSet', { k, v }).catch(() => {});
     return r;
   }
-  return { view, demo, open: (id, sec = 'start') => { S.cfgV = { id, sec }; S.tab = 'cfg'; load(); } };
+  return { view, demo, open: (id, sec = 'start') => { S.cfgV = { id, sec }; S.tab = 'cfg'; try { localStorage.setItem('own_cfgV', JSON.stringify(id)); } catch {} load(); } };
 };

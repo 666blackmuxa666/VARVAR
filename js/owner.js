@@ -51,7 +51,8 @@
   async function start() {
     if (!S.token) return renderLogin();
     try { const r = await api('me'); S.me = r.me; S.venues = r.venues; S.seen = r.seen || {}; } catch { return; }
-    render(); load();
+    if (S.tab === 'cfg' && !S.cfgV && S.venues.length) { const id = store.get('cfgV', ''); return VC.open(S.venues.some(v => v.id === id) ? id : S.venues[0].id); }
+    render(); if (S.tab !== 'cfg') load();
   }
   async function load() {
     const [f, t] = S.tab === 'home' ? [today(), today()] : range(S.per);
@@ -154,11 +155,11 @@
   }
   function render() {
     if (!S.me) return;
-    const plat = S.me.role === 'platform', TABS = [['home', '🏠 Мережа'], ['an', '📊 Аналітика'], ['ven', '🏪 Заклади'], ...(plat ? [['plat', '🌐 Платформа']] : [])];
-    if (!TABS.some(x => x[0] === S.tab) && !(S.tab === 'cfg' && S.cfgV)) S.tab = 'home';
+    const plat = S.me.role === 'platform', TABS = [['home', '🏠 Мережа'], ['an', '📊 Аналітика'], ['ven', '🏪 Заклади'], ['cfg', '⚙️ Налаштування'], ...(plat ? [['plat', '🌐 Платформа']] : [])];
+    if (!TABS.some(x => x[0] === S.tab)) S.tab = 'home';
     app.innerHTML = `<header class="top"><div class="in"><img src="img/icon.png" alt=""><b>Кабінет власника</b><div class="who"><b>${esc(S.me.name)}</b><span class="muted">${plat ? '👑 платформа' : 'власник'} · <a href="#" data-a="help">🆘 допомога</a> · <a href="#" data-a="out">вийти</a></span></div></div>
       <nav class="tabs">${TABS.map(([k, l]) => `<button class="${S.tab === k ? 'on' : ''}" data-a="tab" data-t="${k}">${l}</button>`).join('')}<button data-a="reload">🔄</button></nav></header>
-      <main>${S.tab === 'cfg' && S.cfgV ? VC.view() : S.tab === 'home' ? home() : S.tab === 'an' ? analytics() : S.tab === 'ven' ? venues() : platform()}</main>`;
+      <main>${S.tab === 'cfg' ? (S.cfgV ? VC.view() : '<div class="muted">Завантаження…</div>') : S.tab === 'home' ? home() : S.tab === 'an' ? analytics() : S.tab === 'ven' ? venues() : platform()}</main>`;
   }
 
   // ---------- модалки ----------
@@ -186,6 +187,7 @@
     const reload = async () => { S.plat = null; await start(); S.tab = 'plat'; render(); };
     if (a === 'out') { e.preventDefault(); return logout(); }
     if (a === 'help') { e.preventDefault(); return modal('🆘 Допомога', '<div class="muted" style="font-size:13px">Напишіть, що не працює або що потрібно налаштувати — розробник отримає повідомлення в Telegram і зв\'яжеться з вами.</div><textarea name="t" rows="5" required style="width:100%;font:inherit;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px"></textarea>', async f => { await api('help', { text: f.t.value }); toast('🆘 Надіслано'); }); }
+    if (a === 'tab' && d.t === 'cfg') { store.set('tab', 'cfg'); const id = S.cfgV?.id || store.get('cfgV', '') || S.venues[0]?.id; if (!id) return toast('Закладів ще немає'); return VC.open(S.venues.some(v => v.id === id) ? id : S.venues[0].id, S.cfgV?.sec || 'start'); }
     if (a === 'tab') { S.cfgV = null; S.tab = d.t; store.set('tab', d.t); if (d.t === 'home' || d.t === 'an') return load(); return render(); }
     if (a === 'reload') { S.plat = null; return start(); }
     if (a === 'per') { S.per = d.p; if (d.p === 'own') return render(); return load(); }
