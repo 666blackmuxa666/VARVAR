@@ -299,6 +299,18 @@ async function loyTests(A, W, dish) {
     for (const op of ['gbSet', 'gbCast', 'gbCount']) await step(`waiter ✗ ${op}`, async () => { const r = await pos(W, op, { f: {} }); must(r.status === 403, String(r.status)); });
   } finally { if (gb0) await pos(A, 'gbSet', { f: { stat: gb0.stat, sleepBon: gb0.sleepBon } }); }
 
+  sect('🎂 Подарунок на ДН у рахунку');
+  await step('certBd: кальян безкоштовно, вдруге за рік — ні', async () => {
+    const m = await http('/api/menu'), cat = m.j.categories.find(c => c.items.some(i => i.id === 'hookah-silver')); if (!cat) return 'немає hookah-silver у меню — пропуск';
+    const hk = cat.items.filter(i => typeof i.price === 'number' && !/з собою/i.test(i.name.uk)).sort((a, b) => b.price - a.price)[0];
+    const st = await posOk(A, 'state'), busy = new Set(st.tables.map(x => x.t)); let T = 0; for (let t = st.n; t >= 1; t--) if (!busy.has(t)) { T = t; break; }
+    await posOk(A, 'order', { t: T, items: [{ id: hk.id, q: 1 }] });
+    const ph = '06799' + String(RUN).replace(/\D/g, '').padEnd(5, '1').slice(0, 5);
+    try { const r = await posOk(A, 'certBd', { t: T, phone: ph, name: 'QA' }); must(r.use === hk.price, `знято ${r.use}, а кальян ${hk.price}`);
+      const again = await pos(A, 'certBd', { t: T, phone: ph }); must(again.status === 400, 'вдруге дозволило'); return `${hk.name.uk} −${r.use}`; }
+    finally { await pos(A, 'delete', { t: T, reason: 'QA' }); }
+  });
+
   sect('💡 Побажання розробнику');
   let iid = '';
   await step('waiter: ideaAdd', async () => { const r = await posOk(W, 'ideaAdd', { text: 'QA побажання ' + RUN }); iid = r.x.id; must(iid, 'id'); });

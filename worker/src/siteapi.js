@@ -23,6 +23,7 @@ export async function siteApi(b, env, me, t) {
     case 'certPay': { if (!admin) return needA(); const c = await certPay(env, String(b.code), b.how === 'no' ? 'no' : b.how === 'card' ? 'card' : 'cash', who); return c ? ok({ c }) : bad('Не знайдено або вже оброблено'); }
     case 'certDel': { if (!admin) return needA(); if (!(await certDel(env, b.code))) return bad('Не знайдено'); await notify(env, `🖥 🗑 Сертифікат ${esc(String(b.code).toUpperCase())} видалено — ${esc(who)}`); return ok({}); }
     case 'certGet': { const c = await getCert(env, b.code); return c ? ok({ c: { code: c.code, sum: c.sum, left: c.left, st: c.st, from: c.from, to: c.to } }) : bad('Не знайдено'); }
+    case 'certBd': { const r = await (await import('./guestbot.js')).bdGiftHere(env, t, b.phone || '', String(b.name || '').trim().slice(0, 40), who); return r.error ? bad(r.error) : ok(r); }
     case 'certUse': { const r = await certUse(env, t, b.code, who); if (r.error) return bad(r.error); await notify(env, `🖥 🎁 Сертифікат ${esc(String(b.code).toUpperCase())}: −${r.use} грн на стіл ${t} (залишок ${r.left}) — ${esc(who)}`); return ok(r); }
     case 'siteRates': return ok(await ratings(env, String(b.from), String(b.to)));
   }

@@ -988,9 +988,10 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         certT(t);
         break;
       case "bonCert": {
-        const v = await choose("\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438 \xB7 \u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442", ((_h = S.tables[t]) == null ? void 0 : _h.cli) ? "\u0413\u0456\u0441\u0442\u044C \u0437\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u043E\u043C \u0443\u0436\u0435 \u0432\u043A\u0430\u0437\u0430\u043D\u0438\u0439" : "\u0429\u043E \u0437\u0430\u0441\u0442\u043E\u0441\u0443\u0432\u0430\u0442\u0438 \u0434\u043E \u0440\u0430\u0445\u0443\u043D\u043A\u0443?", [{ label: ((_i = S.tables[t]) == null ? void 0 : _i.cli) ? "\u{1F381} \u0413\u0456\u0441\u0442\u044C \u0456 \u0431\u043E\u043D\u0443\u0441\u0438" : "\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438 \u0433\u043E\u0441\u0442\u044F (\u0437\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u043E\u043C)", val: "cli", cls: "primary" }, { label: "\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 (\u043A\u043E\u0434)", val: "cert" }]);
+        const v = await choose("\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438 \xB7 \u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442", ((_h = S.tables[t]) == null ? void 0 : _h.cli) ? "\u0413\u0456\u0441\u0442\u044C \u0437\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u043E\u043C \u0443\u0436\u0435 \u0432\u043A\u0430\u0437\u0430\u043D\u0438\u0439" : "\u0429\u043E \u0437\u0430\u0441\u0442\u043E\u0441\u0443\u0432\u0430\u0442\u0438 \u0434\u043E \u0440\u0430\u0445\u0443\u043D\u043A\u0443?", [{ label: ((_i = S.tables[t]) == null ? void 0 : _i.cli) ? "\u{1F381} \u0413\u0456\u0441\u0442\u044C \u0456 \u0431\u043E\u043D\u0443\u0441\u0438" : "\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438 \u0433\u043E\u0441\u0442\u044F (\u0437\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u043E\u043C)", val: "cli", cls: "primary" }, { label: "\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 (\u043A\u043E\u0434)", val: "cert" }, { label: "\u{1F382} \u041F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A \u043D\u0430 \u0414\u041D", val: "bd" }]);
         if (v === "cli") cliT(t);
         else if (v === "cert") certT(t);
+        else if (v === "bd") bdGiftT(t);
         break;
       }
       case "certs": {
@@ -2510,6 +2511,19 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       await loadBooks().catch(() => {
       });
       renderMain();
+      loadState().catch(() => {
+      });
+    }
+  }
+  async function bdGiftT(t) {
+    var _a2;
+    const cli = (_a2 = S.tables[t]) == null ? void 0 : _a2.cli, ph = cli || await askVal("\u{1F382} \u0422\u0435\u043B\u0435\u0444\u043E\u043D \u0456\u043C\u0435\u043D\u0438\u043D\u043D\u0438\u043A\u0430 \u2014 \u0449\u043E\u0431 \u043D\u0435 \u043F\u043E\u0434\u0430\u0440\u0443\u0432\u0430\u0442\u0438 \u0434\u0432\u0456\u0447\u0456 \u0437\u0430 \u0440\u0456\u043A (\u043C\u043E\u0436\u043D\u0430 \u043F\u043E\u0440\u043E\u0436\u043D\u044C\u043E)", "", "tel");
+    if (ph === null) return;
+    const name = cli ? "" : await askVal("\u{1F382} \u0406\u043C'\u044F \u0456\u043C\u0435\u043D\u0438\u043D\u043D\u0438\u043A\u0430 (\u043C\u043E\u0436\u043D\u0430 \u043F\u043E\u0440\u043E\u0436\u043D\u044C\u043E)", "");
+    if (name === null) return;
+    const r = await act("certBd", { t, phone: ph || "", name: name || "" });
+    if (r) {
+      toast(`\u{1F382} \u041F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A: \u2212${money(r.use)} \xB7 ${r.gift}`);
       loadState().catch(() => {
       });
     }

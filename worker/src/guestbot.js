@@ -184,7 +184,8 @@ export async function cast(env, f, text, who) {
 async function giftInfo(env) {
   const gb = await getGb(env); if (!gb.bdGift) return null;
   const { getMenu } = await import('./menu.js'), m = await getMenu(env);
-  for (const c of m.categories) { const it = c.items.find(i => i.id === gb.bdGift); if (it) return { n: it.name.uk, p: it.price || 0, items: c.items.filter(i => typeof i.price === 'number' && i.price <= (it.price || 0) * 1.5 && !/з собою/i.test(i.name.uk)).map(i => i.name.uk), days: gb.bdGiftDays }; }
+  for (const c of m.categories) { const it = c.items.find(i => i.id === gb.bdGift); if (!it) continue; // будь-яка позиція цієї категорії (крім «з собою») — покривається повністю
+    const l = c.items.filter(i => typeof i.price === 'number' && i.price > 0 && !/з собою/i.test(i.name.uk)); return { n: it.name.uk, cat: c.name.uk, p: Math.max(it.price || 0, ...l.map(i => i.price)), items: l.map(i => i.name.uk), days: gb.bdGiftDays }; }
   return null;
 }
 async function bdGreet(env, c, gb, bdRule) {
@@ -195,6 +196,20 @@ async function bdGreet(env, c, gb, bdRule) {
     gift = `\n\n🎁 <b>Ваш подарунок — ${esc(g.n)}!</b>\nСертифікат: <code>${x.code}</code>\nПокажіть цей код офіціанту. Діє до ${new Date(x.exp).toLocaleDateString('uk-UA', { timeZone: TZ, day: '2-digit', month: '2-digit' })}.`;
     await logEvent(env, { k: 'cert', code: x.code, s: 'ok', text: `🎂 ${c.name || fmtPhone(c.phone)} — день народження: сертифікат ${x.code} на «${g.n}»` }); }
   await say(env, c.chat, gb.bdText + gift + (bdRule ? `\n\n🎉 А ще <b>−${bdRule.pct}%</b> на замовлення в ці дні.` : ''), url('📅 Забронювати столик', SITE + 'about.html#book'));
+}
+
+// 🎂 подарунок прямо в рахунку (гість прийшов святкувати, навіть якщо не в програмі): сертифікат + одразу застосувати
+export async function bdGiftHere(env, t, phone, name, who) {
+  const g = await giftInfo(env); if (!g) return { error: 'Подарунок на ДН вимкнено (Гості й акції → 🤖 Бот гостей)' };
+  const { normPhone } = await import('./delivery.js'), ph = phone ? normPhone(phone) : ''; if (phone && !ph) return { error: 'Невірний номер' };
+  const y = dayKey().slice(0, 4);
+  if (ph) { const c = await getCli(env, ph); if (c?.bdY === y) return { error: `${c.name || fmtPhone(ph)} уже отримував подарунок на ДН цього року` }; }
+  const { certGift, certUse, certDel } = await import('./site.js'), x = await certGift(env, { phone: ph, name: name || '', gift: g.n, items: g.items, sum: g.p, days: 1 });
+  const r = await certUse(env, t, x.code, who); if (r.error) { await certDel(env, x.code); return { error: r.error }; }
+  if (ph) await cliTouch(env, ph, c => { c.bdY = y; if (name && !c.name) c.name = name; });
+  await logEvent(env, { k: 'cert', code: x.code, s: 'ok', t, text: `🎂 Подарунок на ДН у рахунку стола ${tn(t)}: ${g.cat} −${r.use} ₴${name || ph ? ` · ${name || ''} ${ph ? fmtPhone(ph) : ''}` : ''} — ${who}` });
+  await notify(env, `🖥 🎂 Подарунок на ДН: стіл ${tn(t)} · ${esc(g.cat)} −${r.use} грн${ph ? ` · ${fmtPhone(ph)}` : ''} — ${esc(who)}`).catch(() => {});
+  return { use: r.use, gift: g.n };
 }
 
 // ---------- ⏰ щодня (Cron): дні народження + «сплячі» ----------
