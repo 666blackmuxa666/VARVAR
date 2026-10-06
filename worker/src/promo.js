@@ -82,7 +82,7 @@ const kindOf = b => b.go ? (b.go.kind === 'del' ? 'del' : 'pick') : 'hall';
 export async function promoFill(env, bill, ctx = {}) {
   if (!bill?.total) return bill;
   ctx.cfg ||= await getLoy(env); ctx.cat ||= catMap(await getMenu(env));
-  const cli = bill.cli ? await getCli(env, bill.cli) : null;
+  const c0 = bill.cli ? await getCli(env, bill.cli) : null, cli = c0 && (c0.chat || c0.lvl) ? c0 : null; // рівень / ДН / N-та — лише учасникам (бот гостей)
   const p = bill.promoOff ? null : promoCalc(ctx.cfg, { items: billItems(bill), kind: kindOf(bill), cli, ph: bill.cli, manual: bill.disc || 0, catOf: ctx.cat });
   if (p && (p.lines.length || p.lvl)) bill.promo = p; else delete bill.promo;
   return bill;
@@ -115,12 +115,12 @@ export async function allCli(env) {
   const keys = (await env.DB.list({ prefix: 'cli:' })).keys.map(k => k.name), vals = keys.length ? await env.DB.getMany(keys, 'json') : [];
   return keys.map((k, i) => ({ phone: k.slice(4), ...(vals[i] || {}) })).filter(c => c.phone);
 }
-const cliRow = (cfg, c) => { const lv = cliLevel(cfg, c); return { phone: c.phone, name: c.name || '', n: c.n || 0, sum: c.sum || 0, bal: c.bal || 0, bd: c.bd || '', note: c.note || '', last: c.last || 0, lvl: lv?.id || '', lvn: lv ? `${lv.e} ${lv.name}` : '', man: !!c.lvl }; };
+const cliRow = (cfg, c) => { const lv = cliLevel(cfg, c); return { phone: c.phone, name: c.name || '', n: c.n || 0, sum: c.sum || 0, bal: c.bal || 0, bd: c.bd || '', note: c.note || '', last: c.last || 0, tg: c.chat ? 1 : 0, lvl: lv?.id || '', lvn: lv ? `${lv.e} ${lv.name}` : '', man: !!c.lvl }; };
 // f: all | <id рівня> | bd (день народження ±7 днів) | sleep (не був 30+ днів) | bal (є бонуси)
 export async function cliList(env, q = '', f = 'all') {
   const cfg = await getLoy(env), k = kyiv(Date.now()), qq = String(q).toLowerCase().trim(), qd = qq.replace(/\D/g, '');
   return (await allCli(env)).map(c => cliRow(cfg, c)).filter(c => (!qq || (qd.length >= 3 && c.phone.includes(qd)) || c.name.toLowerCase().includes(qq))
-    && (f === 'all' || (f === 'bd' ? bdDiff(c.bd, k) <= 7 : f === 'sleep' ? c.last && Date.now() - c.last > 30 * 864e5 : f === 'bal' ? c.bal > 0 : c.lvl === f)))
+    && (f === 'all' || (f === 'tg' ? c.tg || c.man : f === 'bd' ? bdDiff(c.bd, k) <= 7 : f === 'sleep' ? c.last && Date.now() - c.last > 30 * 864e5 : f === 'bal' ? c.bal > 0 : c.lvl === f)))
     .sort((a, b) => b.sum - a.sum).slice(0, 200);
 }
 export async function cliCard(env, ph) { const c = await getCli(env, ph); if (!c) return null; const cfg = await getLoy(env); return { ...cliRow(cfg, { phone: ph, ...c }), h: c.h || [], nth: c.nth || {} }; }
