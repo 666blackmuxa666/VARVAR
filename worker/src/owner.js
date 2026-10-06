@@ -66,6 +66,12 @@ export async function intApi(req, env, path) {
       staff: st.length, bots: { staff: !!sec.BOT_TOKEN, guest: !!sec.GUEST_BOT_TOKEN, courier: !!sec.COURIER_BOT_TOKEN, group: !!sec.CHAT_ID }, printer: pr.seen ? Date.now() - pr.seen < 120e3 ? 1 : 0.5 : 0, printKey: env.VENUE === MAIN ? '' : sec.PRINT_KEY || '', go: g.on ? 1 : 0, site: !!(s.about || s.hero) }, 200];
   }
   if (path === '/__int/brand') { if (env.VENUE === MAIN) return [{ error: 'VARVAR — окреме оформлення' }, 400]; return [await (await import('./brand.js')).brandVenue(env), 200]; }
+  if (path === '/__int/bak') { const B = await import('./backup.js'); // 💾
+    if (b.do === 'list') return [{ list: await B.backupList(env) }, 200];
+    if (b.do === 'now') return [await B.backupNow(env, 'вручну-' + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')), 200];
+    if (b.do === 'get') { const t = await B.backupGet(env, String(b.tag)); return t ? [{ data: t }, 200] : [{ error: 'Не знайдено' }, 404]; }
+    if (b.do === 'restore') return [await B.backupRestore(env, String(b.tag), String(b.who || '')), 200];
+    return [{ error: 'unknown' }, 400]; }
   if (path === '/__int/sum') { const r = await venueSum(env, b.from, b.to); if (b.pnl) r.pnl = await pnl(env, r).catch(e => ({ error: e.message })); return [r, 200]; }
   if (path === '/__int/codes') return [{ codes: Object.fromEntries(await Promise.all(['admin', 'waiter', 'cook', 'courier'].map(async r => [r, await env.DB.get('reg_' + r)]))) }, 200];
   return [{ error: 'unknown' }, 404];
@@ -169,6 +175,10 @@ ${JSON.stringify(data.filter(Boolean))}
 
 Відповідай українською, коротко (до 8 речень), з конкретними цифрами лише з цих даних. Якщо даних не вистачає — так і скажи й порадь, що заповнити (техкарти, витрати тощо).`;
       try { const r = await (await import('./ai.js')).aiAnswer(env, prompt); return ok({ answer: String(r.answer || '').slice(0, 3000) }); } catch (e) { return bad('ШІ зараз недоступний, спробуйте за хвилину'); } }
+    case 'bak': { // 💾 бекапи: список / зробити зараз / завантажити — власник; відновити — лише платформа
+      if (!(await may(b.venue))) return bad('Немає доступу', 403); const op = String(b.do || 'list');
+      if (op === 'restore' && (!plat || b.confirm !== b.venue)) return bad(plat ? 'Для підтвердження введіть адресу закладу' : 'Відновлення — лише через розробника (🆘 Допомога)', 403);
+      const r = await callVenue(env, b.venue, '/__int/bak', { do: op, tag: b.tag, who: me.name }); return r.error ? bad(r.error) : ok(r); }
     case 'pass': { const r = await H.acctPass(me.email, b.pass); return r.error ? bad(r.error) : ok(); }
   }
   // ---- консоль платформи ----

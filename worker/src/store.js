@@ -71,6 +71,14 @@ export class Store extends DurableObject {
   async put(k, v, ttl) { await this.ctx.storage.put(k, { v, e: ttl ? now() + ttl * 1000 : 0 }); this.changed([k]); }
   async del(k) { await this.ctx.storage.delete(k); this.changed([k]); }
   async wipe() { await this.ctx.storage.deleteAll(); } // 🗑 видалення закладу (лише з консолі платформи)
+  // 💾 бекап / відновлення: увесь вміст сховища закладу як є (з терміном життя записів)
+  async dump() { return [...(await this.ctx.storage.list())].filter(([k]) => !k.startsWith('__')); }
+  async restore(entries) {
+    const keep = Object.fromEntries([...(await this.ctx.storage.list({ prefix: '__' }))]);
+    await this.ctx.storage.deleteAll(); await this.ctx.storage.put(keep);
+    for (let i = 0; i < entries.length; i += 128) await this.ctx.storage.put(Object.fromEntries(entries.slice(i, i + 128)));
+    this.changed(['bill:', 'menu', 'staff', 'closed:', 'day:']); return entries.length;
+  }
   async delMany(ks) { for (let i = 0; i < ks.length; i += 128) await this.ctx.storage.delete(ks.slice(i, i + 128)); this.changed(ks); }
   // 🔒 черга на ключ: дії «прочитав → змінив → записав» з різних запитів ідуть строго по одній (без загублених змін)
   async lock(k) {
@@ -109,6 +117,7 @@ function localDB(st, kv, venue) {
       finally { mine.forEach(k => held.delete(k)); for (const id of ids) st.unlock(id); }
     },
     list: async ({ prefix } = {}) => ({ keys: (await st.list(prefix)).map(name => ({ name })), list_complete: true }),
+    dump: () => st.dump(), restore: e => st.restore(e), kv, // 💾 бекапи (лише всередині Store)
   };
 }
 export const storeStub = env => env.STORE.get(env.STORE.idFromName(doName(venueId())));

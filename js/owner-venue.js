@@ -12,7 +12,7 @@ window.OWNV = ctx => {
     if (!r.ok || j.error) throw new Error(errText(j.error) || 'Помилка ' + r.status); return j;
   }
   const errText = e => ({ admin: 'Потрібні права адміна', image: 'Невірний формат картинки', too_big: 'Завеликий файл', not_found: 'Не знайдено' }[e] || e);
-  const SEC = [['start', '🚀 Запуск'], ['venue', '🏪 Заклад'], ['site', '🌐 Сайт'], ['menu', '🍽 Меню'], ['go', '🛵 Доставка'], ['pos', '🪑 Каса'], ['staff', '👥 Персонал'], ['bots', '🤖 Боти'], ['printer', '🖨 Принтер'], ['log', '📜 Журнал']];
+  const SEC = [['start', '🚀 Запуск'], ['venue', '🏪 Заклад'], ['site', '🌐 Сайт'], ['menu', '🍽 Меню'], ['go', '🛵 Доставка'], ['pos', '🪑 Каса'], ['staff', '👥 Персонал'], ['bots', '🤖 Боти'], ['printer', '🖨 Принтер'], ['log', '📜 Журнал'], ['bak', '💾 Бекапи']];
   const V = () => S.cfgV; // { id, sec, d: {…дані розділу} }
 
   async function load() {
@@ -25,6 +25,7 @@ window.OWNV = ctx => {
       if (sec === 'go') v.d = { go: (await vapi(id, 'goCfg')).cfg };
       if (sec === 'pos') { const st = await vapi(id, 'state'); v.d = { cfg: st.cfg, n: st.n }; }
       if (sec === 'staff') v.d = await vapi(id, 'staff');
+      if (sec === 'bak') v.d = { list: (await api('bak', { venue: id, do: 'list' })).list };
       if (sec === 'log') v.d = { list: (await vapi(id, 'alog', { m: S.logM || '' })).list };
     } catch (e) { toast('⚠️ ' + e.message); v.d = { err: e.message }; }
     render();
@@ -94,6 +95,12 @@ window.OWNV = ctx => {
         <div class="card"><h3>➕ Підключити / замінити</h3><ol class="muted" style="font-size:13px;padding-left:18px;margin:0 0 10px"><li>Telegram → <a href="https://t.me/BotFather" target="_blank">@BotFather</a> → /newbot → назва й ім'я бота</li><li>Скопіюйте токен (виглядає як 123456:ABC…) і вставте нижче</li><li>Бота персоналу додайте у вашу робочу групу — вона підключиться сама</li></ol>
         <form id="vbf" style="display:grid;gap:8px"><input name="BOT_TOKEN" placeholder="🧑‍🍳 Токен бота персоналу" autocomplete="off"><input name="GUEST_BOT_TOKEN" placeholder="🍔 Токен бота гостей" autocomplete="off"><input name="COURIER_BOT_TOKEN" placeholder="🛵 Токен бота кур'єрів" autocomplete="off"><div class="err" id="vberr"></div><button class="btn primary">💾 Перевірити й зберегти</button></form></div></div>`;
     },
+    bak(v) {
+      const plat = S.me.role === 'platform', l = v.d.list;
+      return `<div class="card"><h3>💾 Резервні копії</h3><div class="muted" style="font-size:13px;margin-bottom:8px">Щоночі система сама зберігає повну копію даних закладу (меню, чеки, звіти, склад, персонал, гості) і тримає 7 днів. ${plat ? 'Відновити можна будь-яку.' : 'Якщо щось зламалось — розробник відновить потрібний день (🆘 Допомога).'}</div>
+        <div class="btnrow" style="margin-bottom:8px"><button class="btn sm primary" data-a="bakNow">💾 Зробити копію зараз</button></div>
+        ${l.length ? l.map(b => `<div class="kv"><span>${/^\d{4}-\d\d-\d\d$/.test(b.tag) ? '🌙 ' + b.tag.split('-').reverse().join('.') : esc(b.tag)}<br><small class="muted">${b.at ? new Date(b.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''} · ${b.n || '?'} записів · ${b.kb || '?'} КБ</small></span><span style="display:flex;gap:6px"><button class="btn sm" data-a="bakGet" data-t="${esc(b.tag)}">⬇️</button>${plat ? `<button class="btn sm red" data-a="bakRestore" data-t="${esc(b.tag)}">♻️ Відновити</button>` : ''}</span></div>`).join('') : '<div class="muted">Копій ще немає — перша буде вночі (або натисніть «Зробити копію зараз»).</div>'}</div>`;
+    },
     log(v) {
       const m = S.logM || new Date().toLocaleDateString('sv-SE').slice(0, 7), q = (S.logQ || '').toLowerCase(), l = v.d.list.filter(x => !q || x.t.toLowerCase().includes(q));
       return `<div class="btnrow" style="margin-bottom:10px;align-items:center"><input type="month" id="logM" value="${m}" style="max-width:170px;min-height:34px;padding:6px 10px"><input id="logQ" placeholder="🔎 Хто / що (напр. Меню, Олег)" value="${esc(S.logQ || '')}" style="max-width:260px;min-height:34px;padding:6px 12px"></div>
@@ -160,6 +167,9 @@ window.OWNV = ctx => {
     if (a === 'vreg') { const x = await ask('Новий код (4–8 цифр)', v.d.reg?.[d.r], 'tel'); if (x == null) return; return act(() => vapi(id, 'regCode', { role: d.r, code: x }), '🔑 Код змінено'); }
     if (a === 'vstaffDel') { if (!confirm(`Видалити ${d.n}? Працівника одразу викине з каси.`)) return; return act(() => vapi(id, 'staffDel', { id: d.id }), '🗑 Видалено'); }
     if (a === 'vbrand') { el.disabled = true; try { const r = await api('brand', { venue: id }); toast(r.logo ? '🎨 Готово — назви, описи й аватарки оновлено' : '🎨 Назви й описи оновлено (додайте логотип для аватарки)'); } catch (x) { toast('⚠️ ' + x.message); } el.disabled = false; return; }
+    if (a === 'bakNow') { el.disabled = true; return act(async () => { const r = await api('bak', { venue: id, do: 'now' }); toast(`💾 Копію збережено: ${r.n} записів, ${r.kb} КБ`); }); }
+    if (a === 'bakGet') { try { const r = await api('bak', { venue: id, do: 'get', tag: d.t }); const l = document.createElement('a'); l.href = URL.createObjectURL(new Blob([r.data], { type: 'application/json' })); l.download = `backup-${id}-${d.t}.json`; l.click(); } catch (x) { toast('⚠️ ' + x.message); } return; }
+    if (a === 'bakRestore') return modal('♻️ Відновити дані з копії ' + esc(d.t) + '?', `<div class="alert red">Усі поточні дані закладу буде замінено даними з цієї копії. Перед цим система збереже ще одну копію «до відновлення».</div><label>Щоб підтвердити, введіть адресу закладу: <b>${esc(id)}</b><input name="c" autocomplete="off" required></label>`, async f => { const r = await api('bak', { venue: id, do: 'restore', tag: d.t, confirm: f.c.value.trim() }); toast(`♻️ Відновлено: ${r.n} записів`); load(); });
     if (a === 'vprintTest') return act(() => vapi(id, 'printTest'), '🧾 Тест відправлено');
     if (a === 'vprintCfg') { const blob = new Blob([JSON.stringify({ api: d.u, key: d.k, printer: '' }, null, 2)], { type: 'application/json' }); const l = document.createElement('a'); l.href = URL.createObjectURL(blob); l.download = 'varvar-print.config.json'; l.click(); return; }
     // меню
