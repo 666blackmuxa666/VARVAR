@@ -49,7 +49,7 @@ export const SECRET_KEYS = ['BOT_TOKEN', 'GUEST_BOT_TOKEN', 'COURIER_BOT_TOKEN',
 export async function venueEnv(env, venue, DB) {
   if (!venue || venue === MAIN) return { ...env, VENUE: MAIN };
   const s = await unseal(env, await DB.get('cfg:secrets')).catch(() => ({}));
-  const e = { ...env, VENUE: venue, SELF_URL: `${env.SELF_URL}/v/${venue}`, TG_SECRET: await hookSecret(env, venue), IMG_PRE: venue + '/' };
+  const e = { ...env, PLATFORM_BOT: env.BOT_TOKEN, PLATFORM_CHAT: env.CHAT_ID, VENUE: venue, SELF_URL: `${env.SELF_URL}/v/${venue}`, TG_SECRET: await hookSecret(env, venue), IMG_PRE: venue + '/' };
   for (const k of SECRET_KEYS) e[k] = s[k] || ''; // жодних «запасних» секретів VARVAR — інакше чужий заклад писав би в нашу групу
   e.ADMIN_PIN = ''; // PIN Wi‑Fi адміна VARVAR — не для інших закладів
   return e;

@@ -88,6 +88,10 @@
   }
   const ideaRow = x => `<div class="kv idea" data-idea="${x.id}"><span style="min-width:0;overflow-wrap:anywhere">${x.done ? '✅ ' : ''}${esc(x.text)}<br><small class="muted">${esc(x.by)} · ${new Date(x.at).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' })}</small></span><span class="kv-r">${isAdmin() ? `<button class="btn sm" data-a="ideaDone" data-id="${x.id}">${x.done ? '↩️' : '✅'}</button>` : ''}<button class="btn sm red" data-a="ideaDel" data-id="${x.id}">🗑</button></span></div>`;
   async function ideasLoad() { if (S._idL) return; S._idL = 1; try { S.data.ideas = (await api('ideaList')).list; } catch { S.data.ideas = []; } S._idL = 0; if (S.view === 'team') renderMain(); }
+  async function helpAsk() { // 🆘 пише розробнику системи в Telegram (не побажання, а «щось не працює / як зробити»)
+    const text = await ask('🆘 Допомога — що сталось?', 'Напр.: не друкує чек, не можу додати страву'); if (!text) return;
+    await act('help', { text, screen: S.view + (S.setTab ? '/' + S.setTab : '') }, '🆘 Надіслано — з вами зв\'яжуться');
+  }
   async function ideasMy() { // 👤 особистий кабінет → свої побажання розробнику
     const l = (await act('ideaList', {}))?.list; if (!l) return; const mine = l.filter(x => x.by === S.me?.name);
     const v = await modal({ title: '💡 Побажання розробнику', body: `<div class="muted set-note">Що незручно, чого не вистачає, що змінити в касі чи боті — напишіть, розробник побачить і врахує.</div>${mine.length ? mine.map(ideaRow).join('') : '<div class="muted">Ви ще нічого не писали</div>'}`, buttons: [{ label: '✍️ Написати', val: 'add', cls: 'primary' }, { label: 'Закрити', val: null }] });
@@ -105,8 +109,9 @@
       ${asks.map(s => `<div class="card zp-ask">🔁 <b>${esc(s.from)}</b> просить вийти за нього ${s.day.slice(8)}.${s.day.slice(5, 7)} о ${s.time}<div class="btnrow"><button class="btn sm green" data-a="zpSw" data-id="${s.id}" data-s="agree">Погоджуюсь</button><button class="btn sm red" data-a="zpSw" data-id="${s.id}" data-s="no">Ні</button></div></div>`).join('')}
       <h3 style="margin:14px 0 6px">Графік · ${monName(r.m)}</h3>${gridHTML(r.grid, r.grid.people, false, me)}<div class="muted" style="font-size:11px;margin-top:4px">✅ був · ● заплановано · 🕓 чекає · ⏰ запізнення · 🚫 прогул</div>
       ${r.swaps.filter(s => s.from === me).map(s => `<div class="muted" style="font-size:12px">🔁 ${s.day.slice(8)}.${s.day.slice(5, 7)} → ${esc(s.to)}: ${s.st === 'ask' ? 'чекає згоди' : 'чекає адміна'}</div>`).join('')}`;
-    const v = await modal({ title: `👤 ${me}`, body, buttons: [{ label: '🔁 Попросити обмін', val: 'swap' }, { label: '💡 Побажання', val: 'idea' }, { label: 'Закрити', val: null }] });
+    const v = await modal({ title: `👤 ${me}`, body, buttons: [{ label: '🔁 Попросити обмін', val: 'swap' }, { label: '💡 Побажання', val: 'idea' }, { label: '🆘 Допомога', val: 'help' }, { label: 'Закрити', val: null }] });
     if (v === 'idea') return ideasMy();
+    if (v === 'help') return helpAsk();
     if (v === 'swap') {
       const future = r.days.filter(x => x.plan && x.d >= todayK()); if (!future.length) return toast('У вашому плані немає майбутніх змін');
       const d = await choose('🔁 Яку зміну віддати?', '', future.map(x => ({ label: `${x.d.slice(8)}.${x.d.slice(5, 7)} ${WDL[new Date(x.d + 'T12:00:00Z').getUTCDay()]} · ${x.plan}`, val: x.d }))); if (!d) return;
@@ -122,6 +127,7 @@
       case 'zpIn': closeModal(); if (await act('zpIn', {}, '🟢 Зміну почато — адмін підтвердить')) { await loadState().catch(() => {}); renderNav(); } break;
       case 'zpOut': closeModal(); if (await confirmBox('🔴 Закінчити зміну?')) { if (await act('zpOut', {}, '🔴 Зміну закінчено')) { await loadState().catch(() => {}); renderNav(); } } break;
       case 'zpMy': zpMy(); break;
+      case 'zpHelp': helpAsk(); break;
       case 'ideaDel': if (!D.sure) { D.sure = 1; el.textContent = '🗑 Точно?'; setTimeout(() => { if (el.isConnected) { delete D.sure; el.textContent = '🗑'; } }, 3000); break; } // друге натискання — видалити (вікно підтвердження закрило б кабінет)
         if (await act('ideaDel', { id: D.id }, '🗑 Видалено')) { el.closest('[data-idea]')?.remove(); if (S.data.ideas) S.data.ideas = S.data.ideas.filter(x => x.id !== D.id); } break;
       case 'ideaDone': { const r = await act('ideaDone', { id: D.id }); if (r) { const x = S.data.ideas?.find(y => y.id === D.id); if (x) x.done = r.x.done; const row = el.closest('[data-idea]'); if (row && $('#modal')?.contains(row)) row.outerHTML = ideaRow(r.x); else renderMain(); } break; }

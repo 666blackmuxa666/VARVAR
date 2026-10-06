@@ -80,7 +80,7 @@
     part.printer = printerCards();
     part.test = `<div class="grid2 set"><div class="card"><h3>🧪 Тест</h3><div class="muted set-note">Тимчасово, до запуску.</div><button class="btn sm red" data-a="reset">♻️ Обнулити все</button></div></div>`;
     if (only) return part[only];
-    return `<div class="rhead"><div><h1>Налаштування</h1><span class="muted">правила роботи, принтер</span></div>${isAdmin() ? `<a class="btn" href="owner.html${VENUE ? '' : '#pos=' + S.token}" target="_blank" rel="noopener">👑 Кабінет власника</a>` : ''}</div>
+    return `<div class="rhead"><div><h1>Налаштування</h1><span class="muted">правила роботи, принтер</span></div>${isAdmin() ? `<a class="btn" href="owner.html${VENUE ? '' : '#pos=' + S.token}" target="_blank" rel="noopener">👑 Кабінет власника</a>` : ''}<button class="btn" data-a="zpHelp">🆘 Допомога</button></div>
       <div class="seg rsec">${SS.map(([k, l]) => `<button class="${cur === k ? 'on' : ''}" data-a="setTab" data-s="${k}">${l}</button>`).join('')}</div>${part[cur]}`;
   }
   async function menuEdit(id) {

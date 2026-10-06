@@ -3483,7 +3483,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     part.printer = printerCards();
     part.test = `<div class="grid2 set"><div class="card"><h3>\u{1F9EA} \u0422\u0435\u0441\u0442</h3><div class="muted set-note">\u0422\u0438\u043C\u0447\u0430\u0441\u043E\u0432\u043E, \u0434\u043E \u0437\u0430\u043F\u0443\u0441\u043A\u0443.</div><button class="btn sm red" data-a="reset">\u267B\uFE0F \u041E\u0431\u043D\u0443\u043B\u0438\u0442\u0438 \u0432\u0441\u0435</button></div></div>`;
     if (only) return part[only];
-    return `<div class="rhead"><div><h1>\u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F</h1><span class="muted">\u043F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438, \u043F\u0440\u0438\u043D\u0442\u0435\u0440</span></div>${isAdmin() ? `<a class="btn" href="owner.html${VENUE ? "" : "#pos=" + S.token}" target="_blank" rel="noopener">\u{1F451} \u041A\u0430\u0431\u0456\u043D\u0435\u0442 \u0432\u043B\u0430\u0441\u043D\u0438\u043A\u0430</a>` : ""}</div>
+    return `<div class="rhead"><div><h1>\u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F</h1><span class="muted">\u043F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438, \u043F\u0440\u0438\u043D\u0442\u0435\u0440</span></div>${isAdmin() ? `<a class="btn" href="owner.html${VENUE ? "" : "#pos=" + S.token}" target="_blank" rel="noopener">\u{1F451} \u041A\u0430\u0431\u0456\u043D\u0435\u0442 \u0432\u043B\u0430\u0441\u043D\u0438\u043A\u0430</a>` : ""}<button class="btn" data-a="zpHelp">\u{1F198} \u0414\u043E\u043F\u043E\u043C\u043E\u0433\u0430</button></div>
       <div class="seg rsec">${SS.map(([k, l]) => `<button class="${cur === k ? "on" : ""}" data-a="setTab" data-s="${k}">${l}</button>`).join("")}</div>${part[cur]}`;
   }
   async function menuEdit(id) {
@@ -5123,6 +5123,11 @@ ${g.sup}:
     S._idL = 0;
     if (S.view === "team") renderMain();
   }
+  async function helpAsk() {
+    const text = await ask("\u{1F198} \u0414\u043E\u043F\u043E\u043C\u043E\u0433\u0430 \u2014 \u0449\u043E \u0441\u0442\u0430\u043B\u043E\u0441\u044C?", "\u041D\u0430\u043F\u0440.: \u043D\u0435 \u0434\u0440\u0443\u043A\u0443\u0454 \u0447\u0435\u043A, \u043D\u0435 \u043C\u043E\u0436\u0443 \u0434\u043E\u0434\u0430\u0442\u0438 \u0441\u0442\u0440\u0430\u0432\u0443");
+    if (!text) return;
+    await act("help", { text, screen: S.view + (S.setTab ? "/" + S.setTab : "") }, "\u{1F198} \u041D\u0430\u0434\u0456\u0441\u043B\u0430\u043D\u043E \u2014 \u0437 \u0432\u0430\u043C\u0438 \u0437\u0432'\u044F\u0436\u0443\u0442\u044C\u0441\u044F");
+  }
   async function ideasMy() {
     var _a2;
     const l = (_a2 = await act("ideaList", {})) == null ? void 0 : _a2.list;
@@ -5154,8 +5159,9 @@ ${g.sup}:
       ${asks.map((s) => `<div class="card zp-ask">\u{1F501} <b>${esc(s.from)}</b> \u043F\u0440\u043E\u0441\u0438\u0442\u044C \u0432\u0438\u0439\u0442\u0438 \u0437\u0430 \u043D\u044C\u043E\u0433\u043E ${s.day.slice(8)}.${s.day.slice(5, 7)} \u043E ${s.time}<div class="btnrow"><button class="btn sm green" data-a="zpSw" data-id="${s.id}" data-s="agree">\u041F\u043E\u0433\u043E\u0434\u0436\u0443\u044E\u0441\u044C</button><button class="btn sm red" data-a="zpSw" data-id="${s.id}" data-s="no">\u041D\u0456</button></div></div>`).join("")}
       <h3 style="margin:14px 0 6px">\u0413\u0440\u0430\u0444\u0456\u043A \xB7 ${monName(r.m)}</h3>${gridHTML(r.grid, r.grid.people, false, me)}<div class="muted" style="font-size:11px;margin-top:4px">\u2705 \u0431\u0443\u0432 \xB7 \u25CF \u0437\u0430\u043F\u043B\u0430\u043D\u043E\u0432\u0430\u043D\u043E \xB7 \u{1F553} \u0447\u0435\u043A\u0430\u0454 \xB7 \u23F0 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F \xB7 \u{1F6AB} \u043F\u0440\u043E\u0433\u0443\u043B</div>
       ${r.swaps.filter((s) => s.from === me).map((s) => `<div class="muted" style="font-size:12px">\u{1F501} ${s.day.slice(8)}.${s.day.slice(5, 7)} \u2192 ${esc(s.to)}: ${s.st === "ask" ? "\u0447\u0435\u043A\u0430\u0454 \u0437\u0433\u043E\u0434\u0438" : "\u0447\u0435\u043A\u0430\u0454 \u0430\u0434\u043C\u0456\u043D\u0430"}</div>`).join("")}`;
-    const v = await modal({ title: `\u{1F464} ${me}`, body, buttons: [{ label: "\u{1F501} \u041F\u043E\u043F\u0440\u043E\u0441\u0438\u0442\u0438 \u043E\u0431\u043C\u0456\u043D", val: "swap" }, { label: "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F", val: "idea" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+    const v = await modal({ title: `\u{1F464} ${me}`, body, buttons: [{ label: "\u{1F501} \u041F\u043E\u043F\u0440\u043E\u0441\u0438\u0442\u0438 \u043E\u0431\u043C\u0456\u043D", val: "swap" }, { label: "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F", val: "idea" }, { label: "\u{1F198} \u0414\u043E\u043F\u043E\u043C\u043E\u0433\u0430", val: "help" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
     if (v === "idea") return ideasMy();
+    if (v === "help") return helpAsk();
     if (v === "swap") {
       const future = r.days.filter((x) => x.plan && x.d >= todayK());
       if (!future.length) return toast("\u0423 \u0432\u0430\u0448\u043E\u043C\u0443 \u043F\u043B\u0430\u043D\u0456 \u043D\u0435\u043C\u0430\u0454 \u043C\u0430\u0439\u0431\u0443\u0442\u043D\u0456\u0445 \u0437\u043C\u0456\u043D");
@@ -5193,6 +5199,9 @@ ${g.sup}:
         break;
       case "zpMy":
         zpMy();
+        break;
+      case "zpHelp":
+        helpAsk();
         break;
       case "ideaDel":
         if (!D.sure) {

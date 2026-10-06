@@ -47,11 +47,17 @@ export async function posApi(b, req, env) {
   // 🧮 Розрахунок: склад, техкарти, накладні, інвентаризація — свої права (адмін / кухар)
   if (/^sk[A-Z]/.test(b.op || '')) return stockApi(b, env, me, { invoice: aiInvoice, card: aiCard });
   if (/^zp[A-Z]/.test(b.op || '')) return payApi(b, env, me); // 👷 зміни й зарплата
-  if (me.role === 'cook' && !['logout', 'state', 'menu', 'fav', 'order', 'accept', 'reject', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'printTest', 'ideaAdd', 'ideaList', 'ideaDel'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
+  if (me.role === 'cook' && !['logout', 'state', 'menu', 'fav', 'order', 'accept', 'reject', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'printTest', 'ideaAdd', 'ideaList', 'ideaDel', 'help'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
 
   // 🛵 кур'єр: лише свої доставки
-  if (me.role === 'courier' && !['logout', 'state', 'goSt', 'goCour', 'zpIn', 'zpOut', 'zpMy', 'ideaAdd', 'ideaList', 'ideaDel', 'courMe', 'courTg', 'courAct'].includes(b.op)) return [{ error: 'Кур\'єр — лише доставки' }, 403];
+  if (me.role === 'courier' && !['logout', 'state', 'goSt', 'goCour', 'zpIn', 'zpOut', 'zpMy', 'ideaAdd', 'ideaList', 'ideaDel', 'help', 'courMe', 'courTg', 'courAct'].includes(b.op)) return [{ error: 'Кур\'єр — лише доставки' }, 403];
   if (/^go[A-Z]|^cli[A-Z]/.test(b.op || '')) return goApi(b, env, me, t);
+  if (b.op === 'help') { // 💬 Допомога: з каси будь-якого закладу → власнику платформи в Telegram (група VARVAR)
+    const text = String(b.text || '').trim().slice(0, 1500); if (text.length < 3) return [{ error: 'Опишіть проблему' }, 400];
+    const site = await (await import('./site.js')).getSite(env), tok = env.PLATFORM_BOT || env.BOT_TOKEN, chat = env.PLATFORM_CHAT || env.CHAT_ID;
+    await fetch(`https://api.telegram.org/bot${tok}/sendMessage`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: chat, parse_mode: 'HTML', text: `🆘 <b>Допомога</b> · ${esc(site.name)} (${esc(env.VENUE || 'varvar')})\n👤 ${esc(me.name)} · ${esc(me.role)}\n🖥 ${esc(String(b.screen || '').slice(0, 60))}\n\n${esc(text)}` }) }).catch(() => {});
+    return [{ ok: true }, 200];
+  }
   if (/^idea[A-Z]/.test(b.op || '')) return (await import('./ideas.js')).ideaApi(b, env, me); // 💡 побажання розробнику
   if (/^gb[A-Z]/.test(b.op || '')) return (await import('./guestbot.js')).gbApi(b, env, me); // 🤖 бот гостей
   if (/^loy[A-Z]/.test(b.op || '')) return loyApi(b, env, me, t); // 🎁 лояльність: рівні, акції, клієнти, звіт (promo.js)
