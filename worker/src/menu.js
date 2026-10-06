@@ -121,6 +121,26 @@ export const HELP = `<b>Як керувати меню</b> (пишіть зви�
 
 🧾 Рахунки: /tables, /close 5`;
 
+// 📥 масовий імпорт меню (кабінет власника: таблиця Excel / Google): створює розділи, оновлює ціни наявних страв за назвою
+async function _importMenu(env, rows, replace) {
+  const menu = replace ? { ...(await getMenu(env)), categories: (await getMenu(env)).categories.filter(c => c.tech) } : await getMenu(env);
+  let add = 0, upd = 0, cats = 0;
+  for (const r of (Array.isArray(rows) ? rows : []).slice(0, 1000)) {
+    const name = String(r.name || '').trim().slice(0, 60), price = Math.round(+String(r.price ?? '').replace(',', '.').replace(/[^\d.]/g, '') || 0), cn = String(r.cat || 'Меню').trim().slice(0, 40) || 'Меню';
+    if (!name || !(price > 0)) continue;
+    let c = menu.categories.find(x => !x.tech && x.name.uk.toLowerCase() === cn.toLowerCase());
+    if (!c) { let id = slug(cn) || 'cat'; while (menu.categories.some(x => x.id === id)) id += '-2'; c = { id, name: { uk: cn, en: cn }, items: [] }; const t = menu.categories.findIndex(x => x.tech); t >= 0 ? menu.categories.splice(t, 0, c) : menu.categories.push(c); cats++; }
+    let it = menu.categories.flatMap(x => x.items).find(i => i.name.uk.toLowerCase() === name.toLowerCase());
+    if (!it) { let id = 'p-' + (slug(name) || 'item').slice(0, 24) + '-' + (Date.now() + add).toString(36).slice(-4); it = { id, name: { uk: name, en: name } }; c.items.push(it); add++; } else upd++;
+    it.price = price; delete it.variants;
+    const d = String(r.desc || '').trim().slice(0, 300); if (d) it.desc = { uk: d, en: d };
+    const sz = String(r.size || '').trim().slice(0, 30); if (sz) it.size = sz;
+  }
+  if (add || upd || replace) await saveMenu(env, menu);
+  return { add, upd, cats };
+}
+export const importMenu = (env, ...a) => menuLock(env, () => _importMenu(env, ...a));
+
 // новий розділ меню — у кінець списку (бот: «новий розділ Упакування», POS: «➕ Розділ»)
 async function _addCategory(env, name) {
   name = String(name || '').trim().slice(0, 40); if (!name) return null;

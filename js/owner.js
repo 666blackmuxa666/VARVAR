@@ -96,7 +96,7 @@
     return `<div class="card venue"><div class="h"><b>${esc(v.name || meta.name)}</b><span class="st ${meta.status || v.status}">${ST[meta.status || v.status] || ''}</span></div>
       ${v.error ? '<div class="muted">❗ немає даних</div>' : `<div class="rev money">${money(t.rev)}</div><div class="muted">${t.n || 0} чеків${t.n ? ' · середній ' + money(t.rev / t.n) : ''}${t.go ? ` · 🛵 ${t.go}` : ''}</div>
       <div class="chips"><span class="chip">🪑 ${n.tables || 0} столів · ${money(n.openSum)}</span><span class="chip">👥 ${(n.onShift || []).length} на зміні</span>${n.inbox ? `<span class="chip bad">✉️ ${n.inbox}</span>` : ''}<span class="chip ${n.printer ? 'ok' : 'bad'}">🖨 ${n.printer ? 'ок' : 'офлайн'}</span>${n.zToday ? '<span class="chip ok">Z закрито</span>' : ''}</div>`}
-      <div class="btnrow"><button class="btn primary sm" data-a="enter" data-v="${v.id}">Увійти в касу →</button><button class="btn sm" data-a="copy" data-u="${esc(absOf(v.id, 'pos.html'))}" title="Скопіювати посилання каси для персоналу">🔗 Каса</button><button class="btn sm" data-a="vinfo" data-v="${v.id}">⚙️</button></div></div>`;
+      <div class="btnrow"><button class="btn primary sm" data-a="enter" data-v="${v.id}">Увійти в касу →</button><button class="btn sm" data-a="copy" data-u="${esc(absOf(v.id, 'pos.html'))}" title="Скопіювати посилання каси для персоналу">🔗 Каса</button><button class="btn sm" data-a="vcfgOpen" data-v="${v.id}">⚙️ Налаштувати</button></div></div>`;
   }
   function analytics() {
     const [f, t] = range(S.per);
@@ -117,7 +117,7 @@
   function venues() {
     return `<h2>🏪 Мої заклади</h2><div class="grid">${S.venues.map(v => `<div class="card venue"><div class="h"><b>${esc(v.name)}</b><span class="st ${v.status}">${ST[v.status] || ''}</span></div>
       <div class="muted">${esc(v.city || '')}${v.city ? ' · ' : ''}адреса: <b>${esc(v.id)}</b>${S.seen[v.id] ? ` · заходили ${new Date(S.seen[v.id]).toLocaleDateString('uk-UA')}` : ''}</div>
-      <div class="btnrow"><button class="btn primary sm" data-a="enter" data-v="${v.id}">Увійти в касу →</button><button class="btn sm" data-a="vinfo" data-v="${v.id}">🔑 Коди й боти</button><a class="btn sm ghost" href="${esc(siteOf(v.id, 'about.html'))}" target="_blank">🌐 Сайт</a></div>
+      <div class="btnrow"><button class="btn primary sm" data-a="vcfgOpen" data-v="${v.id}">⚙️ Налаштувати</button><button class="btn sm" data-a="enter" data-v="${v.id}">Увійти в касу →</button><a class="btn sm ghost" href="${esc(siteOf(v.id, 'about.html'))}" target="_blank">🌐 Сайт</a></div>
       <div class="kv"><span>🔗 Каса для персоналу<br><small class="muted">${esc(absOf(v.id, 'pos.html'))}</small></span><button class="btn sm" data-a="copy" data-u="${esc(absOf(v.id, 'pos.html'))}">Копіювати</button></div><div class="kv"><span>🌐 Сайт для гостей<br><small class="muted">${esc(absOf(v.id, 'about.html'))}</small></span><button class="btn sm" data-a="copy" data-u="${esc(absOf(v.id, 'about.html'))}">Копіювати</button></div></div>`).join('') || '<div class="muted">Закладів ще немає</div>'}</div>
       <h2>🔐 Акаунт</h2><div class="card"><div class="kv"><span>${esc(S.me.name)}<br><small class="muted">${esc(S.me.email)}</small></span><button class="btn sm" data-a="pass">Змінити пароль</button></div></div>`;
   }
@@ -141,10 +141,10 @@
   function render() {
     if (!S.me) return;
     const plat = S.me.role === 'platform', TABS = [['home', '🏠 Мережа'], ['an', '📊 Аналітика'], ['ven', '🏪 Заклади'], ...(plat ? [['plat', '🌐 Платформа']] : [])];
-    if (!TABS.some(x => x[0] === S.tab)) S.tab = 'home';
+    if (!TABS.some(x => x[0] === S.tab) && !(S.tab === 'cfg' && S.cfgV)) S.tab = 'home';
     app.innerHTML = `<header class="top"><div class="in"><img src="img/icon.png" alt=""><b>Кабінет власника</b><div class="who"><b>${esc(S.me.name)}</b><span class="muted">${plat ? '👑 платформа' : 'власник'} · <a href="#" data-a="out">вийти</a></span></div></div>
       <nav class="tabs">${TABS.map(([k, l]) => `<button class="${S.tab === k ? 'on' : ''}" data-a="tab" data-t="${k}">${l}</button>`).join('')}<button data-a="reload">🔄</button></nav></header>
-      <main>${S.tab === 'home' ? home() : S.tab === 'an' ? analytics() : S.tab === 'ven' ? venues() : platform()}</main>`;
+      <main>${S.tab === 'cfg' && S.cfgV ? VC.view() : S.tab === 'home' ? home() : S.tab === 'an' ? analytics() : S.tab === 'ven' ? venues() : platform()}</main>`;
   }
 
   // ---------- модалки ----------
@@ -171,19 +171,20 @@
     const el = e.target.closest('[data-a]'); if (!el) return; const a = el.dataset.a, d = el.dataset;
     const reload = async () => { S.plat = null; await start(); S.tab = 'plat'; render(); };
     if (a === 'out') { e.preventDefault(); return logout(); }
-    if (a === 'tab') { S.tab = d.t; store.set('tab', d.t); if (d.t === 'home' || d.t === 'an') return load(); return render(); }
+    if (a === 'tab') { S.cfgV = null; S.tab = d.t; store.set('tab', d.t); if (d.t === 'home' || d.t === 'an') return load(); return render(); }
     if (a === 'reload') { S.plat = null; return start(); }
     if (a === 'per') { S.per = d.p; if (d.p === 'own') return render(); return load(); }
     if (a === 'perGo') { S.from = $('#pf').value; S.to = $('#pt').value; if (S.from > S.to) [S.from, S.to] = [S.to, S.from]; return load(); }
     if (a === 'enter') { el.disabled = true; try { const r = await api('enter', { venue: d.v }); location.href = `${POS}?venue=${encodeURIComponent(d.v)}#tok=${r.token}&me=${encodeURIComponent(JSON.stringify(r.me))}`; } catch (x) { toast('⚠️ ' + x.message); el.disabled = false; } return; }
     if (a === 'vinfo') return vinfo(d.v);
+    if (a === 'vcfgOpen') { window.scrollTo(0, 0); return VC.open(d.v); }
     if (a === 'copy') { try { await navigator.clipboard.writeText(d.u); toast('🔗 Скопійовано — надішліть персоналу'); } catch { prompt('Скопіюйте посилання:', d.u); } return; }
     if (a === 'pass') return modal('🔐 Новий пароль', '<input name="p" type="password" placeholder="Від 8 символів" minlength="8" required autocomplete="new-password">', async f => { await api('pass', { pass: f.p.value }); toast('✅ Пароль змінено — увійдіть знову'); logout(true); });
     if (a === 'anew') return modal('👤 Новий власник', '<label>Ім\'я<input name="n" required></label><label>Email<input name="e" type="email" required></label><label>Тимчасовий пароль<input name="p" required minlength="8" autocomplete="off"></label><div class="muted" style="font-size:13px">Передайте власнику email і пароль — він змінить пароль у кабінеті.</div>', async f => { await api('acctNew', { name: f.n.value, email: f.e.value, pass: f.p.value }); toast('✅ Власника створено'); await reload(); });
     if (a === 'apass') return modal('🔑 Новий пароль для ' + esc(d.e), '<input name="p" required minlength="8" autocomplete="off" placeholder="Від 8 символів">', async f => { await api('acctPass', { email: d.e, pass: f.p.value }); toast('✅ Пароль змінено'); });
     if (a === 'vnew') return modal('➕ Новий заклад', `<label>Назва<input name="n" required placeholder="Кав'ярня Ранок"></label><label>Адреса в системі (латиниця)<input name="i" required pattern="[a-z0-9][a-z0-9\\-]{1,30}" placeholder="ranok-lviv"></label><label>Місто<input name="c"></label><label>Власник<select name="o">${(S.plat?.accts || []).map(x => `<option value="${esc(x.email)}">${esc(x.name)} · ${esc(x.email)}</option>`).join('')}</select></label>`, async (f, bg) => {
       const r = await api('venueNew', { name: f.n.value, id: f.i.value.trim().toLowerCase(), city: f.c.value, owner: f.o.value });
-      await start(); S.tab = 'plat'; render();
+      await start(); VC.open(r.venue.id, 'start');
       modal('✅ Заклад створено', `<div class="muted" style="margin-bottom:8px">Коди реєстрації персоналу (збережені й у «🔑 Коди й боти»):</div><div class="codes">${Object.entries(r.codes).map(([k, c]) => `<span>${ROLE[k]}</span><b>${c}</b>`).join('')}</div><div class="muted" style="margin-top:10px;font-size:13px">Каса: <b>pos.html?venue=${esc(r.venue.id)}</b><br>Сайт: <b>about.html?venue=${esc(r.venue.id)}</b></div>`); });
     if (a === 'vedit') { const v = S.venues.find(x => x.id === d.v), A = S.plat?.accts || []; return modal('✏️ ' + esc(v.name), `<label>Назва<input name="n" value="${esc(v.name)}" required></label><label>Місто<input name="c" value="${esc(v.city || '')}"></label><label>Власник<select name="o">${A.map(x => `<option value="${esc(x.email)}" ${x.email === v.owner ? 'selected' : ''}>${esc(x.name)} · ${esc(x.email)}</option>`).join('')}</select></label><label>Статус<select name="s">${Object.entries(ST).filter(([k]) => v.id !== 'varvar' || k !== 'off').map(([k, l]) => `<option value="${k}" ${v.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label><div class="muted" style="font-size:13px">Змінили власника — попередній лишається з доступом 🔐 (забрати — «🔐 Доступи» у його акаунта).</div>`, async f => { await api('venueSet', { id: v.id, f: { name: f.n.value, city: f.c.value, owner: f.o.value, status: f.s.value } }); toast('✅ Збережено'); await reload(); }); }
     if (a === 'vdel') { const v = S.venues.find(x => x.id === d.v); return modal('🗑 Видалити ' + esc(v.name) + '?', `<div class="alert red">Назавжди зникнуть усі дані закладу: меню, чеки, звіти, склад, персонал, гості. Відновити не можна.</div><label>Щоб підтвердити, введіть адресу закладу: <b>${esc(v.id)}</b><input name="c" autocomplete="off" required></label>`, async f => { await api('venueDel', { id: v.id, confirm: f.c.value.trim() }); toast('🗑 Заклад видалено'); await reload(); }); }
@@ -194,5 +195,6 @@
       bg.addEventListener('click', ev => { if (ev.target === bg || ev.target.closest('[data-x]')) render(); }); return; }
     if (a === 'vstat') { const v = S.venues.find(x => x.id === d.v); return modal('Статус · ' + esc(v.name), `<select name="s">${Object.entries(ST).map(([k, l]) => `<option value="${k}" ${v.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`, async f => { await api('venueSet', { id: d.v, f: { status: f.s.value } }); await start(); }); }
   });
+  const VC = window.OWNV({ S, api, esc, money, toast, modal, render, API, $ });
   start();
 })();

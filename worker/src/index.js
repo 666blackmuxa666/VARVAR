@@ -65,7 +65,7 @@ export default {
   },
 };
 export async function handle(req, env) {
-  if (env.INSTORE) setDayH((await getCfg(env).catch(() => ({}))).dayH ?? 3); // межа робочого дня з налаштувань
+  if (env.INSTORE) { const c = await getCfg(env).catch(() => ({})); setDayH(c.dayH ?? 3); if (c.tables > 0) env.TABLES = c.tables; } // межа робочого дня й кількість столів закладу — з його налаштувань
   {
     const url = new URL(req.url), cors = corsHeaders(req, env);
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });

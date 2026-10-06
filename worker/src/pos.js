@@ -1,6 +1,6 @@
 // API касової програми (pos.html). POST /api/pos {op, ...} з заголовком Authorization: Bearer <token>.
 // Живі оновлення: WebSocket /api/pos/live?token=… (див. store.js). Логіка — спільна з ботом (ops.js).
-import { getMenu, saveMenu, addCategory, menuLock } from './menu.js';
+import { getMenu, saveMenu, addCategory, menuLock, importMenu } from './menu.js';
 import { tn, isGo } from './tn.js';
 import { goFromPos, goAttach, goButtons, fmtPhone, goApi } from './delivery.js';
 import { siteApi } from './siteapi.js';
@@ -181,6 +181,7 @@ export async function posApi(b, req, env) {
 
     // меню (🔒 по одному — див. menuLock)
     case 'menuSave': case 'catAdd': case 'menuDel': case 'menuUndo': case 'menuPhoto': return menuLock(env, () => menuOp(b, env, who));
+    case 'menuImport': { if (!admin) return needAdmin(); const r = await importMenu(env, b.rows, !!b.replace); await notify(env, `🖥 📥 Меню: імпорт — додано ${r.add}, оновлено ${r.upd}, розділів ${r.cats} · ${esc(who)}`); return ok(r); }
     default: return adminRest(b, env, who, ip, ok);
   }
 }

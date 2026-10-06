@@ -55,6 +55,7 @@ export async function venueEnv(env, venue, DB) {
   return e;
 }
 
+export const getSecrets = async env => unseal(env, await env.DB.get('cfg:secrets')).catch(() => ({}));
 // зберегти секрети закладу (зашифровано) — лише всередині Store закладу
 export async function saveSecrets(env, patch) {
   const cur = await unseal(env, await env.DB.get('cfg:secrets')).catch(() => ({}));

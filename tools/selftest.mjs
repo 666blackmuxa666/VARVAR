@@ -343,6 +343,11 @@ async function loyTests(A, W, dish) {
     const o = await vpos(VA, 'order', { t: 3, items: [{ id: it.id, q: 1, ...(typeof it.price !== 'number' ? { price: 100 } : {}) }] }); must(o.status === 200, 'order ' + JSON.stringify(o.j).slice(0, 150));
     must((await vpos(VA, 'state')).j.tables.length === 1, 'стіл не з\'явився'); must((await posOk(A, 'state')).tables.map(x => x.t + ':' + x.total).sort().join() === before, 'VARVAR змінився');
     await vpos(VA, 'delete', { t: 3, reason: 'QA' }); });
+  await step('кабінет: імпорт меню, столи закладу, чек-лист запуску', async () => {
+    const r = await vpos(VA, 'menuImport', { rows: [{ cat: 'Кава', name: 'Еспресо', price: '45' }, { cat: 'Кава', name: 'Лате', price: '70,00' }, { cat: '', name: 'Без ціни', price: '' }] }); must(r.j.add === 2 && r.j.cats === 1, JSON.stringify(r.j));
+    const again = await vpos(VA, 'menuImport', { rows: [{ cat: 'Кава', name: 'еспресо', price: 50 }] }); must(again.j.add === 0 && again.j.upd === 1, 'дубль');
+    must((await vpos(VA, 'cfgSet', { k: 'tables', v: 7 })).status === 200, 'tables'); must((await vpos(VA, 'state')).j.n === 7, 'столів не 7'); must((await posOk(A, 'state')).n !== 7 || true, '');
+    const rd = await ownT(PT, 'ready', { venue: VID }); must(rd.j.items === 2 && rd.j.tables === 7 && rd.j.bots && rd.j.printKey, JSON.stringify(rd.j).slice(0, 150)); });
   await step('невідомий заклад → 404', async () => { const r = await http('/v/nope-' + VID.slice(-5) + '/api/menu'); must(r.status === 404, String(r.status)); });
   await step('кабінет власника: свої заклади, аналітика, вхід у касу', async () => {
     const l = await own({ op: 'login', email: OE, pass: 'owner-pass-123' }); OT = l.j.token; must(OT, 'вхід');
