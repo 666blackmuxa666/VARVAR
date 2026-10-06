@@ -73,8 +73,7 @@
     for (const v of list) {
       const n = v.now || {}, t = v.tot || {}, nm = esc(v.name);
       if (v.error) { out.push(['red', `❗ ${nm}: немає зв'язку із закладом`]); continue; }
-      if (t.removed) out.push(['red', `🗑 ${nm}: видалено закритих чеків — ${t.removed} на ${money(t.removedSum)}`]);
-      if (t.voids >= 3) out.push(['', `✏️ ${nm}: прибрано позицій після замовлення — ${t.voids} (${money(t.voidSum)})`]);
+      for (const r of v.risk || []) out.push([r.lvl, `${nm}: ${esc(r.text)}`]); // 🚨 хто, скільки, на яку суму
       if (n.inbox) out.push(['', `✉️ ${nm}: гості чекають відповіді — ${n.inbox}`]);
       if (!n.printer && (n.tables || n.go)) out.push(['', `🖨 ${nm}: принтер не на зв'язку${n.printQ ? `, у черзі ${n.printQ}` : ''}`]);
       const p = S.prev?.find(x => x.id === v.id)?.tot?.rev || 0, h = new Date().getHours();
@@ -110,6 +109,7 @@
     const rank = [...S.sum].sort((a, b) => (b.tot?.rev || 0) - (a.tot?.rev || 0));
     return `<h2>📊 Аналітика</h2>${seg}<div class="kpis">${kpi('Виручка', money(T.rev))}${kpi('Чеків', T.n || 0)}${kpi('Середній чек', T.n ? money(T.rev / T.n) : '—')}${kpi('🛵 Доставка', money(T.goRev), `${T.go || 0} замовлень`)}${kpi('Чайові', money(T.tip))}${kpi('Витрати з каси', money(T.exp))}</div>
       <div style="margin-top:12px">${chart}</div>
+      ${(() => { const R = S.sum.flatMap(v => (v.risk || []).map(r => [r.lvl, `<b>${esc(v.name)}</b>: ${esc(r.text)}`])); return `<h2>🚨 Ризики за період ${R.length ? `<span class="muted">(${R.length})</span>` : ''}</h2>${R.length ? R.map(([c, t]) => `<div class="alert ${c}">${t}</div>`).join('') : '<div class="card muted">Підозрілих дій не знайдено 👌</div>'}`; })()}
       ${pnlHTML()}
       <h2>🏆 Порівняння закладів</h2><div class="card tbl"><table><thead><tr><th>Заклад</th><th>Виручка</th><th>Чеків</th><th>Сер. чек</th><th>Чайові</th><th>Знижки</th><th>🛵</th><th>✏️ Відміни</th><th>🗑 Видал.</th><th>Витрати</th></tr></thead>
       <tbody>${rank.map((v, i) => row(`${['🥇', '🥈', '🥉'][i] || ''} ${esc(v.name)}`, v.tot || {})).join('')}${S.sum.length > 1 ? row('Разом', T, 'sum') : ''}</tbody></table></div>

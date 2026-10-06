@@ -85,7 +85,21 @@ async function venueSum(env, from, to) {
   const open = await openTables(env), att = await getAtt(env, today.slice(0, 7)), onShift = Object.entries(att[today] || {}).filter(([, x]) => x && !x.out && x.ok !== -1).map(([n]) => n);
   const pr = await printStatus(env).catch(() => ({})), gin = await env.DB.get('gin', 'json') || {};
   const now = { tables: open.filter(r => r.t < 1000).length, go: open.filter(r => r.t > 1000).length, openSum: open.reduce((a, r) => a + payable(r.b), 0), onShift, printer: pr.seen && Date.now() - pr.seen < 120e3 ? 1 : 0, printQ: pr.q || 0, inbox: Object.values(gin).filter(x => x.open).length, zToday: R.z.some(z => z.d === today) };
-  return { from, to, days, tot, now, name: (await env.DB.get('cfg:venue', 'json'))?.name || '' };
+  return { from, to, days, tot, now, risk: risks(R), name: (await env.DB.get('cfg:venue', 'json'))?.name || '' };
+}
+// 🚨 тривоги про втрати й крадіжки за період — згруповано «хто, скільки, на яку суму»
+function risks(R) {
+  const out = [], by = (l, key) => Object.entries(l.reduce((a, x) => { const k = key(x) || '—'; (a[k] ||= { n: 0, sum: 0 }); a[k].n++; a[k].sum += Math.abs(x.sum || 0); return a; }, {})).sort((a, b) => b[1].sum - a[1].sum);
+  const fmt = l => l.slice(0, 4).map(([w, x]) => `${w}: ${x.n} на ${Math.round(x.sum)} ₴`).join(' · ');
+  const cooked = R.voids.filter(v => v.w && !v.table); if (cooked.length) out.push({ lvl: 'red', k: 'cooked', text: `🍳 Прибрано вже приготовані страви — ${fmt(by(cooked, v => v.by))}` });
+  const tbl = R.voids.filter(v => v.table); if (tbl.length) out.push({ lvl: 'red', k: 'table', text: `🗑 Видалено цілі столи — ${fmt(by(tbl, v => v.by))}` });
+  const rm = R.removed.filter(x => !x.reopen), ro = R.removed.filter(x => x.reopen);
+  if (rm.length) out.push({ lvl: 'red', k: 'removed', text: `🧾 Видалено закриті чеки — ${fmt(by(rm, x => x.by))}` });
+  if (ro.length) out.push({ lvl: '', k: 'reopen', text: `↩️ Перевідкрито закриті чеки — ${fmt(by(ro, x => x.by))}` });
+  const big = R.checks.filter(c => c.pct >= 50 || (c.disc && c.sum && c.disc >= c.sum)); if (big.length) out.push({ lvl: 'red', k: 'disc', text: `% Знижки 50% і більше — ${fmt(by(big.map(c => ({ ...c, sum: c.disc })), c => c.w))}` });
+  const minus = (R.mov || []).filter(m => m.type === 'adjc' && m.sum < 0); if (minus.length) out.push({ lvl: 'red', k: 'cash', text: `💵 Нестача готівки при звірці — ${fmt(by(minus, m => m.by))}` });
+  const many = by(R.voids.filter(v => !v.w && !v.table), v => v.by).filter(([, x]) => x.n >= 5); if (many.length) out.push({ lvl: '', k: 'voids', text: `✏️ Часто прибирають позиції з рахунку — ${fmt(many)}` });
+  return out;
 }
 
 // 💰 P&L: виручка − собівартість (техкарти) − зарплата (≈ пропорційно дням) − витрати з каси = прибуток
