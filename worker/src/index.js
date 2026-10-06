@@ -112,7 +112,12 @@ export async function handle(req, env) {
         return json(out);
       }
       if (url.pathname === '/api/pos/live') return posLive(req, env, url);
-      if (url.pathname === '/api/pos' && req.method === 'POST') return json(...await posApi(await req.json(), req, env));
+      if (url.pathname === '/api/pos' && req.method === 'POST') { // 📴 qid — дія з офлайн-черги каси: повтор не виконується вдруге (відповідь загубилась, а дія пройшла)
+        const b = await req.json(), q = /^[a-z0-9]{8,24}$/.test(b.qid || '') ? 'qid:' + b.qid : '';
+        if (q) { const prev = await env.DB.get(q, 'json'); if (prev) return json(...prev); }
+        const r = await posApi(b, req, env); if (q && r[1] === 200) await env.DB.put(q, JSON.stringify(r), { expirationTtl: 2 * 86400 });
+        return json(...r);
+      }
       if (url.pathname === '/api/build') return json({ build: BUILD });
       if (url.pathname === '/api/owner' && req.method === 'POST') return env.VENUE === MAIN ? json(...await ownerApi(req, env)) : json({ error: 'not_found' }, 404); // 👑 кабінет власника
       if (url.pathname.startsWith('/__int/')) return json(...await intApi(req, env, url.pathname)); // заклад ← кабінет (лише зсередини воркера)

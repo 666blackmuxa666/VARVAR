@@ -357,6 +357,11 @@ async function loyTests(A, W, dish) {
     { const ol = (await own({ op: 'login', email: OE, pass: 'owner-pass-123' })).j.token; must((await ownT(ol, 'bak', { venue: VID, do: 'restore', tag: b.j.tag, confirm: VID })).status === 403, 'власник відновив'); }
     const r = await ownT(PT, 'bak', { venue: VID, do: 'restore', tag: b.j.tag, confirm: VID }); must(r.j.ok, JSON.stringify(r.j));
     must(!(await vpos(VA, 'state')).j.tables.some(x => x.t === 5), 'після відновлення стіл 5 лишився'); });
+  await step('📴 офлайн-черга: повтор з тим самим qid не дублює замовлення', async () => {
+    const it = (await http(`/v/${VID}/api/menu`)).j.categories.flatMap(c => c.items).find(i => typeof i.price === 'number'), qid = 'qa' + Date.now().toString(36);
+    for (let i = 0; i < 2; i++) must((await vpos(VA, 'order', { t: 6, items: [{ id: it.id, q: 1 }], qid })).status === 200, 'order');
+    const t6 = (await vpos(VA, 'state')).j.tables.find(x => x.t === 6); must(t6 && t6.items.reduce((a, x) => a + x.q, 0) === 1, 'дубль: ' + JSON.stringify(t6?.items));
+    await vpos(VA, 'delete', { t: 6, reason: 'QA' }); });
   await step('невідомий заклад → 404', async () => { const r = await http('/v/nope-' + VID.slice(-5) + '/api/menu'); must(r.status === 404, String(r.status)); });
   await step('кабінет власника: свої заклади, аналітика, вхід у касу', async () => {
     const l = await own({ op: 'login', email: OE, pass: 'owner-pass-123' }); OT = l.j.token; must(OT, 'вхід');

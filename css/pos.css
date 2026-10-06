@@ -790,3 +790,6 @@ body.cour #feed, body.cour .feed-btn { display: none !important; }
 .login-brand:empty { display: none; }
 .brand-up { flex: none; width: 84px; height: 84px; border-radius: 18px; background: var(--card2); border: 1px dashed var(--line2); display: grid; place-items: center; font-size: 26px; overflow: hidden; }
 .brand-up img { width: 100%; height: 100%; object-fit: contain; }
+
+/* 📴 офлайн-черга */
+#offq { position: fixed; left: 50%; top: 10px; transform: translateX(-50%); z-index: 90; background: #ff9f0a; color: #1a1000; font-weight: 700; padding: 8px 14px; border-radius: 12px; max-width: calc(100vw - 24px); text-align: center; box-shadow: 0 6px 20px #0006; }

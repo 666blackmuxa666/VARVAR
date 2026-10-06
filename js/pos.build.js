@@ -143,8 +143,85 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       el.innerHTML = html;
     }
   };
+  const QOPS = /* @__PURE__ */ new Set(["order", "close"]), qidNew = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  const offQ = () => store.get("offq", []), offSave = (q) => {
+    store.set("offq", q);
+    offBanner();
+  };
+  const netErr = (e) => e instanceof TypeError || /не відповідає|fetch|network|load failed/i.test((e == null ? void 0 : e.message) || "");
+  function offBanner() {
+    const n = offQ().length;
+    let el = $("#offq");
+    if (!n && !S.offline) {
+      el == null ? void 0 : el.remove();
+      return;
+    }
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "offq";
+      document.body.append(el);
+    }
+    el.textContent = `\u{1F4F4} ${S.offline ? "\u041D\u0435\u043C\u0430\u0454 \u0437\u0432'\u044F\u0437\u043A\u0443 \u0437 \u0441\u0435\u0440\u0432\u0435\u0440\u043E\u043C" : "\u0412\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u044F\u044E\u2026"}${n ? ` \xB7 \u0443 \u0447\u0435\u0440\u0437\u0456 ${n} ${n === 1 ? "\u0434\u0456\u044F" : n < 5 ? "\u0434\u0456\u0457" : "\u0434\u0456\u0439"} \u2014 \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u0438\u043C\u043E \u0441\u0430\u043C\u0456` : ""}`;
+  }
+  let flushing = false;
+  async function offFlush() {
+    if (flushing || !offQ().length) return;
+    flushing = true;
+    try {
+      for (const x of offQ()) {
+        let r;
+        try {
+          r = await withTimeout(fetch(API + "/api/pos", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + S.token }, body: JSON.stringify(__spreadValues({ op: x.op }, x.data)) }), 1e4);
+        } catch (e) {
+          S.offline = true;
+          offBanner();
+          return;
+        }
+        S.offline = false;
+        offSave(offQ().filter((y) => y.data.qid !== x.data.qid));
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          toast(`\u26A0\uFE0F \u0417 \u0447\u0435\u0440\u0433\u0438 \u043D\u0435 \u043F\u0440\u043E\u0439\u0448\u043B\u043E (${x.op === "close" ? "\u0437\u0430\u043A\u0440\u0438\u0442\u0442\u044F" : "\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F"} \u0441\u0442\u0456\u043B ${tn(x.data.t)}): ${errText(j.error || r.status)}`);
+        }
+      }
+      toast("\u{1F4F6} \u0417\u0432'\u044F\u0437\u043E\u043A \u0454 \u2014 \u0447\u0435\u0440\u0433\u0430 \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0430");
+      loadState().catch(() => {
+      });
+    } finally {
+      flushing = false;
+      offBanner();
+    }
+  }
+  addEventListener("online", () => offFlush());
+  setInterval(() => {
+    if (offQ().length) offFlush();
+  }, 2e4);
   async function api(op, data = {}, ms = 12e3) {
-    const r = await withTimeout(fetch(API + "/api/pos", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + S.token }, body: JSON.stringify(__spreadValues({ op }, data)) }), ms);
+    if (QOPS.has(op) && !data.qid) data = __spreadProps(__spreadValues({}, data), { qid: qidNew() });
+    let r;
+    try {
+      r = await withTimeout(fetch(API + "/api/pos", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + S.token }, body: JSON.stringify(__spreadValues({ op }, data)) }), ms);
+    } catch (e) {
+      if (QOPS.has(op) && netErr(e)) {
+        S.offline = true;
+        offSave([...offQ(), { op, data, at: Date.now() }]);
+        return { ok: true, queued: true };
+      }
+      if (netErr(e)) {
+        S.offline = true;
+        offBanner();
+        if (op === "state" || op === "menu") {
+          const c = store.get("cache_" + op, null);
+          if (c) return c;
+        }
+      }
+      throw e;
+    }
+    if (S.offline) {
+      S.offline = false;
+      offBanner();
+      if (offQ().length) setTimeout(offFlush, 300);
+    }
     if (r.status === 404 && VENUE) {
       try {
         localStorage.removeItem("pos_venue2");
@@ -161,6 +238,10 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       const e = new Error(j.error || "error");
       e.data = j;
       throw e;
+    }
+    if ((op === "state" || op === "menu") && r.ok) try {
+      store.set("cache_" + op, j);
+    } catch (e) {
     }
     return j;
   }
@@ -1876,7 +1957,14 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   setInterval(checkVer, 5 * 6e4);
   document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && checkVer());
   setTimeout(checkVer, 3e3);
+  try {
+    if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("pos-sw.js").catch(() => {
+    });
+  } catch (e) {
+  }
   async function start() {
+    offBanner();
+    setTimeout(offFlush, 1500);
     $("#login").hidden = true;
     $("#app").hidden = false;
     renderNav();
@@ -2128,8 +2216,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       S.packAdj[t] = 0;
       saveCarts();
       S.mobileMenu = false;
-      toast(`\u{1F5A8} \u0421\u0442\u0456\u043B ${tn(t)}: \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u043E \u043D\u0430 \u043A\u0443\u0445\u043D\u044E`);
-      await loadState().catch(() => {
+      toast(r.queued ? `\u{1F4F4} \u0421\u0442\u0456\u043B ${tn(t)}: \u043D\u0435\u043C\u0430\u0454 \u0437\u0432'\u044F\u0437\u043A\u0443 \u2014 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E, \u043A\u0443\u0445\u043D\u044F \u043E\u0442\u0440\u0438\u043C\u0430\u0454, \u0449\u043E\u0439\u043D\u043E \u0437'\u044F\u0432\u0438\u0442\u044C\u0441\u044F \u0456\u043D\u0442\u0435\u0440\u043D\u0435\u0442` : `\u{1F5A8} \u0421\u0442\u0456\u043B ${tn(t)}: \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u043E \u043D\u0430 \u043A\u0443\u0445\u043D\u044E`);
+      if (!r.queued) await loadState().catch(() => {
       });
     } else if (btn) btn.disabled = false;
   }
@@ -2145,6 +2233,11 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     if (!v) return;
     const [pay, pr] = v.split(":");
     const r = await act("close", { t, pay, print: pr === "1" });
+    if (r == null ? void 0 : r.queued) {
+      toast(`\u{1F4F4} \u0421\u0442\u0456\u043B ${tn(t)}: \u043D\u0435\u043C\u0430\u0454 \u0437\u0432'\u044F\u0437\u043A\u0443 \u2014 \u0437\u0430\u043A\u0440\u0438\u0442\u0442\u044F \u0432 \u0447\u0435\u0440\u0437\u0456, \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u0438\u043C\u043E \u0441\u0430\u043C\u0456`);
+      closeSheet();
+      return;
+    }
     if (r == null ? void 0 : r.r) {
       toast(`\u2705 \u0421\u0442\u0456\u043B ${tn(t)} \u0437\u0430\u043A\u0440\u0438\u0442\u043E \xB7 ${money(r.r.sum)}`);
       closeSheet();

@@ -144,7 +144,7 @@
     const btn = document.querySelector('[data-a="send"]'); if (btn) btn.disabled = true;
     const r = await act('order', { t: t === -1 ? 0 : t, ...(t === -1 ? { go: S.goDraft } : {}), items, urgent: !!S.ur[t], comment: [S.tw[t] && t !== -1 ? 'З СОБОЮ' : '', S.coms[t] || ''].filter(Boolean).join(' · ') });
     if (r && t === -1) { S.carts[-1] = {}; S.coms[-1] = ''; saveCarts(); S.goDraft = null; S.mobileMenu = false; toast(`🛵 ${tn(r.t)}: відправлено на кухню`); await loadState().catch(() => {}); openTable(r.t); return; }
-    if (r) { S.carts[t] = {}; S.coms[t] = ''; S.tw[t] = false; S.ur[t] = false; S.packAdj[t] = 0; saveCarts(); S.mobileMenu = false; toast(`🖨 Стіл ${tn(t)}: відправлено на кухню`); await loadState().catch(() => {}); }
+    if (r) { S.carts[t] = {}; S.coms[t] = ''; S.tw[t] = false; S.ur[t] = false; S.packAdj[t] = 0; saveCarts(); S.mobileMenu = false; toast(r.queued ? `📴 Стіл ${tn(t)}: немає зв'язку — замовлення збережено, кухня отримає, щойно з'явиться інтернет` : `🖨 Стіл ${tn(t)}: відправлено на кухню`); if (!r.queued) await loadState().catch(() => {}); }
     else if (btn) btn.disabled = false;
   }
   async function closeFlow() {
@@ -155,6 +155,7 @@
     if (!v) return;
     const [pay, pr] = v.split(':');
     const r = await act('close', { t, pay, print: pr === '1' });
+    if (r?.queued) { toast(`📴 Стіл ${tn(t)}: немає зв'язку — закриття в черзі, відправимо самі`); closeSheet(); return; }
     if (r?.r) { toast(`✅ Стіл ${tn(t)} закрито · ${money(r.r.sum)}`); closeSheet(); loadState().catch(() => {}); }
   }
   // причина скасування — обовʼязкова, видно у звітах і в закритому рахунку

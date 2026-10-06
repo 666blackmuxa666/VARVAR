@@ -30,12 +30,39 @@
   const setHTML = (el, html) => { if (el && el._h !== html) { el._h = html; el.innerHTML = html; } };
 
   // ---------- API ----------
+  // 📴 офлайн: замовлення й закриття без зв'язку стають у чергу на пристрої (з qid — сервер не виконає двічі) і відправляються, щойно зв'язок повернеться
+  const QOPS = new Set(['order', 'close']), qidNew = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  const offQ = () => store.get('offq', []), offSave = q => { store.set('offq', q); offBanner(); };
+  const netErr = e => e instanceof TypeError || /не відповідає|fetch|network|load failed/i.test(e?.message || '');
+  function offBanner() {
+    const n = offQ().length; let el = $('#offq'); if (!n && !S.offline) { el?.remove(); return; }
+    if (!el) { el = document.createElement('div'); el.id = 'offq'; document.body.append(el); }
+    el.textContent = `📴 ${S.offline ? 'Немає зв\'язку з сервером' : 'Відправляю…'}${n ? ` · у черзі ${n} ${n === 1 ? 'дія' : n < 5 ? 'дії' : 'дій'} — відправимо самі` : ''}`;
+  }
+  let flushing = false;
+  async function offFlush() {
+    if (flushing || !offQ().length) return; flushing = true;
+    try {
+      for (const x of offQ()) {
+        let r; try { r = await withTimeout(fetch(API + '/api/pos', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + S.token }, body: JSON.stringify({ op: x.op, ...x.data }) }), 10000); } catch (e) { S.offline = true; offBanner(); return; }
+        S.offline = false; offSave(offQ().filter(y => y.data.qid !== x.data.qid));
+        if (!r.ok) { const j = await r.json().catch(() => ({})); toast(`⚠️ З черги не пройшло (${x.op === 'close' ? 'закриття' : 'замовлення'} стіл ${tn(x.data.t)}): ${errText(j.error || r.status)}`); }
+      }
+      toast('📶 Зв\'язок є — черга відправлена'); loadState().catch(() => {});
+    } finally { flushing = false; offBanner(); }
+  }
+  addEventListener('online', () => offFlush()); setInterval(() => { if (offQ().length) offFlush(); }, 20000); // перевірка — лише коли є черга
   async function api(op, data = {}, ms = 12000) {
-    const r = await withTimeout(fetch(API + '/api/pos', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + S.token }, body: JSON.stringify({ op, ...data }) }), ms);
+    if (QOPS.has(op) && !data.qid) data = { ...data, qid: qidNew() };
+    let r;
+    try { r = await withTimeout(fetch(API + '/api/pos', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + S.token }, body: JSON.stringify({ op, ...data }) }), ms); }
+    catch (e) { if (QOPS.has(op) && netErr(e)) { S.offline = true; offSave([...offQ(), { op, data, at: Date.now() }]); return { ok: true, queued: true }; } if (netErr(e)) { S.offline = true; offBanner(); if (op === 'state' || op === 'menu') { const c = store.get('cache_' + op, null); if (c) return c; } } throw e; } // без зв'язку — останній відомий стан залу й меню
+    if (S.offline) { S.offline = false; offBanner(); if (offQ().length) setTimeout(offFlush, 300); }
     if (r.status === 404 && VENUE) { try { localStorage.removeItem('pos_venue2'); } catch {} location.replace(location.pathname); } // 🏪 заклад не знайдено — назад до VARVAR
     const j = await r.json().catch(() => ({}));
     if (r.status === 401 && op !== 'login') { logout(true); throw new Error('auth'); }
     if (!r.ok) { const e = new Error(j.error || 'error'); e.data = j; throw e; }
+    if ((op === 'state' || op === 'menu') && r.ok) try { store.set('cache_' + op, j); } catch {} // 📴 для запуску без інтернету
     return j;
   }
   const act = async (op, data, okMsg) => { try { const r = await api(op, data); if (okMsg) toast(okMsg); return r; } catch (e) { if (e.message !== 'auth') toast('⚠️ ' + errText(e.message)); return null; } };
@@ -594,7 +621,9 @@
   setInterval(checkVer, 5 * 60e3); document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && checkVer()); setTimeout(checkVer, 3000);
 
   // ---------- старт ----------
+  try { if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('pos-sw.js').catch(() => {}); } catch {} // 📴 каса відкривається й без інтернету
   async function start() {
+    offBanner(); setTimeout(offFlush, 1500);
     $('#login').hidden = true; $('#app').hidden = false;
     renderNav(); $('#main').innerHTML = '<div class="muted">Завантаження…</div>';
     try { await loadState(); } catch (e) { console.error('start', e); return; }
