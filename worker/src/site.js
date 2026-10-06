@@ -257,11 +257,11 @@ export async function guestBot(m, env) {
   if (m.contact) {
     if (m.contact.user_id !== uid) { await gtg(env, 'sendMessage', { chat_id: chat, text: 'Потрібен саме ваш номер — натисніть кнопку «📱 Поділитися номером».' }); return true; }
     const ph = normPhone(m.contact.phone_number); if (!ph) { await gtg(env, 'sendMessage', { chat_id: chat, text: 'Підтримуються українські номери (+380).', reply_markup: { remove_keyboard: true } }); return true; }
-    await cliTouch(env, ph, c => { c.chat = chat; if (!c.name) c.name = m.from?.first_name || ''; });
+    const was = (await getCli(env, ph))?.chat; const cc = await cliTouch(env, ph, c => { c.chat = chat; if (!c.name) c.name = m.from?.first_name || ''; if (!c.joined) c.joined = Date.now(); });
     const gbm = await import('./guestbot.js'); await gbm.linkChat(env, chat, ph);
     const n = await env.DB.get('glu:' + uid);
     if (n && await env.DB.get('gl:' + n)) { const tok = [...crypto.getRandomValues(new Uint8Array(16))].map(x => x.toString(16).padStart(2, '0')).join(''); await env.DB.put('gs:' + tok, ph, { expirationTtl: 30 * 86400 }); await env.DB.put('gl:' + n, JSON.stringify({ token: tok }), { expirationTtl: 300 }); }
-    await gbm.showMenu(env, chat, `✅ Готово! Номер ${fmtPhone(ph)} підключено.${n ? '\nПоверніться на сайт — кабінет відкриється сам.' : ''}\nТут — ваші бонуси, замовлення, броні й сертифікати 👇`);
+    await gbm.showMenu(env, chat, `✅ Готово! Номер ${fmtPhone(ph)} підключено.${!was ? `\n🎁 Ви в програмі лояльності Varvar: бонуси з кожного замовлення, знижки постійним гостям, подарунок на день народження.${cc.n ? ` Уже враховано візитів: ${cc.n}.` : ''}${cc.bal ? ` На рахунку ${cc.bal} бонусів.` : ''}` : ''}${n ? '\nПоверніться на сайт — кабінет відкриється сам.' : ''}\nТут — ваші бонуси, замовлення, броні й сертифікати 👇`);
     return true;
   }
   return false;

@@ -45,7 +45,7 @@ export async function showMenu(env, chat, hello) {
 // повідомлення гостя (не вхід на сайт). true — оброблено
 export async function guestMenu(m, env) {
   const chat = m.chat.id, text = (m.text || '').trim(), ph = await phoneOf(env, chat);
-  if (text === '/start' || text === '/menu' || text === 'Меню') { await env.DB.delete('gst:' + chat); return showMenu(env, chat), true; }
+  if (/^\/start( |$)/.test(text) || text === '/menu' || text === 'Меню') { await env.DB.delete('gst:' + chat); return showMenu(env, chat), true; }
   const btn = Object.entries(B).find(([, v]) => v === text)?.[0];
   if (!ph) { await showMenu(env, chat); return true; }
   if (btn) await env.DB.delete('gst:' + chat);

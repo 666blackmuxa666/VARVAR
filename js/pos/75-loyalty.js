@@ -23,7 +23,7 @@
     try {
       if (!S.data.loy || part === 'cfg') S.data.loy = await api('loyGet');
       const t = S.loyTab || 'cli';
-      if (t === 'cli' && part !== 'cfg') S.data.loyCli = (await api('loyCli', { q: S.loyQ || '', f: S.loyF || 'all' })).list;
+      if (t === 'cli' && part !== 'cfg') S.data.loyCli = (await api('loyCli', { q: S.loyQ || '', f: S.loyF || 'tg' })).list;
       if (t === 'bot' && isAdmin() && part !== 'cfg') S.data.gb = await api('gbGet');
       if (t === 'rep' && isAdmin()) { const [from, to] = loyRange(); S.data.loyRep = await api('loyRep', { from, to }, 30000); }
     } catch (e) { toast('⚠️ ' + errText(e.message)); }
@@ -57,11 +57,11 @@
         ${adm ? `<div class="btnrow"><button class="btn sm" data-a="loyRule" data-id="${r.id}">✏️ Змінити</button><button class="btn sm red" data-a="loyRuleDel" data-id="${r.id}">🗑</button></div>` : ''}</div>`).join('')}
       <div class="card"><h3>➕ Нова акція</h3><div class="muted set-note">% на категорію/страву · щасливі години · N-та кава в подарунок · від суми — знижка або подарунок · день народження ±N днів. Умови: зал / з собою / доставка, період дії. Знижки рахує сервер і показує в чеку назвою акції.</div>
         ${adm ? '<button class="btn sm primary" data-a="loyRule" data-id="">➕ Створити</button>' : '<div class="muted">Створює адміністратор</div>'}</div></div>`;
-    if (tab === 'cli') { const L = S.data.loyCli, f = S.loyF || 'all';
-      const F = [['all', 'Усі'], ...c.levels.map(l => [l.id, `${l.e} ${l.name}`]), ['bd', '🎂 ДН ±7 днів'], ['sleep', '😴 Не були 30+ днів'], ['bal', '🎁 Є бонуси']];
-      body = `<div class="card"><div class="srow" style="margin-bottom:10px"><input id="loyQ" placeholder="🔎 Телефон або ім'я" value="${esc(S.loyQ || '')}" inputmode="search"><button class="btn sm primary" data-a="loyFind">Знайти</button></div>
+    if (tab === 'cli') { const L = S.data.loyCli, f = S.loyF || 'tg';
+      const F = [['tg', '📱 У програмі'], ['all', 'Усі номери'], ...c.levels.map(l => [l.id, `${l.e} ${l.name}`]), ['bd', '🎂 ДН ±7 днів'], ['sleep', '😴 Не були 30+ днів'], ['bal', '🎁 Є бонуси']];
+      body = `<div class="card"><div class="muted set-note">📱 У програмі лояльності — лише гості, які підключили бот гостей (бонуси, знижки рівня, ДН). Інші номери — просто історія замовлень: бонуси їм не нараховуються, доки не підключать бот. ✋ — рівень, який адмін дав вручну (персонал, VIP), діє і без бота.</div><div class="srow" style="margin-bottom:10px"><input id="loyQ" placeholder="🔎 Телефон або ім'я" value="${esc(S.loyQ || '')}" inputmode="search"><button class="btn sm primary" data-a="loyFind">Знайти</button></div>
         <div class="btnrow" style="flex-wrap:wrap">${F.map(([k, l]) => `<button class="chip sm ${f === k ? 'on' : ''}" data-a="loyF" data-f="${k}">${esc(l)}</button>`).join('')}</div>
-        <div style="margin-top:10px">${!L ? '<div class="muted">…</div>' : L.length ? L.map(x => `<button class="kv press" style="width:100%;text-align:left" data-a="loyCli" data-ph="${x.phone}"><span><b>${esc(x.name || '—')}</b> <span class="muted">${fmtPh(x.phone)}</span><br><small class="muted">${esc(x.lvn || '')}${x.man ? ' ✋' : ''} · ${x.n} віз. · ${money(x.sum)}${x.bal ? ` · 🎁 ${money(x.bal)}` : ''}${x.bd ? ` · 🎂 ${bdTxt(x.bd)}` : ''}</small></span><span class="muted">›</span></button>`).join('') : '<div class="muted">Нікого не знайдено. Клієнт з\'являється, коли на столі / в доставці вказали його телефон.</div>'}</div>
+        <div style="margin-top:10px">${!L ? '<div class="muted">…</div>' : L.length ? L.map(x => `<button class="kv press" style="width:100%;text-align:left" data-a="loyCli" data-ph="${x.phone}"><span>${x.tg ? '📱 ' : ''}<b>${esc(x.name || '—')}</b> <span class="muted">${fmtPh(x.phone)}</span>${!x.tg && !x.man ? ' <small class="warn">не в програмі</small>' : ''}<br><small class="muted">${esc(x.lvn || '')}${x.man ? ' ✋' : ''} · ${x.n} віз. · ${money(x.sum)}${x.bal ? ` · 🎁 ${money(x.bal)}` : ''}${x.bd ? ` · 🎂 ${bdTxt(x.bd)}` : ''}</small></span><span class="muted">›</span></button>`).join('') : '<div class="muted">Нікого не знайдено. Клієнт з\'являється, коли на столі / в доставці вказали його телефон.</div>'}</div>
         ${L?.length === 200 ? '<div class="muted set-note">Показано перші 200 — уточніть пошук</div>' : ''}</div>`; }
     if (tab === 'rep') { const R = S.data.loyRep, p = S.loyP || 'd';
       body = `<div class="btnrow" style="margin-bottom:10px">${[['d', 'Сьогодні'], ['w', '7 днів'], ['m', 'Цей місяць']].map(([k, l]) => `<button class="chip sm ${p === k ? 'on' : ''}" data-a="loyP" data-p="${k}">${l}</button>`).join('')}</div>

@@ -26,13 +26,15 @@ export const normPhone = p => { const d = String(p || '').replace(/\D/g, ''); co
 export const fmtPhone = p => p ? `+${p.slice(0, 3)} ${p.slice(3, 5)} ${p.slice(5, 8)} ${p.slice(8, 10)} ${p.slice(10)}` : '';
 
 // ---------- 🎁 клієнти й бонуси ----------
+// 📱 у програмі лояльності лише ті, хто підключив бот гостей (є куди написати), або кому адмін вручну дав рівень (персонал, VIP)
+export const isMem = c => !!(c && (c.chat || c.lvl));
 export const getCli = async (env, ph) => ph ? (await env.DB.get('cli:' + ph, 'json')) || null : null;
 export async function cliTouch(env, ph, fn) { return L(env, 'cli:' + ph, async () => { const c = (await getCli(env, ph)) || { n: 0, sum: 0, bal: 0, addr: [] }; fn(c); await env.DB.put('cli:' + ph, JSON.stringify(c)); return c; }); }
 // чек закрито: списані бонуси — з балансу, кешбек — на баланс
 export async function cliClose(env, ph, paid, used, name, lvCash) {
   if (!ph) return null; const pct = lvCash > 0 ? lvCash : (await getGoCfg(env)).cash, add = Math.floor(paid * pct / 100);
-  const c = await cliTouch(env, ph, c => { c.bal = Math.max(0, (c.bal || 0) - (used || 0)) + add; c.n++; c.sum += paid; c.last = Date.now(); if (name) c.name = name; c.lastAdd = add; });
-  await (await import('./guestbot.js')).bonusMsg(env, ph, add, c.bal).catch(() => {}); // 🤖 «+N бонусів»
+  let got = 0; const c = await cliTouch(env, ph, c => { got = isMem(c) ? add : 0; c.bal = Math.max(0, (c.bal || 0) - (used || 0)) + got; c.n++; c.sum += paid; c.last = Date.now(); if (name) c.name = name; c.lastAdd = got; });
+  await (await import('./guestbot.js')).bonusMsg(env, ph, got, c.bal).catch(() => {}); // 🤖 «+N бонусів»
   return c;
 }
 
@@ -101,7 +103,7 @@ export async function goOrder(b, ip, env) {
   if (sum < c.min) return [{ error: 'min', min: c.min }, 400];
   if (sum > 30000) return [{ error: 'too_big' }, 400];
   const fee = kind === 'del' && !(c.free && sum >= c.free) ? c.fee : 0;
-  const cli = await getCli(env, phone), bonus = Math.min(Math.max(0, Math.round(+b.bonus || 0)), cli?.bal || 0, Math.floor(sum * c.bmax / 100));
+  const cli = await getCli(env, phone), bonus = Math.min(Math.max(0, Math.round(+b.bonus || 0)), isMem(cli) ? cli.bal || 0 : 0, Math.floor(sum * c.bmax / 100));
   const pay = ['cash', 'card', 'online'].includes(b.pay) ? b.pay : 'cash', change = pay === 'cash' ? Math.max(0, Math.min(10000, Math.round(+b.change || 0))) : 0;
   const cut = Math.max(0, Math.min(20, parseInt(b.cut, 10) || 0)), note = String(b.comment || '').trim().slice(0, 200), ent = String(b.ent || '').trim().slice(0, 60);
   const oid = crypto.randomUUID().replace(/-/g, '').slice(0, 10);
@@ -178,7 +180,7 @@ export async function reco(env) {
 // публічні дані для сайту: налаштування (без зайвого) і баланс бонусів
 export async function goInfo(env, ph) {
   const c = await getGoCfg(env), cli = ph ? await getCli(env, normPhone(ph)) : null;
-  return { on: c.on, del: c.del, pick: c.pick, from: c.from, to: c.to, open: isOpen(c), min: c.min, fee: c.fee, free: c.free, prep: c.prep, phone: c.phone, zone: c.zone, cash: c.cash, bmax: c.bmax, ...(cli ? { bal: cli.bal || 0 } : {}) }; // адреси — лише в касі (не світимо за номером)
+  return { on: c.on, del: c.del, pick: c.pick, from: c.from, to: c.to, open: isOpen(c), min: c.min, fee: c.fee, free: c.free, prep: c.prep, phone: c.phone, zone: c.zone, cash: c.cash, bmax: c.bmax, ...(isMem(cli) ? { bal: cli.bal || 0 } : {}) }; // адреси — лише в касі (не світимо за номером)
 }
 
 // ---------- 🖥 API каси: go* / cli* ----------
@@ -223,7 +225,7 @@ export async function goApi(b, env, me, t) {
     case 'goEdit': { if (!admin) return bad('admin', 403); const r = await goEdit(env, t, b, who); return r.error ? bad(r.error) : ok(r); }
     case 'goCfg': return ok({ cfg: await getGoCfg(env) });
     case 'goCfgSet': { if (!admin) return bad('admin', 403); const c = await setGoCfg(env, String(b.k), b.v); if (c.error) return bad(c.error); return ok({ cfg: c }); }
-    case 'cliGet': { const ph = normPhone(b.phone); if (!ph) return bad('Невірний номер'); const c = await getCli(env, ph); return ok({ phone: ph, cli: c, cfg: await getGoCfg(env) }); }
+    case 'cliGet': { const ph = normPhone(b.phone); if (!ph) return bad('Невірний номер'); const c = await getCli(env, ph); const { botName } = await import('./site.js'); return ok({ phone: ph, cli: c, mem: isMem(c), bot: await botName(env).catch(() => ''), cfg: await getGoCfg(env) }); }
     case 'cliSet': { // 🎁 телефон гостя в залі — щоб нарахувати кешбек при закритті
       const ph = b.phone ? normPhone(b.phone) : null; if (b.phone && !ph) return bad('Невірний номер');
       const r = await L(env, 'bills', async () => { const x = await getBill(env, t); if (!x.total) return null; if (ph) x.cli = ph; else { delete x.cli; delete x.bonus; } await putBill(env, t, x); return x; });
@@ -232,7 +234,7 @@ export async function goApi(b, env, me, t) {
     case 'cliBonus': {
       const c = await getGoCfg(env);
       const r = await L(env, 'bills', async () => { const x = await getBill(env, t); if (!x.total || !x.cli) return { error: 'Спершу вкажіть телефон гостя' };
-    const cl = await getCli(env, x.cli), sum = Math.max(0, Math.round(+b.sum || 0)), max = Math.min(cl?.bal || 0, Math.floor(x.total * c.bmax / 100));
+    const cl = await getCli(env, x.cli); if (!isMem(cl) && +b.sum) return { error: 'Гість не в програмі лояльності — спершу хай підключить бот гостей' }; const sum = Math.max(0, Math.round(+b.sum || 0)), max = Math.min(cl?.bal || 0, Math.floor(x.total * c.bmax / 100));
     if (sum > max) return { error: `Можна списати до ${max} грн` }; if (sum) x.bonus = sum; else delete x.bonus; await putBill(env, t, x); return { bonus: sum }; });
       return r.error ? bad(r.error) : ok(r);
     }

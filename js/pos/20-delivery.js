@@ -52,8 +52,14 @@
     const b = S.tables[t]; if (!b) return;
     let ph = b.cli; if (!ph) { ph = await ask('🎁 Телефон гостя (для бонусів)', '050 123 45 67', 'tel'); if (!ph) return; }
     const r = await api('cliGet', { phone: ph }).catch(e => { toast('⚠️ ' + (e.message || 'номер?')); return null; }); if (!r) return;
-    const c = r.cli || { n: 0, sum: 0, bal: 0 }, max = Math.min(c.bal || 0, Math.floor(b.total * (r.cfg.bmax || 0) / 100));
+    const c = r.cli || { n: 0, sum: 0, bal: 0 }, max = r.mem ? Math.min(c.bal || 0, Math.floor(b.total * (r.cfg.bmax || 0) / 100)) : 0;
     if (!b.cli) await act('cliSet', { t, phone: r.phone });
+    if (!r.mem) { // 📱 не в програмі лояльності — запрошуємо в бот гостей (QR / посилання)
+      const link = r.bot ? `https://t.me/${r.bot}?start=join` : '';
+      const v = await modal({ title: `📱 ${c.name || fmtPh(r.phone)} — ще не в програмі`, body: `<div class="muted set-note">Бонуси, знижки постійним і подарунок на ДН — лише для тих, хто підключив наш Telegram-бот (щоб ми могли написати гостю).${c.n ? ` Візитів уже ${c.n}${c.bal ? `, накопичено ${money(c.bal)} бонусів — стануть доступні після підключення` : ''}.` : ''}</div>${link ? `<div style="text-align:center;margin:10px 0"><img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data=${encodeURIComponent(link)}" width="220" height="220" alt="QR" style="border-radius:12px;background:#fff"><div class="muted" style="margin-top:6px">Гість сканує камерою → «Почати» → «📱 Поділитися номером»<br><b>${esc('@' + r.bot)}</b></div></div>` : ''}`, buttons: [{ label: 'Готово', val: null }, { label: '✕ Прибрати номер', val: 'del', cls: 'red' }] });
+      if (v === 'del') await act('cliSet', { t, phone: '' }, 'Прибрано');
+      return loadState().catch(() => {});
+    }
     if (!b.cli) await loadState().catch(() => {}); const pr = S.tables[t]?.promo; // 🎁 рівень і акції підставились сервером
     const v = await choose(`🎁 ${c.name || fmtPh(r.phone)}`, `${pr?.lvn ? pr.lvn + ' · ' : ''}${c.n} замовл. · ${money(c.sum)} · бонусів ${money(c.bal || 0)}${c.bd ? ` · 🎂 ${c.bd.slice(3)}.${c.bd.slice(0, 2)}` : ''} · кешбек ${pr?.cash || r.cfg.cash}% нарахується при закритті${c.note ? ` · 📌 ${c.note}` : ''}`, [
       ...(max > 0 ? [{ label: `Списати ${money(max)}`, val: 'use', cls: 'primary' }] : []), ...(r.cli ? [{ label: '👤 Картка клієнта', val: 'card' }] : []), { label: '✕ Прибрати гостя', val: 'del', cls: 'red' }]);

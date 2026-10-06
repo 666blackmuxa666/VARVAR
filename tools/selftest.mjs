@@ -292,6 +292,7 @@ async function loyTests(A, W, dish) {
     await step('gbSet: погане значення → 400', async () => { const r = await pos(A, 'gbSet', { f: { sleepDays: 1 } }); must(r.status === 400, String(r.status)); });
     await step('gbSet: вимкнути статус і назад', async () => { const r = await posOk(A, 'gbSet', { f: { stat: false, sleepBon: 50 } }); must(r.cfg.stat === 0 && r.cfg.sleepBon === 50, JSON.stringify(r.cfg)); });
     await step('gbCount', async () => { const r = await posOk(A, 'gbCount', { f: 'sleep' }); must(typeof r.n === 'number', 'n'); return `${r.n} отримувачів`; });
+    await step('📱 без бота: бонуси не списати', async () => { const g = await posOk(W, 'cliGet', { phone: '0670000001' }); must(g.mem === false, 'mem'); });
     await step('✉️ gbInbox / gbThread', async () => { const r = await posOk(W, 'gbInbox'); must(Array.isArray(r.list), 'list'); const t = await pos(W, 'gbThread', { ph: '380000000000' }); must(t.status === 400, String(t.status)); const st = await posOk(W, 'state'); must(typeof st.gInN === 'number', 'gInN у state'); });
     await step('gbReply: гість без бота → 400', async () => { const r = await pos(W, 'gbReply', { ph: '380000000000', text: 'тест' }); must(r.status === 400, String(r.status)); });
     for (const op of ['gbSet', 'gbCast', 'gbCount']) await step(`waiter ✗ ${op}`, async () => { const r = await pos(W, op, { f: {} }); must(r.status === 403, String(r.status)); });
