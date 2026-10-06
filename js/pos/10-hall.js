@@ -179,7 +179,7 @@
     const to = await pickTable(`Перенести стіл ${tn(t)}`, 'На зайнятий стіл (жовтий) — рахунки обʼєднаються', t);
     if (!to) return;
     const r = await act('move', { t, to }, '');
-    if (r?.r) { toast(r.r.merged ? `🔗 Обʼєднано зі столом ${tn(to)}` : `↔️ Перенесено на стіл ${tn(to)}`); S.carts[to] = { ...(S.carts[to] || {}), ...cartOf(t) }; S.carts[t] = {}; saveCarts(); S.open = to; await loadState().catch(() => {}); }
+    if (r?.r) { toast((r.r.merged ? `🔗 Обʼєднано зі столом ${tn(to)}` : `↔️ Перенесено на стіл ${tn(to)}`) + (r.r.released ? ' · 🎁 бонуси / сертифікат знято — застосуйте знову' : '')); S.carts[to] = { ...(S.carts[to] || {}), ...cartOf(t) }; S.carts[t] = {}; saveCarts(); S.open = to; await loadState().catch(() => {}); }
   }
 
   // ✂️ розділити рахунок: обрати позиції й кількість → стіл, куди перенести
@@ -199,7 +199,7 @@
     const to = await pickTable(`✂️ Куди перенести (${sel.reduce((a, x) => a + x.q, 0)} поз.)`, 'Вільний стіл — новий рахунок; зайнятий (жовтий) — позиції додадуться до нього', t);
     if (!to) return;
     const r = await act('split', { t, to, items: sel }, '');
-    if (r?.r) { toast(`✂️ Перенесено на стіл ${tn(to)} · ${money(r.r.sum)}`); await loadState().catch(() => {}); }
+    if (r?.r) { toast(`✂️ Перенесено на стіл ${tn(to)} · ${money(r.r.sum)}` + (r.r.released ? ' · 🎁 бонуси / сертифікат знято — застосуйте знову' : '')); await loadState().catch(() => {}); }
   }
 
   function hallGrid(m) {

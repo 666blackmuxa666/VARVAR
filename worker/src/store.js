@@ -124,6 +124,7 @@ export const storeStub = env => env.STORE.get(env.STORE.idFromName(doName(venueI
 export function storeDB(kv, ns, venue = MAIN) {
   const s = ns.get(ns.idFromName(doName(venue)));
   const img = k => k.startsWith('img:'), ik = k => imgKey(k, venue);
+  const kvRaw = kv;
   const held = new Set(); // ключі, які цей запит уже тримає (повторний вхід без самоблокування)
   const parse = (v, type) => v == null ? null : type === 'json' ? JSON.parse(v) : v;
   return {
@@ -139,5 +140,6 @@ export function storeDB(kv, ns, venue = MAIN) {
       finally { mine.forEach(k => held.delete(k)); for (const id of ids) try { await s.unlock(id); } catch {} }
     },
     list: async ({ prefix } = {}) => ({ keys: (await s.list(prefix)).map(name => ({ name })), list_complete: true }),
+    kv: kvRaw, // сирий KV (бекапи bak:*)
   };
 }

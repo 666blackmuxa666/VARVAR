@@ -165,7 +165,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   }
   let flushing = false;
   async function offFlush() {
-    if (flushing || !offQ().length) return;
+    if (flushing || !offQ().length || !S.token) return;
     flushing = true;
     try {
       for (const x of offQ()) {
@@ -178,6 +178,10 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
           return;
         }
         S.offline = false;
+        if (r.status === 401 || r.status >= 500) {
+          offBanner();
+          return;
+        }
         offSave(offQ().filter((y) => y.data.qid !== x.data.qid));
         if (!r.ok) {
           const j = await r.json().catch(() => ({}));
@@ -368,6 +372,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     }
   };
   async function logout(expired) {
+    if (!expired && offQ().length && !await confirmBox(`\u{1F4F4} \u0423 \u0447\u0435\u0440\u0437\u0456 ${offQ().length} \u043D\u0435\u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u0445 \u0434\u0456\u0439`, "\u0412\u043E\u043D\u0438 \u0437\u0431\u0435\u0440\u0435\u0436\u0443\u0442\u044C\u0441\u044F \u0439 \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u044F\u0442\u044C\u0441\u044F, \u0449\u043E\u0439\u043D\u043E \u0445\u0442\u043E\u0441\u044C \u0443\u0432\u0456\u0439\u0434\u0435 \u0432 \u043A\u0430\u0441\u0443 \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457 \u0439 \u0437'\u044F\u0432\u0438\u0442\u044C\u0441\u044F \u0437\u0432'\u044F\u0437\u043E\u043A. \u0412\u0438\u0439\u0442\u0438?")) return;
     if (!expired) await api("logout").catch(() => {
     });
     S.token = "";
@@ -2280,7 +2285,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     if (!to) return;
     const r = await act("move", { t, to }, "");
     if (r == null ? void 0 : r.r) {
-      toast(r.r.merged ? `\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u043D\u043E \u0437\u0456 \u0441\u0442\u043E\u043B\u043E\u043C ${tn(to)}` : `\u2194\uFE0F \u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0435\u043D\u043E \u043D\u0430 \u0441\u0442\u0456\u043B ${tn(to)}`);
+      toast((r.r.merged ? `\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u043D\u043E \u0437\u0456 \u0441\u0442\u043E\u043B\u043E\u043C ${tn(to)}` : `\u2194\uFE0F \u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0435\u043D\u043E \u043D\u0430 \u0441\u0442\u0456\u043B ${tn(to)}`) + (r.r.released ? " \xB7 \u{1F381} \u0431\u043E\u043D\u0443\u0441\u0438 / \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 \u0437\u043D\u044F\u0442\u043E \u2014 \u0437\u0430\u0441\u0442\u043E\u0441\u0443\u0439\u0442\u0435 \u0437\u043D\u043E\u0432\u0443" : ""));
       S.carts[to] = __spreadValues(__spreadValues({}, S.carts[to] || {}), cartOf(t));
       S.carts[t] = {};
       saveCarts();
@@ -2311,7 +2316,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     if (!to) return;
     const r = await act("split", { t, to, items: sel }, "");
     if (r == null ? void 0 : r.r) {
-      toast(`\u2702\uFE0F \u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0435\u043D\u043E \u043D\u0430 \u0441\u0442\u0456\u043B ${tn(to)} \xB7 ${money(r.r.sum)}`);
+      toast(`\u2702\uFE0F \u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0435\u043D\u043E \u043D\u0430 \u0441\u0442\u0456\u043B ${tn(to)} \xB7 ${money(r.r.sum)}` + (r.r.released ? " \xB7 \u{1F381} \u0431\u043E\u043D\u0443\u0441\u0438 / \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 \u0437\u043D\u044F\u0442\u043E \u2014 \u0437\u0430\u0441\u0442\u043E\u0441\u0443\u0439\u0442\u0435 \u0437\u043D\u043E\u0432\u0443" : ""));
       await loadState().catch(() => {
       });
     }

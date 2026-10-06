@@ -1,7 +1,7 @@
 // 🌐 Сайт-візитка: дані закладу, бронювання (+ передзамовлення), подарункові сертифікати, кабінет гостя (вхід через Telegram),
 // відгук після візиту, нагадування (Cron). Гість ідентифікується телефоном — той самий cli:<телефон>, що й бонуси (delivery.js).
 import { getMenu, priceMap } from './menu.js';
-import { tg, esc, hhmm, dayKey, L, logEvent, editEv, notify, addWaiterOrder, getBill, putBill, money, TZ, addMove } from './ops.js';
+import { tg, esc, hhmm, dayKey, L, logEvent, editEv, notify, addWaiterOrder, getBill, putBill, money, TZ, addMove, discAmt } from './ops.js';
 import { normPhone, fmtPhone, getCli, cliTouch } from './delivery.js';
 import { siteLink, venueId, MAIN } from './venue.js';
 
@@ -208,7 +208,7 @@ export async function certUse(env, t, code, who) {
     if (c.exp && Date.now() > c.exp) return { error: `Подарунок діяв до ${new Date(c.exp).toLocaleDateString('uk-UA', { timeZone: TZ })}` };
     let cap = Infinity; // 🎂 подарунок (кальян): лише на цю позицію в рахунку, не більше її ціни
     if (c.items?.length) { const { billItems } = await import('./ops.js'), it = billItems(b).filter(x => c.items.includes(x.name)).sort((a, z) => z.sum / z.q - a.sum / a.q)[0]; if (!it) return { error: `Спершу додайте в рахунок: ${c.gift}` }; cap = Math.round(it.sum / it.q); }
-    const already = b.cert?.code === code ? b.cert.sum : 0, use = Math.min(c.left + already, cap, b.total - (b.bonus || 0) + already);
+    const already = b.cert?.code === code ? b.cert.sum : 0, use = Math.max(0, Math.min(c.left + already, cap, b.total - discAmt(b) - (b.promo?.sum || 0) - (b.bonus || 0) + already)); // до сплати — після знижки й акцій
     b.bonus = (b.bonus || 0) - already + use; b.cert = { code, sum: use }; c.left = c.left + already - use;
     c.uses = [...(c.uses || []).filter(u => u.t !== t || u.d !== dayKey()), { t, d: dayKey(), sum: use, by: who }];
     await putBill(env, t, b); await env.DB.put('cert:' + code, JSON.stringify(c)); return { use, left: c.left };

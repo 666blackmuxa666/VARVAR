@@ -41,11 +41,13 @@
   }
   let flushing = false;
   async function offFlush() {
-    if (flushing || !offQ().length) return; flushing = true;
+    if (flushing || !offQ().length || !S.token) return; flushing = true;
     try {
       for (const x of offQ()) {
         let r; try { r = await withTimeout(fetch(API + '/api/pos', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + S.token }, body: JSON.stringify({ op: x.op, ...x.data }) }), 10000); } catch (e) { S.offline = true; offBanner(); return; }
-        S.offline = false; offSave(offQ().filter(y => y.data.qid !== x.data.qid));
+        S.offline = false;
+        if (r.status === 401 || r.status >= 500) { offBanner(); return; } // не увійшли / сервер оновлюється — дія лишається в черзі, спробуємо пізніше
+        offSave(offQ().filter(y => y.data.qid !== x.data.qid));
         if (!r.ok) { const j = await r.json().catch(() => ({})); toast(`⚠️ З черги не пройшло (${x.op === 'close' ? 'закриття' : 'замовлення'} стіл ${tn(x.data.t)}): ${errText(j.error || r.status)}`); }
       }
       toast('📶 Зв\'язок є — черга відправлена'); loadState().catch(() => {});
@@ -127,6 +129,7 @@
     } catch (e2) { $('#lErr').style.color = ''; $('#lErr').textContent = e2.message; }
   };
   async function logout(expired) {
+    if (!expired && offQ().length && !(await confirmBox(`📴 У черзі ${offQ().length} невідправлених дій`, 'Вони збережуться й відправляться, щойно хтось увійде в касу на цьому пристрої й з\'явиться зв\'язок. Вийти?'))) return;
     if (!expired) await api('logout').catch(() => {});
     S.token = ''; S.me = null; store.set('token', ''); store.set('me', null); ws?.close(); closeSheet();
     showLogin(expired ? 'Сесія закінчилась — увійдіть знову' : '');

@@ -32,6 +32,7 @@ export async function intApi(req, env, path) {
     await env.DB.put('cfg:venue', JSON.stringify({ id: env.VENUE, name: String(b.name || ''), at: Date.now() }));
     await env.DB.put('menu', JSON.stringify({ categories: [] })); // не меню VARVAR за замовчуванням
     await saveSecrets(env, { PRINT_KEY: rnd(16) }); // свій ключ програми друку
+    await (await import('./backup.js')).backupNow(env).catch(() => {}); // 💾 перша копія одразу
     await env.DB.put('site', JSON.stringify({ name: String(b.name || 'Новий заклад'), tagline: '', about: '', phone: '', addr: '', from: '10:00', to: '22:00', insta: '', tg: '', gmaps: '', geo: null, rating: 0, ratingN: 0, reviewsUrl: '', quotes: [], promos: [], photos: [], hero: '' }));
     return [{ ok: true, codes }, 200];
   }
@@ -120,7 +121,7 @@ async function pnl(env, S) {
     cogs += u * q; const t = top[n] ||= { n, q: 0, rev: 0, cost: 0 }; t.q += q; t.rev += sum || 0; t.cost += u * q;
   }
   // зарплата: фонд місяця × частка днів періоду
-  let pay = 0; const months = [...new Set([S.from.slice(0, 7), S.to.slice(0, 7)])];
+  let pay = 0; const months = []; for (let d = new Date(S.from.slice(0, 7) + '-15'); d.toISOString().slice(0, 7) <= S.to.slice(0, 7) && months.length < 24; d.setMonth(d.getMonth() + 1)) months.push(d.toISOString().slice(0, 7)); // усі місяці періоду
   for (const m of months) {
     const p = await payroll(env, m).catch(() => null); if (!p) continue;
     const dim = new Date(+m.slice(0, 4), +m.slice(5, 7), 0).getDate(), a = S.from > m + '-01' ? +S.from.slice(8) : 1, z = S.to < m + '-' + dim ? +S.to.slice(8) : dim, today = dayKey(), elapsed = today.slice(0, 7) === m ? +today.slice(8) : dim;
@@ -197,7 +198,9 @@ ${JSON.stringify(data.filter(Boolean))}
     case 'grant': { const r = await H.grant(String(b.venue), b.email, !!b.on); return r.error ? bad(r.error) : ok({ acct: r }); }
     case 'venueDel': { // 🗑 назавжди: запис у HUB + усі дані закладу (підтвердження — точна адреса закладу)
       if (b.confirm !== b.id) return bad('Для підтвердження введіть адресу закладу'); const r = await H.venueDel(String(b.id)); if (r.error) return bad(r.error);
-      await env.STORE.get(env.STORE.idFromName(doName(String(b.id)))).wipe().catch(() => {}); return ok(); }
+      await env.STORE.get(env.STORE.idFromName(doName(String(b.id)))).wipe().catch(() => {});
+      if (env.DB.kv) { const l = await env.DB.kv.list({ prefix: 'bak:' + String(b.id) + ':' }); for (const x of l.keys) await env.DB.kv.delete(x.name); } // 💾 бекапи теж — щоб новий заклад з тією ж адресою їх не побачив
+      return ok(); }
     case 'venueSet': { const v = await H.venueSet(String(b.id), b.f || {}); return v.error ? bad(v.error) : ok({ venue: v }); }
   }
   return bad('unknown');

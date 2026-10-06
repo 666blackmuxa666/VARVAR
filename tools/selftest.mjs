@@ -384,6 +384,22 @@ async function loyTests(A, W, dish) {
     must((await ownT(mt, 'me')).j.venues.length === 0, 'доступ лишився');
     must((await ownT(PT, 'acctDel', { email: ME })).j.ok && (await ownT(PT, 'acctDel', { email: OE })).j.ok, 'acctDel'); });
 
+  sect('💰 Аудит грошей: сертифікат після знижки, обʼєднання, видалення закритого чека');
+  { const m = await http('/api/menu'), cat = m.j.categories.find(c => c.items.some(i => i.id === 'hookah-silver'));
+    const hk = cat && cat.items.filter(i => typeof i.price === 'number' && !/з собою/i.test(i.name.uk)).sort((a, b) => b.price - a.price)[0];
+    const free = async () => { const st = await posOk(A, 'state'), busy = new Set(st.tables.map(x => x.t)); for (let t = st.n; t >= 1; t--) if (!busy.has(t)) return t; };
+    const certLeft = async ph => (await posOk(A, 'certList')).list.find(c => c.phone && c.phone.endsWith(ph.slice(-9)))?.left;
+    if (hk) {
+      await step('сертифікат не більший за суму після знижки', async () => { const T = await free(); await posOk(A, 'order', { t: T, items: [{ id: hk.id, q: 1 }] }); await posOk(A, 'discount', { t: T, pct: 20 });
+        const r = await posOk(A, 'certBd', { t: T }); try { must(r.use <= Math.round(hk.price * 0.8) + 1, `знято ${r.use} при до сплати ${hk.price * 0.8}`); } finally { await pos(A, 'delete', { t: T, reason: 'QA' }); } });
+      await step("об'єднання столів знімає сертифікат (повертає суму)", async () => { const T1 = await free(); await posOk(A, 'order', { t: T1, items: [{ id: hk.id, q: 1 }] }); const T2 = await free(); await posOk(A, 'order', { t: T2, items: [{ id: hk.id, q: 1 }] });
+        await posOk(A, 'certBd', { t: T1 }); const r = await posOk(A, 'move', { t: T1, to: T2 }); try { must(r.r?.released, 'released ' + JSON.stringify(r.r)); const b = (await posOk(A, 'state')).tables.find(x => x.t === T2); must(!b.cert && !b.bonus, 'сертифікат лишився на об\'єднаному'); } finally { await pos(A, 'delete', { t: T2, reason: 'QA' }); } });
+      await step('видалення закритого чека повертає суму сертифіката', async () => { const T = await free(), ph = '067' + String(Date.now()).slice(-7); await posOk(A, 'order', { t: T, items: [{ id: hk.id, q: 1 }] });
+        await posOk(A, 'certBd', { t: T, phone: ph }); const cl = await posOk(A, 'close', { t: T, pay: 'cash', print: false }); must((await certLeft(ph)) === 0, 'після закриття не 0');
+        const day = (await posOk(A, 'closed', {})).list.filter(x => x.t === T && x.cert && !x.rm).sort((a, b) => (b.ts || 0) - (a.ts || 0))[0]; must(day, 'чек не знайдено'); await posOk(A, 'closedDel', { ref: day.id });
+        const left = await certLeft(ph); must(left > 0, 'сертифікат не повернувся: ' + left); });
+    } }
+
   sect('💡 Побажання розробнику');
   let iid = '';
   await step('waiter: ideaAdd', async () => { const r = await posOk(W, 'ideaAdd', { text: 'QA побажання ' + RUN }); iid = r.x.id; must(iid, 'id'); });

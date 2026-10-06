@@ -3,7 +3,7 @@
 import { getMenu, saveMenu, menuLock } from './menu.js';
 import { tn } from './tn.js';
 import { ALS, cur } from './venue.js';
-import { cliClose, goKitchen, goButtons, goGone } from './delivery.js';
+import { cliClose, cliTouch, goKitchen, goButtons, goGone } from './delivery.js';
 import { reviewQueue } from './site.js';
 import { promoFill, promoClose } from './promo.js';
 import { courNotify } from './courier.js';
@@ -249,11 +249,12 @@ async function _closeTable(env, t, who, pay = 'cash', print = true) {
   const dishes = []; for (const o of bill.log || []) for (const l of o.lines) { const x = l.match(LINE); if (x) dishes.push([x[2], +x[1], +x[3]]); }
   const waiter = bill.waiter || who || ''; // чайові — офіціанту стола (хто першим вибив/прийняв), а не тому, хто закрив
   const tipSplit = tip ? await splitTip(env, waiter, bill.tip || 0, bill.ktip || 0) : null;
+  const cbGot = bill.cli ? ((await cliClose(env, bill.cli, sum - tip, (bill.bonus || 0) - (bill.cert?.sum || 0), bill.go?.name, bill.promo?.cash).catch(() => null))?.lastAdd || 0) : 0; // 🎁 бонуси гостя — до запису чека (cb/used — для відкату)
   await Promise.all([
     kq,
     (async () => { if (tipSplit) for (const [n, v] of Object.entries(tipSplit)) await addTipBal(env, n, v); })(), // один ключ — по черзі
-    (async () => { if (bill.cli) { await cliClose(env, bill.cli, sum - tip, (bill.bonus || 0) - (bill.cert?.sum || 0), bill.go?.name, bill.promo?.cash).catch(() => {}); await promoClose(env, bill, sum - tip).catch(() => {}); await reviewQueue(env, bill.cli, sum).catch(() => {}); } })(),
-    logClosed(env, { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), t, sum, cash, card, ...(bill.go ? { go: bill.go.kind, ...(bill.go.cour ? { cour: bill.go.cour } : {}), ...(bill.go.fee ? { fee: bill.go.fee } : {}), gt: { at: bill.go.at, acc: bill.go.accAt, take: bill.go.takeAt, road: bill.go.roadAt, done: Date.now(), when: bill.go.when || '', prob: bill.go.prob?.k || '' } } : {}), ...(bill.bonus ? { bonus: bill.bonus } : {}), ...(bill.cert ? { cert: bill.cert } : {}), ...(bill.cli ? { cli: bill.cli } : {}), ...(bill.promo?.sum ? { promo: bill.promo.lines.filter(l => l.amt).map(({ k, n, amt }) => ({ k, n, amt })), promoSum: bill.promo.sum } : {}), at: hhmm(), by: who || '', w: waiter, orders: bill.orders || 0, dishes, ...(tip ? { tip, tipSplit, ...(bill.ktip ? { ktip: bill.ktip } : {}) } : {}), ...(bill.voids?.length ? { voids: bill.voids } : {}), ...(bill.promo?.sum && !disc ? { gross: bill.total } : {}), ...(disc ? { gross: bill.total, disc: bill.disc, discSum: disc } : {}) }),
+    (async () => { if (bill.cli) { await promoClose(env, bill, sum - tip).catch(() => {}); await reviewQueue(env, bill.cli, sum).catch(() => {}); } })(),
+    logClosed(env, { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), t, sum, cash, card, ...(bill.cli ? { used: Math.max(0, (bill.bonus || 0) - (bill.cert?.sum || 0)), cb: cbGot } : {}), ...(bill.go ? { go: bill.go.kind, ...(bill.go.cour ? { cour: bill.go.cour } : {}), ...(bill.go.fee ? { fee: bill.go.fee } : {}), gt: { at: bill.go.at, acc: bill.go.accAt, take: bill.go.takeAt, road: bill.go.roadAt, done: Date.now(), when: bill.go.when || '', prob: bill.go.prob?.k || '' } } : {}), ...(bill.bonus ? { bonus: bill.bonus } : {}), ...(bill.cert ? { cert: bill.cert } : {}), ...(bill.cli ? { cli: bill.cli } : {}), ...(bill.promo?.sum ? { promo: bill.promo.lines.filter(l => l.amt).map(({ k, n, amt }) => ({ k, n, amt })), promoSum: bill.promo.sum } : {}), at: hhmm(), by: who || '', w: waiter, orders: bill.orders || 0, dishes, ...(tip ? { tip, tipSplit, ...(bill.ktip ? { ktip: bill.ktip } : {}) } : {}), ...(bill.voids?.length ? { voids: bill.voids } : {}), ...(bill.promo?.sum && !disc ? { gross: bill.total } : {}), ...(disc ? { gross: bill.total, disc: bill.disc, discSum: disc } : {}) }),
     logEvent(env, { k: 'close', t, by: who, sum, pay, print }),
   ]);
   return { t, sum, cash, card, disc, tip };
@@ -326,10 +327,16 @@ async function _payTips(env, name, who, src = 'cash') {
   return sum;
 }
 // перенос: стіл a → b. Якщо b зайнятий — об'єднання (рахунок a додається до b)
+// 🎁 бонуси й сертифікат на рахунку стають неправильними після об'єднання / розділення / прибирання страв — знімаємо (сертифікат повертає суму), офіціант застосує знову
+async function releaseBon(env, t, who) {
+  const x = await getBill(env, t); if (!x.bonus && !x.cert) return false;
+  if (x.cert) await (await import('./site.js')).certOff(env, t, who || '').catch(() => {});
+  const y = await getBill(env, t); if (y.bonus) { delete y.bonus; await putBill(env, t, y); } return true;
+}
 async function _moveTable(env, a, b, who) {
   a = +a; b = +b; if (!a || !b || a === b) return null;
+  const B = await getBill(env, b), released = B.total ? await releaseBon(env, a, who) : false;
   const A = await getBill(env, a); if (!A.total) return null;
-  const B = await getBill(env, b);
   let merged = false;
   if (B.total) {
     merged = true;
@@ -348,12 +355,13 @@ async function _moveTable(env, a, b, who) {
   await kqMut(env, l => { for (const e of l) if (!e.done && e.t === a) e.t = b; }); // кухня бачить новий номер стола
   // статуси замовлень гостей переходять на новий стіл
   await logEvent(env, { k: 'move', t: b, from: a, by: who, text: merged ? `стіл ${tn(a)} об'єднано зі столом ${tn(b)}` : `стіл ${tn(a)} → ${tn(b)}` });
-  return { merged };
+  return { merged, released };
 }
 
 // ✂️ розділити рахунок: обрані позиції (назва + кількість) переходять на стіл «to» (вільний — новий рахунок, зайнятий — додаються)
 async function _splitTable(env, t, items, to, who) {
   t = +t; to = +to; if (!t || !to || t === to) return null;
+  const released = await releaseBon(env, t, who);
   const A = await getBill(env, t); if (!A.total) return null;
   const moved = [];
   for (const { name, q: q0 } of (Array.isArray(items) ? items : []).slice(0, 80)) {
@@ -381,7 +389,7 @@ async function _splitTable(env, t, items, to, who) {
   if (!(A.total > 0)) { if (A.tip) B.tip = (B.tip || 0) + A.tip; if (A.ktip) B.ktip = (B.ktip || 0) + A.ktip; } // перенесли все — чайові теж
   await putBill(env, t, A); await putBill(env, to, B);
   await logEvent(env, { k: 'move', t: to, from: t, by: who, text: `✂️ стіл ${tn(t)} розділено → стіл ${tn(to)}: ${lines.join(', ')}` });
-  return { lines, sum, to, left: A.total };
+  return { lines, sum, to, left: A.total, released };
 }
 
 async function _deleteTable(env, t, who, reason = '') {
@@ -415,7 +423,13 @@ async function _delClosed(env, ref, day = dayKey()) {
     if (x.discSum) d.disc = Math.max(0, (d.disc || 0) - x.discSum); if (x.tip) d.tip = Math.max(0, (d.tip || 0) - x.tip); });
   if (x.dishes?.length) await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q: -q, sum: -sum })), day, { stock: false }); // страву віддали — продукти витрачені
   for (const [n, v] of Object.entries(tipSplitOf(x))) await addTipBal(env, n, -v);
+  await cliUndo(env, x, -1); // 🎁 бонуси, кешбек, сертифікат — назад
   return x;
+}
+// 🎁 закритий чек прибрано (−1) / повернуто (+1): баланс бонусів гостя, кешбек, візити й залишок сертифіката
+async function cliUndo(env, x, dir) {
+  if (x.cli && (x.cb != null || x.used != null)) await cliTouch(env, x.cli, c => { const paid = (x.sum || 0) - (x.tip || 0); if (dir < 0) { c.bal = Math.max(0, (c.bal || 0) - (x.cb || 0) + (x.used || 0)); c.n = Math.max(0, (c.n || 0) - 1); c.sum = Math.max(0, (c.sum || 0) - paid); } else { c.bal = Math.max(0, (c.bal || 0) - (x.used || 0) + (x.cb || 0)); c.n = (c.n || 0) + 1; c.sum = (c.sum || 0) + paid; } }).catch(() => {});
+  if (x.cert?.code) { const { getCert } = await import('./site.js'), k = 'cert:' + x.cert.code; await L(env, k, async () => { const c = await getCert(env, x.cert.code); if (!c) return; c.left = Math.max(0, Math.min(c.sum, c.left + dir * -1 * x.cert.sum)); await env.DB.put(k, JSON.stringify(c)); }).catch(() => {}); }
 }
 // ✏️ редагування закритого чека адміном: позиції, знижка, чайові, оплата, офіціант, стіл — day:/dish:/tipbal/склад коригуються різницею
 // p: { items?: [[назва, к-сть, сума]], disc?: %, tip?: грн, pay?: cash|card|mix, cash?: грн (для mix), w?: офіціант, t?: стіл }
@@ -478,6 +492,7 @@ async function _restoreClosed(env, ref, who, day = dayKey()) {
     if (x.discSum) d.disc = (d.disc || 0) + x.discSum; if (x.tip) d.tip = (d.tip || 0) + x.tip; });
   if (x.dishes?.length) await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q, sum })), day, { stock: false });
   for (const [n, v] of Object.entries(tipSplitOf(x))) await addTipBal(env, n, v);
+  await cliUndo(env, x, 1);
   await logEvent(env, { k: 'shift', by: who, text: `↩️ Рахунок стола ${tn(x.t)} (${x.sum} грн${day !== dayKey() ? ', ' + day : ''}) повернуто у виручку` });
   return x;
 }
@@ -991,6 +1006,7 @@ export async function rejectOrder(env, ...a) { // 🛵 доставка зник
 export async function addWaiterOrder(env, ...a) { return L(env, 'bills', () => _addWaiterOrder(env, ...a)); }
 export async function removeOne(env, ...a) {
   const b0 = +a[0] > 1000 ? await getBill(env, a[0]) : null, r = await L(env, 'bills', () => _removeOne(env, ...a));
+  if (r && !r.error) await L(env, 'bills', async () => { const b = await getBill(env, a[0]); if (b.total && (b.bonus || 0) > b.total - discAmt(b) - (b.promo?.sum || 0)) await releaseBon(env, a[0], a[2]); }).catch(() => {}); // бонусів більше, ніж до сплати — знімаємо
   if (b0?.go && r && !r.error) { const b1 = await getBill(env, a[0]); if (b1.total && billItems(b1).every(i => i.name.includes('Доставка'))) await L(env, 'bills', () => env.DB.delete('bill:' + a[0])); } // лишилась тільки доставка — чек зникає
   if (b0?.go && r && !r.error && !(await getBill(env, a[0])).total) { await courNotify(env, a[0], 'gone', '', b0).catch(() => {}); await goGone(env, b0).catch(() => {}); } // прибрали все — доставка скасована
   return r;
