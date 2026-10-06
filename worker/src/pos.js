@@ -7,7 +7,7 @@ import { siteApi } from './siteapi.js';
 import { loyApi, promoFillMany } from './promo.js';
 import { bookList } from './site.js';
 import { courDay, courBot, courLinkUrl, courAct, courCashGive, courWatch, getLinks, multiRoute, courRep } from './courier.js';
-import { queuePrint, printStatus } from './print.js';
+import { queuePrint, printStatus, printList, printClear } from './print.js';
 import { QR_PRINT, TEST_JOB } from './bot.js';
 import { storeStub } from './store.js';
 import { stockApi } from './stock.js';
@@ -134,6 +134,8 @@ export async function posApi(b, req, env) {
     // ---- стоп-лист і принтер (усім) ----
     case 'stop': { const it = await setHidden(env, String(b.id), !!b.hidden); if (it) await logEvent(env, { k: 'shift', by: who, text: `${b.hidden ? '⛔' : '✅'} ${it.name.uk} — ${b.hidden ? 'у стоп-листі' : 'знову в меню'}` }); if (it) await notify(env, `🖥 ${b.hidden ? '⛔' : '✅'} <b>${esc(it.name.uk)}</b> ${b.hidden ? 'у стоп-листі' : 'знову в меню'} — ${esc(who)}`); return ok(); }
     case 'printTest': await queuePrint(env, 'test', TEST_JOB()); return ok();
+    case 'printQ': return ok({ list: await printList(env) });
+    case 'printClear': { if (!admin) return needAdmin(); const r = await printClear(env, b.id ? String(b.id) : ''); if (r.n) await notify(env, `🖥 🗑 Черга друку: ${b.id ? 'видалено 1 завдання' : `очищено (${r.n})`} — ${esc(who)}`).catch(() => {}); return ok(r); }
     case 'printQr': await queuePrint(env, 'qr', QR_PRINT(+b.t || 0)); return ok();
 
     // ---- закриті ----

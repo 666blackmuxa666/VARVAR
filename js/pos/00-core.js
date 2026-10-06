@@ -444,6 +444,11 @@
       case 'stopOff': S.stopOff = !S.stopOff; renderMain(); break;
       case 'stopT': await act('stop', { id: el.dataset.id, hidden: el.dataset.h === '1' }); break;
       case 'pTest': act('printTest', {}, '🖨 Тест відправлено'); break;
+      case 'pQClear': if (await confirmBox('🗑 Очистити всю чергу друку?', 'Чеки й кухонні квитки, які ще не надрукувались, буде видалено — принтер їх не надрукує.')) { const r = await act('printClear', {}); if (r) { toast(`🗑 Видалено: ${r.n}`); loadState().catch(() => {}); } } break;
+      case 'pQList': { const r = await act('printQ', {}); if (!r) break; const K = { kitchen: '👨‍🍳', receipt: '🧾', test: '🧪', z: '📊', qr: '🔳' };
+        modal({ title: `🖨 Черга друку (${r.list.length})`, body: `<div class="muted set-note">Принтер друкує по черзі. Якщо щось застрягло або вже не потрібне — 🗑 (двічі).</div>${r.list.map(j => `<div class="kv" data-pq="${j.id}"><span style="min-width:0;overflow-wrap:anywhere">${K[j.kind] || '🖨'} ${esc(j.txt || j.kind)}<br><small class="muted">${j.at ? hhmm(j.at) : ''}</small></span><span class="kv-r"><button class="btn sm red" data-a="pQDel" data-id="${j.id}">🗑</button></span></div>`).join('') || '<div class="muted">Черга порожня</div>'}`, buttons: [{ label: 'Закрити', val: null }] }).then(() => loadState().catch(() => {})); break; }
+      case 'pQDel': { if (!el.dataset.sure) { el.dataset.sure = 1; el.textContent = '🗑 Точно?'; setTimeout(() => { if (el.isConnected) { delete el.dataset.sure; el.textContent = '🗑'; } }, 3000); break; }
+        if (await act('printClear', { id: el.dataset.id }, '🗑 Видалено')) el.closest('[data-pq]')?.remove(); break; }
       case 'pQr': { const n = await pickTable('QR меню', 'У кожного столу свій QR — замовлення одразу на цей стіл'); if (n) act('printQr', { t: n }, `🖨 QR столу ${tn(n)}`); break; }
       case 'float': { const v = await ask('Розмін на початок дня', 'Сума в касі, ₴', 'number'); if (v != null) { await act('float', { sum: +v.replace(',', '.') }, '🏦 Записано'); loadView(); } break; }
       case 'expense': {

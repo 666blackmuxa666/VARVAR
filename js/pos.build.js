@@ -699,7 +699,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     renderMain();
   });
   document.addEventListener("click", async (e) => {
-    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s;
+    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t;
     const el = e.target.closest("[data-a]");
     if (!el) return;
     const a = el.dataset.a, t = S.open;
@@ -1357,6 +1357,39 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       case "pTest":
         act("printTest", {}, "\u{1F5A8} \u0422\u0435\u0441\u0442 \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u043E");
         break;
+      case "pQClear":
+        if (await confirmBox("\u{1F5D1} \u041E\u0447\u0438\u0441\u0442\u0438\u0442\u0438 \u0432\u0441\u044E \u0447\u0435\u0440\u0433\u0443 \u0434\u0440\u0443\u043A\u0443?", "\u0427\u0435\u043A\u0438 \u0439 \u043A\u0443\u0445\u043E\u043D\u043D\u0456 \u043A\u0432\u0438\u0442\u043A\u0438, \u044F\u043A\u0456 \u0449\u0435 \u043D\u0435 \u043D\u0430\u0434\u0440\u0443\u043A\u0443\u0432\u0430\u043B\u0438\u0441\u044C, \u0431\u0443\u0434\u0435 \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E \u2014 \u043F\u0440\u0438\u043D\u0442\u0435\u0440 \u0457\u0445 \u043D\u0435 \u043D\u0430\u0434\u0440\u0443\u043A\u0443\u0454.")) {
+          const r = await act("printClear", {});
+          if (r) {
+            toast(`\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E: ${r.n}`);
+            loadState().catch(() => {
+            });
+          }
+        }
+        break;
+      case "pQList": {
+        const r = await act("printQ", {});
+        if (!r) break;
+        const K = { kitchen: "\u{1F468}\u200D\u{1F373}", receipt: "\u{1F9FE}", test: "\u{1F9EA}", z: "\u{1F4CA}", qr: "\u{1F533}" };
+        modal({ title: `\u{1F5A8} \u0427\u0435\u0440\u0433\u0430 \u0434\u0440\u0443\u043A\u0443 (${r.list.length})`, body: `<div class="muted set-note">\u041F\u0440\u0438\u043D\u0442\u0435\u0440 \u0434\u0440\u0443\u043A\u0443\u0454 \u043F\u043E \u0447\u0435\u0440\u0437\u0456. \u042F\u043A\u0449\u043E \u0449\u043E\u0441\u044C \u0437\u0430\u0441\u0442\u0440\u044F\u0433\u043B\u043E \u0430\u0431\u043E \u0432\u0436\u0435 \u043D\u0435 \u043F\u043E\u0442\u0440\u0456\u0431\u043D\u0435 \u2014 \u{1F5D1} (\u0434\u0432\u0456\u0447\u0456).</div>${r.list.map((j) => `<div class="kv" data-pq="${j.id}"><span style="min-width:0;overflow-wrap:anywhere">${K[j.kind] || "\u{1F5A8}"} ${esc(j.txt || j.kind)}<br><small class="muted">${j.at ? hhmm(j.at) : ""}</small></span><span class="kv-r"><button class="btn sm red" data-a="pQDel" data-id="${j.id}">\u{1F5D1}</button></span></div>`).join("") || '<div class="muted">\u0427\u0435\u0440\u0433\u0430 \u043F\u043E\u0440\u043E\u0436\u043D\u044F</div>'}`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] }).then(() => loadState().catch(() => {
+        }));
+        break;
+      }
+      case "pQDel": {
+        if (!el.dataset.sure) {
+          el.dataset.sure = 1;
+          el.textContent = "\u{1F5D1} \u0422\u043E\u0447\u043D\u043E?";
+          setTimeout(() => {
+            if (el.isConnected) {
+              delete el.dataset.sure;
+              el.textContent = "\u{1F5D1}";
+            }
+          }, 3e3);
+          break;
+        }
+        if (await act("printClear", { id: el.dataset.id }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) (_o = el.closest("[data-pq]")) == null ? void 0 : _o.remove();
+        break;
+      }
       case "pQr": {
         const n = await pickTable("QR \u043C\u0435\u043D\u044E", "\u0423 \u043A\u043E\u0436\u043D\u043E\u0433\u043E \u0441\u0442\u043E\u043B\u0443 \u0441\u0432\u0456\u0439 QR \u2014 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043E\u0434\u0440\u0430\u0437\u0443 \u043D\u0430 \u0446\u0435\u0439 \u0441\u0442\u0456\u043B");
         if (n) act("printQr", { t: n }, `\u{1F5A8} QR \u0441\u0442\u043E\u043B\u0443 ${tn(n)}`);
@@ -1431,7 +1464,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         break;
       }
       case "cfgTgl": {
-        const k = el.dataset.k, cur = (_s = (_r = (_p = (_o = S.data.staff) == null ? void 0 : _o.cfg) == null ? void 0 : _p[k]) != null ? _r : (_q = S.cfg) == null ? void 0 : _q[k]) != null ? _s : +(el.dataset.def || 0);
+        const k = el.dataset.k, cur = (_t = (_s = (_q = (_p = S.data.staff) == null ? void 0 : _p.cfg) == null ? void 0 : _q[k]) != null ? _s : (_r = S.cfg) == null ? void 0 : _r[k]) != null ? _t : +(el.dataset.def || 0);
         if (await act("cfgSet", { k, v: cur ? 0 : 1 }, "\u2699\uFE0F \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
           loadView();
           loadState().catch(() => {
@@ -3277,7 +3310,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     var _a2;
     const p = S.printer || {}, ok = p.seen && Date.now() - p.seen < 6e4;
     return `<div class="cards"><div class="card"><div class="big">${ok ? "\u2705 \u043D\u0430 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : p.seen ? "\u274C \u043D\u0435\u043C\u0430\u0454 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : "\u274C \u043F\u0440\u043E\u0433\u0440\u0430\u043C\u0430 \u0434\u0440\u0443\u043A\u0443 \u043D\u0435 \u0437\u0430\u043F\u0443\u0449\u0435\u043D\u0430"}</div>
-      <div class="muted">${p.seen ? "\u041E\u0441\u0442\u0430\u043D\u043D\u0456\u0439 \u0437\u0432\u02BC\u044F\u0437\u043E\u043A: " + hhmm(p.seen) : ""} \xB7 \u0443 \u0447\u0435\u0440\u0437\u0456: ${(_a2 = p.q) != null ? _a2 : 0}</div></div>
+      <div class="muted">${p.seen ? "\u041E\u0441\u0442\u0430\u043D\u043D\u0456\u0439 \u0437\u0432\u02BC\u044F\u0437\u043E\u043A: " + hhmm(p.seen) : ""} \xB7 \u0443 \u0447\u0435\u0440\u0437\u0456: ${(_a2 = p.q) != null ? _a2 : 0}</div>${p.q && isAdmin() ? '<div class="btnrow" style="margin-top:10px"><button class="btn sm" data-a="pQList">\u{1F4CB} \u0429\u043E \u0432 \u0447\u0435\u0440\u0437\u0456</button><button class="btn sm red" data-a="pQClear">\u{1F5D1} \u041E\u0447\u0438\u0441\u0442\u0438\u0442\u0438 \u0447\u0435\u0440\u0433\u0443</button></div>' : ""}</div>
       <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">\u{1F5A8} \u0422\u0435\u0441\u0442\u043E\u0432\u0438\u0439 \u0434\u0440\u0443\u043A</button><button class="btn" data-a="pQr">\u{1F533} QR \u043C\u0435\u043D\u044E \u0434\u043B\u044F \u0441\u0442\u043E\u043B\u0443</button></div></div>`;
   }
   function menuHTML() {

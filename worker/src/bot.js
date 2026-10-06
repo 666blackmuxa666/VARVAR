@@ -8,7 +8,7 @@ import { bookList, bookSet, bookGet, bookManual, bookEditFields, bkLabel, bkButt
 import { goSet, goStLabel, goButtons, goList, goText, setGoCfg, goFromPos, goAttach, goEdit, normPhone, fmtPhone } from './delivery.js';
 import { parseWaiterOrder, draftText } from './waiter.js';
 import { tablePick, catsView, obCallback, getOb, putOb } from './orderui.js';
-import { queuePrint, printStatus } from './print.js';
+import { queuePrint, printStatus, printClear } from './print.js';
 import { loyBotText, loyBotCb, promoFill, promoFillMany } from './promo.js';
 import { payroll, payText, payOp, attConfirm, swapStep, shiftIn, shiftOut, getAtt } from './pay.js';
 import { calcView, stockCmd, invPhoto, stockCallback, stockCallbackW, stockCallbackX, stockState } from './stockbot.js';
@@ -543,7 +543,7 @@ export async function handleUpdate(u, env) {
   if (low === 'принтер' || low === '/printer') {
     const { seen, q } = await printStatus(env);
     const ok = Date.now() - seen < 60e3;
-    return send({ text: `🖨 <b>Принтер</b>: ${ok ? '✅ на звʼязку' : seen ? `❌ немає звʼязку з ${hhmm(seen)}` : '❌ програма друку ще не запускалась'}\nУ черзі: ${q}`, markup: { inline_keyboard: [[{ text: '🖨 Тестовий друк', callback_data: 'ptest' }, { text: '🔳 QR меню', callback_data: 'pqr' }]] } });
+    return send({ text: `🖨 <b>Принтер</b>: ${ok ? '✅ на звʼязку' : seen ? `❌ немає звʼязку з ${hhmm(seen)}` : '❌ програма друку ще не запускалась'}\nУ черзі: ${q}`, markup: { inline_keyboard: [[{ text: '🖨 Тестовий друк', callback_data: 'ptest' }, { text: '🔳 QR меню', callback_data: 'pqr' }], ...(q && admin ? [[{ text: `🗑 Очистити чергу (${q})`, callback_data: 'pclr' }]] : [])] } });
   }
   if (text === W.kitchen || low === '/kitchen') return send(await kitchenView(env));
   if (text === W.book || low === '/book' || low === 'броні') return booksSend(env, send);
@@ -681,6 +681,7 @@ async function handleCallback(q, env) {
     if (!GO_F[oid]) return answer('');
     await env.DB.put('st:' + uid, `goe:${arg}:${oid}`, { expirationTtl: 600 }); await send({ text: `${GO_F[oid]}: ${GO_ASK[oid]}` }); return answer('');
   }
+  if (act === 'pclr') { if (!admin) return answer('🔐 Лише для адміністратора'); const r = await printClear(env, ''); await notify(env, `🗑 Черга друку очищена (${r.n}) — ${esc(who)}`).catch(() => {}); await edit(`🖨 Черга друку очищена: видалено ${r.n}`); return answer('🗑 Очищено'); }
   if (act === 'gic') { await (await import('./guestbot.js')).inboxClose(env, arg, who); await edit(esc(q.message.text || '') + '\n\n✔️ Закрито — ' + esc(who)); return answer('✔️'); }
   if (act === 'idx' || act === 'idd') { const I = await import('./ideas.js'), me = await meStaff(env, uid); if (!me) return answer('🔐 Увійдіть PIN');
     const r = act === 'idx' ? await I.ideaDel(env, arg, me.name, admin) : await I.ideaDone(env, arg, admin); if (r.error) return answer(r.error);

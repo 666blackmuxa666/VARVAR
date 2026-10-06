@@ -311,6 +311,11 @@ async function loyTests(A, W, dish) {
     finally { await pos(A, 'delete', { t: T, reason: 'QA' }); }
   });
 
+  sect('🖨 Черга друку: список і очищення');
+  await step('printQ / printClear', async () => { await posOk(A, 'printTest'); await posOk(A, 'printTest'); const l = (await posOk(A, 'printQ')).list; must(l.length >= 2, 'черга ' + l.length);
+    must((await pos(W, 'printClear', {})).status === 403, 'офіціант очистив'); const one = await posOk(A, 'printClear', { id: l[0].id }); must(one.n === 1, 'одне');
+    await posOk(A, 'printClear', {}); must((await posOk(A, 'printQ')).list.length === 0, 'не порожня'); });
+
   sect('💡 Побажання розробнику');
   let iid = '';
   await step('waiter: ideaAdd', async () => { const r = await posOk(W, 'ideaAdd', { text: 'QA побажання ' + RUN }); iid = r.x.id; must(iid, 'id'); });

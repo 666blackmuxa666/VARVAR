@@ -14,6 +14,9 @@ export async function queuePrint(env, kind, lines) {
   return id;
 }
 export const printStatus = async env => (await qcall(env, '/status')).json();
+// 🗑 черга: список завдань (для каси) і очищення — уся або одне (id)
+export const printList = async env => (await qcall(env, '/list')).json();
+export const printClear = async (env, id) => (await qcall(env, '/clear', { id: id || '' })).json();
 
 export class PrintQ {
   constructor(state) { this.st = state.storage; this.wait = []; }
@@ -23,6 +26,8 @@ export class PrintQ {
     const u = new URL(req.url);
     if (u.pathname === '/push') { const j = await req.json(); await this.st.put('j:' + j.id, j); this.wake(); return new Response('ok'); }
     if (u.pathname === '/status') return Response.json({ seen: (await this.st.get('seen')) || 0, q: (await this.st.list({ prefix: 'j:' })).size });
+    if (u.pathname === '/list') { const l = [...(await this.st.list({ prefix: 'j:', limit: 100 })).values()]; return Response.json(l.map(j => ({ id: j.id, kind: j.kind, at: +String(j.id).split('-')[0] || 0, txt: (j.lines || []).filter(x => ['big', 'b', 'c', 'l'].includes(x[0]) && x[1]).slice(0, 2).map(x => x[1]).join(' · ').slice(0, 80) }))); }
+    if (u.pathname === '/clear') { const { id } = await req.json(); const keys = id ? (/^[\w-]+$/.test(id) ? ['j:' + id] : []) : [...(await this.st.list({ prefix: 'j:' })).keys()]; if (keys.length) await this.st.delete(keys); return Response.json({ n: keys.length }); }
     if (u.pathname === '/ack') { const { ids } = await req.json(); await this.st.delete(ids.filter(id => /^[\w-]+$/.test(id)).map(id => 'j:' + id)); return new Response('ok'); }
     if (u.pathname === '/pull') {
       await this.st.put('seen', Date.now());
