@@ -1,9 +1,13 @@
-  const API = new URLSearchParams(location.search).get('api') || (/workers\.dev$/.test(location.hostname) ? location.origin : 'https://varvar-menu.varvar.workers.dev');
+  // 🏪 заклад: ?v=<заклад> (з кабінету власника) запам'ятовується на цьому пристрої; без нього — VARVAR
+  const VENUE = (() => { const q = new URLSearchParams(location.search).get('v'); try { if (q != null) { if (/^[a-z0-9][a-z0-9-]{1,30}$/.test(q) && q !== 'varvar') localStorage.setItem('pos_venue', q); else localStorage.removeItem('pos_venue'); } return localStorage.getItem('pos_venue') || ''; } catch { return /^[a-z0-9][a-z0-9-]{1,30}$/.test(q || '') && q !== 'varvar' ? q : ''; } })();
+  const API = (new URLSearchParams(location.search).get('api') || (/workers\.dev$/.test(location.hostname) ? location.origin : 'https://varvar-menu.varvar.workers.dev')) + (VENUE ? '/v/' + VENUE : '');
   const $ = s => document.querySelector(s);
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const tn = t => +t > 2000 ? 'С‑' + (t - 2000) : +t > 1000 ? 'Д‑' + (t - 1000) : t; // 🛵 віртуальні столи доставки / самовивозу
   const money = n => `${Math.round(n || 0).toLocaleString('uk-UA')} ₴`;
-  const store = { get(k, d) { try { const v = localStorage.getItem('pos_' + k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem('pos_' + k, JSON.stringify(v)); } catch {} } };
+  const store = { get(k, d) { try { const v = localStorage.getItem('pos_' + (VENUE ? VENUE + '_' : '') + k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem('pos_' + (VENUE ? VENUE + '_' : '') + k, JSON.stringify(v)); } catch {} } };
+  // 👑 вхід з кабінету власника: #tok=…&me=… (у якорі — не йде на сервер і в історію)
+  { const h = new URLSearchParams(location.hash.slice(1)); if (/^[a-f0-9]{32}$/.test(h.get('tok') || '')) { try { store.set('token', h.get('tok')); store.set('me', JSON.parse(h.get('me') || 'null')); } catch {} history.replaceState(null, '', location.pathname + location.search); } }
   const hhmm = t => new Date(t).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
 
   const S = {

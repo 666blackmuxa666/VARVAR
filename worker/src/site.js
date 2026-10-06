@@ -3,6 +3,7 @@
 import { getMenu, priceMap } from './menu.js';
 import { tg, esc, hhmm, dayKey, L, logEvent, editEv, notify, addWaiterOrder, getBill, putBill, money, TZ, addMove } from './ops.js';
 import { normPhone, fmtPhone, getCli, cliTouch } from './delivery.js';
+import { siteLink, venueId, MAIN } from './venue.js';
 
 // бот для гостей (окремий від бота персоналу): вхід у кабінет, нагадування, відгуки
 const gtg = (env, m, b) => tg({ ...env, BOT_TOKEN: env.GUEST_BOT_TOKEN || env.BOT_TOKEN }, m, b);
@@ -192,7 +193,7 @@ export async function certPay(env, code, how, who) {
   if (!c) return null;
   if (c.st === 'ok') await addMove(env, { type: how === 'card' ? 'kin' : 'in', sum: c.sum, note: `🎁 Сертифікат ${code} (${c.from})`, by: who }).catch(() => {}); // гроші за сертифікат — у касу / на картку
   await editEv(env, l => { for (const e of l) if (e.code === code) { e.s = c.st === 'ok' ? 'acc' : 'rej'; e.accBy = who; } }).catch(() => {});
-  if (c.st === 'ok') await guestMsg(env, c.phone, `🎁 Сертифікат ${money(c.sum)} активовано!\nКод: <b>${code}</b>\nСторінка для подарунку: ${SITE()}about.html#cert=${code}`);
+  if (c.st === 'ok') await guestMsg(env, c.phone, `🎁 Сертифікат ${money(c.sum)} активовано!\nКод: <b>${code}</b>\nСторінка для подарунку: ${siteLink('about.html#cert=' + code)}`);
   return c;
 }
 // списати сертифікат у рахунок стола (як бонус)
@@ -212,7 +213,7 @@ export async function certUse(env, t, code, who) {
 }
 // 🎂 подарунковий сертифікат на ДН (бот гостей): позиція з меню, діє N днів, оплачено «подарунок»
 export async function certGift(env, { phone, name, gift, items, sum, days, here }) {
-  const code = certCode(), c = { ...(here ? { here: 1 } : {}), code, sum, left: sum, from: 'Varvar 🎂', to: name || '', phone, note: '', st: 'ok', paid: 'gift', gift, items, at: Date.now(), exp: Date.now() + days * 864e5, uses: [] };
+  const code = certCode(), c = { ...(here ? { here: 1 } : {}), code, sum, left: sum, from: (await getSite(env)).name + ' 🎂', to: name || '', phone, note: '', st: 'ok', paid: 'gift', gift, items, at: Date.now(), exp: Date.now() + days * 864e5, uses: [] };
   await env.DB.put('cert:' + code, JSON.stringify(c));
   await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; l.push(code); await env.DB.put('certs', JSON.stringify(l.slice(-500))); });
   return c;
@@ -238,7 +239,6 @@ export async function certDel(env, code) {
   return true;
 }
 export async function certList(env) { const l = (await env.DB.get('certs', 'json')) || []; return (await env.DB.getMany(l.slice(-60).map(c => 'cert:' + c), 'json')).filter(Boolean).reverse(); }
-const SITE = () => 'https://666blackmuxa666.github.io/VARVAR/';
 export const certPublic = async (env, code) => { const c = await getCert(env, code); return c && c.st === 'ok' ? { code: c.code, sum: c.sum, left: c.left, from: c.from, to: c.to } : null; };
 
 // ---------- 👤 кабінет гостя: вхід через Telegram (номер підтверджує сам Telegram — без SMS) ----------
@@ -274,7 +274,7 @@ export async function guestBot(m, env) {
   if (lg) {
     if (!(await env.DB.get('gl:' + lg[1]))) { await gtg(env, 'sendMessage', { chat_id: chat, text: '⌛ Посилання застаріло — натисніть «Увійти» на сайті ще раз.' }); return true; }
     await env.DB.put('glu:' + uid, lg[1], { expirationTtl: 900 });
-    await gtg(env, 'sendMessage', { chat_id: chat, text: '👋 Щоб увійти в кабінет гостя Varvar, поділіться своїм номером (кнопка нижче). Так ми бачимо ваші бонуси, броні й замовлення.', reply_markup: { keyboard: [[{ text: '📱 Поділитися номером', request_contact: true }]], resize_keyboard: true, one_time_keyboard: true } });
+    await gtg(env, 'sendMessage', { chat_id: chat, text: `👋 Щоб увійти в кабінет гостя ${(await getSite(env)).name}, поділіться своїм номером (кнопка нижче). Так ми бачимо ваші бонуси, броні й замовлення.`, reply_markup: { keyboard: [[{ text: '📱 Поділитися номером', request_contact: true }]], resize_keyboard: true, one_time_keyboard: true } });
     return true;
   }
   if (m.contact) {
@@ -284,7 +284,7 @@ export async function guestBot(m, env) {
     const gbm = await import('./guestbot.js'); await gbm.linkChat(env, chat, ph);
     const n = await env.DB.get('glu:' + uid);
     if (n && await env.DB.get('gl:' + n)) { const tok = [...crypto.getRandomValues(new Uint8Array(16))].map(x => x.toString(16).padStart(2, '0')).join(''); await env.DB.put('gs:' + tok, ph, { expirationTtl: 30 * 86400 }); await env.DB.put('gl:' + n, JSON.stringify({ token: tok }), { expirationTtl: 300 }); }
-    await gbm.showMenu(env, chat, `✅ Готово! Номер ${fmtPhone(ph)} підключено.${!was ? `\n🎁 Ви в програмі лояльності Varvar: бонуси з кожного замовлення, знижки постійним гостям, а на день народження — 🎁 кальян у подарунок (вкажіть дату: «🎂 День народження»).${cc.n ? ` Уже враховано візитів: ${cc.n}.` : ''}${cc.bal ? ` На рахунку ${cc.bal} бонусів.` : ''}` : ''}${n ? '\nПоверніться на сайт — кабінет відкриється сам.' : ''}\nТут — ваші бонуси, замовлення, броні й сертифікати 👇`);
+    await gbm.showMenu(env, chat, `✅ Готово! Номер ${fmtPhone(ph)} підключено.${!was ? `\n🎁 Ви в програмі лояльності ${(await getSite(env)).name}: бонуси з кожного замовлення, знижки постійним гостям, а на день народження — 🎁 кальян у подарунок (вкажіть дату: «🎂 День народження»).${cc.n ? ` Уже враховано візитів: ${cc.n}.` : ''}${cc.bal ? ` На рахунку ${cc.bal} бонусів.` : ''}` : ''}${n ? '\nПоверніться на сайт — кабінет відкриється сам.' : ''}\nТут — ваші бонуси, замовлення, броні й сертифікати 👇`);
     return true;
   }
   return false;
@@ -300,12 +300,12 @@ export async function cron(env) {
   await (await import('./guestbot.js')).gbDaily(env).catch(e => console.log('gbDaily', e.message)); // 🎂 ДН + 👋 «сплячі»
   // відгуки
   const due = await L(env, 'revq', async () => { const q = (await env.DB.get('revq', 'json')) || [], d = q.filter(x => x.at <= now); if (d.length) await env.DB.put('revq', JSON.stringify(q.filter(x => x.at > now))); return d; });
-  for (const r of due) { await guestMsg(env, r.ph, '🙏 Дякуємо, що завітали у Varvar! Як вам усе сподобалось?', { inline_keyboard: [[1, 2, 3, 4, 5].map(n => ({ text: '⭐'.repeat(n === 5 ? 1 : 0) + n, callback_data: `rv:${r.id}:${n}` }))] }); await env.DB.put('rvph:' + r.id, r.ph, { expirationTtl: 7 * 86400 }); out.push('rv'); }
+  for (const r of due) { await guestMsg(env, r.ph, `🙏 Дякуємо, що завітали у ${(await getSite(env)).name}! Як вам усе сподобалось?`, { inline_keyboard: [[1, 2, 3, 4, 5].map(n => ({ text: '⭐'.repeat(n === 5 ? 1 : 0) + n, callback_data: `rv:${r.id}:${n}` }))] }); await env.DB.put('rvph:' + r.id, r.ph, { expirationTtl: 7 * 86400 }); out.push('rv'); }
   // нагадування про броні
   for (const b of await bookList(env)) {
     if (b.st !== 'ok') continue; const at = Date.parse(`${b.date}T${b.time}:00+03:00`) - (isDST(b.date) ? 0 : 3600e3), left = at - now; // Київ: +03 влітку, +02 взимку
     if (left <= 3600e3 && left > -600e3 && !b.remA) { await notify(env, `⏰ За годину бронь: <b>${b.time}</b> · ${b.people} гост. · ${esc(b.name)} ${fmtPhone(b.phone)}${b.t ? ` · стіл ${b.t}` : ''}${b.pre?.length ? '\n🍽 є передзамовлення' : ''}`, { inline_keyboard: bkButtons(b) }); await bkEdit(env, b.id, y => { y.remA = 1; }); out.push('remA'); }
-    if (left <= 2 * 3600e3 && left > 3600e3 && !b.remG) { await guestMsg(env, b.phone, `⏰ Нагадуємо: сьогодні о <b>${b.time}</b> чекаємо вас у Varvar (${b.people} гост.).`, { inline_keyboard: [[{ text: '✅ Будемо', callback_data: `bkg:${b.id}:yes` }, { text: '❌ Скасувати', callback_data: `bkg:${b.id}:no` }]] }); await bkEdit(env, b.id, y => { y.remG = 1; }); out.push('remG'); }
+    if (left <= 2 * 3600e3 && left > 3600e3 && !b.remG) { await guestMsg(env, b.phone, `⏰ Нагадуємо: сьогодні о <b>${b.time}</b> чекаємо вас у ${(await getSite(env)).name} (${b.people} гост.).`, { inline_keyboard: [[{ text: '✅ Будемо', callback_data: `bkg:${b.id}:yes` }, { text: '❌ Скасувати', callback_data: `bkg:${b.id}:no` }]] }); await bkEdit(env, b.id, y => { y.remG = 1; }); out.push('remG'); }
   }
   return out;
 }

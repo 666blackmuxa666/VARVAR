@@ -305,7 +305,7 @@ async function loyTests(A, W, dish) {
     const hk = cat.items.filter(i => typeof i.price === 'number' && !/з собою/i.test(i.name.uk)).sort((a, b) => b.price - a.price)[0];
     const st = await posOk(A, 'state'), busy = new Set(st.tables.map(x => x.t)); let T = 0; for (let t = st.n; t >= 1; t--) if (!busy.has(t)) { T = t; break; }
     await posOk(A, 'order', { t: T, items: [{ id: hk.id, q: 1 }] });
-    const ph = '06799' + String(RUN).replace(/\D/g, '').padEnd(5, '1').slice(0, 5);
+    const ph = '067' + String(Date.now()).slice(-7);
     try { const r = await posOk(A, 'certBd', { t: T, phone: ph, name: 'QA' }); must(r.use === hk.price, `знято ${r.use}, а кальян ${hk.price}`);
       const again = await pos(A, 'certBd', { t: T, phone: ph }); must(again.status === 400, 'вдруге дозволило'); await posOk(A, 'certOff', { t: T }); const b0 = (await posOk(A, 'state')).tables.find(x => x.t === T); must(!b0.cert && !b0.bonus, 'сертифікат лишився в рахунку'); const re = await posOk(A, 'certBd', { t: T, phone: ph }); must(re.use === hk.price, 'після «прибрати» не можна вибити знову'); return `${hk.name.uk} −${r.use}`; }
     finally { await pos(A, 'delete', { t: T, reason: 'QA' }); }
@@ -315,6 +315,44 @@ async function loyTests(A, W, dish) {
   await step('printQ / printClear', async () => { await posOk(A, 'printTest'); await posOk(A, 'printTest'); const l = (await posOk(A, 'printQ')).list; must(l.length >= 2, 'черга ' + l.length);
     must((await pos(W, 'printClear', {})).status === 403, 'офіціант очистив'); const one = await posOk(A, 'printClear', { id: l[0].id }); must(one.n === 1, 'одне');
     await posOk(A, 'printClear', {}); must((await posOk(A, 'printQ')).list.length === 0, 'не порожня'); });
+
+  sect('🏪 Мультизаклад: HUB, кабінет власника, ізоляція закладів');
+  const own = b => http('/api/owner', b.op ? b : b), ownT = async (tok, op, b = {}) => { const r = await fetch(API + '/api/owner', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + tok }, body: JSON.stringify({ op, ...b }) }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+  const PE = 'qa-platform@test.local', PP = 'qa-platform-pass-1', VID = ('qa-' + RUN).toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30), OE = `qa-own-${VID}@test.local`;
+  let PT = '', VA = '', codes = null, OT = '';
+  await step('HUB: вхід платформи (або перший запуск із сесії адміна VARVAR)', async () => {
+    const b = await own({ op: 'canBoot' }); if (b.j.boot) { const r = await own({ op: 'bootstrap', pos: A, email: PE, pass: PP, name: 'QA платформа' }); must(r.j.token, JSON.stringify(r.j)); PT = r.j.token; return 'створено'; }
+    const r = await own({ op: 'login', email: PE, pass: PP }); must(r.j.token, JSON.stringify(r.j)); PT = r.j.token; });
+  await step('bootstrap вдруге / без сесії каси → відмова', async () => { const r = await own({ op: 'bootstrap', pos: '0'.repeat(32), email: 'x@y.zz', pass: '12345678' }); must(r.status >= 400, String(r.status)); });
+  await step('невірний пароль → 401', async () => { const r = await own({ op: 'login', email: PE, pass: 'wrong-pass' }); must(r.status === 401, String(r.status)); });
+  await step('платформа: власник + заклад (випадкові коди, не 1119)', async () => {
+    must((await ownT(PT, 'acctNew', { email: OE, pass: 'owner-pass-123', name: 'QA власник' })).j.ok, 'acctNew');
+    const r = await ownT(PT, 'venueNew', { id: VID, name: 'QA Кав\'ярня', owner: OE }); must(r.j.ok, JSON.stringify(r.j)); codes = r.j.codes; must(codes.admin && codes.admin !== '1119', 'код адміна ' + codes.admin); return VID; });
+  const vpos = (tok, op, b = {}) => http(`/v/${VID}/api/pos`, { op, ...b }, tok);
+  await step('заклад: реєстрація адміна його кодом; 1119 там не діє', async () => {
+    must((await vpos(null, 'login', { pin: '1119' })).status === 401, '1119 спрацював');
+    for (let i = 0; i < 5 && !VA; i++) { const r = await vpos(null, 'register', { code: codes.admin, name: 'QA адмін закладу', pin: String(2000 + Math.floor(Math.random() * 7000)) }); VA = r.j.token || ''; }
+    must(VA, 'не зареєструвався'); });
+  await step('ізоляція: токени не переходять між закладами', async () => { must((await vpos(A, 'state')).status === 401, 'токен VARVAR працює в закладі'); must((await pos(VA, 'state')).status === 401, 'токен закладу працює у VARVAR'); });
+  await step('новий заклад: порожнє меню й своя назва (не VARVAR)', async () => {
+    const m = await http(`/v/${VID}/api/menu`); must(!m.j.categories.some(c => !c.tech && c.items.length), 'є меню VARVAR'); const s = await http(`/v/${VID}/api/site`); must(s.j.name === 'QA Кав\'ярня', 'назва ' + s.j.name); });
+  await step('ізоляція: стіл у закладі не видно у VARVAR', async () => {
+    const before = (await posOk(A, 'state')).tables.map(x => x.t + ':' + x.total).sort().join();
+    const m = await http(`/v/${VID}/api/menu`), it = m.j.categories.flatMap(c => c.items).find(i => typeof i.price === 'number' && i.price > 0) || m.j.categories.flatMap(c => c.items)[0];
+    const st = await vpos(VA, 'state'); must(st.j.tables.length === 0, 'у новому закладі вже є столи');
+    const o = await vpos(VA, 'order', { t: 3, items: [{ id: it.id, q: 1, ...(typeof it.price !== 'number' ? { price: 100 } : {}) }] }); must(o.status === 200, 'order ' + JSON.stringify(o.j).slice(0, 150));
+    must((await vpos(VA, 'state')).j.tables.length === 1, 'стіл не з\'явився'); must((await posOk(A, 'state')).tables.map(x => x.t + ':' + x.total).sort().join() === before, 'VARVAR змінився');
+    await vpos(VA, 'delete', { t: 3, reason: 'QA' }); });
+  await step('невідомий заклад → 404', async () => { const r = await http('/v/nope-' + VID.slice(-5) + '/api/menu'); must(r.status === 404, String(r.status)); });
+  await step('кабінет власника: свої заклади, аналітика, вхід у касу', async () => {
+    const l = await own({ op: 'login', email: OE, pass: 'owner-pass-123' }); OT = l.j.token; must(OT, 'вхід');
+    const me = await ownT(OT, 'me'); must(me.j.venues.length === 1 && me.j.venues[0].id === VID, 'бачить чужі заклади: ' + me.j.venues.map(v => v.id));
+    const sm = await ownT(OT, 'sum', {}); must(sm.j.list?.[0]?.tot, 'sum ' + JSON.stringify(sm.j).slice(0, 150));
+    must((await ownT(OT, 'enter', { venue: 'varvar' })).status === 403, 'зайшов у чужий заклад');
+    const en = await ownT(OT, 'enter', { venue: VID }); must(en.j.token, 'enter'); must((await vpos(en.j.token, 'state')).status === 200, 'токен власника не працює');
+    must((await ownT(OT, 'accts')).status === 403, 'власник бачить консоль платформи'); });
+  await step('платформа бачить усі заклади', async () => { const me = await ownT(PT, 'me'); must(me.j.venues.some(v => v.id === 'varvar') && me.j.venues.some(v => v.id === VID), 'не всі'); });
+  await ownT(PT, 'venueSet', { id: VID, f: { status: 'off' } }).catch(() => {});
 
   sect('💡 Побажання розробнику');
   let iid = '';

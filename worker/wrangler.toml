@@ -1,6 +1,7 @@
 name = "varvar-menu"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_als"] # 🏪 контекст закладу в запиті (venue.js)
 
 [vars]
 ALLOWED_ORIGIN = "https://666blackmuxa666.github.io,http://localhost:8000"
@@ -30,6 +31,15 @@ class_name = "Store"
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["Store"]
+
+# 🌐 HUB платформи: акаунти власників, заклади, сесії кабінету
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "Hub"
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["Hub"]
 
 # ⏰ нагадування про броні й відгуки
 [triggers]

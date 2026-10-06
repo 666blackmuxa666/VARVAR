@@ -1,8 +1,8 @@
 (() => {
   const C = window.VARVAR, $ = s => document.querySelector(s);
   const store = {
-    get(k, d) { try { const v = localStorage.getItem('vv_' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
-    set(k, v) { try { localStorage.setItem('vv_' + k, JSON.stringify(v)); } catch {} },
+    get(k, d) { try { const v = localStorage.getItem((window.VARVAR.pre || 'vv_') + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem((window.VARVAR.pre || 'vv_') + k, JSON.stringify(v)); } catch {} },
   };
   const SESSION_MS = 8 * 3600e3;
   const nav = (navigator.language || 'en').slice(0, 2).toLowerCase();
@@ -331,7 +331,7 @@
   const GST = { new: ['⏳', 'goStNew'], acc: ['✅', 'goStAcc'], cook: ['🔥', 'goStCook'], ready: ['🍽', 'goStReady'], road: ['🛵', 'goStRoad'], done: ['🤝', 'goStDone'], rej: ['❌', 'goStRej'] };
   async function goInit() {
     $('#callBtn').hidden = true;
-    { const a = document.createElement('a'); a.href = 'about.html'; a.className = 'lang'; a.style.cssText = 'text-decoration:none;color:inherit;margin-left:auto;margin-right:8px'; a.textContent = '← VARVAR'; $('.top').insertBefore(a, $('#lang')); }
+    { const a = document.createElement('a'); a.href = window.VARVAR.link('about.html'); a.className = 'lang'; a.style.cssText = 'text-decoration:none;color:inherit;margin-left:auto;margin-right:8px'; a.textContent = '← VARVAR'; $('.top').insertBefore(a, $('#lang')); }
     try { goCfg = (await api('/api/goinfo')).data; } catch {}
     try { reco = (await api('/api/reco')).data || {}; } catch {}
     if (goCfg && !goCfg[gf.kind]) gf.kind = goCfg.del ? 'del' : 'pick';
@@ -418,7 +418,7 @@
     if ('goSend' in d) { goSend(); return true; }
     if ('goPre' in d) { (async () => { const items = cartEntries().map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; });
       const { status } = await api('/api/bookpre', { id: BOOK, phone: store.get('bkPhone', store.get('goPhone', '')), items }).catch(() => ({ status: 0 }));
-      if (status === 200) { cart = {}; save(); refreshButtons(); renderFab(); $('#msg').textContent = '✅ ' + t('goPreOk'); setTimeout(() => { location.href = 'about.html#book'; }, 1500); } else $('#msg').textContent = t('error'); })(); return true; }
+      if (status === 200) { cart = {}; save(); refreshButtons(); renderFab(); $('#msg').textContent = '✅ ' + t('goPreOk'); setTimeout(() => { location.href = window.VARVAR.link('about.html#book'); }, 1500); } else $('#msg').textContent = t('error'); })(); return true; }
     if (d.goSt) { goShow(d.goSt); return true; }
     if (el.id === 'orderStatus' && el.dataset.go) { goShow(el.dataset.go); return true; }
     if (d.goRep) { const o = goHist.find(x => x.id === d.goRep); if (o) { o.items.forEach(([k, q]) => { const it = byId[k.split('|')[0]]; if (it) cart[k] = (cart[k] || 0) + q; }); save(); refreshButtons(); renderFab(); renderCart(); } return true; }
@@ -468,7 +468,7 @@
     packId = (m.categories.find(c => c.id === 'upakuvannia')?.items || [])[0]?.id || null;
     if (GO && qs.get('rep')) { // 🔁 «Повторити» з бота гостей: ?go&rep=id|v*q,…
       cart = {}; qs.get('rep').split(',').forEach(x => { const [k, q] = x.split('*'), [id, v] = k.split('|'), it = byId[id]; if (it && id !== packId && +q > 0 && (v ? it.variants?.some(y => y.v === v) : !it.variants?.length)) cart[k] = (cart[k] || 0) + Math.min(50, +q); });
-      save(); history.replaceState(null, '', location.pathname + '?go');
+      save(); history.replaceState(null, '', window.VARVAR.link(location.pathname + '?go'));
     }
     renderMenu(); syncStatus(); renderStatus(); pollOrders(); if (GO) goInit();
   });

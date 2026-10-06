@@ -4,9 +4,9 @@ import { tg, esc, L, notify, logEvent, money, dayKey, TZ } from './ops.js';
 import { fmtPhone, getCli, cliTouch } from './delivery.js';
 import { getLoy, cliLevel, cliEdit, allCli, bdText } from './promo.js';
 import { tn } from './tn.js';
+import { siteLink } from './venue.js';
 
 const gtg = (env, m, b) => tg({ ...env, BOT_TOKEN: env.GUEST_BOT_TOKEN || env.BOT_TOKEN }, m, b);
-const SITE = 'https://666blackmuxa666.github.io/VARVAR/';
 const say = (env, chat, text, markup) => gtg(env, 'sendMessage', { chat_id: chat, text, parse_mode: 'HTML', disable_web_page_preview: true, ...(markup ? { reply_markup: markup } : {}) }).catch(() => {});
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -14,7 +14,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 export const GB_DEF = {
   stat: 1, bon: 1, chat: 1, // статус замовлення · «+N бонусів» · чат з адміністратором
   bdGift: 'hookah-silver', bdGiftDays: 14, // 🎂 подарунок на ДН (id страви з меню; '' — без подарунка) і скільки днів діє
-  bd: 1, bdText: '🎂 З днем народження! Команда Varvar бажає смачного року — чекаємо вас у гості 🧡',
+  bd: 1, bdText: '🎂 З днем народження! Наша команда бажає смачного року — чекаємо вас у гості 🧡',
   sleep: 0, sleepDays: 30, sleepBon: 100, sleepText: '👋 Давно вас не бачили! Тримайте подарунок — бонуси на наступне замовлення.',
   gap: 24, // годин між розсилками
 };
@@ -40,7 +40,7 @@ export async function linkChat(env, chat, ph) { await env.DB.put('gch:' + chat, 
 
 export async function showMenu(env, chat, hello) {
   const ph = await phoneOf(env, chat);
-  if (!ph) return say(env, chat, `👋 Вітаємо у <b>Varvar Food Bar</b>!\nПоділіться номером — і тут будуть ваші бонуси, замовлення, броні й сертифікати, а на день народження — 🎁 подарунок від нас.`, ASK_PHONE);
+  if (!ph) return say(env, chat, `👋 Вітаємо у <b>${esc((await (await import('./site.js')).getSite(env)).name)}</b>!\nПоділіться номером — і тут будуть ваші бонуси, замовлення, броні й сертифікати, а на день народження — 🎁 подарунок від нас.`, ASK_PHONE);
   return say(env, chat, hello || '👇 Оберіть, що потрібно:', KB);
 }
 
@@ -63,22 +63,22 @@ export async function guestMenu(m, env) {
     if (st === 'chat' && gb.chat && text) { await chatIn(env, ph, m.from?.first_name || '', text); await say(env, chat, '✅ Передали адміністратору — відповідь прийде сюди.'); return true; }
     return false;
   }
-  if (btn === 'order') return say(env, chat, '🍔 Меню з собою та доставка — оберіть страви:', url('🍔 Відкрити меню', SITE + 'index.html?go')), true;
-  if (btn === 'book') return say(env, chat, '📅 Бронювання столика чи банкету:', url('📅 Забронювати', SITE + 'about.html#book')), true;
-  if (btn === 'info') return say(env, chat, `📍 <b>${esc(s.name)}</b>\n${esc(s.addr)}\n🕐 ${esc(s.from)}–${esc(s.to)}\n📞 ${esc(s.phone)}`, { inline_keyboard: [[{ text: '🗺 Маршрут', url: s.gmaps }, { text: '🌐 Сайт', url: SITE + 'about.html' }]] }), true;
+  if (btn === 'order') return say(env, chat, '🍔 Меню з собою та доставка — оберіть страви:', url('🍔 Відкрити меню', siteLink('index.html?go'))), true;
+  if (btn === 'book') return say(env, chat, '📅 Бронювання столика чи банкету:', url('📅 Забронювати', siteLink('about.html#book'))), true;
+  if (btn === 'info') return say(env, chat, `📍 <b>${esc(s.name)}</b>\n${esc(s.addr)}\n🕐 ${esc(s.from)}–${esc(s.to)}\n📞 ${esc(s.phone)}`, { inline_keyboard: [[{ text: '🗺 Маршрут', url: s.gmaps }, { text: '🌐 Сайт', url: siteLink('about.html') }]] }), true;
   const c = (await getCli(env, ph)) || {};
   if (btn === 'bon') {
     const lv = cliLevel(await getLoy(env), c);
     return say(env, chat, [`🎁 Бонусів на рахунку: <b>${money(c.bal || 0)}</b>`, lv ? `🏅 Рівень: ${esc(lv.e + ' ' + lv.name)}${lv.pct ? ` (−${lv.pct}%)` : ''}` : '', `🧾 Візитів: ${c.n || 0}`, '', '<i>Бонусами можна оплатити частину замовлення на сайті або на касі.</i>'].filter(x => x !== '').join('\n')), true;
   }
   if (btn === 'rep') {
-    const g = c.lastGo; if (!g?.items?.length) return say(env, chat, '🔁 Ще немає замовлень з собою / доставки. Почніть тут:', url('🍔 Відкрити меню', SITE + 'index.html?go')), true;
+    const g = c.lastGo; if (!g?.items?.length) return say(env, chat, '🔁 Ще немає замовлень з собою / доставки. Почніть тут:', url('🍔 Відкрити меню', siteLink('index.html?go'))), true;
     const rep = g.items.map(x => `${x.id}${x.v ? '|' + x.v : ''}*${x.q}`).join(',');
-    return say(env, chat, `🔁 Минуле замовлення:\n${g.lines.slice(0, 15).map(esc).join('\n')}`, url('🔁 Повторити', `${SITE}index.html?go&rep=${encodeURIComponent(rep)}`)), true;
+    return say(env, chat, `🔁 Минуле замовлення:\n${g.lines.slice(0, 15).map(esc).join('\n')}`, url('🔁 Повторити', siteLink(`index.html?go&rep=${encodeURIComponent(rep)}`))), true;
   }
   if (btn === 'cert') {
     const { certList } = await import('./site.js'), l = (await certList(env)).filter(x => x.phone === ph && x.st === 'ok');
-    return say(env, chat, l.length ? '🎟 <b>Ваші сертифікати</b>\n' + l.map(x => `<code>${x.code}</code> · ${money(x.sum)}${x.left !== x.sum ? ` · залишок ${money(x.left)}` : ''}${x.to ? ` · для ${esc(x.to)}` : ''}`).join('\n') : '🎟 Сертифікатів поки немає. Найкращий подарунок — смачний вечір у Varvar:', s.certOn ? url('🎁 Купити сертифікат', SITE + 'about.html#cert') : undefined), true;
+    return say(env, chat, l.length ? '🎟 <b>Ваші сертифікати</b>\n' + l.map(x => `<code>${x.code}</code> · ${money(x.sum)}${x.left !== x.sum ? ` · залишок ${money(x.left)}` : ''}${x.to ? ` · для ${esc(x.to)}` : ''}`).join('\n') : '🎟 Сертифікатів поки немає. Найкращий подарунок — смачний вечір у Varvar:', s.certOn ? url('🎁 Купити сертифікат', siteLink('about.html#cert')) : undefined), true;
   }
   if (btn === 'bd') {
     if (c.bd) return say(env, chat, `🎂 Ваш день народження: <b>${bdText(c.bd)}</b>.\nЩоб змінити — напишіть нам «💬 Написати нам».`), true;
@@ -128,7 +128,7 @@ async function chatIn(env, ph, nm, text) {
 // відповідь з каси або з групи персоналу (reply на повідомлення гостя)
 export async function chatReply(env, ph, text, who) {
   const c = await getCli(env, ph); if (!c?.chat) return false;
-  await say(env, c.chat, `💬 <b>Varvar:</b> ${esc(text.slice(0, 1500))}`);
+  await say(env, c.chat, `💬 <b>${esc((await (await import('./site.js')).getSite(env)).name)}:</b> ${esc(text.slice(0, 1500))}`);
   await inAdd(env, ph, c.name || '', { f: 's', by: who, text: text.slice(0, 1500) }, false);
   await env.DB.put('gst:' + c.chat, 'chat', { expirationTtl: 3 * 3600 }); // гість може відповісти одразу
   await logEvent(env, { k: 'gchat', ph, out: 1, text: `↩️ ${who} → ${c.name || fmtPhone(ph)}: ${text.slice(0, 300)}` });
@@ -174,7 +174,7 @@ export async function cast(env, f, text, who) {
   const gb = await getGb(env), last = +(await env.DB.get('gcastAt')) || 0;
   if (Date.now() - last < gb.gap * 3600e3) return { error: `Наступна розсилка — через ${Math.ceil((last + gb.gap * 3600e3 - Date.now()) / 60e3)} хв (не частіше ніж раз на ${gb.gap} год)` };
   const l = (await audience(env, f)).slice(0, 2000); await env.DB.put('gcastAt', String(Date.now()));
-  let n = 0; for (const c of l) { const r = await gtg(env, 'sendMessage', { chat_id: c.chat, text: `📣 ${esc(text)}`, parse_mode: 'HTML', reply_markup: url('🍔 Замовити', SITE + 'index.html?go') }).catch(() => null); if (r?.ok) n++; await sleep(40); }
+  let n = 0; for (const c of l) { const r = await gtg(env, 'sendMessage', { chat_id: c.chat, text: `📣 ${esc(text)}`, parse_mode: 'HTML', reply_markup: url('🍔 Замовити', siteLink('index.html?go')) }).catch(() => null); if (r?.ok) n++; await sleep(40); }
   await logEvent(env, { k: 'shift', text: `📣 Розсилка гостям (${AUD[f] || f}): ${n} з ${l.length} — ${who}` });
   await notify(env, `📣 Розсилка гостям (${AUD[f] || f}) — ${n} з ${l.length} · ${esc(who)}\n<i>${esc(text.slice(0, 300))}</i>`).catch(() => {});
   return { n, of: l.length };
@@ -195,7 +195,7 @@ async function bdGreet(env, c, gb, bdRule) {
   if (g && g.p > 0) { const { certGift } = await import('./site.js'), x = await certGift(env, { phone: c.phone, name: c.name, gift: g.n, items: g.items, sum: g.p, days: g.days });
     gift = `\n\n🎁 <b>Ваш подарунок — ${esc(g.n)}!</b>\nСертифікат: <code>${x.code}</code>\nПокажіть цей код офіціанту. Діє до ${new Date(x.exp).toLocaleDateString('uk-UA', { timeZone: TZ, day: '2-digit', month: '2-digit' })}.`;
     await logEvent(env, { k: 'cert', code: x.code, s: 'ok', text: `🎂 ${c.name || fmtPhone(c.phone)} — день народження: сертифікат ${x.code} на «${g.n}»` }); }
-  await say(env, c.chat, gb.bdText + gift + (bdRule ? `\n\n🎉 А ще <b>−${bdRule.pct}%</b> на замовлення в ці дні.` : ''), url('📅 Забронювати столик', SITE + 'about.html#book'));
+  await say(env, c.chat, gb.bdText + gift + (bdRule ? `\n\n🎉 А ще <b>−${bdRule.pct}%</b> на замовлення в ці дні.` : ''), url('📅 Забронювати столик', siteLink('about.html#book')));
 }
 
 // 🎂 подарунок прямо в рахунку (гість прийшов святкувати, навіть якщо не в програмі): сертифікат + одразу застосувати
@@ -224,7 +224,7 @@ export async function gbDaily(env) {
     if (gb.bd && c.bd === md) { await bdGreet(env, c, gb, bdRule); nb++; }
     else if (gb.sleep && c.last && now - c.last > gb.sleepDays * 864e5 && !(c.sleepAt && now - c.sleepAt < Math.max(60, gb.sleepDays * 2) * 864e5)) {
       const x = await cliTouch(env, c.phone, y => { y.sleepAt = now; if (gb.sleepBon) y.bal = (y.bal || 0) + gb.sleepBon; });
-      await say(env, c.chat, `${gb.sleepText}${gb.sleepBon ? `\n\n🎁 +${money(gb.sleepBon)} бонусів — на рахунку <b>${money(x.bal)}</b>` : ''}`, url('🍔 Замовити', SITE + 'index.html?go')); ns++;
+      await say(env, c.chat, `${gb.sleepText}${gb.sleepBon ? `\n\n🎁 +${money(gb.sleepBon)} бонусів — на рахунку <b>${money(x.bal)}</b>` : ''}`, url('🍔 Замовити', siteLink('index.html?go'))); ns++;
     }
     if (nb + ns) await sleep(40);
   }

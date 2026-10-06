@@ -19,24 +19,47 @@ var __spreadValues = (a, b) => {
 var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
 (() => {
   var _a;
-  const API = new URLSearchParams(location.search).get("api") || (/workers\.dev$/.test(location.hostname) ? location.origin : "https://varvar-menu.varvar.workers.dev");
+  const VENUE = (() => {
+    const q = new URLSearchParams(location.search).get("v");
+    try {
+      if (q != null) {
+        if (/^[a-z0-9][a-z0-9-]{1,30}$/.test(q) && q !== "varvar") localStorage.setItem("pos_venue", q);
+        else localStorage.removeItem("pos_venue");
+      }
+      return localStorage.getItem("pos_venue") || "";
+    } catch (e) {
+      return /^[a-z0-9][a-z0-9-]{1,30}$/.test(q || "") && q !== "varvar" ? q : "";
+    }
+  })();
+  const API = (new URLSearchParams(location.search).get("api") || (/workers\.dev$/.test(location.hostname) ? location.origin : "https://varvar-menu.varvar.workers.dev")) + (VENUE ? "/v/" + VENUE : "");
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s != null ? s : "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const tn = (t) => +t > 2e3 ? "\u0421\u2011" + (t - 2e3) : +t > 1e3 ? "\u0414\u2011" + (t - 1e3) : t;
   const money = (n) => `${Math.round(n || 0).toLocaleString("uk-UA")} \u20B4`;
   const store = { get(k, d) {
     try {
-      const v = localStorage.getItem("pos_" + k);
+      const v = localStorage.getItem("pos_" + (VENUE ? VENUE + "_" : "") + k);
       return v == null ? d : JSON.parse(v);
     } catch (e) {
       return d;
     }
   }, set(k, v) {
     try {
-      localStorage.setItem("pos_" + k, JSON.stringify(v));
+      localStorage.setItem("pos_" + (VENUE ? VENUE + "_" : "") + k, JSON.stringify(v));
     } catch (e) {
     }
   } };
+  {
+    const h = new URLSearchParams(location.hash.slice(1));
+    if (/^[a-f0-9]{32}$/.test(h.get("tok") || "")) {
+      try {
+        store.set("token", h.get("tok"));
+        store.set("me", JSON.parse(h.get("me") || "null"));
+      } catch (e) {
+      }
+      history.replaceState(null, "", location.pathname + location.search);
+    }
+  }
   const hhmm = (t) => new Date(t).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" });
   const S = {
     token: store.get("token", ""),
@@ -3383,7 +3406,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     part.printer = printerCards();
     part.test = `<div class="grid2 set"><div class="card"><h3>\u{1F9EA} \u0422\u0435\u0441\u0442</h3><div class="muted set-note">\u0422\u0438\u043C\u0447\u0430\u0441\u043E\u0432\u043E, \u0434\u043E \u0437\u0430\u043F\u0443\u0441\u043A\u0443.</div><button class="btn sm red" data-a="reset">\u267B\uFE0F \u041E\u0431\u043D\u0443\u043B\u0438\u0442\u0438 \u0432\u0441\u0435</button></div></div>`;
     if (only) return part[only];
-    return `<div class="rhead"><div><h1>\u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F</h1><span class="muted">\u043F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438, \u043F\u0440\u0438\u043D\u0442\u0435\u0440</span></div></div>
+    return `<div class="rhead"><div><h1>\u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F</h1><span class="muted">\u043F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438, \u043F\u0440\u0438\u043D\u0442\u0435\u0440</span></div>${isAdmin() ? `<a class="btn" href="owner.html${VENUE ? "" : "#pos=" + S.token}" target="_blank" rel="noopener">\u{1F451} \u041A\u0430\u0431\u0456\u043D\u0435\u0442 \u0432\u043B\u0430\u0441\u043D\u0438\u043A\u0430</a>` : ""}</div>
       <div class="seg rsec">${SS.map(([k, l]) => `<button class="${cur === k ? "on" : ""}" data-a="setTab" data-s="${k}">${l}</button>`).join("")}</div>${part[cur]}`;
   }
   async function menuEdit(id) {

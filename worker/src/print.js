@@ -3,10 +3,11 @@
 //   стилі: logo · big (великий жирний по центру) · c (по центру) · b (жирний) · l (звичайний) · lr (ліворуч + праворуч) · hr (риска) · gap
 import { hhmm, dayKey, discAmt, payable } from './ops.js';
 import { tn } from './tn.js';
+import { doName, venueId } from './venue.js';
 
 
 // черга живе в Durable Object: програма друку чекає на /pull (long-poll), і чек віддається миттєво
-const q = env => env.PRINTQ.get(env.PRINTQ.idFromName('main'));
+const q = env => env.PRINTQ.get(env.PRINTQ.idFromName(doName(venueId()))); // 🏪 своя черга друку в кожного закладу
 const qcall = (env, path, body) => q(env).fetch('https://q' + path, body ? { method: 'POST', body: JSON.stringify(body) } : undefined);
 export async function queuePrint(env, kind, lines) {
   const id = `${Date.now()}-${crypto.randomUUID().slice(0, 6)}`;

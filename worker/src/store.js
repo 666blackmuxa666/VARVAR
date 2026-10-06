@@ -3,6 +3,7 @@
 // env.DB = storeDB(...) має той самий API, що й KV (get/put/delete/list) + getMany; картинки img:* лишаються в KV.
 import { DurableObject } from 'cloudflare:workers';
 import { handle } from './index.js';
+import { ALS, MAIN, doName, venueEnv, venueId } from './venue.js';
 
 const now = () => Date.now();
 // ключі, зміна яких оновлює екрани POS
@@ -13,11 +14,13 @@ export class Store extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     ctx.blockConcurrencyWhile(async () => {
-      if (!(await ctx.storage.get('__migrated'))) await this.migrate();
-      if (!(await ctx.storage.get('__keep1'))) await this.keepHistory();
+      // 🏪 мультизаклад: стара одноразова міграція з KV була лише для VARVAR (DO «main», уже виконана).
+      // Новий заклад НІЧОГО не копіює з KV — інакше отримав би чужі дані.
+      if (!(await ctx.storage.get('__migrated'))) { await ctx.storage.put('__migrated', -1); await ctx.storage.put('__keep1', 1); }
+      else if (!(await ctx.storage.get('__keep1'))) await this.keepHistory();
     });
   }
-  // одноразово переносимо все з KV (крім картинок і старої черги друку)
+  // (історично) одноразове перенесення з KV — більше не викликається
   async migrate() {
     let cursor, n = 0;
     do {
@@ -42,7 +45,12 @@ export class Store extends DurableObject {
   }
   // ---- живе оновлення для POS: WebSocket-и підключені до цього ж об'єкта ----
   async fetch(req) {
-    if (req.headers.get('Upgrade') !== 'websocket') return handle(req, { ...this.env, DB: localDB(this, this.env.DB), INSTORE: 1 }); // увесь запит — тут, база локальна
+    if (req.headers.get('Upgrade') !== 'websocket') { // увесь запит — тут, база локальна
+      const venue = req.headers.get('x-venue') || MAIN, DB = localDB(this, this.env.DB, venue);
+      if (venue !== MAIN && !(await DB.get('cfg:venue')) && !req.headers.get('x-venue-init')) return Response.json({ error: 'venue_not_found' }, { status: 404 }); // 🏪 заклад ще не створено в HUB
+      const env = { ...(await venueEnv(this.env, venue, DB)), DB, INSTORE: 1 };
+      return ALS.run({ venue }, () => handle(req, env));
+    }
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
     return new Response(null, { status: 101, webSocket: client });
@@ -83,14 +91,16 @@ export class Store extends DurableObject {
 }
 
 // той самий API, що storeDB, але всередині Store — без мережевих викликів
-function localDB(st, kv) {
-  const img = k => k.startsWith('img:'), held = new Set();
+// картинки img:* лежать у спільному KV — у кожного закладу (крім VARVAR) свій префікс img:<заклад>/…
+const imgKey = (k, v) => !v || v === MAIN ? k : 'img:' + v + '/' + k.slice(4);
+function localDB(st, kv, venue) {
+  const img = k => k.startsWith('img:'), held = new Set(), ik = k => imgKey(k, venue);
   const parse = (v, type) => v == null ? null : type === 'json' ? JSON.parse(v) : v;
   return {
-    get: async (k, type) => img(k) ? kv.get(k, type) : parse(await st.get(k), type),
+    get: async (k, type) => img(k) ? kv.get(ik(k), type) : parse(await st.get(k), type),
     getMany: async (ks, type) => (await st.getMany(ks)).map(v => parse(v, type)),
-    put: (k, v, o) => img(k) ? kv.put(k, v, o) : st.put(k, String(v), o?.expirationTtl),
-    delete: k => img(k) ? kv.delete(k) : st.del(k),
+    put: (k, v, o) => img(k) ? kv.put(ik(k), v, o) : st.put(k, String(v), o?.expirationTtl),
+    delete: k => img(k) ? kv.delete(ik(k)) : st.del(k),
     deleteMany: ks => st.delMany(ks),
     locked: async (keys, fn) => {
       keys = [...new Set([].concat(keys))].sort(); const mine = keys.filter(k => !held.has(k));
@@ -100,17 +110,17 @@ function localDB(st, kv) {
     list: async ({ prefix } = {}) => ({ keys: (await st.list(prefix)).map(name => ({ name })), list_complete: true }),
   };
 }
-export const storeStub = env => env.STORE.get(env.STORE.idFromName('main'));
-export function storeDB(kv, ns) {
-  const s = ns.get(ns.idFromName('main'));
-  const img = k => k.startsWith('img:');
+export const storeStub = env => env.STORE.get(env.STORE.idFromName(doName(venueId())));
+export function storeDB(kv, ns, venue = MAIN) {
+  const s = ns.get(ns.idFromName(doName(venue)));
+  const img = k => k.startsWith('img:'), ik = k => imgKey(k, venue);
   const held = new Set(); // ключі, які цей запит уже тримає (повторний вхід без самоблокування)
   const parse = (v, type) => v == null ? null : type === 'json' ? JSON.parse(v) : v;
   return {
-    get: async (k, type) => img(k) ? kv.get(k, type) : parse(await s.get(k), type),
+    get: async (k, type) => img(k) ? kv.get(ik(k), type) : parse(await s.get(k), type),
     getMany: async (ks, type) => (await s.getMany(ks)).map(v => parse(v, type)),
-    put: (k, v, o) => img(k) ? kv.put(k, v, o) : s.put(k, String(v), o?.expirationTtl),
-    delete: k => img(k) ? kv.delete(k) : s.del(k),
+    put: (k, v, o) => img(k) ? kv.put(ik(k), v, o) : s.put(k, String(v), o?.expirationTtl),
+    delete: k => img(k) ? kv.delete(ik(k)) : s.del(k),
     deleteMany: ks => s.delMany(ks),
     // виконати fn під замком ключа(ів); вкладені однакові ключі в одному запиті не блокуються
     locked: async (keys, fn) => {

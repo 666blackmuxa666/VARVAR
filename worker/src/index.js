@@ -15,7 +15,11 @@ import { posApi, posLive } from './pos.js';
 import { queuePrint, kitchenTicket, printApi } from './print.js';
 export { PrintQ } from './print.js';
 export { Store } from './store.js';
+export { Hub } from './hub.js';
+import { hubVenues } from './hub.js';
+import { ownerApi, intApi } from './owner.js';
 import { storeDB } from './store.js';
+import { ALS, MAIN, doName, splitVenue, stripVenue, venueEnv } from './venue.js';
 
 const TYPES = { order: 'НОВЕ ЗАМОВЛЕННЯ', order_check: 'НОВЕ ЗАМОВЛЕННЯ', reorder: 'ДОЗАМОВЛЕННЯ', check: 'ПРОСЯТЬ ЧЕК' };
 const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;
@@ -27,8 +31,8 @@ const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|g
 // Економить запити до Durable Object: меню відкривають сотні гостей, а змінюється воно рідко. Стоп-лист сервер
 // все одно перевіряє при замовленні (priceMap пропускає hidden), тож 20 с затримки безпечні.
 const MEM = new Map(), TTL = { '/api/menu': 20, '/api/site': 60, '/api/reco': 600, '/api/goinfo': 30, '/k': 3600, '/kitchen': 3600 };
-async function cached(req, run) {
-  const u = new URL(req.url), ttl = req.method === 'GET' && TTL[u.pathname];
+async function cached(req, path, run) {
+  const u = new URL(req.url), ttl = req.method === 'GET' && TTL[path];
   if (!ttl || u.searchParams.has('ph') || u.searchParams.has('nocache')) return run();
   const key = u.pathname + u.search + '|' + (req.headers.get('Origin') || ''), hit = MEM.get(key);
   if (hit && hit.exp > Date.now()) return new Response(hit.body, { status: 200, headers: { ...hit.headers, 'x-cache': 'HIT' } });
@@ -39,14 +43,22 @@ async function cached(req, run) {
   return new Response(body, { status: 200, headers: { ...headers, 'x-cache': 'MISS' } });
 }
 export default {
-  async fetch(req, env) {
-    const p = new URL(req.url).pathname;
-    if (IN_STORE.test(p) && req.method !== 'OPTIONS') return cached(req, () => env.STORE.get(env.STORE.idFromName('main')).fetch(req));
-    if (TTL[p]) return cached(req, () => handle(req, { ...env, DB: storeDB(env.DB, env.STORE) }));
-    return handle(req, { ...env, DB: storeDB(env.DB, env.STORE) });
+  async fetch(req0, env) {
+    // 🏪 заклад: /v/<id>/… → запит без префікса + заголовок x-venue; без префікса — VARVAR
+    const { venue, path: p } = splitVenue(new URL(req0.url)), req = venue === MAIN ? new Request(req0) : stripVenue(req0, venue, p);
+    if (venue === MAIN) { req.headers.delete('x-venue'); req.headers.delete('x-venue-init'); } // заклад визначає лише адреса, не заголовок від клієнта
+    else req.headers.delete('x-venue-init');
+    if (IN_STORE.test(p) && req.method !== 'OPTIONS') return cached(req0, p, () => env.STORE.get(env.STORE.idFromName(doName(venue))).fetch(req));
+    const DB = storeDB(env.DB, env.STORE, venue), run = async () => { const e = { ...(await venueEnv(env, venue, DB)), DB }; return ALS.run({ venue }, () => handle(req, e)); };
+    if (TTL[p]) return cached(req0, p, run);
+    return run();
   },
   // ⏰ кожні 5 хв: нагадування про броні, запити відгуків (виконується всередині Store)
-  async scheduled(ev, env, ctx) { ctx.waitUntil(env.STORE.get(env.STORE.idFromName('main')).fetch(new Request('https://in/__cron', { headers: { 'x-cron': '1' } }))); },
+  // ⏰ кожні 5 хв — у кожному активному закладі (VARVAR + заклади з HUB)
+  async scheduled(ev, env, ctx) {
+    const list = [MAIN, ...(await hubVenues(env).catch(() => []))];
+    ctx.waitUntil(Promise.all(list.map(v => env.STORE.get(env.STORE.idFromName(doName(v))).fetch(new Request('https://in/__cron', { headers: { 'x-cron': '1', ...(v === MAIN ? {} : { 'x-venue': v }) } })).catch(() => {}))));
+  },
 };
 export async function handle(req, env) {
   if (env.INSTORE) setDayH((await getCfg(env).catch(() => ({}))).dayH ?? 3); // межа робочого дня з налаштувань
@@ -98,6 +110,8 @@ export async function handle(req, env) {
       if (url.pathname === '/api/pos/live') return posLive(req, env, url);
       if (url.pathname === '/api/pos' && req.method === 'POST') return json(...await posApi(await req.json(), req, env));
       if (url.pathname === '/api/build') return json({ build: BUILD });
+      if (url.pathname === '/api/owner' && req.method === 'POST') return env.VENUE === MAIN ? json(...await ownerApi(req, env)) : json({ error: 'not_found' }, 404); // 👑 кабінет власника
+      if (url.pathname.startsWith('/__int/')) return json(...await intApi(req, env, url.pathname)); // заклад ← кабінет (лише зсередини воркера)
       if (url.pathname === '/__cron') return env.INSTORE && req.headers.get('x-cron') ? json(await cron(env)) : json({ error: 'no' }, 403);
       // 🌐 візитка
       if (url.pathname === '/api/site') return new Response(JSON.stringify(await sitePublic(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
@@ -131,7 +145,13 @@ export async function handle(req, env) {
       }
       if (url.pathname === '/tg' && req.method === 'POST') {
         if (req.headers.get('X-Telegram-Bot-Api-Secret-Token') !== env.TG_SECRET) return new Response('no', { status: 403 });
-        await handleUpdate(await req.json(), env);
+        const u = await req.json(), gc = (u.message || u.my_chat_member)?.chat;
+        if (env.VENUE !== MAIN && !env.CHAT_ID && gc && /group/.test(gc.type)) { // 🏪 перша група, куди додали бота персоналу закладу, — його робоча група
+          await (await import('./venue.js')).saveSecrets(env, { CHAT_ID: String(gc.id) }); env.CHAT_ID = String(gc.id);
+          await tg(env, 'sendMessage', { chat_id: gc.id, text: '✅ Групу персоналу підключено — сюди приходитимуть замовлення, броні й звіти.' }).catch(() => {});
+          if (!u.message) return new Response('ok');
+        }
+        await handleUpdate(u, env);
         return new Response('ok');
       }
       // запасна адреса каси для старих Windows 7 без нових сертифікатів: http://varvar-menu.varvar.workers.dev/pos.html

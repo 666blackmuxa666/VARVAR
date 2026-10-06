@@ -8,6 +8,7 @@ const BOTS = [
 ];
 const call = (tok, m, body) => fetch(`https://api.telegram.org/bot${tok}/${m}`, body instanceof FormData ? { method: 'POST', body } : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()).catch(e => ({ ok: false, description: e.message }));
 export async function brandBots(env, force) {
+  if ((await import('./venue.js')).venueId() !== 'varvar') return null; // 🏪 картинки й імена — VARVAR; інші заклади — майстер запуску (етап 3)
   if (!force && await env.DB.get('brand:' + V)) return null;
   const err = await env.DB.get('brandErr', 'json'); if (!force && err && Date.now() - err.at < 3600e3) return null; // повтор не частіше ніж раз на годину
   const out = {};

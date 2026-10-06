@@ -2,6 +2,7 @@
 // Усе, що змінює столи/звіти/касу, — тут, щоб бот і POS завжди робили одне й те саме.
 import { getMenu, saveMenu, menuLock } from './menu.js';
 import { tn } from './tn.js';
+import { ALS, cur } from './venue.js';
 import { cliClose, goKitchen, goButtons, goGone } from './delivery.js';
 import { reviewQueue } from './site.js';
 import { promoFill, promoClose } from './promo.js';
@@ -15,9 +16,10 @@ export const TZ = 'Europe/Kyiv';
 export const hhmm = (t = Date.now()) => new Date(t).toLocaleTimeString('uk-UA', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
 // робочий день закладу: з 03:00 до 03:00 (нічні продажі після півночі — у вчорашню виручку)
 // ⚙️ о котрій закінчується робочий день (Налаштування → «🌙 День і Z-звіт»; ставиться на початку кожного запиту з cfg.dayH)
-export let DAY_START_H = 3;
-export const setDayH = h => { if (h >= 0 && h <= 8) DAY_START_H = h; };
-export const dayKey = (t = Date.now()) => new Date(t - DAY_START_H * 3600e3).toLocaleDateString('sv-SE', { timeZone: TZ }); // YYYY-MM-DD
+// межа робочого дня — своя в кожного закладу: зберігається в контексті запиту (venue.js), не в глобальній змінній
+const dayH = () => cur().dayH ?? 3;
+export const setDayH = h => { if (h >= 0 && h <= 8) { const s = cur(); if (ALS.getStore()) s.dayH = h; } };
+export const dayKey = (t = Date.now()) => new Date(t - dayH() * 3600e3).toLocaleDateString('sv-SE', { timeZone: TZ }); // YYYY-MM-DD
 export const isDay = d => /^\d{4}-\d{2}-\d{2}$/.test(String(d || ''));
 export const money = n => `${Math.round(n).toLocaleString('uk-UA')} грн`;
 export const YEAR = 400 * 86400, BILL_TTL = 12 * 3600;
@@ -629,7 +631,7 @@ export function dishResolver(menu) {
 // ---------- зміна (відкрити / закрити касу) ----------
 const midnight = t => { const [h, m, x] = new Date(t).toLocaleTimeString('en-GB', { timeZone: TZ, hour12: false }).split(':').map(Number); return t - ((h % 24) * 3600 + m * 60 + x) * 1000 - (t % 1000); };
 // початок робочого дня (03:00), до якого належить момент t
-const dayStart = (t = Date.now()) => midnight(t - DAY_START_H * 3600e3) + DAY_START_H * 3600e3;
+const dayStart = (t = Date.now()) => midnight(t - dayH() * 3600e3) + dayH() * 3600e3;
 export const getShift = async env => env.DB.get('shift', 'json');
 const dayList = (from, to) => { const out = []; for (let t = Date.parse(from + 'T12:00:00Z'); out.length < 5000; t += 86400e3) { const d = new Date(t).toISOString().slice(0, 10); out.push(d); if (d >= to) break; } return out; };
 // підсумок з моменту відкриття зміни (або з початку дня, якщо зміна не відкрита)
@@ -639,7 +641,7 @@ export async function shiftData(env) {
   const days = dayList(dayKey(from), dayKey(now));
   const [cl, ex, mv] = await Promise.all([env.DB.getMany(days.map(d => 'closed:' + d), 'json'), env.DB.getMany(days.map(d => 'exp:' + d), 'json'), env.DB.getMany(days.map(d => 'mov:' + d), 'json')]);
   // старі записи без ts: час «00:30» робочого дня d — це вже наступна календарна доба
-  const tsOf = (x, d) => { if (x.ts) return x.ts; if (!/^\d\d:\d\d$/.test(x.at || '')) return 0; const h = +x.at.slice(0, 2), mins = (h < DAY_START_H ? h + 24 : h) * 60 + +x.at.slice(3); return midnight(Date.parse(d + 'T12:00:00Z')) + mins * 60e3; };
+  const tsOf = (x, d) => { if (x.ts) return x.ts; if (!/^\d\d:\d\d$/.test(x.at || '')) return 0; const h = +x.at.slice(0, 2), mins = (h < dayH() ? h + 24 : h) * 60 + +x.at.slice(3); return midnight(Date.parse(d + 'T12:00:00Z')) + mins * 60e3; };
   const inShift = (x, d) => tsOf(x, d) >= from;
   const recs = days.flatMap((d, i) => (cl[i] || []).filter(x => !x.del && !x.rm && inShift(x, d)));
   const exps = days.flatMap((d, i) => (ex[i] || []).filter(x => !x.del && inShift(x, d)));
