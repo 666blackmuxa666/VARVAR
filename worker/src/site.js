@@ -9,6 +9,8 @@ import { siteLink, venueId, MAIN } from './venue.js';
 const gtg = (env, m, b) => tg({ ...env, BOT_TOKEN: env.GUEST_BOT_TOKEN || env.BOT_TOKEN }, m, b);
 
 // ---------- дані візитки ----------
+// 🧱 блоки сайту-візитки (порядок і показ задає власник у кабінеті)
+export const BLOCKS = ['about', 'promos', 'menu', 'gallery', 'hookah', 'banquet', 'book', 'cert', 'reviews', 'contacts'];
 export const SITE_DEF = {
   name: 'Varvar Food Bar', tagline: 'Смачна їжа, кальяни й затишок у серці Буковелю',
   about: 'Varvar — фуд-бар у Поляниці, поруч із трасами Буковелю. Готуємо ситні мінімакс-тарілки, пасти, бургери й страви за власними рецептами, змішуємо коктейлі та забиваємо кальяни. Після катання — найкраще місце зігрітись і поїсти.',
@@ -36,6 +38,7 @@ export async function setSite(env, k, v) {
     else if (k === 'quoteDel') s.quotes = s.quotes.filter((_, i) => i !== +v);
     else if (k === 'photoAdd') s.photos = [...s.photos, String(v)].slice(-12);
     else if (k === 'photoDel') s.photos = s.photos.filter(p => p !== v);
+    else if (k === 'blocks') { const ok = new Set(BLOCKS); s.blocks = [].concat(v || []).filter(b => ok.has(b?.id)).map(b => ({ id: b.id, on: b.on ? 1 : 0 })).slice(0, BLOCKS.length); } // 🧱 конструктор сайту
     else return { error: 'Невідоме поле' };
     await env.DB.put('site', JSON.stringify(s)); return s;
   });

@@ -39,14 +39,14 @@
     if (S) render();
   }
   function render() {
-    const s = S, tel = 'tel:' + s.phone.replace(/[^\d+]/g, ''), maps = s.gmaps || `https://www.google.com/maps?q=${s.geo[0]},${s.geo[1]}`;
+    const s = { promos: [], hits: [], photos: [], quotes: [], ...S, phone: S.phone || '' }, tel = 'tel:' + s.phone.replace(/[^\d+]/g, ''), maps = s.gmaps || (Array.isArray(s.geo) ? `https://www.google.com/maps?q=${s.geo[0]},${s.geo[1]}` : `https://www.google.com/maps?q=${encodeURIComponent(s.addr || s.name || '')}`); // новий заклад: полів може ще не бути
     $('#sName').textContent = s.name; $('#sTag').textContent = s.tagline; $('#sAddr').textContent = s.addr; $('#sAbout').textContent = s.about;
     if (s.hero) { $('#heroBg').style.backgroundImage = `url("${s.hero}")`; $('.hero').classList.add('ph'); }
     const op = isOpen(s), bd = $('#openBadge'); bd.className = 'badge' + (op ? '' : ' off'); bd.textContent = `${op ? '🟢 ' + t('openNow') : '🔴 ' + t('closedNow')} · ${s.from}–${s.to}`;
     $('#callA').href = tel; ['#routeA', '#routeB'].forEach(x => { $(x).href = maps; });
-    $('#cAddr').textContent = s.addr; $('#cHours').textContent = `${s.from}–${s.to}`; $('#cPhone').textContent = s.phone.replace(/^\+380(\d{2})(\d{3})(\d{2})(\d{2})$/, '+380 $1 $2 $3 $4'); $('#cPhone').href = tel;
+    $('#cAddr').textContent = s.addr; $('#cHours').textContent = `${s.from}–${s.to}`; $('#cPhone').textContent = String(s.phone || '').replace(/^\+380(\d{2})(\d{3})(\d{2})(\d{2})$/, '+380 $1 $2 $3 $4'); $('#cPhone').href = tel;
     $('#socials').innerHTML = [s.insta && `<a href="${esc(s.insta)}" target="_blank" rel="noopener">Instagram</a>`, s.tg && `<a href="${esc(s.tg)}" target="_blank" rel="noopener">Telegram</a>`].filter(Boolean).join('');
-    $('#map').src = `https://www.google.com/maps?q=${s.geo[0]},${s.geo[1]}&z=16&output=embed`;
+    if (Array.isArray(s.geo) && s.geo.length === 2) $('#map').src = `https://www.google.com/maps?q=${s.geo[0]},${s.geo[1]}&z=16&output=embed`; else if (s.addr) $('#map').src = `https://www.google.com/maps?q=${encodeURIComponent(s.addr)}&z=16&output=embed`; else $('#map').hidden = true;
     $('#sHook').textContent = s.hookah; $('#sBanq').textContent = s.banquet;
     $('#promos').hidden = !s.promos.length; $('#promoList').innerHTML = s.promos.map(p => `<div class="promo"><b>${esc(p.t)}</b>${esc(p.d)}</div>`).join('');
     $('#hits').innerHTML = s.hits.map(h => `<a class="hit" href="index.html?go#i-${h.id}"><span class="ph" style="background-image:url('${esc(h.img || '')}')"></span><div><b>${esc(h.n?.[lang] || h.n?.uk || '')}</b>${h.d ? `<small>${esc(h.d[lang] || h.d.uk || '')}</small>` : ''}${h.p ? `<span>${money(h.p)}</span>` : ''}</div></a>`).join('');
@@ -55,6 +55,16 @@
     $('#quotes').innerHTML = s.quotes.map(q => `<div class="quote">«${esc(q.t)}»<small>— ${esc(q.a)}</small></div>`).join('');
     $('#revA').href = s.gmaps; $('#revW').href = s.reviewsUrl || s.gmaps;
     $('#book').hidden = !s.bookOn; $('#cert').hidden = !s.certOn;
+    // 🏪 назва й логотип закладу
+    $('.nav .brand').innerHTML = s.logo ? `<img src="${esc(s.logo)}" alt="" style="height:30px;width:30px;object-fit:contain;border-radius:8px;vertical-align:middle;margin-right:8px">${esc(s.name)}` : esc(s.name); $('#fName').textContent = s.name; document.title = s.name;
+    if (window.VARVAR.venue) $('.feats')?.remove(); // переваги VARVAR (кальяни, банкети…) — не для інших закладів
+    // 🧱 конструктор: порядок і показ блоків
+    if (Array.isArray(s.blocks) && s.blocks.length) {
+      const main = $('main'), two = $('.two'), el = id => id === 'hookah' || id === 'banquet' ? two : $('#' + id), placed = new Set();
+      const ALL = ['about', 'promos', 'menu', 'gallery', 'hookah', 'banquet', 'book', 'cert', 'reviews', 'contacts'], list = [...s.blocks, ...ALL.filter(id => !s.blocks.some(b => b.id === id)).map(id => ({ id, on: 1 }))];
+      for (const b of list) { const x = el(b.id); if (!x) continue; if (b.id === 'hookah' || b.id === 'banquet') { $('#' + b.id).hidden = !b.on; } else if (!b.on) x.hidden = true; if (!placed.has(x)) { main.append(x); placed.add(x); } }
+      if (two && $('#hookah').hidden && $('#banquet').hidden) two.hidden = true;
+    }
   }
 
   // ---------- 📅 бронювання ----------
