@@ -63,7 +63,7 @@
   function closeSheet() { S.open = 0; $('#layer').innerHTML = ''; }
   // групи меню: ⭐ Обрані · 🍳 Кухня · 🍹 Бар · 💨 Кальян
   const grpList = () => [{ id: 'fav', name: '⭐ Обрані' }, ...S.groups];
-  const curGrp = () => S.grp || (S.fav.length ? 'fav' : 'kitchen');
+  const curGrp = () => { const g = S.grp || (S.fav.length ? 'fav' : 'kitchen'); if (g === 'fav' || !S.groups?.length || S.groups.find(x => x.id === g)?.cats?.length) return g; return S.groups.find(x => x.cats?.length)?.id || g; }; // порожня група (новий заклад) — перша, де є страви
   const grpCats = g => { const gg = S.groups.find(x => x.id === g); return gg ? S.menu.categories.filter(c => gg.cats.includes(c.id)) : []; };
   function menuItems() {
     const q = S.q.trim().toLowerCase();

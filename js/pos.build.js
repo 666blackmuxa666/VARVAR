@@ -2084,7 +2084,15 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     $("#layer").innerHTML = "";
   }
   const grpList = () => [{ id: "fav", name: "\u2B50 \u041E\u0431\u0440\u0430\u043D\u0456" }, ...S.groups];
-  const curGrp = () => S.grp || (S.fav.length ? "fav" : "kitchen");
+  const curGrp = () => {
+    var _a2, _b, _c, _d;
+    const g = S.grp || (S.fav.length ? "fav" : "kitchen");
+    if (g === "fav" || !((_a2 = S.groups) == null ? void 0 : _a2.length) || ((_c = (_b = S.groups.find((x) => x.id === g)) == null ? void 0 : _b.cats) == null ? void 0 : _c.length)) return g;
+    return ((_d = S.groups.find((x) => {
+      var _a3;
+      return (_a3 = x.cats) == null ? void 0 : _a3.length;
+    })) == null ? void 0 : _d.id) || g;
+  };
   const grpCats = (g) => {
     const gg = S.groups.find((x) => x.id === g);
     return gg ? S.menu.categories.filter((c) => gg.cats.includes(c.id)) : [];
