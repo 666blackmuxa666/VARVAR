@@ -189,7 +189,7 @@
       + `<div class="row"><div class="nm"><b>Новий рахунок</b></div><b class="money">${money(sum)}</b></div>`;
   }
   async function splitFlow() {
-    const t = S.open, b = S.tables.find(x => x.t === t); if (!b) return;
+    const t = S.open, b = S.tables[t]; if (!b?.items?.length) return toast("Стіл порожній");
     S.spl = { items: b.items, q: {} };
     const pm = modal({ title: `✂️ Розділити стіл ${tn(t)}`, text: 'Оберіть, що піде в окремий рахунок', body: '<div class="rows" id="splBox"></div>', buttons: [{ label: 'Далі → обрати стіл', val: 1, cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
     splitRender(); const v = await pm;

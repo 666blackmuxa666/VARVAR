@@ -2072,8 +2072,9 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     box.innerHTML = items.map((it, i) => `<div class="row"><div class="nm">${esc(it.name)}<small>\u043D\u0430 \u0441\u0442\u043E\u043B\u0456 ${it.q} \u0448\u0442 \xB7 ${Math.round(it.sum / it.q)} \u20B4</small></div><button class="rb minus" data-a="spq" data-i="${i}" data-d="-1">\u2212</button><span class="q">${q[i] || 0}</span><button class="rb plus" data-a="spq" data-i="${i}" data-d="1">+</button></div>`).join("") + `<div class="row"><div class="nm"><b>\u041D\u043E\u0432\u0438\u0439 \u0440\u0430\u0445\u0443\u043D\u043E\u043A</b></div><b class="money">${money(sum)}</b></div>`;
   }
   async function splitFlow() {
-    const t = S.open, b = S.tables.find((x) => x.t === t);
-    if (!b) return;
+    var _a2;
+    const t = S.open, b = S.tables[t];
+    if (!((_a2 = b == null ? void 0 : b.items) == null ? void 0 : _a2.length)) return toast("\u0421\u0442\u0456\u043B \u043F\u043E\u0440\u043E\u0436\u043D\u0456\u0439");
     S.spl = { items: b.items, q: {} };
     const pm = modal({ title: `\u2702\uFE0F \u0420\u043E\u0437\u0434\u0456\u043B\u0438\u0442\u0438 \u0441\u0442\u0456\u043B ${tn(t)}`, text: "\u041E\u0431\u0435\u0440\u0456\u0442\u044C, \u0449\u043E \u043F\u0456\u0434\u0435 \u0432 \u043E\u043A\u0440\u0435\u043C\u0438\u0439 \u0440\u0430\u0445\u0443\u043D\u043E\u043A", body: '<div class="rows" id="splBox"></div>', buttons: [{ label: "\u0414\u0430\u043B\u0456 \u2192 \u043E\u0431\u0440\u0430\u0442\u0438 \u0441\u0442\u0456\u043B", val: 1, cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
     splitRender();
