@@ -4995,9 +4995,9 @@ ${g.sup}:
     }
   }
   document.addEventListener("click", async (e) => {
-    var _a2, _b;
+    var _a2, _b, _c;
     const el = e.target.closest("[data-a]");
-    if (!el || !/^zp/.test(el.dataset.a)) return;
+    if (!el || !/^(zp|idea)/.test(el.dataset.a)) return;
     const a = el.dataset.a, D = el.dataset;
     switch (a) {
       case "zpIn":
@@ -5022,7 +5022,18 @@ ${g.sup}:
         zpMy();
         break;
       case "ideaDel":
-        if (await confirmBox("\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u043F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F?") && await act("ideaDel", { id: D.id }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) {
+        if (!D.sure) {
+          D.sure = 1;
+          el.textContent = "\u{1F5D1} \u0422\u043E\u0447\u043D\u043E?";
+          setTimeout(() => {
+            if (el.isConnected) {
+              delete D.sure;
+              el.textContent = "\u{1F5D1}";
+            }
+          }, 3e3);
+          break;
+        }
+        if (await act("ideaDel", { id: D.id }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) {
           (_a2 = el.closest("[data-idea]")) == null ? void 0 : _a2.remove();
           if (S.data.ideas) S.data.ideas = S.data.ideas.filter((x) => x.id !== D.id);
         }
@@ -5032,7 +5043,9 @@ ${g.sup}:
         if (r) {
           const x = (_b = S.data.ideas) == null ? void 0 : _b.find((y) => y.id === D.id);
           if (x) x.done = r.x.done;
-          renderMain();
+          const row = el.closest("[data-idea]");
+          if (row && ((_c = $("#modal")) == null ? void 0 : _c.contains(row))) row.outerHTML = ideaRow(r.x);
+          else renderMain();
         }
         break;
       }

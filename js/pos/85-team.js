@@ -116,14 +116,15 @@
   }
 
   document.addEventListener('click', async e => {
-    const el = e.target.closest('[data-a]'); if (!el || !/^zp/.test(el.dataset.a)) return;
+    const el = e.target.closest('[data-a]'); if (!el || !/^(zp|idea)/.test(el.dataset.a)) return;
     const a = el.dataset.a, D = el.dataset;
     switch (a) {
       case 'zpIn': closeModal(); if (await act('zpIn', {}, '🟢 Зміну почато — адмін підтвердить')) { await loadState().catch(() => {}); renderNav(); } break;
       case 'zpOut': closeModal(); if (await confirmBox('🔴 Закінчити зміну?')) { if (await act('zpOut', {}, '🔴 Зміну закінчено')) { await loadState().catch(() => {}); renderNav(); } } break;
       case 'zpMy': zpMy(); break;
-      case 'ideaDel': if (await confirmBox('🗑 Видалити побажання?') && await act('ideaDel', { id: D.id }, '🗑 Видалено')) { el.closest('[data-idea]')?.remove(); if (S.data.ideas) S.data.ideas = S.data.ideas.filter(x => x.id !== D.id); } break;
-      case 'ideaDone': { const r = await act('ideaDone', { id: D.id }); if (r) { const x = S.data.ideas?.find(y => y.id === D.id); if (x) x.done = r.x.done; renderMain(); } break; }
+      case 'ideaDel': if (!D.sure) { D.sure = 1; el.textContent = '🗑 Точно?'; setTimeout(() => { if (el.isConnected) { delete D.sure; el.textContent = '🗑'; } }, 3000); break; } // друге натискання — видалити (вікно підтвердження закрило б кабінет)
+        if (await act('ideaDel', { id: D.id }, '🗑 Видалено')) { el.closest('[data-idea]')?.remove(); if (S.data.ideas) S.data.ideas = S.data.ideas.filter(x => x.id !== D.id); } break;
+      case 'ideaDone': { const r = await act('ideaDone', { id: D.id }); if (r) { const x = S.data.ideas?.find(y => y.id === D.id); if (x) x.done = r.x.done; const row = el.closest('[data-idea]'); if (row && $('#modal')?.contains(row)) row.outerHTML = ideaRow(r.x); else renderMain(); } break; }
       case 'zpM': S.zpM = monAdd(S.zpM || curMon(), +D.d); S.data.zp = null; renderMain(); loadView(); break;
       case 'zpCell': zpCell(D.d, D.n); break;
       case 'zpPend': zpPend(); break;
