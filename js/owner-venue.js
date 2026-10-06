@@ -12,7 +12,7 @@ window.OWNV = ctx => {
     if (!r.ok || j.error) throw new Error(errText(j.error) || 'Помилка ' + r.status); return j;
   }
   const errText = e => ({ admin: 'Потрібні права адміна', image: 'Невірний формат картинки', too_big: 'Завеликий файл', not_found: 'Не знайдено' }[e] || e);
-  const SEC = [['start', '🚀 Запуск'], ['venue', '🏪 Заклад'], ['site', '🌐 Сайт'], ['menu', '🍽 Меню'], ['go', '🛵 Доставка'], ['pos', '🪑 Каса'], ['staff', '👥 Персонал'], ['bots', '🤖 Боти'], ['printer', '🖨 Принтер']];
+  const SEC = [['start', '🚀 Запуск'], ['venue', '🏪 Заклад'], ['site', '🌐 Сайт'], ['menu', '🍽 Меню'], ['go', '🛵 Доставка'], ['pos', '🪑 Каса'], ['staff', '👥 Персонал'], ['bots', '🤖 Боти'], ['printer', '🖨 Принтер'], ['log', '📜 Журнал']];
   const V = () => S.cfgV; // { id, sec, d: {…дані розділу} }
 
   async function load() {
@@ -25,6 +25,7 @@ window.OWNV = ctx => {
       if (sec === 'go') v.d = { go: (await vapi(id, 'goCfg')).cfg };
       if (sec === 'pos') { const st = await vapi(id, 'state'); v.d = { cfg: st.cfg, n: st.n }; }
       if (sec === 'staff') v.d = await vapi(id, 'staff');
+      if (sec === 'log') v.d = { list: (await vapi(id, 'alog', { m: S.logM || '' })).list };
     } catch (e) { toast('⚠️ ' + e.message); v.d = { err: e.message }; }
     render();
   }
@@ -92,6 +93,12 @@ window.OWNV = ctx => {
       return `<div class="grid"><div class="card"><h3>🤖 Стан</h3><div class="kv"><span>🧑‍🍳 Бот персоналу</span><b>${st(b.staff)}</b></div><div class="kv"><span>👥 Група персоналу</span><b>${b.group ? '✅ підключена' : '⬜ додайте бота в групу'}</b></div><div class="kv"><span>🍔 Бот гостей</span><b>${st(b.guest)}</b></div><div class="kv"><span>🛵 Бот кур'єрів</span><b>${st(b.courier)}</b></div>${b.staff || b.guest || b.courier ? '<button class="btn sm" data-a="vbrand" style="margin-top:10px">🎨 Оформити ботів (назва й логотип закладу)</button><div class="muted" style="font-size:12px;margin-top:4px">Робиться само при підключенні; натисніть, якщо змінили назву чи логотип.</div>' : ''}</div>
         <div class="card"><h3>➕ Підключити / замінити</h3><ol class="muted" style="font-size:13px;padding-left:18px;margin:0 0 10px"><li>Telegram → <a href="https://t.me/BotFather" target="_blank">@BotFather</a> → /newbot → назва й ім'я бота</li><li>Скопіюйте токен (виглядає як 123456:ABC…) і вставте нижче</li><li>Бота персоналу додайте у вашу робочу групу — вона підключиться сама</li></ol>
         <form id="vbf" style="display:grid;gap:8px"><input name="BOT_TOKEN" placeholder="🧑‍🍳 Токен бота персоналу" autocomplete="off"><input name="GUEST_BOT_TOKEN" placeholder="🍔 Токен бота гостей" autocomplete="off"><input name="COURIER_BOT_TOKEN" placeholder="🛵 Токен бота кур'єрів" autocomplete="off"><div class="err" id="vberr"></div><button class="btn primary">💾 Перевірити й зберегти</button></form></div></div>`;
+    },
+    log(v) {
+      const m = S.logM || new Date().toLocaleDateString('sv-SE').slice(0, 7), q = (S.logQ || '').toLowerCase(), l = v.d.list.filter(x => !q || x.t.toLowerCase().includes(q));
+      return `<div class="btnrow" style="margin-bottom:10px;align-items:center"><input type="month" id="logM" value="${m}" style="max-width:170px;min-height:34px;padding:6px 10px"><input id="logQ" placeholder="🔎 Хто / що (напр. Меню, Олег)" value="${esc(S.logQ || '')}" style="max-width:260px;min-height:34px;padding:6px 12px"></div>
+        <div class="card">${l.length ? l.slice(0, 500).map(x => `<div class="kv"><span style="min-width:0;overflow-wrap:anywhere">${esc(x.t)}</span><small class="muted" style="white-space:nowrap">${new Date(x.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</small></div>`).join('') : '<div class="muted">Записів немає</div>'}</div>
+        <div class="muted" style="font-size:12px;margin-top:6px">Зміни меню, цін, налаштувань, чеків, персоналу — хто й коли. Журнал ведеться з ${new Date().toLocaleDateString('uk-UA')}.</div>`;
     },
     printer(v) {
       const r = v.d.ready, apiU = base(v.id);
@@ -176,6 +183,8 @@ window.OWNV = ctx => {
       bg.querySelector('#mImp').addEventListener('input', ev => { const rows = parseTable(ev.target.value); $('#mPrev').innerHTML = rows.length ? `Знайдено ${rows.length} страв:<br>` + rows.slice(0, 30).map(r => `${esc(r.cat)} → <b>${esc(r.name)}</b> — ${esc(r.price)} ₴`).join('<br>') + (rows.length > 30 ? '<br>…' : '') : ''; });
     }
   });
+  document.addEventListener('change', e => { if (e.target.id === 'logM' && S.cfgV) { S.logM = e.target.value; load(); } });
+  document.addEventListener('input', e => { if (e.target.id === 'logQ' && S.cfgV) { S.logQ = e.target.value; clearTimeout(S.lqT); S.lqT = setTimeout(() => { const p = e.target.selectionStart; render(); const i = $('#logQ'); if (i) { i.focus(); i.setSelectionRange(p, p); } }, 250); } });
   document.addEventListener('input', e => { if (e.target.id === 'mq' && S.cfgV) { S.mq = e.target.value; clearTimeout(S.mqT); S.mqT = setTimeout(() => { const p = e.target.selectionStart; render(); const i = $('#mq'); if (i) { i.focus(); i.setSelectionRange(p, p); } }, 250); } });
   document.addEventListener('submit', async e => {
     if (e.target.id !== 'vbf' || !S.cfgV) return; e.preventDefault(); const f = e.target, err = $('#vberr'), x = {};

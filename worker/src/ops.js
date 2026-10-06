@@ -27,7 +27,13 @@ export const LINE = /^(\d+)× (.+?) — (\d+)$/;
 export const tablesCount = env => +env.TABLES || 15;
 
 // повідомлення в чат персоналу (дії з POS дублюються в Telegram)
-export const notify = (env, text, markup) => tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true, ...(markup ? { reply_markup: markup } : {}) });
+export const notify = (env, text, markup) => { if (env.INSTORE && /^\s*🖥/.test(text)) alog(env, text).catch(() => {}); return tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text, parse_mode: 'HTML', disable_web_page_preview: true, ...(markup ? { reply_markup: markup } : {}) }); };
+// 📜 журнал дій закладу: усі зміни з каси («🖥 … — хто») — по місяцях, без окремих запитів (запис усередині Store)
+async function alog(env, text) {
+  const t = String(text).replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/^\s*🖥\s*/, '').slice(0, 400), k = 'alog:' + dayKey().slice(0, 7);
+  await L(env, k, async () => { const l = (await env.DB.get(k, 'json')) || []; l.push({ at: Date.now(), t }); await env.DB.put(k, JSON.stringify(l.slice(-3000))); });
+}
+export const alogGet = async (env, m) => ((await env.DB.get('alog:' + (/^\d{4}-\d{2}$/.test(m || '') ? m : dayKey().slice(0, 7)), 'json')) || []).reverse();
 
 // ---------- рахунки ----------
 export const getBill = async (env, t) => (await env.DB.get('bill:' + t, 'json')) || { total: 0, orders: 0, log: [] };
