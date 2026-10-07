@@ -37,10 +37,11 @@
     const r = b ? await act('bkEdit', { id: b.id, f }, '💾 Збережено') : await act('bkNew', { f }, '📅 Бронь створено');
     if (r) { S.bkDay = r.b.date; await loadBooks().catch(() => {}); renderMain(); loadState().catch(() => {}); }
   }
-  async function bdGiftT(t) { // 🎂 гість святкує тут — подарунок (кальян) прямо в рахунок, навіть без програми лояльності
-    const cli = S.tables[t]?.cli, ph = cli || await askVal('🎂 Телефон іменинника — щоб не подарувати двічі за рік (можна порожньо)', '', 'tel'); if (ph === null) return;
-    const name = cli ? '' : await askVal("🎂 Ім'я іменинника (можна порожньо)", ''); if (name === null) return;
-    const r = await act('certBd', { t, phone: ph || '', name: name || '' }); if (r) { toast(`🎂 Подарунок: −${money(r.use)} · ${r.gift}`); loadState().catch(() => {}); }
+  async function bdGiftT(t) { // 🎂 гість святкує тут — подарунок з чека (що саме — обирає офіціант); телефон обовʼязковий: раз на рік на номер
+    const ph = S.tables[t]?.cli || await askVal('🎂 Телефон іменинника (обовʼязково)', '', 'tel'); if (!ph) return;
+    const p = await act('certBd', { t, phone: ph }); if (!p?.pick) return;
+    const i = await choose('🎂 Що подарувати?', 'Одна позиція з чека — за її ціною', p.pick.map(x => ({ label: `${x.n} · ${money(x.p)}${x.q > 1 ? ` (у чеку ${x.q})` : ''}`, val: String(x.i) }))); if (i == null) return;
+    const r = await act('certBd', { t, phone: ph, item: i }); if (r) { toast(`🎂 Подарунок: ${r.gift} −${money(r.use)}`); loadState().catch(() => {}); }
   }
   async function certT(t) {
     const code = await ask('🎟 Код сертифіката', 'VV-XXXXX'); if (!code) return;

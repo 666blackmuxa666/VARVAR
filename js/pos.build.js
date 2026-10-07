@@ -2769,13 +2769,15 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   }
   async function bdGiftT(t) {
     var _a2;
-    const cli = (_a2 = S.tables[t]) == null ? void 0 : _a2.cli, ph = cli || await askVal("\u{1F382} \u0422\u0435\u043B\u0435\u0444\u043E\u043D \u0456\u043C\u0435\u043D\u0438\u043D\u043D\u0438\u043A\u0430 \u2014 \u0449\u043E\u0431 \u043D\u0435 \u043F\u043E\u0434\u0430\u0440\u0443\u0432\u0430\u0442\u0438 \u0434\u0432\u0456\u0447\u0456 \u0437\u0430 \u0440\u0456\u043A (\u043C\u043E\u0436\u043D\u0430 \u043F\u043E\u0440\u043E\u0436\u043D\u044C\u043E)", "", "tel");
-    if (ph === null) return;
-    const name = cli ? "" : await askVal("\u{1F382} \u0406\u043C'\u044F \u0456\u043C\u0435\u043D\u0438\u043D\u043D\u0438\u043A\u0430 (\u043C\u043E\u0436\u043D\u0430 \u043F\u043E\u0440\u043E\u0436\u043D\u044C\u043E)", "");
-    if (name === null) return;
-    const r = await act("certBd", { t, phone: ph || "", name: name || "" });
+    const ph = ((_a2 = S.tables[t]) == null ? void 0 : _a2.cli) || await askVal("\u{1F382} \u0422\u0435\u043B\u0435\u0444\u043E\u043D \u0456\u043C\u0435\u043D\u0438\u043D\u043D\u0438\u043A\u0430 (\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)", "", "tel");
+    if (!ph) return;
+    const p = await act("certBd", { t, phone: ph });
+    if (!(p == null ? void 0 : p.pick)) return;
+    const i = await choose("\u{1F382} \u0429\u043E \u043F\u043E\u0434\u0430\u0440\u0443\u0432\u0430\u0442\u0438?", "\u041E\u0434\u043D\u0430 \u043F\u043E\u0437\u0438\u0446\u0456\u044F \u0437 \u0447\u0435\u043A\u0430 \u2014 \u0437\u0430 \u0457\u0457 \u0446\u0456\u043D\u043E\u044E", p.pick.map((x) => ({ label: `${x.n} \xB7 ${money(x.p)}${x.q > 1 ? ` (\u0443 \u0447\u0435\u043A\u0443 ${x.q})` : ""}`, val: String(x.i) })));
+    if (i == null) return;
+    const r = await act("certBd", { t, phone: ph, item: i });
     if (r) {
-      toast(`\u{1F382} \u041F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A: \u2212${money(r.use)} \xB7 ${r.gift}`);
+      toast(`\u{1F382} \u041F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A: ${r.gift} \u2212${money(r.use)}`);
       loadState().catch(() => {
       });
     }
