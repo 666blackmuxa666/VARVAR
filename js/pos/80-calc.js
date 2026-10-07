@@ -53,7 +53,7 @@
       <label>Категорія<select id="iC">${[...new Set([...D.cats, x.cat || 'Інше'])].map(c => `<option ${x.cat === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
       <div class="frow"><label>Мінімум <small>(нижче — сповіщення)</small><input id="iMin" inputmode="decimal" value="${x.min || ''}" placeholder="0"></label><label>Норма <small>(докупити до)</small><input id="iPar" inputmode="decimal" value="${x.par || ''}" placeholder="0"></label></div>
       <div class="frow"><label>% втрат при обробці <small>(чистка, варка…)</small><input id="iL" inputmode="numeric" value="${x.loss || ''}" placeholder="0"></label>
-        ${x.lp ? `<label>Ціна (з накладних)<input disabled value="${money(x.cost)} / ${x.u}"></label>` : `<label>Ціна за ${x.u}, ₴ <small>(поки без накладних)</small><input id="iCost" inputmode="decimal" value="${x.cost || ''}"></label>`}</div>
+        ${x.semi ? '' : `<label>Ціна за ${x.u}, ₴ <small>${x.lp ? '(середня з накладних — можна змінити)' : ''}</small><input id="iCost" inputmode="decimal" value="${x.cost || ''}"></label>`}</div>
       <label>Одиниці закупівлі <small>напр.: ящик=12, уп=2.5 (скільки ${x.u} в одній)</small><input id="iPk" value="${esc((x.pk || []).map(p => `${p.n}=${p.f}`).join(', '))}" placeholder="ящик=12"></label>
       <label>Штрихкоди <small>через кому — або відскануйте сканером у це поле</small><input id="iBc" value="${esc((x.bc || []).join(', '))}"></label>
       <label class="chk"><input type="checkbox" id="iS" ${x.semi ? 'checked' : ''}> 🍳 Заготовка — готуємо самі (соус, тісто…), має свою техкарту</label></div>`;
@@ -63,7 +63,7 @@
     const num = i => +String($('#' + i)?.value || '').replace(',', '.') || 0;
     const d = { id: x.id, n: $('#iN').value, u: $('#iU').value, home: $('#iH').value, cat: $('#iC').value, min: num('iMin'), par: num('iPar'), loss: num('iL'), semi: $('#iS').checked,
       pk: $('#iPk').value.split(',').map(s => s.split(/[=:]/).map(z => z.trim())).filter(p => p[0] && +String(p[1] || '').replace(',', '.') > 0).map(([n, f]) => ({ n, f: +f.replace(',', '.') })),
-      bc: $('#iBc').value.split(/[,\s]+/).filter(Boolean), ...($('#iCost') ? { cost: num('iCost'), setCost: 1 } : {}) };
+      bc: $('#iBc').value.split(/[,\s]+/).filter(Boolean), ...($('#iCost') && num('iCost') !== (x.cost || 0) ? { cost: num('iCost'), setCost: 1 } : {}) };
     closeModal();
     const r = await act('skIngSave', { x: d }, '💾 Збережено'); if (!r) return null;
     S.data.sk = await api('skData').catch(() => S.data.sk); renderMain(); return r.x;
@@ -279,6 +279,7 @@
       return `<div class="cl"><button class="pk-b ${l.id || l.add ? '' : 'empty'}" data-a="skClPick" data-i="${i}">${x ? (x.semi ? '🍳 ' : '') + esc(x.n) : l.add ? `➕ ${esc(l.add.n)}` : '🔎 Продукт…'}</button>
         <label>брутто, ${small(u)}<input data-cl="${i}" data-k="q" inputmode="decimal" value="${l.q ? r3(l.q * k) : ''}"></label><label>втрати %<input data-cl="${i}" data-k="loss" inputmode="numeric" value="${loss || ''}" placeholder="0"></label>
         <label>нетто, ${small(u)}<input data-cl="${i}" data-k="net" inputmode="decimal" value="${net ? r3(net * k) : ''}" id="cln${i}"></label>
+        ${isAdmin() ? `<label>ціна ₴/${small(u)}<input data-cl="${i}" data-k="cost" inputmode="decimal" ${!x || x.semi ? `disabled placeholder="${x?.semi ? 'з рецепту' : '—'}"` : ''} value="${x && !x.semi ? (c.costCh?.[x.id] ?? x.cost ?? '') || '' : ''}"></label>` : '<i></i>'}
         <span class="cl-c muted money" id="clc${i}">${x ? money((+l.q || 0) * skUnitCost(x.id)) : ''}</span><button class="xb" data-a="skClDel" data-i="${i}">✕</button></div>`; }).join('');
     return `<div class="card"><div class="rhead"><div><h3 style="margin:0">📋 ${esc(c.name || '')}</h3><span class="muted">${c.semi ? `заготовка · партія ${c.yield || 1} ${c.u || ''}` : `ціна ${money(c.price)}`}${c.draft ? ' · ✨ чернетка від AI — перевірте грамовки' : ''}</span></div><button class="btn sm" data-a="skCardX">← Назад</button></div>
       <div class="frow">${c.semi ? `<label>Вихід партії, ${esc(c.u || '')}<input data-ch="yield" inputmode="decimal" value="${c.yield || ''}"></label>` : `<label>Вихід, г / мл<input data-ch="out" inputmode="numeric" value="${c.out || ''}" placeholder="напр. 400"></label>`}
@@ -321,6 +322,7 @@
     try { await skMakeIngs(c.items); } catch (e) { return toast('⚠️ ' + e.message); }
     const items = c.items.filter(l => l.id && +l.q > 0).map(l => ({ id: l.id, q: r3(l.q), ...(l.loss != null && l.loss !== '' ? { loss: +l.loss } : {}) }));
     if (!items.length) return toast('⚠️ Додайте хоча б один продукт з кількістю');
+    if (c.costCh && Object.keys(c.costCh).length && !(await act('skIngCost', { list: Object.entries(c.costCh).map(([id, cost]) => ({ id, cost })) }))) return;
     const card = { items, out: +c.out || 0, yield: +c.yield || 0, wh: c.wh, perL: c.perL, mk: +String(c.mk || '').replace(',', '.') || 0, draft, note: c.note };
     const r = await act('skCardSave', { key: c.key, name: c.name, card }, draft ? '✨ Чернетку збережено' : '💾 Техкарту збережено'); if (!r) return;
     S.sk.card = null; S.data.sk = null; loadView();

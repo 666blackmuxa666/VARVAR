@@ -404,6 +404,12 @@ export async function stockApi(b, env, me, ai) {
   switch (b.op) {
     case 'skData': { const l = await getIng(env); return ok({ ing: hide(l), wh: WH, cats: ING_CATS, offR: OFF_R, units: UNITS, cfg: await getCfg(env) }); }
     case 'skIngSave': return R(await ingSave(env, b.x || {}, who));
+    case 'skIngCost': { // 💰 ручна ціна продукту (з техкарти чи картки продукту) — та сама, що на складі; наступна накладна рахує середню від неї
+      const ch = (Array.isArray(b.list) ? b.list : []).slice(0, 200); if (!ch.length) return bad('Немає змін');
+      return R(await lk(env, async () => { const l = await getIng(env), m = new Map(l.map(x => [x.id, x])); let n = 0;
+        for (const c of ch) { const x = m.get(String(c.id)), v = +String(c.cost).replace(',', '.'); if (!x || x.semi || !(v >= 0) || v > 1e6) continue; x.cost = r2(v); n++; }
+        await putIng(env, l); return { n }; }));
+    }
     case 'skIngDel': return R(await ingDel(env, String(b.id), !!b.back));
     case 'skAdj': { if (cook && !(+b.q < 0)) return bad('Кухар може лише списувати'); const r = await adjust(env, b, who); if (r?.x && +b.q < 0 && !admin) await notify(env, `🗑 Списання (${esc(who)}): ${esc(r.x.n)} ${fq(-b.q, r.x.u)} — ${esc(b.note || '')}`).catch(() => {}); return R(r); }
     case 'skMove': return R(await transfer(env, b, who));

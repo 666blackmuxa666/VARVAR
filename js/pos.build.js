@@ -1736,7 +1736,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     }
   });
   document.addEventListener("input", (e) => {
-    var _a2, _b;
+    var _a2, _b, _c;
     const t = e.target, K = S.sk, d = t.dataset || {};
     if (t.id === "skQ") {
       K.q = t.value;
@@ -1776,10 +1776,20 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         const n = $("#cln" + i);
         if (n) n.value = l.q ? r3(l.q * (1 - l.loss / 100) * k) : "";
       }
+      if (d.k === "cost" && x && !x.semi) {
+        ((_b = K.card).costCh || (_b.costCh = {}))[x.id] = v;
+        x.cost = v;
+        K.card.items.forEach((o, j) => {
+          if (j !== i && o.id === x.id) {
+            const e2 = document.querySelector(`[data-cl="${j}"][data-k="cost"]`);
+            if (e2) e2.value = t.value;
+          }
+        });
+      }
       if (d.k === "net") {
         const z = lo();
         l.q = z < 100 ? r3(v / k / (1 - z / 100)) : 0;
-        const qi = (_b = t.closest(".cl")) == null ? void 0 : _b.querySelector('[data-k="q"]');
+        const qi = (_c = t.closest(".cl")) == null ? void 0 : _c.querySelector('[data-k="q"]');
         if (qi) qi.value = l.q ? r3(l.q * k) : "";
       }
       skCardCalc();
@@ -4125,7 +4135,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       <label>\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0456\u044F<select id="iC">${[.../* @__PURE__ */ new Set([...D.cats, x.cat || "\u0406\u043D\u0448\u0435"])].map((c) => `<option ${x.cat === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></label>
       <div class="frow"><label>\u041C\u0456\u043D\u0456\u043C\u0443\u043C <small>(\u043D\u0438\u0436\u0447\u0435 \u2014 \u0441\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F)</small><input id="iMin" inputmode="decimal" value="${x.min || ""}" placeholder="0"></label><label>\u041D\u043E\u0440\u043C\u0430 <small>(\u0434\u043E\u043A\u0443\u043F\u0438\u0442\u0438 \u0434\u043E)</small><input id="iPar" inputmode="decimal" value="${x.par || ""}" placeholder="0"></label></div>
       <div class="frow"><label>% \u0432\u0442\u0440\u0430\u0442 \u043F\u0440\u0438 \u043E\u0431\u0440\u043E\u0431\u0446\u0456 <small>(\u0447\u0438\u0441\u0442\u043A\u0430, \u0432\u0430\u0440\u043A\u0430\u2026)</small><input id="iL" inputmode="numeric" value="${x.loss || ""}" placeholder="0"></label>
-        ${x.lp ? `<label>\u0426\u0456\u043D\u0430 (\u0437 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0438\u0445)<input disabled value="${money(x.cost)} / ${x.u}"></label>` : `<label>\u0426\u0456\u043D\u0430 \u0437\u0430 ${x.u}, \u20B4 <small>(\u043F\u043E\u043A\u0438 \u0431\u0435\u0437 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0438\u0445)</small><input id="iCost" inputmode="decimal" value="${x.cost || ""}"></label>`}</div>
+        ${x.semi ? "" : `<label>\u0426\u0456\u043D\u0430 \u0437\u0430 ${x.u}, \u20B4 <small>${x.lp ? "(\u0441\u0435\u0440\u0435\u0434\u043D\u044F \u0437 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0438\u0445 \u2014 \u043C\u043E\u0436\u043D\u0430 \u0437\u043C\u0456\u043D\u0438\u0442\u0438)" : ""}</small><input id="iCost" inputmode="decimal" value="${x.cost || ""}"></label>`}</div>
       <label>\u041E\u0434\u0438\u043D\u0438\u0446\u0456 \u0437\u0430\u043A\u0443\u043F\u0456\u0432\u043B\u0456 <small>\u043D\u0430\u043F\u0440.: \u044F\u0449\u0438\u043A=12, \u0443\u043F=2.5 (\u0441\u043A\u0456\u043B\u044C\u043A\u0438 ${x.u} \u0432 \u043E\u0434\u043D\u0456\u0439)</small><input id="iPk" value="${esc((x.pk || []).map((p) => `${p.n}=${p.f}`).join(", "))}" placeholder="\u044F\u0449\u0438\u043A=12"></label>
       <label>\u0428\u0442\u0440\u0438\u0445\u043A\u043E\u0434\u0438 <small>\u0447\u0435\u0440\u0435\u0437 \u043A\u043E\u043C\u0443 \u2014 \u0430\u0431\u043E \u0432\u0456\u0434\u0441\u043A\u0430\u043D\u0443\u0439\u0442\u0435 \u0441\u043A\u0430\u043D\u0435\u0440\u043E\u043C \u0443 \u0446\u0435 \u043F\u043E\u043B\u0435</small><input id="iBc" value="${esc((x.bc || []).join(", "))}"></label>
       <label class="chk"><input type="checkbox" id="iS" ${x.semi ? "checked" : ""}> \u{1F373} \u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \u2014 \u0433\u043E\u0442\u0443\u0454\u043C\u043E \u0441\u0430\u043C\u0456 (\u0441\u043E\u0443\u0441, \u0442\u0456\u0441\u0442\u043E\u2026), \u043C\u0430\u0454 \u0441\u0432\u043E\u044E \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0443</label></div>`;
@@ -4152,7 +4162,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       semi: $("#iS").checked,
       pk: $("#iPk").value.split(",").map((s) => s.split(/[=:]/).map((z) => z.trim())).filter((p) => p[0] && +String(p[1] || "").replace(",", ".") > 0).map(([n, f]) => ({ n, f: +f.replace(",", ".") })),
       bc: $("#iBc").value.split(/[,\s]+/).filter(Boolean)
-    }, $("#iCost") ? { cost: num("iCost"), setCost: 1 } : {});
+    }, $("#iCost") && num("iCost") !== (x.cost || 0) ? { cost: num("iCost"), setCost: 1 } : {});
     closeModal();
     const r = await act("skIngSave", { x: d }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
     if (!r) return null;
@@ -4541,11 +4551,12 @@ ${g.sup}:
     const cost = c.items.reduce((a, l) => a + (l.id ? (+l.q || 0) * skUnitCost(l.id) : 0), 0), fc = c.price ? Math.round(cost / c.price * 1e3) / 10 : null, rec = cost ? Math.ceil(cost / (tgt / 100) / 5) * 5 : 0;
     const per = c.semi && +c.yield > 0 ? cost / +c.yield : null;
     const rows = c.items.map((l, i) => {
-      var _a3, _b2, _c2;
+      var _a3, _b2, _c2, _d2, _e, _f;
       const x = im.get(l.id), u = (x == null ? void 0 : x.u) || ((_a3 = l.add) == null ? void 0 : _a3.u) || "\u043A\u0433", k = u === "\u0448\u0442" ? 1 : 1e3, loss = (_c2 = (_b2 = l.loss) != null ? _b2 : x == null ? void 0 : x.loss) != null ? _c2 : 0, net = (+l.q || 0) * (1 - loss / 100);
       return `<div class="cl"><button class="pk-b ${l.id || l.add ? "" : "empty"}" data-a="skClPick" data-i="${i}">${x ? (x.semi ? "\u{1F373} " : "") + esc(x.n) : l.add ? `\u2795 ${esc(l.add.n)}` : "\u{1F50E} \u041F\u0440\u043E\u0434\u0443\u043A\u0442\u2026"}</button>
         <label>\u0431\u0440\u0443\u0442\u0442\u043E, ${small(u)}<input data-cl="${i}" data-k="q" inputmode="decimal" value="${l.q ? r3(l.q * k) : ""}"></label><label>\u0432\u0442\u0440\u0430\u0442\u0438 %<input data-cl="${i}" data-k="loss" inputmode="numeric" value="${loss || ""}" placeholder="0"></label>
         <label>\u043D\u0435\u0442\u0442\u043E, ${small(u)}<input data-cl="${i}" data-k="net" inputmode="decimal" value="${net ? r3(net * k) : ""}" id="cln${i}"></label>
+        ${isAdmin() ? `<label>\u0446\u0456\u043D\u0430 \u20B4/${small(u)}<input data-cl="${i}" data-k="cost" inputmode="decimal" ${!x || x.semi ? `disabled placeholder="${(x == null ? void 0 : x.semi) ? "\u0437 \u0440\u0435\u0446\u0435\u043F\u0442\u0443" : "\u2014"}"` : ""} value="${x && !x.semi ? ((_f = (_e = (_d2 = c.costCh) == null ? void 0 : _d2[x.id]) != null ? _e : x.cost) != null ? _f : "") || "" : ""}"></label>` : "<i></i>"}
         <span class="cl-c muted money" id="clc${i}">${x ? money((+l.q || 0) * skUnitCost(x.id)) : ""}</span><button class="xb" data-a="skClDel" data-i="${i}">\u2715</button></div>`;
     }).join("");
     return `<div class="card"><div class="rhead"><div><h3 style="margin:0">\u{1F4CB} ${esc(c.name || "")}</h3><span class="muted">${c.semi ? `\u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \xB7 \u043F\u0430\u0440\u0442\u0456\u044F ${c.yield || 1} ${c.u || ""}` : `\u0446\u0456\u043D\u0430 ${money(c.price)}`}${c.draft ? " \xB7 \u2728 \u0447\u0435\u0440\u043D\u0435\u0442\u043A\u0430 \u0432\u0456\u0434 AI \u2014 \u043F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435 \u0433\u0440\u0430\u043C\u043E\u0432\u043A\u0438" : ""}</span></div><button class="btn sm" data-a="skCardX">\u2190 \u041D\u0430\u0437\u0430\u0434</button></div>
@@ -4634,6 +4645,7 @@ ${g.sup}:
     }
     const items = c.items.filter((l) => l.id && +l.q > 0).map((l) => __spreadValues({ id: l.id, q: r3(l.q) }, l.loss != null && l.loss !== "" ? { loss: +l.loss } : {}));
     if (!items.length) return toast("\u26A0\uFE0F \u0414\u043E\u0434\u0430\u0439\u0442\u0435 \u0445\u043E\u0447\u0430 \u0431 \u043E\u0434\u0438\u043D \u043F\u0440\u043E\u0434\u0443\u043A\u0442 \u0437 \u043A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044E");
+    if (c.costCh && Object.keys(c.costCh).length && !await act("skIngCost", { list: Object.entries(c.costCh).map(([id, cost]) => ({ id, cost })) })) return;
     const card = { items, out: +c.out || 0, yield: +c.yield || 0, wh: c.wh, perL: c.perL, mk: +String(c.mk || "").replace(",", ".") || 0, draft, note: c.note };
     const r = await act("skCardSave", { key: c.key, name: c.name, card }, draft ? "\u2728 \u0427\u0435\u0440\u043D\u0435\u0442\u043A\u0443 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E" : "\u{1F4BE} \u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0443 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
     if (!r) return;

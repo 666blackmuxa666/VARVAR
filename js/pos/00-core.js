@@ -557,6 +557,7 @@
       const x = S.data.sk.ing.find(y => y.id === l.id), u = x?.u || l.add?.u || 'кг', k = u === 'шт' ? 1 : 1000, v = +t.value.replace(',', '.') || 0, lo = () => +(l.loss ?? x?.loss ?? 0);
       if (d.k === 'q') { l.q = r3(v / k); const n = $('#cln' + i); if (n) n.value = l.q ? r3(l.q * (1 - lo() / 100) * k) : ''; }
       if (d.k === 'loss') { l.loss = Math.max(0, Math.min(90, v)); const n = $('#cln' + i); if (n) n.value = l.q ? r3(l.q * (1 - l.loss / 100) * k) : ''; }
+      if (d.k === 'cost' && x && !x.semi) { (K.card.costCh ||= {})[x.id] = v; x.cost = v; K.card.items.forEach((o, j) => { if (j !== i && o.id === x.id) { const e2 = document.querySelector(`[data-cl="${j}"][data-k="cost"]`); if (e2) e2.value = t.value; } }); }
       if (d.k === 'net') { const z = lo(); l.q = z < 100 ? r3(v / k / (1 - z / 100)) : 0; const qi = t.closest('.cl')?.querySelector('[data-k="q"]'); if (qi) qi.value = l.q ? r3(l.q * k) : ''; }
       skCardCalc();
     }
