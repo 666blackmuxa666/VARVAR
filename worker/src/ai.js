@@ -2,7 +2,7 @@
 import { getMenu } from './menu.js';
 
 // безкоштовні ліміти — окремо на кожну модель: беремо всі доступні flash-моделі й перемикаємось, коли одна вичерпана
-const PREF = ['gemini-flash-lite-latest', 'gemini-flash-latest'];
+const PREF = ['gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
 async function models(env) {
   let l = await env.DB.get('ai_models', 'json');
   if (!l) {
@@ -52,7 +52,7 @@ export const aiOn = env => !!(env.GEMINI_API_KEY || env.GROQ_API_KEY || env.KIMI
 // Текст: Gemini → Groq (безкоштовний) → Kimi (платний, копійки). Фото накладних: Gemini → Kimi (краще читає) → Groq.
 const schemaText = s => !s ? 'any' : s.type === 'OBJECT' ? '{' + Object.entries(s.properties || {}).map(([k, v]) => `"${k}": ${schemaText(v)}`).join(', ') + '}' : s.type === 'ARRAY' ? '[' + schemaText(s.items) + ', …]' : s.type.toLowerCase();
 const ALT = {
-  groq: { key: 'GROQ_API_KEY', url: 'https://api.groq.com/openai/v1/chat/completions', text: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'], vision: ['meta-llama/llama-4-scout-17b-16e-instruct'], temp: 1 },
+  groq: { key: 'GROQ_API_KEY', url: 'https://api.groq.com/openai/v1/chat/completions', text: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'], vision: ['qwen/qwen3.8-27b'], temp: 1 },
   kimi: { key: 'KIMI_API_KEY', url: 'https://api.moonshot.ai/v1/chat/completions', text: ['kimi-k2.6'], vision: ['kimi-k2.6'], temp: 0 }, // температуру Kimi не передаємо — у k2.6 вона фіксована
 };
 async function alt(env, name, parts, o = {}) {
@@ -71,7 +71,7 @@ async function alt(env, name, parts, o = {}) {
   throw new Error(last);
 }
 async function backup(env, parts, o, why) {
-  const order = o.ai && ALT[o.ai] ? [o.ai] : parts.some(p => p.inline_data) ? ['kimi', 'groq'] : ['groq', 'kimi'];
+  const order = o.ai && ALT[o.ai] ? [o.ai] : parts.some(p => p.inline_data) ? ['kimi'] : ['groq', 'kimi'];
   let err = why;
   for (const n of order) { if (!env[ALT[n].key]) continue; try { console.log('ai fallback', n, String(err).slice(0, 200)); return await alt(env, n, parts, o); } catch (e) { err = e.message; } }
   throw new Error(String(err));
@@ -85,25 +85,37 @@ async function gemini(env, prompt, o = {}) {
   catch (e) { return backup(env, parts0, o, e.message); }
 }
 async function gemini1(env, prompt, o = {}) {
-  let last;
+  let last, dirty = false;
   const busy = (await env.DB.get('ai_busy', 'json')) || {}, now = Date.now();
   let list = (await models(env)).filter(m => !(busy[m] > now));
   if (o.only) list = [o.only];
-  else if (o.prefer) list = [...o.prefer.filter(m => list.includes(m)), ...list.filter(m => !o.prefer.includes(m))]; // для фото — спершу сильніша модель
-  const parts = typeof prompt === 'string' ? [{ text: prompt }] : prompt;
-  const t0 = Date.now();
-  for (const m of list.length ? list : PREF) try {
-    if (o.budget && Date.now() - t0 > o.budget) break; // час вичерпано — віддаємо запасному ШІ
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
-      method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-      signal: AbortSignal.timeout(o.budget ? Math.max(5000, Math.min(o.timeout || 8000, o.budget - (Date.now() - t0))) : o.timeout || 8000),
-      body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', responseSchema: o.schema || SCHEMA, temperature: o.temperature ?? 0.9 } }),
-    });
-    if (r.status === 429 || r.status === 404) { busy[m] = now + (r.status === 404 ? 86400e3 : 60e3); await env.DB.put('ai_busy', JSON.stringify(busy), { expirationTtl: 86400 }); } // вичерпана — пропускаємо хвилину
-    if (r.ok) { const d = await r.json(); return JSON.parse(d.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '{}'); }
-    last = m + ' ' + r.status + ' ' + (await r.text()).replace(/\s+/g, ' ').slice(0, 400);
-  } catch (e) { last = m + ' ' + e.message; busy[m] = now + 60e3; await env.DB.put('ai_busy', JSON.stringify(busy), { expirationTtl: 86400 }); } // зависла — теж пропускаємо хвилину
-  throw new Error(last);
+  else if (o.prefer) list = [...o.prefer.filter(m => list.includes(m)), ...list.filter(m => !o.prefer.includes(m))]; // для фото — спершу моделі, що найстабільніше читають
+  if (!list.length) list = PREF;
+  const parts = typeof prompt === 'string' ? [{ text: prompt }] : prompt, t0 = Date.now(), stop = new AbortController();
+  const one = async m => {
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
+        method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+        signal: AbortSignal.any([stop.signal, AbortSignal.timeout(o.budget ? Math.max(5000, Math.min(o.timeout || 8000, o.budget - (Date.now() - t0))) : o.timeout || 8000)]),
+        body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', responseSchema: o.schema || SCHEMA, temperature: o.temperature ?? 0.9 } }),
+      });
+      if (r.ok) { const d = await r.json(); return JSON.parse(d.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '{}'); }
+      if ([404, 429, 503].includes(r.status)) { busy[m] = now + (r.status === 404 ? 86400e3 : 60e3); dirty = true; } // закрита / вичерпана / перевантажена — пропускаємо
+      throw new Error(m + ' ' + r.status + ' ' + (await r.text()).replace(/\s+/g, ' ').slice(0, 300));
+    } catch (e) { if (!stop.signal.aborted && !/^\S+ \d{3} /.test(e.message)) { busy[m] = now + 60e3; dirty = true; } throw new Error(e.message.startsWith(m) ? e.message : m + ' ' + e.message); } // зависла — теж пропускаємо хвилину
+  };
+  const save = () => dirty && env.DB.put('ai_busy', JSON.stringify(busy), { expirationTtl: 86400 });
+  try {
+    // фото: кілька моделей одночасно — бере першу відповідь (безкоштовні часто перевантажені або думають хвилину)
+    const n = o.race ? Math.min(o.race, list.length) : 1;
+    try { const r = await Promise.any(list.slice(0, n).map(one)); stop.abort(); return r; }
+    catch (e) { last = e.errors?.map(x => x.message).join(' · ') || e.message; }
+    for (const m of list.slice(n)) {
+      if (o.budget && Date.now() - t0 > o.budget) break; // час вичерпано — віддаємо запасному ШІ
+      try { return await one(m); } catch (e) { last = e.message; }
+    }
+    throw new Error(last);
+  } finally { await save(); }
 }
 
 // 🧠 кабінет власника: «Запитай у даних» — відповідь лише з переданих цифр
@@ -155,7 +167,7 @@ ${final ? `ЗАРАЗ дай фінальну пораду: поле "intro" (1 
 }
 
 // 🧾 накладна з фото (або текст QR-коду) → постачальник, №, дата, рядки. Фото лише передається в запиті — ніде не зберігається.
-const BENCH = [['g', 'gemini-flash-latest'], ['g', 'gemini-2.5-flash'], ['g', 'gemini-flash-lite-latest'], ['g', 'gemini-2.5-flash-lite'], ['g', 'gemini-2.0-flash'], ['groq', 'meta-llama/llama-4-scout-17b-16e-instruct'], ['groq', 'meta-llama/llama-4-maverick-17b-128e-instruct'], ['kimi', 'kimi-k2.6']];
+const BENCH = [['g', 'gemini-3.8-flash'], ['g', 'gemini-3.7-flash'], ['g', 'gemini-3.6-flash'], ['g', 'gemini-3.5-flash'], ['g', 'gemini-3.5-flash-lite'], ['g', 'gemini-3.1-flash-lite'], ['g', 'gemini-flash-latest'], ['g', 'gemini-flash-lite-latest'], ['g', 'gemma-4-31b-it'], ['groq', 'qwen/qwen3.8-27b'], ['kimi', 'kimi-k2.6']];
 const INV = { type: 'OBJECT', properties: { sup: { type: 'STRING' }, no: { type: 'STRING' }, date: { type: 'STRING' }, total: { type: 'NUMBER' },
   lines: { type: 'ARRAY', items: { type: 'OBJECT', properties: { n: { type: 'STRING' }, q: { type: 'NUMBER' }, u: { type: 'STRING' }, price: { type: 'NUMBER' }, sum: { type: 'NUMBER' }, p: { type: 'STRING' }, cat: { type: 'STRING' }, bar: { type: 'BOOLEAN' }, pu: { type: 'STRING' }, pq: { type: 'NUMBER' }, bc: { type: 'STRING' } }, required: ['n', 'q', 'u', 'sum', 'p', 'cat', 'bar', 'pu', 'pq'] } } }, required: ['lines'] };
 async function invPrompt(env, images, text) {
@@ -173,7 +185,7 @@ export async function aiInvoice(env, { images = [], text = '' }) {
   if (!aiOn(env)) return { error: 'AI вимкнено' };
   const prompt = await invPrompt(env, images, text);
   try {
-    const r = await gemini(env, [{ text: prompt }, ...images.map(d => ({ inline_data: { mime_type: 'image/jpeg', data: d } }))], { schema: INV, timeout: 40000, budget: 55000, temperature: 0.1, prefer: ['gemini-flash-latest', 'gemini-2.5-flash'] });
+    const r = await gemini(env, [{ text: prompt }, ...images.map(d => ({ inline_data: { mime_type: 'image/jpeg', data: d } }))], { schema: INV, timeout: 50000, budget: 60000, race: 3, temperature: 0.1, prefer: ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.1-flash-lite', 'gemini-3.5-flash'] });
     const num = v => Math.round((+String(v ?? '').replace(',', '.') || 0) * 1000) / 1000;
     const lines = (r.lines || []).map(l => ({ n: String(l.n || '').trim().slice(0, 80), q: num(l.q), u: String(l.u || '').trim().slice(0, 10), price: num(l.price), sum: num(l.sum) || Math.round(num(l.price) * num(l.q) * 100) / 100,
       p: String(l.p || '').trim().slice(0, 60), cat: String(l.cat || '').slice(0, 30), bar: !!l.bar, pu: ['кг', 'л', 'шт'].includes(l.pu) ? l.pu : '', pq: num(l.pq) || 0, ...(/^\d{8,14}$/.test(String(l.bc || '').trim()) ? { bc: String(l.bc).trim() } : {}) })).filter(l => l.n && l.q > 0).slice(0, 120);
@@ -209,10 +221,10 @@ out — вихід готової ${semi ? 'партії' : 'страви'} в �
 }
 
 // 🧪 порівняння ШІ на одній накладній: те саме фото одночасно в кожну безкоштовну модель → час, рядки, сума, помилка
-export async function aiBench(env, images) {
+export async function aiBench(env, images, only) {
   const prompt = await invPrompt(env, images, ''), parts = [{ text: prompt }, ...images.map(d => ({ inline_data: { mime_type: 'image/jpeg', data: d } }))];
   const o = { schema: INV, timeout: 60000, temperature: 0.1 };
-  return Promise.all(BENCH.filter(([k]) => env[k === 'g' ? 'GEMINI_API_KEY' : ALT[k].key]).map(async ([k, m]) => {
+  return Promise.all(BENCH.filter(([k, m]) => !only || only.includes(m)).filter(([k]) => env[k === 'g' ? 'GEMINI_API_KEY' : ALT[k].key]).map(async ([k, m]) => {
     const t = Date.now();
     try {
       const r = await (k === 'g' ? gemini1(env, parts, { ...o, only: m }) : alt(env, k, parts, { ...o, only: m }));
