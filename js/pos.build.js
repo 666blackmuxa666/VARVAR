@@ -3449,7 +3449,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         empty = "\u041D\u0435\u043C\u0430\u0454 \u0447\u0435\u043A\u0456\u0432";
       }
       if (T === "exp") {
-        act2 = [...r.exp].reverse().map((e) => line("exp", e, `${dd(e.d)} ${e.at} ${e.src === "card" ? "\u{1F4B3}" : "\u{1F4B5}"} ${esc(e.note || "\u0412\u0438\u0442\u0440\u0430\u0442\u0430")} <span class="muted">${esc(e.by)}</span>`, money(e.sum)));
+        act2 = [...r.exp].filter((e) => !e.del).reverse().map((e) => line("exp", e, `${dd(e.d)} ${e.at} ${e.src === "card" ? "\u{1F4B3}" : "\u{1F4B5}"} ${esc(e.note || "\u0412\u0438\u0442\u0440\u0430\u0442\u0430")} <span class="muted">${esc(e.by)}</span>`, money(e.sum)));
         gone = (r.expDel || []).map((e) => line("exp", e, `${dd(e.d)} ${e.at} ${esc(e.note || "\u0412\u0438\u0442\u0440\u0430\u0442\u0430")}`, money(e.sum), 1));
         empty = "\u0412\u0438\u0442\u0440\u0430\u0442 \u043D\u0435\u043C\u0430\u0454";
       }

@@ -159,7 +159,7 @@
       let act = [], gone = [], empty = '';
       if (T === 'checks') { act = [...checks].reverse().slice(0, 300).map(c => line('checks', c, `${dd(c.d)} ${c.at} · стіл ${tn(c.t)} · ${esc(waiterOf(c))} ${c.card ? '💳' : '💵'}${c.disc ? ' 🏷' : ''}${c.tip ? ` · 💝 ${money(c.tip)}` : ''}<br><small class="muted">${c.ds.map(([nm, qq]) => `${qq}× ${esc(nm)}`).join(', ')}</small>`, money(c.val)));
         gone = (r.removed || []).filter(x => !x.reopen).map(x => line('checks', x, `${dd(x.d)} ${x.at} · стіл ${tn(x.t)} · ${esc(x.by)} <span class="muted">· знято з виручки</span>`, money(x.sum), 1)); empty = 'Немає чеків'; }
-      if (T === 'exp') { act = [...r.exp].reverse().map(e => line('exp', e, `${dd(e.d)} ${e.at} ${e.src === 'card' ? '💳' : '💵'} ${esc(e.note || 'Витрата')} <span class="muted">${esc(e.by)}</span>`, money(e.sum)));
+      if (T === 'exp') { act = [...r.exp].filter(e => !e.del).reverse().map(e => line('exp', e, `${dd(e.d)} ${e.at} ${e.src === 'card' ? '💳' : '💵'} ${esc(e.note || 'Витрата')} <span class="muted">${esc(e.by)}</span>`, money(e.sum)));
         gone = (r.expDel || []).map(e => line('exp', e, `${dd(e.d)} ${e.at} ${esc(e.note || 'Витрата')}`, money(e.sum), 1)); empty = 'Витрат немає'; }
       if (T === 'mov') { act = [...(r.mov || [])].reverse().map(m => line('mov', m, `${dd(m.d)} ${m.at} ${MOVE[m.type] || m.type} ${esc(m.note || '')} <span class="muted">${esc(m.by || '')}</span>`, money(m.sum)));
         gone = (r.movDel || []).map(m => line('mov', m, `${dd(m.d)} ${m.at} ${MOVE[m.type] || m.type} ${esc(m.note || '')}`, money(m.sum), 1)); empty = 'Руху коштів немає'; }
