@@ -16,17 +16,17 @@ async function passHash(pass, salt) {
 const normEmail = e => String(e || '').trim().toLowerCase();
 const okEmail = e => /^[^\s@]{1,64}@[^\s@]{1,100}\.[a-z]{2,}$/.test(e);
 const SESS_MS = 30 * 864e5;
-const pub = a => a && { email: a.email, name: a.name, role: a.role, venues: a.venues || [] };
+const pub = a => a && { email: a.email, name: a.name, role: a.role, venues: a.venues || [], ...(a.verified === false ? { unverified: true } : {}) };
 
 export class Hub extends DurableObject {
   get st() { return this.ctx.storage; }
   // ---- акаунти ----
   async acctGet(email) { return pub(await this.st.get('acct:' + normEmail(email))); }
-  async acctCreate({ email, name, pass, role = 'owner' }) {
+  async acctCreate({ email, name, pass, role = 'owner', verify = false }) {
     email = normEmail(email); if (!okEmail(email)) return { error: 'Невірний email' };
     if (String(pass || '').length < 8) return { error: 'Пароль — щонайменше 8 символів' };
     if (await this.st.get('acct:' + email)) return { error: 'Такий email уже є' };
-    const salt = rnd(16), a = { email, name: String(name || '').trim().slice(0, 60) || email, role: role === 'platform' ? 'platform' : 'owner', salt, hash: await passHash(String(pass), salt), venues: [], at: Date.now() };
+    const salt = rnd(16), a = { email, name: String(name || '').trim().slice(0, 60) || email, role: role === 'platform' ? 'platform' : 'owner', salt, hash: await passHash(String(pass), salt), venues: [], at: Date.now(), ...(verify ? { verified: false } : {}) };
     await this.st.put('acct:' + email, a); return pub(a);
   }
   async acctPass(email, pass) {
@@ -45,6 +45,7 @@ export class Hub extends DurableObject {
     const a = await this.st.get('acct:' + email);
     if (!a || (await passHash(String(pass || ''), a.salt)) !== a.hash) { await this.st.put(fk, { n: f.n + 1, at: Date.now() }); return { error: 'Невірний email або пароль' }; }
     await this.st.delete(fk);
+    if (a.verified === false) return { error: 'Підтвердіть email — перейдіть за посиланням з листа', unverified: true };
     const token = rnd(24); await this.st.put('sess:' + token, { email, exp: Date.now() + SESS_MS });
     return { token, acct: pub(a) };
   }
@@ -52,6 +53,22 @@ export class Hub extends DurableObject {
     if (!/^[a-f0-9]{48}$/.test(token || '')) return null;
     const s = await this.st.get('sess:' + token); if (!s || s.exp < Date.now()) { if (s) await this.st.delete('sess:' + token); return null; }
     return pub(await this.st.get('acct:' + s.email));
+  }
+  // ✉️ одноразові посилання з листа: verify — підтвердити пошту (і задати пароль), reset — новий пароль
+  async mailToken(email, kind) {
+    const a = await this.st.get('acct:' + normEmail(email)); if (!a) return null;
+    const rk = 'mt:' + kind + ':' + a.email, last = await this.st.get(rk); if (last && Date.now() - last < 60e3) return { error: 'Лист уже надіслано — зачекайте хвилину' };
+    const t = rnd(24); await this.st.put('tok:' + t, { email: a.email, kind, exp: Date.now() + (kind === 'verify' ? 7 * 864e5 : 3600e3) }); await this.st.put(rk, Date.now());
+    return { t, email: a.email, name: a.name };
+  }
+  async useToken(t, kind, pass) {
+    if (!/^[a-f0-9]{48}$/.test(t || '')) return { error: 'Посилання недійсне' };
+    const x = await this.st.get('tok:' + t); if (!x || x.kind !== kind || x.exp < Date.now()) return { error: 'Посилання недійсне або застаріло — запросіть новий лист' };
+    const a = await this.st.get('acct:' + x.email); if (!a) return { error: 'Немає акаунта' };
+    if (pass != null) { if (String(pass).length < 8) return { error: 'Пароль — щонайменше 8 символів' }; a.salt = rnd(16); a.hash = await passHash(String(pass), a.salt); const s = await this.st.list({ prefix: 'sess:' }); for (const [k, v] of s) if (v.email === a.email) await this.st.delete(k); }
+    else if (kind === 'reset') return { error: 'Вкажіть новий пароль' };
+    a.verified = true; await this.st.put('acct:' + a.email, a); await this.st.delete('tok:' + t);
+    const token = rnd(24); await this.st.put('sess:' + token, { email: a.email, exp: Date.now() + SESS_MS }); return { token, acct: pub(a) };
   }
   async logout(token) { if (/^[a-f0-9]{48}$/.test(token || '')) await this.st.delete('sess:' + token); }
   // ---- заклади ----

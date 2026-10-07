@@ -34,17 +34,26 @@
   // ---------- вхід ----------
   function logout(silent) { if (!silent) api('logout').catch(() => {}); S.token = ''; store.set('token', ''); renderLogin(); }
   async function renderLogin() {
-    const pos = new URLSearchParams(location.hash.slice(1)).get('pos') || '';
+    const hp = new URLSearchParams(location.hash.slice(1)), pos = hp.get('pos') || '', mt = hp.get('verify') ? 'verify' : hp.get('reset') ? 'reset' : '';
+    if (mt) return renderSetPass(mt, hp.get(mt));
     let boot = false; try { boot = (await api('canBoot')).boot; } catch {}
     app.innerHTML = `<div class="login"><img class="logo" src="img/icon.png" alt=""><h1>${boot ? 'Перший запуск платформи' : 'Кабінет власника'}</h1>
       <p class="muted">${boot ? (pos ? 'Створіть головний акаунт — він бачитиме всі заклади й керуватиме платформою.' : 'Відкрийте цю сторінку з каси VARVAR: ⚙️ Налаштування → 👑 Кабінет власника.') : 'Усі ваші заклади, аналітика й керування — в одному місці.'}</p>
       ${boot && !pos ? '' : `<form id="lf">${boot ? '<input name="name" placeholder="Ваше ім\'я" autocomplete="name">' : ''}<input name="email" type="email" placeholder="Email" autocomplete="username" required><input name="pass" type="password" placeholder="Пароль${boot ? ' (від 8 символів)' : ''}" autocomplete="${boot ? 'new-password' : 'current-password'}" required minlength="${boot ? 8 : 1}">
-      <button class="btn primary">${boot ? '🚀 Створити й увійти' : 'Увійти'}</button><div class="err" id="lerr"></div></form>`}</div>`;
+      <button class="btn primary">${boot ? '🚀 Створити й увійти' : 'Увійти'}</button><div class="err" id="lerr"></div>${boot ? '' : '<a href="#" class="muted lnk" id="forgot">Забули пароль?</a>'}</form>`}</div>`;
+    $('#forgot')?.addEventListener('click', async e => { e.preventDefault(); const f = $('#lf'), err = $('#lerr'); if (!f.email.checkValidity() || !f.email.value) { err.textContent = 'Введіть email вище'; return f.email.focus(); }
+      err.textContent = '…'; try { const r = await api('forgot', { email: f.email.value }); err.textContent = r.mail ? '✉️ Якщо такий акаунт є — лист з посиланням уже на пошті (перевірте «Спам»)' : 'Пошта ще не налаштована — зверніться до розробника'; } catch (x) { err.textContent = x.message; } });
     $('#lf')?.addEventListener('submit', async e => {
       e.preventDefault(); const f = e.target, err = $('#lerr'); err.textContent = '…';
       try { const r = await api(boot ? 'bootstrap' : 'login', { email: f.email.value, pass: f.pass.value, ...(boot ? { name: f.name.value, pos } : {}) }); S.token = r.token; store.set('token', r.token); history.replaceState(null, '', location.pathname + location.search); start(); }
-      catch (x) { err.textContent = x.message; }
+      catch (x) { err.textContent = x.message; if (/Підтвердіть email/.test(x.message)) { const l = document.createElement('a'); l.href = '#'; l.className = 'lnk'; l.textContent = '✉️ Надіслати лист ще раз'; l.onclick = async ev => { ev.preventDefault(); try { await api('resend', { email: f.email.value }); err.textContent = '✉️ Надіслано — перевірте пошту'; } catch (y) { err.textContent = y.message; } }; err.append(' ', l); } }
     });
+  }
+  function renderSetPass(kind, t) { // ✉️ посилання з листа
+    app.innerHTML = `<div class="login"><img class="logo" src="img/icon.png" alt=""><h1>${kind === 'verify' ? '✅ Підтвердження пошти' : '🔑 Новий пароль'}</h1><p class="muted">Придумайте пароль для входу в кабінет (від 8 символів).</p>
+      <form id="pf"><input name="p" type="password" placeholder="Новий пароль" autocomplete="new-password" required minlength="8"><input name="p2" type="password" placeholder="Ще раз" autocomplete="new-password" required minlength="8"><button class="btn primary">💾 Зберегти й увійти</button><div class="err" id="perr"></div></form></div>`;
+    $('#pf').addEventListener('submit', async e => { e.preventDefault(); const f = e.target, err = $('#perr'); if (f.p.value !== f.p2.value) { err.textContent = 'Паролі не збігаються'; return; } err.textContent = '…';
+      try { const r = await api(kind, { t, pass: f.p.value }); S.token = r.token; store.set('token', r.token); history.replaceState(null, '', location.pathname + location.search); toast(kind === 'verify' ? '✅ Пошту підтверджено' : '✅ Пароль змінено'); start(); } catch (x) { err.textContent = x.message; } });
   }
 
   // ---------- дані ----------
@@ -152,9 +161,9 @@
       <h2>🏪 Усі заклади</h2><div class="grid">${all.map(v => `<div class="card venue"><div class="h"><b>${esc(v.name)}</b><span class="st ${v.status}">${ST[v.status]}</span></div>
         <div class="muted" style="font-size:13px">адреса: <b>${esc(v.id)}</b>${v.city ? ' · ' + esc(v.city) : ''}<br>👤 ${esc(nameOf(v.owner))} <span style="opacity:.7">${esc(v.owner)}</span><br>активність: ${S.seen[v.id] ? new Date(S.seen[v.id]).toLocaleDateString('uk-UA') : '—'}</div>
         <div class="btnrow"><button class="btn sm" data-a="vedit" data-v="${v.id}">✏️ Змінити</button><button class="btn sm" data-a="vinfo" data-v="${v.id}">🔑 Коди й боти</button><button class="btn sm" data-a="enter" data-v="${v.id}">Каса →</button>${v.id === 'varvar' ? '' : `<button class="btn sm red" data-a="vdel" data-v="${v.id}">🗑</button>`}</div></div>`).join('')}</div>
-      <h2>👤 Акаунти</h2><div class="grid">${P.accts.map(a => `<div class="card"><div class="kv"><span><b>${esc(a.name)}</b> ${a.role === 'platform' ? '👑 платформа' : ''}<br><small class="muted">${esc(a.email)}</small></span></div>
+      <h2>👤 Акаунти</h2><div class="grid">${P.accts.map(a => `<div class="card"><div class="kv"><span><b>${esc(a.name)}</b> ${a.role === 'platform' ? '👑 платформа' : ''}<br><small class="muted">${esc(a.email)}${a.unverified ? ' · ⏳ не підтвердив пошту' : ''}</small></span></div>
         <div class="muted" style="font-size:13px;margin:6px 0">${a.venues.length ? a.venues.map(id => { const v = all.find(x => x.id === id); return `${v?.owner === a.email ? '👤' : '🔐'} ${esc(v?.name || id)}`; }).join(' · ') : 'закладів немає'}</div>
-        <div class="btnrow"><button class="btn sm" data-a="aedit" data-e="${esc(a.email)}">✏️ Ім'я</button><button class="btn sm" data-a="apass" data-e="${esc(a.email)}">🔑 Пароль</button>${a.role === 'platform' ? '' : `<button class="btn sm" data-a="agrant" data-e="${esc(a.email)}">🔐 Доступи</button><button class="btn sm red" data-a="adel" data-e="${esc(a.email)}">🗑</button>`}</div></div>`).join('')}</div>
+        <div class="btnrow"><button class="btn sm" data-a="aedit" data-e="${esc(a.email)}">✏️ Ім'я</button><button class="btn sm" data-a="apass" data-e="${esc(a.email)}">🔑 Пароль</button>${a.unverified ? `<button class="btn sm" data-a="aresend" data-e="${esc(a.email)}">✉️ Лист ще раз</button>` : ''}${a.role === 'platform' ? '' : `<button class="btn sm" data-a="agrant" data-e="${esc(a.email)}">🔐 Доступи</button><button class="btn sm red" data-a="adel" data-e="${esc(a.email)}">🗑</button>`}</div></div>`).join('')}</div>
       <div class="muted" style="font-size:12px;margin-top:8px">👤 — власник закладу · 🔐 — має доступ (керуючий, бухгалтер). Власник у закладу один; доступ — скільком завгодно.</div>`;
   }
   function render() {
@@ -203,7 +212,8 @@
     if (a === 'vcfgOpen') { window.scrollTo(0, 0); return VC.open(d.v); }
     if (a === 'copy') { try { await navigator.clipboard.writeText(d.u); toast('🔗 Скопійовано — надішліть персоналу'); } catch { prompt('Скопіюйте посилання:', d.u); } return; }
     if (a === 'pass') return modal('🔐 Новий пароль', '<input name="p" type="password" placeholder="Від 8 символів" minlength="8" required autocomplete="new-password">', async f => { await api('pass', { pass: f.p.value }); toast('✅ Пароль змінено — увійдіть знову'); logout(true); });
-    if (a === 'anew') return modal('👤 Новий власник', '<label>Ім\'я<input name="n" required></label><label>Email<input name="e" type="email" required></label><label>Тимчасовий пароль<input name="p" required minlength="8" autocomplete="off"></label><div class="muted" style="font-size:13px">Передайте власнику email і пароль — він змінить пароль у кабінеті.</div>', async f => { await api('acctNew', { name: f.n.value, email: f.e.value, pass: f.p.value }); toast('✅ Власника створено'); await reload(); });
+    if (a === 'anew') return modal('👤 Новий власник', '<label>Ім\'я<input name="n" required></label><label>Email<input name="e" type="email" required></label><label>Тимчасовий пароль (необов\'язково)<input name="p" minlength="8" autocomplete="off"></label><div class="muted" style="font-size:13px">Власнику прийде лист: підтвердити пошту й задати свій пароль. Без пошти — передайте email і пароль самі.</div>', async f => { const r = await api('acctNew', { name: f.n.value, email: f.e.value, pass: f.p.value }); toast(r.warn ? '⚠️ Створено, але ' + r.warn : r.mailed ? '✉️ Створено — лист надіслано' : '✅ Власника створено'); await reload(); });
+    if (a === 'aresend') { try { await api('acctResend', { email: d.e }); toast('✉️ Лист надіслано'); } catch (x) { toast('⚠️ ' + x.message); } return; }
     if (a === 'apass') return modal('🔑 Новий пароль для ' + esc(d.e), '<input name="p" required minlength="8" autocomplete="off" placeholder="Від 8 символів">', async f => { await api('acctPass', { email: d.e, pass: f.p.value }); toast('✅ Пароль змінено'); });
     if (a === 'vnew') return modal('➕ Новий заклад', `<label>Назва<input name="n" required placeholder="Кав'ярня Ранок"></label><label>Адреса в системі (латиниця)<input name="i" required pattern="[a-z0-9][a-z0-9\\-]{1,30}" placeholder="ranok-lviv"></label><label>Місто<input name="c"></label><label>Власник<select name="o">${(S.plat?.accts || []).map(x => `<option value="${esc(x.email)}">${esc(x.name)} · ${esc(x.email)}</option>`).join('')}</select></label>`, async (f, bg) => {
       const r = await api('venueNew', { name: f.n.value, id: f.i.value.trim().toLowerCase(), city: f.c.value, owner: f.o.value });

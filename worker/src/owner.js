@@ -3,6 +3,7 @@
 import { hub } from './hub.js';
 import { MAIN, doName, isVenueId, saveSecrets } from './venue.js';
 import { tg } from './ops.js';
+import { mailOn, sendMail, ownerLink } from './mail.js';
 import { reportRange, openTables, dayKey, getCfg, payable } from './ops.js';
 import { getAtt } from './pay.js';
 import { printStatus } from './print.js';
@@ -132,6 +133,8 @@ async function pnl(env, S) {
     top: Object.values(top).map(t => ({ ...t, cost: r(t.cost), m: r(t.rev - t.cost) })).sort((a, b) => b.m - a.m).slice(0, 10) };
 }
 
+const sendVerify = (env, x) => sendMail(env, x.email, 'Підтвердіть пошту — кабінет власника', 'Вітаємо в кабінеті власника', `${x.name}, для вас створено кабінет власника закладу. Підтвердіть пошту й задайте свій пароль. Посилання діє 7 днів.`, '✅ Підтвердити й задати пароль', ownerLink('verify', x.t));
+
 // ---------- /api/owner (поза закладом) ----------
 export async function ownerApi(req, env) {
   if (!env.HUB) return [{ error: 'HUB не підключено' }, 500];
@@ -146,6 +149,13 @@ export async function ownerApi(req, env) {
     await H.venueCreate({ id: MAIN, name: 'Varvar Food Bar', owner: a.email, status: 'active', city: 'Буковель' });
     return ok(await H.login(b.email, b.pass));
   }
+  if (b.op === 'forgot') { // 🔑 завжди «ok» — не підказуємо, чи є такий email
+    const x = await H.mailToken(b.email, 'reset'); if (x?.error) return bad(x.error);
+    if (x) { const r = await sendMail(env, x.email, 'Відновлення пароля', 'Новий пароль', `${x.name}, натисніть кнопку, щоб задати новий пароль до кабінету власника. Посилання діє 1 годину.`, '🔑 Задати пароль', ownerLink('reset', x.t)); if (r.error) return bad(r.error); }
+    return ok({ mail: mailOn(env) });
+  }
+  if (b.op === 'reset' || b.op === 'verify') { const r = await H.useToken(b.t, b.op, b.pass ?? null); return r.error ? bad(r.error) : ok(r); }
+  if (b.op === 'resend') { const x = await H.mailToken(b.email, 'verify'); if (x?.error) return bad(x.error); if (x && (await H.acctGet(x.email))?.unverified) await sendVerify(env, x); return ok(); }
   if (b.op === 'canBoot') return ok({ boot: !(await H.acctList()).length });
   const me = await H.session(tok); if (!me) return bad('auth', 401);
   const plat = me.role === 'platform', mine = async () => plat ? await H.venueList() : (await Promise.all(me.venues.map(id => H.venueGet(id)))).filter(Boolean);
@@ -186,7 +196,13 @@ ${JSON.stringify(data.filter(Boolean))}
   if (!plat) return bad('Лише для платформи', 403);
   switch (b.op) {
     case 'accts': return ok({ list: await H.acctList(), venues: await H.venueList() });
-    case 'acctNew': { const a = await H.acctCreate({ email: b.email, name: b.name, pass: b.pass }); return a.error ? bad(a.error) : ok({ acct: a }); }
+    case 'acctNew': { // з поштою: власник сам підтверджує email і задає пароль за посиланням з листа
+      const m = mailOn(env), pass = String(b.pass || '').trim() || (m ? rnd(16) : '');
+      const a = await H.acctCreate({ email: b.email, name: b.name, pass, verify: m }); if (a.error) return bad(a.error);
+      if (m) { const x = await H.mailToken(a.email, 'verify'); const r = x && await sendVerify(env, x); if (r?.error) return ok({ acct: a, warn: r.error }); }
+      return ok({ acct: a, mailed: m });
+    }
+    case 'acctResend': { const x = await H.mailToken(b.email, 'verify'); if (!x) return bad('Немає акаунта'); if (x.error) return bad(x.error); const r = await sendVerify(env, x); return r.error ? bad(r.error) : ok(); }
     case 'acctPass': { const r = await H.acctPass(b.email, b.pass); return r.error ? bad(r.error) : ok(); }
     case 'venueNew': {
       const v = await H.venueCreate({ id: b.id, name: b.name, owner: b.owner, city: b.city }); if (v.error) return bad(v.error);
