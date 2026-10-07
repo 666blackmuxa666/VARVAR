@@ -59,6 +59,7 @@ export async function posApi(b, req, env) {
     await (await import('./ideas.js')).toHub(env, { kind: 'help', by: me.name, role: me.role, text: text + (b.screen ? `\n🖥 ${String(b.screen).slice(0, 60)}` : '') });
     return [{ ok: true }, 200];
   }
+  if (b.op === 'aiBench') { if (!admin) return needAdmin(); const imgs = (Array.isArray(b.images) ? b.images : []).slice(0, 3).map(x => String(x).replace(/^data:image\/\w+;base64,/, '')).filter(x => x.length > 1000 && x.length < 6e6); if (!imgs.length) return [{ error: 'Додайте фото' }, 400]; return [{ ok: true, list: await (await import('./ai.js')).aiBench(env, imgs) }, 200]; } // 🧪 порівняння ШІ на накладній
   if (/^photo[A-Z]/.test(b.op || '')) { if (!admin) return needAdmin(); return (await import('./photoai.js')).photoApi(b, env, who); } // 📸 ШІ-фото страв
   if (/^idea[A-Z]/.test(b.op || '')) return (await import('./ideas.js')).ideaApi(b, env, me); // 💡 побажання розробнику
   if (/^gb[A-Z]/.test(b.op || '')) return (await import('./guestbot.js')).gbApi(b, env, me); // 🤖 бот гостей

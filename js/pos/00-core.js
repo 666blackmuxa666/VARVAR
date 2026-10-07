@@ -569,6 +569,7 @@
     const t = e.target, K = S.sk, d = t.dataset || {};
     if (t.id === 'skCat') { K.cat = t.value; renderMain(); }
     if (t.id === 'skPhoto' || t.id === 'skPhoto2') { skPhotos(t.files); t.value = ''; }
+    if (t.id === 'skBench') { skBench(t.files); t.value = ''; }
     if (d.dl != null && K.draft && t.tagName === 'SELECT') {
       const l = K.draft.lines[+d.dl]; if (!l) return;
       if (d.k === 'id') { if (t.value === '__new') { const a = await skNewIng(l.n, l.u, 'k'); if (a) { l.add = a; l.id = null; } } else { l.id = t.value || null; delete l.add; if (l.id) { l.ok = 'ok'; l.f = skAutoF(l); } } renderMain(); }

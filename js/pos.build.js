@@ -1817,6 +1817,10 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       skPhotos(t.files);
       t.value = "";
     }
+    if (t.id === "skBench") {
+      skBench(t.files);
+      t.value = "";
+    }
     if (d.dl != null && K.draft && t.tagName === "SELECT") {
       const l = K.draft.lines[+d.dl];
       if (!l) return;
@@ -4460,7 +4464,7 @@ ${g.sup}:
     const K = S.sk;
     if (K.draft) return skDraftHTML();
     const I = S.data.skInv, adm = isAdmin();
-    const top = `<div class="card"><h3>\u041D\u043E\u0432\u0430 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0430</h3>${K.busy ? '<div class="sk-busy">\u{1F50E} \u0420\u043E\u0437\u043F\u0456\u0437\u043D\u0430\u044E \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0443\u2026 \u0437\u0430\u0437\u0432\u0438\u0447\u0430\u0439 10\u201330 \u0441\u0435\u043A\u0443\u043D\u0434</div>' : `<div class="sk-new"><label class="btn primary sk-scan">\u{1F4F7} \u0421\u043A\u0430\u043D\u0443\u0432\u0430\u0442\u0438 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0443<input type="file" id="skPhoto" accept="image/*" capture="environment" hidden></label><label class="btn">\u{1F5BC} \u0417 \u0433\u0430\u043B\u0435\u0440\u0435\u0457<input type="file" id="skPhoto2" accept="image/*" multiple hidden></label><button class="btn" data-a="skHand">\u270F\uFE0F \u0412\u0440\u0443\u0447\u043D\u0443</button></div>`}
+    const top = `<div class="card"><h3>\u041D\u043E\u0432\u0430 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0430</h3>${K.busy ? '<div class="sk-busy">\u{1F50E} \u0420\u043E\u0437\u043F\u0456\u0437\u043D\u0430\u044E \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0443\u2026 \u0437\u0430\u0437\u0432\u0438\u0447\u0430\u0439 10\u201330 \u0441\u0435\u043A\u0443\u043D\u0434</div>' : `<div class="sk-new"><label class="btn primary sk-scan">\u{1F4F7} \u0421\u043A\u0430\u043D\u0443\u0432\u0430\u0442\u0438 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0443<input type="file" id="skPhoto" accept="image/*" capture="environment" hidden></label><label class="btn">\u{1F5BC} \u0417 \u0433\u0430\u043B\u0435\u0440\u0435\u0457<input type="file" id="skPhoto2" accept="image/*" multiple hidden></label><button class="btn" data-a="skHand">\u270F\uFE0F \u0412\u0440\u0443\u0447\u043D\u0443</button>${isAdmin() ? '<label class="btn sm">\u{1F9EA} \u041F\u043E\u0440\u0456\u0432\u043D\u044F\u0442\u0438 \u0428\u0406<input type="file" id="skBench" accept="image/*" multiple hidden></label>' : ""}</div>`}
       <div class="muted" style="font-size:12px;margin-top:8px">\xAB\u0421\u043A\u0430\u043D\u0443\u0432\u0430\u0442\u0438\xBB \u043E\u0434\u0440\u0430\u0437\u0443 \u0432\u0456\u0434\u043A\u0440\u0438\u0432\u0430\u0454 \u043A\u0430\u043C\u0435\u0440\u0443 \u2014 \u0441\u0444\u043E\u0442\u043E\u0433\u0440\u0430\u0444\u0443\u0439\u0442\u0435 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0443 \u0440\u0456\u0432\u043D\u043E, \u043F\u0440\u0438 \u0433\u0430\u0440\u043D\u043E\u043C\u0443 \u0441\u0432\u0456\u0442\u043B\u0456. \u041A\u0456\u043B\u044C\u043A\u0430 \u0441\u0442\u043E\u0440\u0456\u043D\u043E\u043A \u2014 \xAB\u0417 \u0433\u0430\u043B\u0435\u0440\u0435\u0457\xBB. \u0420\u043E\u0437\u043F\u0456\u0437\u043D\u0430\u0454 Gemini \u2014 \u0432\u0438 \u043F\u0435\u0440\u0435\u0432\u0456\u0440\u044F\u0454\u0442\u0435 \u0439 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0443\u0454\u0442\u0435. \u0424\u043E\u0442\u043E \u043D\u0456\u0434\u0435 \u043D\u0435 \u0437\u0431\u0435\u0440\u0456\u0433\u0430\u0454\u0442\u044C\u0441\u044F.</div></div>`;
     if (!I) return top + '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
     const debts = Object.entries(I.sups || {}).filter(([, s]) => s.debt > 0);
@@ -4550,7 +4554,7 @@ ${g.sup}:
     renderMain();
     try {
       const images = await Promise.all(files.map((f) => shrink(f, 1800, 0.82)));
-      const r = await api("skInvParse", { images }, 75e3);
+      const r = await api("skInvParse", { images }, 12e4);
       if (!S.data.sk) S.data.sk = await api("skData");
       S.sk.draft = { sup: r.sup, no: r.no, date: r.date, total: r.total, src: "photo", lines: r.lines.map((l) => __spreadProps(__spreadValues({}, l), { q0: l.q, f: l.add || l.f && l.f !== 1 ? l.f : skAutoF(l) })) };
       if (!S.data.skInv) S.data.skInv = await api("skInvList").catch(() => null);
@@ -4559,6 +4563,19 @@ ${g.sup}:
     }
     S.sk.busy = false;
     renderMain();
+  }
+  async function skBench(files) {
+    files = [...files].slice(0, 3);
+    if (!files.length) return;
+    toast("\u{1F9EA} \u041F\u043E\u0440\u0456\u0432\u043D\u044E\u044E \u043C\u043E\u0434\u0435\u043B\u0456\u2026 \u0434\u043E \u0445\u0432\u0438\u043B\u0438\u043D\u0438");
+    try {
+      const r = await api("aiBench", { images: await Promise.all(files.map((f) => shrink(f, 1800, 0.82))) }, 9e4);
+      const l = r.list.sort((a, b) => !!a.err - !!b.err || b.rows - a.rows || a.ms - b.ms);
+      modal({ title: "\u{1F9EA} \u041F\u043E\u0440\u0456\u0432\u043D\u044F\u043D\u043D\u044F \u0428\u0406", body: l.map((x) => `<div class="kv" style="flex-wrap:wrap"><b style="word-break:break-all">${x.err ? "\u274C" : "\u2705"} ${esc(x.m)}</b><span>${(x.ms / 1e3).toFixed(1)} \u0441</span></div>
+        <div class="muted" style="font-size:12px;margin:-2px 0 8px;word-break:break-word">${x.err ? esc(x.err) : `${x.rows} \u0440\u044F\u0434\u043A\u0456\u0432 \xB7 \u0441\u0443\u043C\u0430 \u0440\u044F\u0434\u043A\u0456\u0432 ${money(x.sum)}${x.total ? ` \xB7 \u0440\u0430\u0437\u043E\u043C \u0443 \u0434\u043E\u043A\u0443\u043C\u0435\u043D\u0442\u0456 ${money(x.total)}` : ""}${x.sup ? " \xB7 " + esc(x.sup) : ""}<br>${x.ex.map(esc).join("<br>")}`}</div>`).join(""), buttons: [{ label: "\u0417\u0440\u043E\u0437\u0443\u043C\u0456\u043B\u043E", val: 1, cls: "primary" }] });
+    } catch (e) {
+      toast("\u26A0\uFE0F " + errText(e.message));
+    }
   }
   let camStop = null;
   async function skScan() {

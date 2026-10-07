@@ -123,7 +123,7 @@
   function skInvHTML() {
     const K = S.sk; if (K.draft) return skDraftHTML();
     const I = S.data.skInv, adm = isAdmin();
-    const top = `<div class="card"><h3>Нова накладна</h3>${K.busy ? '<div class="sk-busy">🔎 Розпізнаю накладну… зазвичай 10–30 секунд</div>' : `<div class="sk-new"><label class="btn primary sk-scan">📷 Сканувати накладну<input type="file" id="skPhoto" accept="image/*" capture="environment" hidden></label><label class="btn">🖼 З галереї<input type="file" id="skPhoto2" accept="image/*" multiple hidden></label><button class="btn" data-a="skHand">✏️ Вручну</button></div>`}
+    const top = `<div class="card"><h3>Нова накладна</h3>${K.busy ? '<div class="sk-busy">🔎 Розпізнаю накладну… зазвичай 10–30 секунд</div>' : `<div class="sk-new"><label class="btn primary sk-scan">📷 Сканувати накладну<input type="file" id="skPhoto" accept="image/*" capture="environment" hidden></label><label class="btn">🖼 З галереї<input type="file" id="skPhoto2" accept="image/*" multiple hidden></label><button class="btn" data-a="skHand">✏️ Вручну</button>${isAdmin() ? '<label class="btn sm">🧪 Порівняти ШІ<input type="file" id="skBench" accept="image/*" multiple hidden></label>' : ''}</div>`}
       <div class="muted" style="font-size:12px;margin-top:8px">«Сканувати» одразу відкриває камеру — сфотографуйте накладну рівно, при гарному світлі. Кілька сторінок — «З галереї». Розпізнає Gemini — ви перевіряєте й підтверджуєте. Фото ніде не зберігається.</div></div>`;
     if (!I) return top + '<div class="muted">Завантаження…</div>';
     const debts = Object.entries(I.sups || {}).filter(([, s]) => s.debt > 0);
@@ -181,12 +181,23 @@
     S.sk.busy = true; renderMain();
     try {
       const images = await Promise.all(files.map(f => shrink(f, 1800, .82)));
-      const r = await api('skInvParse', { images }, 75000);
+      const r = await api('skInvParse', { images }, 120000);
       if (!S.data.sk) S.data.sk = await api('skData');
       S.sk.draft = { sup: r.sup, no: r.no, date: r.date, total: r.total, src: 'photo', lines: r.lines.map(l => ({ ...l, q0: l.q, f: l.add || (l.f && l.f !== 1) ? l.f : skAutoF(l) })) };
       if (!S.data.skInv) S.data.skInv = await api('skInvList').catch(() => null);
     } catch (e) { toast('⚠️ ' + errText(e.message)); }
     S.sk.busy = false; renderMain();
+  }
+  // 🧪 одне фото накладної → усі безкоштовні моделі одночасно: хто швидше й точніше
+  async function skBench(files) {
+    files = [...files].slice(0, 3); if (!files.length) return;
+    toast('🧪 Порівнюю моделі… до хвилини');
+    try {
+      const r = await api('aiBench', { images: await Promise.all(files.map(f => shrink(f, 1800, .82))) }, 90000);
+      const l = r.list.sort((a, b) => (!!a.err - !!b.err) || (b.rows - a.rows) || (a.ms - b.ms));
+      modal({ title: '🧪 Порівняння ШІ', body: l.map(x => `<div class="kv" style="flex-wrap:wrap"><b style="word-break:break-all">${x.err ? '❌' : '✅'} ${esc(x.m)}</b><span>${(x.ms / 1000).toFixed(1)} с</span></div>
+        <div class="muted" style="font-size:12px;margin:-2px 0 8px;word-break:break-word">${x.err ? esc(x.err) : `${x.rows} рядків · сума рядків ${money(x.sum)}${x.total ? ` · разом у документі ${money(x.total)}` : ''}${x.sup ? ' · ' + esc(x.sup) : ''}<br>${x.ex.map(esc).join('<br>')}`}</div>`).join(''), buttons: [{ label: 'Зрозуміло', val: 1, cls: 'primary' }] });
+    } catch (e) { toast('⚠️ ' + errText(e.message)); }
   }
   // 🔎 код: штрихкод товару (сканер / камера) або QR накладної
   let camStop = null;

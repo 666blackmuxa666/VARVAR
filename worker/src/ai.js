@@ -61,7 +61,7 @@ async function alt(env, name, parts, o = {}) {
   const text = parts.filter(p => p.text).map(p => p.text).join('\n') + `\n\nВідповідь — ЛИШЕ валідний JSON такої форми: ${schemaText(o.schema || SCHEMA)}`;
   const content = pics.length ? [{ type: 'text', text }, ...pics.map(p => ({ type: 'image_url', image_url: { url: `data:${p.inline_data.mime_type || 'image/jpeg'};base64,${p.inline_data.data}` } }))] : text;
   let last = name;
-  for (const m of (pics.length ? P.vision : P.text).filter(m => !(busy[name + ':' + m] > now))) try {
+  for (const m of o.only ? [o.only] : (pics.length ? P.vision : P.text).filter(m => !(busy[name + ':' + m] > now))) try {
     const r = await fetch(P.url, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env[P.key] }, signal: AbortSignal.timeout(Math.max(o.timeout || 8000, name === 'kimi' ? 40000 : 15000)),
       body: JSON.stringify({ model: m, messages: [{ role: 'user', content }], response_format: { type: 'json_object' }, ...(P.temp ? { temperature: o.temperature ?? 0.9 } : {}) }) });
     if (r.ok) { const d = await r.json(), t = d.choices?.[0]?.message?.content || '{}'; return JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1) || '{}'); }
@@ -88,12 +88,15 @@ async function gemini1(env, prompt, o = {}) {
   let last;
   const busy = (await env.DB.get('ai_busy', 'json')) || {}, now = Date.now();
   let list = (await models(env)).filter(m => !(busy[m] > now));
-  if (o.prefer) list = [...o.prefer.filter(m => list.includes(m)), ...list.filter(m => !o.prefer.includes(m))]; // для фото — спершу сильніша модель
+  if (o.only) list = [o.only];
+  else if (o.prefer) list = [...o.prefer.filter(m => list.includes(m)), ...list.filter(m => !o.prefer.includes(m))]; // для фото — спершу сильніша модель
   const parts = typeof prompt === 'string' ? [{ text: prompt }] : prompt;
+  const t0 = Date.now();
   for (const m of list.length ? list : PREF) try {
+    if (o.budget && Date.now() - t0 > o.budget) break; // час вичерпано — віддаємо запасному ШІ
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
       method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-      signal: AbortSignal.timeout(o.timeout || 8000),
+      signal: AbortSignal.timeout(o.budget ? Math.max(5000, Math.min(o.timeout || 8000, o.budget - (Date.now() - t0))) : o.timeout || 8000),
       body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', responseSchema: o.schema || SCHEMA, temperature: o.temperature ?? 0.9 } }),
     });
     if (r.status === 429 || r.status === 404) { busy[m] = now + (r.status === 404 ? 86400e3 : 60e3); await env.DB.put('ai_busy', JSON.stringify(busy), { expirationTtl: 86400 }); } // вичерпана — пропускаємо хвилину
@@ -152,10 +155,10 @@ ${final ? `ЗАРАЗ дай фінальну пораду: поле "intro" (1 
 }
 
 // 🧾 накладна з фото (або текст QR-коду) → постачальник, №, дата, рядки. Фото лише передається в запиті — ніде не зберігається.
+const BENCH = [['g', 'gemini-flash-latest'], ['g', 'gemini-2.5-flash'], ['g', 'gemini-flash-lite-latest'], ['g', 'gemini-2.5-flash-lite'], ['g', 'gemini-2.0-flash'], ['groq', 'meta-llama/llama-4-scout-17b-16e-instruct'], ['groq', 'meta-llama/llama-4-maverick-17b-128e-instruct'], ['kimi', 'kimi-k2.6']];
 const INV = { type: 'OBJECT', properties: { sup: { type: 'STRING' }, no: { type: 'STRING' }, date: { type: 'STRING' }, total: { type: 'NUMBER' },
   lines: { type: 'ARRAY', items: { type: 'OBJECT', properties: { n: { type: 'STRING' }, q: { type: 'NUMBER' }, u: { type: 'STRING' }, price: { type: 'NUMBER' }, sum: { type: 'NUMBER' }, p: { type: 'STRING' }, cat: { type: 'STRING' }, bar: { type: 'BOOLEAN' }, pu: { type: 'STRING' }, pq: { type: 'NUMBER' }, bc: { type: 'STRING' } }, required: ['n', 'q', 'u', 'sum', 'p', 'cat', 'bar', 'pu', 'pq'] } } }, required: ['lines'] };
-export async function aiInvoice(env, { images = [], text = '' }) {
-  if (!aiOn(env)) return { error: 'AI вимкнено' };
+async function invPrompt(env, images, text) {
   const { getIng } = await import('./stock.js'), ing = (await getIng(env)).filter(x => !x.off).slice(0, 300).map(x => x.n);
   const prompt = `Це ${images.length ? 'фото накладної / чека / рахунку постачальника' : 'вміст QR-коду накладної або чека'} українського ресторану. Витягни дані документа:
 - sup: постачальник (назва продавця / ФОП / магазину), коротко;
@@ -164,8 +167,13 @@ export async function aiInvoice(env, { images = [], text = '' }) {
 - lines: КОЖЕН товарний рядок по порядку: n — назва товару як у документі (без артикулів), q — кількість, u — одиниця як у документі (кг, г, л, мл, шт, уп, ящ, пач, пл…), price — ціна за одиницю, sum — сума рядка.
 Для кожного рядка також: p — коротка назва продукту для складу ресторану без бренду/відсотків/упаковки (напр. «Сир фета», «Куряче філе», «Pepsi 0.5»); cat — одна з категорій: М'ясо, Риба, Овочі й фрукти, Молочне, Бакалія, Соуси й спеції, Хліб, Напої, Алкоголь, Пиво, Кальян, Упаковка, Інше; bar — true, якщо це для бару (напої, алкоголь, кальян); pu — одиниця обліку на складі: «кг», «л» або «шт»; pq — скільки pu в ОДНІЙ одиниці з документа (напр. ящик Pepsi = 12 шт → pq 12; упаковка сиру 2.5 кг → pq 2.5; якщо одиниця та сама — 1; г → кг: 0.001); bc — штрихкод/EAN товару, якщо надрукований у рядку, інакше порожньо.${ing.length ? `\nПродукти, що вже є на складі. Якщо рядок — це один з них, p має бути ТОЧНО така назва зі списку (марка, жирність, тара не важливі; різний обʼєм напою — різні продукти): ${ing.join('; ')}` : ''}
 Якщо є колонки з ПДВ і без ПДВ — бери з ПДВ. Числа — з крапкою. Не вигадуй рядків, не пропускай. Знижку/доставку — окремим рядком, якщо є. Відповідь — JSON.${text ? '\n\nВміст коду:\n' + text : ''}`;
+  return prompt;
+}
+export async function aiInvoice(env, { images = [], text = '' }) {
+  if (!aiOn(env)) return { error: 'AI вимкнено' };
+  const prompt = await invPrompt(env, images, text);
   try {
-    const r = await gemini(env, [{ text: prompt }, ...images.map(d => ({ inline_data: { mime_type: 'image/jpeg', data: d } }))], { schema: INV, timeout: 45000, temperature: 0.1, prefer: ['gemini-flash-latest', 'gemini-2.5-flash'] });
+    const r = await gemini(env, [{ text: prompt }, ...images.map(d => ({ inline_data: { mime_type: 'image/jpeg', data: d } }))], { schema: INV, timeout: 40000, budget: 55000, temperature: 0.1, prefer: ['gemini-flash-latest', 'gemini-2.5-flash'] });
     const num = v => Math.round((+String(v ?? '').replace(',', '.') || 0) * 1000) / 1000;
     const lines = (r.lines || []).map(l => ({ n: String(l.n || '').trim().slice(0, 80), q: num(l.q), u: String(l.u || '').trim().slice(0, 10), price: num(l.price), sum: num(l.sum) || Math.round(num(l.price) * num(l.q) * 100) / 100,
       p: String(l.p || '').trim().slice(0, 60), cat: String(l.cat || '').slice(0, 30), bar: !!l.bar, pu: ['кг', 'л', 'шт'].includes(l.pu) ? l.pu : '', pq: num(l.pq) || 0, ...(/^\d{8,14}$/.test(String(l.bc || '').trim()) ? { bc: String(l.bc).trim() } : {}) })).filter(l => l.n && l.q > 0).slice(0, 120);
@@ -198,4 +206,18 @@ out — вихід готової ${semi ? 'партії' : 'страви'} в �
   }).filter(Boolean);
   if (!items.length) return { error: 'Не вийшло — спробуйте ще раз' };
   return { name, out: Math.round(+r.out || 0), items };
+}
+
+// 🧪 порівняння ШІ на одній накладній: те саме фото одночасно в кожну безкоштовну модель → час, рядки, сума, помилка
+export async function aiBench(env, images) {
+  const prompt = await invPrompt(env, images, ''), parts = [{ text: prompt }, ...images.map(d => ({ inline_data: { mime_type: 'image/jpeg', data: d } }))];
+  const o = { schema: INV, timeout: 60000, temperature: 0.1 };
+  return Promise.all(BENCH.filter(([k]) => env[k === 'g' ? 'GEMINI_API_KEY' : ALT[k].key]).map(async ([k, m]) => {
+    const t = Date.now();
+    try {
+      const r = await (k === 'g' ? gemini1(env, parts, { ...o, only: m }) : alt(env, k, parts, { ...o, only: m }));
+      const lines = (r.lines || []).filter(l => l.n && +l.q > 0);
+      return { m, ms: Date.now() - t, rows: lines.length, sum: Math.round(lines.reduce((s, l) => s + (+l.sum || 0), 0) * 100) / 100, total: +r.total || 0, sup: String(r.sup || '').slice(0, 40), ex: lines.slice(0, 3).map(l => `${l.n} ${l.q}${l.u || ''} ${l.sum}`.slice(0, 60)) };
+    } catch (e) { return { m, ms: Date.now() - t, err: String(e.message).replace(m, '').slice(0, 160) }; }
+  }));
 }
