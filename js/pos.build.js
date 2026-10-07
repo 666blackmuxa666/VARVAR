@@ -3679,12 +3679,50 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const v = await modal({
       title: `\u{1F533} QR-\u043A\u043E\u0434\u0438 \u043C\u0435\u043D\u044E \xB7 ${r.n} \u0441\u0442\u043E\u043B\u0456\u0432`,
       body: `<div class="muted" style="font-size:13px">\u0423 \u043A\u043E\u0436\u043D\u043E\u0433\u043E \u0441\u0442\u043E\u043B\u0443 \u0441\u0432\u0456\u0439 QR \u2014 \u0433\u0456\u0441\u0442\u044C \u0441\u043A\u0430\u043D\u0443\u0454 \u0439 \u0437\u0430\u043C\u043E\u0432\u043B\u044F\u0454 \u043E\u0434\u0440\u0430\u0437\u0443 \u043D\u0430 \u0446\u0435\u0439 \u0441\u0442\u0456\u043B. \u041A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044C \u0441\u0442\u043E\u043B\u0456\u0432 \u2014 \u0443 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F\u0445 \u2192 \u{1FA91} \u0417\u0430\u043B.</div>
-      <div class="qr-grid">${r.list.map((x) => `<a href="${esc(x.img)}?s=20" target="_blank" rel="noopener"><img src="${esc(x.img)}" alt="" loading="lazy"><b>\u0421\u0442\u0456\u043B ${x.t}</b></a>`).join("")}</div>`,
-      buttons: [{ label: "\u{1F4BE} \u0424\u0430\u0439\u043B \u0434\u043B\u044F \u0434\u0440\u0443\u043A\u0430\u0440\u043D\u0456", val: "file", cls: "primary" }, { label: "\u{1F504} \u041D\u043E\u0432\u0456 \u043A\u043E\u0434\u0438", val: "new", cls: "red" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }]
+      <div class="muted" style="font-size:12px;margin-top:6px">\u0422\u043E\u0440\u043A\u043D\u0456\u0442\u044C\u0441\u044F QR \u2014 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u0442\u044C\u0441\u044F \u043D\u0430 \u043F\u0440\u0438\u0441\u0442\u0440\u0456\u0439 \u0443 \u0432\u0438\u0441\u043E\u043A\u0456\u0439 \u044F\u043A\u043E\u0441\u0442\u0456 (1000\xD71000).</div><div class="qr-grid">${r.list.map((x) => `<a href="#" data-mi-v="dl:${x.t}"><img src="${esc(x.img)}" alt="" loading="lazy"><b>\u0421\u0442\u0456\u043B ${x.t} \u2B07\uFE0F</b></a>`).join("")}</div>`,
+      buttons: [{ label: `\u2B07\uFE0F \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438 \u0432\u0441\u0456 (${r.n})`, val: "dlall", cls: "primary" }, { label: "\u{1F4BE} \u0410\u0440\u043A\u0443\u0448 A4 / PDF", val: "file" }, { label: "\u{1F504} \u041D\u043E\u0432\u0456 \u043A\u043E\u0434\u0438", val: "new", cls: "red" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }]
     });
+    if (String(v).startsWith("dl:")) {
+      const x = r.list.find((y) => y.t === +v.slice(3));
+      await qrSave(x);
+      return qrPanel();
+    }
+    if (v === "dlall") {
+      toast("\u2B07\uFE0F \u0413\u043E\u0442\u0443\u044E " + r.n + " QR\u2026");
+      if (matchMedia("(hover: none)").matches && navigator.canShare) {
+        const fs = await Promise.all(r.list.map(async (x) => new File([await (await fetch(x.img + "?s=24")).blob()], `QR-\u0441\u0442\u0456\u043B-${x.t}.png`, { type: "image/png" }))).catch(() => null);
+        if (fs && navigator.canShare({ files: fs })) {
+          await navigator.share({ files: fs }).catch(() => {
+          });
+          return;
+        }
+      }
+      for (const x of r.list) {
+        await qrSave(x);
+        await new Promise((z) => setTimeout(z, 400));
+      }
+    }
     if (v === "file") qrSheet(r);
     if (v === "new" && await confirmBox("\u{1F504} \u0421\u0442\u0432\u043E\u0440\u0438\u0442\u0438 \u043D\u043E\u0432\u0456 QR-\u043A\u043E\u0434\u0438?", "\u0423\u0441\u0456 \u0412\u0416\u0415 \u041D\u0410\u0414\u0420\u0423\u041A\u041E\u0412\u0410\u041D\u0406 QR \u043F\u0435\u0440\u0435\u0441\u0442\u0430\u043D\u0443\u0442\u044C \u0434\u0430\u0432\u0430\u0442\u0438 \u0434\u043E\u0441\u0442\u0443\u043F \u0434\u043E \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u2014 \u0457\u0445 \u0442\u0440\u0435\u0431\u0430 \u0431\u0443\u0434\u0435 \u0437\u0430\u043C\u0456\u043D\u0438\u0442\u0438 \u043D\u0430 \u0441\u0442\u043E\u043B\u0430\u0445. \u041F\u0440\u0438\u043D\u0442\u0435\u0440 \u0447\u0435\u043A\u0456\u0432 \u043E\u0434\u0440\u0430\u0437\u0443 \u0434\u0440\u0443\u043A\u0443\u0432\u0430\u0442\u0438\u043C\u0435 \u043D\u043E\u0432\u0456.")) {
       if (await act("qrNew", {}, "\u{1F504} \u041D\u043E\u0432\u0456 \u043A\u043E\u0434\u0438 \u0441\u0442\u0432\u043E\u0440\u0435\u043D\u043E")) qrPanel();
+    }
+  }
+  async function qrSave(x) {
+    var _a2;
+    try {
+      const b = await (await fetch(x.img + "?s=24")).blob(), f = new File([b], `QR-\u0441\u0442\u0456\u043B-${x.t}.png`, { type: "image/png" });
+      if (((_a2 = navigator.canShare) == null ? void 0 : _a2.call(navigator, { files: [f] })) && matchMedia("(hover: none)").matches) {
+        await navigator.share({ files: [f] }).catch(() => {
+        });
+        return;
+      }
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(f);
+      a.download = f.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5e3);
+    } catch (e) {
+      toast("\u26A0\uFE0F \u041D\u0435 \u0432\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0431\u0435\u0440\u0435\u0433\u0442\u0438");
     }
   }
   function qrSheet(r) {
