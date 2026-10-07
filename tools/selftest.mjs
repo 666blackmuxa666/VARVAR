@@ -191,6 +191,7 @@ async function apiTests() {
   const deny = [
     [C, 'courier', 'close', { t: 1, pay: 'cash' }], [C, 'courier', 'shift'], [C, 'courier', 'order', { t: 1, items: [] }], [C, 'courier', 'bkList'], [C, 'courier', 'skData'], [C, 'courier', 'goSt', { t: G2, st: 'acc' }],
     [K, 'cook', 'close', { t: 1, pay: 'cash' }], [K, 'cook', 'shift'], [K, 'cook', 'staff'], [K, 'cook', 'goSt', { t: 1001, st: 'road' }], [K, 'cook', 'bkList'],
+    [W, 'waiter', 'photoMake', { id: 'x' }], [K, 'cook', 'photoStyleSet', { prompt: 'x' }],
     [W, 'waiter', 'shift'], [W, 'waiter', 'delete', { t: 1 }], [W, 'waiter', 'zpGrid', { m: day().slice(0, 7) }], [W, 'waiter', 'courList'],
   ];
   for (const [tok, role, op, b] of deny) {
@@ -198,6 +199,11 @@ async function apiTests() {
     await step(`${role} ✗ ${op}`, async () => { const r = await pos(tok, op, b); must(r.status === 403, `статус ${r.status} ${JSON.stringify(r.j).slice(0, 100)}`); });
   }
   if (G2) await pos(A, 'delete', { t: G2, reason: 'QA тест' });
+  await step('📸 ШІ-фото: стиль зберігається; без платного ключа генерація → 503', async () => {
+    const s1 = await pos(A, 'photoStyleSet', { prompt: 'QA стиль' }); must(s1.status === 200 && s1.j.prompt === 'QA стиль' && s1.j.free === 20, JSON.stringify(s1.j).slice(0, 200));
+    const m = await pos(A, 'photoMake', { id: dish.id }); must(m.status === 503, 'статус ' + m.status);
+    const a = await pos(A, 'photoApply', { id: dish.id }); must(a.status === 400, 'без чернетки → ' + a.status);
+    await pos(A, 'photoStyleSet', { prompt: '' }); });
   await step('без токена → 401', async () => { const r = await pos('', 'state'); must(r.status === 401, 'статус ' + r.status); });
 
   sect('Персонал: перейменування не губить графік і ЗП; PIN; роль');

@@ -58,6 +58,7 @@ export async function posApi(b, req, env) {
     await fetch(`https://api.telegram.org/bot${tok}/sendMessage`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: chat, parse_mode: 'HTML', text: `🆘 <b>Допомога</b> · ${esc(site.name)} (${esc(env.VENUE || 'varvar')})\n👤 ${esc(me.name)} · ${esc(me.role)}\n🖥 ${esc(String(b.screen || '').slice(0, 60))}\n\n${esc(text)}` }) }).catch(() => {});
     return [{ ok: true }, 200];
   }
+  if (/^photo[A-Z]/.test(b.op || '')) { if (!admin) return needAdmin(); return (await import('./photoai.js')).photoApi(b, env, who); } // 📸 ШІ-фото страв
   if (/^idea[A-Z]/.test(b.op || '')) return (await import('./ideas.js')).ideaApi(b, env, me); // 💡 побажання розробнику
   if (/^gb[A-Z]/.test(b.op || '')) return (await import('./guestbot.js')).gbApi(b, env, me); // 🤖 бот гостей
   if (/^loy[A-Z]/.test(b.op || '')) return loyApi(b, env, me, t); // 🎁 лояльність: рівні, акції, клієнти, звіт (promo.js)

@@ -326,7 +326,7 @@
       modalResolve = v => { if (!keep || v == null) closeModal(); res(v); };
       const el = document.createElement('div'); el.className = 'modal-bg'; el.id = 'modal';
       el.innerHTML = `<div class="modal"><h3>${esc(title)}</h3>${text ? `<p>${esc(text)}</p>` : ''}${body}<div class="btns" style="margin-top:14px">${buttons.map((b, i) => `<button class="btn ${b.cls || ''}" data-mi="${i}">${esc(b.label)}</button>`).join('')}</div></div>`;
-      el.addEventListener('click', e => { if (e.target === el) return modalResolve(null); const i = e.target.closest('[data-mi]')?.dataset.mi; if (i != null) modalResolve(buttons[+i].val); });
+      el.addEventListener('click', e => { if (e.target === el) return modalResolve(null); const i = e.target.closest('[data-mi]')?.dataset.mi; if (i != null) return modalResolve(buttons[+i].val); const pk = e.target.closest('[data-mi-v]')?.dataset.miV; if (pk != null) modalResolve(pk); });
       document.body.append(el);
       const fq = el.querySelector('[data-mi-quick]'); if (fq) fq.onclick = () => { el.querySelector('#fIn').value = last0; modalResolve('ok'); };
     });
@@ -513,6 +513,7 @@
       case 'movDel': if (await confirmBox('Видалити запис?')) { await act('moveDel', { i: +el.dataset.i }); loadView(); } break;
       case 'expDel': if (await confirmBox('Видалити витрату?')) { await act('expenseDel', { i: +el.dataset.i }); loadView(); } break;
       case 'menuEdit': menuEdit(el.dataset.id); break;
+      case 'phPanel': phPanel(); break;
       case 'catAdd': { const v = await ask('📂 Новий розділ меню', 'Назва, напр. Упакування'); if (v && await act('catAdd', { name: v }, '📂 Розділ додано в кінець меню')) loadMenu().catch(() => {}); break; }
       case 'menuUndo': if (await confirmBox('Скасувати останню зміну меню?')) act('menuUndo', {}, '↩️ Скасовано'); break;
       case 'staffAdd': {

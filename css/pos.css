@@ -807,3 +807,11 @@ body.cour #feed, body.cour .feed-btn { display: none !important; }
 .icobtn{width:48px;height:44px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:22px;border:0;border-radius:14px;background:#ffffff12}
 .icobtn:hover{background:#ffffff22}
 .rrow.del > span:first-child, .rrow.del .money { text-decoration: line-through; opacity: .45; }
+.ph-ab { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.ph-ab figure { margin: 0; } .ph-ab img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; display: block; } .ph-ab figcaption { text-align: center; font-size: 12px; color: var(--muted); margin-top: 4px; }
+.ph-refs { display: flex; gap: 8px; margin-top: 6px; } .ph-refs > * { width: 72px; height: 72px; border-radius: 12px; background: var(--card2) center/cover; position: relative; border: 1px dashed var(--line); font-size: 22px; }
+.ph-refs div button { position: absolute; top: 2px; right: 2px; background: #000a; border-radius: 8px; width: 22px; height: 22px; font-size: 12px; }
+.ph-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; max-height: 55vh; overflow: auto; margin-top: 8px; }
+.ph-pick button { display: grid; gap: 4px; padding: 4px; border-radius: 12px; background: var(--card2); border: 2px solid transparent; opacity: .45; font-size: 11px; text-align: center; }
+.ph-pick button.on, .ph-pick button:not([data-ph]) { opacity: 1; } .ph-pick button.on { border-color: var(--accent); }
+.ph-pick img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 9px; }

@@ -17,7 +17,7 @@
   }
   function menuHTML() {
     if (!S.menu) return '<div class="head"><h1>Меню</h1></div><div class="muted">Завантаження…</div>';
-    return `<div class="head"><h1>Меню</h1><button class="btn" data-a="menuUndo">↩️ Відмінити останню зміну</button><button class="btn" data-a="catAdd">📂 Новий розділ</button><button class="btn primary" data-a="menuEdit" data-id="">➕ Нова страва</button></div>
+    return `<div class="head"><h1>Меню</h1><button class="btn" data-a="menuUndo">↩️ Відмінити останню зміну</button><button class="btn" data-a="catAdd">📂 Новий розділ</button><button class="btn" data-a="phPanel">📸 ШІ-фото</button><button class="btn primary" data-a="menuEdit" data-id="">➕ Нова страва</button></div>
       ${S.menu.categories.map(c => `<h3 class="muted" style="margin:18px 4px 8px">${esc(c.name.uk)}</h3><div class="grid2">${c.items.map(i => `<button class="list-row press" data-a="menuEdit" data-id="${i.id}" style="text-align:left"><div class="grow"><b>${esc(i.name.uk)}</b>${i.hidden ? ' ⛔' : ''}<div class="muted" style="font-size:13px">${i.variants ? i.variants.map(v => `${v.v} — ${v.p}`).join(' / ') : i.price + ' ₴'}${i.size && !i.variants ? ' · ' + esc(i.size) : ''}</div></div>›</button>`).join('')}</div>`).join('')}`;
   }
   function lookHTML() {
@@ -96,7 +96,8 @@
       <label>Вага/обʼєм<input id="fSize" value="${esc(it?.size || '')}" placeholder="напр. 400 г або л"></label>
       <label>Склад<textarea id="fDesc" rows="3">${esc(it?.desc?.uk || '')}</textarea></label>
       ${it ? `<label>Фото<input id="fPhoto" type="file" accept="image/*"></label>` : ''}</div>`;
-    const v = await modal({ title: it ? 'Редагувати страву' : 'Нова страва', body, buttons: [{ label: '💾 Зберегти', val: 'save', cls: 'primary' }, ...(it ? [{ label: '🗑 Видалити страву', val: 'del', cls: 'red' }] : []), { label: 'Скасувати', val: null }], keep: true });
+    const v = await modal({ title: it ? 'Редагувати страву' : 'Нова страва', body, buttons: [{ label: '💾 Зберегти', val: 'save', cls: 'primary' }, ...(it ? [{ label: '📸 ШІ-фото', val: 'ai' }, { label: '🗑 Видалити страву', val: 'del', cls: 'red' }] : []), { label: 'Скасувати', val: null }], keep: true });
+    if (v === 'ai') { closeModal(); return phDish(it); }
     if (v === 'del') { if (await confirmBox(`Видалити «${it.name.uk}» з меню?`)) await act('menuDel', { id: it.id }, '🗑 Видалено'); return; }
     if (v !== 'save') return;
     const variants = $('#fVar').value.split(',').map(s => s.trim()).filter(Boolean).map(s => { const [vv, p] = s.split(/[=:]/).map(x => x.trim()); return { v: vv.replace(',', '.'), p: +p }; }).filter(x => x.v && x.p);
@@ -104,8 +105,68 @@
     const file = $('#fPhoto')?.files?.[0];
     closeModal();
     const r = await act('menuSave', { item }, '💾 Збережено');
-    if (r && file) { const data = await shrink(file); await act('menuPhoto', { id: r.id, data }, '📷 Фото оновлено'); }
+    if (r && file) { const data = await shrink(file);
+      const inf = await api('photoInfo').catch(() => null); // 📸 є стиль закладу → запропонувати обробити
+      if (inf?.on && (inf.prompt || inf.refs.length) && await choose('📸 Обробити фото в стилі закладу?', 'ШІ прибере фон і зробить фото як інші в меню. Оригінал не зникне, поки не натиснете «✅ Взяти».', [{ label: '🪄 Обробити', val: 1, cls: 'primary' }, { label: 'Ні, як є', val: 0 }])) { await phRun({ id: r.id, name: item.name, img: it?.img }, { data }); }
+      else await act('menuPhoto', { id: r.id, data }, '📷 Фото оновлено'); }
     loadMenu().catch(() => {});
+  }
+  // ---------- 📸 ШІ-фото страв (photoai.js): чернетка → «до / після» → ✅ Взяти ----------
+  const pickFile = () => new Promise(res => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.onchange = () => res(i.files[0] || null); i.click(); });
+  let phPaid = false; // у цьому сеансі вже погодились на платні фото понад ліміт
+  async function phCall(b) { // одна генерація; понад ліміт — питає про оплату
+    try { return await api('photoMake', { ...b, ...(phPaid ? { pay: 1 } : {}) }, 100000); }
+    catch (e) { if (e.data?.error !== 'pay') { toast('⚠️ ' + errText(e.message)); return null; }
+      if (!(await confirmBox(`📸 ${e.data.free} безкоштовних фото цього місяця використано`, `Далі — ${e.data.price} ₴ за кожне фото (додасться до рахунку за систему). Продовжити?`))) return null;
+      phPaid = true; return phCall(b); }
+  }
+  async function phRun(it, o = {}) { // o: { data } — своє фото; { mode: 'edit' } — обробити наявне; інакше — згенерувати
+    toast('⏳ ШІ малює фото… до хвилини'); const r = await phCall({ id: it.id, ...o }); if (!r) return;
+    const v = await modal({ title: '📸 ' + (it.name?.uk || it.name || ''), body: `<div class="ph-ab">${it.img && !o.data ? `<figure><img src="${esc(it.img)}" alt=""><figcaption>було</figcaption></figure>` : o.data ? `<figure><img src="${o.data}" alt=""><figcaption>ваше фото</figcaption></figure>` : ''}<figure><img src="${esc(r.draft)}" alt=""><figcaption>ШІ</figcaption></figure></div><div class="muted" style="font-size:12px;margin-top:8px">Цього місяця: ${r.n} фото${r.over ? ` · понад ліміт ${r.over} × ${r.price} ₴` : ` з ${r.free} безкоштовних`}</div>`,
+      buttons: [{ label: '✅ Взяти в меню', val: 'ok', cls: 'primary' }, { label: '🔁 Ще раз', val: 'again' }, { label: '✕ Не треба', val: 'no' }] });
+    if (v === 'ok') { if (await act('photoApply', { id: it.id }, '📸 Фото в меню')) loadMenu().catch(() => {}); }
+    else if (v === 'again') return phRun(it, o);
+    else await api('photoDrop', { id: it.id }).catch(() => {});
+  }
+  async function phDish(it) {
+    const v = await choose('📸 ШІ-фото: ' + it.name.uk, 'Фото буде в стилі закладу (📸 ШІ-фото → стиль).', [...(it.img ? [{ label: '🪄 Обробити наявне фото', val: 'edit', cls: 'primary' }] : []), { label: '📷 Завантажити своє й обробити', val: 'up' }, { label: '✨ Згенерувати з нуля', val: 'gen' }]);
+    if (v === 'edit') return phRun(it, { mode: 'edit' });
+    if (v === 'gen') return phRun(it, {});
+    if (v === 'up') { const f = await pickFile(); if (f) return phRun(it, { data: await shrink(f) }); }
+  }
+  async function phPanel() {
+    let inf; try { inf = await api('photoInfo'); } catch (e) { return toast('⚠️ ' + errText(e.message)); }
+    if (!inf.on) return toast('⚠️ ШІ-фото ще не підключено');
+    const all = S.menu.categories.flatMap(c => c.items), noImg = all.filter(i => !i.img), withImg = all.filter(i => i.img);
+    const v = await modal({ title: '📸 ШІ-фото страв', body: `<div class="muted" style="font-size:13px">Опишіть стиль — і всі фото будуть однакові: ШІ генерує фото страв без фото або прибирає фон з ваших і ставить у цей стиль.</div>
+      <label style="display:block;margin-top:10px">🎨 Стиль закладу<textarea id="phP" rows="5" style="width:100%">${esc(inf.prompt || inf.def)}</textarea></label>
+      <div class="muted" style="font-size:13px;margin-top:8px">Зразки стилю (до 2) — найкращі ваші фото:</div><div class="ph-refs">${inf.refs.map((u, i) => `<div style="background-image:url('${esc(u)}')"><button data-mi-v="ref:${i}">✕</button></div>`).join('')}${inf.refs.length < 2 ? '<button class="add" data-mi-v="addref">＋</button>' : ''}</div>
+      <div class="kv" style="margin-top:10px"><span>Цього місяця</span><b>${inf.n} / ${inf.free} безкоштовних${inf.over ? ` · понад ліміт ${inf.over} × ${inf.price} ₴` : ''}</b></div>`,
+      buttons: [{ label: '💾 Зберегти стиль', val: 'save', cls: 'primary' }, ...(noImg.length ? [{ label: `✨ Фото для всіх без фото (${noImg.length})`, val: 'gen' }] : []), ...(withImg.length ? [{ label: `🪄 Усі фото в одному стилі (${withImg.length})`, val: 'edit' }] : []), { label: 'Закрити', val: null }], keep: true });
+    if (v === 'save' || v === 'gen' || v === 'edit' || v === 'addref' || String(v).startsWith('ref:')) { const p = $('#phP')?.value.trim(); if (p !== (inf.prompt || inf.def)) await api('photoStyleSet', { prompt: p }).catch(() => {}); }
+    closeModal(); if (v === 'save') toast('💾 Стиль збережено');
+    if (v === 'addref') return phRef(0, true); if (String(v).startsWith('ref:')) return phRef(+v.slice(4));
+    if (v === 'gen' || v === 'edit') phBatch(v === 'gen' ? noImg : withImg, v, inf);
+  }
+  async function phRef(i, add) { // зразок стилю: прибрати / додати (фото страви з меню або своє)
+    if (!add) { await act('photoStyleSet', { refDel: i }, '🗑 Прибрано'); return phPanel(); }
+    const withImg = S.menu.categories.flatMap(c => c.items).filter(x => x.img);
+    const v = await modal({ title: '＋ Зразок стилю', body: `<div class="ph-pick">${withImg.map(x => `<button data-mi-v="${x.id}"><img src="${esc(x.img)}" alt=""><span>${esc(x.name.uk)}</span></button>`).join('')}</div>`, buttons: [{ label: '📷 Завантажити своє', val: 'up' }, { label: 'Скасувати', val: null }] });
+    if (v === 'up') { const f = await pickFile(); if (f) await act('photoStyleSet', { refData: await shrink(f) }, '＋ Зразок додано'); }
+    else if (v && v !== 'up') await act('photoStyleSet', { refFrom: v }, '＋ Зразок додано');
+    return phPanel();
+  }
+  async function phBatch(list, mode, inf) { // по одній страві за запит (без опитування сервера); готове — чернетки, потім «✅ Взяти всі»
+    const left = Math.max(0, inf.free - inf.n), paid = Math.max(0, list.length - left);
+    if (!(await confirmBox(`${mode === 'gen' ? '✨ Згенерувати' : '🪄 Обробити'} ${list.length} фото?`, `Безкоштовно ще ${left}.${paid ? ` Понад ліміт — ${paid} × ${inf.price} ₴ = ${paid * inf.price} ₴.` : ''} Займе ~${Math.ceil(list.length * 0.3)} хв; не закривайте касу.`))) return;
+    if (paid) phPaid = true;
+    const done = [];
+    for (const [k, it] of list.entries()) { toast(`⏳ ${k + 1} / ${list.length}: ${it.name.uk}`); const r = await phCall({ id: it.id, ...(mode === 'edit' ? { mode: 'edit' } : {}) }); if (r) done.push({ it, u: r.draft }); else if (!phPaid) break; }
+    if (!done.length) return;
+    const v = await modal({ title: `📸 Готово: ${done.length}`, body: `<div class="muted" style="font-size:13px">Торкніться фото, яке НЕ подобається, — воно не піде в меню.</div><div class="ph-pick">${done.map((d, i) => `<button class="on" onclick="this.classList.toggle('on')" data-ph="${i}"><img src="${esc(d.u)}" alt=""><span>${esc(d.it.name.uk)}</span></button>`).join('')}</div>`, buttons: [{ label: '✅ Взяти позначені', val: 'ok', cls: 'primary' }, { label: '✕ Нічого', val: 'no' }], keep: true });
+    const keep = new Set([...document.querySelectorAll('[data-ph].on')].map(b => +b.dataset.ph)); closeModal();
+    let n = 0; for (const [i, d] of done.entries()) { if (v === 'ok' && keep.has(i)) { if (await api('photoApply', { id: d.it.id }).catch(() => null)) n++; } else await api('photoDrop', { id: d.it.id }).catch(() => {}); }
+    toast(`📸 У меню: ${n} фото`); loadMenu().catch(() => {});
   }
   function shrink(file, max = 1200, qq = .85) { // фото → JPEG до max px
     return new Promise(res => { const img = new Image(); img.onload = () => { const k = Math.min(1, max / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = img.width * k; c.height = img.height * k; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', qq)); }; img.src = URL.createObjectURL(file); });
