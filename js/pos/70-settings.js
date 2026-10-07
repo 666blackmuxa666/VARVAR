@@ -116,8 +116,7 @@
     let r; try { r = await api('qrInfo'); } catch (e) { return toast('⚠️ ' + errText(e.message)); }
     const v = await modal({ title: `🔳 QR-коди меню · ${r.n} столів`, body: `<div class="muted" style="font-size:13px">У кожного столу свій QR — гість сканує й замовляє одразу на цей стіл. Кількість столів — у Налаштуваннях → 🪑 Зал.</div>
       <div class="qr-grid">${r.list.map(x => `<a href="${esc(x.img)}?s=20" target="_blank" rel="noopener"><img src="${esc(x.img)}" alt="" loading="lazy"><b>Стіл ${x.t}</b></a>`).join('')}</div>`,
-      buttons: [{ label: `🖨 Усі на принтер (${r.n})`, val: 'print', cls: 'primary' }, { label: '💾 Файл для друкарні', val: 'file' }, { label: '🔄 Нові коди', val: 'new', cls: 'red' }, { label: 'Закрити', val: null }] });
-    if (v === 'print') { if (await confirmBox(`Надрукувати ${r.n} QR на принтері чеків?`)) act('printQr', { all: 1 }, `🖨 ${r.n} QR відправлено на принтер`); }
+      buttons: [{ label: '💾 Файл для друкарні', val: 'file', cls: 'primary' }, { label: '🔄 Нові коди', val: 'new', cls: 'red' }, { label: 'Закрити', val: null }] });
     if (v === 'file') qrSheet(r);
     if (v === 'new' && await confirmBox('🔄 Створити нові QR-коди?', 'Усі ВЖЕ НАДРУКОВАНІ QR перестануть давати доступ до замовлення — їх треба буде замінити на столах. Принтер чеків одразу друкуватиме нові.')) { if (await act('qrNew', {}, '🔄 Нові коди створено')) qrPanel(); }
   }
