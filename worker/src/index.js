@@ -19,6 +19,7 @@ export { Hub } from './hub.js';
 import { hubVenues } from './hub.js';
 import { ownerApi, intApi } from './owner.js';
 import { storeDB } from './store.js';
+import { qrKey, tableKey, qrRoute } from './qr.js';
 import { ALS, MAIN, doName, splitVenue, stripVenue, venueEnv } from './venue.js';
 
 const TYPES = { order: 'НОВЕ ЗАМОВЛЕННЯ', order_check: 'НОВЕ ЗАМОВЛЕННЯ', reorder: 'ДОЗАМОВЛЕННЯ', check: 'ПРОСЯТЬ ЧЕК' };
@@ -99,6 +100,7 @@ export async function handle(req, env) {
       }
       if (url.pathname.startsWith('/api/print/')) return printApi(req, env, url);
       // програма друку і логотип через простий HTTP (Windows 7 не вміє TLS 1.2)
+      { const qr = await qrRoute(env, url); if (qr) return qr; } // 🔳 QR столів — генеруються сервером
       const pf = url.pathname.match(/^\/print\/(agent\.ps1|[a-z0-9-]+\.png)$/);
       if (pf) {
         const r = await fetch('https://666blackmuxa666.github.io/VARVAR/printer/' + (pf[1] === 'agent.ps1' ? 'varvar-print.ps1' : pf[1]), { cf: { cacheTtl: 30 } });
@@ -186,14 +188,9 @@ async function inVenue(env, ip) { const k = ipKey(ip); return (await venueIps(en
 
 
 // доступ до замовлення: скан QR-коду закладу дає 1 годину (потім — сканувати заново)
-const qrKey = async env => (await env.DB.get('qr_key')) || 'f5431c32';
 async function scanInfo(env, dev) { dev = String(dev || '').slice(0, 64); if (!dev) return null; const v = await env.DB.get('scan:' + dev); if (!v) return null; try { const o = JSON.parse(v); return typeof o === 'number' ? { until: o, t: 0 } : o; } catch { return null; } }
 async function scanUntil(env, dev) { return (await scanInfo(env, dev))?.until || 0; }
-// ключ QR конкретного столу (не вгадати, змінивши номер у посиланні)
-export async function tableKey(env, t) {
-  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${await qrKey(env)}:${t}`));
-  return [...new Uint8Array(h)].slice(0, 4).map(x => x.toString(16).padStart(2, '0')).join('');
-}
+export { tableKey };
 
 // 🔔 гість кличе офіціанта: стрічка каси + Telegram з кнопкою «✅ Іду»
 async function callWaiter(b, ip, env) {

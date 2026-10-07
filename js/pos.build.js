@@ -1624,6 +1624,9 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       case "phPanel":
         phPanel();
         break;
+      case "qrPanel":
+        qrPanel();
+        break;
       case "catAdd": {
         const v = await ask("\u{1F4C2} \u041D\u043E\u0432\u0438\u0439 \u0440\u043E\u0437\u0434\u0456\u043B \u043C\u0435\u043D\u044E", "\u041D\u0430\u0437\u0432\u0430, \u043D\u0430\u043F\u0440. \u0423\u043F\u0430\u043A\u0443\u0432\u0430\u043D\u043D\u044F");
         if (v && await act("catAdd", { name: v }, "\u{1F4C2} \u0420\u043E\u0437\u0434\u0456\u043B \u0434\u043E\u0434\u0430\u043D\u043E \u0432 \u043A\u0456\u043D\u0435\u0446\u044C \u043C\u0435\u043D\u044E")) loadMenu().catch(() => {
@@ -3547,7 +3550,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const p = S.printer || {}, ok = p.seen && Date.now() - p.seen < 6e4;
     return `<div class="cards"><div class="card"><div class="big">${ok ? "\u2705 \u043D\u0430 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : p.seen ? "\u274C \u043D\u0435\u043C\u0430\u0454 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : "\u274C \u043F\u0440\u043E\u0433\u0440\u0430\u043C\u0430 \u0434\u0440\u0443\u043A\u0443 \u043D\u0435 \u0437\u0430\u043F\u0443\u0449\u0435\u043D\u0430"}</div>
       <div class="muted">${p.seen ? "\u041E\u0441\u0442\u0430\u043D\u043D\u0456\u0439 \u0437\u0432\u02BC\u044F\u0437\u043E\u043A: " + hhmm(p.seen) : ""} \xB7 \u0443 \u0447\u0435\u0440\u0437\u0456: ${(_a2 = p.q) != null ? _a2 : 0}</div>${p.q && isAdmin() ? '<div class="btnrow" style="margin-top:10px"><button class="btn sm" data-a="pQList">\u{1F4CB} \u0429\u043E \u0432 \u0447\u0435\u0440\u0437\u0456</button><button class="btn sm red" data-a="pQClear">\u{1F5D1} \u041E\u0447\u0438\u0441\u0442\u0438\u0442\u0438 \u0447\u0435\u0440\u0433\u0443</button></div>' : ""}</div>
-      <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">\u{1F5A8} \u0422\u0435\u0441\u0442\u043E\u0432\u0438\u0439 \u0434\u0440\u0443\u043A</button><button class="btn" data-a="pQr">\u{1F533} QR \u043C\u0435\u043D\u044E \u0434\u043B\u044F \u0441\u0442\u043E\u043B\u0443</button></div></div>`;
+      <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">\u{1F5A8} \u0422\u0435\u0441\u0442\u043E\u0432\u0438\u0439 \u0434\u0440\u0443\u043A</button><button class="btn" data-a="pQr">\u{1F533} QR \u043C\u0435\u043D\u044E \u0434\u043B\u044F \u0441\u0442\u043E\u043B\u0443</button><button class="btn" data-a="qrPanel">\u{1F533} \u0423\u0441\u0456 QR-\u043A\u043E\u0434\u0438</button></div></div>`;
   }
   function menuHTML() {
     if (!S.menu) return '<div class="head"><h1>\u041C\u0435\u043D\u044E</h1></div><div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
@@ -3665,6 +3668,35 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     }
     loadMenu().catch(() => {
     });
+  }
+  async function qrPanel() {
+    let r;
+    try {
+      r = await api("qrInfo");
+    } catch (e) {
+      return toast("\u26A0\uFE0F " + errText(e.message));
+    }
+    const v = await modal({
+      title: `\u{1F533} QR-\u043A\u043E\u0434\u0438 \u043C\u0435\u043D\u044E \xB7 ${r.n} \u0441\u0442\u043E\u043B\u0456\u0432`,
+      body: `<div class="muted" style="font-size:13px">\u0423 \u043A\u043E\u0436\u043D\u043E\u0433\u043E \u0441\u0442\u043E\u043B\u0443 \u0441\u0432\u0456\u0439 QR \u2014 \u0433\u0456\u0441\u0442\u044C \u0441\u043A\u0430\u043D\u0443\u0454 \u0439 \u0437\u0430\u043C\u043E\u0432\u043B\u044F\u0454 \u043E\u0434\u0440\u0430\u0437\u0443 \u043D\u0430 \u0446\u0435\u0439 \u0441\u0442\u0456\u043B. \u041A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044C \u0441\u0442\u043E\u043B\u0456\u0432 \u2014 \u0443 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F\u0445 \u2192 \u{1FA91} \u0417\u0430\u043B.</div>
+      <div class="qr-grid">${r.list.map((x) => `<a href="${esc(x.img)}?s=20" target="_blank" rel="noopener"><img src="${esc(x.img)}" alt="" loading="lazy"><b>\u0421\u0442\u0456\u043B ${x.t}</b></a>`).join("")}</div>`,
+      buttons: [{ label: `\u{1F5A8} \u0423\u0441\u0456 \u043D\u0430 \u043F\u0440\u0438\u043D\u0442\u0435\u0440 (${r.n})`, val: "print", cls: "primary" }, { label: "\u{1F4BE} \u0424\u0430\u0439\u043B \u0434\u043B\u044F \u0434\u0440\u0443\u043A\u0430\u0440\u043D\u0456", val: "file" }, { label: "\u{1F504} \u041D\u043E\u0432\u0456 \u043A\u043E\u0434\u0438", val: "new", cls: "red" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }]
+    });
+    if (v === "print") {
+      if (await confirmBox(`\u041D\u0430\u0434\u0440\u0443\u043A\u0443\u0432\u0430\u0442\u0438 ${r.n} QR \u043D\u0430 \u043F\u0440\u0438\u043D\u0442\u0435\u0440\u0456 \u0447\u0435\u043A\u0456\u0432?`)) act("printQr", { all: 1 }, `\u{1F5A8} ${r.n} QR \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u043E \u043D\u0430 \u043F\u0440\u0438\u043D\u0442\u0435\u0440`);
+    }
+    if (v === "file") qrSheet(r);
+    if (v === "new" && await confirmBox("\u{1F504} \u0421\u0442\u0432\u043E\u0440\u0438\u0442\u0438 \u043D\u043E\u0432\u0456 QR-\u043A\u043E\u0434\u0438?", "\u0423\u0441\u0456 \u0412\u0416\u0415 \u041D\u0410\u0414\u0420\u0423\u041A\u041E\u0412\u0410\u041D\u0406 QR \u043F\u0435\u0440\u0435\u0441\u0442\u0430\u043D\u0443\u0442\u044C \u0434\u0430\u0432\u0430\u0442\u0438 \u0434\u043E\u0441\u0442\u0443\u043F \u0434\u043E \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u2014 \u0457\u0445 \u0442\u0440\u0435\u0431\u0430 \u0431\u0443\u0434\u0435 \u0437\u0430\u043C\u0456\u043D\u0438\u0442\u0438 \u043D\u0430 \u0441\u0442\u043E\u043B\u0430\u0445. \u041F\u0440\u0438\u043D\u0442\u0435\u0440 \u0447\u0435\u043A\u0456\u0432 \u043E\u0434\u0440\u0430\u0437\u0443 \u0434\u0440\u0443\u043A\u0443\u0432\u0430\u0442\u0438\u043C\u0435 \u043D\u043E\u0432\u0456.")) {
+      if (await act("qrNew", {}, "\u{1F504} \u041D\u043E\u0432\u0456 \u043A\u043E\u0434\u0438 \u0441\u0442\u0432\u043E\u0440\u0435\u043D\u043E")) qrPanel();
+    }
+  }
+  function qrSheet(r) {
+    var _a2;
+    const name = esc(((_a2 = S.brand) == null ? void 0 : _a2.name) || "VARVAR"), w = window.open("", "_blank");
+    if (!w) return toast("\u26A0\uFE0F \u0414\u043E\u0437\u0432\u043E\u043B\u044C\u0442\u0435 \u0441\u043F\u043B\u0438\u0432\u0430\u044E\u0447\u0456 \u0432\u0456\u043A\u043D\u0430");
+    w.document.write(`<!doctype html><meta charset="utf-8"><title>QR-\u043A\u043E\u0434\u0438 \u2014 ${name}</title><style>@page{size:A4;margin:8mm}body{margin:0;font-family:system-ui,sans-serif}.g{display:grid;grid-template-columns:repeat(2,1fr);gap:6mm}.c{border:1px dashed #bbb;border-radius:4mm;padding:6mm;text-align:center;break-inside:avoid;height:84mm;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center}.c h2{margin:0;font-size:20pt;letter-spacing:1px}.c img{width:52mm;height:52mm;margin:3mm 0}.c b{font-size:16pt}.c small{color:#555;font-size:10pt}.bar{padding:10px;text-align:center}@media print{.bar{display:none}}</style>
+      <div class="bar"><button onclick="print()" style="font-size:16px;padding:8px 16px">\u{1F5A8} \u0414\u0440\u0443\u043A / \u0437\u0431\u0435\u0440\u0435\u0433\u0442\u0438 PDF</button></div><div class="g">${r.list.map((x) => `<div class="c"><h2>${name}</h2><img src="${x.img}?s=20"><b>\u0421\u0422\u0406\u041B ${x.t}</b><small>\u0421\u043A\u0430\u043D\u0443\u0439\u0442\u0435 \u2014 \u043C\u0435\u043D\u044E \u0439 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F</small></div>`).join("")}</div>`);
+    w.document.close();
   }
   const pickFile = () => new Promise((res) => {
     const i = document.createElement("input");

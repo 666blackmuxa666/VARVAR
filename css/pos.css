@@ -815,3 +815,5 @@ body.cour #feed, body.cour .feed-btn { display: none !important; }
 .ph-pick button { display: grid; gap: 4px; padding: 4px; border-radius: 12px; background: var(--card2); border: 2px solid transparent; opacity: .45; font-size: 11px; text-align: center; }
 .ph-pick button.on, .ph-pick button:not([data-ph]) { opacity: 1; } .ph-pick button.on { border-color: var(--accent); }
 .ph-pick img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 9px; }
+.qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 10px; max-height: 50vh; overflow: auto; }
+.qr-grid a { display: grid; gap: 4px; text-align: center; color: var(--text); text-decoration: none; font-size: 12px; } .qr-grid img { width: 100%; aspect-ratio: 1; border-radius: 8px; background: #fff; image-rendering: pixelated; }

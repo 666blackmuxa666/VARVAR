@@ -289,7 +289,7 @@ async function staffOne(env, id) {
 }
 const staffEdited = r => r.error ? { text: '⚠️ ' + r.error } : { text: `✅ <b>${esc(r.s.name)}</b> · ${ROLE_ONE[roleOf(r.s)]}${r.old !== r.s.name ? `\n✏️ Було: ${esc(r.old)} — графік, зарплату й чайові перенесено` : ''}\nВхід у касу — заново.` };
 const TEST_PRINT = () => [['logo'], ['big', 'ТЕСТ ДРУКУ'], ['c', 'VARVAR · ' + hhmm()], ['hr'], ['l', 'Українські літери: Іі Її Єє Ґґ'], ['lr', '2 × Мєско', '760'], ['lr2', 'Всього', '760 грн'], ['hr'], ['gap']];
-export const QR_PRINT = t => [['logo'], ...(t ? [['invb', `СТІЛ ${t}`]] : []), ['inv', 'МЕНЮ ТА ЗАМОВЛЕННЯ'], ['gap'], ['img', t ? 'qr-t' + t : 'qr2', 220], ['c', 'Скануйте камерою телефона'], ...(t ? [['b', `Замовлення одразу на стіл ${tn(t)}`]] : []), ['s', 'Замовлення доступне 1 годину після сканування'], ['gap']];
+export const QR_PRINT = (t, img) => [['logo'], ...(t ? [['invb', `СТІЛ ${t}`]] : []), ['inv', 'МЕНЮ ТА ЗАМОВЛЕННЯ'], ['gap'], ['img', img, 220], ['c', 'Скануйте камерою телефона'], ...(t ? [['b', `Замовлення одразу на стіл ${tn(t)}`]] : []), ['s', 'Замовлення доступне 1 годину після сканування'], ['gap']];
 export const TEST_JOB = TEST_PRINT;
 const tablesGrid = (env, act, skip) => chunk(Array.from({ length: tablesCount(env) }, (_, i) => i + 1).filter(n => n !== skip).map(n => ({ text: String(n), callback_data: `${act}:${n}` })), 5);
 
@@ -807,7 +807,7 @@ async function handleCallback(q, env) {
     await send({ text: '🔳 <b>QR меню</b> — для якого столу?', markup: { inline_keyboard: [...tablesGrid(env, 'pqrt'), [{ text: 'Без столу', callback_data: 'pqrt:0' }]] } });
     return answer('');
   }
-  if (act === 'pqrt') { await queuePrint(env, 'qr', QR_PRINT(+arg)); return answer(`🖨 QR${+arg ? ' столу ' + arg : ''} відправлено на принтер`); }
+  if (act === 'pqrt') { await queuePrint(env, 'qr', QR_PRINT(+arg, await (await import('./qr.js')).qrImg(env, +arg))); return answer(`🖨 QR${+arg ? ' столу ' + arg : ''} відправлено на принтер`); }
   if (act === 'ptest') { await queuePrint(env, 'test', TEST_PRINT()); return answer('🖨 Тест відправлено'); }
   if (act === 'tbl') { await send(await tableView(env, +arg)); return answer(''); }
   if (act === 'ed') { const v = await editView(env, +arg); await edit(v.text, v.markup); return answer(''); }

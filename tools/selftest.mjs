@@ -204,6 +204,15 @@ async function apiTests() {
     const m = await pos(A, 'photoMake', { id: dish.id }); must(m.status === 503, 'статус ' + m.status);
     const a = await pos(A, 'photoApply', { id: dish.id }); must(a.status === 400, 'без чернетки → ' + a.status);
     await pos(A, 'photoStyleSet', { prompt: '' }); });
+  await step('🔳 QR: картинки всіх столів, скан працює; «нові коди» — старий QR не працює', async () => {
+    const q = await pos(A, 'qrInfo'); must(q.status === 200 && q.j.list.length === q.j.n && q.j.n > 0, JSON.stringify(q.j).slice(0, 200));
+    const x = q.j.list[1], png = await fetch(API + new URL(x.img).pathname); const b = new Uint8Array(await png.arrayBuffer()); must(png.ok && b[0] === 0x89 && b[1] === 0x50, 'не PNG ' + png.status);
+    const u = new URL(x.url), k = u.searchParams.get('k'), dev = 'qa-qr-' + Date.now();
+    must((await http('/api/scan', { t: x.t, k, device: dev })).status === 200, 'скан нового QR');
+    must((await pos(W, 'qrNew')).status === 403, 'офіціант не може міняти коди');
+    const n2 = await pos(A, 'qrNew'); must(n2.status === 200 && n2.j.list[1].img !== x.img, 'ключ не змінився');
+    must((await http('/api/scan', { t: x.t, k, device: dev + 'b' })).status === 403, 'старий QR усе ще працює');
+    must((await fetch(API + new URL(x.img).pathname)).status === 404, 'стара картинка не 404'); });
   await step('без токена → 401', async () => { const r = await pos('', 'state'); must(r.status === 401, 'статус ' + r.status); });
 
   sect('Персонал: перейменування не губить графік і ЗП; PIN; роль');

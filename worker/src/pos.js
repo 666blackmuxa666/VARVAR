@@ -143,7 +143,14 @@ export async function posApi(b, req, env) {
     case 'printTest': await queuePrint(env, 'test', TEST_JOB()); return ok();
     case 'printQ': return ok({ list: await printList(env) });
     case 'printClear': { if (!admin) return needAdmin(); const r = await printClear(env, b.id ? String(b.id) : ''); if (r.n) await notify(env, `🖥 🗑 Черга друку: ${b.id ? 'видалено 1 завдання' : `очищено (${r.n})`} — ${esc(who)}`).catch(() => {}); return ok(r); }
-    case 'printQr': await queuePrint(env, 'qr', QR_PRINT(+b.t || 0)); return ok();
+    case 'printQr': { const { qrImg } = await import('./qr.js'); if (b.all) { const n = tablesCount(env); for (let i = 1; i <= n; i++) await queuePrint(env, 'qr', QR_PRINT(i, await qrImg(env, i))); return ok({ n }); }
+      await queuePrint(env, 'qr', QR_PRINT(+b.t || 0, await qrImg(env, +b.t || 0))); return ok(); }
+    case 'qrInfo': case 'qrNew': { // 🔳 QR столів: картинки генерує сервер (/print/qr-…png); «нові коди» — старі надруковані перестають працювати
+      if (!admin) return needAdmin(); const Q = await import('./qr.js');
+      if (b.op === 'qrNew') { await Q.qrNew(env); await notify(env, `🖥 🔳 Нові QR-коди меню — старі надруковані більше не працюють — ${esc(who)}`); }
+      const n = tablesCount(env), base = env.SELF_URL + '/print/';
+      return ok({ n, all: base + (await Q.qrImg(env, 0)) + '.png', list: await Promise.all(Array.from({ length: n }, async (_, i) => ({ t: i + 1, img: base + (await Q.qrImg(env, i + 1)) + '.png', url: await Q.qrUrl(env, i + 1) }))) });
+    }
 
     // ---- закриті ----
     case 'closed': { const day = isDay(b.day) && b.day <= dayKey() ? b.day : dayKey(); return ok({ day, today: dayKey(), list: await getClosed(env, day), voids: (await getVoids(env, day)).filter(v => !v.table) }); }
