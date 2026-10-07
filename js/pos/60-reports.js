@@ -55,8 +55,11 @@
   }
   const delta = (a, b, inv) => { if (b == null || !isFinite(b) || !b) return ''; const p = Math.round((a - b) / Math.abs(b) * 100); return `<em class="dl ${(inv ? -p : p) > 0 ? 'up' : (inv ? -p : p) < 0 ? 'down' : ''}" title="попередній період: ${money(b)}">${p > 0 ? '▲' : p < 0 ? '▼' : '='} ${Math.abs(p)}%</em>`; };
   // стовпчиковий графік; pts: [підпис, значення, підказка, день для переходу]
-  const colChart = pts => { const max = Math.max(1, ...pts.map(p => p[1])), step = Math.ceil(pts.length / 12);
-    return `<div class="cols">${pts.map(([l, v, t, d], i) => `<div class="c${d ? ' press' : ''}"${d ? ` data-a="rDay" data-d="${d}"` : ''} title="${esc(t)}"><i style="height:${v ? Math.max(3, v / max * 86) : 0}%"></i><small>${i % step ? '' : esc(l)}</small></div>`).join('')}</div>`; };
+  // стовпчики: сума над кожним (коротко: 12,4к), під ним — число й день тижня; вихідні — кольором; наведення / дотик — повний підпис зверху
+  const kfmt = v => !v ? '' : v >= 1e5 ? Math.round(v / 1e3) + 'к' : v >= 1e3 ? (Math.round(v / 100) / 10).toString().replace('.', ',') + 'к' : String(Math.round(v));
+  const colChart = pts => { const max = Math.max(1, ...pts.map(p => p[1])), n = pts.length, many = n > 16, sum = pts.reduce((a, p) => a + p[1], 0), nz = pts.filter(p => p[1]).length, avg = nz ? sum / nz : 0;
+    return `<div class="cread muted">Торкніться стовпчика — сума й день${avg ? ` · середнє ${money(avg)}` : ''}</div><div class="cols${many ? ' many' : ''}" onmouseover="const c=event.target.closest('.c');if(c)this.previousElementSibling.textContent=c.title">${pts.map(([l, v, t, d], i) => { const wd = d ? wdOf(d) : -1, we = wd === 5 || wd === 6;
+      return `<div class="c${d ? ' press' : ''}${we ? ' we' : ''}${v === max && v ? ' top' : ''}"${d ? ` data-a="rDay" data-d="${d}"` : ''} title="${esc(t)}"><b class="cv">${kfmt(v)}</b><i style="height:${v ? Math.max(3, v / max * 86) : 0}%"></i><small${many && i % Math.ceil(n / 10) && i !== n - 1 ? ' class="nl"' : ''}>${esc(l)}${d ? `<span>${WD[wd].slice(0, 2)}</span>` : ''}</small></div>`; }).join('')}</div>`; };
   const barRows = (rows, unit, tot, sub) => { const max = Math.max(1, ...rows.map(x => x[1][1]));
     return rows.length ? rows.map(([k, [qq, ss]]) => `<div class="bar"><div class="bl"><span>${esc(k)}</span><span class="muted">${sub ? sub(qq, ss) : `${qq} ${unit}`}</span><span class="muted pct">${share(ss, tot)}%</span><b class="money">${money(ss)}</b></div><i style="width:${Math.max(2, ss / max * 100)}%"></i></div>`).join('') : '<div class="muted">Немає даних за цими фільтрами</div>'; };
 

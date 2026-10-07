@@ -476,11 +476,21 @@ body.cook .more-btn { display: none !important; }
 .chips.sub { margin-bottom: 12px; }
 .dash { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px; }
 .dash .wide { grid-column: 1 / -1; }
-.cols { display: flex; align-items: flex-end; gap: 3px; height: 180px; padding-top: 6px; }
+.cols { display: flex; align-items: flex-end; gap: 3px; height: 230px; padding-top: 6px; }
 .cols .c { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; border-radius: 6px; }
 .cols .c i { display: block; width: 100%; max-width: 38px; background: linear-gradient(180deg, var(--accent), #f2c14e88); border-radius: 6px 6px 2px 2px; transition: height .3s; }
 .cols .c:hover i { background: var(--text); }
-.cols .c small { height: 16px; margin-top: 4px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.cols .c small { height: 28px; margin-top: 4px; font-size: 11px; color: var(--text); white-space: nowrap; display: flex; flex-direction: column; align-items: center; line-height: 1.15; font-weight: 600; }
+.cols .c small span { font-size: 10px; color: var(--muted); font-weight: 400; }
+.cols .c.we small span, .cols .c.we small { color: var(--accent); }
+.cols .c .cv { font-size: 10px; font-weight: 700; color: var(--muted); margin-bottom: 3px; white-space: nowrap; }
+.cols .c.top .cv { color: var(--accent); }
+.cols.many .c .cv { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 9px; margin-bottom: 4px; }
+.cols.many .c small { font-size: 10px; } .cols.many .c small.nl { visibility: hidden; }
+.cols .c.on i { background: var(--text); }
+@media (max-width: 700px) { .cols.many .c .cv { display: none; } .cols.many .c small span { display: none; } }
+.cols .c.we i { background: linear-gradient(180deg, #ff9f0a, #ff9f0a88); }
+.cread { font-size: 13px; min-height: 18px; margin-bottom: 4px; }
 .heat { display: grid; grid-template-columns: 28px repeat(var(--hc), 1fr); gap: 3px; align-items: center; }
 .heat b { font-size: 12px; color: var(--muted); font-weight: 600; } .heat small { font-size: 10px; color: var(--muted); text-align: center; }
 .heat i { display: block; aspect-ratio: 1.4; max-height: 30px; border-radius: 5px; background: var(--card2); box-shadow: inset 0 0 0 99px rgba(242, 193, 78, var(--a)); }
@@ -489,7 +499,7 @@ body.cook .more-btn { display: none !important; }
 .bar .bl .pct { min-width: 46px; text-align: right; font-size: 12px; }
 @media (max-width: 1100px) { .pills { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 900px) { .kpis { grid-template-columns: 1fr 1fr; } .pills { grid-template-columns: 1fr 1fr; } .kpi b { font-size: 22px; } .dash { grid-template-columns: 1fr; } }
-@media (max-width: 600px) { .pill.wide { grid-column: 1 / -1; } .cols { height: 140px; } .bar .bl .pct { display: none; } .rsec button { font-size: 13px; padding: 9px 4px; } }
+@media (max-width: 600px) { .pill.wide { grid-column: 1 / -1; } .cols { height: 200px; gap: 2px; } .bar .bl .pct { display: none; } .rsec button { font-size: 13px; padding: 9px 4px; } }
 /* налаштування: акуратні секції, довгі списки — скрол усередині картки */
 .set-h { font-size: 15px; font-weight: 700; color: var(--muted, #888); text-transform: uppercase; letter-spacing: .04em; margin: 22px 4px 10px; }
 .set-h:first-of-type { margin-top: 6px; }

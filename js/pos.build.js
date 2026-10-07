@@ -1026,6 +1026,12 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         renderMain();
         break;
       case "rDay":
+        if (matchMedia("(hover: none)").matches && !el.classList.contains("on")) {
+          el.parentNode.querySelectorAll(".c.on").forEach((x) => x.classList.remove("on"));
+          el.classList.add("on");
+          el.parentNode.previousElementSibling.textContent = el.title + " \xB7 \u0449\u0435 \u0440\u0430\u0437 \u2014 \u0437\u0432\u0456\u0442 \u0437\u0430 \u0434\u0435\u043D\u044C";
+          break;
+        }
         Object.assign(S.rep, { p: "c", from: el.dataset.d, to: el.dataset.d });
         loadView();
         $("#main").scrollTop = 0;
@@ -3249,9 +3255,13 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const p = Math.round((a - b) / Math.abs(b) * 100);
     return `<em class="dl ${(inv ? -p : p) > 0 ? "up" : (inv ? -p : p) < 0 ? "down" : ""}" title="\u043F\u043E\u043F\u0435\u0440\u0435\u0434\u043D\u0456\u0439 \u043F\u0435\u0440\u0456\u043E\u0434: ${money(b)}">${p > 0 ? "\u25B2" : p < 0 ? "\u25BC" : "="} ${Math.abs(p)}%</em>`;
   };
+  const kfmt = (v) => !v ? "" : v >= 1e5 ? Math.round(v / 1e3) + "\u043A" : v >= 1e3 ? (Math.round(v / 100) / 10).toString().replace(".", ",") + "\u043A" : String(Math.round(v));
   const colChart = (pts) => {
-    const max = Math.max(1, ...pts.map((p) => p[1])), step = Math.ceil(pts.length / 12);
-    return `<div class="cols">${pts.map(([l, v, t, d], i) => `<div class="c${d ? " press" : ""}"${d ? ` data-a="rDay" data-d="${d}"` : ""} title="${esc(t)}"><i style="height:${v ? Math.max(3, v / max * 86) : 0}%"></i><small>${i % step ? "" : esc(l)}</small></div>`).join("")}</div>`;
+    const max = Math.max(1, ...pts.map((p) => p[1])), n = pts.length, many = n > 16, sum = pts.reduce((a, p) => a + p[1], 0), nz = pts.filter((p) => p[1]).length, avg = nz ? sum / nz : 0;
+    return `<div class="cread muted">\u0422\u043E\u0440\u043A\u043D\u0456\u0442\u044C\u0441\u044F \u0441\u0442\u043E\u0432\u043F\u0447\u0438\u043A\u0430 \u2014 \u0441\u0443\u043C\u0430 \u0439 \u0434\u0435\u043D\u044C${avg ? ` \xB7 \u0441\u0435\u0440\u0435\u0434\u043D\u0454 ${money(avg)}` : ""}</div><div class="cols${many ? " many" : ""}" onmouseover="const c=event.target.closest('.c');if(c)this.previousElementSibling.textContent=c.title">${pts.map(([l, v, t, d], i) => {
+      const wd = d ? wdOf(d) : -1, we = wd === 5 || wd === 6;
+      return `<div class="c${d ? " press" : ""}${we ? " we" : ""}${v === max && v ? " top" : ""}"${d ? ` data-a="rDay" data-d="${d}"` : ""} title="${esc(t)}"><b class="cv">${kfmt(v)}</b><i style="height:${v ? Math.max(3, v / max * 86) : 0}%"></i><small${many && i % Math.ceil(n / 10) && i !== n - 1 ? ' class="nl"' : ""}>${esc(l)}${d ? `<span>${WD[wd].slice(0, 2)}</span>` : ""}</small></div>`;
+    }).join("")}</div>`;
   };
   const barRows = (rows, unit, tot, sub) => {
     const max = Math.max(1, ...rows.map((x) => x[1][1]));

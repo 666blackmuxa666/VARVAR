@@ -402,7 +402,7 @@
       case 'rTab': S.rep.tab = el.dataset.t; (S.rep.last ||= {})[SECS.find(x => x[2].includes(el.dataset.t))[0]] = el.dataset.t; renderMain(); break;
       case 'rSec': { const sc = SECS.find(x => x[0] === el.dataset.s); S.rep.tab = (S.rep.last || {})[sc[0]] || sc[2][0]; renderMain(); if (S.rep.tab === 'plus' || !S.data.range) loadView(); break; }
       case 'rFo': S.rep.fo = !S.rep.fo; renderMain(); break;
-      case 'rDay': Object.assign(S.rep, { p: 'c', from: el.dataset.d, to: el.dataset.d }); loadView(); $('#main').scrollTop = 0; break;
+      case 'rDay': if (matchMedia('(hover: none)').matches && !el.classList.contains('on')) { el.parentNode.querySelectorAll('.c.on').forEach(x => x.classList.remove('on')); el.classList.add('on'); el.parentNode.previousElementSibling.textContent = el.title + ' · ще раз — звіт за день'; break; } Object.assign(S.rep, { p: 'c', from: el.dataset.d, to: el.dataset.d }); loadView(); $('#main').scrollTop = 0; break;
       case 'rSort': S.rep.sort = el.dataset.s; renderMain(); break;
       case 'rReset': Object.assign(S.rep, { pay: '', by: '', grp: '', cat: '', t: '', q: '' }); renderMain(); break;
       case 'add': addItem(el.dataset.id); break;
