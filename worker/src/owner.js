@@ -162,7 +162,7 @@ export async function ownerApi(req, env) {
   const may = async id => plat || me.venues.includes(id);
   switch (b.op) {
     case 'logout': await H.logout(tok); return ok();
-    case 'me': return ok({ me, venues: await mine(), seen: await H.seenAll() });
+    case 'me': return ok({ me, venues: await mine(), seen: await H.seenAll(), inbox: (await H.msgList(plat ? null : me.venues)).filter(m => !m.done).length });
     case 'sum': { // аналітика: кожен заклад рахує сам, паралельно
       const vs = (await mine()).filter(v => v.status !== 'off' && (!b.venues?.length || b.venues.includes(v.id))); // ⛔ вимкнені — не в аналітиці
       const out = await Promise.all(vs.map(async v => ({ ...(await callVenue(env, v.id, '/__int/sum', { from: b.from, to: b.to, pnl: !!b.pnl }).catch(e => ({ error: e.message }))), id: v.id, name: v.name, status: v.status })));
@@ -174,7 +174,10 @@ export async function ownerApi(req, env) {
     case 'codes': { if (!(await may(b.venue))) return bad('Немає доступу', 403); return ok(await callVenue(env, b.venue, '/__int/codes', {})); }
     case 'secrets': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/secrets', b.f || {}); return r.error ? bad(r.error) : ok(r); }
     case 'help': { const text = String(b.text || '').trim().slice(0, 1500); if (text.length < 3) return bad('Опишіть питання');
-      await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `🆘 <b>Допомога з кабінету</b>\n👤 ${me.name} · ${me.email}\n🏪 ${me.venues.join(', ') || '—'}\n\n${text.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}` }).catch(() => {}); return ok(); }
+      await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `🆘 <b>Допомога з кабінету</b>\n👤 ${me.name} · ${me.email}\n🏪 ${me.venues.join(', ') || '—'}\n\n${text.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}` }).catch(() => {});
+      await H.msgAdd({ kind: 'help', venue: me.venues[0] || '', vname: '👑 кабінет', by: me.name + ' · ' + me.email, role: me.role, text }); return ok(); }
+    case 'inbox': return ok({ list: await H.msgList(plat ? null : me.venues) });
+    case 'inboxSet': { const r = await H.msgSet(String(b.id), { del: !!b.del }, plat ? null : me.venues); return r.error ? bad(r.error) : ok(); }
     case 'ask': { // 🧠 «Запитай у даних»: цифри закладів за цей і минулий місяць → ШІ відповідає лише з них
       const q = String(b.q || '').trim().slice(0, 500); if (q.length < 3) return bad('Напишіть питання');
       const t = new Date(), m0 = t.toLocaleDateString('sv-SE').slice(0, 7), pm = new Date(t.getFullYear(), t.getMonth(), 0).toLocaleDateString('sv-SE'), from = pm.slice(0, 7) + '-01', to = t.toLocaleDateString('sv-SE');

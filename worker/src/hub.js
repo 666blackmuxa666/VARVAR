@@ -111,6 +111,11 @@ export class Hub extends DurableObject {
     for (const [k, a] of await this.st.list({ prefix: 'acct:' })) if ((a.venues || []).includes(id)) { a.venues = a.venues.filter(x => x !== id); await this.st.put(k, a); }
     await this.st.delete(['venue:' + id, 'seen:' + id]); return { ok: true };
   }
+  // 📨 вхідні кабінету: 💡 побажання персоналу й 🆘 допомога з усіх закладів (копія — щоб кабінет читав одним запитом)
+  async msgAdd(m) { const id = Date.now().toString(36) + rnd(3), x = { id, kind: m.kind === 'help' ? 'help' : 'idea', venue: String(m.venue || ''), vname: String(m.vname || '').slice(0, 60), by: String(m.by || '').slice(0, 60), role: String(m.role || '').slice(0, 20), text: String(m.text || '').slice(0, 1500), at: Date.now() };
+    await this.st.put('msg:' + id, x); const l = await this.st.list({ prefix: 'msg:' }); if (l.size > 500) await this.st.delete([...l.keys()].slice(0, l.size - 500)); return x; }
+  async msgList(venues) { return [...(await this.st.list({ prefix: 'msg:', reverse: true, limit: 300 })).values()].filter(m => !venues || venues.includes(m.venue)); }
+  async msgSet(id, f, venues) { const m = await this.st.get('msg:' + id); if (!m || (venues && !venues.includes(m.venue))) return { error: 'Не знайдено' }; if (f.del) { await this.st.delete('msg:' + id); return { ok: true }; } m.done = m.done ? 0 : Date.now(); await this.st.put('msg:' + id, m); return m; }
   async seen(id) { const k = 'seen:' + id; await this.st.put(k, Date.now()); }
   async seenAll() { return Object.fromEntries([...(await this.st.list({ prefix: 'seen:' }))].map(([k, v]) => [k.slice(5), v])); }
 }

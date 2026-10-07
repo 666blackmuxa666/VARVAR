@@ -331,6 +331,15 @@ async function loyTests(A, W, dish) {
     finally { await pos(A, 'delete', { t: T, reason: 'QA' }); }
   });
 
+  sect('📨 Вхідні кабінету');
+  await step('побажання й 🆘 з каси потрапляють у вхідні платформи; ✅ / 🗑', async () => {
+    const tag = 'QA-inbox-' + Date.now(); await posOk(W, 'ideaAdd', { text: tag + ' idea' }); await posOk(A, 'help', { text: tag + ' help' });
+    const lg = await http('/api/owner', { op: 'login', email: 'qa-platform@test.local', pass: 'qa-platform-pass-1' }); if (lg.status !== 200) return 'немає тестового акаунта платформи — пропуск';
+    const o = (op, b = {}) => fetch(API + '/api/owner', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + lg.j.token }, body: JSON.stringify({ op, ...b }) }).then(r => r.json());
+    const l = (await o('inbox')).list.filter(m => m.text.startsWith(tag)); must(l.length === 2 && l.some(m => m.kind === 'help') && l.some(m => m.kind === 'idea'), JSON.stringify(l).slice(0, 200));
+    for (const m of l) { must((await o('inboxSet', { id: m.id })).ok, 'done'); must((await o('inboxSet', { id: m.id, del: 1 })).ok, 'del'); }
+    must(!(await o('inbox')).list.some(m => m.text.startsWith(tag)), 'не видалилось'); });
+
   sect('🖨 Черга друку: список і очищення');
   await step('printQ / printClear', async () => { await posOk(A, 'printTest'); await posOk(A, 'printTest'); const l = (await posOk(A, 'printQ')).list; must(l.length >= 2, 'черга ' + l.length);
     must((await pos(W, 'printClear', {})).status === 403, 'офіціант очистив'); const one = await posOk(A, 'printClear', { id: l[0].id }); must(one.n === 1, 'одне');

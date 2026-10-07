@@ -56,6 +56,7 @@ export async function posApi(b, req, env) {
     const text = String(b.text || '').trim().slice(0, 1500); if (text.length < 3) return [{ error: 'Опишіть проблему' }, 400];
     const site = await (await import('./site.js')).getSite(env), tok = env.PLATFORM_BOT || env.BOT_TOKEN, chat = env.PLATFORM_CHAT || env.CHAT_ID;
     await fetch(`https://api.telegram.org/bot${tok}/sendMessage`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: chat, parse_mode: 'HTML', text: `🆘 <b>Допомога</b> · ${esc(site.name)} (${esc(env.VENUE || 'varvar')})\n👤 ${esc(me.name)} · ${esc(me.role)}\n🖥 ${esc(String(b.screen || '').slice(0, 60))}\n\n${esc(text)}` }) }).catch(() => {});
+    await (await import('./ideas.js')).toHub(env, { kind: 'help', by: me.name, role: me.role, text: text + (b.screen ? `\n🖥 ${String(b.screen).slice(0, 60)}` : '') });
     return [{ ok: true }, 200];
   }
   if (/^photo[A-Z]/.test(b.op || '')) { if (!admin) return needAdmin(); return (await import('./photoai.js')).photoApi(b, env, who); } // 📸 ШІ-фото страв

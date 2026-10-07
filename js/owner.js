@@ -59,7 +59,7 @@
   // ---------- дані ----------
   async function start() {
     if (!S.token) return renderLogin();
-    try { const r = await api('me'); S.me = r.me; S.venues = r.venues; S.seen = r.seen || {}; } catch { return; }
+    try { const r = await api('me'); S.me = r.me; S.venues = r.venues; S.seen = r.seen || {}; S.inboxN = r.inbox || 0; } catch { return; }
     if (S.tab === 'cfg' && !S.cfgV && S.venues.length === 1) return VC.open(S.venues[0].id);
     render(); if (S.tab !== 'cfg') load();
   }
@@ -151,6 +151,15 @@
   }
   const absOf = (id, page) => location.origin + siteOf(id, page) + (id === 'varvar' && page === 'pos.html' ? '?venue=varvar' : ''); // VARVAR — явно, щоб пристрій «забув» інший заклад // повна адреса для персоналу / гостей
   const siteOf = (id, page) => location.pathname.replace(/owner\.html$/, '') + page + (id === 'varvar' ? '' : '?venue=' + id);
+  // 📨 Вхідні: 💡 побажання персоналу й 🆘 допомога з кас усіх закладів (платформа — усі; власник — свої)
+  function inbox() {
+    if (!S.ib) { api('inbox').then(r => { S.ib = r.list; render(); }).catch(e => toast('⚠️ ' + e.message)); return '<div class="muted">…</div>'; }
+    const f = S.ibF || 'open', L = S.ib.filter(m => f === 'all' ? 1 : f === 'done' ? m.done : f === 'open' ? !m.done : m.kind === f && !m.done);
+    const tm = t => new Date(t).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    return `<h2>📨 Вхідні</h2><div class="chips">${[['open', 'Нові'], ['idea', '💡 Побажання'], ['help', '🆘 Допомога'], ['done', '✅ Опрацьовані'], ['all', 'Усі']].map(([k, l]) => `<button class="${f === k ? 'on' : ''}" data-a="ibF" data-f="${k}">${l}</button>`).join('')}</div>
+      <div class="grid">${L.map(m => `<div class="card${m.done ? ' done' : ''}"><div class="kv"><span><b>${m.kind === 'help' ? '🆘 Допомога' : '💡 Побажання'}</b> · ${esc(m.vname || m.venue)}<br><small class="muted">${esc(m.by)}${m.role ? ' · ' + esc(m.role) : ''} · ${tm(m.at)}</small></span></div>
+        <p class="ib-t">${esc(m.text)}</p><div class="btnrow"><button class="btn sm" data-a="ibDone" data-id="${m.id}">${m.done ? '↩️ Повернути' : '✅ Опрацьовано'}</button><button class="btn sm red" data-a="ibDel" data-id="${m.id}">🗑</button></div></div>`).join('') || '<div class="muted">Порожньо</div>'}</div>`;
+  }
   function platform() {
     const P = S.plat;
     if (!P) { api('accts').then(r => { S.plat = { accts: r.list }; S.venues = r.venues; render(); }).catch(e => toast('⚠️ ' + e.message)); return '<div class="muted">…</div>'; }
@@ -168,11 +177,11 @@
   }
   function render() {
     if (!S.me) return;
-    const plat = S.me.role === 'platform', TABS = [['home', '🏠 Мережа'], ['an', '📊 Аналітика'], ['ven', '🏪 Заклади'], ['cfg', '⚙️ Налаштування'], ...(plat ? [['plat', '🌐 Платформа']] : [])];
+    const plat = S.me.role === 'platform', TABS = [['home', '🏠 Мережа'], ['an', '📊 Аналітика'], ['ven', '🏪 Заклади'], ['cfg', '⚙️ Налаштування'], ['inbox', `📨 Вхідні${S.inboxN ? ` <i class="bdg">${S.inboxN}</i>` : ''}`], ...(plat ? [['plat', '🌐 Платформа']] : [])];
     if (!TABS.some(x => x[0] === S.tab)) S.tab = 'home';
     app.innerHTML = `<header class="top"><div class="in"><img src="img/icon.png" alt=""><b>Кабінет власника</b><div class="who"><b>${esc(S.me.name)}</b><span class="muted">${plat ? '👑 платформа' : 'власник'} · <a href="#" data-a="help">🆘 допомога</a> · <a href="#" data-a="out">вийти</a></span></div></div>
       <nav class="tabs">${TABS.map(([k, l]) => `<button class="${S.tab === k ? 'on' : ''}" data-a="tab" data-t="${k}">${l}</button>`).join('')}<button data-a="reload">🔄</button></nav></header>
-      <main>${S.tab === 'cfg' ? (S.cfgV ? VC.view() : pickVenue()) : S.tab === 'home' ? home() : S.tab === 'an' ? analytics() : S.tab === 'ven' ? venues() : platform()}</main>`;
+      <main>${S.tab === 'cfg' ? (S.cfgV ? VC.view() : pickVenue()) : S.tab === 'home' ? home() : S.tab === 'an' ? analytics() : S.tab === 'ven' ? venues() : S.tab === 'inbox' ? inbox() : platform()}</main>`;
   }
 
   // ---------- модалки ----------
@@ -201,6 +210,9 @@
     if (a === 'out') { e.preventDefault(); return logout(); }
     if (a === 'help') { e.preventDefault(); return modal('🆘 Допомога', '<div class="muted" style="font-size:13px">Напишіть, що не працює або що потрібно налаштувати — розробник отримає повідомлення в Telegram і зв\'яжеться з вами.</div><textarea name="t" rows="5" required style="width:100%;font:inherit;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px"></textarea>', async f => { await api('help', { text: f.t.value }); toast('🆘 Надіслано'); }); }
     if (a === 'tab' && d.t === 'cfg') { store.set('tab', 'cfg'); S.cfgV = null; S.tab = 'cfg'; if (S.venues.length === 1) return VC.open(S.venues[0].id); return render(); } // спершу — вибір закладу
+    if (a === 'ibF') { S.ibF = d.f; return render(); }
+    if (a === 'ibDone' || a === 'ibDel') { if (a === 'ibDel' && !confirm('Видалити повідомлення?')) return; try { await api('inboxSet', { id: d.id, del: a === 'ibDel' }); const m = S.ib.find(x => x.id === d.id); if (a === 'ibDel') S.ib = S.ib.filter(x => x !== m); else m.done = m.done ? 0 : Date.now(); S.inboxN = S.ib.filter(x => !x.done).length; render(); } catch (x) { toast('⚠️ ' + x.message); } return; }
+    if (a === 'tab' && d.t === 'inbox') S.ib = null;
     if (a === 'tab') { S.cfgV = null; S.tab = d.t; store.set('tab', d.t); if (d.t === 'home' || d.t === 'an') return load(); return render(); }
     if (a === 'reload') { S.plat = null; return start(); }
     if (a === 'per') { S.per = d.p; if (d.p === 'own') return render(); return load(); }

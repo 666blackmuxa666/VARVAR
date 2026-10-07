@@ -1,6 +1,8 @@
 // 💡 Побажання розробнику: працівник пише з особистого кабінету (каса) або з бота персоналу.
 // Адмін бачить усі (Персонал → 💡 Побажання), позначає «✅ зроблено» і видаляє. Автор бачить і видаляє свої. Ключ бази: ideas.
 import { L, logEvent, esc } from './ops.js';
+// копія у 📨 вхідні кабінету власника (HUB)
+export async function toHub(env, m) { try { if (!env.HUB) return; const { hub } = await import('./hub.js'), { getSite } = await import('./site.js'); await hub(env).msgAdd({ ...m, venue: env.VENUE || 'varvar', vname: (await getSite(env)).name }); } catch (e) { console.log('toHub', e.message); } }
 const get = async env => (await env.DB.get('ideas', 'json')) || [];
 const edit = (env, fn) => L(env, 'ideas', async () => { const l = await get(env), r = fn(l); if (r?.error) return r; await env.DB.put('ideas', JSON.stringify(l.slice(-300))); return r ?? l; });
 export async function ideaAdd(env, who, text) {
@@ -8,6 +10,7 @@ export async function ideaAdd(env, who, text) {
   const x = { id: crypto.randomUUID().slice(0, 8), by: who, text, at: Date.now() };
   await edit(env, l => { l.push(x); return x; });
   await logEvent(env, { k: 'shift', text: `💡 Нове побажання від ${who}: ${text.slice(0, 120)}` });
+  await toHub(env, { kind: 'idea', by: who, text });
   return x;
 }
 export const ideaList = async (env, who, admin) => (await get(env)).filter(x => admin || x.by === who).reverse();
