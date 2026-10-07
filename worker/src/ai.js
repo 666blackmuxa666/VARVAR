@@ -47,32 +47,42 @@ function menuText(menu) {
   return { text: out.join('\n'), byId };
 }
 
-export const aiOn = env => !!(env.GEMINI_API_KEY || env.GROQ_API_KEY);
-// 🔁 Groq — запасний ШІ: коли Gemini не відповів (ліміт / завис) або його ключа немає. Схему Gemini передаємо текстом.
+export const aiOn = env => !!(env.GEMINI_API_KEY || env.GROQ_API_KEY || env.KIMI_API_KEY);
+// 🔁 запасні ШІ (OpenAI-сумісні): коли Gemini не відповів (ліміт / завис) або його ключа немає. Схему Gemini передаємо текстом.
+// Текст: Gemini → Groq (безкоштовний) → Kimi (платний, копійки). Фото накладних: Gemini → Kimi (краще читає) → Groq.
 const schemaText = s => !s ? 'any' : s.type === 'OBJECT' ? '{' + Object.entries(s.properties || {}).map(([k, v]) => `"${k}": ${schemaText(v)}`).join(', ') + '}' : s.type === 'ARRAY' ? '[' + schemaText(s.items) + ', …]' : s.type.toLowerCase();
-const GROQ_T = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'], GROQ_V = ['meta-llama/llama-4-scout-17b-16e-instruct'];
-async function groq(env, parts, o = {}) {
-  if (!env.GROQ_API_KEY) throw new Error('groq off');
+const ALT = {
+  groq: { key: 'GROQ_API_KEY', url: 'https://api.groq.com/openai/v1/chat/completions', text: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'], vision: ['meta-llama/llama-4-scout-17b-16e-instruct'], temp: 1 },
+  kimi: { key: 'KIMI_API_KEY', url: 'https://api.moonshot.ai/v1/chat/completions', text: ['kimi-k2.6'], vision: ['kimi-k2.6'], temp: 0 }, // температуру Kimi не передаємо — у k2.6 вона фіксована
+};
+async function alt(env, name, parts, o = {}) {
+  const P = ALT[name]; if (!env[P.key]) throw new Error(name + ' off');
   const busy = (await env.DB.get('ai_busy', 'json')) || {}, now = Date.now(), pics = parts.filter(p => p.inline_data).slice(0, 5);
   const text = parts.filter(p => p.text).map(p => p.text).join('\n') + `\n\nВідповідь — ЛИШЕ валідний JSON такої форми: ${schemaText(o.schema || SCHEMA)}`;
   const content = pics.length ? [{ type: 'text', text }, ...pics.map(p => ({ type: 'image_url', image_url: { url: `data:${p.inline_data.mime_type || 'image/jpeg'};base64,${p.inline_data.data}` } }))] : text;
-  let last = 'groq';
-  for (const m of (pics.length ? GROQ_V : GROQ_T).filter(m => !(busy['groq:' + m] > now))) try {
-    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.GROQ_API_KEY }, signal: AbortSignal.timeout(Math.max(o.timeout || 8000, 15000)),
-      body: JSON.stringify({ model: m, messages: [{ role: 'user', content }], response_format: { type: 'json_object' }, temperature: o.temperature ?? 0.9 }) });
-    if (r.ok) { const d = await r.json(); return JSON.parse(d.choices?.[0]?.message?.content || '{}'); }
-    if (r.status === 429) { busy['groq:' + m] = now + 60e3; await env.DB.put('ai_busy', JSON.stringify(busy), { expirationTtl: 86400 }); }
-    last = 'groq ' + m + ' ' + r.status + ' ' + (await r.text()).replace(/\s+/g, ' ').slice(0, 300);
-  } catch (e) { last = 'groq ' + m + ' ' + e.message; }
+  let last = name;
+  for (const m of (pics.length ? P.vision : P.text).filter(m => !(busy[name + ':' + m] > now))) try {
+    const r = await fetch(P.url, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env[P.key] }, signal: AbortSignal.timeout(Math.max(o.timeout || 8000, name === 'kimi' ? 40000 : 15000)),
+      body: JSON.stringify({ model: m, messages: [{ role: 'user', content }], response_format: { type: 'json_object' }, ...(P.temp ? { temperature: o.temperature ?? 0.9 } : {}) }) });
+    if (r.ok) { const d = await r.json(), t = d.choices?.[0]?.message?.content || '{}'; return JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1) || '{}'); }
+    if (r.status === 429) { busy[name + ':' + m] = now + 60e3; await env.DB.put('ai_busy', JSON.stringify(busy), { expirationTtl: 86400 }); }
+    last = name + ' ' + m + ' ' + r.status + ' ' + (await r.text()).replace(/\s+/g, ' ').slice(0, 300);
+  } catch (e) { last = name + ' ' + m + ' ' + e.message; }
   throw new Error(last);
+}
+async function backup(env, parts, o, why) {
+  const order = o.ai && ALT[o.ai] ? [o.ai] : parts.some(p => p.inline_data) ? ['kimi', 'groq'] : ['groq', 'kimi'];
+  let err = why;
+  for (const n of order) { if (!env[ALT[n].key]) continue; try { console.log('ai fallback', n, String(err).slice(0, 200)); return await alt(env, n, parts, o); } catch (e) { err = e.message; } }
+  throw new Error(String(err));
 }
 
 // prompt — текст або масив parts (текст + фото inline_data); o: { schema, timeout, temperature, prefer }
 async function gemini(env, prompt, o = {}) {
   const parts0 = typeof prompt === 'string' ? [{ text: prompt }] : prompt;
-  if (!env.GEMINI_API_KEY || o.ai === 'groq') return groq(env, parts0, o);
+  if (!env.GEMINI_API_KEY || ALT[o.ai]) return backup(env, parts0, o, 'gemini off');
   try { return await gemini1(env, parts0, o); }
-  catch (e) { if (!env.GROQ_API_KEY) throw e; console.log('ai fallback groq', e.message); return groq(env, parts0, o); }
+  catch (e) { return backup(env, parts0, o, e.message); }
 }
 async function gemini1(env, prompt, o = {}) {
   let last;
@@ -180,7 +190,7 @@ ${it?.desc?.uk ? 'Склад з меню: ' + it.desc.uk : ''}
 Для кожного інгредієнта: n — назва продукту (як закуповують, напр. «Куряче філе», «Сир фета», «Олія соняшникова»); q — кількість БРУТТО на ${semi ? 'партію' : 'порцію'}; u — одиниця: «г», «мл» або «шт»; loss — % втрат при обробці (очищення, варіння, смаження), 0 якщо нема.
 out — вихід готової ${semi ? 'партії' : 'страви'} в г або мл. Реалістичні ресторанні грамовки. ${ing.length ? 'Якщо продукт уже є в списку — назви ТОЧНО як у списку: ' + ing.slice(0, 250).map(x => x.n).join('; ') : ''}
 Відповідь — JSON.`;
-  let r; try { r = await gemini(env, prompt, { schema: CARD, timeout: 25000, temperature: 0.3, ai: b.ai === 'groq' ? 'groq' : '' }); } catch (e) { console.log('aiCard', e.message); return { error: 'Помічник зараз не відповідає — спробуйте ще раз за хвилину' }; }
+  let r; try { r = await gemini(env, prompt, { schema: CARD, timeout: 25000, temperature: 0.3, ai: ALT[b.ai] ? b.ai : '' }); } catch (e) { console.log('aiCard', e.message); return { error: 'Помічник зараз не відповідає — спробуйте ще раз за хвилину' }; }
   const base = u => /^(мл|ml|л|l)$/i.test(u) ? 'л' : /^(шт|pcs?)$/i.test(u) ? 'шт' : 'кг';
   const items = (r.items || []).slice(0, 30).map(l => {
     const u = String(l.u || 'г').toLowerCase(), k = /^(г|мл|g|ml)$/.test(u) ? 0.001 : 1, q = Math.round((+l.q || 0) * k * 1000) / 1000, x = ing.find(y => norm(y.n) === norm(l.n));

@@ -27,7 +27,7 @@
 ## Правила
 - **Паритет каса ⇄ бот персоналу:** нова дія в касі має бути і в боті (і навпаки).
 - **Ніколи** не публікувати `printer/varvar-print.config.json`.
-- **Секрети** — лише `wrangler secret put` (`BOT_TOKEN`, `GUEST_BOT_TOKEN`, `COURIER_BOT_TOKEN`, `TG_SECRET`, `GEMINI_API_KEY`, `GROQ_API_KEY` (запасний ШІ), `BREVO_KEY`, `MAIL_FROM` (листи)…). У код і чат — ні.
+- **Секрети** — лише `wrangler secret put` (`BOT_TOKEN`, `GUEST_BOT_TOKEN`, `COURIER_BOT_TOKEN`, `TG_SECRET`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `KIMI_API_KEY` (запасні ШІ), `BREVO_KEY`, `MAIL_FROM` (листи)…). У код і чат — ні.
 - **Деплой, push і злиття в `main` робить лише керівник.** Працівник **комітить у своїй гілці** (worktree), тестує через `sh tools/test.sh`, надсилає звіт.
 - Тимчасових тестових працівників / замовлень на робочому сервері не створювати; на тестовому — можна.
 - Тестові кнопки («Обнулити все», «Видалити закритий») не прибирати, доки не скаже власник.
