@@ -244,3 +244,4 @@ body.go .call-btn, body.go .table-row { display: none !important; }
 .go-steps { display: flex; justify-content: center; gap: 8px; } .go-steps i { font-style: normal; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: #222; opacity: .35; } .go-steps i.on { opacity: 1; background: #2b2412; box-shadow: 0 0 0 2px var(--accent); }
 .go-modal a.btn { text-align: center; text-decoration: none; }
 .go-modal, .go-modal * { box-sizing: border-box; } .go-modal { overflow-x: hidden; } body.go #actions { display: grid; grid-template-columns: 1fr; } body.go #actions .btn, .go-modal .btn { width: 100%; }
+.me-btn{text-decoration:none;color:inherit;padding:6px 10px;margin-right:6px;line-height:1}

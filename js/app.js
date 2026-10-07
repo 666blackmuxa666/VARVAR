@@ -331,7 +331,7 @@
   const GST = { new: ['⏳', 'goStNew'], acc: ['✅', 'goStAcc'], cook: ['🔥', 'goStCook'], ready: ['🍽', 'goStReady'], road: ['🛵', 'goStRoad'], done: ['🤝', 'goStDone'], rej: ['❌', 'goStRej'] };
   async function goInit() {
     $('#callBtn').hidden = true;
-    { const a = document.createElement('a'); a.href = window.VARVAR.link('about.html'); a.className = 'lang'; a.style.cssText = 'text-decoration:none;color:inherit;margin-left:auto;margin-right:8px'; a.textContent = '← ' + (menu?.brand?.name || 'VARVAR'); $('.top').insertBefore(a, $('#lang')); }
+    { const a = document.createElement('a'); a.href = window.VARVAR.link('about.html'); a.className = 'lang'; a.style.cssText = 'text-decoration:none;color:inherit;margin-left:auto;margin-right:8px'; a.textContent = '← ' + (menu?.brand?.name || 'VARVAR'); $('.top').insertBefore(a, $('#meBtn')); }
     try { goCfg = (await api('/api/goinfo')).data; } catch {}
     try { reco = (await api('/api/reco')).data || {}; } catch {}
     if (goCfg && !goCfg[gf.kind]) gf.kind = goCfg.del ? 'del' : 'pick';
@@ -460,6 +460,7 @@
 
   // меню з сервера (редагується через Telegram); якщо сервер недоступний — локальна копія
   const load = u => fetch(u).then(r => { if (!r.ok) throw 0; return r.json(); });
+  { const mb = $('#meBtn'); if (mb) mb.href = window.VARVAR.link('about.html#me'); }
   load(C.api + '/api/menu').catch(() => load('data/menu.json')).then(m => {
     m.categories.forEach(c => c.items = c.items.filter(it => !it.hidden));
     m.categories = m.categories.filter(c => c.items.length);
