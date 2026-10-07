@@ -428,6 +428,30 @@
   document.addEventListener('change', e => { if (!GO) return; if (e.target.id === 'gUseB' || e.target.id === 'gWhen' || e.target.id === 'gChange') { goRead(); goForm(); } });
   document.addEventListener('focusout', e => { if (GO && e.target.id === 'gPhone') { goRead(); goBal(); goPromo(); } });
 
+  // ---------- 👤 кабінет гостя (прямо в меню, без переходу на візитку) — вхід через Telegram-бот закладу ----------
+  const gk = (window.VARVAR.pre || 'vv_') + 'gtok', gtok = v => { try { if (v === undefined) return JSON.parse(localStorage.getItem(gk) || '""'); localStorage.setItem(gk, JSON.stringify(v)); } catch { return ''; } };
+  const meApi = async (p, body) => { const tk = gtok(), h = tk ? { authorization: 'Bearer ' + tk } : {}; const r = await fetch(C.api + p, body ? { method: 'POST', headers: { 'content-type': 'application/json', ...h }, body: JSON.stringify(body) } : { headers: h }); return { status: r.status, data: await r.json().catch(() => ({})) }; };
+  const uah = n => Math.round(n || 0).toLocaleString('uk-UA') + ' ₴';
+  async function meOpen() {
+    $('#meModal').hidden = false; const b = $('#meBody'); b.innerHTML = '<p class="muted">…</p>';
+    if (gtok()) { const { status, data: d } = await meApi('/api/me').catch(() => ({})); if (status === 200) {
+      const dd = x => `${x.slice(8)}.${x.slice(5, 7)}`;
+      b.innerHTML = `<p><b>${esc(d.name || '')}</b> <span class="muted">${esc(d.phone.replace(/^380(\d{2})(\d{3})(\d{2})(\d{2})$/, '+380 $1 $2 $3 $4'))}</span></p>
+        <div class="me-k"><div><b>${uah(d.bal)}</b><span>🎁 бонуси</span></div><div><b>${d.n}</b><span>візитів</span></div><div><b>${uah(d.sum)}</b><span>витрачено</span></div></div>
+        ${d.certs.length ? `<h3>🎟 Сертифікати</h3><div class="me-l">${d.certs.map(c => `<div><b>${esc(c.code)}</b> · ${uah(c.left)} / ${uah(c.sum)}</div>`).join('')}</div>` : ''}
+        ${d.books.length ? `<h3>📅 Броні</h3><div class="me-l">${d.books.map(x => `<div><b>${dd(x.date)} ${esc(x.time)}</b> · ${x.people} 👤</div>`).join('')}</div>` : ''}
+        <h3>🧾 Історія</h3><div class="me-l">${d.hist.slice(0, 10).map(h => `<div><b>${dd(h.d)} ${esc(h.at)}</b> · ${uah(h.sum)}<br><small class="muted">${h.dishes.map(([n, q]) => `${q}× ${esc(n)}`).join(', ')}</small></div>`).join('') || '<div class="muted">Поки порожньо</div>'}</div>
+        <button class="btn ghost" id="meOut" style="margin-top:12px;width:100%">Вийти</button>`; return; }
+      gtok(''); }
+    b.innerHTML = `<p class="muted">Бонуси, сертифікати й історія замовлень — у вашому кабінеті. Вхід і реєстрація — через Telegram, за номером телефону.</p><button class="btn" id="meTg" style="width:100%">✈️ Увійти через Telegram</button><p class="muted" id="meMsg"></p>`;
+  }
+  async function meLogin() {
+    const { data } = await meApi('/api/me/start').catch(() => ({ data: {} })); if (!data.bot) return ($('#meMsg').textContent = '⚠️ Спробуйте пізніше');
+    window.open(`https://t.me/${data.bot}?start=login_${data.nonce}`, '_blank'); $('#meMsg').textContent = '⏳ Підтвердіть вхід у Telegram і поверніться сюди';
+    for (let i = 0; i < 45 && !$('#meModal').hidden; i++) { await new Promise(r => setTimeout(r, 4000)); const r = await meApi('/api/me/poll?n=' + data.nonce).catch(() => null); if (r?.data?.token) { gtok(r.data.token); return meOpen(); } if (r?.data?.error) break; }
+  }
+  async function meOut() { await meApi('/api/me/logout', {}).catch(() => {}); gtok(''); $('#meModal').hidden = true; }
+
   // ---------- події ----------
   document.addEventListener('click', e => {
     const el = e.target.closest('button, [data-close], #wifiBanner, #orderStatus');
@@ -435,6 +459,9 @@
     if (!el) return;
     if (GO && goClick(el)) return;
     if (el.id === 'callBtn') callWaiter();
+    else if (el.id === 'meBtn') meOpen();
+    else if (el.id === 'meTg') meLogin();
+    else if (el.id === 'meOut') meOut();
     else if ('ai' in el.dataset) aiOpen();
     else if (el.dataset.aiA != null) aiStep(el.dataset.aiA);
     else if (el.dataset.aiPick != null) aiTake(+el.dataset.aiPick);
@@ -460,7 +487,6 @@
 
   // меню з сервера (редагується через Telegram); якщо сервер недоступний — локальна копія
   const load = u => fetch(u).then(r => { if (!r.ok) throw 0; return r.json(); });
-  { const mb = $('#meBtn'); if (mb) mb.href = window.VARVAR.link('about.html#me'); }
   load(C.api + '/api/menu').catch(() => load('data/menu.json')).then(m => {
     m.categories.forEach(c => c.items = c.items.filter(it => !it.hidden));
     m.categories = m.categories.filter(c => c.items.length);

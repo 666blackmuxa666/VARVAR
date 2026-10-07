@@ -244,4 +244,12 @@ body.go .call-btn, body.go .table-row { display: none !important; }
 .go-steps { display: flex; justify-content: center; gap: 8px; } .go-steps i { font-style: normal; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: #222; opacity: .35; } .go-steps i.on { opacity: 1; background: #2b2412; box-shadow: 0 0 0 2px var(--accent); }
 .go-modal a.btn { text-align: center; text-decoration: none; }
 .go-modal, .go-modal * { box-sizing: border-box; } .go-modal { overflow-x: hidden; } body.go #actions { display: grid; grid-template-columns: 1fr; } body.go #actions .btn, .go-modal .btn { width: 100%; }
-.me-btn{text-decoration:none;color:inherit;padding:6px 10px;margin-right:6px;line-height:1}
+/* 👤 · 🔔 · мова — однакові кнопки шапки */
+.top .call-btn, .top .lang { height: 38px; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; font: 700 14px Rubik, system-ui, sans-serif; border-radius: 99px; line-height: 1; flex-shrink: 0; white-space: nowrap; }
+.top .logo { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 400px) { .top .logo { font-size: 26px; } .top .call-btn, .top .lang { padding: 0 10px; } }
+.top .me-btn { width: 38px; min-width: 38px; padding: 0; margin-right: 6px; font-size: 17px; color: inherit; text-decoration: none; }
+.top .call-btn { margin-right: 6px; }
+.me-k { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; } .me-k div { background: var(--card2, #1c1c1f); border-radius: 14px; padding: 10px; display: grid; } .me-k b { font-size: 17px; color: var(--accent); } .me-k span { font-size: 12px; color: var(--muted); }
+.me-l { display: grid; gap: 6px; } .me-l div { background: var(--card2, #1c1c1f); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+#meBody h3 { margin: 14px 0 6px; font-size: 15px; }
