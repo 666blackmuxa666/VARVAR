@@ -8,7 +8,9 @@ export async function qrKey(env) {
   if (venueId() === MAIN) return 'f5431c32'; // ключ уже надрукованих QR VARVAR
   const n = [...crypto.getRandomValues(new Uint8Array(4))].map(x => x.toString(16).padStart(2, '0')).join(''); await env.DB.put('qr_key', n); return n;
 }
-export async function qrNew(env) { const n = [...crypto.getRandomValues(new Uint8Array(4))].map(x => x.toString(16).padStart(2, '0')).join(''); await env.DB.put('qr_key', n); return n; }
+export const QR_EVERY = 30 * 864e5; // «нові коди» — не частіше разу на місяць (щоб випадково не зламати всі таблички)
+export const qrNext = async env => { const at = +(await env.DB.get('qr_at')) || 0; return at ? at + QR_EVERY : 0; };
+export async function qrNew(env) { if ((await qrNext(env)) > Date.now()) return null; await env.DB.put('qr_at', String(Date.now())); const n = [...crypto.getRandomValues(new Uint8Array(4))].map(x => x.toString(16).padStart(2, '0')).join(''); await env.DB.put('qr_key', n); return n; }
 // ключ QR конкретного столу (не вгадати, змінивши номер у посиланні)
 export async function tableKey(env, t, key) {
   const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${key || await qrKey(env)}:${t}`));

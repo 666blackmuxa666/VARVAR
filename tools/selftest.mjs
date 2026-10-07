@@ -210,9 +210,11 @@ async function apiTests() {
     const u = new URL(x.url), k = u.searchParams.get('k'), dev = 'qa-qr-' + Date.now();
     must((await http('/api/scan', { t: x.t, k, device: dev })).status === 200, 'скан нового QR');
     must((await pos(W, 'qrNew')).status === 403, 'офіціант не може міняти коди');
+    if (q.j.next > Date.now()) { must((await pos(A, 'qrNew')).status === 400, 'нові коди частіше разу на місяць'); return; } // тестова база вже міняла коди цього місяця
     const n2 = await pos(A, 'qrNew'); must(n2.status === 200 && n2.j.list[1].img !== x.img, 'ключ не змінився');
     must((await http('/api/scan', { t: x.t, k, device: dev + 'b' })).status === 403, 'старий QR усе ще працює');
-    must((await fetch(API + new URL(x.img).pathname)).status === 404, 'стара картинка не 404'); });
+    must((await fetch(API + new URL(x.img).pathname)).status === 404, 'стара картинка не 404');
+    must((await pos(A, 'qrNew')).status === 400, 'другі нові коди за місяць пройшли'); });
   await step('без токена → 401', async () => { const r = await pos('', 'state'); must(r.status === 401, 'статус ' + r.status); });
 
   sect('Персонал: перейменування не губить графік і ЗП; PIN; роль');
