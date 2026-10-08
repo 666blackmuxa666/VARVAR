@@ -146,7 +146,7 @@
     const fresh = r.events.filter(e => !S.seen.has(e.id));
     if (S.ready && fresh.some(e => ['guest', 'check', 'call'].includes(e.k) || (!isCook() && ['ready', 'kmsg'].includes(e.k)))) ding();
     r.events.forEach(e => S.seen.add(e.id));
-    S.events = r.events; S.ready = true;
+    S.events = r.events; S.ready = true; if (!S._tk0) { S._tk0 = 1; loadMyTasks(); }
     if (isCour() && S.view === 'go') renderMain(); // 🛵 нові доставки й «готово» — одразу на екрані кур'єра
     render();
   }
@@ -171,6 +171,7 @@
         loadState().catch(() => {});
         if (m.keys.includes('menu') || m.keys.includes('fav')) loadMenu().catch(() => {});
         if (m.keys.includes('kq') && (isCook() || S.view === 'kq')) loadKq().catch(() => {});
+        if (m.keys.includes('task')) { loadMyTasks(); if (S.view === 'team' && S.zpTab === 'plan' && !$('#modal')) tkLoad(); } // 📋 план на день
         if (S.view === 'team' && m.keys.some(k => ['att', 'plan', 'pay', 'swaps', 'staff'].includes(k)) && !$('#modal')) loadView(true);
         if (S.view === 'calc' && m.keys.some(k => ['ing', 'cards', 'stk', 'invl', 'sups', 'cntl', 'cnt'].includes(k)) && !skBusy()) loadView(true);
         if (['closed', 'reports', 'settings', 'cash'].includes(S.view) && m.keys.some(k => ['closed', 'day', 'exp', 'staff', 'shift', 'z', 'mov', 'tipbal', 'tippay', 'void', 'kq'].includes(k) || (k === 'bill' && S.view === 'cash'))) loadView(true);
@@ -243,7 +244,7 @@
     setHTML($('#nav'), `<div class="brand">${brandImg()}</div>` +
       navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? 'on' : ''}${!isCook() && ['calc', 'menu', 'settings', 'stop', 'kq'].includes(v) ? ' more-i' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === 'team' && attNew ? `<span class="badge">${attNew}</span>` : ''}${v === 'books' && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ''}</button>`).join('') +
       `<button class="feed-btn" data-a="feed"><span class="ic">🔔</span>Стрічка${newCnt ? `<span class="badge">${newCnt}</span>` : ''}</button>` +
-      `<button class="more-btn ${['calc', 'menu', 'settings', 'stop', 'kq'].includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><button class="me" data-a="zpMy" title="Мій кабінет"><i>${esc((S.me?.name || '?').slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ''}</i><b>${esc(S.me?.name)}</b><small>${isAdmin() ? 'адмін' : isCook() ? 'кухар' : isCour() ? 'кур\'єр' : 'офіціант'} · кабінет</small></button>` +
+      `<button class="more-btn ${['calc', 'menu', 'settings', 'stop', 'kq'].includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><button class="me" data-a="zpMy" title="Мій кабінет"><i>${esc((S.me?.name || '?').slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ''}</i>${S.taskN ? `<span class="badge" title="Завдань на сьогодні">${S.taskN}</span>` : ''}<b>${esc(S.me?.name)}</b><small>${isAdmin() ? 'адмін' : isCook() ? 'кухар' : isCour() ? 'кур\'єр' : 'офіціант'} · кабінет</small></button>` +
       `<button data-a="switch"><span class="ic">🔒</span>Вийти</button>`);
   }
   function render() { renderNav(); renderFeed(); if (['hall', 'printer', 'kq'].includes(S.view) || (S.view === 'settings' && S.setTab === 'printer')) renderMain(); if (S.open) renderSheet(); }

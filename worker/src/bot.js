@@ -24,13 +24,13 @@ export { addStat, addDishes } from './ops.js';
 const ADMIN_TTL = 12 * 3600;
 
 // ---------- клавіатури ----------
-const W = { loy: '🎁 Гості й акції', order: '➕ Замовлення', kitchen: '👨‍🍳 Кухня', tables: '📋 Столи', close: '🧾 Закрити стіл', stop: '⛔ Стоп-лист', help: '❓ Допомога', admin: '🔐 Адмін', go: '🛵 Доставка', book: '📅 Броні' };
+const W = { loy: '🎁 Гості й акції', order: '➕ Замовлення', kitchen: '👨‍🍳 Кухня', tables: '📋 Столи', close: '🧾 Закрити стіл', stop: '⛔ Стоп-лист', help: '❓ Допомога', plan: '📋 Мій план', admin: '🔐 Адмін', go: '🛵 Доставка', book: '📅 Броні' };
 const A = { cash: '💰 Каса', expense: '💸 Витрата', reports: '📊 Звіти', closed: '📜 Закриті сьогодні', top: '🏆 Топ страв', del: '🗑 Видалити стіл', menu: '📖 Редагувати меню', wifi: '📶 Wi‑Fi',
   staff: '👥 Персонал', waiter: '⬅️ Режим офіціанта', logout: '🚪 Вийти',
   calc: '🧮 Розрахунок', pay: '👷 Зарплата', delClosed: '🧹 Видалити закритий', reset: '♻️ Обнулити все' }; // ТЕСТ: delClosed і reset — прибрати, коли скаже власник
 const kb = rows => ({ keyboard: rows.map(r => r.map(text => ({ text }))), resize_keyboard: true, is_persistent: true });
-export const KEYBOARD = kb([[W.order], [W.tables, W.close], [W.kitchen, W.go], [W.stop, W.book], [W.loy], [W.help, W.admin]]);
-const ADMIN_KB = kb([[W.order], [A.cash, A.expense], [A.reports, A.closed], [A.calc, A.pay], [A.top, A.del], [W.tables, W.stop], [W.kitchen, W.go], [W.book, W.loy], [A.menu, A.wifi], [A.staff], [A.delClosed, A.reset], [A.waiter, A.logout]]);
+export const KEYBOARD = kb([[W.order], [W.tables, W.close], [W.kitchen, W.go], [W.stop, W.book], [W.loy, W.plan], [W.help, W.admin]]);
+const ADMIN_KB = kb([[W.order], [A.cash, A.expense], [A.reports, A.closed], [A.calc, A.pay], [A.top, A.del], [W.tables, W.stop], [W.kitchen, W.go], [W.book, W.loy], [A.menu, A.wifi], [A.staff, W.plan], [A.delClosed, A.reset], [A.waiter, A.logout]]);
 
 export const COMMANDS = [
   ['tables', 'Відкриті столи і рахунки'], ['table', 'Деталі столу: /table 5'], ['close', 'Закрити рахунок столу'],
@@ -392,6 +392,7 @@ export async function handleUpdate(u, env) {
   if (state && text && !text.startsWith('/') && !Object.values(W).concat(Object.values(A)).includes(text)) {
     await env.DB.delete('st:' + uid);
     if (['pin', 'stfadd'].includes(state) || state.startsWith('regp:') || state.startsWith('tgpin:') || state.startsWith('stfp:')) await tg(env, 'deleteMessage', { chat_id: chat, message_id: m.message_id }); // прибираємо паролі/PIN з чату
+    if (state.startsWith('tkwhy:')) { const s0 = await meStaff(env, uid); if (!s0) return send({ text: '🔐 Спершу увійдіть своїм PIN' }); const T = await import('./tasks.js'), r = await T.taskMark(env, { name: s0.name, role: s0.role, sid: s0.id }, dayKey(), state.slice(6), 'no', text); if (r.error) return send({ text: '⚠️ ' + r.error }); const v = await T.taskBotView(env, s0); return send({ text: '❌ Записано: ' + esc(text.slice(0, 140)) + '\n\n' + v.text, markup: v.markup }); } // 📋 причина «не зробив»
     if (state === 'pin') { // 🔑 вхід за особистим PIN каси (або код реєстрації нового працівника)
       if (+(await env.DB.get('fail:' + uid) || 0) >= 5) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' }, { remove_keyboard: true });
       const keep = async t => { await env.DB.put('st:' + uid, 'pin', { expirationTtl: 3600 }); return send({ text: t }, { remove_keyboard: true }); };
@@ -559,6 +560,7 @@ export async function handleUpdate(u, env) {
     else { const K = { 'телефон': 'phone', 'адреса': 'addr', 'опис': 'about', 'слоган': 'tagline', 'назва': 'name', 'інстаграм': 'insta', 'телеграм': 'tg', 'банкети': 'banquet', 'кальяни': 'hookah', 'відгуки': 'reviewsUrl' }[k]; if (!K) return send({ text: '⚠️ Невідоме поле. Напишіть «сайт» — список команд.' }); r = await setSite(env, K, v); }
     return send({ text: r.error ? '⚠️ ' + r.error : '✅ Збережено — уже на сайті' }); } }
   if (/^(вхідні|✉️|\/inbox)$/i.test(text.trim())) { if (!waiter) return send({ text: '🔐 Спершу увійдіть своїм PIN' }); await (await import('./guestbot.js')).inboxBot(env, chat); return; } // ✉️ невідписані повідомлення гостей
+  if (text === W.plan || /^(\/plan|план)$/i.test(text)) { const s0 = await meStaff(env, uid); if (!s0) return send({ text: '🔐 Спершу увійдіть своїм PIN' }); const v = await (await import('./tasks.js')).taskBotView(env, s0); return send(v); } // 📋 план на день
   if (/^(побажання|\/idea)/i.test(text)) { const r = await (await import('./ideas.js')).ideaBot(env, text, await meStaff(env, uid), admin); if (r) return send(r); } // 💡 побажання розробнику
   { const r = await loyBotText(env, text === W.loy ? 'акції' : text, admin); if (r) return send(r); } // 🎁 клієнт 050… / клієнт Іван / акції (promo.js)
   if (text === W.go || low === '/go' || low === 'доставка') { const l = await goList(env, await openTables(env)); await send({ text: goText(l) }); for (const g of l) await send({ text: `<b>${tn(g.t)}</b> · ${esc(g.name)} · ${goStLabel(g.st)}`, markup: { inline_keyboard: [...goButtons(g), ...(admin ? [[{ text: '✏️ Змінити', callback_data: 'goe:' + g.t }]] : [])] } }); return; }
@@ -683,6 +685,10 @@ async function handleCallback(q, env) {
   }
   if (act === 'pclr') { if (!admin) return answer('🔐 Лише для адміністратора'); const r = await printClear(env, ''); await notify(env, `🗑 Черга друку очищена (${r.n}) — ${esc(who)}`).catch(() => {}); await edit(`🖨 Черга друку очищена: видалено ${r.n}`); return answer('🗑 Очищено'); }
   if (act === 'gic') { await (await import('./guestbot.js')).inboxClose(env, arg, who); await edit(esc(q.message.text || '') + '\n\n✔️ Закрито — ' + esc(who)); return answer('✔️'); }
+  if (act === 'tkd' || act === 'tkn') { const s0 = await meStaff(env, uid); if (!s0) return answer('🔐 Увійдіть PIN');
+    if (act === 'tkn') { await env.DB.put('st:' + uid, 'tkwhy:' + arg, { expirationTtl: 900 }); await tg(env, 'sendMessage', { chat_id: chat, text: '❌ Напишіть коротко, чому не зроблено:' }); return answer('Напишіть причину'); }
+    const T = await import('./tasks.js'), r = await T.taskMark(env, { name: s0.name, role: s0.role, sid: s0.id }, dayKey(), arg, 'done'); if (r.error) return answer(r.error);
+    const v = await T.taskBotView(env, s0); await edit(v.text, v.markup); return answer('✅ Зроблено'); }
   if (act === 'idx' || act === 'idd') { const I = await import('./ideas.js'), me = await meStaff(env, uid); if (!me) return answer('🔐 Увійдіть PIN');
     const r = act === 'idx' ? await I.ideaDel(env, arg, me.name, admin) : await I.ideaDone(env, arg, admin); if (r.error) return answer(r.error);
     const v = await I.ideaBotList(env, me, admin); await edit(v.text, v.markup); return answer(act === 'idx' ? '🗑 Видалено' : '✅'); }

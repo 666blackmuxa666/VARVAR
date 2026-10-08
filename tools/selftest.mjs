@@ -88,6 +88,15 @@ async function apiTests() {
   await step('кухня: почати → готово', async () => {
     must(kq, 'немає картки'); await posOk(K || A, 'kStart', { id: kq.id }); const r = await posOk(K || A, 'kDone', { id: kq.id }); must(r.e?.done, 'не done');
   });
+  await step('📋 план на день: адмін додає, кухар бачить своє й відмічає', async () => {
+    const st = (await posOk(A, 'taskList')).staff, ck = K && st.find(s => s.r === 'cook'); 
+    const t = (await posOk(A, 'taskAdd', { n: 'QA протерти вітрину', who: { k: 'r', r: 'cook' }, imp: 1 })).t; must(t?.id, 'не додано');
+    if (W) { const w = await posOk(W, 'taskList', { mine: 1 }); must(!w.list.some(x => x.id === t.id), 'офіціант бачить завдання кухаря'); const r = await pos(W, 'taskMark', { id: t.id, st: 'done' }); must(r.status === 400, 'офіціант відмітив чуже'); must((await pos(W, 'taskAdd', { n: 'x' })).status === 403, 'офіціант додав завдання'); }
+    if (K) { const k = await posOk(K, 'taskList', { mine: 1 }); must(k.list.some(x => x.id === t.id), 'кухар не бачить'); must((await pos(K, 'taskMark', { id: t.id, st: 'no' })).status === 400, 'без причини пройшло'); await posOk(K, 'taskMark', { id: t.id, st: 'done' }); }
+    else await posOk(A, 'taskMark', { id: t.id, st: 'done' });
+    const l = (await posOk(A, 'taskList')).list; must(l.find(x => x.id === t.id)?.st === 'done', 'не відмічено');
+    await posOk(A, 'taskDel', { id: t.id }); return ck ? 'кухар ✅' : 'адмін ✅';
+  });
   await step('💸 витрата за минулий день: адмін — так, офіціант — ні', async () => {
     const y = new Date(Date.now() - 2 * 86400e3).toISOString().slice(0, 10);
     if (W) { const r = await pos(W, 'expense', { sum: 1, note: 'QA', src: 'cash', day: y }); must(r.status === 403, 'офіціант зміг: ' + r.status); }

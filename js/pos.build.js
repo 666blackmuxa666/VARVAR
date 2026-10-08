@@ -409,6 +409,10 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     r.events.forEach((e) => S.seen.add(e.id));
     S.events = r.events;
     S.ready = true;
+    if (!S._tk0) {
+      S._tk0 = 1;
+      loadMyTasks();
+    }
     if (isCour() && S.view === "go") renderMain();
     render();
   }
@@ -473,6 +477,10 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         });
         if (m.keys.includes("kq") && (isCook() || S.view === "kq")) loadKq().catch(() => {
         });
+        if (m.keys.includes("task")) {
+          loadMyTasks();
+          if (S.view === "team" && S.zpTab === "plan" && !$("#modal")) tkLoad();
+        }
         if (S.view === "team" && m.keys.some((k) => ["att", "plan", "pay", "swaps", "staff"].includes(k)) && !$("#modal")) loadView(true);
         if (S.view === "calc" && m.keys.some((k) => ["ing", "cards", "stk", "invl", "sups", "cntl", "cnt"].includes(k)) && !skBusy()) loadView(true);
         if (["closed", "reports", "settings", "cash"].includes(S.view) && m.keys.some((k) => ["closed", "day", "exp", "staff", "shift", "z", "mov", "tipbal", "tippay", "void", "kq"].includes(k) || k === "bill" && S.view === "cash")) loadView(true);
@@ -592,7 +600,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     var _a2, _b;
     const newCnt = S.events.filter((e) => e.k === "guest" && e.s === "new").length;
     const attNew = isAdmin() ? S.events.filter((e) => e.k === "att" && e.s === "new").length : 0;
-    setHTML($("#nav"), `<div class="brand">${brandImg()}</div>` + navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? "on" : ""}${!isCook() && ["calc", "menu", "settings", "stop", "kq"].includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === "team" && attNew ? `<span class="badge">${attNew}</span>` : ""}${v === "books" && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ""}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : ""}</button><button class="more-btn ${["calc", "menu", "settings", "stop", "kq"].includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><button class="me" data-a="zpMy" title="\u041C\u0456\u0439 \u043A\u0430\u0431\u0456\u043D\u0435\u0442"><i>${esc((((_a2 = S.me) == null ? void 0 : _a2.name) || "?").slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ""}</i><b>${esc((_b = S.me) == null ? void 0 : _b.name)}</b><small>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : isCour() ? "\u043A\u0443\u0440'\u0454\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"} \xB7 \u043A\u0430\u0431\u0456\u043D\u0435\u0442</small></button><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
+    setHTML($("#nav"), `<div class="brand">${brandImg()}</div>` + navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? "on" : ""}${!isCook() && ["calc", "menu", "settings", "stop", "kq"].includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === "team" && attNew ? `<span class="badge">${attNew}</span>` : ""}${v === "books" && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ""}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : ""}</button><button class="more-btn ${["calc", "menu", "settings", "stop", "kq"].includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><button class="me" data-a="zpMy" title="\u041C\u0456\u0439 \u043A\u0430\u0431\u0456\u043D\u0435\u0442"><i>${esc((((_a2 = S.me) == null ? void 0 : _a2.name) || "?").slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ""}</i>${S.taskN ? `<span class="badge" title="\u0417\u0430\u0432\u0434\u0430\u043D\u044C \u043D\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456">${S.taskN}</span>` : ""}<b>${esc((_b = S.me) == null ? void 0 : _b.name)}</b><small>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : isCour() ? "\u043A\u0443\u0440'\u0454\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"} \xB7 \u043A\u0430\u0431\u0456\u043D\u0435\u0442</small></button><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
   }
   function render() {
     renderNav();
@@ -5391,7 +5399,7 @@ ${g.sup}:
       }));
     }).map((s) => s.name);
     const rows = G.rows.filter((r) => people.includes(r.n) || r.paid || r.adv || r.bonus || r.fine), due = rows.reduce((a, r) => a + Math.max(0, r.due), 0), pend = rows.reduce((a, r) => a + r.pending, 0);
-    const tab = S.zpTab || "grid", TABS2 = [["grid", "\u{1F4C5} \u0413\u0440\u0430\u0444\u0456\u043A"], ["pay", "\u{1F4B0} \u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430"], ["ops", "\u{1F9FE} \u041E\u043F\u0435\u0440\u0430\u0446\u0456\u0457"], ["eff", "\u{1F4CA} \u0415\u0444\u0435\u043A\u0442\u0438\u0432\u043D\u0456\u0441\u0442\u044C"], ["people", "\u{1F465} \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0438"], ["ideas", "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F"]];
+    const tab = S.zpTab || "grid", TABS2 = [["grid", "\u{1F4C5} \u0413\u0440\u0430\u0444\u0456\u043A"], ["pay", "\u{1F4B0} \u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430"], ["ops", "\u{1F9FE} \u041E\u043F\u0435\u0440\u0430\u0446\u0456\u0457"], ["eff", "\u{1F4CA} \u0415\u0444\u0435\u043A\u0442\u0438\u0432\u043D\u0456\u0441\u0442\u044C"], ["plan", "\u{1F4CB} \u041F\u043B\u0430\u043D"], ["people", "\u{1F465} \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0438"], ["ideas", "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F"]];
     const top = `<div class="zp-top"><button class="btn sm" data-a="zpM" data-d="-1">\u25C0</button><b>${monName(G.m)}</b><button class="btn sm" data-a="zpM" data-d="1">\u25B6</button></div>
       <div class="kpis"><div class="kpi accent"><span>\u0414\u043E \u0432\u0438\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(due)}</b></div><div class="kpi"><span>\u0424\u043E\u043D\u0434 \u043E\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(G.fund)}</b><small class="muted">${G.fundPct}% \u0432\u0456\u0434 \u0432\u0438\u0440\u0443\u0447\u043A\u0438</small></div>
         <div class="kpi"><span>\u0412\u0438\u0440\u0443\u0447\u043A\u0430 \u043C\u0456\u0441\u044F\u0446\u044F</span><b class="money">${money(G.revenue)}</b></div><div class="kpi ${pend ? "red press" : ""}"${pend ? ' data-a="zpPend"' : ""}><span>\u0427\u0435\u043A\u0430\u0454 \u2705</span><b>${pend}</b><small class="muted">${pend ? "\u043D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C, \u0449\u043E\u0431 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438" : "\u0443\u0441\u0435 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043E"}</small></div></div>
@@ -5414,6 +5422,8 @@ ${g.sup}:
               <div class="zp-det-b"><button class="btn sm" data-a="zpOpN" data-t="bonus" data-n="${esc(r.n)}">\u2795 \u041F\u0440\u0435\u043C\u0456\u044F</button><button class="btn sm" data-a="zpOpN" data-t="fine" data-n="${esc(r.n)}">\u2796 \u0428\u0442\u0440\u0430\u0444</button><button class="btn sm" data-a="zpOpN" data-t="adv" data-n="${esc(r.n)}">\u{1F4B5} \u0410\u0432\u0430\u043D\u0441</button><button class="btn sm" data-a="zpSet" data-id="${r.id}">\u2699\uFE0F \u0421\u0442\u0430\u0432\u043A\u0430</button></div></div>` : ""}`;
       }).join("") || '<div class="muted">\u041D\u0435\u043C\u0430\u0454 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0456\u0432 \u0443 \u0433\u0440\u0430\u0444\u0456\u043A\u0443</div>'}
         <div class="muted" style="font-size:12px;margin-top:8px">\u041D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \u043D\u0430 \u0440\u044F\u0434\u043E\u043A \u2014 \u0434\u0435\u0442\u0430\u043B\u0456, \u043F\u0440\u0435\u043C\u0456\u044F, \u0448\u0442\u0440\u0430\u0444, \u0430\u0432\u0430\u043D\u0441, \u0441\u0442\u0430\u0432\u043A\u0430. \u{1F4B8} \u2014 \u0432\u0438\u0434\u0430\u0442\u0438 \u0432\u0435\u0441\u044C \u0437\u0430\u043B\u0438\u0448\u043E\u043A (\u0437 \u043A\u0430\u0441\u0438 \u0430\u0431\u043E \u043A\u0430\u0440\u0442\u043A\u0438).</div></div>`;
+    } else if (tab === "plan") {
+      body = tkAdminHTML();
     } else if (tab === "ideas") {
       const l = S.data.ideas;
       if (!l) ideasLoad();
@@ -5564,7 +5574,8 @@ ${g.sup}:
     const lnx = (l, v2) => `<div class="kv"><span>${l}</span><b class="money">${v2}</b></div>`;
     const asks = r.swaps.filter((s) => s.to === me && s.st === "ask");
     const shiftH = `<div class="zp-shift">${onShift() ? `<button class="btn red" data-a="zpOut">\u{1F534} \u0417\u0430\u043A\u0456\u043D\u0447\u0438\u0442\u0438 \u0437\u043C\u0456\u043D\u0443</button><span class="muted">\u043D\u0430 \u0437\u043C\u0456\u043D\u0456 \u0437 ${hhK(S.myAtt.in)}${S.myAtt.ok === 0 ? " \xB7 \u{1F553} \u0447\u0435\u043A\u0430\u0454 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F" : " \xB7 \u2705"}</span>` : `<button class="btn green" data-a="zpIn">\u{1F7E2} \u041F\u043E\u0447\u0430\u0442\u0438 \u0437\u043C\u0456\u043D\u0443</button>${((_b = S.myAtt) == null ? void 0 : _b.out) ? `<span class="muted">\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 ${hhK(S.myAtt.in)}\u2013${hhK(S.myAtt.out)}</span>` : ""}`}</div>`;
-    const body = shiftH + `${w ? `<div class="pills zp-my"><div class="pill"><span>\u0417\u043C\u0456\u043D</span><b>${w.shifts}</b><small>${w.hours ? w.hours + " \u0433\u043E\u0434" : ""}</small></div><div class="pill"><span>\u0417\u0430\u0440\u043E\u0431\u043B\u0435\u043D\u043E</span><b class="money">${money(w.earned)}</b></div><div class="pill"><span>\u0414\u043E \u0432\u0438\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(w.due)}</b></div><div class="pill"><span>\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456</span><b class="money">${money(((_c = S.myTip) == null ? void 0 : _c.sum) || 0)}</b><small>${w.tips ? `\u0437\u0430 \u043C\u0456\u0441\u044F\u0446\u044C ${money(w.tips)}` : "\u0449\u0435 \u043D\u0435 \u0432\u0438\u0434\u0430\u043D\u043E"}</small></div></div>
+    await loadMyTasks();
+    const body = shiftH + `<div id="myTasks">${myTasksHTML()}</div>${w ? `<div class="pills zp-my"><div class="pill"><span>\u0417\u043C\u0456\u043D</span><b>${w.shifts}</b><small>${w.hours ? w.hours + " \u0433\u043E\u0434" : ""}</small></div><div class="pill"><span>\u0417\u0430\u0440\u043E\u0431\u043B\u0435\u043D\u043E</span><b class="money">${money(w.earned)}</b></div><div class="pill"><span>\u0414\u043E \u0432\u0438\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(w.due)}</b></div><div class="pill"><span>\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456</span><b class="money">${money(((_c = S.myTip) == null ? void 0 : _c.sum) || 0)}</b><small>${w.tips ? `\u0437\u0430 \u043C\u0456\u0441\u044F\u0446\u044C ${money(w.tips)}` : "\u0449\u0435 \u043D\u0435 \u0432\u0438\u0434\u0430\u043D\u043E"}</small></div></div>
       ${lnx(`\u0421\u0442\u0430\u0432\u043A\u0430 \xD7 ${w.shifts}`, money(w.rate))}${w.pct ? lnx("% \u0432\u0456\u0434 \u0432\u0438\u0440\u0443\u0447\u043A\u0438", money(w.pct)) : ""}${w.dayB || w.monB ? lnx("\u{1F3AF} \u0411\u043E\u043D\u0443\u0441 \u0437\u0430 \u043F\u043B\u0430\u043D", money(w.dayB + w.monB)) : ""}${w.bonus ? lnx("\u2795 \u041F\u0440\u0435\u043C\u0456\u0457", money(w.bonus)) : ""}${w.fine ? lnx("\u2796 \u0428\u0442\u0440\u0430\u0444\u0438", "\u2212" + money(w.fine)) : ""}${w.adv ? lnx("\u{1F4B5} \u0410\u0432\u0430\u043D\u0441\u0438", "\u2212" + money(w.adv)) : ""}${w.paid ? lnx("\u{1F4B8} \u0412\u0438\u043F\u043B\u0430\u0447\u0435\u043D\u043E", "\u2212" + money(w.paid)) : ""}
       ${w.toMon ? `<div class="muted" style="font-size:13px;margin-top:6px">\u{1F3AF} \u0414\u043E \u043C\u0456\u0441\u044F\u0447\u043D\u043E\u0433\u043E \u0431\u043E\u043D\u0443\u0441\u0443 \u0449\u0435 ${money(w.toMon)}</div>` : ""}` : '<div class="muted">\u0421\u0442\u0430\u0432\u043A\u0443 \u0449\u0435 \u043D\u0435 \u0437\u0430\u0434\u0430\u043D\u043E</div>'}
       ${asks.map((s) => `<div class="card zp-ask">\u{1F501} <b>${esc(s.from)}</b> \u043F\u0440\u043E\u0441\u0438\u0442\u044C \u0432\u0438\u0439\u0442\u0438 \u0437\u0430 \u043D\u044C\u043E\u0433\u043E ${s.day.slice(8)}.${s.day.slice(5, 7)} \u043E ${s.time}<div class="btnrow"><button class="btn sm green" data-a="zpSw" data-id="${s.id}" data-s="agree">\u041F\u043E\u0433\u043E\u0434\u0436\u0443\u044E\u0441\u044C</button><button class="btn sm red" data-a="zpSw" data-id="${s.id}" data-s="no">\u041D\u0456</button></div></div>`).join("")}
@@ -5750,6 +5761,167 @@ ${g.sup}:
       if (v) f = { role: v };
     }
     if (f && await act("staffEdit", __spreadValues({ id: s.id }, f), f.name ? "\u270F\uFE0F \u0406\u043C\u02BC\u044F \u0437\u043C\u0456\u043D\u0435\u043D\u043E" : f.pin ? "\u{1F511} PIN \u0437\u043C\u0456\u043D\u0435\u043D\u043E" : "\u{1F504} \u0420\u043E\u043B\u044C \u0437\u043C\u0456\u043D\u0435\u043D\u043E")) loadView();
+  });
+  const TK_ROLE = { admin: "\u0430\u0434\u043C\u0456\u043D\u0438", waiter: "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0438", cook: "\u043A\u0443\u0445\u0430\u0440\u0456", courier: "\u043A\u0443\u0440'\u0454\u0440\u0438" }, TK_WD = ["\u043F\u043D", "\u0432\u0442", "\u0441\u0440", "\u0447\u0442", "\u043F\u0442", "\u0441\u0431", "\u043D\u0434"];
+  const tkWho = (w) => !w || w.k === "a" ? "\u{1F465} \u0431\u0443\u0434\u044C-\u0445\u0442\u043E" : w.k === "r" ? "\u{1F465} " + (TK_ROLE[w.r] || w.r) : "\u{1F464} " + esc(w.n || "?");
+  const tkIc = (t) => t.st === "done" ? "\u2705" : t.st === "no" ? "\u274C" : t.imp ? "\u2757" : "\u2B1C";
+  const tkDm = (d) => `${d.slice(8)}.${d.slice(5, 7)}`;
+  async function loadMyTasks() {
+    try {
+      const r = await api("taskList", { mine: 1 });
+      S.myTasks = r.list;
+      const n = r.list.filter((t) => !t.st).length;
+      if (n !== S.taskN) {
+        S.taskN = n;
+        renderNav();
+      }
+      if ($("#myTasks")) $("#myTasks").innerHTML = myTasksHTML();
+    } catch (e) {
+    }
+  }
+  function myTasksHTML() {
+    const l = S.myTasks || [];
+    if (!l.length) return "";
+    return `<h3 style="margin:4px 0 6px">\u{1F4CB} \u041C\u0456\u0439 \u043F\u043B\u0430\u043D \u043D\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \xB7 ${l.filter((t) => t.st === "done").length} \u0437 ${l.length}</h3>${l.map((t) => `<div class="tk-row${t.st ? " done" : ""}${t.imp && !t.st ? " imp" : ""}"><span class="tk-n">${tkIc(t)} ${t.tm ? `<b>${t.tm}</b> \xB7 ` : ""}${esc(t.n)}${t.photo && !t.st ? " \u{1F4F7}" : ""}${t.st ? `<small class="muted">${esc(t.by || "")} ${t.at || ""}${t.why ? " \u2014 " + esc(t.why) : ""}</small>` : ""}</span>
+      ${t.st ? `<button class="btn sm ghost" data-a="tkMark" data-id="${t.id}" data-st="" title="\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438">\u21A9\uFE0F</button>` : `<span class="tk-b"><button class="btn sm green" data-a="tkMark" data-id="${t.id}" data-st="done">\u2705</button><button class="btn sm" data-a="tkMark" data-id="${t.id}" data-st="no">\u274C</button></span>`}</div>`).join("")}`;
+  }
+  async function tkMark(id, st, day) {
+    var _a2;
+    const l = day ? (_a2 = S.data.tasks) == null ? void 0 : _a2.list : S.myTasks, t = (l || []).find((x) => x.id === id);
+    let why = "", ph = "";
+    if (st === "no") {
+      why = await ask("\u274C \u0427\u043E\u043C\u0443 \u043D\u0435 \u0437\u0440\u043E\u0431\u043B\u0435\u043D\u043E?", "\u041A\u043E\u0440\u043E\u0442\u043A\u043E, \u043D\u0430\u043F\u0440.: \u043D\u0435 \u0431\u0443\u043B\u043E \u043C\u0438\u0439\u043D\u043E\u0433\u043E \u0437\u0430\u0441\u043E\u0431\u0443");
+      if (!why) return;
+    }
+    if (st === "done" && (t == null ? void 0 : t.photo) && !t.ph && !isAdmin()) {
+      toast("\u{1F4F7} \u0421\u0444\u043E\u0442\u043E\u0433\u0440\u0430\u0444\u0443\u0439\u0442\u0435 \u0440\u0435\u0437\u0443\u043B\u044C\u0442\u0430\u0442");
+      const f = await new Promise((res) => {
+        const i = document.createElement("input");
+        i.type = "file";
+        i.accept = "image/*";
+        i.capture = "environment";
+        i.onchange = () => res(i.files[0] || null);
+        i.click();
+      });
+      if (!f) return;
+      ph = await shrink(f, 1280, 0.75);
+    }
+    const r = await act("taskMark", __spreadValues({ id, st, why, ph }, day ? { day } : {}), st === "done" ? "\u2705 \u0417\u0440\u043E\u0431\u043B\u0435\u043D\u043E" : st === "no" ? "\u274C \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E" : "\u21A9\uFE0F \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E");
+    if (!r) return;
+    loadMyTasks();
+    if (S.view === "team" && S.zpTab === "plan") tkLoad();
+  }
+  async function tkLoad() {
+    if (S._tkL) return;
+    S._tkL = 1;
+    try {
+      S.data.tasks = await api("taskList", { day: S.tkDay || todayK() });
+    } catch (e) {
+      S.data.tasks = { list: [], tpl: [], staff: [] };
+    }
+    S._tkL = 0;
+    if (S.view === "team") renderMain();
+  }
+  function tkAdminHTML() {
+    const D = S.data.tasks, day = S.tkDay || todayK();
+    if (!D || D.day !== day) {
+      tkLoad();
+      return '<div class="muted">\u2026</div>';
+    }
+    const l = D.list, ok = l.filter((t) => t.st === "done").length, past = day < todayK(), shift = (n) => {
+      const d = /* @__PURE__ */ new Date(day + "T12:00:00Z");
+      d.setUTCDate(d.getUTCDate() + n);
+      return d.toISOString().slice(0, 10);
+    };
+    const by = {};
+    for (const t of l) {
+      const k = t.st ? t.by || "\u2014" : tkWho(t.who).replace(/<[^>]+>/g, "");
+      by[k] || (by[k] = [0, 0]);
+      by[k][1]++;
+      if (t.st === "done") by[k][0]++;
+    }
+    const row = (t) => `<div class="tk-row${t.st ? " done" : ""}${t.imp && !t.st ? " imp" : ""}"><span class="tk-n">${tkIc(t)} ${t.tm ? `<b>${t.tm}</b> \xB7 ` : ""}${esc(t.n)}${t.tpl ? ' <small class="muted">\u{1F501}</small>' : ""}<small class="muted">${tkWho(t.who)}${t.st ? ` \xB7 ${esc(t.by || "")} ${t.at || ""}${t.why ? " \u2014 " + esc(t.why) : ""}` : t.photo ? " \xB7 \u{1F4F7} \u0437 \u0444\u043E\u0442\u043E" : ""}</small></span>
+      <span class="tk-b">${t.ph ? `<button class="btn sm" data-a="tkPh" data-id="${t.id}">\u{1F4F7}</button>` : ""}${t.st ? "" : `<button class="btn sm green" data-a="tkMarkA" data-id="${t.id}" data-st="done" title="\u0412\u0456\u0434\u043C\u0456\u0442\u0438\u0442\u0438 \u0437\u0430 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430">\u2705</button>`}${past ? "" : `<button class="btn sm ghost" data-a="tkDel" data-id="${t.id}">\u{1F5D1}</button>`}</span></div>`;
+    const tpl = D.tpl || [];
+    return `<div class="card"><div class="zp-top"><button class="btn sm" data-a="tkDay" data-d="${shift(-1)}">\u25C0</button><b>${day === todayK() ? "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : day === shift(0) && day > todayK() ? "\u0417\u0430\u0432\u0442\u0440\u0430" : ""} ${tkDm(day)} ${TK_WD[((/* @__PURE__ */ new Date(day + "T12:00:00Z")).getUTCDay() + 6) % 7]}</b><button class="btn sm" data-a="tkDay" data-d="${shift(1)}">\u25B6</button></div>
+        ${l.length ? `<div class="kpis"><div class="kpi accent"><span>\u0412\u0438\u043A\u043E\u043D\u0430\u043D\u043E</span><b>${ok} \u0437 ${l.length}</b><small class="muted">${Math.round(ok / l.length * 100)}%</small></div>${Object.entries(by).map(([n, [a, b]]) => `<div class="kpi"><span>${esc(n)}</span><b>${a}/${b}</b></div>`).join("")}</div>` : ""}
+        ${l.length ? l.map(row).join("") : '<div class="muted">\u041D\u0430 \u0446\u0435\u0439 \u0434\u0435\u043D\u044C \u0437\u0430\u0432\u0434\u0430\u043D\u044C \u043D\u0435\u043C\u0430\u0454</div>'}
+        ${past ? "" : '<div class="btnrow" style="margin-top:10px"><button class="btn primary" data-a="tkAdd">\u2795 \u0417\u0430\u0432\u0434\u0430\u043D\u043D\u044F</button></div>'}</div>
+      <div class="card"><h3>\u{1F501} \u0429\u043E\u0434\u0435\u043D\u043D\u0456 \u0448\u0430\u0431\u043B\u043E\u043D\u0438</h3><div class="muted set-note">\u0414\u043E\u0434\u0430\u044E\u0442\u044C\u0441\u044F \u0432 \u043F\u043B\u0430\u043D \u0441\u0430\u043C\u0456: \u0449\u043E\u0434\u043D\u044F \u0430\u0431\u043E \u0432 \u043E\u0431\u0440\u0430\u043D\u0456 \u0434\u043D\u0456 \u0442\u0438\u0436\u043D\u044F. \u041D\u0430\u043F\u0440. \xAB\u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0442\u044F \u0437\u0430\u043B\u0438\xBB, \xAB\u0413\u0435\u043D\u0435\u0440\u0430\u043B\u044C\u043D\u0435 \u043F\u0440\u0438\u0431\u0438\u0440\u0430\u043D\u043D\u044F \u2014 \u0447\u0442\xBB.</div>
+        ${tpl.map((t, i) => {
+      var _a2;
+      return `<div class="tk-row"><span class="tk-n">${t.imp ? "\u2757 " : ""}${t.tm ? `<b>${t.tm}</b> \xB7 ` : ""}${esc(t.n)}<small class="muted">${tkWho(t.who)} \xB7 ${((_a2 = t.days) == null ? void 0 : _a2.length) ? t.days.map((d) => TK_WD[d]).join(", ") : "\u0449\u043E\u0434\u043D\u044F"}${t.photo ? " \xB7 \u{1F4F7}" : ""}</small></span><span class="tk-b"><button class="btn sm" data-a="tkTplEd" data-i="${i}">\u270F\uFE0F</button><button class="btn sm ghost" data-a="tkTplDel" data-i="${i}">\u{1F5D1}</button></span></div>`;
+    }).join("") || '<div class="muted">\u0428\u0430\u0431\u043B\u043E\u043D\u0456\u0432 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454</div>'}
+        <div class="btnrow" style="margin-top:10px"><button class="btn" data-a="tkTplEd" data-i="-1">\u2795 \u0428\u0430\u0431\u043B\u043E\u043D</button></div></div>`;
+  }
+  async function tkForm(x = {}, tpl) {
+    const D = S.data.tasks, who = x.who || { k: "a" }, wv = who.k === "s" ? "s:" + who.id : who.k === "r" ? "r:" + who.r : "a";
+    const opts = [["a", "\u{1F465} \u0411\u0443\u0434\u044C-\u0445\u0442\u043E \u043D\u0430 \u0437\u043C\u0456\u043D\u0456"], ...Object.entries(TK_ROLE).map(([r2, l]) => ["r:" + r2, "\u{1F465} \u0423\u0441\u0456 " + l]), ...(D.staff || []).map((s) => ["s:" + s.id, "\u{1F464} " + s.n])];
+    const v = await modal({
+      title: tpl ? "\u{1F501} \u0428\u0430\u0431\u043B\u043E\u043D" : "\u2795 \u0417\u0430\u0432\u0434\u0430\u043D\u043D\u044F \u043D\u0430 " + tkDm(S.tkDay || todayK()),
+      body: `<div class="form"><input id="tkN" placeholder="\u0429\u043E \u0437\u0440\u043E\u0431\u0438\u0442\u0438 (\u043D\u0430\u043F\u0440. \u043F\u0440\u043E\u0442\u0435\u0440\u0442\u0438 \u0432\u0456\u0442\u0440\u0438\u043D\u0443)" value="${esc(x.n || "")}" maxlength="140">
+      <select id="tkW">${opts.map(([k, l]) => `<option value="${k}"${k === wv ? " selected" : ""}>${esc(l)}</option>`).join("")}</select>
+      <input id="tkT" type="time" value="${esc(x.tm || "")}" placeholder="\u0427\u0430\u0441 (\u043D\u0435\u043E\u0431\u043E\u0432'\u044F\u0437\u043A\u043E\u0432\u043E)">
+      ${tpl ? `<div class="tk-days">${TK_WD.map((d, i) => `<label><input type="checkbox" class="tkD" value="${i}"${(x.days || []).includes(i) ? " checked" : ""}> ${d}</label>`).join("")}</div><div class="muted" style="font-size:12px">\u041D\u0456\u0447\u043E\u0433\u043E \u043D\u0435 \u043E\u0431\u0440\u0430\u043D\u043E \u2014 \u0449\u043E\u0434\u043D\u044F</div>` : ""}
+      <label class="tk-chk"><input type="checkbox" id="tkI"${x.imp ? " checked" : ""}> \u2757 \u0412\u0430\u0436\u043B\u0438\u0432\u043E</label><label class="tk-chk"><input type="checkbox" id="tkP"${x.photo ? " checked" : ""}> \u{1F4F7} \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438 \u0444\u043E\u0442\u043E</label></div>`,
+      buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: 1, cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }],
+      keep: true
+    });
+    if (!v) return closeModal();
+    const w = $("#tkW").value, r = __spreadValues(__spreadProps(__spreadValues({}, x), { n: $("#tkN").value.trim(), tm: $("#tkT").value, imp: $("#tkI").checked ? 1 : 0, photo: $("#tkP").checked ? 1 : 0, who: w === "a" ? { k: "a" } : w.startsWith("r:") ? { k: "r", r: w.slice(2) } : { k: "s", id: w.slice(2) } }), tpl ? { days: [...document.querySelectorAll(".tkD:checked")].map((c) => +c.value) } : {});
+    closeModal();
+    if (!r.n) {
+      toast("\u041D\u0430\u043F\u0438\u0448\u0456\u0442\u044C \u0437\u0430\u0432\u0434\u0430\u043D\u043D\u044F");
+      return;
+    }
+    return r;
+  }
+  async function tkClick(a, D) {
+    switch (a) {
+      case "tkMark":
+        return tkMark(D.id, D.st);
+      case "tkMarkA":
+        return tkMark(D.id, D.st, S.tkDay || todayK());
+      case "tkDay":
+        S.tkDay = D.d;
+        S.data.tasks = null;
+        return renderMain();
+      case "tkAdd": {
+        const r = await tkForm();
+        if (r && await act("taskAdd", __spreadProps(__spreadValues({}, r), { day: S.tkDay || todayK() }), "\u2795 \u0414\u043E\u0434\u0430\u043D\u043E")) tkLoad();
+        return;
+      }
+      case "tkDel":
+        if (await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0437\u0430\u0432\u0434\u0430\u043D\u043D\u044F?") && await act("taskDel", { id: D.id, day: S.tkDay || todayK() }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) tkLoad();
+        return;
+      case "tkPh": {
+        const r = await act("taskPh", { id: D.id, day: S.tkDay || todayK() });
+        if (r == null ? void 0 : r.ph) modal({ title: "\u{1F4F7} \u0424\u043E\u0442\u043E", body: `<img src="data:image/jpeg;base64,${r.ph}" style="width:100%;border-radius:12px">`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+        return;
+      }
+      case "tkTplEd":
+      case "tkTplDel": {
+        const l = [...S.data.tasks.tpl || []], i = +D.i;
+        if (a === "tkTplDel") {
+          if (!await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0448\u0430\u0431\u043B\u043E\u043D?", "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456\u0448\u043D\u0456 \u0437\u0430\u0432\u0434\u0430\u043D\u043D\u044F \u0437 \u043D\u044C\u043E\u0433\u043E \u043B\u0438\u0448\u0430\u0442\u044C\u0441\u044F")) return;
+          l.splice(i, 1);
+        } else {
+          const r = await tkForm(i >= 0 ? l[i] : {}, true);
+          if (!r) return;
+          if (i >= 0) l[i] = r;
+          else l.push(r);
+        }
+        if (await act("taskTpl", { list: l }, "\u{1F501} \u0428\u0430\u0431\u043B\u043E\u043D\u0438 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
+          S.data.tasks = null;
+          tkLoad();
+        }
+        return;
+      }
+    }
+  }
+  document.addEventListener("click", (e) => {
+    const el = e.target.closest("[data-a]");
+    if (el && /^tk[A-Z]/.test(el.dataset.a)) tkClick(el.dataset.a, el.dataset);
   });
   if (S.token) start();
   else showLogin();

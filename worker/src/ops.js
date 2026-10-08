@@ -754,6 +754,7 @@ export async function dayZ(env, who, print = true, day = dayKey()) {
   const k = 'z:' + day, l = (await env.DB.get(k, 'json')) || []; l.push(z); await env.DB.put(k, JSON.stringify(l));
   if (print) await queuePrint(env, 'z', zDayTicket(z));
   await logEvent(env, { k: 'shift', by: who, text: `🧾 Z-звіт за ${day}: ${z.total} грн · чеків ${z.checks}` });
+  try { const t = await (await import('./tasks.js')).taskSumText(env, day); if (t) await notify(env, t); } catch {} // 📋 підсумок плану на день
   return z;
 }
 // 🖨 X-звіт: друк поточного Z за день без закриття (запис z: не створюється)

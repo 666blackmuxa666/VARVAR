@@ -89,6 +89,7 @@ async function venueSum(env, from, to) {
   tot.voids = R.voids.length; tot.voidSum = R.voids.reduce((a, v) => a + (v.sum || 0), 0);
   tot.removed = R.removed.length; tot.removedSum = R.removed.reduce((a, v) => a + (v.sum || 0), 0);
   tot.exp = R.exp.reduce((a, v) => a + (v.sum || 0), 0);
+  { const T = await import('./tasks.js'); tot.plan = { n: 0, ok: 0 }; for (let d = from, i = 0; d <= to && i < 62; d = new Date(Date.parse(d + 'T12:00:00Z') + 86400e3).toISOString().slice(0, 10), i++) { const x = await T.taskSum(env, d); tot.plan.n += x.n; tot.plan.ok += x.ok; } } // 📋 виконання плану
   // зараз
   const open = await openTables(env), att = await getAtt(env, today.slice(0, 7)), onShift = Object.entries(att[today] || {}).filter(([, x]) => x && !x.out && x.ok !== -1).map(([n]) => n);
   const pr = await printStatus(env).catch(() => ({})), gin = await env.DB.get('gin', 'json') || {};

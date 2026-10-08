@@ -819,3 +819,8 @@ body.cour #feed, body.cour .feed-btn { display: none !important; }
 .qr-grid a { display: grid; gap: 4px; text-align: center; color: var(--text); text-decoration: none; font-size: 12px; } .qr-grid img { width: 100%; aspect-ratio: 1; border-radius: 8px; background: #fff; image-rendering: pixelated; }
 /* ✅ підтверджене сповіщення — тихе, не відволікає */
 .ev.done{background:var(--card)!important;border:0!important;border-left:4px solid #8e8e9333!important;box-shadow:none!important;animation:none!important;outline:none!important;opacity:.8}.ev.done .top b{color:inherit!important;font-size:inherit!important}
+/* 📋 план на день */
+.tk-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #ffffff10}.tk-row:last-child{border-bottom:0}
+.tk-row .tk-n{flex:1;min-width:0;word-break:break-word}.tk-row .tk-n small{display:block;font-size:12px;margin-top:2px}
+.tk-row .tk-b{display:flex;gap:4px;flex-shrink:0}.tk-row.done .tk-n{opacity:.6}.tk-row.imp .tk-n{color:#ffd60a}
+.tk-days{display:flex;flex-wrap:wrap;gap:6px}.tk-days label,.tk-chk{display:flex;align-items:center;gap:5px;font-size:14px}.tk-days input,.tk-chk input{width:auto}
