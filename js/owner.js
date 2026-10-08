@@ -10,6 +10,20 @@
   const S = { token: store.get('token', ''), tab: store.get('tab', 'home'), per: 'today', from: '', to: '', me: null, venues: [], seen: {}, sum: null, prev: null };
   const COLORS = ['#f2c14e', '#0a84ff', '#30d158', '#bf5af2', '#ff9f0a', '#64d2ff', '#ff375f', '#a2845e'];
   const ST = { active: '✅ активний', trial: '🧪 пробний', off: '⛔ вимкнено' };
+  // 🖌 стиль кабінету: «як у касі» (останній стиль каси на цьому пристрої) / стара / набір / код
+  const skMode = () => store.get('skin', 'follow');
+  function skApply() {
+    const r = document.documentElement.style; for (const v of ['--accent', '--bg', '--bg2', '--card', '--card2', '--muted', '--font', '--r', '--r2']) r.removeProperty(v);
+    const m = skMode(), V = window.VVSkin; if (!V) return;
+    V.apply(m === 'old' ? null : m === 'follow' ? V.full(V.last()) : V.full(m.startsWith?.('pre:') ? V.PRE[m.slice(4)]?.[2] : store.get('sk', null)), false);
+  }
+  skApply();
+  function skinCard() {
+    const m = skMode(), V = window.VVSkin; if (!V) return '';
+    const b = (v, t, sub) => `<button class="btn sm${m === v ? ' primary' : ''}" data-a="skin" data-v="${v}" title="${esc(sub)}">${t}</button>`;
+    return `<h2>🖌 Стиль кабінету</h2><div class="card"><div class="muted" style="font-size:13px;margin-bottom:10px">«Як у касі» — той самий стиль, що в касі на цьому пристрої. Свій стиль налаштовується в касі: Налаштування → Вигляд → 🎨 Конструктор (або вставте код).</div>
+      <div class="btnrow">${b('follow', '🔗 Як у касі', 'стиль каси на цьому пристрої')}${b('old', '↩️ Стара', 'як було')}${Object.entries(V.PRE).map(([k, [t, sub]]) => b('pre:' + k, t, sub)).join('')}${m === 'own' ? b('own', '✏️ Свій', 'з коду') : ''}<button class="btn sm ghost" data-a="skinCode">📥 Вставити код</button></div></div>`;
+  }
 
   function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 3000); }
   async function api(op, b = {}) {
@@ -152,7 +166,7 @@
       <div class="muted">${esc(v.city || '')}${v.city ? ' · ' : ''}адреса: <b>${esc(v.id)}</b>${S.seen[v.id] ? ` · заходили ${new Date(S.seen[v.id]).toLocaleDateString('uk-UA')}` : ''}</div>
       <div class="btnrow"><button class="btn primary sm" data-a="vcfgOpen" data-v="${v.id}">⚙️ Налаштувати</button><button class="btn sm" data-a="enter" data-v="${v.id}">Увійти в касу →</button><a class="btn sm ghost" href="${esc(siteOf(v.id, 'about.html'))}" target="_blank">🌐 Сайт</a></div>
       <div class="kv"><span>🔗 Каса для персоналу<br><small class="muted">${esc(absOf(v.id, 'pos.html'))}</small></span><button class="btn sm" data-a="copy" data-u="${esc(absOf(v.id, 'pos.html'))}">Копіювати</button></div><div class="kv"><span>🌐 Сайт для гостей<br><small class="muted">${esc(absOf(v.id, 'about.html'))}</small></span><button class="btn sm" data-a="copy" data-u="${esc(absOf(v.id, 'about.html'))}">Копіювати</button></div></div>`).join('') || '<div class="muted">Закладів ще немає</div>'}</div>
-      <h2>🔐 Акаунт</h2><div class="card"><div class="kv"><span>${esc(S.me.name)}<br><small class="muted">${esc(S.me.email)}</small></span><button class="btn sm" data-a="pass">Змінити пароль</button></div></div>`;
+      <h2>🔐 Акаунт</h2><div class="card"><div class="kv"><span>${esc(S.me.name)}<br><small class="muted">${esc(S.me.email)}</small></span><button class="btn sm" data-a="pass">Змінити пароль</button></div></div>${skinCard()}`;
   }
   const absOf = (id, page) => location.origin + siteOf(id, page) + (id === 'varvar' && page === 'pos.html' ? '?venue=varvar' : ''); // VARVAR — явно, щоб пристрій «забув» інший заклад // повна адреса для персоналу / гостей
   const siteOf = (id, page) => location.pathname.replace(/owner\.html$/, '') + page + (id === 'varvar' ? '' : '?venue=' + id);
@@ -226,6 +240,8 @@
     if (a === 'vinfo') return vinfo(d.v);
     if (a === 'askEx') { e.preventDefault(); const f = $('#askF'); f.q.value = d.q; f.requestSubmit(); return; }
     if (a === 'vdemo') { el.disabled = true; toast('🎬 Створюю демо…'); try { const r = await VC.demo('cafe'); await start(); VC.open(r.venue.id, 'start'); toast('🎬 Демо готове — покажіть клієнту касу й сайт'); } catch (x) { toast('⚠️ ' + x.message); } el.disabled = false; return; }
+    if (a === 'skin') { store.set('skin', d.v); skApply(); return render(); }
+    if (a === 'skinCode') return modal('📥 Код стилю', '<textarea name="c" rows="4" placeholder="VARVAR-STYLE {…}" required style="width:100%"></textarea>', async f => { try { const K = window.VVSkin.parse(f.c.value); if (!K) throw 0; store.set('sk', K); store.set('skin', 'own'); skApply(); render(); toast('🖌 Стиль застосовано'); } catch { toast('⚠️ Не вдалося прочитати код'); } });
     if (a === 'vcfgOpen') { window.scrollTo(0, 0); return VC.open(d.v); }
     if (a === 'copy') { try { await navigator.clipboard.writeText(d.u); toast('🔗 Скопійовано — надішліть персоналу'); } catch { prompt('Скопіюйте посилання:', d.u); } return; }
     if (a === 'pass') return modal('🔐 Новий пароль', '<input name="p" type="password" placeholder="Від 8 символів" minlength="8" required autocomplete="new-password">', async f => { await api('pass', { pass: f.p.value }); toast('✅ Пароль змінено — увійдіть знову'); logout(true); });
