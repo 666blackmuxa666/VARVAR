@@ -258,7 +258,7 @@ export async function meData(env, tok) {
   const ph = await meSess(env, tok); if (!ph) return null;
   const c = (await getCli(env, ph)) || { n: 0, sum: 0, bal: 0 };
   // через bookList: він сканує місяці дат + запас назад (старі записи), тож перенесені броні теж знайдуться
-  const books = (await bookList(env, dayKey(), addDays(dayKey(), 365), true)).filter(b => b.phone === ph).map(b => ({ id: b.id, date: b.date, time: b.time, people: b.people, st: b.st, kind: b.kind, pre: b.pre || [] }));
+  const books = (await bookList(env, dayKey(), addDays(dayKey(), 365), true)).filter(b => b.phone === ph && !['no', 'cancel', 'noshow'].includes(b.st)).map(b => ({ id: b.id, date: b.date, time: b.time, people: b.people, st: b.st, kind: b.kind, pre: b.pre || [] }));
   // історія: закриті чеки з цим телефоном за 90 днів
   const days = Array.from({ length: 90 }, (_, i) => new Date(Date.now() - i * 864e5).toLocaleDateString('sv-SE', { timeZone: TZ }));
   const cl = await env.DB.getMany(days.map(d => 'closed:' + d), 'json'), hist = [];

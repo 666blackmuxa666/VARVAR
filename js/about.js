@@ -117,11 +117,12 @@
   $('#modal').addEventListener('click', e => { if (e.target.closest('[data-x]')) $('#modal').hidden = true; });
   async function me() {
     const tok = store.get('gtok', '');
-    if (tok) { const { status, data } = await api('/api/me', null, tok).catch(() => ({ status: 0 })); if (status === 200) return meShow(data, tok); store.set('gtok', ''); }
+    if (!tok) { const pn = store.get('gtokn', null); if (pn && Date.now() - pn.t < 300e3) { const r = await api('/api/me/poll?n=' + pn.n).catch(() => null); if (r?.data?.token) { store.set('gtok', r.data.token); store.set('gtokn', null); return me(); } } } // 📱 iOS міг вивантажити сторінку, поки гість був у Telegram
+    if (tok) { const { status, data } = await api('/api/me', null, tok).catch(() => ({ status: 0 })); if (status === 200) return meShow(data, tok); if (status === 401) store.set('gtok', ''); else return modal(`<h2>👤 ${t('meT')}</h2><p class="muted">⚠️ ${t('err')}</p>`); } // вихід лише якщо сесія справді завершилась
     modal(`<h2>👤 ${t('meT')}</h2><p class="muted">${t('meIn')}</p><button class="btn" id="tgIn">✈️ ${t('meBtn')}</button><div class="msg" id="meMsg"></div>`);
     $('#tgIn').onclick = async () => {
       const { data } = await api('/api/me/start'); if (!data.bot) return ($('#meMsg').textContent = t('err'));
-      window.open(`https://t.me/${data.bot}?start=login_${data.nonce}`, '_blank'); $('#meMsg').textContent = t('meWait');
+      store.set('gtokn', { n: data.nonce, t: Date.now() }); window.open(`https://t.me/${data.bot}?start=login_${data.nonce}`, '_blank'); $('#meMsg').textContent = t('meWait');
       for (let i = 0; i < 100 && !$('#modal').hidden; i++) { await new Promise(r => setTimeout(r, 3000)); const r = await api('/api/me/poll?n=' + data.nonce).catch(() => null); if (r?.data?.token) { store.set('gtok', r.data.token); return me(); } if (r?.data?.error) break; }
     };
   }

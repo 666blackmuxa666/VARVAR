@@ -434,6 +434,7 @@
   const uah = n => Math.round(n || 0).toLocaleString('uk-UA') + ' ₴';
   async function meOpen() {
     $('#meModal').hidden = false; const b = $('#meBody'); b.innerHTML = '<p class="muted">…</p>';
+    if (!gtok()) { try { const pn = JSON.parse(localStorage.getItem(gk + 'n') || 'null'); if (pn && Date.now() - pn.t < 300e3) { const r = await meApi('/api/me/poll?n=' + pn.n).catch(() => null); if (r?.data?.token) { gtok(r.data.token); localStorage.removeItem(gk + 'n'); } } } catch {} } // 📱 iOS міг вивантажити сторінку, поки гість був у Telegram — забираємо вхід тут
     if (gtok()) { const { status, data: d } = await meApi('/api/me').catch(() => ({})); if (status === 200) {
       const dd = x => `${x.slice(8)}.${x.slice(5, 7)}`;
       b.innerHTML = `<p><b>${esc(d.name || '')}</b> <span class="muted">${esc(d.phone.replace(/^380(\d{2})(\d{3})(\d{2})(\d{2})$/, '+380 $1 $2 $3 $4'))}</span></p>
@@ -442,12 +443,12 @@
         ${d.books.length ? `<h3>📅 Броні</h3><div class="me-l">${d.books.map(x => `<div><b>${dd(x.date)} ${esc(x.time)}</b> · ${x.people} 👤</div>`).join('')}</div>` : ''}
         <h3>🧾 Історія</h3><div class="me-l">${d.hist.slice(0, 10).map(h => `<div><b>${dd(h.d)} ${esc(h.at)}</b> · ${uah(h.sum)}<br><small class="muted">${h.dishes.map(([n, q]) => `${q}× ${esc(n)}`).join(', ')}</small></div>`).join('') || '<div class="muted">Поки порожньо</div>'}</div>
         <button class="btn ghost" id="meOut" style="margin-top:12px;width:100%">Вийти</button>`; return; }
-      gtok(''); }
+      if (status === 401) gtok(''); else if (status !== 200) { b.innerHTML = '<p class="muted">⚠️ Немає звʼязку — спробуйте ще раз</p>'; return; } } // вихід лише якщо сесія справді завершилась, а не через зникнення мережі
     b.innerHTML = `<p class="muted">Бонуси, сертифікати й історія замовлень — у вашому кабінеті. Вхід і реєстрація — через Telegram, за номером телефону.</p><button class="btn" id="meTg" style="width:100%">✈️ Увійти через Telegram</button><p class="muted" id="meMsg"></p>`;
   }
   async function meLogin() {
     const { data } = await meApi('/api/me/start').catch(() => ({ data: {} })); if (!data.bot) return ($('#meMsg').textContent = '⚠️ Спробуйте пізніше');
-    window.open(`https://t.me/${data.bot}?start=login_${data.nonce}`, '_blank'); $('#meMsg').textContent = '⏳ Підтвердіть вхід у Telegram і поверніться сюди';
+    try { localStorage.setItem(gk + 'n', JSON.stringify({ n: data.nonce, t: Date.now() })); } catch {} window.open(`https://t.me/${data.bot}?start=login_${data.nonce}`, '_blank'); $('#meMsg').textContent = '⏳ Підтвердіть вхід у Telegram і поверніться сюди';
     for (let i = 0; i < 45 && !$('#meModal').hidden; i++) { await new Promise(r => setTimeout(r, 4000)); const r = await meApi('/api/me/poll?n=' + data.nonce).catch(() => null); if (r?.data?.token) { gtok(r.data.token); return meOpen(); } if (r?.data?.error) break; }
   }
   async function meOut() { await meApi('/api/me/logout', {}).catch(() => {}); gtok(''); $('#meModal').hidden = true; }
