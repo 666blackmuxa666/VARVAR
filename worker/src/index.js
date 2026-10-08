@@ -100,6 +100,7 @@ export async function handle(req, env) {
       }
       if (url.pathname.startsWith('/api/print/')) return printApi(req, env, url);
       // програма друку і логотип через простий HTTP (Windows 7 не вміє TLS 1.2)
+      if (/^\/snd\/[a-z0-9-]+\.mp3$/.test(url.pathname)) { const r = await fetch('https://666blackmuxa666.github.io/VARVAR' + url.pathname, { cf: { cacheTtl: 86400 } }); return new Response(r.body, { status: r.status, headers: { 'content-type': 'audio/mpeg', 'cache-control': 'public, max-age=86400', 'access-control-allow-origin': '*' } }); } // 🔊 звуки кухні
       { const qr = await qrRoute(env, url); if (qr) return qr; } // 🔳 QR столів — генеруються сервером
       const pf = url.pathname.match(/^\/print\/(agent\.ps1|[a-z0-9-]+\.png)$/);
       if (pf) {

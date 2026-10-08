@@ -990,6 +990,12 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       case "kGo":
         kitchenStart();
         break;
+      case "kSnd":
+        kSndPick();
+        break;
+      case "kSndTry":
+        kPlay(el.dataset.k);
+        break;
       case "pk": {
         const cur = packQ(t);
         if (cur + +el.dataset.d >= 0) S.packAdj[t] = (S.packAdj[t] || 0) + +el.dataset.d;
@@ -2876,7 +2882,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const ids = list.filter((e) => !e.done).map((e) => e.id), canc = list.flatMap((e) => e.items.filter((x) => x.cancel || x.canc).map((x) => e.id + x.n + (x.canc || 0)));
     if (S.kqSeen) {
       const nw = list.filter((e) => !e.done && !S.kqSeen.has(e.id));
-      if (nw.length) siren(nw.some((e) => e.urgent));
+      if (nw.length) kPlay(kSndCur(), nw.some((e) => e.urgent));
       else if (canc.some((c) => !S.kqCanc.has(c))) beep();
     }
     S.kqSeen = new Set(list.map((e) => e.id));
@@ -2935,6 +2941,60 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     }
   }
   const beep = () => tone([440, 330], 0.2, 0.4);
+  const KSND = {
+    alarm: ["\u{1F6A8} \u0421\u0438\u0433\u043D\u0430\u043B\u0456\u0437\u0430\u0446\u0456\u044F"],
+    siren: ["\u{1F4E2} \u0421\u0438\u0440\u0435\u043D\u0430", () => ["square", [...Array(16)].map((_, i) => [i % 2 ? 1200 : 700, i * 0.25, 0.25])]],
+    bell: ["\u{1F514} \u0414\u0437\u0432\u0456\u043D\u043E\u0447\u043E\u043A", () => ["sine", [0, 1, 2, 3].flatMap((r) => [1047, 1319, 1568, 2093].map((f, i) => [f, r + i * 0.18, 0.5]))]],
+    phone: ["\u260E\uFE0F \u0421\u0442\u0430\u0440\u0438\u0439 \u0442\u0435\u043B\u0435\u0444\u043E\u043D", () => ["square", [0, 1, 2, 3].flatMap((r) => [...Array(12)].map((_, i) => [i % 2 ? 1600 : 1300, r + i * 0.05, 0.05]))]],
+    fanfare: ["\u{1F3BA} \u0424\u0430\u043D\u0444\u0430\u0440\u0438", () => ["triangle", [[523, 0, 0.2], [659, 0.2, 0.2], [784, 0.4, 0.2], [1047, 0.6, 0.6], [784, 1.3, 0.2], [1047, 1.5, 0.9], [523, 2.6, 0.2], [659, 2.8, 0.2], [784, 3, 0.2], [1047, 3.2, 0.8]]]],
+    beep: ["\u{1F4DF} \u0411\u0456\u043F-\u0431\u0456\u043F", () => ["square", [...Array(8)].map((_, i) => [1760, i * 0.5, 0.22])]],
+    duck: ["\u{1F986} \u041A\u0430\u0447\u043A\u0430 (\u0406\u0433\u043E\u0440)", null, "snd/duck.mp3"],
+    marimba: ["\u{1F3B5} \u041C\u0435\u043B\u043E\u0434\u0456\u044F", () => ["sine", [659, 784, 880, 784, 659, 587, 523, 587, 659, 784, 659, 523, 587, 523].map((f, i) => [f, i * 0.28, 0.26])]]
+  };
+  const kBufs = {};
+  async function kPlay(k, urgent) {
+    var _a2;
+    const D = KSND[k] || KSND.alarm;
+    if (!D[1] && !D[2]) return siren(urgent);
+    try {
+      actx || (actx = new (window.AudioContext || window.webkitAudioContext)());
+      (_a2 = actx.resume) == null ? void 0 : _a2.call(actx);
+      if (D[2]) {
+        kBufs[k] || (kBufs[k] = await actx.decodeAudioData(await (await fetch(D[2])).arrayBuffer()));
+        const src = actx.createBufferSource();
+        src.buffer = kBufs[k];
+        src.connect(actx.destination);
+        src.start();
+        return;
+      }
+      const [type, notes] = D[1](), t0 = actx.currentTime + 0.05;
+      for (const [f, st, du] of notes) {
+        const o = actx.createOscillator(), g = actx.createGain();
+        o.type = type;
+        o.frequency.value = f;
+        g.gain.setValueAtTime(1e-4, t0 + st);
+        g.gain.linearRampToValueAtTime(0.6, t0 + st + 0.01);
+        g.gain.setValueAtTime(0.6, t0 + st + du * 0.8);
+        g.gain.linearRampToValueAtTime(1e-4, t0 + st + du);
+        o.connect(g).connect(actx.destination);
+        o.start(t0 + st);
+        o.stop(t0 + st + du + 0.02);
+      }
+    } catch (e) {
+      siren(urgent);
+    }
+  }
+  const kSndCur = () => store.get("ksnd", "alarm");
+  function kSndPick() {
+    const cur = kSndCur();
+    modal({ title: "\u{1F514} \u0417\u0432\u0443\u043A \u043D\u043E\u0432\u043E\u0433\u043E \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", body: `<div class="form">${Object.entries(KSND).map(([k, [l]]) => `<div class="kv"><span>${l}${k === cur ? " \u2705" : ""}</span><span style="display:flex;gap:6px"><button class="btn sm" data-a="kSndTry" data-k="${k}">\u25B6</button><button class="btn sm primary" data-mi-v="${k}">\u041E\u0431\u0440\u0430\u0442\u0438</button></span></div>`).join("")}</div>`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: "", cls: "" }] }).then((k) => {
+      if (k && KSND[k]) {
+        store.set("ksnd", k);
+        toast("\u{1F514} " + KSND[k][0]);
+        kPlay(k);
+      }
+    });
+  }
   let wakeLock;
   async function kitchenStart() {
     var _a2, _b, _c, _d;
@@ -2968,7 +3028,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         ${(e.msgs || []).map((x) => `<div class="kmsg">\u{1F4E8} ${x.at} ${esc(x.text)}</div>`).join("")}
         <div class="kb">${e.start ? "" : `<button class="btn" data-a="kStart" data-id="${e.id}">\u{1F525} \u0413\u043E\u0442\u0443\u044E</button>`}<button class="btn" data-a="kMsg" data-id="${e.id}">\u{1F4AC}</button><button class="btn green" data-a="kAll" data-id="${e.id}">\u2705 \u0412\u0421\u0415 \u0413\u041E\u0422\u041E\u0412\u041E</button></div></div>`;
     };
-    return `<div class="khead"><h1>\u{1F468}\u200D\u{1F373} \u0427\u0435\u0440\u0433\u0430 <span class="muted">${act0.length}</span></h1>${isCook() ? `<div class="stat tipstat">\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456<b class="money">${money(((_a2 = S.myTip) == null ? void 0 : _a2.sum) || 0)}</b></div>` : ""}<button class="btn" data-a="skKStock">\u{1F4E6} \u0421\u043A\u043B\u0430\u0434</button><button class="btn" data-a="view" data-v="stop">\u26D4 \u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442</button></div>
+    return `<div class="khead"><h1>\u{1F468}\u200D\u{1F373} \u0427\u0435\u0440\u0433\u0430 <span class="muted">${act0.length}</span></h1>${isCook() ? `<div class="stat tipstat">\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456<b class="money">${money(((_a2 = S.myTip) == null ? void 0 : _a2.sum) || 0)}</b></div>` : ""}<button class="btn" data-a="kSnd">\u{1F514} \u0417\u0432\u0443\u043A</button><button class="btn" data-a="skKStock">\u{1F4E6} \u0421\u043A\u043B\u0430\u0434</button><button class="btn" data-a="view" data-v="stop">\u26D4 \u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442</button></div>
       <div class="kq f${S.kFont}">${act0.length ? act0.map(card).join("") : '<div class="kempty">\u2705 \u0427\u0435\u0440\u0433\u0430 \u043F\u043E\u0440\u043E\u0436\u043D\u044F</div>'}</div>
       ${done.length ? `<h3 class="muted" style="margin:18px 0 8px">\u041E\u0441\u0442\u0430\u043D\u043D\u0456 \u0433\u043E\u0442\u043E\u0432\u0456</h3><div class="kdone">${done.map((e) => `<div class="kd">\u0421\u0442\u0456\u043B ${tn(e.t)} \xB7 ${e.items.filter((x) => !x.cancel).map((x) => `${x.q}\xD7 ${esc(x.n)}`).join(", ")}${e.cancelled ? " \xB7 \u274C \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E" : ` \xB7 ${Math.round((e.doneAt - e.ts) / 6e4)} \u0445\u0432`} <button class="btn sm" data-a="kUndo" data-id="${e.id}">\u21A9\uFE0F</button></div>`).join("")}</div>` : ""}${isAdmin() ? goCtlHTML() : ""}`;
   }

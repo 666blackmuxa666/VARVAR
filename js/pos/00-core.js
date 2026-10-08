@@ -394,6 +394,8 @@
         if (v === 'own') v = await ask('Повідомлення в зал', 'Напр.: замінимо фрі на пюре?'); if (v) await act('kMsg', { id: el.dataset.id, text: v }, '📨 Надіслано'); loadKq(); break; }
       case 'kFont': S.kFont = (S.kFont % 3) + 1; store.set('kfont', S.kFont); renderMain(); break;
       case 'kGo': kitchenStart(); break;
+      case 'kSnd': kSndPick(); break;
+      case 'kSndTry': kPlay(el.dataset.k); break;
       case 'pk': { const cur = packQ(t); if (cur + +el.dataset.d >= 0) S.packAdj[t] = (S.packAdj[t] || 0) + +el.dataset.d; renderSheet(); break; }
       case 'photos': S.photos = !S.photos; store.set('photos', S.photos); renderSheet(); break;
       case 'zDay': zDay(); break;
