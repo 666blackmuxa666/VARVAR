@@ -100,11 +100,19 @@
       document.body.append(el); setTimeout(() => el.querySelector('#pkQ')?.focus(), 60);
     });
   }
-  async function skJournal() {
-    const r = await act('skJournal', {}); if (!r) return;
-    const T = { in: '🧾', add: '➕', off: '🗑', mv: '⇄', prod: '🍳', cnt: '📝' };
-    const rows = [...r.list].reverse().map(x => `<div class="kv"><span>${x.at} ${T[x.t] || '•'} <b>${esc(x.n)}</b> ${x.q > 0 ? '+' : ''}${fq(x.q, x.u)} <span class="muted">· ${WHN[x.wh] || ''}${x.note ? ' · ' + esc(x.note) : ''}${x.by ? ' · ' + esc(x.by) : ''}</span></span>${isAdmin() && x.sum ? `<b class="money">${money(x.sum)}</b>` : ''}</div>`).join('');
-    await modal({ title: '📜 Рух складу за сьогодні', body: `<div class="sk-jr">${rows || '<div class="muted">Сьогодні рухів ще не було (продажі за техкартами — у «📊 Плюси / мінуси»)</div>'}</div>`, buttons: [{ label: 'Закрити', val: null }] });
+  async function skJournal(day) {
+    day ||= todayK(); const r = await act('skJournal', { day }); if (!r) return;
+    const T = { in: '🧾', add: '➕', off: '🗑', mv: '⇄', prod: '🍳', cnt: '📝' }, sh = n => { const d = new Date(day + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+    const NOTE = { in: 'накладна', add: 'додано вручну', off: 'списано', mv: 'переміщення', prod: 'заготовка', cnt: 'інвентаризація' };
+    const can = x => ['add', 'off'].includes(x.t) && !x.undo && (isAdmin() || (x.by === S.me?.name && day === todayK()));
+    const rows = r.list.map((x, i) => [x, i]).reverse().map(([x, i]) => `<div class="kv${x.undo ? ' sk-undo' : ''}"><span>${x.at} ${T[x.t] || '•'} <b>${esc(x.n)}</b> ${x.q > 0 ? '+' : ''}${fq(x.q, x.u)} <span class="muted">· ${NOTE[x.t] || ''} · ${WHN[x.wh] || ''}${x.note ? ' · ' + esc(x.note) : ''}${x.by ? ' · ' + esc(x.by) : ''}${x.undo ? ` · ↩️ скасовано ${esc(x.undo.by)} ${x.undo.at}` : ''}</span></span><span class="kv-r">${isAdmin() && x.sum ? `<b class="money">${money(x.sum)}</b>` : ''}${can(x) ? `<button class="btn sm ghost" data-mi-v="u${i}" title="Скасувати">↩️</button>` : ''}</span></div>`).join('');
+    const v = await modal({ title: '📜 Рух складу', body: `<div class="zp-top"><button class="btn sm" data-mi-v="d${sh(-1)}">◀</button><b>${day === todayK() ? 'Сьогодні' : day.split('-').reverse().join('.')}</b>${day < todayK() ? `<button class="btn sm" data-mi-v="d${sh(1)}">▶</button>` : '<span></span>'}</div>
+      <div class="muted" style="font-size:12px;margin-bottom:6px">🧾 накладна (з «видалено» / «↩️ повернуто» — коли накладну видалили або відновили) · ➕ додано · 🗑 списано · ⇄ переміщення · 🍳 заготовка · 📝 інвентаризація. Продажі за техкартами — у «📊 Плюси / мінуси».</div>
+      <div class="sk-jr">${rows || '<div class="muted">Рухів за цей день немає</div>'}</div>`, buttons: [{ label: 'Закрити', val: null }] });
+    if (!v) return;
+    if (v[0] === 'd') return skJournal(v.slice(1));
+    if (v[0] === 'u' && await confirmBox('↩️ Скасувати цей рух?', 'Кількість повернеться на склад як було') && await act('skJrUndo', { day, i: +v.slice(1) }, '↩️ Скасовано')) { S.data.sk = null; loadView(); }
+    return skJournal(day);
   }
   // 🛒 закупівля
   function skBuyHTML() {

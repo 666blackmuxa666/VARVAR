@@ -97,6 +97,13 @@ async function apiTests() {
     const l = (await posOk(A, 'taskList')).list; must(l.find(x => x.id === t.id)?.st === 'done', 'не відмічено');
     await posOk(A, 'taskDel', { id: t.id }); return ck ? 'кухар ✅' : 'адмін ✅';
   });
+  await step('📜 склад: ручне додавання → ↩️ скасувати → залишок як був', async () => {
+    const d = await posOk(A, 'skData'), x = (d.ing || []).find(i => !i.off); if (!x) return 'немає продуктів';
+    const st0 = (y => (y.st?.k || 0) + (y.st?.b || 0))(x); await posOk(A, 'skAdj', { id: x.id, wh: 'k', q: 2, note: 'QA' });
+    const j = (await posOk(A, 'skJournal')).list, i = j.map((r, n) => [r, n]).reverse().find(([r]) => r.id === x.id && r.t === 'add' && !r.undo)[1];
+    await posOk(A, 'skJrUndo', { i }); must((await pos(A, 'skJrUndo', { i })).status === 400, 'скасовано двічі');
+    const y = (await posOk(A, 'skData')).ing.find(i => i.id === x.id); must(Math.abs((y.st?.k || 0) + (y.st?.b || 0) - st0) < 1e-6, 'залишок не повернувся'); return x.n;
+  });
   await step('💸 витрата за минулий день: адмін — так, офіціант — ні', async () => {
     const y = new Date(Date.now() - 2 * 86400e3).toISOString().slice(0, 10);
     if (W) { const r = await pos(W, 'expense', { sum: 1, note: 'QA', src: 'cash', day: y }); must(r.status === 403, 'офіціант зміг: ' + r.status); }

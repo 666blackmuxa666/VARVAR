@@ -824,3 +824,4 @@ body.cour #feed, body.cour .feed-btn { display: none !important; }
 .tk-row .tk-n{flex:1;min-width:0;word-break:break-word}.tk-row .tk-n small{display:block;font-size:12px;margin-top:2px}
 .tk-row .tk-b{display:flex;gap:4px;flex-shrink:0}.tk-row.done .tk-n{opacity:.6}.tk-row.imp .tk-n{color:#ffd60a}
 .tk-days{display:flex;flex-wrap:wrap;gap:6px}.tk-days label,.tk-chk{display:flex;align-items:center;gap:5px;font-size:14px}.tk-days input,.tk-chk input{width:auto}
+.sk-undo>span:first-child{text-decoration:line-through;opacity:.55}

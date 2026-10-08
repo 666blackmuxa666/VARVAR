@@ -99,6 +99,18 @@ export async function purchaseList(env) {
   return Object.entries(by).map(([sup, items]) => ({ sup, items, sum: items.reduce((a, i) => a + i.sum, 0) }));
 }
 export const purchaseText = list => list.length ? list.map(g => `<b>${esc(g.sup)}</b>\n${g.items.map(i => `• ${esc(i.n)} — ${fq(i.need, i.u)}${i.price ? ` (~${money(i.sum)})` : ''}`).join('\n')}`).join('\n\n') : '✅ Усього вистачає (нічого не нижче мінімуму)';
+// ↩️ скасувати ручний рух (➕ додано / 🗑 списано): залишок повертається, рядок у журналі закреслено
+export async function jrUndo(env, day, i, me) {
+  day = isDay(day) && day <= dayKey() ? day : dayKey(); const k = 'stk:' + day;
+  return lk(env, async () => {
+    const jl = (await env.DB.get(k, 'json')) || [], y = jl[+i]; if (!y || !['add', 'off'].includes(y.t)) return { error: 'Скасувати можна лише ручне додавання чи списання' };
+    if (y.undo) return { error: 'Вже скасовано' }; if (me.role !== 'admin' && (y.by !== me.name || day !== dayKey())) return { error: 'Скасувати може адмін або автор — того ж дня' };
+    const l = await getIng(env), x = l.find(z => z.id === y.id); if (!x) return { error: 'Продукт не знайдено' };
+    x.st[y.wh] = r3((x.st[y.wh] || 0) - y.q); y.undo = { by: me.name, at: hhmm() };
+    await env.DB.put(k, JSON.stringify(jl)); await putIng(env, l);
+    await jr(env, [row(y.q > 0 ? 'off' : 'add', x, y.wh, -y.q, me.name, `↩️ скасовано: ${y.at} ${y.note || ''}`.trim())]); return { ok: true };
+  });
+}
 export async function journal(env, day = dayKey()) { return (await env.DB.get('stk:' + (isDay(day) ? day : dayKey()), 'json')) || []; }
 
 // ---------- техкарти й собівартість ----------
@@ -414,6 +426,7 @@ export async function stockApi(b, env, me, ai) {
     case 'skAdj': { if (cook && !(+b.q < 0)) return bad('Кухар може лише списувати'); const r = await adjust(env, b, who); if (r?.x && +b.q < 0 && !admin) await notify(env, `🗑 Списання (${esc(who)}): ${esc(r.x.n)} ${fq(-b.q, r.x.u)} — ${esc(b.note || '')}`).catch(() => {}); return R(r); }
     case 'skMove': return R(await transfer(env, b, who));
     case 'skBuy': { const list = await purchaseList(env); return ok({ list, text: purchaseText(list).replace(/<\/?b>/g, '') }); }
+    case 'skJrUndo': return R(await jrUndo(env, b.day, b.i, { name: who, role: admin ? 'admin' : cook ? 'cook' : 'waiter' }));
     case 'skJournal': { const l = await journal(env, b.day); return ok({ list: admin ? l : l.map(({ sum, ...x }) => x) }); }
     // техкарти
     case 'skCost': return ok({ list: await costList(env), cards: await getCards(env), cfg: await getCfg(env) });

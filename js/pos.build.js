@@ -4498,12 +4498,31 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       }, 60);
     });
   }
-  async function skJournal() {
-    const r = await act("skJournal", {});
+  async function skJournal(day) {
+    day || (day = todayK());
+    const r = await act("skJournal", { day });
     if (!r) return;
-    const T = { in: "\u{1F9FE}", add: "\u2795", off: "\u{1F5D1}", mv: "\u21C4", prod: "\u{1F373}", cnt: "\u{1F4DD}" };
-    const rows = [...r.list].reverse().map((x) => `<div class="kv"><span>${x.at} ${T[x.t] || "\u2022"} <b>${esc(x.n)}</b> ${x.q > 0 ? "+" : ""}${fq(x.q, x.u)} <span class="muted">\xB7 ${WHN[x.wh] || ""}${x.note ? " \xB7 " + esc(x.note) : ""}${x.by ? " \xB7 " + esc(x.by) : ""}</span></span>${isAdmin() && x.sum ? `<b class="money">${money(x.sum)}</b>` : ""}</div>`).join("");
-    await modal({ title: "\u{1F4DC} \u0420\u0443\u0445 \u0441\u043A\u043B\u0430\u0434\u0443 \u0437\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456", body: `<div class="sk-jr">${rows || '<div class="muted">\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0440\u0443\u0445\u0456\u0432 \u0449\u0435 \u043D\u0435 \u0431\u0443\u043B\u043E (\u043F\u0440\u043E\u0434\u0430\u0436\u0456 \u0437\u0430 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0430\u043C\u0438 \u2014 \u0443 \xAB\u{1F4CA} \u041F\u043B\u044E\u0441\u0438 / \u043C\u0456\u043D\u0443\u0441\u0438\xBB)</div>'}</div>`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+    const T = { in: "\u{1F9FE}", add: "\u2795", off: "\u{1F5D1}", mv: "\u21C4", prod: "\u{1F373}", cnt: "\u{1F4DD}" }, sh = (n) => {
+      const d = /* @__PURE__ */ new Date(day + "T12:00:00Z");
+      d.setUTCDate(d.getUTCDate() + n);
+      return d.toISOString().slice(0, 10);
+    };
+    const NOTE = { in: "\u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0430", add: "\u0434\u043E\u0434\u0430\u043D\u043E \u0432\u0440\u0443\u0447\u043D\u0443", off: "\u0441\u043F\u0438\u0441\u0430\u043D\u043E", mv: "\u043F\u0435\u0440\u0435\u043C\u0456\u0449\u0435\u043D\u043D\u044F", prod: "\u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430", cnt: "\u0456\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u044F" };
+    const can = (x) => {
+      var _a2;
+      return ["add", "off"].includes(x.t) && !x.undo && (isAdmin() || x.by === ((_a2 = S.me) == null ? void 0 : _a2.name) && day === todayK());
+    };
+    const rows = r.list.map((x, i) => [x, i]).reverse().map(([x, i]) => `<div class="kv${x.undo ? " sk-undo" : ""}"><span>${x.at} ${T[x.t] || "\u2022"} <b>${esc(x.n)}</b> ${x.q > 0 ? "+" : ""}${fq(x.q, x.u)} <span class="muted">\xB7 ${NOTE[x.t] || ""} \xB7 ${WHN[x.wh] || ""}${x.note ? " \xB7 " + esc(x.note) : ""}${x.by ? " \xB7 " + esc(x.by) : ""}${x.undo ? ` \xB7 \u21A9\uFE0F \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E ${esc(x.undo.by)} ${x.undo.at}` : ""}</span></span><span class="kv-r">${isAdmin() && x.sum ? `<b class="money">${money(x.sum)}</b>` : ""}${can(x) ? `<button class="btn sm ghost" data-mi-v="u${i}" title="\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438">\u21A9\uFE0F</button>` : ""}</span></div>`).join("");
+    const v = await modal({ title: "\u{1F4DC} \u0420\u0443\u0445 \u0441\u043A\u043B\u0430\u0434\u0443", body: `<div class="zp-top"><button class="btn sm" data-mi-v="d${sh(-1)}">\u25C0</button><b>${day === todayK() ? "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : day.split("-").reverse().join(".")}</b>${day < todayK() ? `<button class="btn sm" data-mi-v="d${sh(1)}">\u25B6</button>` : "<span></span>"}</div>
+      <div class="muted" style="font-size:12px;margin-bottom:6px">\u{1F9FE} \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0430 (\u0437 \xAB\u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E\xBB / \xAB\u21A9\uFE0F \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E\xBB \u2014 \u043A\u043E\u043B\u0438 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0443 \u0432\u0438\u0434\u0430\u043B\u0438\u043B\u0438 \u0430\u0431\u043E \u0432\u0456\u0434\u043D\u043E\u0432\u0438\u043B\u0438) \xB7 \u2795 \u0434\u043E\u0434\u0430\u043D\u043E \xB7 \u{1F5D1} \u0441\u043F\u0438\u0441\u0430\u043D\u043E \xB7 \u21C4 \u043F\u0435\u0440\u0435\u043C\u0456\u0449\u0435\u043D\u043D\u044F \xB7 \u{1F373} \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \xB7 \u{1F4DD} \u0456\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u044F. \u041F\u0440\u043E\u0434\u0430\u0436\u0456 \u0437\u0430 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0430\u043C\u0438 \u2014 \u0443 \xAB\u{1F4CA} \u041F\u043B\u044E\u0441\u0438 / \u043C\u0456\u043D\u0443\u0441\u0438\xBB.</div>
+      <div class="sk-jr">${rows || '<div class="muted">\u0420\u0443\u0445\u0456\u0432 \u0437\u0430 \u0446\u0435\u0439 \u0434\u0435\u043D\u044C \u043D\u0435\u043C\u0430\u0454</div>'}</div>`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+    if (!v) return;
+    if (v[0] === "d") return skJournal(v.slice(1));
+    if (v[0] === "u" && await confirmBox("\u21A9\uFE0F \u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438 \u0446\u0435\u0439 \u0440\u0443\u0445?", "\u041A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044C \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u0442\u044C\u0441\u044F \u043D\u0430 \u0441\u043A\u043B\u0430\u0434 \u044F\u043A \u0431\u0443\u043B\u043E") && await act("skJrUndo", { day, i: +v.slice(1) }, "\u21A9\uFE0F \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E")) {
+      S.data.sk = null;
+      loadView();
+    }
+    return skJournal(day);
   }
   function skBuyHTML() {
     const B = S.data.skBuy;
