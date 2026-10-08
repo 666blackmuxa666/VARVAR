@@ -147,6 +147,7 @@ export async function posApi(b, req, env) {
     case 'stop': { const it = await setHidden(env, String(b.id), !!b.hidden); if (it) await logEvent(env, { k: 'shift', by: who, text: `${b.hidden ? '⛔' : '✅'} ${it.name.uk} — ${b.hidden ? 'у стоп-листі' : 'знову в меню'}` }); if (it) await notify(env, `🖥 ${b.hidden ? '⛔' : '✅'} <b>${esc(it.name.uk)}</b> ${b.hidden ? 'у стоп-листі' : 'знову в меню'} — ${esc(who)}`); return ok(); }
     case 'printTest': await queuePrint(env, 'test', TEST_JOB()); return ok();
     case 'printQ': return ok({ list: await printList(env) });
+    case 'evAck': { let ok = 0; await editEv(env, l => { const e = l.find(x => x.id === b.id && x.k === 'noscan'); if (e && e.s !== 'acc') { e.s = 'acc'; e.accBy = who; ok = 1; } }); return ok ? [{ ok: true }, 200] : [{ error: 'Вже підтверджено' }, 400]; } // 🚨 «гість не може замовити» — хтось іде
     case 'printClear': { if (!admin) return needAdmin(); const r = await printClear(env, b.id ? String(b.id) : ''); if (r.n) await notify(env, `🖥 🗑 Черга друку: ${b.id ? 'видалено 1 завдання' : `очищено (${r.n})`} — ${esc(who)}`).catch(() => {}); return ok(r); }
     case 'printQr': { const { qrImg } = await import('./qr.js'); if (b.all) { const n = tablesCount(env); for (let i = 1; i <= n; i++) await queuePrint(env, 'qr', QR_PRINT(i, await qrImg(env, i))); return ok({ n }); }
       await queuePrint(env, 'qr', QR_PRINT(+b.t || 0, await qrImg(env, +b.t || 0))); return ok(); }
@@ -197,7 +198,6 @@ export async function posApi(b, req, env) {
     }
     case 'expenseDel': await delExpense(env, +b.i, b.day); return ok();
     case 'reset': return ok({ n: await resetAll(env) });
-    case 'evAck': { let ok = 0; await editEv(env, l => { const e = l.find(x => x.id === b.id && x.k === 'noscan'); if (e && e.s !== 'acc') { e.s = 'acc'; e.accBy = who; ok = 1; } }); return ok ? [{ ok: true }, 200] : [{ error: 'Вже підтверджено' }, 400]; } // 🚨 «гість не може замовити» — хтось іде
     case 'evDrop': { const t = String(b.match || ''); if (t.length < 3) return [{ error: 'Мінімум 3 символи' }, 400]; let n = 0; await editEv(env, l => { const k = l.filter(e => !JSON.stringify(e).includes(t)); n = l.length - k.length; l.length = 0; l.push(...k); }); return ok({ n }); }
 
     // меню (🔒 по одному — див. menuLock)
