@@ -164,3 +164,11 @@
     if (el.dataset.a === 'stfRole') { const v = await choose(`🔄 Роль: ${s.name}`, 'Працівника вийде з каси — увійде знову з новими правами', ROLES.filter(([r]) => r !== (s.role || 'waiter')).map(([val, label]) => ({ label, val }))); if (v) f = { role: v }; }
     if (f && await act('staffEdit', { id: s.id, ...f }, f.name ? '✏️ Імʼя змінено' : f.pin ? '🔑 PIN змінено' : '🔄 Роль змінено')) loadView();
   });
+  // 📱 графік на телефоні: одразу сьогоднішній день по центру (а після тапу по клітинці — там, де гортали)
+  const zpSL = {};
+  new MutationObserver(() => document.querySelectorAll('.zp-grid:not([data-c])').forEach(g => {
+    g.dataset.c = 1; const k = (g.closest('#modal') ? 'm' : 'v') + (S.zpM || ''), td = g.querySelector('thead th.td');
+    if (zpSL[k] != null) g.scrollLeft = zpSL[k];
+    else if (td && g.scrollWidth > g.clientWidth) { const st = g.querySelector('tbody th')?.offsetWidth || 0; g.scrollLeft = td.offsetLeft - st - (g.clientWidth - st) / 2 + td.offsetWidth / 2; }
+    g.addEventListener('scroll', () => { zpSL[k] = g.scrollLeft; }, { passive: true });
+  })).observe(document.body, { childList: true, subtree: true });

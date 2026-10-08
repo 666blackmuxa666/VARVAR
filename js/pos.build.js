@@ -5781,6 +5781,20 @@ ${g.sup}:
     }
     if (f && await act("staffEdit", __spreadValues({ id: s.id }, f), f.name ? "\u270F\uFE0F \u0406\u043C\u02BC\u044F \u0437\u043C\u0456\u043D\u0435\u043D\u043E" : f.pin ? "\u{1F511} PIN \u0437\u043C\u0456\u043D\u0435\u043D\u043E" : "\u{1F504} \u0420\u043E\u043B\u044C \u0437\u043C\u0456\u043D\u0435\u043D\u043E")) loadView();
   });
+  const zpSL = {};
+  new MutationObserver(() => document.querySelectorAll(".zp-grid:not([data-c])").forEach((g) => {
+    var _a2;
+    g.dataset.c = 1;
+    const k = (g.closest("#modal") ? "m" : "v") + (S.zpM || ""), td = g.querySelector("thead th.td");
+    if (zpSL[k] != null) g.scrollLeft = zpSL[k];
+    else if (td && g.scrollWidth > g.clientWidth) {
+      const st = ((_a2 = g.querySelector("tbody th")) == null ? void 0 : _a2.offsetWidth) || 0;
+      g.scrollLeft = td.offsetLeft - st - (g.clientWidth - st) / 2 + td.offsetWidth / 2;
+    }
+    g.addEventListener("scroll", () => {
+      zpSL[k] = g.scrollLeft;
+    }, { passive: true });
+  })).observe(document.body, { childList: true, subtree: true });
   const TK_ROLE = { admin: "\u0430\u0434\u043C\u0456\u043D\u0438", waiter: "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0438", cook: "\u043A\u0443\u0445\u0430\u0440\u0456", courier: "\u043A\u0443\u0440'\u0454\u0440\u0438" }, TK_WD = ["\u043F\u043D", "\u0432\u0442", "\u0441\u0440", "\u0447\u0442", "\u043F\u0442", "\u0441\u0431", "\u043D\u0434"];
   const tkWho = (w) => !w || w.k === "a" ? "\u{1F465} \u0431\u0443\u0434\u044C-\u0445\u0442\u043E" : w.k === "r" ? "\u{1F465} " + (TK_ROLE[w.r] || w.r) : "\u{1F464} " + esc(w.n || "?");
   const tkIc = (t) => t.st === "done" ? "\u2705" : t.st === "no" ? "\u274C" : t.imp ? "\u2757" : "\u2B1C";
