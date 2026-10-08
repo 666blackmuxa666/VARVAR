@@ -503,9 +503,9 @@
       case 'pQr': { const n = await pickTable('QR меню', 'У кожного столу свій QR — замовлення одразу на цей стіл'); if (n) act('printQr', { t: n }, `🖨 QR столу ${tn(n)}`); break; }
       case 'float': { const v = await ask('Розмін на початок дня', 'Сума в касі, ₴', 'number'); if (v != null) { await act('float', { sum: +v.replace(',', '.') }, '🏦 Записано'); loadView(); } break; }
       case 'expense': {
-        const v = await modal({ title: '💸 Витрата', body: '<div class="form"><input id="eSum" inputmode="decimal" placeholder="Сума, ₴"><input id="eNote" placeholder="На що (напр. овочі на ринку)"></div>', buttons: [{ label: '💵 З каси', val: 'cash', cls: 'primary' }, { label: '💳 З карти', val: 'card' }, { label: 'Скасувати', val: null }], keep: true });
-        const sum = v && +$('#eSum').value.replace(',', '.'), note = v && $('#eNote').value; closeModal();
-        if (v && sum) { await act('expense', { sum, note, src: v }, '💸 Витрату записано'); loadView(); }
+        const v = await modal({ title: '💸 Витрата', body: '<div class="form"><input id="eSum" inputmode="decimal" placeholder="Сума, ₴"><input id="eNote" placeholder="На що (напр. овочі на ринку)">' + (isAdmin() ? `<label class="muted" style="font-size:13px">📅 За день<input id="eDay" type="date" value="${todayK()}" max="${todayK()}"></label>` : '') + '</div>', buttons: [{ label: '💵 З каси', val: 'cash', cls: 'primary' }, { label: '💳 З карти', val: 'card' }, { label: 'Скасувати', val: null }], keep: true });
+        const sum = v && +$('#eSum').value.replace(',', '.'), note = v && $('#eNote').value, day = v && $('#eDay')?.value !== todayK() ? $('#eDay')?.value || '' : ''; closeModal();
+        if (v && sum) { await act('expense', { sum, note, src: v, ...(day ? { day } : {}) }, day ? `💸 Витрату записано за ${day.split('-').reverse().join('.')}` : '💸 Витрату записано'); loadView(); }
         break;
       }
       case 'tipPay': { const src = await choose(`💝 Видати чайові: ${el.dataset.n}`, 'Звідки списати? Сума відніметься з готівки або картки', [{ label: '💵 Готівкою з каси', val: 'cash', cls: 'green' }, { label: '💳 З картки', val: 'card', cls: 'blue' }]);

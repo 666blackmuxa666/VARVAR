@@ -544,7 +544,7 @@ export async function reprintClosed(env, ref, who, day = dayKey()) {
 
 // ---------- фінанси ----------
 export const getExp = async (env, day = dayKey()) => (await env.DB.get('exp:' + day, 'json')) || [];
-async function _addExpense(env, e) { const k = 'exp:' + dayKey(); const l = await getExp(env); l.push({ ts: Date.now(), ...e }); await env.DB.put(k, JSON.stringify(l)); return l.length - 1; }
+async function _addExpense(env, e, day = dayKey()) { const k = 'exp:' + day; const l = await getExp(env, day); l.push({ ts: Date.now(), ...e }); await env.DB.put(k, JSON.stringify(l)); return l.length - 1; }
 // 🗑/↩️ запис дня (витрата / рух коштів / Z-звіт): прапорець del, будь-який день
 async function _flagRec(env, pfx, day, i, del) { const k = pfx + day, l = (await env.DB.get(k, 'json')) || []; const x = l[+i]; if (!x || !!x.del === del) return false; if (del) x.del = 1; else delete x.del; await env.DB.put(k, JSON.stringify(l)); return true; }
 // ---------- рух коштів (не витрати): внесення / вилучення готівки, обмін картка ↔ готівка ----------
@@ -1034,7 +1034,7 @@ export async function editClosed(env, ref, p, who, day) { day = cDay(day); retur
 export async function restoreClosed(env, ref, who, day) { day = cDay(day); return L(env, 'closed:' + day, () => _restoreClosed(env, ref, who, day)); }
 export async function reopenClosed(env, ref, who, day) { day = cDay(day); return L(env, ['bills', 'closed:' + day], () => _reopenClosed(env, ref, who, day)); }
 export async function restoreTable(env, ref, who, day) { day = cDay(day); return L(env, ['bills', 'closed:' + day, 'void:' + day], () => _restoreTable(env, ref, who, day)); }
-export async function addExpense(env, ...a) { return L(env, 'exp:' + dayKey(), () => _addExpense(env, ...a)); }
+export async function addExpense(env, e, day) { day = cDay(day); return L(env, 'exp:' + day, () => _addExpense(env, e, day)); } // 📅 за будь-який минулий день
 export async function delExpense(env, i, day) { day = cDay(day); return L(env, 'exp:' + day, () => _flagRec(env, 'exp:', day, i, true)); }
 export async function restoreExpense(env, i, day) { day = cDay(day); return L(env, 'exp:' + day, () => _flagRec(env, 'exp:', day, i, false)); }
 export async function delZ(env, i, day) { day = cDay(day); return L(env, 'z:' + day, () => _flagRec(env, 'z:', day, i, true)); }

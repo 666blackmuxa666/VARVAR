@@ -88,6 +88,12 @@ async function apiTests() {
   await step('кухня: почати → готово', async () => {
     must(kq, 'немає картки'); await posOk(K || A, 'kStart', { id: kq.id }); const r = await posOk(K || A, 'kDone', { id: kq.id }); must(r.e?.done, 'не done');
   });
+  await step('💸 витрата за минулий день: адмін — так, офіціант — ні', async () => {
+    const y = new Date(Date.now() - 2 * 86400e3).toISOString().slice(0, 10);
+    if (W) { const r = await pos(W, 'expense', { sum: 1, note: 'QA', src: 'cash', day: y }); must(r.status === 403, 'офіціант зміг: ' + r.status); }
+    const before = (await posOk(A, 'shift')).exp.length; await posOk(A, 'expense', { sum: 1, note: 'QA минулий день', src: 'cash', day: y });
+    must((await posOk(A, 'shift')).exp.length === before, 'потрапила в сьогодні'); return y;
+  });
   await step('закрити готівкою → у закритих', async () => {
     const r = await posOk(W, 'close', { t: T, pay: 'cash', print: false }); must(r.r?.sum > 0, 'немає суми');
     const s = await posOk(W, 'state'); must(!s.tables.some(x => x.t === T), 'стіл досі відкритий');

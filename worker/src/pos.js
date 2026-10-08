@@ -188,8 +188,9 @@ export async function posApi(b, req, env) {
     case 'float': await setFloat(env, +b.sum || 0); return ok();
     case 'expense': {
       const sum = Math.round(+b.sum || 0); if (!sum) return [{ error: 'sum' }, 400];
-      const e = { sum, note: String(b.note || '').slice(0, 100), src: b.src === 'card' ? 'card' : 'cash', at: hhmm(), by: who };
-      await addExpense(env, e); await notify(env, `🖥 💸 Витрата ${money(sum)} ${e.src === 'card' ? '💳 з карти' : '💵 з каси'}${e.note ? ` — ${esc(e.note)}` : ''} · ${esc(who)}`); return ok();
+      const day = /^\d{4}-\d{2}-\d{2}$/.test(b.day || '') && b.day < dayKey() ? b.day : ''; if (day && !admin) return needAdmin(); // 📅 минулий день — лише адмін
+      const e = { sum, note: String(b.note || '').slice(0, 100), src: b.src === 'card' ? 'card' : 'cash', at: hhmm(), by: who, ...(day ? { late: dayKey() } : {}) };
+      await addExpense(env, e, day || undefined); await notify(env, `🖥 💸 Витрата${day ? ` за ${day.split('-').reverse().join('.')}` : ''} ${money(sum)} ${e.src === 'card' ? '💳 з карти' : '💵 з каси'}${e.note ? ` — ${esc(e.note)}` : ''} · ${esc(who)}`); return ok();
     }
     case 'expenseDel': await delExpense(env, +b.i, b.day); return ok();
     case 'reset': return ok({ n: await resetAll(env) });
