@@ -100,7 +100,7 @@ html[data-skin] input:not([type=checkbox]):not([type=radio]):not([type=range]):n
 .sk-pre button.on { border-color: var(--accent); }
 
 /* ---- 👑 кабінет власника (ті самі змінні; свої вкладки й чипи) ---- */
-html[data-skin] .top { background: color-mix(in srgb, var(--bg) 80%, transparent); }
+html[data-skin] header.top { background: color-mix(in srgb, var(--bg) 80%, transparent); }
 html[data-skin] .tabs button { border-radius: var(--sk-rb); }
 html[data-skin][data-sk-tabs="pill"] .tabs button { border-radius: 999px; background: transparent; box-shadow: inset 0 0 0 1px var(--line2); }
 html[data-skin][data-sk-tabs="pill"] .tabs button.on { background: var(--text); color: var(--bg); box-shadow: none; }
