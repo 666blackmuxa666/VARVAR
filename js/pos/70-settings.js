@@ -23,7 +23,7 @@
   function lookHTML() {
     const L = look(), opt = (k, v, l, extra = '') => `<button class="lk-o${L[k] == v ? ' on' : ''}" data-a="look" data-k="${k}" data-v="${v}"${extra}>${l}</button>`;
     const ACC = ['', '#f2c14e', '#ff453a', '#ff9f0a', '#30d158', '#0a84ff', '#bf5af2', '#e0457b', '#4fe3c1', '#ffffff'];
-    return `<div class="grid2 set">
+    return `<div class="grid2 set">${skinCard()}
       <div class="card"><h3>🎨 Тема</h3><div class="lk-themes">${Object.entries(THEMES).map(([k, [l, T]]) => `<button class="lk-th${L.theme === k ? ' on' : ''}" data-a="look" data-k="theme" data-v="${k}" style="background:${T.bg};color:${T.text}"><i style="background:${T.card}"><b style="background:${T.accent}"></b></i>${l}</button>`).join('')}</div>
         <div class="set-note muted" style="margin-top:12px">Колір акценту (кнопки, виділення)</div><div class="lk-acc">${ACC.map(c => `<button class="lk-dot${L.accent === c ? ' on' : ''}" data-a="look" data-k="accent" data-v="${c}" style="background:${c || 'conic-gradient(#f2c14e,#e0457b,#3fb6ff,#5ed68a,#f2c14e)'}" title="${c || 'як у темі'}"></button>`).join('')}</div></div>
       <div class="card"><h3>🔤 Шрифти</h3><div class="set-note muted">Основний шрифт</div><div class="lk-row">${Object.entries(FONTS).map(([k, [l, f]]) => opt('font', k, l, f ? ` style="font-family:'${f}',sans-serif"` : '')).join('')}</div>
@@ -196,3 +196,52 @@
     return new Promise(res => { const img = new Image(); img.onload = () => { const k = Math.min(1, max / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = img.width * k; c.height = img.height * k; c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', qq)); }; img.src = URL.createObjectURL(file); });
   }
 
+
+  // 🖌 стиль (конструктор) — Налаштування → Вигляд
+  const skMode = () => look().skin || (S.lookV ? 'venue' : 'old');
+  function skinCard() {
+    const m = skMode(), L = look(), own = L.sk && JSON.stringify(L.sk), pre = k => own === JSON.stringify(SK_PRE[k][2]);
+    const b = (on, a, extra, t, sub) => `<button class="${on ? 'on' : ''}" data-a="${a}" ${extra}>${t}<small>${sub}</small></button>`;
+    return `<div class="card" style="grid-column:1/-1"><h3>🖌 Стиль</h3><div class="set-note muted">Вигляд кнопок, карток, меню й вікон. «Стара каса» — точно як було. Стиль закладу задає адмін для всіх пристроїв; «свій» — лише на цьому.</div>
+      <div class="sk-pre" style="margin-top:10px">${b(m === 'old', 'skSet', 'data-v="old"', '↩️ Стара каса', 'як було раніше')}${S.lookV ? b(m === 'venue', 'skSet', 'data-v="venue"', '🏪 Стиль закладу', 'для всіх пристроїв') : ''}
+        ${Object.entries(SK_PRE).map(([k, [t, sub]]) => b(m === 'own' && pre(k), 'skSet', `data-v="pre" data-p="${k}"`, t, sub)).join('')}${m === 'own' && !Object.keys(SK_PRE).some(pre) ? b(true, 'skSet', 'data-v="own"', '✏️ Свій', 'на цьому пристрої') : ''}</div>
+      <div class="btnrow" style="margin-top:12px"><button class="btn sm primary" data-a="skEdit">🎨 Конструктор</button><button class="btn sm" data-a="skCode">📥 Вставити код</button>${isAdmin() ? `<button class="btn sm" data-a="skVenue">🏪 Зробити стилем закладу</button>${S.lookV ? '<button class="btn sm ghost" data-a="skVenueOff">✕ Прибрати стиль закладу</button>' : ''}` : ''}</div></div>`;
+  }
+  const skSave = (skin, sk) => { store.set('look', { ...look(), skin, ...(sk ? { sk } : {}) }); applyLook(); renderMain(); };
+  const skCur = () => skinOf() || { ...SK_BASE };
+  const skDiff = K => Object.fromEntries(Object.entries(K).filter(([k, v]) => SK_BASE[k] !== v));
+  async function skEditor() {
+    const K = { ...skCur() }, ch = (k, l, o) => `<div class="o"><span>${l}</span><div class="ch" data-k="${k}">${o.map(([v, t]) => `<button data-v="${v}" class="${String(K[k]) === v ? 'on' : ''}">${t}</button>`).join('')}</div></div>`;
+    const rg = (k, l, a, b, st = 1) => `<div class="o"><span>${l}</span><div class="rg"><input type="range" data-k="${k}" min="${a}" max="${b}" step="${st}" value="${K[k]}"><output>${K[k]}</output></div></div>`;
+    const tg = (k, l) => `<label class="kv" style="cursor:pointer"><span>${l}</span><input type="checkbox" data-k="${k}" ${K[k] ? 'checked' : ''} style="width:auto"></label>`;
+    const FN = [['', 'Як у темі'], ['system', 'Системний'], ['rubik', 'Rubik'], ['manrope', 'Manrope'], ['montserrat', 'Montserrat'], ['nunito', 'Nunito'], ['inter', 'Inter']];
+    const body = `<div class="skc">
+      <h4>🎨 Кольори</h4>${ch('bg', 'Фон', [['theme', 'Як у темі'], ['black', 'Чорний'], ['amoled', 'AMOLED'], ['graphite', 'Графіт'], ['blue', 'Синюватий'], ['warm', 'Теплий'], ['green', 'Зеленуватий']])}
+      <div class="o"><span>Акцент</span><div class="ch" data-k="acc">${['', '#f2c14e', '#ffb340', '#ff8a3d', '#ff5a5f', '#e879a6', '#a78bfa', '#7aa7ff', '#3ddc97'].map(c => `<button data-v="${c}" class="${K.acc === c ? 'on' : ''}" style="${c ? `background:${c};` : ''}min-width:30px">${c ? '&nbsp;' : 'Як у темі'}</button>`).join('')}</div></div>
+      ${rg('contrast', 'Контраст карток', 0, 10)}${rg('muted', 'Яскравість сірого тексту', 0, 10)}${ch('bgfx', 'Ефект фону', [['none', 'Немає'], ['glow', 'Світіння'], ['vignette', 'Віньєтка']])}
+      <h4>🔷 Форма</h4>${rg('r', 'Заокруглення карток', 0, 30)}${rg('rb', 'Заокруглення кнопок', 0, 26)}${ch('shape', 'Форма кнопок', [['auto', 'За повзунком'], ['pill', 'Пілюля'], ['square', 'Квадратні']])}
+      ${rg('h', 'Висота кнопок', 36, 56)}${rg('pad', 'Відступи в картках', 8, 22)}${rg('gap', 'Проміжки між блоками', 4, 18)}
+      <h4>🗂 Картки</h4>${ch('card', 'Заливка', [['solid', 'Суцільна'], ['grad', 'Градієнт'], ['glass', 'Скло'], ['outline', 'Контур']])}${ch('shadow', 'Тінь', [['none', 'Немає'], ['soft', 'Мʼяка'], ['deep', 'Глибока'], ['glow', 'Світіння']])}${ch('border', 'Рамка', [['none', 'Немає'], ['hair', 'Тонка'], ['accent', 'Акцент']])}${tg('caps', 'Заголовки карток великими літерами')}
+      <h4>🔤 Шрифт</h4>${ch('font', 'Основний', FN)}${ch('fonth', 'Заголовки й суми', [['same', 'Як основний'], ...FN.slice(2)])}${rg('fs', 'Розмір тексту', 13, 18)}${rg('hw', 'Жирність заголовків', 500, 900, 100)}
+      <h4>🔘 Кнопки й перемикачі</h4>${ch('prim', 'Головна кнопка', [['fill', 'Заливка'], ['grad', 'Градієнт'], ['outline', 'Контур']])}${ch('sec', 'Звичайні кнопки', [['fill', 'Заливка'], ['outline', 'Контур'], ['ghost', 'Прозорі']])}
+      ${ch('seg', 'Перемикач', [['dark', 'Темний'], ['white', 'Білі пілюлі'], ['accent', 'Акцентний'], ['line', 'Підкреслення']])}${ch('tabs', 'Вкладки розділу', [['seg', 'Сегмент'], ['pill', 'Пілюлі'], ['line', 'Підкреслення']])}
+      <h4>🪑 Зал і меню</h4>${ch('tbl', 'Зайнятий стіл', [['gold', 'Золотий'], ['fill', 'Заливка'], ['frame', 'Рамка'], ['dot', 'Крапка']])}
+      ${ch('nav', 'Нижнє меню', [['bar', 'Прикріплене'], ['float', 'Плаваюче']])}${ch('navn', 'Пунктів у меню', [['8', 'Усі (гортати)'], ['5', 'Основні + «Ще»']])}${ch('navon', 'Активний пункт', [['accent', 'Акцент'], ['dark', 'Плашка'], ['text', 'Лише колір']])}${tg('navlbl', 'Підписи під іконками')}
+      ${ch('modal', 'Вікна на телефоні', [['center', 'По центру'], ['sheet', 'Знизу'], ['full', 'На весь екран']])}${tg('anim', 'Анімації')}</div>`;
+    const pm = modal({ title: '🎨 Конструктор стилю', body, buttons: [{ label: '💾 Зберегти на цьому пристрої', val: 'own', cls: 'primary' }, ...(isAdmin() ? [{ label: '🏪 Зберегти для всього закладу', val: 'venue' }] : []), { label: 'Скасувати', val: null }], keep: true });
+    const box = $('#modal .skc'), upd = () => applySkin(K);
+    box.addEventListener('click', e => { const b = e.target.closest('.ch button'); if (!b) return; const g = b.parentElement, k = g.dataset.k; K[k] = b.dataset.v; g.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); upd(); });
+    box.addEventListener('input', e => { const i = e.target; if (!i.dataset.k) return; K[i.dataset.k] = i.type === 'checkbox' ? i.checked : +i.value; if (i.nextElementSibling) i.nextElementSibling.textContent = i.value; upd(); });
+    upd(); const v = await pm; closeModal();
+    if (v === 'own') skSave('own', skDiff(K));
+    else if (v === 'venue' && await act('lookVSet', { look: skDiff(K) }, '🏪 Стиль закладу збережено')) { S.lookV = skDiff(K); skSave('venue'); }
+    else applyLook();
+  }
+  document.addEventListener('click', async e => {
+    const el = e.target.closest('[data-a]'); if (!el || !/^sk(Set|Edit|Code|Venue|VenueOff)$/.test(el.dataset.a)) return; const a = el.dataset.a, d = el.dataset;
+    if (a === 'skSet') return d.v === 'pre' ? skSave('own', SK_PRE[d.p][2]) : skSave(d.v);
+    if (a === 'skEdit') return skEditor();
+    if (a === 'skCode') { const t = await ask('📥 Код стилю', 'Вставте рядок VARVAR-STYLE {…} з конструктора'); if (!t) return; try { const j = JSON.parse(t.slice(t.indexOf('{'))); const K = Object.fromEntries(Object.entries(j).filter(([k]) => k in SK_BASE)); if (K.r != null || K.font) { skSave('own', K); toast('🎨 Стиль застосовано на цьому пристрої'); } else toast('⚠️ У коді немає налаштувань стилю'); } catch { toast('⚠️ Не вдалося прочитати код'); } return; }
+    if (a === 'skVenue') { const K = skDiff(skCur()); if (!(await confirmBox('🏪 Зробити поточний стиль стилем закладу?', 'Він зʼявиться на всіх пристроях, де вибрано «Стиль закладу» (за замовчуванням). Повернути стару касу можна будь-коли.'))) return; if (await act('lookVSet', { look: K }, '🏪 Стиль закладу збережено')) { S.lookV = K; skSave('venue'); } return; }
+    if (a === 'skVenueOff') { if (await confirmBox('Прибрати стиль закладу?', 'Пристрої без свого стилю повернуться до старої каси') && await act('lookVSet', { look: null }, '↩️ Прибрано')) { S.lookV = null; skSave('old'); } }
+  });

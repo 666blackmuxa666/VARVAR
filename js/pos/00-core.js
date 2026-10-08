@@ -146,7 +146,7 @@
     const fresh = r.events.filter(e => !S.seen.has(e.id));
     if (S.ready && fresh.some(e => ['guest', 'check', 'call'].includes(e.k) || (!isCook() && ['ready', 'kmsg'].includes(e.k)))) ding();
     r.events.forEach(e => S.seen.add(e.id));
-    S.events = r.events; S.ready = true; if (!S._tk0) { S._tk0 = 1; loadMyTasks(); }
+    S.events = r.events; S.ready = true; if (!S._tk0) { S._tk0 = 1; loadMyTasks(); loadLookV(); }
     if (isCour() && S.view === 'go') renderMain(); // 🛵 нові доставки й «готово» — одразу на екрані кур'єра
     render();
   }
@@ -171,6 +171,7 @@
         loadState().catch(() => {});
         if (m.keys.includes('menu') || m.keys.includes('fav')) loadMenu().catch(() => {});
         if (m.keys.includes('kq') && (isCook() || S.view === 'kq')) loadKq().catch(() => {});
+        if (m.keys.includes('lookv')) loadLookV();
         if (m.keys.includes('task')) { loadMyTasks(); if (S.view === 'team' && S.zpTab === 'plan' && !$('#modal')) tkLoad(); } // 📋 план на день
         if (S.view === 'team' && m.keys.some(k => ['att', 'plan', 'pay', 'swaps', 'staff'].includes(k)) && !$('#modal')) loadView(true);
         if (S.view === 'calc' && m.keys.some(k => ['ing', 'cards', 'stk', 'invl', 'sups', 'cntl', 'cnt'].includes(k)) && !skBusy()) loadView(true);
@@ -227,7 +228,42 @@
     document.body.style.zoom = L.size === 100 ? '' : L.size / 100;
     const R = { round: [18, 24], soft: [12, 16], square: [6, 8] }[L.radius] || [18, 24]; r.setProperty('--r', R[0] + 'px'); r.setProperty('--r2', R[1] + 'px');
     document.body.classList.toggle('noanim', !L.anim);
+    applySkin();
   }
+  // 🎨 стиль (конструктор): «Стара каса» — без шару skin.css; «Стиль закладу» — від адміна (сервер); «Свій» — лише на цьому пристрої
+  const SK_BASE = { acc: '', bg: 'theme', contrast: 5, muted: 5, bgfx: 'none', r: 18, rb: 14, shape: 'auto', h: 48, pad: 16, gap: 10, card: 'solid', shadow: 'none', border: 'none', caps: false, font: '', fonth: 'same', fs: 15, hw: 800, prim: 'fill', sec: 'fill', seg: 'dark', tabs: 'seg', tbl: 'gold', nav: 'bar', navn: '8', navon: 'accent', navlbl: true, modal: 'center', anim: true };
+  const SK_PRE = {
+    varvar: ['⭐ VARVAR', 'ваш стиль: світіння, Rubik, плаваюче меню', { bgfx: 'glow', r: 22, rb: 17, h: 42, pad: 11, gap: 11, shadow: 'soft', caps: true, font: 'rubik', fonth: 'rubik', fs: 14, hw: 700, nav: 'float' }],
+    graphite: ['Графіт', 'мʼякі тіні, лист знизу', { r: 20, rb: 14, card: 'grad', shadow: 'soft', border: 'hair', caps: true, font: 'manrope', tabs: 'pill', navn: '5', navon: 'dark', modal: 'sheet', h: 46, pad: 14 }],
+    glass: ['Скло', 'напівпрозоре, світіння', { bgfx: 'glow', r: 26, rb: 18, card: 'glass', shadow: 'deep', border: 'hair', font: 'manrope', prim: 'grad', seg: 'white', tabs: 'pill', nav: 'float', navn: '5', navon: 'dark', modal: 'sheet' }],
+    minimal: ['Мінімал', 'контури, щільно', { bg: 'amoled', contrast: 3, r: 12, rb: 10, card: 'outline', border: 'hair', caps: true, font: 'rubik', sec: 'outline', seg: 'line', tabs: 'line', tbl: 'frame', navn: '5', navon: 'text', modal: 'sheet', h: 42, pad: 12, gap: 8, hw: 700 }],
+  };
+  const SK_BG = { black: ['#0b0b0d', '#151518', '#1c1c1f', '#26262a'], amoled: ['#000000', '#08080a', '#141416', '#1f1f22'], graphite: ['#131317', '#18181d', '#1f1f25', '#2a2a32'], blue: ['#0a0e16', '#0e1420', '#161c28', '#202838'], warm: ['#100d0a', '#16120e', '#1f1a15', '#2b241d'], green: ['#0a100d', '#0e1612', '#16201b', '#1f2c25'] };
+  const skinOf = () => { const L = look(), m = L.skin || (S.lookV ? 'venue' : 'old'); return m === 'own' ? { ...SK_BASE, ...(L.sk || {}) } : m === 'venue' && S.lookV ? { ...SK_BASE, ...S.lookV } : null; };
+  function applySkin(over) {
+    const K = over || skinOf(), h = document.documentElement, r = h.style;
+    for (const a of [...h.attributes].map(a => a.name).filter(n => n.startsWith('data-sk'))) h.removeAttribute(a);
+    for (const v of ['--sk-r', '--sk-rb', '--sk-h', '--sk-pad', '--sk-gap', '--sk-fs', '--sk-hw', '--sk-fh', '--sk-shadow', '--sk-border']) r.removeProperty(v);
+    if (!K) return;
+    h.setAttribute('data-skin', '1');
+    for (const k of ['bgfx', 'shape', 'card', 'prim', 'sec', 'seg', 'tabs', 'tbl', 'nav', 'navn', 'navon', 'modal']) h.setAttribute('data-sk-' + k, K[k]);
+    for (const k of ['caps', 'navlbl']) h.setAttribute('data-sk-' + k, K[k] ? '1' : '0');
+    const px = (n, v) => r.setProperty(n, v + 'px'); px('--sk-r', K.r); px('--sk-rb', K.rb); px('--sk-h', K.h); px('--sk-pad', K.pad); px('--sk-gap', K.gap); px('--sk-fs', K.fs); r.setProperty('--sk-hw', K.hw);
+    r.setProperty('--r', K.r + 'px'); r.setProperty('--r2', (K.r + 4) + 'px');
+    r.setProperty('--sk-shadow', { none: 'none', soft: '0 1px 0 #ffffff08 inset, 0 8px 22px #00000055', deep: '0 14px 34px #000000a0', glow: '0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent), 0 10px 30px color-mix(in srgb, var(--accent) 18%, transparent)' }[K.shadow] || 'none');
+    r.setProperty('--sk-border', { none: '0', hair: '1px solid var(--line)', accent: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }[K.border] || '0');
+    if (K.acc) r.setProperty('--accent', K.acc);
+    const B = SK_BG[K.bg]; if (B) { r.setProperty('--bg', B[0]); r.setProperty('--bg2', B[1]); r.setProperty('--card', B[2]); r.setProperty('--card2', B[3]); }
+    if (K.contrast !== 5) { const c = (K.contrast - 5) * 2; r.setProperty('--card', `color-mix(in srgb, ${B ? B[2] : getComputedStyle(h).getPropertyValue('--card')} ${100 - Math.max(0, c)}%, ${c > 0 ? '#ffffff' : '#000000'} ${Math.abs(c)}%)`); }
+    if (K.muted !== 5) r.setProperty('--muted', `hsl(240 4% ${40 + K.muted * 4}%)`);
+    const base = '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif', fam = k => FONTS[k]?.[1];
+    for (const f of [fam(K.font), fam(K.fonth)].filter(Boolean)) { const id = 'gf-' + f.replace(/ /g, ''); if (!document.getElementById(id)) { const l = document.createElement('link'); l.id = id; l.rel = 'stylesheet'; l.href = `https://fonts.googleapis.com/css2?family=${f.replace(/ /g, '+')}:wght@400;500;600;700;800;900&display=swap`; document.head.appendChild(l); } }
+    if (fam(K.font)) r.setProperty('--font', `"${fam(K.font)}", ${base}`);
+    else if (K.font === "system") r.setProperty("--font", base);
+    r.setProperty('--sk-fh', K.fonth !== 'same' && fam(K.fonth) ? `"${fam(K.fonth)}", ${base}` : 'var(--font)');
+    document.body.classList.toggle('noanim', !K.anim || !look().anim);
+  }
+  async function loadLookV() { try { const r = await api('lookV'); S.lookV = r.look || null; applyLook(); } catch {} }
   const setLook = (k, v) => { store.set('look', { ...look(), [k]: v }); applyLook(); renderMain(); };
   applyLook();
 

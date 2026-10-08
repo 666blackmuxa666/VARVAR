@@ -412,6 +412,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     if (!S._tk0) {
       S._tk0 = 1;
       loadMyTasks();
+      loadLookV();
     }
     if (isCour() && S.view === "go") renderMain();
     render();
@@ -477,6 +478,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         });
         if (m.keys.includes("kq") && (isCook() || S.view === "kq")) loadKq().catch(() => {
         });
+        if (m.keys.includes("lookv")) loadLookV();
         if (m.keys.includes("task")) {
           loadMyTasks();
           if (S.view === "team" && S.zpTab === "plan" && !$("#modal")) tkLoad();
@@ -583,6 +585,79 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     r.setProperty("--r", R[0] + "px");
     r.setProperty("--r2", R[1] + "px");
     document.body.classList.toggle("noanim", !L.anim);
+    applySkin();
+  }
+  const SK_BASE = { acc: "", bg: "theme", contrast: 5, muted: 5, bgfx: "none", r: 18, rb: 14, shape: "auto", h: 48, pad: 16, gap: 10, card: "solid", shadow: "none", border: "none", caps: false, font: "", fonth: "same", fs: 15, hw: 800, prim: "fill", sec: "fill", seg: "dark", tabs: "seg", tbl: "gold", nav: "bar", navn: "8", navon: "accent", navlbl: true, modal: "center", anim: true };
+  const SK_PRE = {
+    varvar: ["\u2B50 VARVAR", "\u0432\u0430\u0448 \u0441\u0442\u0438\u043B\u044C: \u0441\u0432\u0456\u0442\u0456\u043D\u043D\u044F, Rubik, \u043F\u043B\u0430\u0432\u0430\u044E\u0447\u0435 \u043C\u0435\u043D\u044E", { bgfx: "glow", r: 22, rb: 17, h: 42, pad: 11, gap: 11, shadow: "soft", caps: true, font: "rubik", fonth: "rubik", fs: 14, hw: 700, nav: "float" }],
+    graphite: ["\u0413\u0440\u0430\u0444\u0456\u0442", "\u043C\u02BC\u044F\u043A\u0456 \u0442\u0456\u043D\u0456, \u043B\u0438\u0441\u0442 \u0437\u043D\u0438\u0437\u0443", { r: 20, rb: 14, card: "grad", shadow: "soft", border: "hair", caps: true, font: "manrope", tabs: "pill", navn: "5", navon: "dark", modal: "sheet", h: 46, pad: 14 }],
+    glass: ["\u0421\u043A\u043B\u043E", "\u043D\u0430\u043F\u0456\u0432\u043F\u0440\u043E\u0437\u043E\u0440\u0435, \u0441\u0432\u0456\u0442\u0456\u043D\u043D\u044F", { bgfx: "glow", r: 26, rb: 18, card: "glass", shadow: "deep", border: "hair", font: "manrope", prim: "grad", seg: "white", tabs: "pill", nav: "float", navn: "5", navon: "dark", modal: "sheet" }],
+    minimal: ["\u041C\u0456\u043D\u0456\u043C\u0430\u043B", "\u043A\u043E\u043D\u0442\u0443\u0440\u0438, \u0449\u0456\u043B\u044C\u043D\u043E", { bg: "amoled", contrast: 3, r: 12, rb: 10, card: "outline", border: "hair", caps: true, font: "rubik", sec: "outline", seg: "line", tabs: "line", tbl: "frame", navn: "5", navon: "text", modal: "sheet", h: 42, pad: 12, gap: 8, hw: 700 }]
+  };
+  const SK_BG = { black: ["#0b0b0d", "#151518", "#1c1c1f", "#26262a"], amoled: ["#000000", "#08080a", "#141416", "#1f1f22"], graphite: ["#131317", "#18181d", "#1f1f25", "#2a2a32"], blue: ["#0a0e16", "#0e1420", "#161c28", "#202838"], warm: ["#100d0a", "#16120e", "#1f1a15", "#2b241d"], green: ["#0a100d", "#0e1612", "#16201b", "#1f2c25"] };
+  const skinOf = () => {
+    const L = look(), m = L.skin || (S.lookV ? "venue" : "old");
+    return m === "own" ? __spreadValues(__spreadValues({}, SK_BASE), L.sk || {}) : m === "venue" && S.lookV ? __spreadValues(__spreadValues({}, SK_BASE), S.lookV) : null;
+  };
+  function applySkin(over) {
+    const K = over || skinOf(), h = document.documentElement, r = h.style;
+    for (const a of [...h.attributes].map((a2) => a2.name).filter((n) => n.startsWith("data-sk"))) h.removeAttribute(a);
+    for (const v of ["--sk-r", "--sk-rb", "--sk-h", "--sk-pad", "--sk-gap", "--sk-fs", "--sk-hw", "--sk-fh", "--sk-shadow", "--sk-border"]) r.removeProperty(v);
+    if (!K) return;
+    h.setAttribute("data-skin", "1");
+    for (const k of ["bgfx", "shape", "card", "prim", "sec", "seg", "tabs", "tbl", "nav", "navn", "navon", "modal"]) h.setAttribute("data-sk-" + k, K[k]);
+    for (const k of ["caps", "navlbl"]) h.setAttribute("data-sk-" + k, K[k] ? "1" : "0");
+    const px = (n, v) => r.setProperty(n, v + "px");
+    px("--sk-r", K.r);
+    px("--sk-rb", K.rb);
+    px("--sk-h", K.h);
+    px("--sk-pad", K.pad);
+    px("--sk-gap", K.gap);
+    px("--sk-fs", K.fs);
+    r.setProperty("--sk-hw", K.hw);
+    r.setProperty("--r", K.r + "px");
+    r.setProperty("--r2", K.r + 4 + "px");
+    r.setProperty("--sk-shadow", { none: "none", soft: "0 1px 0 #ffffff08 inset, 0 8px 22px #00000055", deep: "0 14px 34px #000000a0", glow: "0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent), 0 10px 30px color-mix(in srgb, var(--accent) 18%, transparent)" }[K.shadow] || "none");
+    r.setProperty("--sk-border", { none: "0", hair: "1px solid var(--line)", accent: "1px solid color-mix(in srgb, var(--accent) 30%, transparent)" }[K.border] || "0");
+    if (K.acc) r.setProperty("--accent", K.acc);
+    const B = SK_BG[K.bg];
+    if (B) {
+      r.setProperty("--bg", B[0]);
+      r.setProperty("--bg2", B[1]);
+      r.setProperty("--card", B[2]);
+      r.setProperty("--card2", B[3]);
+    }
+    if (K.contrast !== 5) {
+      const c = (K.contrast - 5) * 2;
+      r.setProperty("--card", `color-mix(in srgb, ${B ? B[2] : getComputedStyle(h).getPropertyValue("--card")} ${100 - Math.max(0, c)}%, ${c > 0 ? "#ffffff" : "#000000"} ${Math.abs(c)}%)`);
+    }
+    if (K.muted !== 5) r.setProperty("--muted", `hsl(240 4% ${40 + K.muted * 4}%)`);
+    const base = '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif', fam = (k) => {
+      var _a2;
+      return (_a2 = FONTS[k]) == null ? void 0 : _a2[1];
+    };
+    for (const f of [fam(K.font), fam(K.fonth)].filter(Boolean)) {
+      const id = "gf-" + f.replace(/ /g, "");
+      if (!document.getElementById(id)) {
+        const l = document.createElement("link");
+        l.id = id;
+        l.rel = "stylesheet";
+        l.href = `https://fonts.googleapis.com/css2?family=${f.replace(/ /g, "+")}:wght@400;500;600;700;800;900&display=swap`;
+        document.head.appendChild(l);
+      }
+    }
+    if (fam(K.font)) r.setProperty("--font", `"${fam(K.font)}", ${base}`);
+    else if (K.font === "system") r.setProperty("--font", base);
+    r.setProperty("--sk-fh", K.fonth !== "same" && fam(K.fonth) ? `"${fam(K.fonth)}", ${base}` : "var(--font)");
+    document.body.classList.toggle("noanim", !K.anim || !look().anim);
+  }
+  async function loadLookV() {
+    try {
+      const r = await api("lookV");
+      S.lookV = r.look || null;
+      applyLook();
+    } catch (e) {
+    }
   }
   const setLook = (k, v) => {
     store.set("look", __spreadProps(__spreadValues({}, look()), { [k]: v }));
@@ -3634,7 +3709,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   function lookHTML() {
     const L = look(), opt = (k, v, l, extra = "") => `<button class="lk-o${L[k] == v ? " on" : ""}" data-a="look" data-k="${k}" data-v="${v}"${extra}>${l}</button>`;
     const ACC2 = ["", "#f2c14e", "#ff453a", "#ff9f0a", "#30d158", "#0a84ff", "#bf5af2", "#e0457b", "#4fe3c1", "#ffffff"];
-    return `<div class="grid2 set">
+    return `<div class="grid2 set">${skinCard()}
       <div class="card"><h3>\u{1F3A8} \u0422\u0435\u043C\u0430</h3><div class="lk-themes">${Object.entries(THEMES).map(([k, [l, T]]) => `<button class="lk-th${L.theme === k ? " on" : ""}" data-a="look" data-k="theme" data-v="${k}" style="background:${T.bg};color:${T.text}"><i style="background:${T.card}"><b style="background:${T.accent}"></b></i>${l}</button>`).join("")}</div>
         <div class="set-note muted" style="margin-top:12px">\u041A\u043E\u043B\u0456\u0440 \u0430\u043A\u0446\u0435\u043D\u0442\u0443 (\u043A\u043D\u043E\u043F\u043A\u0438, \u0432\u0438\u0434\u0456\u043B\u0435\u043D\u043D\u044F)</div><div class="lk-acc">${ACC2.map((c) => `<button class="lk-dot${L.accent === c ? " on" : ""}" data-a="look" data-k="accent" data-v="${c}" style="background:${c || "conic-gradient(#f2c14e,#e0457b,#3fb6ff,#5ed68a,#f2c14e)"}" title="${c || "\u044F\u043A \u0443 \u0442\u0435\u043C\u0456"}"></button>`).join("")}</div></div>
       <div class="card"><h3>\u{1F524} \u0428\u0440\u0438\u0444\u0442\u0438</h3><div class="set-note muted">\u041E\u0441\u043D\u043E\u0432\u043D\u0438\u0439 \u0448\u0440\u0438\u0444\u0442</div><div class="lk-row">${Object.entries(FONTS).map(([k, [l, f]]) => opt("font", k, l, f ? ` style="font-family:'${f}',sans-serif"` : "")).join("")}</div>
@@ -3938,6 +4013,103 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       img.src = URL.createObjectURL(file);
     });
   }
+  const skMode = () => look().skin || (S.lookV ? "venue" : "old");
+  function skinCard() {
+    const m = skMode(), L = look(), own = L.sk && JSON.stringify(L.sk), pre = (k) => own === JSON.stringify(SK_PRE[k][2]);
+    const b = (on, a, extra, t, sub) => `<button class="${on ? "on" : ""}" data-a="${a}" ${extra}>${t}<small>${sub}</small></button>`;
+    return `<div class="card" style="grid-column:1/-1"><h3>\u{1F58C} \u0421\u0442\u0438\u043B\u044C</h3><div class="set-note muted">\u0412\u0438\u0433\u043B\u044F\u0434 \u043A\u043D\u043E\u043F\u043E\u043A, \u043A\u0430\u0440\u0442\u043E\u043A, \u043C\u0435\u043D\u044E \u0439 \u0432\u0456\u043A\u043E\u043D. \xAB\u0421\u0442\u0430\u0440\u0430 \u043A\u0430\u0441\u0430\xBB \u2014 \u0442\u043E\u0447\u043D\u043E \u044F\u043A \u0431\u0443\u043B\u043E. \u0421\u0442\u0438\u043B\u044C \u0437\u0430\u043A\u043B\u0430\u0434\u0443 \u0437\u0430\u0434\u0430\u0454 \u0430\u0434\u043C\u0456\u043D \u0434\u043B\u044F \u0432\u0441\u0456\u0445 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457\u0432; \xAB\u0441\u0432\u0456\u0439\xBB \u2014 \u043B\u0438\u0448\u0435 \u043D\u0430 \u0446\u044C\u043E\u043C\u0443.</div>
+      <div class="sk-pre" style="margin-top:10px">${b(m === "old", "skSet", 'data-v="old"', "\u21A9\uFE0F \u0421\u0442\u0430\u0440\u0430 \u043A\u0430\u0441\u0430", "\u044F\u043A \u0431\u0443\u043B\u043E \u0440\u0430\u043D\u0456\u0448\u0435")}${S.lookV ? b(m === "venue", "skSet", 'data-v="venue"', "\u{1F3EA} \u0421\u0442\u0438\u043B\u044C \u0437\u0430\u043A\u043B\u0430\u0434\u0443", "\u0434\u043B\u044F \u0432\u0441\u0456\u0445 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457\u0432") : ""}
+        ${Object.entries(SK_PRE).map(([k, [t, sub]]) => b(m === "own" && pre(k), "skSet", `data-v="pre" data-p="${k}"`, t, sub)).join("")}${m === "own" && !Object.keys(SK_PRE).some(pre) ? b(true, "skSet", 'data-v="own"', "\u270F\uFE0F \u0421\u0432\u0456\u0439", "\u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457") : ""}</div>
+      <div class="btnrow" style="margin-top:12px"><button class="btn sm primary" data-a="skEdit">\u{1F3A8} \u041A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440</button><button class="btn sm" data-a="skCode">\u{1F4E5} \u0412\u0441\u0442\u0430\u0432\u0438\u0442\u0438 \u043A\u043E\u0434</button>${isAdmin() ? `<button class="btn sm" data-a="skVenue">\u{1F3EA} \u0417\u0440\u043E\u0431\u0438\u0442\u0438 \u0441\u0442\u0438\u043B\u0435\u043C \u0437\u0430\u043A\u043B\u0430\u0434\u0443</button>${S.lookV ? '<button class="btn sm ghost" data-a="skVenueOff">\u2715 \u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0441\u0442\u0438\u043B\u044C \u0437\u0430\u043A\u043B\u0430\u0434\u0443</button>' : ""}` : ""}</div></div>`;
+  }
+  const skSave = (skin, sk) => {
+    store.set("look", __spreadValues(__spreadProps(__spreadValues({}, look()), { skin }), sk ? { sk } : {}));
+    applyLook();
+    renderMain();
+  };
+  const skCur = () => skinOf() || __spreadValues({}, SK_BASE);
+  const skDiff = (K) => Object.fromEntries(Object.entries(K).filter(([k, v]) => SK_BASE[k] !== v));
+  async function skEditor() {
+    const K = __spreadValues({}, skCur()), ch = (k, l, o) => `<div class="o"><span>${l}</span><div class="ch" data-k="${k}">${o.map(([v2, t]) => `<button data-v="${v2}" class="${String(K[k]) === v2 ? "on" : ""}">${t}</button>`).join("")}</div></div>`;
+    const rg = (k, l, a, b, st = 1) => `<div class="o"><span>${l}</span><div class="rg"><input type="range" data-k="${k}" min="${a}" max="${b}" step="${st}" value="${K[k]}"><output>${K[k]}</output></div></div>`;
+    const tg = (k, l) => `<label class="kv" style="cursor:pointer"><span>${l}</span><input type="checkbox" data-k="${k}" ${K[k] ? "checked" : ""} style="width:auto"></label>`;
+    const FN = [["", "\u042F\u043A \u0443 \u0442\u0435\u043C\u0456"], ["system", "\u0421\u0438\u0441\u0442\u0435\u043C\u043D\u0438\u0439"], ["rubik", "Rubik"], ["manrope", "Manrope"], ["montserrat", "Montserrat"], ["nunito", "Nunito"], ["inter", "Inter"]];
+    const body = `<div class="skc">
+      <h4>\u{1F3A8} \u041A\u043E\u043B\u044C\u043E\u0440\u0438</h4>${ch("bg", "\u0424\u043E\u043D", [["theme", "\u042F\u043A \u0443 \u0442\u0435\u043C\u0456"], ["black", "\u0427\u043E\u0440\u043D\u0438\u0439"], ["amoled", "AMOLED"], ["graphite", "\u0413\u0440\u0430\u0444\u0456\u0442"], ["blue", "\u0421\u0438\u043D\u044E\u0432\u0430\u0442\u0438\u0439"], ["warm", "\u0422\u0435\u043F\u043B\u0438\u0439"], ["green", "\u0417\u0435\u043B\u0435\u043D\u0443\u0432\u0430\u0442\u0438\u0439"]])}
+      <div class="o"><span>\u0410\u043A\u0446\u0435\u043D\u0442</span><div class="ch" data-k="acc">${["", "#f2c14e", "#ffb340", "#ff8a3d", "#ff5a5f", "#e879a6", "#a78bfa", "#7aa7ff", "#3ddc97"].map((c) => `<button data-v="${c}" class="${K.acc === c ? "on" : ""}" style="${c ? `background:${c};` : ""}min-width:30px">${c ? "&nbsp;" : "\u042F\u043A \u0443 \u0442\u0435\u043C\u0456"}</button>`).join("")}</div></div>
+      ${rg("contrast", "\u041A\u043E\u043D\u0442\u0440\u0430\u0441\u0442 \u043A\u0430\u0440\u0442\u043E\u043A", 0, 10)}${rg("muted", "\u042F\u0441\u043A\u0440\u0430\u0432\u0456\u0441\u0442\u044C \u0441\u0456\u0440\u043E\u0433\u043E \u0442\u0435\u043A\u0441\u0442\u0443", 0, 10)}${ch("bgfx", "\u0415\u0444\u0435\u043A\u0442 \u0444\u043E\u043D\u0443", [["none", "\u041D\u0435\u043C\u0430\u0454"], ["glow", "\u0421\u0432\u0456\u0442\u0456\u043D\u043D\u044F"], ["vignette", "\u0412\u0456\u043D\u044C\u0454\u0442\u043A\u0430"]])}
+      <h4>\u{1F537} \u0424\u043E\u0440\u043C\u0430</h4>${rg("r", "\u0417\u0430\u043E\u043A\u0440\u0443\u0433\u043B\u0435\u043D\u043D\u044F \u043A\u0430\u0440\u0442\u043E\u043A", 0, 30)}${rg("rb", "\u0417\u0430\u043E\u043A\u0440\u0443\u0433\u043B\u0435\u043D\u043D\u044F \u043A\u043D\u043E\u043F\u043E\u043A", 0, 26)}${ch("shape", "\u0424\u043E\u0440\u043C\u0430 \u043A\u043D\u043E\u043F\u043E\u043A", [["auto", "\u0417\u0430 \u043F\u043E\u0432\u0437\u0443\u043D\u043A\u043E\u043C"], ["pill", "\u041F\u0456\u043B\u044E\u043B\u044F"], ["square", "\u041A\u0432\u0430\u0434\u0440\u0430\u0442\u043D\u0456"]])}
+      ${rg("h", "\u0412\u0438\u0441\u043E\u0442\u0430 \u043A\u043D\u043E\u043F\u043E\u043A", 36, 56)}${rg("pad", "\u0412\u0456\u0434\u0441\u0442\u0443\u043F\u0438 \u0432 \u043A\u0430\u0440\u0442\u043A\u0430\u0445", 8, 22)}${rg("gap", "\u041F\u0440\u043E\u043C\u0456\u0436\u043A\u0438 \u043C\u0456\u0436 \u0431\u043B\u043E\u043A\u0430\u043C\u0438", 4, 18)}
+      <h4>\u{1F5C2} \u041A\u0430\u0440\u0442\u043A\u0438</h4>${ch("card", "\u0417\u0430\u043B\u0438\u0432\u043A\u0430", [["solid", "\u0421\u0443\u0446\u0456\u043B\u044C\u043D\u0430"], ["grad", "\u0413\u0440\u0430\u0434\u0456\u0454\u043D\u0442"], ["glass", "\u0421\u043A\u043B\u043E"], ["outline", "\u041A\u043E\u043D\u0442\u0443\u0440"]])}${ch("shadow", "\u0422\u0456\u043D\u044C", [["none", "\u041D\u0435\u043C\u0430\u0454"], ["soft", "\u041C\u02BC\u044F\u043A\u0430"], ["deep", "\u0413\u043B\u0438\u0431\u043E\u043A\u0430"], ["glow", "\u0421\u0432\u0456\u0442\u0456\u043D\u043D\u044F"]])}${ch("border", "\u0420\u0430\u043C\u043A\u0430", [["none", "\u041D\u0435\u043C\u0430\u0454"], ["hair", "\u0422\u043E\u043D\u043A\u0430"], ["accent", "\u0410\u043A\u0446\u0435\u043D\u0442"]])}${tg("caps", "\u0417\u0430\u0433\u043E\u043B\u043E\u0432\u043A\u0438 \u043A\u0430\u0440\u0442\u043E\u043A \u0432\u0435\u043B\u0438\u043A\u0438\u043C\u0438 \u043B\u0456\u0442\u0435\u0440\u0430\u043C\u0438")}
+      <h4>\u{1F524} \u0428\u0440\u0438\u0444\u0442</h4>${ch("font", "\u041E\u0441\u043D\u043E\u0432\u043D\u0438\u0439", FN)}${ch("fonth", "\u0417\u0430\u0433\u043E\u043B\u043E\u0432\u043A\u0438 \u0439 \u0441\u0443\u043C\u0438", [["same", "\u042F\u043A \u043E\u0441\u043D\u043E\u0432\u043D\u0438\u0439"], ...FN.slice(2)])}${rg("fs", "\u0420\u043E\u0437\u043C\u0456\u0440 \u0442\u0435\u043A\u0441\u0442\u0443", 13, 18)}${rg("hw", "\u0416\u0438\u0440\u043D\u0456\u0441\u0442\u044C \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043A\u0456\u0432", 500, 900, 100)}
+      <h4>\u{1F518} \u041A\u043D\u043E\u043F\u043A\u0438 \u0439 \u043F\u0435\u0440\u0435\u043C\u0438\u043A\u0430\u0447\u0456</h4>${ch("prim", "\u0413\u043E\u043B\u043E\u0432\u043D\u0430 \u043A\u043D\u043E\u043F\u043A\u0430", [["fill", "\u0417\u0430\u043B\u0438\u0432\u043A\u0430"], ["grad", "\u0413\u0440\u0430\u0434\u0456\u0454\u043D\u0442"], ["outline", "\u041A\u043E\u043D\u0442\u0443\u0440"]])}${ch("sec", "\u0417\u0432\u0438\u0447\u0430\u0439\u043D\u0456 \u043A\u043D\u043E\u043F\u043A\u0438", [["fill", "\u0417\u0430\u043B\u0438\u0432\u043A\u0430"], ["outline", "\u041A\u043E\u043D\u0442\u0443\u0440"], ["ghost", "\u041F\u0440\u043E\u0437\u043E\u0440\u0456"]])}
+      ${ch("seg", "\u041F\u0435\u0440\u0435\u043C\u0438\u043A\u0430\u0447", [["dark", "\u0422\u0435\u043C\u043D\u0438\u0439"], ["white", "\u0411\u0456\u043B\u0456 \u043F\u0456\u043B\u044E\u043B\u0456"], ["accent", "\u0410\u043A\u0446\u0435\u043D\u0442\u043D\u0438\u0439"], ["line", "\u041F\u0456\u0434\u043A\u0440\u0435\u0441\u043B\u0435\u043D\u043D\u044F"]])}${ch("tabs", "\u0412\u043A\u043B\u0430\u0434\u043A\u0438 \u0440\u043E\u0437\u0434\u0456\u043B\u0443", [["seg", "\u0421\u0435\u0433\u043C\u0435\u043D\u0442"], ["pill", "\u041F\u0456\u043B\u044E\u043B\u0456"], ["line", "\u041F\u0456\u0434\u043A\u0440\u0435\u0441\u043B\u0435\u043D\u043D\u044F"]])}
+      <h4>\u{1FA91} \u0417\u0430\u043B \u0456 \u043C\u0435\u043D\u044E</h4>${ch("tbl", "\u0417\u0430\u0439\u043D\u044F\u0442\u0438\u0439 \u0441\u0442\u0456\u043B", [["gold", "\u0417\u043E\u043B\u043E\u0442\u0438\u0439"], ["fill", "\u0417\u0430\u043B\u0438\u0432\u043A\u0430"], ["frame", "\u0420\u0430\u043C\u043A\u0430"], ["dot", "\u041A\u0440\u0430\u043F\u043A\u0430"]])}
+      ${ch("nav", "\u041D\u0438\u0436\u043D\u0454 \u043C\u0435\u043D\u044E", [["bar", "\u041F\u0440\u0438\u043A\u0440\u0456\u043F\u043B\u0435\u043D\u0435"], ["float", "\u041F\u043B\u0430\u0432\u0430\u044E\u0447\u0435"]])}${ch("navn", "\u041F\u0443\u043D\u043A\u0442\u0456\u0432 \u0443 \u043C\u0435\u043D\u044E", [["8", "\u0423\u0441\u0456 (\u0433\u043E\u0440\u0442\u0430\u0442\u0438)"], ["5", "\u041E\u0441\u043D\u043E\u0432\u043D\u0456 + \xAB\u0429\u0435\xBB"]])}${ch("navon", "\u0410\u043A\u0442\u0438\u0432\u043D\u0438\u0439 \u043F\u0443\u043D\u043A\u0442", [["accent", "\u0410\u043A\u0446\u0435\u043D\u0442"], ["dark", "\u041F\u043B\u0430\u0448\u043A\u0430"], ["text", "\u041B\u0438\u0448\u0435 \u043A\u043E\u043B\u0456\u0440"]])}${tg("navlbl", "\u041F\u0456\u0434\u043F\u0438\u0441\u0438 \u043F\u0456\u0434 \u0456\u043A\u043E\u043D\u043A\u0430\u043C\u0438")}
+      ${ch("modal", "\u0412\u0456\u043A\u043D\u0430 \u043D\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0456", [["center", "\u041F\u043E \u0446\u0435\u043D\u0442\u0440\u0443"], ["sheet", "\u0417\u043D\u0438\u0437\u0443"], ["full", "\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"]])}${tg("anim", "\u0410\u043D\u0456\u043C\u0430\u0446\u0456\u0457")}</div>`;
+    const pm = modal({ title: "\u{1F3A8} \u041A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440 \u0441\u0442\u0438\u043B\u044E", body, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438 \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457", val: "own", cls: "primary" }, ...isAdmin() ? [{ label: "\u{1F3EA} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438 \u0434\u043B\u044F \u0432\u0441\u044C\u043E\u0433\u043E \u0437\u0430\u043A\u043B\u0430\u0434\u0443", val: "venue" }] : [], { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+    const box = $("#modal .skc"), upd = () => applySkin(K);
+    box.addEventListener("click", (e) => {
+      const b = e.target.closest(".ch button");
+      if (!b) return;
+      const g = b.parentElement, k = g.dataset.k;
+      K[k] = b.dataset.v;
+      g.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+      upd();
+    });
+    box.addEventListener("input", (e) => {
+      const i = e.target;
+      if (!i.dataset.k) return;
+      K[i.dataset.k] = i.type === "checkbox" ? i.checked : +i.value;
+      if (i.nextElementSibling) i.nextElementSibling.textContent = i.value;
+      upd();
+    });
+    upd();
+    const v = await pm;
+    closeModal();
+    if (v === "own") skSave("own", skDiff(K));
+    else if (v === "venue" && await act("lookVSet", { look: skDiff(K) }, "\u{1F3EA} \u0421\u0442\u0438\u043B\u044C \u0437\u0430\u043A\u043B\u0430\u0434\u0443 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
+      S.lookV = skDiff(K);
+      skSave("venue");
+    } else applyLook();
+  }
+  document.addEventListener("click", async (e) => {
+    const el = e.target.closest("[data-a]");
+    if (!el || !/^sk(Set|Edit|Code|Venue|VenueOff)$/.test(el.dataset.a)) return;
+    const a = el.dataset.a, d = el.dataset;
+    if (a === "skSet") return d.v === "pre" ? skSave("own", SK_PRE[d.p][2]) : skSave(d.v);
+    if (a === "skEdit") return skEditor();
+    if (a === "skCode") {
+      const t = await ask("\u{1F4E5} \u041A\u043E\u0434 \u0441\u0442\u0438\u043B\u044E", "\u0412\u0441\u0442\u0430\u0432\u0442\u0435 \u0440\u044F\u0434\u043E\u043A VARVAR-STYLE {\u2026} \u0437 \u043A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440\u0430");
+      if (!t) return;
+      try {
+        const j = JSON.parse(t.slice(t.indexOf("{")));
+        const K = Object.fromEntries(Object.entries(j).filter(([k]) => k in SK_BASE));
+        if (K.r != null || K.font) {
+          skSave("own", K);
+          toast("\u{1F3A8} \u0421\u0442\u0438\u043B\u044C \u0437\u0430\u0441\u0442\u043E\u0441\u043E\u0432\u0430\u043D\u043E \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457");
+        } else toast("\u26A0\uFE0F \u0423 \u043A\u043E\u0434\u0456 \u043D\u0435\u043C\u0430\u0454 \u043D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u044C \u0441\u0442\u0438\u043B\u044E");
+      } catch (e2) {
+        toast("\u26A0\uFE0F \u041D\u0435 \u0432\u0434\u0430\u043B\u043E\u0441\u044F \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u0442\u0438 \u043A\u043E\u0434");
+      }
+      return;
+    }
+    if (a === "skVenue") {
+      const K = skDiff(skCur());
+      if (!await confirmBox("\u{1F3EA} \u0417\u0440\u043E\u0431\u0438\u0442\u0438 \u043F\u043E\u0442\u043E\u0447\u043D\u0438\u0439 \u0441\u0442\u0438\u043B\u044C \u0441\u0442\u0438\u043B\u0435\u043C \u0437\u0430\u043A\u043B\u0430\u0434\u0443?", "\u0412\u0456\u043D \u0437\u02BC\u044F\u0432\u0438\u0442\u044C\u0441\u044F \u043D\u0430 \u0432\u0441\u0456\u0445 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u044F\u0445, \u0434\u0435 \u0432\u0438\u0431\u0440\u0430\u043D\u043E \xAB\u0421\u0442\u0438\u043B\u044C \u0437\u0430\u043A\u043B\u0430\u0434\u0443\xBB (\u0437\u0430 \u0437\u0430\u043C\u043E\u0432\u0447\u0443\u0432\u0430\u043D\u043D\u044F\u043C). \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438 \u0441\u0442\u0430\u0440\u0443 \u043A\u0430\u0441\u0443 \u043C\u043E\u0436\u043D\u0430 \u0431\u0443\u0434\u044C-\u043A\u043E\u043B\u0438.")) return;
+      if (await act("lookVSet", { look: K }, "\u{1F3EA} \u0421\u0442\u0438\u043B\u044C \u0437\u0430\u043A\u043B\u0430\u0434\u0443 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
+        S.lookV = K;
+        skSave("venue");
+      }
+      return;
+    }
+    if (a === "skVenueOff") {
+      if (await confirmBox("\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0441\u0442\u0438\u043B\u044C \u0437\u0430\u043A\u043B\u0430\u0434\u0443?", "\u041F\u0440\u0438\u0441\u0442\u0440\u043E\u0457 \u0431\u0435\u0437 \u0441\u0432\u043E\u0433\u043E \u0441\u0442\u0438\u043B\u044E \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u0434\u043E \u0441\u0442\u0430\u0440\u043E\u0457 \u043A\u0430\u0441\u0438") && await act("lookVSet", { look: null }, "\u21A9\uFE0F \u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E")) {
+        S.lookV = null;
+        skSave("old");
+      }
+    }
+  });
   const LOY_W = { hall: "\u{1FA91} \u0437\u0430\u043B", pick: "\u{1F961} \u0437 \u0441\u043E\u0431\u043E\u044E", del: "\u{1F6F5} \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430" }, LOY_D = ["", "\u041F\u043D", "\u0412\u0442", "\u0421\u0440", "\u0427\u0442", "\u041F\u0442", "\u0421\u0431", "\u041D\u0434"];
   const bdTxt = (bd) => bd ? `${bd.slice(3)}.${bd.slice(0, 2)}` : "";
   const ruleName = (r) => r.name || ({ cat: `\u2212${r.pct}%`, happy: `\u0429\u0430\u0441\u043B\u0438\u0432\u0456 \u0433\u043E\u0434\u0438\u043D\u0438 \u2212${r.pct}%`, nth: `\u041A\u043E\u0436\u043D\u0430 ${r.n}-\u0442\u0430 \u0432 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A`, sum: r.gift ? `\u0412\u0456\u0434 ${r.min} \u20B4 \u2014 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A` : `\u0412\u0456\u0434 ${r.min} \u20B4 \u2212${r.pct}%`, bday: `\u0414\u0435\u043D\u044C \u043D\u0430\u0440\u043E\u0434\u0436\u0435\u043D\u043D\u044F \u2212${r.pct}%` }[r.type] || "\u0410\u043A\u0446\u0456\u044F");

@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const API = 'http://localhost:8787', SITE = 'http://localhost:8001', OUT = process.argv[2] || 'shots';
+const LOOK = (process.argv.find(a => a.startsWith('--look=')) || '').slice(7);
 const W = +(process.argv.find(a => a.startsWith('--w=')) || '--w=375').slice(4), ONLY = (process.argv.find(a => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 mkdirSync(OUT, { recursive: true });
@@ -35,7 +36,7 @@ const want = k => !ONLY.length || ONLY.some(o => k.startsWith(o));
 
 // ---- каса (адмін) ----
 await go(SITE + '/pos.html?api=' + API);
-await ev(`for (const k of Object.keys(localStorage)) if (k.startsWith('pos_')) localStorage.removeItem(k); localStorage.setItem('pos_token', JSON.stringify(${JSON.stringify(reg.token)})); localStorage.setItem('pos_me', JSON.stringify(${JSON.stringify(reg.me)}));`);
+await ev(`for (const k of Object.keys(localStorage)) if (k.startsWith('pos_')) localStorage.removeItem(k); localStorage.setItem('pos_token', JSON.stringify(${JSON.stringify(reg.token)})); localStorage.setItem('pos_me', JSON.stringify(${JSON.stringify(reg.me)})); ${LOOK ? `localStorage.setItem('pos_look', ${JSON.stringify(LOOK)});` : ''}`);
 await go(SITE + '/pos.html?api=' + API);
 const click = async (sel, ms = 1800) => { await ev(`document.querySelector(${JSON.stringify(sel)})?.click()`); await sleep(ms); };
 const closeAll = () => ev(`document.querySelector('#modal')?.click?.(); document.querySelector('[data-a="closeSheet"], .sheet .x')?.click(); return 1`);

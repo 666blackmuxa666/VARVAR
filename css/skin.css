@@ -1,0 +1,100 @@
+/* 🎨 Конструктор стилю: працює ЛИШЕ коли <html data-skin> (обрано не «Стара каса»).
+   Без атрибута каса виглядає точно як раніше — цей файл нічого не чіпає.
+   Значення приходять змінними з applyLook(): --sk-r --sk-rb --sk-h --sk-pad --sk-gap --sk-fs --sk-hw --sk-fh --sk-shadow --sk-border */
+
+/* ---- шрифт і текст ---- */
+html[data-skin] body { font-size: var(--sk-fs, 15px); }
+html[data-skin] h1, html[data-skin] h2, html[data-skin] .card h3, html[data-skin] .kpi b, html[data-skin] .pill b, html[data-skin] .tbl .n { font-family: var(--sk-fh, var(--font)); font-weight: var(--sk-hw, 800); }
+html[data-skin][data-sk-caps="1"] .card > h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+
+/* ---- фон ---- */
+html[data-skin][data-sk-bgfx="glow"] body { background: radial-gradient(90% 50% at 0% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%), radial-gradient(80% 45% at 100% 100%, #5a4bff1f, transparent 60%), var(--bg); }
+html[data-skin][data-sk-bgfx="vignette"] body { background: radial-gradient(120% 80% at 50% 0%, var(--bg2), var(--bg) 70%); }
+html[data-skin][data-sk-bgfx] .nav, html[data-skin][data-sk-bgfx] main { background-color: transparent; }
+
+/* ---- картки й плитки ---- */
+html[data-skin] .card, html[data-skin] .kpi, html[data-skin] .pill, html[data-skin] .ev, html[data-skin] .list-row, html[data-skin] .row, html[data-skin] .stat {
+  border-radius: var(--sk-r); box-shadow: var(--sk-shadow, none); border: var(--sk-border, 0); }
+html[data-skin] .card { padding: var(--sk-pad) calc(var(--sk-pad) + 2px); }
+html[data-skin] .kpi, html[data-skin] .pill { padding: calc(var(--sk-pad) - 2px) var(--sk-pad); }
+html[data-skin] .kpis, html[data-skin] .pills, html[data-skin] .grid2, html[data-skin] .tables { gap: var(--sk-gap); }
+html[data-skin][data-sk-card="grad"] .card { background: linear-gradient(180deg, var(--card2), var(--card)); }
+html[data-skin][data-sk-card="glass"] .card, html[data-skin][data-sk-card="glass"] .kpi, html[data-skin][data-sk-card="glass"] .pill, html[data-skin][data-sk-card="glass"] .ev { background: color-mix(in srgb, var(--card) 55%, transparent); backdrop-filter: blur(16px) saturate(150%); -webkit-backdrop-filter: blur(16px) saturate(150%); border: 1px solid #ffffff17; }
+html[data-skin][data-sk-card="outline"] .card, html[data-skin][data-sk-card="outline"] .kpi, html[data-skin][data-sk-card="outline"] .pill, html[data-skin][data-sk-card="outline"] .ev { background: transparent; border: 1px solid var(--line2); }
+
+/* ---- кнопки ---- */
+html[data-skin] .btn { min-height: var(--sk-h); border-radius: var(--sk-rb); }
+html[data-skin] .btn.sm { min-height: calc(var(--sk-h) - 10px); border-radius: calc(var(--sk-rb) - 3px); }
+html[data-skin] .icobtn, html[data-skin] .rb { border-radius: var(--sk-rb); }
+html[data-skin][data-sk-shape="pill"] .btn, html[data-skin][data-sk-shape="pill"] .icobtn { border-radius: 999px; }
+html[data-skin][data-sk-shape="square"] .btn, html[data-skin][data-sk-shape="square"] .icobtn { border-radius: 6px; }
+html[data-skin][data-sk-prim="grad"] .btn.primary { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 82%, #fff), var(--accent)); box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+html[data-skin][data-sk-prim="outline"] .btn.primary { background: transparent; color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+html[data-skin][data-sk-sec="outline"] .btn:not(.primary):not(.green):not(.red):not(.ok) { background: transparent; box-shadow: inset 0 0 0 1px var(--line2); }
+html[data-skin][data-sk-sec="ghost"] .btn:not(.primary):not(.green):not(.red):not(.ok) { background: transparent; color: var(--muted); }
+
+/* ---- перемикачі (.seg) і вкладки розділів (.seg.rsec) ---- */
+html[data-skin] .seg { border-radius: calc(var(--sk-rb) + 3px); }
+html[data-skin] .seg button { border-radius: var(--sk-rb); }
+html[data-skin][data-sk-seg="white"] .seg:not(.rsec) { background: transparent; padding: 0; gap: 6px; }
+html[data-skin][data-sk-seg="white"] .seg:not(.rsec) button { background: var(--card); border-radius: 999px; }
+html[data-skin][data-sk-seg="white"] .seg:not(.rsec) button.on { background: var(--text); color: var(--bg); box-shadow: none; }
+html[data-skin][data-sk-seg="accent"] .seg:not(.rsec) button.on { background: var(--accent); color: var(--accent-ink); }
+html[data-skin][data-sk-seg="line"] .seg:not(.rsec) { background: transparent; border-radius: 0; padding: 0; border-bottom: 1px solid var(--line); }
+html[data-skin][data-sk-seg="line"] .seg:not(.rsec) button { border-radius: 0; }
+html[data-skin][data-sk-seg="line"] .seg:not(.rsec) button.on { background: transparent; color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
+html[data-skin][data-sk-tabs="pill"] .seg.rsec { background: transparent; padding: 0; gap: 6px; -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); padding-right: 24px; }
+html[data-skin][data-sk-tabs="pill"] .seg.rsec button { flex: 0 0 auto; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line2); }
+html[data-skin][data-sk-tabs="pill"] .seg.rsec button.on { background: var(--text); color: var(--bg); box-shadow: none; }
+html[data-skin][data-sk-tabs="line"] .seg.rsec { background: transparent; border-radius: 0; padding: 0; gap: 14px; border-bottom: 1px solid var(--line); }
+html[data-skin][data-sk-tabs="line"] .seg.rsec button { flex: 0 0 auto; border-radius: 0; padding-inline: 2px; }
+html[data-skin][data-sk-tabs="line"] .seg.rsec button.on { background: transparent; box-shadow: inset 0 -2px 0 var(--accent); color: var(--text); }
+
+/* ---- столи ---- */
+html[data-skin] .tbl { border-radius: var(--sk-r); box-shadow: var(--sk-shadow, none); }
+html[data-skin][data-sk-tbl="fill"] .tbl.busy:not(.check):not(.calling) { background: var(--accent); border-color: transparent; }
+html[data-skin][data-sk-tbl="fill"] .tbl.busy:not(.check):not(.calling) * { color: var(--accent-ink) !important; }
+html[data-skin][data-sk-tbl="frame"] .tbl.busy:not(.check) { background: var(--card); border-color: var(--accent); }
+html[data-skin][data-sk-tbl="dot"] .tbl.busy:not(.check) { background: var(--card); border-color: transparent; }
+html[data-skin][data-sk-tbl="dot"] .tbl.busy::after { content: ''; position: absolute; top: 12px; right: 12px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+
+/* ---- вікна ---- */
+html[data-skin] .modal { border-radius: calc(var(--sk-r) + 4px); }
+@media (max-width: 760px) {
+  html[data-skin][data-sk-modal="sheet"] .modal-bg { align-items: flex-end; padding: 0; }
+  html[data-skin][data-sk-modal="sheet"] .modal { width: 100%; max-width: none; border-radius: 26px 26px 0 0; padding-bottom: calc(20px + env(safe-area-inset-bottom)); max-height: 92vh; animation: skUp .22s cubic-bezier(.2, .9, .3, 1); }
+  html[data-skin][data-sk-modal="sheet"] .modal::before { content: ''; display: block; width: 40px; height: 5px; border-radius: 9px; background: var(--line2); margin: -8px auto 10px; }
+  html[data-skin][data-sk-modal="full"] .modal-bg { padding: 0; }
+  html[data-skin][data-sk-modal="full"] .modal { width: 100%; max-width: none; height: 100%; max-height: none; border-radius: 0; padding-top: calc(20px + env(safe-area-inset-top)); }
+}
+@keyframes skUp { from { transform: translateY(40px); opacity: .4; } }
+
+/* ---- нижнє меню (телефон / планшет) ---- */
+@media (max-width: 980px) {
+  html[data-skin][data-sk-nav="float"] .nav { margin: 0 10px calc(8px + env(safe-area-inset-bottom)); padding: 5px; border: 1px solid var(--line2); border-radius: 22px; box-shadow: 0 10px 30px #00000080; }
+  html[data-skin][data-sk-navn="5"] .nav .more-i { display: none !important; }
+  html[data-skin][data-sk-navn="5"] .nav .more-btn { display: grid !important; flex: 1 0 auto; }
+  html[data-skin][data-sk-navn="5"] .nav { justify-content: space-around; }
+  html[data-skin][data-sk-navn="5"] .nav button { flex: 1 1 0; min-width: 0; }
+  html[data-skin][data-sk-navlbl="0"] .nav button { font-size: 0; padding-block: 10px; }
+}
+html[data-skin][data-sk-navon="dark"] .nav button.on { background: var(--card2); color: var(--text); box-shadow: none; }
+html[data-skin][data-sk-navon="text"] .nav button.on { background: transparent; color: var(--accent); box-shadow: none; }
+html[data-skin][data-sk-navon="accent"] .nav button.on { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+
+/* ---- поля ---- */
+html[data-skin] input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]), html[data-skin] select, html[data-skin] textarea { border-radius: var(--sk-rb); }
+
+/* конструктор у касі */
+.skc { display: flex; flex-direction: column; gap: 10px; }
+.skc .o { display: flex; flex-direction: column; gap: 5px; }
+.skc .o > span { font-size: 12px; color: var(--muted); font-weight: 600; }
+.skc .ch { display: flex; flex-wrap: wrap; gap: 4px; }
+.skc .ch button { padding: 6px 10px; border-radius: 9px; font-size: 13px; font-weight: 600; background: var(--card2); color: var(--muted); }
+.skc .ch button.on { background: var(--text); color: var(--bg); }
+.skc .rg { display: flex; align-items: center; gap: 8px; } .skc .rg input { flex: 1; accent-color: var(--accent); } .skc .rg output { min-width: 40px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+.skc h4 { margin: 8px 0 0; font-size: 13px; color: var(--accent); }
+.sk-pre { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.sk-pre button { padding: 12px 10px; border-radius: 14px; background: var(--card2); font-weight: 700; text-align: left; border: 2px solid transparent; display: grid; gap: 2px; }
+.sk-pre button small { font-weight: 500; color: var(--muted); font-size: 11px; }
+.sk-pre button.on { border-color: var(--accent); }

@@ -7,7 +7,7 @@ import { ALS, MAIN, doName, venueEnv, venueId } from './venue.js';
 
 const now = () => Date.now();
 // ключі, зміна яких оновлює екрани POS
-const WATCH = /^(bill:|closed:|day:|exp:|ev:|menu$|staff$|ord:|fav$|shift$|z:|mov:|tipbal$|tippay:|void:|kq:|ing$|cards$|stk:|invl:|sups$|cntl$|cnt:open|att:|plan:|pay:|swaps$|task:)/;
+const WATCH = /^(bill:|closed:|day:|exp:|ev:|menu$|staff$|ord:|fav$|shift$|z:|mov:|tipbal$|tippay:|void:|kq:|ing$|cards$|stk:|invl:|sups$|cntl$|cnt:open|att:|plan:|pay:|swaps$|task:|lookv$)/;
 const alive = r => r && (!r.e || r.e > now());
 
 export class Store extends DurableObject {

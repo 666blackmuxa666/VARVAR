@@ -47,10 +47,10 @@ export async function posApi(b, req, env) {
   // 🧮 Розрахунок: склад, техкарти, накладні, інвентаризація — свої права (адмін / кухар)
   if (/^sk[A-Z]/.test(b.op || '')) return stockApi(b, env, me, { invoice: aiInvoice, card: aiCard, dups: aiDups });
   if (/^zp[A-Z]/.test(b.op || '')) return payApi(b, env, me); // 👷 зміни й зарплата
-  if (me.role === 'cook' && !['logout', 'state', 'menu', 'fav', 'order', 'accept', 'reject', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'printTest', 'ideaAdd', 'ideaList', 'ideaDel', 'help', 'taskList', 'taskMark', 'taskPh'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
+  if (me.role === 'cook' && !['logout', 'state', 'menu', 'fav', 'order', 'accept', 'reject', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'printTest', 'ideaAdd', 'ideaList', 'ideaDel', 'help', 'taskList', 'taskMark', 'taskPh', 'lookV'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
 
   // 🛵 кур'єр: лише свої доставки
-  if (me.role === 'courier' && !['logout', 'state', 'goSt', 'goCour', 'zpIn', 'zpOut', 'zpMy', 'ideaAdd', 'ideaList', 'ideaDel', 'help', 'courMe', 'courTg', 'courAct', 'taskList', 'taskMark', 'taskPh'].includes(b.op)) return [{ error: 'Кур\'єр — лише доставки' }, 403];
+  if (me.role === 'courier' && !['logout', 'state', 'goSt', 'goCour', 'zpIn', 'zpOut', 'zpMy', 'ideaAdd', 'ideaList', 'ideaDel', 'help', 'courMe', 'courTg', 'courAct', 'taskList', 'taskMark', 'taskPh', 'lookV'].includes(b.op)) return [{ error: 'Кур\'єр — лише доставки' }, 403];
   if (/^go[A-Z]|^cli[A-Z]/.test(b.op || '')) return goApi(b, env, me, t);
   if (b.op === 'help') { // 💬 Допомога: з каси будь-якого закладу → власнику платформи в Telegram (група VARVAR)
     const text = String(b.text || '').trim().slice(0, 1500); if (text.length < 3) return [{ error: 'Опишіть проблему' }, 400];
@@ -60,6 +60,8 @@ export async function posApi(b, req, env) {
     return [{ ok: true }, 200];
   }
   if (b.op === 'aiBench') { if (!admin) return needAdmin(); const imgs = (Array.isArray(b.images) ? b.images : []).slice(0, 3).map(x => String(x).replace(/^data:image\/\w+;base64,/, '')).filter(x => x.length > 1000 && x.length < 6e6); if (!imgs.length) return [{ error: 'Додайте фото' }, 400]; return [{ ok: true, list: await (await import('./ai.js')).aiBench(env, imgs) }, 200]; } // 🧪 порівняння ШІ на накладній
+  if (b.op === 'lookV') return [{ ok: true, look: await env.DB.get('lookv', 'json') }, 200]; // 🎨 стиль закладу (конструктор)
+  if (b.op === 'lookVSet') { if (!admin) return needAdmin(); const v = b.look && typeof b.look === 'object' ? JSON.stringify(b.look).slice(0, 4000) : null; if (v) await env.DB.put('lookv', v); else await env.DB.delete('lookv'); return [{ ok: true }, 200]; }
   if (/^task[A-Z]/.test(b.op || '')) return (await import('./tasks.js')).taskApi(b, env, me); // 📋 план на день
   if (/^photo[A-Z]/.test(b.op || '')) { if (!admin) return needAdmin(); return (await import('./photoai.js')).photoApi(b, env, who); } // 📸 ШІ-фото страв
   if (/^idea[A-Z]/.test(b.op || '')) return (await import('./ideas.js')).ideaApi(b, env, me); // 💡 побажання розробнику
