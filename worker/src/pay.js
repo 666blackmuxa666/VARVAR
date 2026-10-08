@@ -153,7 +153,8 @@ export async function payroll(env, m = mon()) {
       tips: tb[s.name] || 0, toMon: p.monRev && p.monBonus && baseSum < p.monRev ? r0(p.monRev - baseSum) : 0, revPerShift: shifts ? r0(mine.reduce((a, d) => a + (rev[d]?.all || 0), 0) / shifts) : 0, revPerHour: hours ? r0(mine.reduce((a, d) => a + (rev[d]?.all || 0), 0) / hours) : 0 };
   });
   const revenue = r0(Object.values(rev).reduce((a, x) => a + x.all, 0)), fund = rows.reduce((a, x) => a + x.earned, 0);
-  const gx = (await env.DB.get('gridx:' + m, 'json')) || { add: [], hide: [] }, seen = [...new Set([...((await env.DB.get('seen:' + m, 'json')) || []), ...gx.add])].filter(n => !gx.hide.includes(n));
+  const gx = (await env.DB.get('gridx:' + m, 'json')) || { add: [], hide: [] }, worked = new Set(Object.values(rev).flatMap(x => Object.keys(x.own || {})).filter(Boolean)); for (const d of days) for (const n of (await env.DB.get('cooks:' + d, 'json')) || []) worked.add(typeof n === 'string' ? n : n?.n || ''); // 🧾 хто закривав чеки (і в боті) або стояв на кухні — сам потрапляє в графік
+  const seen = [...new Set([...((await env.DB.get('seen:' + m, 'json')) || []), ...gx.add, ...worked])].filter(n => !gx.hide.includes(n));
   return { m, days, att, plan, seen, hide: gx.hide, ops: ops.slice().reverse(), rows, revenue, fund, fundPct: revenue ? Math.round(fund / revenue * 1000) / 10 : 0, cfg: await getCfg(env) };
 }
 // особистий кабінет — лише свої цифри
