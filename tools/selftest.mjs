@@ -104,6 +104,18 @@ async function apiTests() {
     await posOk(A, 'skJrUndo', { i }); must((await pos(A, 'skJrUndo', { i })).status === 400, 'скасовано двічі');
     const y = (await posOk(A, 'skData')).ing.find(i => i.id === x.id); must(Math.abs((y.st?.k || 0) + (y.st?.b || 0) - st0) < 1e-6, 'залишок не повернувся'); return x.n;
   });
+  await step('🔗 склад: обʼєднати дублікати й 🥬 група-замінник', async () => {
+    const z = Date.now().toString(36).slice(-4), mk = async (n, u) => (await posOk(A, 'skIngSave', { x: { n: n + ' ' + z, u, cat: 'Інше', home: 'k' } })).x;
+    const a = await mk('QA айсберг', 'кг'), b = await mk('QA салат айсберг ваг', 'кг'), c = await mk('QA ромен', 'кг'), d = await mk('QA айсберг шт', 'шт');
+    await posOk(A, 'skAdj', { id: a.id, wh: 'k', q: 1 }); await posOk(A, 'skAdj', { id: b.id, wh: 'k', q: 2 }); await posOk(A, 'skAdj', { id: d.id, wh: 'k', q: 4 });
+    must((await pos(A, 'skMerge', { to: a.id, from: [d.id] })).status === 400, 'різні одиниці без коефіцієнта пройшли');
+    const r = await posOk(A, 'skMerge', { to: a.id, from: [b.id, d.id], f: { [d.id]: 0.5 } }); must(r.n === 2, 'обʼєднано ' + r.n);
+    const L = (await posOk(A, 'skData')).ing, A2 = L.find(x => x.id === a.id), B2 = L.find(x => x.id === b.id);
+    must(Math.abs((A2.st.k || 0) - 5) < 1e-6, 'залишок ' + A2.st.k); must(B2.off && B2.merged === a.id, 'дубль не сховано');
+    const g = (await posOk(A, 'skGrp', { x: { n: 'QA салат листовий ' + z, u: 'кг', grp: [a.id, c.id] } })).x; must(g.grp.length === 2, 'група');
+    must((await pos(A, 'skAdj', { id: g.id, wh: 'k', q: 1 })).status === 400, 'на групу оприбуткувалось');
+    for (const id of [a.id, c.id, g.id]) await posOk(A, 'skIngDel', { id }); return 'ок';
+  });
   await step('💸 витрата за минулий день: адмін — так, офіціант — ні', async () => {
     const y = new Date(Date.now() - 2 * 86400e3).toISOString().slice(0, 10);
     if (W) { const r = await pos(W, 'expense', { sum: 1, note: 'QA', src: 'cash', day: y }); must(r.status === 403, 'офіціант зміг: ' + r.status); }

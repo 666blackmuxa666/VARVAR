@@ -233,3 +233,15 @@ export async function aiBench(env, images, only) {
     } catch (e) { return { m, ms: Date.now() - t, err: String(e.message).replace(m, '').slice(0, 160) }; }
   }));
 }
+
+// 🔍 дублікати на складі: той самий продукт під різними назвами (з накладних) → групи id
+export async function aiDups(env, list) {
+  if (!aiOn(env)) return { error: 'AI вимкнено' }; if (list.length < 2) return { groups: [] };
+  const L = list.slice(0, 400), prompt = `Склад ресторану. Знайди ДУБЛІКАТИ — той самий продукт під різними назвами (різна марка, «ваговий», опечатка, інший порядок слів). Різні сорти/види (Айсберг і Ромен, моцарела і фета, Pepsi 0.5 і Pepsi 1 л) — НЕ дублікати. Заготовки й продукти не змішуй. Поверни групи з 2+ номерів, перший — найкраща назва.
+${L.map((x, i) => `${i}. ${x.n} (${x.u})`).join('\n')}`;
+  try {
+    const r = await gemini(env, prompt, { schema: { type: 'OBJECT', properties: { groups: { type: 'ARRAY', items: { type: 'ARRAY', items: { type: 'INTEGER' } } } }, required: ['groups'] }, temperature: 0.1, timeout: 30000 });
+    const seen = new Set();
+    return { groups: (r.groups || []).map(g => [...new Set(g)].filter(i => L[i] && !seen.has(i) && seen.add(i)).map(i => L[i].id)).filter(g => g.length > 1).slice(0, 40) };
+  } catch (e) { console.log('aiDups', e.message); return { error: 'Помічник зараз не відповідає — спробуйте ще раз за хвилину' }; }
+}

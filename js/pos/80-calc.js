@@ -22,7 +22,7 @@
   }
   // 📦 склад
   function skStockHTML() {
-    const K = S.sk, D = S.data.sk, adm = isAdmin(), q = K.q.trim().toLowerCase(), live = D.ing.filter(x => !x.off);
+    const K = S.sk, D = S.data.sk, adm = isAdmin(), q = K.q.trim().toLowerCase(), live = D.ing.filter(x => !x.off && !x.grp), gq = x => x.grp ? x.grp.reduce((a, id) => a + Math.max(0, totQ(D.ing.find(y => y.id === id) || {})), 0) : totQ(x);
     const list = D.ing.filter(x => (K.cat === '🗑' ? x.off : !x.off) && (!q || x.n.toLowerCase().includes(q)) && (!K.cat || K.cat === '🗑' || x.cat === K.cat) && (!K.wh || x.home === K.wh || (x.st?.[K.wh] || 0) !== 0));
     const low = live.filter(x => x.min > 0 && totQ(x) < x.min);
     const val = w => live.reduce((a, x) => a + Math.max(0, w ? x.st?.[w] || 0 : totQ(x)) * (x.cost || 0), 0);
@@ -30,12 +30,14 @@
     const tools = `<div class="sk-bar"><input id="skQ" placeholder="🔎 Пошук продукту" value="${esc(K.q)}">
       <div class="seg wrap sk-wh">${[['', 'Усі'], ['k', WHN.k], ['b', WHN.b]].map(([k, l]) => `<button class="${K.wh === k ? 'on' : ''}" data-a="skWh" data-w="${k}">${l}</button>`).join('')}</div>
       <select id="skCat"><option value="">Усі категорії</option>${cats.map(c => `<option ${K.cat === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}${D.ing.some(x => x.off) ? `<option value="🗑" ${K.cat === '🗑' ? 'selected' : ''}>🗑 Сховані</option>` : ''}</select>
-      <span class="grow"></span>${adm ? '<button class="btn sm primary" data-a="skIng">➕ Продукт</button>' : ''}<button class="btn sm" data-a="skOffPick">🗑 Списати</button><button class="btn sm" data-a="skJr">📜 Рух</button></div>`;
+      <span class="grow"></span>${adm ? '<button class="btn sm primary" data-a="skIng">➕ Продукт</button><button class="btn sm" data-a="skGrp">🥬 Група</button><button class="btn sm" data-a="skDups">🔍 Дублікати</button>' : ''}<button class="btn sm" data-a="skOffPick">🗑 Списати</button><button class="btn sm" data-a="skJr">📜 Рух</button></div>`;
     const pills = adm ? `<div class="kpis sk-kpis"><div class="kpi accent"><span>Товару на складах</span><b class="money">${money(val())}</b><small class="muted">${WHN.k} ${money(val('k'))} · ${WHN.b} ${money(val('b'))}</small></div>
       <div class="kpi ${low.length ? 'red' : ''}${low.length ? ' press' : ''}" ${low.length ? 'data-a="skTab" data-t="buy"' : ''}><span>Нижче мінімуму</span><b>${low.length}</b><small class="muted">${low.length ? '🛒 відкрити закупівлю →' : 'усього вистачає'}</small></div>
       <div class="kpi"><span>Продуктів</span><b>${live.length}</b><small class="muted">${live.filter(x => !x.cost).length ? `без ціни: ${live.filter(x => !x.cost).length}` : 'у всіх є ціна'}</small></div></div>`
       : low.length ? `<div class="card sk-low">⚠️ Нижче мінімуму: ${low.map(x => esc(x.n)).join(', ')}</div>` : '';
-    const rowH = x => { const t = totQ(x), lo = x.min > 0 && t < x.min, both = (x.st?.k || 0) && (x.st?.b || 0);
+    const rowH = x => { if (x.grp) { const m = x.grp.map(id => D.ing.find(y => y.id === id)).filter(Boolean);
+        return `<div class="sk-row"><div class="sk-n${adm ? ' press' : ''}" ${adm ? `data-a="skGrp" data-id="${x.id}"` : ''}><b>🥬 ${esc(x.n)}</b><small class="muted">група-замінник: ${m.map(y => esc(y.n)).join(', ')}</small></div><div class="sk-q"><b>${fq(gq(x), x.u)}</b><small class="muted">разом</small></div><div class="sk-act"></div></div>`; }
+      const t = totQ(x), lo = x.min > 0 && t < x.min, both = (x.st?.k || 0) && (x.st?.b || 0);
       return `<div class="sk-row${lo ? ' low' : ''}${x.off ? ' off' : ''}"><div class="sk-n${adm ? ' press' : ''}" ${adm ? `data-a="skIng" data-id="${x.id}"` : ''}><b>${x.semi ? '🍳 ' : ''}${esc(x.n)}</b><small class="muted">${x.min ? `мін ${fq(x.min, x.u)}` : ''}${adm && x.cost ? `${x.min ? ' · ' : ''}${money(x.cost)} / ${x.u}` : ''}${adm && !x.cost ? `${x.min ? ' · ' : ''}<span class="warn">немає ціни</span>` : ''}</small></div>
         <div class="sk-q"><b class="${t < 0 ? 'neg' : ''}">${fq(t, x.u)}</b><small class="muted">${both ? `К ${fq(x.st.k, x.u)} · Б ${fq(x.st.b, x.u)}` : (x.st?.b ? WHN.b : x.st?.k ? WHN.k : WHN[x.home || 'k'])}</small></div>
         <div class="sk-act">${adm ? `<button class="rb plus" data-a="skAdd" data-id="${x.id}" title="Оприбуткувати">+</button>` : ''}<button class="rb minus" data-a="skOff" data-id="${x.id}" title="Списати">−</button><button class="rb" data-a="skMv" data-id="${x.id}" title="Перемістити між складами">⇄</button></div></div>`; };
@@ -57,7 +59,8 @@
       <label>Одиниці закупівлі <small>напр.: ящик=12, уп=2.5 (скільки ${x.u} в одній)</small><input id="iPk" value="${esc((x.pk || []).map(p => `${p.n}=${p.f}`).join(', '))}" placeholder="ящик=12"></label>
       <label>Штрихкоди <small>через кому — або відскануйте сканером у це поле</small><input id="iBc" value="${esc((x.bc || []).join(', '))}"></label>
       <label class="chk"><input type="checkbox" id="iS" ${x.semi ? 'checked' : ''}> 🍳 Заготовка — готуємо самі (соус, тісто…), має свою техкарту</label></div>`;
-    const v = await modal({ title: x.id ? '📦 ' + x.n : '➕ Новий продукт', body, buttons: [{ label: '💾 Зберегти', val: 'save', cls: 'primary' }, ...(x.id ? [{ label: x.off ? '↩️ Повернути' : '🗑 Сховати', val: 'del', cls: x.off ? '' : 'red' }] : []), { label: 'Скасувати', val: null }], keep: true });
+    const v = await modal({ title: x.id ? '📦 ' + x.n : '➕ Новий продукт', body, buttons: [{ label: '💾 Зберегти', val: 'save', cls: 'primary' }, ...(x.id && !x.off ? [{ label: '🔗 Обʼєднати', val: 'merge' }] : []), ...(x.id ? [{ label: x.off ? '↩️ Повернути' : '🗑 Сховати', val: 'del', cls: x.off ? '' : 'red' }] : []), { label: 'Скасувати', val: null }], keep: true });
+    if (v === 'merge') { closeModal(); return skMergeUI(x); }
     if (v === 'del') { closeModal(); if (await act('skIngDel', { id: x.id, back: !!x.off }, x.off ? '↩️ Повернуто' : '🗑 Сховано')) loadView(); return null; }
     if (v !== 'save') return null;
     const num = i => +String($('#' + i)?.value || '').replace(',', '.') || 0;
@@ -68,6 +71,44 @@
     const r = await act('skIngSave', { x: d }, '💾 Збережено'); if (!r) return null;
     S.data.sk = await api('skData').catch(() => S.data.sk); renderMain(); return r.x;
   }
+  // 🔗 обʼєднати дублікати в головний продукт
+  async function skMergeUI(T, pre = []) {
+    const L = S.data.sk.ing.filter(y => !y.off && !y.grp && y.id !== T.id && !!y.semi === !!T.semi).sort((a, b) => a.n.localeCompare(b.n));
+    const v = await modal({ title: '🔗 Обʼєднати в «' + T.n + '»', body: `<div class="muted" style="font-size:13px;margin-bottom:8px">Відмітьте дублікати — це той самий продукт під іншою назвою. Їх залишки перейдуть сюди, техкарти й майбутні накладні — теж. Дублікати сховаються.</div>
+      <input id="mgQ" placeholder="🔎 Пошук" oninput="const q=this.value.toLowerCase();document.querySelectorAll('.mg-r').forEach(r=>r.hidden=q&&!r.dataset.n.includes(q)&&!r.querySelector('input').checked)">
+      <div class="mg-l">${L.map(y => `<label class="mg-r" data-n="${esc(y.n.toLowerCase())}"><input type="checkbox" class="mgC" value="${y.id}"${pre.includes(y.id) ? ' checked' : ''}> <span>${esc(y.n)} <small class="muted">${fq(totQ(y), y.u)}</small></span>${y.u !== T.u ? `<span class="mg-f">1 ${y.u} = <input class="mgF" data-id="${y.id}" inputmode="decimal" placeholder="?"> ${T.u}</span>` : ''}</label>`).join('')}</div>`,
+      buttons: [{ label: '🔗 Обʼєднати', val: 1, cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
+    if (!v) return closeModal();
+    const from = [...document.querySelectorAll('.mgC:checked')].map(c => c.value), f = {}; document.querySelectorAll('.mgF').forEach(i => { if (i.value) f[i.dataset.id] = +i.value.replace(',', '.'); });
+    closeModal(); if (!from.length) return toast('Нічого не обрано');
+    if (!(await confirmBox(`🔗 Обʼєднати ${from.length} в «${T.n}»?`, 'Скасувати можна лише вручну'))) return;
+    const r = await act('skMerge', { to: T.id, from, f }, '🔗 Обʼєднано'); if (!r) return;
+    toast(`🔗 Обʼєднано ${r.n}${r.cards ? ` · техкарт оновлено: ${r.cards}` : ''}`); S.data.sk = await api('skData').catch(() => S.data.sk); renderMain();
+  }
+  // 🥬 група-замінник: у техкарті — група, списується продукт групи, якого найбільше
+  async function skGrpEdit(id) {
+    const D = S.data.sk, x = D.ing.find(y => y.id === id) || { n: '', u: 'кг', grp: [] }, L = D.ing.filter(y => !y.off && !y.grp).sort((a, b) => a.n.localeCompare(b.n));
+    const v = await modal({ title: x.id ? '🥬 ' + x.n : '🥬 Нова група-замінник', body: `<div class="form"><div class="muted" style="font-size:13px">Різні продукти, що в стравах замінюють один одного (напр. Айсберг, Ромен, Мікс). Поставте групу в техкарту — при продажу спишеться той, якого найбільше.</div>
+      <label>Назва<input id="gN" value="${esc(x.n)}" placeholder="напр. Салат листовий"></label>
+      <label>Одиниця<select id="gU" onchange="document.querySelectorAll('.mg-r').forEach(r=>r.hidden=r.dataset.u!==this.value)">${D.units.map(u => `<option ${x.u === u ? 'selected' : ''}>${u}</option>`).join('')}</select></label>
+      <div class="mg-l">${L.map(y => `<label class="mg-r" data-u="${y.u}"${y.u !== x.u ? ' hidden' : ''}><input type="checkbox" class="gC" value="${y.id}"${x.grp.includes(y.id) ? ' checked' : ''}> <span>${esc(y.n)} <small class="muted">${fq(totQ(y), y.u)}</small></span></label>`).join('')}</div></div>`,
+      buttons: [{ label: '💾 Зберегти', val: 'save', cls: 'primary' }, ...(x.id ? [{ label: '🗑 Видалити групу', val: 'del', cls: 'red' }] : []), { label: 'Скасувати', val: null }], keep: true });
+    if (v === 'del') { closeModal(); if (await confirmBox('Видалити групу?', 'У техкартах, де вона стоїть, замініть її на продукт') && await act('skIngDel', { id: x.id }, '🗑 Видалено')) loadView(); return; }
+    if (v !== 'save') return closeModal();
+    const u = $('#gU').value, d = { id: x.id, n: $('#gN').value, u, grp: [...document.querySelectorAll('.gC:checked')].filter(c => c.closest('.mg-r').dataset.u === u).map(c => c.value) };
+    closeModal(); if (await act('skGrp', { x: d }, '🥬 Групу збережено')) { S.data.sk = await api('skData').catch(() => S.data.sk); renderMain(); }
+  }
+  // 🔍 ШІ шукає дублікати → обʼєднати групу одним натиском
+  async function skDups() {
+    toast('🔍 Шукаю дублікати… до 30 с'); const r = await act('skDups', {}); if (!r) return;
+    const D = S.data.sk, im = new Map(D.ing.map(y => [y.id, y])), G = r.groups.map(g => g.map(id => im.get(id)).filter(Boolean)).filter(g => g.length > 1);
+    if (!G.length) return modal({ title: '🔍 Дублікати', body: '<div class="muted">Дублікатів не знайдено 👌</div>', buttons: [{ label: 'Добре', val: null }] });
+    const v = await modal({ title: `🔍 Схожі продукти · ${G.length}`, body: `<div class="muted" style="font-size:13px;margin-bottom:8px">Перевірте: якщо це справді той самий продукт — «🔗 Обʼєднати» (першим буде головний, можна змінити). Різні сорти — не обʼєднуйте, краще зробіть 🥬 групу.</div>${G.map((g, i) => `<div class="card mg-g"><div>${g.map(y => `${esc(y.n)} <small class="muted">${fq(totQ(y), y.u)}</small>`).join('<br>')}</div><div class="btnrow"><button class="btn sm primary" data-mi-v="m${i}">🔗 Обʼєднати</button><button class="btn sm" data-mi-v="g${i}">🥬 Група</button></div></div>`).join('')}`, buttons: [{ label: 'Закрити', val: null }] });
+    if (!v) return; const g = G[+v.slice(1)];
+    if (v[0] === 'm') { const main = await choose('Яка назва головна?', '', g.map(y => ({ label: y.n, val: y.id }))); if (main) return skMergeUI(im.get(main), g.map(y => y.id).filter(id => id !== main)); }
+    else return skGrpNew(g);
+  }
+  async function skGrpNew(g) { const r = await act('skGrp', { x: { n: g[0].n.split(/\s+/)[0] + ' (група)', u: g[0].u, grp: g.filter(y => y.u === g[0].u).map(y => y.id) } }, '🥬 Групу створено — перейменуйте за потреби'); if (r) { S.data.sk = await api('skData').catch(() => S.data.sk); renderMain(); skGrpEdit(r.x.id); } }
   async function skQty(kind, id) { // add | off | mv
     const x = S.data.sk.ing.find(y => y.id === id); if (!x) return;
     const ttl = { add: '➕ Оприбуткувати', off: '➖ Списати', mv: '⇄ Перемістити' }[kind] + ' · ' + x.n;
@@ -90,7 +131,7 @@
   function skPick(title, filter = () => true, allowNew = false) {
     return new Promise(async res => {
       if (!S.data.sk) S.data.sk = await api('skData').catch(() => null); if (!S.data.sk) return res(null);
-      const all = S.data.sk.ing.filter(x => !x.off && filter(x)).sort((a, b) => a.n.localeCompare(b.n));
+      const all = S.data.sk.ing.filter(x => !x.off && !x.grp && filter(x)).sort((a, b) => a.n.localeCompare(b.n));
       const draw = q => all.filter(x => !q || x.n.toLowerCase().includes(q.toLowerCase())).slice(0, 60).map(x => `<button class="pk-i" data-pk="${x.id}">${x.semi ? '🍳 ' : ''}${esc(x.n)} <span class="muted">${fq(totQ(x), x.u)}</span></button>`).join('') || '<div class="muted">Нічого не знайдено</div>';
       modalResolve = v => { closeModal(); res(v); };
       const el = document.createElement('div'); el.className = 'modal-bg'; el.id = 'modal';
@@ -143,7 +184,7 @@
   const lineHint = (l, x, adm) => { if (!x && !l.add) return ''; const u = x?.u || l.add?.u || '', bq = r3((+l.q || 0) * (+l.f || 1)), up = bq && +l.sum ? +l.sum / bq : 0;
     return `= ${fq(bq, u)}${up ? ` · ${money(up)}/${u}` : ''}${adm && x?.lp && up ? (up > x.lp * 1.01 ? ` <b class="warn">↑${Math.round((up / x.lp - 1) * 100)}%</b>` : up < x.lp * 0.99 ? ` <span class="good">↓${Math.round((1 - up / x.lp) * 100)}%</span>` : '') : ''}`; };
   function skDraftHTML() {
-    const d = S.sk.draft, D = S.data.sk, adm = isAdmin(), ing = D.ing.filter(x => !x.off).sort((a, b) => a.n.localeCompare(b.n)), im = new Map(ing.map(x => [x.id, x]));
+    const d = S.sk.draft, D = S.data.sk, adm = isAdmin(), ing = D.ing.filter(x => !x.off && !x.grp).sort((a, b) => a.n.localeCompare(b.n)), im = new Map(ing.map(x => [x.id, x]));
     const sum = d.lines.reduce((a, l) => a + (+l.sum || 0), 0), diff = d.total ? Math.round((d.total - sum) * 100) / 100 : 0;
     const opt = l => `<option value="">— оберіть продукт —</option><option value="__new">${l.add ? `➕ Новий: ${esc(l.add.n)} (${l.add.u})` : '➕ Створити новий продукт…'}</option>${ing.map(x => `<option value="${x.id}" ${l.id === x.id ? 'selected' : ''}>${esc(x.n)} (${x.u})</option>`).join('')}`;
     const pkOpt = l => { const x = im.get(l.id), u = x?.u || l.add?.u || 'од.', pks = [{ n: u, f: 1 }, ...(x?.pk || [])]; if (l.f && !pks.some(p => p.f === +l.f)) pks.push({ n: '×' + l.f, f: +l.f }); return pks.map(p => `<option value="${p.f}" ${(+l.f || 1) === p.f ? 'selected' : ''}>${esc(p.n)}${p.f !== 1 ? ` (${p.f} ${u})` : ''}</option>`).join('') + '<option value="?">інша…</option>'; };
@@ -407,7 +448,7 @@
   // 📝 інвентаризація
   function skCountHTML() {
     const K = S.sk, C = S.data.skCount, adm = isAdmin(); if (!C) return '<div class="muted">Завантаження…</div>';
-    const wh = K.cwh, all = C.ing.filter(x => !x.off && (x.home === wh || (x.st?.[wh] || 0) !== 0)).sort((a, b) => (a.cat || '').localeCompare(b.cat || '') || a.n.localeCompare(b.n));
+    const wh = K.cwh, all = C.ing.filter(x => !x.off && !x.grp && (x.home === wh || (x.st?.[wh] || 0) !== 0)).sort((a, b) => (a.cat || '').localeCompare(b.cat || '') || a.n.localeCompare(b.n));
     const q = K.cq.trim().toLowerCase(), shown = all.filter(x => !q || x.n.toLowerCase().includes(q)), n = Object.values(K.cf).filter(v => v !== '').length;
     const diffH = x => { const raw = K.cf[x.id]; if (raw == null || raw === '') return ''; const f = parseQ(raw, x.u); if (isNaN(f)) return '<span class="warn">?</span>'; const d = r3(f - (x.st?.[wh] || 0));
       return d ? `<span class="${d < 0 ? 'neg' : 'good'}">${d > 0 ? '+' : ''}${fq(d, x.u)}${adm && x.cost ? ` · ${d > 0 ? '+' : ''}${money(d * x.cost)}` : ''}</span>` : '<span class="good">✓</span>'; };
@@ -465,6 +506,8 @@
       case 'skTab': K.tab = el.dataset.t; K.q2 = ''; K.card = null; if (S.view !== 'calc') { S.view = 'calc'; renderNav(); } renderMain(); loadView(); $('#main').scrollTop = 0; break;
       case 'skWh': K.wh = el.dataset.w; renderMain(); break;
       case 'skIng': skIngEdit(el.dataset.id); break;
+      case 'skGrp': skGrpEdit(el.dataset.id); break;
+      case 'skDups': skDups(); break;
       case 'skAdd': skQty('add', el.dataset.id); break;
       case 'skOff': skQty('off', el.dataset.id); break;
       case 'skMv': skQty('mv', el.dataset.id); break;

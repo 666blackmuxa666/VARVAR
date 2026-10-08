@@ -4363,7 +4363,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     return head + `<div class="sk">${{ stock: skStockHTML, buy: skBuyHTML, inv: skInvHTML, cards: skCardsHTML, tech: skTechHTML, prod: skProdHTML, count: skCountHTML, rep: skRepHTML }[K.tab]()}</div>`;
   }
   function skStockHTML() {
-    const K = S.sk, D = S.data.sk, adm = isAdmin(), q = K.q.trim().toLowerCase(), live = D.ing.filter((x) => !x.off);
+    const K = S.sk, D = S.data.sk, adm = isAdmin(), q = K.q.trim().toLowerCase(), live = D.ing.filter((x) => !x.off && !x.grp), gq = (x) => x.grp ? x.grp.reduce((a, id) => a + Math.max(0, totQ(D.ing.find((y) => y.id === id) || {})), 0) : totQ(x);
     const list = D.ing.filter((x) => {
       var _a2;
       return (K.cat === "\u{1F5D1}" ? x.off : !x.off) && (!q || x.n.toLowerCase().includes(q)) && (!K.cat || K.cat === "\u{1F5D1}" || x.cat === K.cat) && (!K.wh || x.home === K.wh || (((_a2 = x.st) == null ? void 0 : _a2[K.wh]) || 0) !== 0);
@@ -4377,12 +4377,16 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const tools = `<div class="sk-bar"><input id="skQ" placeholder="\u{1F50E} \u041F\u043E\u0448\u0443\u043A \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0443" value="${esc(K.q)}">
       <div class="seg wrap sk-wh">${[["", "\u0423\u0441\u0456"], ["k", WHN.k], ["b", WHN.b]].map(([k, l]) => `<button class="${K.wh === k ? "on" : ""}" data-a="skWh" data-w="${k}">${l}</button>`).join("")}</div>
       <select id="skCat"><option value="">\u0423\u0441\u0456 \u043A\u0430\u0442\u0435\u0433\u043E\u0440\u0456\u0457</option>${cats.map((c) => `<option ${K.cat === c ? "selected" : ""}>${esc(c)}</option>`).join("")}${D.ing.some((x) => x.off) ? `<option value="\u{1F5D1}" ${K.cat === "\u{1F5D1}" ? "selected" : ""}>\u{1F5D1} \u0421\u0445\u043E\u0432\u0430\u043D\u0456</option>` : ""}</select>
-      <span class="grow"></span>${adm ? '<button class="btn sm primary" data-a="skIng">\u2795 \u041F\u0440\u043E\u0434\u0443\u043A\u0442</button>' : ""}<button class="btn sm" data-a="skOffPick">\u{1F5D1} \u0421\u043F\u0438\u0441\u0430\u0442\u0438</button><button class="btn sm" data-a="skJr">\u{1F4DC} \u0420\u0443\u0445</button></div>`;
+      <span class="grow"></span>${adm ? '<button class="btn sm primary" data-a="skIng">\u2795 \u041F\u0440\u043E\u0434\u0443\u043A\u0442</button><button class="btn sm" data-a="skGrp">\u{1F96C} \u0413\u0440\u0443\u043F\u0430</button><button class="btn sm" data-a="skDups">\u{1F50D} \u0414\u0443\u0431\u043B\u0456\u043A\u0430\u0442\u0438</button>' : ""}<button class="btn sm" data-a="skOffPick">\u{1F5D1} \u0421\u043F\u0438\u0441\u0430\u0442\u0438</button><button class="btn sm" data-a="skJr">\u{1F4DC} \u0420\u0443\u0445</button></div>`;
     const pills = adm ? `<div class="kpis sk-kpis"><div class="kpi accent"><span>\u0422\u043E\u0432\u0430\u0440\u0443 \u043D\u0430 \u0441\u043A\u043B\u0430\u0434\u0430\u0445</span><b class="money">${money(val())}</b><small class="muted">${WHN.k} ${money(val("k"))} \xB7 ${WHN.b} ${money(val("b"))}</small></div>
       <div class="kpi ${low.length ? "red" : ""}${low.length ? " press" : ""}" ${low.length ? 'data-a="skTab" data-t="buy"' : ""}><span>\u041D\u0438\u0436\u0447\u0435 \u043C\u0456\u043D\u0456\u043C\u0443\u043C\u0443</span><b>${low.length}</b><small class="muted">${low.length ? "\u{1F6D2} \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u0437\u0430\u043A\u0443\u043F\u0456\u0432\u043B\u044E \u2192" : "\u0443\u0441\u044C\u043E\u0433\u043E \u0432\u0438\u0441\u0442\u0430\u0447\u0430\u0454"}</small></div>
       <div class="kpi"><span>\u041F\u0440\u043E\u0434\u0443\u043A\u0442\u0456\u0432</span><b>${live.length}</b><small class="muted">${live.filter((x) => !x.cost).length ? `\u0431\u0435\u0437 \u0446\u0456\u043D\u0438: ${live.filter((x) => !x.cost).length}` : "\u0443 \u0432\u0441\u0456\u0445 \u0454 \u0446\u0456\u043D\u0430"}</small></div></div>` : low.length ? `<div class="card sk-low">\u26A0\uFE0F \u041D\u0438\u0436\u0447\u0435 \u043C\u0456\u043D\u0456\u043C\u0443\u043C\u0443: ${low.map((x) => esc(x.n)).join(", ")}</div>` : "";
     const rowH = (x) => {
       var _a2, _b, _c, _d;
+      if (x.grp) {
+        const m = x.grp.map((id) => D.ing.find((y) => y.id === id)).filter(Boolean);
+        return `<div class="sk-row"><div class="sk-n${adm ? " press" : ""}" ${adm ? `data-a="skGrp" data-id="${x.id}"` : ""}><b>\u{1F96C} ${esc(x.n)}</b><small class="muted">\u0433\u0440\u0443\u043F\u0430-\u0437\u0430\u043C\u0456\u043D\u043D\u0438\u043A: ${m.map((y) => esc(y.n)).join(", ")}</small></div><div class="sk-q"><b>${fq(gq(x), x.u)}</b><small class="muted">\u0440\u0430\u0437\u043E\u043C</small></div><div class="sk-act"></div></div>`;
+      }
       const t = totQ(x), lo = x.min > 0 && t < x.min, both = (((_a2 = x.st) == null ? void 0 : _a2.k) || 0) && (((_b = x.st) == null ? void 0 : _b.b) || 0);
       return `<div class="sk-row${lo ? " low" : ""}${x.off ? " off" : ""}"><div class="sk-n${adm ? " press" : ""}" ${adm ? `data-a="skIng" data-id="${x.id}"` : ""}><b>${x.semi ? "\u{1F373} " : ""}${esc(x.n)}</b><small class="muted">${x.min ? `\u043C\u0456\u043D ${fq(x.min, x.u)}` : ""}${adm && x.cost ? `${x.min ? " \xB7 " : ""}${money(x.cost)} / ${x.u}` : ""}${adm && !x.cost ? `${x.min ? " \xB7 " : ""}<span class="warn">\u043D\u0435\u043C\u0430\u0454 \u0446\u0456\u043D\u0438</span>` : ""}</small></div>
         <div class="sk-q"><b class="${t < 0 ? "neg" : ""}">${fq(t, x.u)}</b><small class="muted">${both ? `\u041A ${fq(x.st.k, x.u)} \xB7 \u0411 ${fq(x.st.b, x.u)}` : ((_c = x.st) == null ? void 0 : _c.b) ? WHN.b : ((_d = x.st) == null ? void 0 : _d.k) ? WHN.k : WHN[x.home || "k"]}</small></div>
@@ -4409,7 +4413,11 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       <label>\u041E\u0434\u0438\u043D\u0438\u0446\u0456 \u0437\u0430\u043A\u0443\u043F\u0456\u0432\u043B\u0456 <small>\u043D\u0430\u043F\u0440.: \u044F\u0449\u0438\u043A=12, \u0443\u043F=2.5 (\u0441\u043A\u0456\u043B\u044C\u043A\u0438 ${x.u} \u0432 \u043E\u0434\u043D\u0456\u0439)</small><input id="iPk" value="${esc((x.pk || []).map((p) => `${p.n}=${p.f}`).join(", "))}" placeholder="\u044F\u0449\u0438\u043A=12"></label>
       <label>\u0428\u0442\u0440\u0438\u0445\u043A\u043E\u0434\u0438 <small>\u0447\u0435\u0440\u0435\u0437 \u043A\u043E\u043C\u0443 \u2014 \u0430\u0431\u043E \u0432\u0456\u0434\u0441\u043A\u0430\u043D\u0443\u0439\u0442\u0435 \u0441\u043A\u0430\u043D\u0435\u0440\u043E\u043C \u0443 \u0446\u0435 \u043F\u043E\u043B\u0435</small><input id="iBc" value="${esc((x.bc || []).join(", "))}"></label>
       <label class="chk"><input type="checkbox" id="iS" ${x.semi ? "checked" : ""}> \u{1F373} \u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \u2014 \u0433\u043E\u0442\u0443\u0454\u043C\u043E \u0441\u0430\u043C\u0456 (\u0441\u043E\u0443\u0441, \u0442\u0456\u0441\u0442\u043E\u2026), \u043C\u0430\u0454 \u0441\u0432\u043E\u044E \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0443</label></div>`;
-    const v = await modal({ title: x.id ? "\u{1F4E6} " + x.n : "\u2795 \u041D\u043E\u0432\u0438\u0439 \u043F\u0440\u043E\u0434\u0443\u043A\u0442", body, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: "save", cls: "primary" }, ...x.id ? [{ label: x.off ? "\u21A9\uFE0F \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438" : "\u{1F5D1} \u0421\u0445\u043E\u0432\u0430\u0442\u0438", val: "del", cls: x.off ? "" : "red" }] : [], { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+    const v = await modal({ title: x.id ? "\u{1F4E6} " + x.n : "\u2795 \u041D\u043E\u0432\u0438\u0439 \u043F\u0440\u043E\u0434\u0443\u043A\u0442", body, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: "save", cls: "primary" }, ...x.id && !x.off ? [{ label: "\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u0442\u0438", val: "merge" }] : [], ...x.id ? [{ label: x.off ? "\u21A9\uFE0F \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438" : "\u{1F5D1} \u0421\u0445\u043E\u0432\u0430\u0442\u0438", val: "del", cls: x.off ? "" : "red" }] : [], { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+    if (v === "merge") {
+      closeModal();
+      return skMergeUI(x);
+    }
     if (v === "del") {
       closeModal();
       if (await act("skIngDel", { id: x.id, back: !!x.off }, x.off ? "\u21A9\uFE0F \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E" : "\u{1F5D1} \u0421\u0445\u043E\u0432\u0430\u043D\u043E")) loadView();
@@ -4439,6 +4447,76 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     S.data.sk = await api("skData").catch(() => S.data.sk);
     renderMain();
     return r.x;
+  }
+  async function skMergeUI(T, pre = []) {
+    const L = S.data.sk.ing.filter((y) => !y.off && !y.grp && y.id !== T.id && !!y.semi === !!T.semi).sort((a, b) => a.n.localeCompare(b.n));
+    const v = await modal({
+      title: "\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u0442\u0438 \u0432 \xAB" + T.n + "\xBB",
+      body: `<div class="muted" style="font-size:13px;margin-bottom:8px">\u0412\u0456\u0434\u043C\u0456\u0442\u044C\u0442\u0435 \u0434\u0443\u0431\u043B\u0456\u043A\u0430\u0442\u0438 \u2014 \u0446\u0435 \u0442\u043E\u0439 \u0441\u0430\u043C\u0438\u0439 \u043F\u0440\u043E\u0434\u0443\u043A\u0442 \u043F\u0456\u0434 \u0456\u043D\u0448\u043E\u044E \u043D\u0430\u0437\u0432\u043E\u044E. \u0407\u0445 \u0437\u0430\u043B\u0438\u0448\u043A\u0438 \u043F\u0435\u0440\u0435\u0439\u0434\u0443\u0442\u044C \u0441\u044E\u0434\u0438, \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0438 \u0439 \u043C\u0430\u0439\u0431\u0443\u0442\u043D\u0456 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0456 \u2014 \u0442\u0435\u0436. \u0414\u0443\u0431\u043B\u0456\u043A\u0430\u0442\u0438 \u0441\u0445\u043E\u0432\u0430\u044E\u0442\u044C\u0441\u044F.</div>
+      <input id="mgQ" placeholder="\u{1F50E} \u041F\u043E\u0448\u0443\u043A" oninput="const q=this.value.toLowerCase();document.querySelectorAll('.mg-r').forEach(r=>r.hidden=q&&!r.dataset.n.includes(q)&&!r.querySelector('input').checked)">
+      <div class="mg-l">${L.map((y) => `<label class="mg-r" data-n="${esc(y.n.toLowerCase())}"><input type="checkbox" class="mgC" value="${y.id}"${pre.includes(y.id) ? " checked" : ""}> <span>${esc(y.n)} <small class="muted">${fq(totQ(y), y.u)}</small></span>${y.u !== T.u ? `<span class="mg-f">1 ${y.u} = <input class="mgF" data-id="${y.id}" inputmode="decimal" placeholder="?"> ${T.u}</span>` : ""}</label>`).join("")}</div>`,
+      buttons: [{ label: "\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u0442\u0438", val: 1, cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }],
+      keep: true
+    });
+    if (!v) return closeModal();
+    const from = [...document.querySelectorAll(".mgC:checked")].map((c) => c.value), f = {};
+    document.querySelectorAll(".mgF").forEach((i) => {
+      if (i.value) f[i.dataset.id] = +i.value.replace(",", ".");
+    });
+    closeModal();
+    if (!from.length) return toast("\u041D\u0456\u0447\u043E\u0433\u043E \u043D\u0435 \u043E\u0431\u0440\u0430\u043D\u043E");
+    if (!await confirmBox(`\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u0442\u0438 ${from.length} \u0432 \xAB${T.n}\xBB?`, "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438 \u043C\u043E\u0436\u043D\u0430 \u043B\u0438\u0448\u0435 \u0432\u0440\u0443\u0447\u043D\u0443")) return;
+    const r = await act("skMerge", { to: T.id, from, f }, "\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u043D\u043E");
+    if (!r) return;
+    toast(`\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u043D\u043E ${r.n}${r.cards ? ` \xB7 \u0442\u0435\u0445\u043A\u0430\u0440\u0442 \u043E\u043D\u043E\u0432\u043B\u0435\u043D\u043E: ${r.cards}` : ""}`);
+    S.data.sk = await api("skData").catch(() => S.data.sk);
+    renderMain();
+  }
+  async function skGrpEdit(id) {
+    const D = S.data.sk, x = D.ing.find((y) => y.id === id) || { n: "", u: "\u043A\u0433", grp: [] }, L = D.ing.filter((y) => !y.off && !y.grp).sort((a, b) => a.n.localeCompare(b.n));
+    const v = await modal({
+      title: x.id ? "\u{1F96C} " + x.n : "\u{1F96C} \u041D\u043E\u0432\u0430 \u0433\u0440\u0443\u043F\u0430-\u0437\u0430\u043C\u0456\u043D\u043D\u0438\u043A",
+      body: `<div class="form"><div class="muted" style="font-size:13px">\u0420\u0456\u0437\u043D\u0456 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0438, \u0449\u043E \u0432 \u0441\u0442\u0440\u0430\u0432\u0430\u0445 \u0437\u0430\u043C\u0456\u043D\u044E\u044E\u0442\u044C \u043E\u0434\u0438\u043D \u043E\u0434\u043D\u043E\u0433\u043E (\u043D\u0430\u043F\u0440. \u0410\u0439\u0441\u0431\u0435\u0440\u0433, \u0420\u043E\u043C\u0435\u043D, \u041C\u0456\u043A\u0441). \u041F\u043E\u0441\u0442\u0430\u0432\u0442\u0435 \u0433\u0440\u0443\u043F\u0443 \u0432 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0443 \u2014 \u043F\u0440\u0438 \u043F\u0440\u043E\u0434\u0430\u0436\u0443 \u0441\u043F\u0438\u0448\u0435\u0442\u044C\u0441\u044F \u0442\u043E\u0439, \u044F\u043A\u043E\u0433\u043E \u043D\u0430\u0439\u0431\u0456\u043B\u044C\u0448\u0435.</div>
+      <label>\u041D\u0430\u0437\u0432\u0430<input id="gN" value="${esc(x.n)}" placeholder="\u043D\u0430\u043F\u0440. \u0421\u0430\u043B\u0430\u0442 \u043B\u0438\u0441\u0442\u043E\u0432\u0438\u0439"></label>
+      <label>\u041E\u0434\u0438\u043D\u0438\u0446\u044F<select id="gU" onchange="document.querySelectorAll('.mg-r').forEach(r=>r.hidden=r.dataset.u!==this.value)">${D.units.map((u2) => `<option ${x.u === u2 ? "selected" : ""}>${u2}</option>`).join("")}</select></label>
+      <div class="mg-l">${L.map((y) => `<label class="mg-r" data-u="${y.u}"${y.u !== x.u ? " hidden" : ""}><input type="checkbox" class="gC" value="${y.id}"${x.grp.includes(y.id) ? " checked" : ""}> <span>${esc(y.n)} <small class="muted">${fq(totQ(y), y.u)}</small></span></label>`).join("")}</div></div>`,
+      buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: "save", cls: "primary" }, ...x.id ? [{ label: "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0433\u0440\u0443\u043F\u0443", val: "del", cls: "red" }] : [], { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }],
+      keep: true
+    });
+    if (v === "del") {
+      closeModal();
+      if (await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0433\u0440\u0443\u043F\u0443?", "\u0423 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0430\u0445, \u0434\u0435 \u0432\u043E\u043D\u0430 \u0441\u0442\u043E\u0457\u0442\u044C, \u0437\u0430\u043C\u0456\u043D\u0456\u0442\u044C \u0457\u0457 \u043D\u0430 \u043F\u0440\u043E\u0434\u0443\u043A\u0442") && await act("skIngDel", { id: x.id }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) loadView();
+      return;
+    }
+    if (v !== "save") return closeModal();
+    const u = $("#gU").value, d = { id: x.id, n: $("#gN").value, u, grp: [...document.querySelectorAll(".gC:checked")].filter((c) => c.closest(".mg-r").dataset.u === u).map((c) => c.value) };
+    closeModal();
+    if (await act("skGrp", { x: d }, "\u{1F96C} \u0413\u0440\u0443\u043F\u0443 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
+      S.data.sk = await api("skData").catch(() => S.data.sk);
+      renderMain();
+    }
+  }
+  async function skDups() {
+    toast("\u{1F50D} \u0428\u0443\u043A\u0430\u044E \u0434\u0443\u0431\u043B\u0456\u043A\u0430\u0442\u0438\u2026 \u0434\u043E 30 \u0441");
+    const r = await act("skDups", {});
+    if (!r) return;
+    const D = S.data.sk, im = new Map(D.ing.map((y) => [y.id, y])), G = r.groups.map((g2) => g2.map((id) => im.get(id)).filter(Boolean)).filter((g2) => g2.length > 1);
+    if (!G.length) return modal({ title: "\u{1F50D} \u0414\u0443\u0431\u043B\u0456\u043A\u0430\u0442\u0438", body: '<div class="muted">\u0414\u0443\u0431\u043B\u0456\u043A\u0430\u0442\u0456\u0432 \u043D\u0435 \u0437\u043D\u0430\u0439\u0434\u0435\u043D\u043E \u{1F44C}</div>', buttons: [{ label: "\u0414\u043E\u0431\u0440\u0435", val: null }] });
+    const v = await modal({ title: `\u{1F50D} \u0421\u0445\u043E\u0436\u0456 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0438 \xB7 ${G.length}`, body: `<div class="muted" style="font-size:13px;margin-bottom:8px">\u041F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435: \u044F\u043A\u0449\u043E \u0446\u0435 \u0441\u043F\u0440\u0430\u0432\u0434\u0456 \u0442\u043E\u0439 \u0441\u0430\u043C\u0438\u0439 \u043F\u0440\u043E\u0434\u0443\u043A\u0442 \u2014 \xAB\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u0442\u0438\xBB (\u043F\u0435\u0440\u0448\u0438\u043C \u0431\u0443\u0434\u0435 \u0433\u043E\u043B\u043E\u0432\u043D\u0438\u0439, \u043C\u043E\u0436\u043D\u0430 \u0437\u043C\u0456\u043D\u0438\u0442\u0438). \u0420\u0456\u0437\u043D\u0456 \u0441\u043E\u0440\u0442\u0438 \u2014 \u043D\u0435 \u043E\u0431\u02BC\u0454\u0434\u043D\u0443\u0439\u0442\u0435, \u043A\u0440\u0430\u0449\u0435 \u0437\u0440\u043E\u0431\u0456\u0442\u044C \u{1F96C} \u0433\u0440\u0443\u043F\u0443.</div>${G.map((g2, i) => `<div class="card mg-g"><div>${g2.map((y) => `${esc(y.n)} <small class="muted">${fq(totQ(y), y.u)}</small>`).join("<br>")}</div><div class="btnrow"><button class="btn sm primary" data-mi-v="m${i}">\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u0442\u0438</button><button class="btn sm" data-mi-v="g${i}">\u{1F96C} \u0413\u0440\u0443\u043F\u0430</button></div></div>`).join("")}`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+    if (!v) return;
+    const g = G[+v.slice(1)];
+    if (v[0] === "m") {
+      const main = await choose("\u042F\u043A\u0430 \u043D\u0430\u0437\u0432\u0430 \u0433\u043E\u043B\u043E\u0432\u043D\u0430?", "", g.map((y) => ({ label: y.n, val: y.id })));
+      if (main) return skMergeUI(im.get(main), g.map((y) => y.id).filter((id) => id !== main));
+    } else return skGrpNew(g);
+  }
+  async function skGrpNew(g) {
+    const r = await act("skGrp", { x: { n: g[0].n.split(/\s+/)[0] + " (\u0433\u0440\u0443\u043F\u0430)", u: g[0].u, grp: g.filter((y) => y.u === g[0].u).map((y) => y.id) } }, "\u{1F96C} \u0413\u0440\u0443\u043F\u0443 \u0441\u0442\u0432\u043E\u0440\u0435\u043D\u043E \u2014 \u043F\u0435\u0440\u0435\u0439\u043C\u0435\u043D\u0443\u0439\u0442\u0435 \u0437\u0430 \u043F\u043E\u0442\u0440\u0435\u0431\u0438");
+    if (r) {
+      S.data.sk = await api("skData").catch(() => S.data.sk);
+      renderMain();
+      skGrpEdit(r.x.id);
+    }
   }
   async function skQty(kind, id) {
     var _a2, _b, _c, _d, _e;
@@ -4472,7 +4550,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     return new Promise(async (res) => {
       if (!S.data.sk) S.data.sk = await api("skData").catch(() => null);
       if (!S.data.sk) return res(null);
-      const all = S.data.sk.ing.filter((x) => !x.off && filter(x)).sort((a, b) => a.n.localeCompare(b.n));
+      const all = S.data.sk.ing.filter((x) => !x.off && !x.grp && filter(x)).sort((a, b) => a.n.localeCompare(b.n));
       const draw = (q) => all.filter((x) => !q || x.n.toLowerCase().includes(q.toLowerCase())).slice(0, 60).map((x) => `<button class="pk-i" data-pk="${x.id}">${x.semi ? "\u{1F373} " : ""}${esc(x.n)} <span class="muted">${fq(totQ(x), x.u)}</span></button>`).join("") || '<div class="muted">\u041D\u0456\u0447\u043E\u0433\u043E \u043D\u0435 \u0437\u043D\u0430\u0439\u0434\u0435\u043D\u043E</div>';
       modalResolve = (v) => {
         closeModal();
@@ -4568,7 +4646,7 @@ ${g.sup}:
   };
   function skDraftHTML() {
     var _a2;
-    const d = S.sk.draft, D = S.data.sk, adm = isAdmin(), ing = D.ing.filter((x) => !x.off).sort((a, b) => a.n.localeCompare(b.n)), im = new Map(ing.map((x) => [x.id, x]));
+    const d = S.sk.draft, D = S.data.sk, adm = isAdmin(), ing = D.ing.filter((x) => !x.off && !x.grp).sort((a, b) => a.n.localeCompare(b.n)), im = new Map(ing.map((x) => [x.id, x]));
     const sum = d.lines.reduce((a, l) => a + (+l.sum || 0), 0), diff = d.total ? Math.round((d.total - sum) * 100) / 100 : 0;
     const opt = (l) => `<option value="">\u2014 \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u043F\u0440\u043E\u0434\u0443\u043A\u0442 \u2014</option><option value="__new">${l.add ? `\u2795 \u041D\u043E\u0432\u0438\u0439: ${esc(l.add.n)} (${l.add.u})` : "\u2795 \u0421\u0442\u0432\u043E\u0440\u0438\u0442\u0438 \u043D\u043E\u0432\u0438\u0439 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u2026"}</option>${ing.map((x) => `<option value="${x.id}" ${l.id === x.id ? "selected" : ""}>${esc(x.n)} (${x.u})</option>`).join("")}`;
     const pkOpt = (l) => {
@@ -5063,7 +5141,7 @@ ${g.sup}:
     if (!C) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
     const wh = K.cwh, all = C.ing.filter((x) => {
       var _a2;
-      return !x.off && (x.home === wh || (((_a2 = x.st) == null ? void 0 : _a2[wh]) || 0) !== 0);
+      return !x.off && !x.grp && (x.home === wh || (((_a2 = x.st) == null ? void 0 : _a2[wh]) || 0) !== 0);
     }).sort((a, b) => (a.cat || "").localeCompare(b.cat || "") || a.n.localeCompare(b.n));
     const q = K.cq.trim().toLowerCase(), shown = all.filter((x) => !q || x.n.toLowerCase().includes(q)), n = Object.values(K.cf).filter((v) => v !== "").length;
     const diffH = (x) => {
@@ -5171,6 +5249,12 @@ ${g.sup}:
         break;
       case "skIng":
         skIngEdit(el.dataset.id);
+        break;
+      case "skGrp":
+        skGrpEdit(el.dataset.id);
+        break;
+      case "skDups":
+        skDups();
         break;
       case "skAdd":
         skQty("add", el.dataset.id);

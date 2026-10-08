@@ -24,7 +24,7 @@ function findQ(l, s) {
   return { x, q: toU(x, m[2], m[3]), rest: (m[4] || '').trim() };
 }
 function pick(l, s) {
-  const name = norm(s), cands = l.filter(x => !x.off);
+  const name = norm(s), cands = l.filter(x => !x.off && !x.grp);
   return cands.find(y => norm(y.n) === name) || cands.find(y => norm(y.n).startsWith(name)) || cands.find(y => norm(y.n).includes(name)) || cands.find(y => name.split(' ').every(w => norm(y.n).includes(w)));
 }
 // «250 г» для продукту в кг → 0.25
@@ -41,7 +41,7 @@ export async function calcView(env) {
       [{ text: '📝 Інвентаризація', callback_data: 'skcnm' }, { text: '🍳 Заготовки', callback_data: 'skprl' }], [{ text: '🔗 Штрихкод', callback_data: 'skbc' }]] } };
 }
 export async function stockText(env) {
-  const l = (await getIng(env)).filter(x => !x.off).sort((a, b) => (a.cat || '').localeCompare(b.cat || '') || a.n.localeCompare(b.n));
+  const l = (await getIng(env)).filter(x => !x.off && !x.grp).sort((a, b) => (a.cat || '').localeCompare(b.cat || '') || a.n.localeCompare(b.n));
   if (!l.length) return { text: '📦 Склад порожній. Надішліть фото накладної з підписом «накладна» — продукти створяться самі.' };
   let cat = '', out = ['📦 <b>Залишки</b>'];
   for (const x of l) { if (x.cat !== cat) out.push(`\n<b>${esc(cat = x.cat || 'Інше')}</b>`); const t = tot(x), lo = x.min > 0 && t < x.min; out.push(`${lo ? '🔴' : '•'} ${esc(x.n)} — ${fq(t, x.u)}${x.st?.k && x.st?.b ? ` (К ${fq(x.st.k, x.u)} · Б ${fq(x.st.b, x.u)})` : ''}`); }
