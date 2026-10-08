@@ -241,6 +241,7 @@
   // ---------- каркас ----------
   const NAV_COOK = [['kq', '👨‍🍳', 'Черга'], ['calc', '📦', 'Склад'], ['stop', '⛔', 'Стоп-лист'], ['hall', '🪑', 'Зал']];
   const NAV_A = [['hall', '🪑', 'Зал'], ['books', '📅', 'Броні'], ['kq', '👨‍🍳', 'Кухня'], ['cash', '💰', 'Каса'], ['reports', '📊', 'Звіти'], ['calc', '📦', 'Склад'], ['team', '👥', 'Персонал'], ['settings', '⚙️', 'Налашт.']];
+  const NAV_MAIN = ['hall', 'kq', 'cash', 'books']; // 📱 адмін на телефоні: 4 основні + «⋯ Ще»
   const NAV_W = [['hall', '🪑', 'Зал'], ['books', '📅', 'Броні'], ['closed', '🧾', 'Чеки'], ['stop', '⛔', 'Стоп-лист']];
   const NAV_COUR = [['go', '🛵', 'Доставки']];
   const navList = () => isCour() ? NAV_COUR : isCook() ? NAV_COOK : isAdmin() ? NAV_A : NAV_W;
@@ -249,9 +250,9 @@
     const newCnt = S.events.filter(e => e.k === 'guest' && e.s === 'new').length;
     const attNew = isAdmin() ? S.events.filter(e => e.k === 'att' && e.s === 'new').length : 0;
     setHTML($('#nav'), `<div class="brand">${brandImg()}</div>` +
-      navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? 'on' : ''}${!isCook() && ['calc', 'menu', 'settings', 'stop', 'kq'].includes(v) ? ' more-i' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === 'team' && attNew ? `<span class="badge">${attNew}</span>` : ''}${v === 'books' && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ''}</button>`).join('') +
+      navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? 'on' : ''}${isAdmin() && !NAV_MAIN.includes(v) ? ' more-i' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === 'team' && attNew ? `<span class="badge">${attNew}</span>` : ''}${v === 'books' && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ''}</button>`).join('') +
       `<button class="feed-btn" data-a="feed"><span class="ic">🔔</span>Стрічка${newCnt ? `<span class="badge">${newCnt}</span>` : ''}</button>` +
-      `<button class="more-btn ${['calc', 'menu', 'settings', 'stop', 'kq'].includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><button class="me" data-a="zpMy" title="Мій кабінет"><i>${esc((S.me?.name || '?').slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ''}</i>${S.taskN ? `<span class="badge" title="Завдань на сьогодні">${S.taskN}</span>` : ''}<b>${esc(S.me?.name)}</b><small>${isAdmin() ? 'адмін' : isCook() ? 'кухар' : isCour() ? 'кур\'єр' : 'офіціант'} · кабінет</small></button>` +
+      `<button class="more-btn ${isAdmin() && !NAV_MAIN.includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><button class="me" data-a="zpMy" title="Мій кабінет"><i>${esc((S.me?.name || '?').slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ''}</i>${S.taskN ? `<span class="badge" title="Завдань на сьогодні">${S.taskN}</span>` : ''}<b>${esc(S.me?.name)}</b><small>${isAdmin() ? 'адмін' : isCook() ? 'кухар' : isCour() ? 'кур\'єр' : 'офіціант'} · кабінет</small></button>` +
       `<button data-a="switch"><span class="ic">🔒</span>Вийти</button>`);
   }
   function render() { renderNav(); renderFeed(); if (['hall', 'printer', 'kq'].includes(S.view) || (S.view === 'settings' && S.setTab === 'printer')) renderMain(); if (S.open) renderSheet(); }
@@ -378,7 +379,7 @@
       case 'view': S.view = el.dataset.v; S.q = ''; renderNav(); renderMain(); loadView(); $('#feed').classList.remove('open'); $('#main').scrollTop = 0; break;
       case 'feed': $('#feed').classList.toggle('open'); break;
       case 'fs': { const on = !document.fullscreenElement; store.set('fs', on); on ? document.documentElement.requestFullscreen?.().catch(() => {}) : document.exitFullscreen?.(); break; }
-      case 'more': { const v = await choose('Ще', '', (isCook() ? NAV_COOK : NAV.filter(n => (!n[3] || isAdmin()) && ['stop', 'kq', 'menu', 'calc', 'settings'].includes(n[0]))).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: '🔒 Вийти', val: 'logout', cls: 'red' }]));
+      case 'more': { const v = await choose('Ще', '', (isCook() ? NAV_COOK : isAdmin() ? NAV_A.filter(n => !NAV_MAIN.includes(n[0])) : NAV.filter(n => !n[3] && ['stop', 'menu', 'calc'].includes(n[0]))).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: '🔒 Вийти', val: 'logout', cls: 'red' }]));
         if (v === 'logout') { if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); } else if (v) { S.view = v; S.q = ''; renderNav(); renderMain(); loadView(); $('#main').scrollTop = 0; } break; }
       case 'switch': if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); break;
       case 'table': $('#feed').classList.remove('open'); openTable(el.dataset.t); break;
@@ -647,7 +648,7 @@
     try { await loadState(); } catch (e) { console.error('start', e); return; }
     if (!isCour()) loadMenu().catch(() => {});
     connect();
-    document.body.classList.toggle('cook', isCook()); document.body.classList.toggle('cour', isCour());
+    document.body.classList.toggle('cook', isCook()); document.body.classList.toggle('adm', isAdmin()); document.body.classList.toggle('cour', isCour());
     if (isCook()) { S.view = 'kq'; renderNav(); loadKq().catch(() => {}); kitchenGate(); }
     if (isCour()) { S.view = 'go'; renderNav(); loadCour().catch(() => {}); }
   }
