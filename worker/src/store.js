@@ -13,6 +13,7 @@ const alive = r => r && (!r.e || r.e > now());
 export class Store extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
+    try { ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong')); } catch {} // 💤 пінг не будить DO
     ctx.blockConcurrencyWhile(async () => {
       // 🏪 мультизаклад: стара одноразова міграція з KV була лише для VARVAR (DO «main», уже виконана).
       // Новий заклад НІЧОГО не копіює з KV — інакше отримав би чужі дані.

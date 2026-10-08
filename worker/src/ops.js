@@ -315,10 +315,10 @@ async function _tipBalances(env) {
   }
   return b;
 }
-async function _addTipBal(env, name, n) { if (!n) return; const b = await tipBalances(env); const k = name || '—'; b[k] = Math.max(0, (b[k] || 0) + n); if (!b[k]) delete b[k]; await env.DB.put('tipbal', JSON.stringify(b)); }
+async function _addTipBal(env, name, n) { if (!n) return; const b = await tipBalances(env); const k = name || '—'; b[k] = Math.round(((b[k] || 0) + n) * 100) / 100; if (!b[k]) delete b[k]; /* мінус = чайові вже видали, а чек потім прибрали — борг, щоб не видати двічі */ await env.DB.put('tipbal', JSON.stringify(b)); }
 // src: cash | card — звідки видали: сума списується з готівки або з картки (як рух коштів)
 async function _payTips(env, name, who, src = 'cash') {
-  const b = await tipBalances(env), sum = b[name] || 0; if (!sum) return null;
+  const b = await tipBalances(env), sum = b[name] || 0; if (!(sum > 0)) return null;
   src = src === 'card' ? 'card' : 'cash';
   delete b[name]; await env.DB.put('tipbal', JSON.stringify(b));
   const k = 'tippay:' + dayKey(), l = (await env.DB.get(k, 'json')) || []; l.push({ ts: Date.now(), at: hhmm(), name, sum, src, by: who || '' }); await env.DB.put(k, JSON.stringify(l));
@@ -399,7 +399,7 @@ async function _deleteTable(env, t, who, reason = '') {
   const kc = await kitchenCancel(env, +t, null, bill.opened);
   const dishes = []; for (const o of bill.log || []) for (const l of o.lines) { const x = l.match(LINE); if (x) dishes.push([x[2], +x[1], +x[3]]); }
   await addVoid(env, { ts: Date.now(), at: hhmm(), t: +t, by: who || '', name: `🗑 Весь стіл (${dishes.length} поз.)`, sum: bill.total, reason: String(reason || 'стіл видалено').slice(0, 120), table: 1 });
-  await logClosed(env, { ts: Date.now(), t, sum: bill.total, at: hhmm(), by: who || '', del: 1, dishes, orders: bill.orders || 0, ...(bill.voids?.length ? { voids: bill.voids } : {}) });
+  await logClosed(env, { ts: Date.now(), t, sum: bill.total, at: hhmm(), by: who || '', del: 1, dishes, orders: bill.orders || 0, ...((bill.tip || bill.ktip) ? { tip: (bill.tip || 0) + (bill.ktip || 0), ...(bill.ktip ? { ktip: bill.ktip } : {}) } : {}), ...(bill.disc ? { disc: bill.disc, ...(bill.discSum != null ? { discSum: bill.discSum, gross: bill.total } : {}) } : {}), /* ↩️ щоб «відновити стіл» повернув і чайові, і знижку */ ...(bill.voids?.length ? { voids: bill.voids } : {}) });
   // видалений стіл — не продаж: прибрати його страви з «топ страв» і замовлення з лічильника (↩️ відновлення поверне)
   if (dishes.length) await addDishes(env, dishes.map(([n, q, sum]) => ({ n, q: -q, sum: -sum })));
   const cooked = kc.filter(x => x.cooked); if (cooked.length) await wasteDish(env, cooked, reason || 'стіл видалено', who).catch(() => {}); // уже приготоване — брак
@@ -502,7 +502,7 @@ async function _billBack(env, t, x, kind) {
   const b = await getBill(env, t), sum = x.dishes.reduce((a, d) => a + d[2], 0);
   b.total = (b.total || 0) + sum; b.orders = (b.orders || 0) + 1; b.opened = b.opened || Date.now();
   b.log = [...(b.log || []), { at: hhmm(), kind, lines }].slice(-60);
-  if (x.disc && !b.disc) { b.disc = x.disc; if (x.discSum != null && x.gross && x.discSum !== Math.round(x.gross * x.disc / 100)) b.discSum = x.discSum; } if (x.tip && !b.tip) b.tip = x.tip - (x.ktip || 0); if (x.ktip && !b.ktip) b.ktip = x.ktip; if (x.voids?.length) b.voids = [...(b.voids || []), ...x.voids]; if (x.w && !b.waiter) b.waiter = x.w;
+  if (x.disc && !b.disc) { b.disc = x.disc; if (x.discSum != null && x.gross && x.discSum !== Math.round(x.gross * x.disc / 100)) b.discSum = x.discSum; } if (x.tip) b.tip = (b.tip || 0) + x.tip - (x.ktip || 0); if (x.ktip) b.ktip = (b.ktip || 0) + x.ktip; // на зайнятий стіл — додаються, а не губляться if (x.voids?.length) b.voids = [...(b.voids || []), ...x.voids]; if (x.w && !b.waiter) b.waiter = x.w;
   await putBill(env, t, b); return true;
 }
 // ↩️ відкрити закритий рахунок знову: знімається з виручки і повертається на стіл (щоб виправити й закрити заново)

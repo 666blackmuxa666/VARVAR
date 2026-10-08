@@ -57,7 +57,7 @@ export async function taskMark(env, me, day, id, st, why, ph) {
 }
 
 export async function taskApi(b, env, me) {
-  const admin = me.role === 'admin', day = isDay(b.day) ? b.day : dayKey(), R = x => [x?.error ? x : { ok: true, ...x }, x?.error ? 400 : 200];
+  const admin = me.role === 'admin', day = admin && isDay(b.day) ? b.day : dayKey(), /* працівник — лише сьогодні */ R = x => [x?.error ? x : { ok: true, ...x }, x?.error ? 400 : 200];
   const needAdmin = () => [{ error: 'admin' }, 403];
   switch (b.op) {
     case 'taskList': {
@@ -69,7 +69,7 @@ export async function taskApi(b, env, me) {
       const t = cleanTask(b, await getStaff(env)); if (!t.n) return R({ error: 'Напишіть завдання' });
       return R(await edit(env, day, d => { if (d.l.length >= 200) return { error: 'Забагато завдань на день' }; const x = { id: nid(), ...t, st: '' }; d.l.push(x); return { t: x }; }));
     }
-    case 'taskDel': { if (!admin) return needAdmin(); return R(await edit(env, day, d => { const i = d.l.findIndex(x => x.id === b.id); if (i < 0) return { error: 'Не знайдено' }; d.l.splice(i, 1); return {}; })); }
+    case 'taskDel': { if (!admin) return needAdmin(); return R(await edit(env, day, d => { const i = d.l.findIndex(x => x.id === b.id); if (i < 0) return { error: 'Не знайдено' }; if (d.l[i].tpl) d.dtpl = [...new Set([...(d.dtpl || []), d.l[i].tpl])]; d.l.splice(i, 1); return {}; })); } // видалене з шаблону не повертається
     case 'taskMark': return R(await taskMark(env, me, day, String(b.id || ''), String(b.st || ''), b.why, typeof b.ph === 'string' && b.ph.length > 1000 && b.ph.length < 2e6 ? b.ph.replace(/^data:image\/\w+;base64,/, '') : ''));
     case 'taskPh': { const d = await taskDay(env, day), t = d.l.find(x => x.id === b.id); if (!t || (!admin && !isMine(t, me))) return R({ error: 'Не знайдено' }); return R({ ph: await env.DB.get(`tph:${day}:${t.id}`) || '' }); }
     case 'taskTpl': { // шаблони, що повторюються: зберегти весь список
@@ -77,8 +77,8 @@ export async function taskApi(b, env, me) {
       const list = (Array.isArray(b.list) ? b.list : []).slice(0, 60).map(x => ({ id: String(x.id || nid()).slice(0, 12), ...cleanTask(x, staff), days: (Array.isArray(x.days) ? x.days : []).map(Number).filter(n => n >= 0 && n <= 6) })).filter(x => x.n);
       await env.DB.put('task_tpl', JSON.stringify(list));
       // сьогоднішній план: додати нові шаблони одразу (якщо день уже згенеровано)
-      const w = wd(dayKey());
-      await edit(env, dayKey(), d => { for (const t of list) if ((!t.days.length || t.days.includes(w)) && !d.l.some(x => x.tpl === t.id)) d.l.push({ id: nid(), n: t.n, who: t.who, imp: t.imp, photo: t.photo, tm: t.tm, tpl: t.id, st: '' }); });
+      for (const dd of [dayKey(), new Date(Date.parse(dayKey() + 'T12:00:00Z') + 86400e3).toISOString().slice(0, 10)]) { if (dd !== dayKey() && !(await env.DB.get('task:' + dd, 'json'))?.gen) continue; const w = wd(dd); // сьогодні й завтра (якщо вже відкривали)
+      await edit(env, dd, d => { for (const t of list) if ((!t.days.length || t.days.includes(w)) && !d.l.some(x => x.tpl === t.id) && !(d.dtpl || []).includes(t.id)) d.l.push({ id: nid(), n: t.n, who: t.who, imp: t.imp, photo: t.photo, tm: t.tm, tpl: t.id, st: '' }); }); }
       return R({ tpl: list });
     }
   }

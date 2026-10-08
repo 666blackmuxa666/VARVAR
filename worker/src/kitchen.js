@@ -59,7 +59,7 @@ document.addEventListener('click',function(ev){var t=ev.target;while(t&&t!==docu
  if(t.getAttribute('data-id'))api('kDone',{id:t.getAttribute('data-id'),i:+t.getAttribute('data-i')},load);
  else if(t.getAttribute('data-st'))api('kStart',{id:t.getAttribute('data-st')},load);
  else if(t.getAttribute('data-all'))api('kDone',{id:t.getAttribute('data-all')},load)});
-$('go').onclick=function(){api('login',{pin:$('pin').value},function(j){if(j.token&&j.me&&(j.me.role==='cook'||j.me.role==='admin')){T=j.token;localStorage.setItem('ktok',T);show()}else $('err').textContent=j.token?'Цей екран — для кухаря':'Невірний PIN'})};
+$('go').onclick=function(){api('login',{pin:$('pin').value},function(j){if(j.token&&j.me&&(j.me.role==='cook'||j.me.role==='admin')){T=j.token;localStorage.setItem('ktok',T);show();if(!wsOk)live()}else $('err').textContent=j.token?'Цей екран — для кухаря':'Невірний PIN'})};
 $('out').onclick=function(){if(confirm('Вийти?')){api('logout',{});T='';localStorage.removeItem('ktok');show()}};
 $('start').onclick=function(){try{var A=window.AudioContext||window.webkitAudioContext;ctx=new A();play(snd)}catch(e){}$('gate').style.display='none';noSleep()};
 // 🔆 екран не гасне: старий iOS не має Wake Lock — класичний прийом (як NoSleep.js для iOS < 10): раз на 15 с «перехід» на ту саму сторінку і одразу зупинка
@@ -113,6 +113,12 @@ document.addEventListener('click',function(ev){var t=ev.target,a;
  if((a=t.getAttribute('data-msg'))){msgId=a;$('msg').getElementsByTagName('h2')[0].textContent='Повідомлення в зал';var o=['❗ Немає продукту','⏱ Ще +10 хв','🙋 Підійди на кухню','🔥 Вже майже готово','✏️ Своє…'],h='';for(var i=0;i<o.length;i++)h+='<button class="btn" style="display:block;width:100%;margin:8px 0;font-size:22px;padding:16px" data-mt="'+o[i]+'">'+o[i]+'</button>';$('msgb').innerHTML=h;$('msg').style.display='block';return}
  if((a=t.getAttribute('data-mt'))){if(a.indexOf('Своє')>=0){a=prompt('Повідомлення в зал:');if(!a)return}$('msg').style.display='none';api('kMsg',{id:msgId,text:a},function(j,s){if(s===200){load()}else alert('⚠️ '+(j.error||'помилка'))});return}
  if(t.id==='msgx')$('msg').style.display='none'});
-setInterval(function(){if(T&&tab==='f')feed()},8000);
-$('gate').style.display='block';show();setInterval(function(){if(T)load()},4000);setInterval(function(){if(T)draw()},30000);
+setInterval(function(){if(T&&tab==='f'&&!wsOk)feed()},20000);
+$('gate').style.display='block';show();
+// 🔌 живе зʼєднання (як у касі): сервер сам каже «кухня змінилась» — без опитування кожні 4 с; без зʼєднання — запасне опитування раз на 20 с
+var ws=null,wsOk=0,wsT=0;function live(){if(!T||!window.WebSocket)return;try{ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/pos/live?token='+T)}catch(e){return}
+ ws.onopen=function(){wsOk=1;load()};ws.onmessage=function(m){if(m.data==='pong')return;var j={};try{j=JSON.parse(m.data)}catch(e){}if(j.type==='changed'&&j.keys&&tab==='f'&&String(j.keys).indexOf('ev')>=0)feed();if(j.type==='changed'&&j.keys&&(String(j.keys).indexOf('kq')>=0||String(j.keys).indexOf('menu')>=0)){clearTimeout(wsT);wsT=setTimeout(load,150)}};
+ ws.onclose=function(){wsOk=0;setTimeout(live,5000)};ws.onerror=function(){try{ws.close()}catch(e){}}}
+setInterval(function(){if(ws&&wsOk)try{ws.send('ping')}catch(e){}},25000);
+live();var poll=0;setInterval(function(){if(!T)return;poll++;if(!wsOk||poll%15===0)load()},wsOk?20000:20000);setInterval(function(){if(T)draw()},30000);
 </script></body></html>`;

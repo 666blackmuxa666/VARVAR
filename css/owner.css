@@ -71,7 +71,7 @@ h2:first-child { margin-top: 4px; }
 .chip.bad { background: #ff453a22; color: var(--red); } .chip.ok { background: #30d15822; color: var(--green); }
 
 /* тривоги */
-.alert { display: flex; gap: 10px; padding: 10px 12px; border-radius: 12px; background: #ff9f0a14; border: 1px solid #ff9f0a33; margin-bottom: 8px; overflow-wrap: anywhere; }
+.alert { display: block; gap: 10px; padding: 10px 12px; border-radius: 12px; background: #ff9f0a14; border: 1px solid #ff9f0a33; margin-bottom: 8px; overflow-wrap: anywhere; }
 .alert.red { background: #ff453a14; border-color: #ff453a33; }
 
 /* таблиця */

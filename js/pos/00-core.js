@@ -9,6 +9,7 @@
   const money = n => `${Math.round(n || 0).toLocaleString('uk-UA')} ₴`;
   const store = { get(k, d) { try { const v = localStorage.getItem('pos_' + (VENUE ? VENUE + '_' : '') + k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem('pos_' + (VENUE ? VENUE + '_' : '') + k, JSON.stringify(v)); } catch {} } };
   // 👑 вхід з кабінету власника: #tok=…&me=… (у якорі — не йде на сервер і в історію)
+  const OPEN_SET = new URLSearchParams(location.hash.slice(1)).get('set') || ''; // 👑 з кабінету: одразу відкрити вкладку налаштувань (напр. повний редактор сайту)
   { const h = new URLSearchParams(location.hash.slice(1)); if (/^[a-f0-9]{32}$/.test(h.get('tok') || '')) { try { store.set('token', h.get('tok')); store.set('me', JSON.parse(h.get('me') || 'null')); } catch {} history.replaceState(null, '', location.pathname + location.search); } }
   const hhmm = t => new Date(t).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
 
@@ -146,7 +147,7 @@
     const fresh = r.events.filter(e => !S.seen.has(e.id));
     if (S.ready && fresh.some(e => ['guest', 'check', 'call'].includes(e.k) || (!isCook() && ['ready', 'kmsg'].includes(e.k)))) ding();
     r.events.forEach(e => S.seen.add(e.id));
-    S.events = r.events; S.ready = true; if (!S._tk0) { S._tk0 = 1; loadMyTasks(); loadLookV(); }
+    S.events = r.events; S.ready = true; if (!S._tk0) { S._tk0 = 1; loadMyTasks(); loadLookV(); if (OPEN_SET && isAdmin()) { S.view = 'settings'; S.setTab = OPEN_SET; renderNav(); renderMain(); loadView(); } }
     if (isCour() && S.view === 'go') renderMain(); // 🛵 нові доставки й «готово» — одразу на екрані кур'єра
     render();
   }

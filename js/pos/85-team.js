@@ -6,8 +6,9 @@
     const rows = G.rows.filter(r => people.includes(r.n) || r.paid || r.adv || r.bonus || r.fine), due = rows.reduce((a, r) => a + Math.max(0, r.due), 0), pend = rows.reduce((a, r) => a + r.pending, 0);
     const tab = S.zpTab || 'grid', TABS = [['grid', '📅 Графік'], ['pay', '💰 Зарплата'], ['ops', '🧾 Операції'], ['eff', '📊 Ефективність'], ['plan', '📋 План'], ['people', '👥 Працівники'], ['ideas', '💡 Побажання']];
     const top = `<div class="zp-top"><button class="btn sm" data-a="zpM" data-d="-1">◀</button><b>${monName(G.m)}</b><button class="btn sm" data-a="zpM" data-d="1">▶</button></div>
-      <div class="kpis"><div class="kpi accent"><span>До виплати</span><b class="money">${money(due)}</b></div><div class="kpi"><span>Фонд оплати</span><b class="money">${money(G.fund)}</b><small class="muted">${G.fundPct}% від виручки</small></div>
+      ${['pay', 'ops', 'eff'].includes(tab) ? `<div class="kpis"><div class="kpi accent"><span>До виплати</span><b class="money">${money(due)}</b></div><div class="kpi"><span>Фонд оплати</span><b class="money">${money(G.fund)}</b><small class="muted">${G.fundPct}% від виручки</small></div>
         <div class="kpi"><span>Виручка місяця</span><b class="money">${money(G.revenue)}</b></div><div class="kpi ${pend ? 'red press' : ''}"${pend ? ' data-a="zpPend"' : ''}><span>Чекає ✅</span><b>${pend}</b><small class="muted">${pend ? 'натисніть, щоб підтвердити' : 'усе підтверджено'}</small></div></div>
+` : ''}
       <div class="seg rsec">${TABS.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-a="zpTab" data-t="${k}">${l}</button>`).join('')}</div>`;
     let body = '';
     if (tab === 'grid') {

@@ -56,6 +56,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     } catch (e) {
     }
   } };
+  const OPEN_SET = new URLSearchParams(location.hash.slice(1)).get("set") || "";
   {
     const h = new URLSearchParams(location.hash.slice(1));
     if (/^[a-f0-9]{32}$/.test(h.get("tok") || "")) {
@@ -413,6 +414,13 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       S._tk0 = 1;
       loadMyTasks();
       loadLookV();
+      if (OPEN_SET && isAdmin()) {
+        S.view = "settings";
+        S.setTab = OPEN_SET;
+        renderNav();
+        renderMain();
+        loadView();
+      }
     }
     if (isCour() && S.view === "go") renderMain();
     render();
@@ -3680,7 +3688,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const row = (l, v, btn, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ""}</span><span class="kv-r"><b>${v}</b>${btn}</span></div>`;
     const ch = (a, extra = "") => `<button class="btn sm" data-a="${a}"${extra}>\u0437\u043C\u0456\u043D\u0438\u0442\u0438</button>`;
     const staff = st ? [...st.staff].sort((a, b) => (a.role || "").localeCompare(b.role || "") || a.name.localeCompare(b.name)) : null;
-    const SS = [["venue", "\u{1F3EA} \u0417\u0430\u043A\u043B\u0430\u0434"], ["rules", "\u2699\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438"], ["site", "\u{1F310} \u0421\u0430\u0439\u0442"], ["go", "\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430"], ["loy", "\u{1F381} \u041B\u043E\u044F\u043B\u044C\u043D\u0456\u0441\u0442\u044C"], ["look", "\u{1F3A8} \u0412\u0438\u0433\u043B\u044F\u0434"], ["printer", "\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["test", "\u{1F9EA} \u0422\u0435\u0441\u0442"]], cur = only || ((SS0) => SS0.includes(S.setTab) ? S.setTab : "rules")(["venue", "rules", "site", "go", "loy", "look", "printer", "test"]);
+    const OWN = ["venue", "site", "test"], SS = [["venue", "\u{1F3EA} \u0417\u0430\u043A\u043B\u0430\u0434"], ["rules", "\u2699\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438"], ["site", "\u{1F310} \u0421\u0430\u0439\u0442"], ["go", "\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430"], ["loy", "\u{1F381} \u041B\u043E\u044F\u043B\u044C\u043D\u0456\u0441\u0442\u044C"], ["look", "\u{1F3A8} \u0412\u0438\u0433\u043B\u044F\u0434"], ["printer", "\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["test", "\u{1F9EA} \u0422\u0435\u0441\u0442"]].filter(([k]) => !OWN.includes(k) || S.setTab === k), cur = only || ((SS0) => SS0.includes(S.setTab) ? S.setTab : "rules")(["venue", "rules", "site", "go", "loy", "look", "printer", "test"]);
     const part = {};
     part.people = `<div class="grid2 set">
       ${[["admin", "\u{1F510} \u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440\u0438"], ["waiter", "\u{1F9D1}\u200D\u{1F373} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0438"], ["cook", "\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u043D\u044F"], ["courier", "\u{1F6F5} \u041A\u0443\u0440'\u0454\u0440\u0438"]].map(([r, t]) => {
@@ -3726,7 +3734,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     part.test = `<div class="grid2 set"><div class="card"><h3>\u{1F9EA} \u0422\u0435\u0441\u0442</h3><div class="muted set-note">\u0422\u0438\u043C\u0447\u0430\u0441\u043E\u0432\u043E, \u0434\u043E \u0437\u0430\u043F\u0443\u0441\u043A\u0443.</div><button class="btn sm red" data-a="reset">\u267B\uFE0F \u041E\u0431\u043D\u0443\u043B\u0438\u0442\u0438 \u0432\u0441\u0435</button></div></div>`;
     if (only) return part[only];
     return `<div class="rhead"><div><h1>\u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F</h1><span class="muted">\u043F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438, \u043F\u0440\u0438\u043D\u0442\u0435\u0440</span></div><div class="icogrp">${isAdmin() ? `<a class="btn icobtn" href="owner.html${VENUE ? "" : "#pos=" + S.token}" target="_blank" rel="noopener" title="\u041A\u0430\u0431\u0456\u043D\u0435\u0442 \u0432\u043B\u0430\u0441\u043D\u0438\u043A\u0430">\u{1F451}</a>` : ""}<button class="btn icobtn" data-a="zpHelp" title="\u0414\u043E\u043F\u043E\u043C\u043E\u0433\u0430">\u{1F198}</button></div></div>
-      <div class="seg rsec">${SS.map(([k, l]) => `<button class="${cur === k ? "on" : ""}" data-a="setTab" data-s="${k}">${l}</button>`).join("")}</div>${part[cur]}`;
+      <div class="seg rsec">${SS.map(([k, l]) => `<button class="${cur === k ? "on" : ""}" data-a="setTab" data-s="${k}">${l}</button>`).join("")}</div>${OWN.includes(cur) ? "" : `<div class="card set-own"><span>\u{1F310} \u0421\u0430\u0439\u0442, \u{1F3EA} \u0437\u0430\u043A\u043B\u0430\u0434 (\u043D\u0430\u0437\u0432\u0430, \u043B\u043E\u0433\u043E\u0442\u0438\u043F, \u043F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F), QR-\u043A\u043E\u0434\u0438, \u0431\u043E\u0442\u0438 \u0439 \u0431\u0435\u043A\u0430\u043F\u0438 \u2014 \u0443 <b>\u043A\u0430\u0431\u0456\u043D\u0435\u0442\u0456 \u0432\u043B\u0430\u0441\u043D\u0438\u043A\u0430</b></span>${isAdmin() ? `<a class="btn sm" href="owner.html" target="_blank" rel="noopener">\u{1F451} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438</a>` : ""}</div>`}${part[cur]}`;
   }
   async function menuEdit(id) {
     var _a2, _b, _c, _d;
@@ -4711,15 +4719,15 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const NOTE = { in: "\u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0430", add: "\u0434\u043E\u0434\u0430\u043D\u043E \u0432\u0440\u0443\u0447\u043D\u0443", off: "\u0441\u043F\u0438\u0441\u0430\u043D\u043E", mv: "\u043F\u0435\u0440\u0435\u043C\u0456\u0449\u0435\u043D\u043D\u044F", prod: "\u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430", cnt: "\u0456\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u044F" };
     const can = (x) => {
       var _a2;
-      return ["add", "off"].includes(x.t) && !x.undo && (isAdmin() || x.by === ((_a2 = S.me) == null ? void 0 : _a2.name) && day === todayK());
+      return ["add", "off"].includes(x.t) && !x.undo && !/^(🔗|↩️)/.test(x.note || "") && (isAdmin() || x.by === ((_a2 = S.me) == null ? void 0 : _a2.name) && day === todayK());
     };
-    const rows = r.list.map((x, i) => [x, i]).reverse().map(([x, i]) => `<div class="kv${x.undo ? " sk-undo" : ""}"><span>${x.at} ${T[x.t] || "\u2022"} <b>${esc(x.n)}</b> ${x.q > 0 ? "+" : ""}${fq(x.q, x.u)} <span class="muted">\xB7 ${NOTE[x.t] || ""} \xB7 ${WHN[x.wh] || ""}${x.note ? " \xB7 " + esc(x.note) : ""}${x.by ? " \xB7 " + esc(x.by) : ""}${x.undo ? ` \xB7 \u21A9\uFE0F \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E ${esc(x.undo.by)} ${x.undo.at}` : ""}</span></span><span class="kv-r">${isAdmin() && x.sum ? `<b class="money">${money(x.sum)}</b>` : ""}${can(x) ? `<button class="btn sm ghost" data-mi-v="u${i}" title="\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438">\u21A9\uFE0F</button>` : ""}</span></div>`).join("");
+    const rows = r.list.map((x, i) => [x, i]).reverse().map(([x, i]) => `<div class="kv${x.undo ? " sk-undo" : ""}"><span>${x.at} ${T[x.t] || "\u2022"} <b>${esc(x.n)}</b> ${x.q > 0 ? "+" : ""}${fq(x.q, x.u)} <span class="muted">\xB7 ${NOTE[x.t] || ""} \xB7 ${WHN[x.wh] || ""}${x.note ? " \xB7 " + esc(x.note) : ""}${x.by ? " \xB7 " + esc(x.by) : ""}${x.undo ? ` \xB7 \u21A9\uFE0F \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E ${esc(x.undo.by)} ${x.undo.at}` : ""}</span></span><span class="kv-r">${isAdmin() && x.sum ? `<b class="money">${money(x.sum)}</b>` : ""}${can(x) ? `<button class="btn sm ghost" data-mi-v="u${i}:${x.ts}" title="\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438">\u21A9\uFE0F</button>` : ""}</span></div>`).join("");
     const v = await modal({ title: "\u{1F4DC} \u0420\u0443\u0445 \u0441\u043A\u043B\u0430\u0434\u0443", body: `<div class="zp-top"><button class="btn sm" data-mi-v="d${sh(-1)}">\u25C0</button><b>${day === todayK() ? "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : day.split("-").reverse().join(".")}</b>${day < todayK() ? `<button class="btn sm" data-mi-v="d${sh(1)}">\u25B6</button>` : "<span></span>"}</div>
       <div class="muted" style="font-size:12px;margin-bottom:6px">\u{1F9FE} \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0430 (\u0437 \xAB\u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E\xBB / \xAB\u21A9\uFE0F \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E\xBB \u2014 \u043A\u043E\u043B\u0438 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0443 \u0432\u0438\u0434\u0430\u043B\u0438\u043B\u0438 \u0430\u0431\u043E \u0432\u0456\u0434\u043D\u043E\u0432\u0438\u043B\u0438) \xB7 \u2795 \u0434\u043E\u0434\u0430\u043D\u043E \xB7 \u{1F5D1} \u0441\u043F\u0438\u0441\u0430\u043D\u043E \xB7 \u21C4 \u043F\u0435\u0440\u0435\u043C\u0456\u0449\u0435\u043D\u043D\u044F \xB7 \u{1F373} \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \xB7 \u{1F4DD} \u0456\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u044F. \u041F\u0440\u043E\u0434\u0430\u0436\u0456 \u0437\u0430 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0430\u043C\u0438 \u2014 \u0443 \xAB\u{1F4CA} \u041F\u043B\u044E\u0441\u0438 / \u043C\u0456\u043D\u0443\u0441\u0438\xBB.</div>
       <div class="sk-jr">${rows || '<div class="muted">\u0420\u0443\u0445\u0456\u0432 \u0437\u0430 \u0446\u0435\u0439 \u0434\u0435\u043D\u044C \u043D\u0435\u043C\u0430\u0454</div>'}</div>`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
     if (!v) return;
     if (v[0] === "d") return skJournal(v.slice(1));
-    if (v[0] === "u" && await confirmBox("\u21A9\uFE0F \u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438 \u0446\u0435\u0439 \u0440\u0443\u0445?", "\u041A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044C \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u0442\u044C\u0441\u044F \u043D\u0430 \u0441\u043A\u043B\u0430\u0434 \u044F\u043A \u0431\u0443\u043B\u043E") && await act("skJrUndo", { day, i: +v.slice(1) }, "\u21A9\uFE0F \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E")) {
+    if (v[0] === "u" && await confirmBox("\u21A9\uFE0F \u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438 \u0446\u0435\u0439 \u0440\u0443\u0445?", "\u041A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044C \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u0442\u044C\u0441\u044F \u043D\u0430 \u0441\u043A\u043B\u0430\u0434 \u044F\u043A \u0431\u0443\u043B\u043E") && await act("skJrUndo", { day, i: +v.slice(1).split(":")[0], ts: +v.split(":")[1] }, "\u21A9\uFE0F \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E")) {
       S.data.sk = null;
       loadView();
     }
@@ -5627,8 +5635,9 @@ ${g.sup}:
     const rows = G.rows.filter((r) => people.includes(r.n) || r.paid || r.adv || r.bonus || r.fine), due = rows.reduce((a, r) => a + Math.max(0, r.due), 0), pend = rows.reduce((a, r) => a + r.pending, 0);
     const tab = S.zpTab || "grid", TABS2 = [["grid", "\u{1F4C5} \u0413\u0440\u0430\u0444\u0456\u043A"], ["pay", "\u{1F4B0} \u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430"], ["ops", "\u{1F9FE} \u041E\u043F\u0435\u0440\u0430\u0446\u0456\u0457"], ["eff", "\u{1F4CA} \u0415\u0444\u0435\u043A\u0442\u0438\u0432\u043D\u0456\u0441\u0442\u044C"], ["plan", "\u{1F4CB} \u041F\u043B\u0430\u043D"], ["people", "\u{1F465} \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0438"], ["ideas", "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F"]];
     const top = `<div class="zp-top"><button class="btn sm" data-a="zpM" data-d="-1">\u25C0</button><b>${monName(G.m)}</b><button class="btn sm" data-a="zpM" data-d="1">\u25B6</button></div>
-      <div class="kpis"><div class="kpi accent"><span>\u0414\u043E \u0432\u0438\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(due)}</b></div><div class="kpi"><span>\u0424\u043E\u043D\u0434 \u043E\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(G.fund)}</b><small class="muted">${G.fundPct}% \u0432\u0456\u0434 \u0432\u0438\u0440\u0443\u0447\u043A\u0438</small></div>
+      ${["pay", "ops", "eff"].includes(tab) ? `<div class="kpis"><div class="kpi accent"><span>\u0414\u043E \u0432\u0438\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(due)}</b></div><div class="kpi"><span>\u0424\u043E\u043D\u0434 \u043E\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(G.fund)}</b><small class="muted">${G.fundPct}% \u0432\u0456\u0434 \u0432\u0438\u0440\u0443\u0447\u043A\u0438</small></div>
         <div class="kpi"><span>\u0412\u0438\u0440\u0443\u0447\u043A\u0430 \u043C\u0456\u0441\u044F\u0446\u044F</span><b class="money">${money(G.revenue)}</b></div><div class="kpi ${pend ? "red press" : ""}"${pend ? ' data-a="zpPend"' : ""}><span>\u0427\u0435\u043A\u0430\u0454 \u2705</span><b>${pend}</b><small class="muted">${pend ? "\u043D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C, \u0449\u043E\u0431 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438" : "\u0443\u0441\u0435 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043E"}</small></div></div>
+` : ""}
       <div class="seg rsec">${TABS2.map(([k, l]) => `<button class="${tab === k ? "on" : ""}" data-a="zpTab" data-t="${k}">${l}</button>`).join("")}</div>`;
     let body = "";
     if (tab === "grid") {

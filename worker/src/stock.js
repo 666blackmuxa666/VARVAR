@@ -100,10 +100,10 @@ export async function purchaseList(env) {
 }
 export const purchaseText = list => list.length ? list.map(g => `<b>${esc(g.sup)}</b>\n${g.items.map(i => `• ${esc(i.n)} — ${fq(i.need, i.u)}${i.price ? ` (~${money(i.sum)})` : ''}`).join('\n')}`).join('\n\n') : '✅ Усього вистачає (нічого не нижче мінімуму)';
 // ↩️ скасувати ручний рух (➕ додано / 🗑 списано): залишок повертається, рядок у журналі закреслено
-export async function jrUndo(env, day, i, me) {
+export async function jrUndo(env, day, i, me, ts) {
   day = isDay(day) && day <= dayKey() ? day : dayKey(); const k = 'stk:' + day;
   return lk(env, async () => {
-    const jl = (await env.DB.get(k, 'json')) || [], y = jl[+i]; if (!y || !['add', 'off'].includes(y.t)) return { error: 'Скасувати можна лише ручне додавання чи списання' };
+    const jl = (await env.DB.get(k, 'json')) || [], y = jl[+i]; if (!y || !['add', 'off'].includes(y.t) || /^(🔗|↩️)/.test(y.note || '')) return { error: 'Скасувати можна лише ручне додавання чи списання' }; if (ts && y.ts !== +ts) return { error: 'Журнал змінився — відкрийте його ще раз' };
     if (y.undo) return { error: 'Вже скасовано' }; if (me.role !== 'admin' && (y.by !== me.name || day !== dayKey())) return { error: 'Скасувати може адмін або автор — того ж дня' };
     const l = await getIng(env), x = l.find(z => z.id === y.id); if (!x) return { error: 'Продукт не знайдено' };
     x.st[y.wh] = r3((x.st[y.wh] || 0) - y.q); y.undo = { by: me.name, at: hhmm() };
@@ -127,7 +127,7 @@ export async function ingMerge(env, to, from, fx = {}, who) {
       T.bc = [...new Set([...(T.bc || []), ...(y.bc || [])])].slice(0, 20); if (!T.min && y.min) T.min = r3(y.min * f);
       y.off = 1; y.merged = T.id; y.mf = f;
       for (const z of l) if (z.merged === y.id) { z.merged = T.id; z.mf = r3((z.mf || 1) * f); } // ланцюжок: раніше обʼєднані в дубль — теж у головний
-      for (const z of l) if (z.grp?.includes(y.id)) z.grp = [...new Set(z.grp.map(i => i === y.id ? T.id : i))];
+      for (const z of l) if (z.grp?.includes(y.id)) z.grp = [...new Set(z.grp.map(i => i === y.id ? (T.u === z.u ? T.id : null) : i).filter(Boolean))]; // у групі лише продукти однієї одиниці
     }
     if (!Object.keys(F).length) return { error: 'Нічого обʼєднати (групи й заготовки з продуктами не змішуються)' };
     let nc = 0;
@@ -168,8 +168,12 @@ export function cardResolver(menu) {
 }
 const whOfCat = cat => ['bar', 'hookah'].includes(groupOf(cat)) ? 'b' : 'k';
 // 🥬 група-замінник (x.grp = [id…]): у техкарті стоїть група — списується з того продукту групи, якого найбільше на цьому складі
-export function grpPick(x, w, im) {
-  if (!x?.grp) return x; const m = x.grp.map(id => im.get(id)).filter(y => y && !y.off && !y.grp); if (!m.length) return null;
+export function grpPick(x, w, im, qq = 1) {
+  if (!x?.grp) return x;
+  if (qq < 0) { const y = im.get(x.gl?.[w]); if (y && !y.off) return y; } // ↩️ повернення — на той продукт, з якого списали востаннє
+  const p = grpPick0(x, w, im); if (p && qq > 0) (x.gl ||= {})[w] = p.id; return p;
+}
+function grpPick0(x, w, im) { const m = x.grp.map(id => im.get(id)).filter(y => y && !y.off && !y.grp); if (!m.length) return null;
   return m.reduce((a, y) => ((y.st?.[w] || 0) > (a.st?.[w] || 0) || ((y.st?.[w] || 0) === (a.st?.[w] || 0) && tot(y) > tot(a)) ? y : a), m[0]);
 }
 // ціна одиниці продукту: заготовка з техкартою — за техкартою (актуально), інакше — середня з накладних
@@ -201,7 +205,7 @@ export async function consume(env, items) {
     const calc = (await getCfg(env)).semiCalc ?? 1;
     // 📐 режим «розрахунок»: заготовка (соус, тісто) не тримається на складі — при продажі розкладається на продукти свого рецепту
     const eat = (id, qq, w, depth = 0) => {
-      let x = im.get(id); if (x?.grp) x = grpPick(x, w, im); if (!x) return; id = x.id; const sc = x.semi && calc && depth < 3 && cards['semi:' + id];
+      let x = im.get(id); if (x?.grp) x = grpPick(x, w, im, qq); if (!x) return; id = x.id; const sc = x.semi && calc && depth < 3 && cards['semi:' + id];
       if (sc && sc.yield > 0 && sc.items?.length) { const k2 = qq / sc.yield; for (const z of sc.items) eat(z.id, r3((+z.q || 0) * k2), z.wh || sc.wh || w, depth + 1); return; }
       const c = unitCost(x.id, im, cards); x.st[w] = r3((x.st[w] || 0) - qq); ch.add(x.id);
       const key = x.id + '@' + w, a = use[key] || [0, 0]; use[key] = [r3(a[0] + qq), r2(a[1] + qq * c)];
@@ -225,7 +229,7 @@ export async function wasteDish(env, items, reason, who) {
     for (const { n, q } of items) {
       const r = res(n), f = cardFor(cards, r); if (!f || f.card.draft) continue;
       const note = `скасовано: ${n} · ${String(reason || '').slice(0, 50)}`;
-      const eat = (id, qq, w, depth = 0) => { let x = im.get(id); if (x?.grp) x = grpPick(x, w, im); if (!x) return; id = x.id; const sc = x.semi && calc && depth < 3 && cards['semi:' + id]; // 📐 як у consume
+      const eat = (id, qq, w, depth = 0) => { let x = im.get(id); if (x?.grp) x = grpPick(x, w, im, qq); if (!x) return; id = x.id; const sc = x.semi && calc && depth < 3 && cards['semi:' + id]; // 📐 як у consume
         if (sc && sc.yield > 0 && sc.items?.length) { for (const z of sc.items) eat(z.id, r3((+z.q || 0) * qq / sc.yield), z.wh || sc.wh || w, depth + 1); return; }
         x.st[w] = r3((x.st[w] || 0) - qq); rows.push(row('off', x, w, -qq, who, note)); };
       for (const ln of f.card.items || []) eat(ln.id, r3((+ln.q || 0) * f.k * q), ln.wh || f.card.wh || whOfCat(r.cat));
@@ -253,7 +257,7 @@ export async function produce(env, { id, q, wh }, who) {
     if (!sc?.items?.length || !(sc.yield > 0)) return { error: 'Спершу заповніть техкарту заготовки (склад і вихід)' };
     const w = wh === 'b' ? 'b' : wh === 'k' ? 'k' : x.home || 'k', k = q / sc.yield, rows = [], ch = new Set([id]);
     let cost = 0;
-    for (const ln of sc.items) { const lw = ln.wh || w, y = grpPick(im.get(ln.id), lw, im); if (!y) continue; const qq = r3(ln.q * k); cost += qq * unitCost(y.id, im, cards); y.st[lw] = r3((y.st[lw] || 0) - qq); ch.add(y.id); rows.push(row('prod', y, lw, -qq, who, `на заготовку ${x.n}`)); }
+    for (const ln of sc.items) { const lw = ln.wh || w, y = grpPick(im.get(ln.id), lw, im, 1); if (!y) continue; const qq = r3(ln.q * k); cost += qq * unitCost(y.id, im, cards); y.st[lw] = r3((y.st[lw] || 0) - qq); ch.add(y.id); rows.push(row('prod', y, lw, -qq, who, `на заготовку ${x.n}`)); }
     const old = Math.max(0, tot(x)); x.cost = old + q > 0 ? r2((old * (x.cost || 0) + cost) / (old + q)) : r2(cost / q);
     x.st[w] = r3((x.st[w] || 0) + q); rows.push(row('prod', x, w, q, who, 'заготовка'));
     await jr(env, rows); const low = lowCheck(l, ch); await putIng(env, l); return { x, cost: Math.round(cost), low };
@@ -477,7 +481,7 @@ export async function stockApi(b, env, me, ai) {
     case 'skMerge': if (!admin) return bad('Лише адмін'); return R(await ingMerge(env, String(b.to || ''), b.from, b.f || {}, who));
     case 'skGrp': if (!admin) return bad('Лише адмін'); return R(await grpSave(env, b.x || {}));
     case 'skDups': { if (!admin) return bad('Лише адмін'); if (!ai.dups) return bad('AI вимкнено'); const l = (await getIng(env)).filter(x => !x.off && !x.grp); const r = await ai.dups(env, l.map(x => ({ id: x.id, n: x.n, u: x.u }))); return r.error ? bad(r.error) : ok({ groups: r.groups }); }
-    case 'skJrUndo': return R(await jrUndo(env, b.day, b.i, { name: who, role: admin ? 'admin' : cook ? 'cook' : 'waiter' }));
+    case 'skJrUndo': return R(await jrUndo(env, b.day, b.i, { name: who, role: admin ? 'admin' : cook ? 'cook' : 'waiter' }, b.ts));
     case 'skJournal': { const l = await journal(env, b.day); return ok({ list: admin ? l : l.map(({ sum, ...x }) => x) }); }
     // техкарти
     case 'skCost': return ok({ list: await costList(env), cards: await getCards(env), cfg: await getCfg(env) });

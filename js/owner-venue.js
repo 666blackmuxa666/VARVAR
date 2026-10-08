@@ -60,7 +60,7 @@ window.OWNV = ctx => {
     site(v) {
       const s = v.d.site, F = [['tagline', '✨ Слоган'], ['about', '📝 Про нас'], ['phone', '📞 Телефон'], ['addr', '📍 Адреса'], ['from', '🕐 Відкриваємось'], ['to', '🕙 Зачиняємось'], ['insta', '📸 Instagram'], ['tg', '✈️ Telegram-канал'], ['gmaps', '🗺 Google Maps (посилання)'], ['reviewsUrl', '⭐ Відгуки Google (посилання)'], ['banquet', '🎉 Банкети (текст)'], ['hookah', '💨 Кальяни (текст)']];
       const url = location.origin + location.pathname.replace(/owner\.html$/, '') + 'about.html' + (v.id === 'varvar' ? '' : '?venue=' + v.id);
-      return `<div class="btnrow" style="margin-bottom:10px"><a class="btn sm primary" href="${esc(url)}" target="_blank">🔗 Відкрити сайт</a><button class="btn sm" data-a="copy" data-u="${esc(url)}">Копіювати посилання</button></div>
+      return `<div class="btnrow" style="margin-bottom:10px"><a class="btn sm primary" href="${esc(url)}" target="_blank">🔗 Відкрити сайт</a><button class="btn sm" data-a="copy" data-u="${esc(url)}">Копіювати посилання</button><button class="btn sm" data-a="enter" data-v="${esc(v.id)}" data-set="site">✏️ Повний редактор (хіти, акції, відгуки, банкети, фото)</button></div>
         <div class="grid"><div class="card"><h3>📝 Тексти й контакти</h3>${F.map(([k, l]) => row(l, s[k], 'vsite', k)).join('')}</div>
         <div class="card"><h3>⚙️ Функції</h3>${tgl('📅 Бронювання на сайті', s.bookOn, 'vsiteTgl', 'bookOn')}${tgl('🎟 Подарункові сертифікати', s.certOn, 'vsiteTgl', 'certOn')}${row('⭐ Рейтинг (0–5)', s.rating, 'vsite', 'rating')}${row('Кількість відгуків', s.ratingN, 'vsite', 'ratingN')}${row('Мін. сума передзамовлення', s.preMin, 'vsite', 'preMin')}</div>
         ${blocksCard(s)}

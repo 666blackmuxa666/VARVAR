@@ -263,7 +263,7 @@ export async function meData(env, tok) {
   const days = Array.from({ length: 90 }, (_, i) => new Date(Date.now() - i * 864e5).toLocaleDateString('sv-SE', { timeZone: TZ }));
   const cl = await env.DB.getMany(days.map(d => 'closed:' + d), 'json'), hist = [];
   cl.forEach((l, i) => (l || []).forEach(x => { if (x.cli === ph && !x.del) hist.push({ d: days[i], at: x.at, sum: x.sum, go: x.go || '', dishes: (x.dishes || []).map(([n, q]) => [n, q]) }); }));
-  const certs = (await certList(env)).filter(x => x.phone === ph && x.st === 'ok').map(x => ({ code: x.code, sum: x.sum, left: x.left, to: x.to }));
+  const certs = (await certList(env)).filter(x => x.phone === ph && x.st === 'ok' && (x.left ?? x.sum) > 0).map(x => ({ code: x.code, sum: x.sum, left: x.left, to: x.to }));
   return { phone: ph, name: c.name || '', bal: c.bal || 0, n: c.n || 0, sum: c.sum || 0, books, hist: hist.slice(0, 30), certs, tg: !!c.chat };
 }
 export async function meLogout(env, tok) { if (/^[a-f0-9]{32}$/.test(tok || '')) await env.DB.delete('gs:' + tok); }

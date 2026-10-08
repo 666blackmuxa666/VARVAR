@@ -196,7 +196,7 @@ export async function posApi(b, req, env) {
       const e = { sum, note: String(b.note || '').slice(0, 100), src: b.src === 'card' ? 'card' : 'cash', at: hhmm(), by: who, ...(day ? { late: dayKey() } : {}) };
       await addExpense(env, e, day || undefined); await notify(env, `🖥 💸 Витрата${day ? ` за ${day.split('-').reverse().join('.')}` : ''} ${money(sum)} ${e.src === 'card' ? '💳 з карти' : '💵 з каси'}${e.note ? ` — ${esc(e.note)}` : ''} · ${esc(who)}`); return ok();
     }
-    case 'expenseDel': await delExpense(env, +b.i, b.day); return ok();
+    case 'expenseDel': { if (!admin) return needAdmin(); const ok2 = await delExpense(env, +b.i, b.day); if (ok2) await notify(env, `🖥 🗑 Витрату${b.day ? ' за ' + esc(String(b.day)) : ''} видалено — ${esc(who)}`).catch(() => {}); return ok(); }
     case 'reset': return ok({ n: await resetAll(env) });
     case 'evDrop': { const t = String(b.match || ''); if (t.length < 3) return [{ error: 'Мінімум 3 символи' }, 400]; let n = 0; await editEv(env, l => { const k = l.filter(e => !JSON.stringify(e).includes(t)); n = l.length - k.length; l.length = 0; l.push(...k); }); return ok({ n }); }
 

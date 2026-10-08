@@ -42,7 +42,7 @@
     const row = (l, v, btn, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ''}</span><span class="kv-r"><b>${v}</b>${btn}</span></div>`;
     const ch = (a, extra = '') => `<button class="btn sm" data-a="${a}"${extra}>змінити</button>`;
     const staff = st ? [...st.staff].sort((a, b) => (a.role || '').localeCompare(b.role || '') || a.name.localeCompare(b.name)) : null;
-    const SS = [['venue', '🏪 Заклад'], ['rules', '⚙️ Правила роботи'], ['site', '🌐 Сайт'], ['go', '🛵 Доставка'], ['loy', '🎁 Лояльність'], ['look', '🎨 Вигляд'], ['printer', '🖨 Принтер'], ['test', '🧪 Тест']], cur = only || (SS0 => SS0.includes(S.setTab) ? S.setTab : 'rules')(['venue', 'rules', 'site', 'go', 'loy', 'look', 'printer', 'test']);
+    const OWN = ['venue', 'site', 'test'], SS = [['venue', '🏪 Заклад'], ['rules', '⚙️ Правила роботи'], ['site', '🌐 Сайт'], ['go', '🛵 Доставка'], ['loy', '🎁 Лояльність'], ['look', '🎨 Вигляд'], ['printer', '🖨 Принтер'], ['test', '🧪 Тест']].filter(([k]) => !OWN.includes(k) || S.setTab === k) /* заклад, сайт і тест — у кабінеті власника (👑 відкриває їх тут за посиланням) */, cur = only || (SS0 => SS0.includes(S.setTab) ? S.setTab : 'rules')(['venue', 'rules', 'site', 'go', 'loy', 'look', 'printer', 'test']);
     const part = {};
     part.people = `<div class="grid2 set">
       ${[['admin', '🔐 Адміністратори'], ['waiter', '🧑‍🍳 Офіціанти'], ['cook', '👨‍🍳 Кухня'], ['courier', '🛵 Кур\'єри']].map(([r, t]) => { const l = staff ? staff.filter(s => (ROLE[s.role] ? s.role : 'waiter') === r) : null;
@@ -82,7 +82,7 @@
     part.test = `<div class="grid2 set"><div class="card"><h3>🧪 Тест</h3><div class="muted set-note">Тимчасово, до запуску.</div><button class="btn sm red" data-a="reset">♻️ Обнулити все</button></div></div>`;
     if (only) return part[only];
     return `<div class="rhead"><div><h1>Налаштування</h1><span class="muted">правила роботи, принтер</span></div><div class="icogrp">${isAdmin() ? `<a class="btn icobtn" href="owner.html${VENUE ? '' : '#pos=' + S.token}" target="_blank" rel="noopener" title="Кабінет власника">👑</a>` : ''}<button class="btn icobtn" data-a="zpHelp" title="Допомога">🆘</button></div></div>
-      <div class="seg rsec">${SS.map(([k, l]) => `<button class="${cur === k ? 'on' : ''}" data-a="setTab" data-s="${k}">${l}</button>`).join('')}</div>${part[cur]}`;
+      <div class="seg rsec">${SS.map(([k, l]) => `<button class="${cur === k ? 'on' : ''}" data-a="setTab" data-s="${k}">${l}</button>`).join('')}</div>${OWN.includes(cur) ? '' : `<div class="card set-own"><span>🌐 Сайт, 🏪 заклад (назва, логотип, посилання), QR-коди, боти й бекапи — у <b>кабінеті власника</b></span>${isAdmin() ? `<a class="btn sm" href="owner.html" target="_blank" rel="noopener">👑 Відкрити</a>` : ''}</div>`}${part[cur]}`;
   }
   async function menuEdit(id) {
     const it = itemsAll().find(i => i.id === id) || null;
