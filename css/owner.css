@@ -110,3 +110,24 @@ tr.sum td { font-weight: 700; border-bottom: 0; }
 .ib-t { white-space: pre-wrap; word-break: break-word; margin: 8px 0; line-height: 1.4; }
 .card.done { opacity: .55; }
 .chips button { padding: 7px 12px; border-radius: 99px; background: var(--card2); color: var(--muted); font-size: 13px; } .chips button.on { background: var(--accent); color: #111; font-weight: 700; } h2 + .chips { margin-bottom: 12px; }
+
+/* 🔘 кнопки шапки — як у касі */
+.icogrp{display:flex;gap:4px;flex-shrink:0}
+.icobtn{width:44px;height:40px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:20px;border:0;border-radius:13px;background:#ffffff12;cursor:pointer;color:inherit}
+.icobtn:hover{background:#ffffff22}
+/* 📅 виручка по днях — як у касі */
+.cols{display:flex;align-items:flex-end;gap:3px;height:230px;padding-top:6px}
+.cols .c{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;min-width:0;border-radius:6px;cursor:pointer}
+.cols .c .stk{display:flex;flex-direction:column-reverse;width:100%;max-width:38px;border-radius:6px 6px 2px 2px;overflow:hidden;transition:height .3s}
+.cols .c .stk i{display:block;min-height:2px;background:linear-gradient(180deg,var(--accent),#f2c14e88)}
+.cols .c.we .stk i:not([style*="background"]){background:linear-gradient(180deg,#ff9f0a,#ff9f0a88)}
+.cols .c:hover .stk{filter:brightness(1.4)}
+.cols .c small{height:28px;margin-top:4px;font-size:11px;color:var(--text);white-space:nowrap;display:flex;flex-direction:column;align-items:center;line-height:1.15;font-weight:600}
+.cols .c small span{font-size:10px;color:var(--muted);font-weight:400}
+.cols .c.we small,.cols .c.we small span{color:var(--accent)}
+.cols .c .cv{font-size:10px;font-weight:700;color:var(--muted);margin-bottom:3px;white-space:nowrap}
+.cols .c.top .cv{color:var(--accent)}
+.cols.many .c .cv{writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px;margin-bottom:4px}
+.cols.many .c small{font-size:10px}.cols.many .c small.nl{visibility:hidden}
+.cread{font-size:13px;min-height:18px;margin-bottom:4px}
+@media (max-width:700px){.cols.many .c .cv{display:none}.cols.many .c small span{display:none}.cols{height:200px;gap:2px}}
