@@ -826,3 +826,5 @@ body.cour #feed, body.cour .feed-btn { display: none !important; }
 .tk-days{display:flex;flex-wrap:wrap;gap:6px}.tk-days label,.tk-chk{display:flex;align-items:center;gap:5px;font-size:14px}.tk-days input,.tk-chk input{width:auto}
 .sk-undo>span:first-child{text-decoration:line-through;opacity:.55}
 .mg-l{max-height:46vh;overflow:auto;margin-top:8px;display:flex;flex-direction:column;gap:2px}.mg-r{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 4px;border-bottom:1px solid #ffffff10;font-size:14px}.mg-r[hidden]{display:none}.mg-r>input{width:auto}.mg-f{display:flex;align-items:center;gap:4px;font-size:12px;margin-left:auto}.mg-f input{width:64px;padding:6px}.mg-g{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
+.ev.noscan.blink{animation:nsblink 1s ease-in-out infinite alternate}@keyframes nsblink{to{box-shadow:0 0 26px #ff453acc;border-color:#ff8a80}}
+body.noanim .ev.noscan.blink{outline:3px solid #ff453a}

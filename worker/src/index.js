@@ -298,7 +298,7 @@ async function orderRaw(b, ip, env) {
 async function warnNotInVenue(env, table, ip, dev = '') {
   // у стрічку каси — кожна спроба (не частіше 1 разу на 5 хв з одного телефона)
   const dk = 'nv:' + (String(dev).slice(0, 64) || ip);
-  if (!(await env.DB.get(dk))) { await env.DB.put(dk, '1', { expirationTtl: 300 }); await logEvent(env, { k: 'noscan', t: table }); }
+  if (!(await env.DB.get(dk))) { await env.DB.put(dk, '1', { expirationTtl: 300 }); await logEvent(env, { k: 'noscan', t: table, s: 'new' }); }
   if (await env.DB.get('warned')) return;
   await env.DB.put('warned', '1', { expirationTtl: 1800 });
   await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: `🚫📵 Стіл ${tn(table)}: гість пробує замовити, але не відсканував QR-код (або минула година). Підійдіть і підкажіть відсканувати QR на столі 📷` });
