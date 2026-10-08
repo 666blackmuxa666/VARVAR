@@ -935,7 +935,7 @@ async function _editStaff(env, id, f) {
     if (list.some(x => x.id !== id && x.name.toLowerCase() === n.toLowerCase())) return { error: 'Працівник з таким імʼям уже є — додайте прізвище або букву.' }; s.name = n; }
   if (f.pin != null) { const pin = String(f.pin).trim(); if (!/^\d{4}$/.test(pin)) return { error: 'PIN — 4 цифри' };
     if (await regRole(env, pin)) return { error: 'Цей код — для реєстрації. Оберіть інший PIN.' };
-    const h = await pinHash(pin); if (list.some(x => x.id !== id && x.pin === h)) return { error: 'Такий PIN уже є — оберіть інший.' }; s.pin = h; }
+    const h = await pinHash(pin); if (list.some(x => x.id !== id && x.pin === h)) return { error: 'Такий PIN уже є — оберіть інший.' }; if (await regRole(env, pin)) return { error: 'Цей код — для реєстрації. Оберіть інший PIN.' }; s.pin = h; }
   if (f.role != null) s.role = ['admin', 'cook', 'courier'].includes(f.role) ? f.role : 'waiter';
   s.ver = (s.ver || 0) + 1;
   await env.DB.put('staff', JSON.stringify(list));

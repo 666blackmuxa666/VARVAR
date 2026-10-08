@@ -241,7 +241,7 @@ async function adminRest(b, env, who, ip, ok) {
 
     // персонал і паролі
     case 'staff': return ok({ staff: (await getStaff(env)).map(({ pin, ...s }) => s), waiters: await loggedWaiters(env), reg: { admin: await regCode(env, 'admin'), waiter: await regCode(env, 'waiter'), cook: await regCode(env, 'cook'), courier: await regCode(env, 'courier') }, kpct: await kitchenPct(env), cfg: await getCfg(env), cooks: (await env.DB.get('cooks:' + dayKey(), 'json')) || [] });
-    case 'regCode': { const c = String(b.code || '').trim(); if (!/^\d{4,8}$/.test(c)) return [{ error: 'Код — від 4 до 8 цифр' }, 400]; await env.DB.put('reg_' + (['admin', 'cook', 'courier'].includes(b.role) ? b.role : 'waiter'), c); return ok(); }
+    case 'regCode': { const c = String(b.code || '').trim(); if (!/^\d{4,8}$/.test(c)) return [{ error: 'Код — від 4 до 8 цифр' }, 400]; { const h = await pinHash(c); if ((await getStaff(env)).some(x => x.pin === h)) return [{ error: 'Цей код збігається з PIN працівника — оберіть інший' }, 400]; } await env.DB.put('reg_' + (['admin', 'cook', 'courier'].includes(b.role) ? b.role : 'waiter'), c); return ok(); }
     case 'staffAdd': { const r = await addStaff(env, b.name, b.pin, b.role); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 👥 Додано працівника <b>${esc(r.s.name)}</b> (${ROLE_UA[r.s.role]}) — ${esc(who)}`); return ok(); }
     case 'alog': return ok({ list: await (await import('./ops.js')).alogGet(env, String(b.m || '')) }); // 📜 журнал дій
     case 'cfgSet': { const c = await setCfg(env, String(b.k), b.v); if (c.error) return [{ error: c.error }, 400]; await notify(env, `🖥 ⚙️ Налаштування: ${esc(String(b.k))} = <b>${c[b.k]}</b> — ${esc(who)}`); return ok({ cfg: c }); }
@@ -270,8 +270,8 @@ async function register(b, env) {
 async function login(b, env, ip) {
   let me = null;
   if (b.pin) {
-    const role = await regRole(env, b.pin); if (role) return [{ ok: true, register: role }, 200]; // код реєстрації → форма «імʼя + свій PIN»
-    const h = await pinHash(String(b.pin)); const s = (await getStaff(env)).find(x => x.pin === h); if (s) me = { name: s.name, role: s.role, sid: s.id, ver: s.ver || 0 };
+    const h = await pinHash(String(b.pin)); const s = (await getStaff(env)).find(x => x.pin === h); if (s) me = { name: s.name, role: s.role, sid: s.id, ver: s.ver || 0 }; // спершу PIN працівника — код реєстрації не має його перекривати
+    else { const role = await regRole(env, b.pin); if (role) return [{ ok: true, register: role }, 200]; } // код реєстрації → форма «імʼя + свій PIN»
   }
   if (!me) return [{ error: 'Невірний PIN' }, 401];
   const token = [...crypto.getRandomValues(new Uint8Array(16))].map(x => x.toString(16).padStart(2, '0')).join('');

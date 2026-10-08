@@ -396,9 +396,9 @@ export async function handleUpdate(u, env) {
       if (+(await env.DB.get('fail:' + uid) || 0) >= 5) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' }, { remove_keyboard: true });
       const keep = async t => { await env.DB.put('st:' + uid, 'pin', { expirationTtl: 3600 }); return send({ text: t }, { remove_keyboard: true }); };
       if (!/^\d{4}$/.test(text)) return keep('Введіть 4 цифри — свій PIN (або код реєстрації):');
-      const role = await regRole(env, text);
+      const h = await pinHash(text), me = (await getStaff(env)).find(z => z.pin === h); // спершу PIN працівника — код реєстрації не має його перекривати
+      const role = !me && await regRole(env, text);
       if (role) { await env.DB.put('st:' + uid, 'regn:' + role, { expirationTtl: 900 }); return send({ text: `🆕 Реєстрація (${ROLE_ONE[role]}). Напишіть своє імʼя:` }, { remove_keyboard: true }); }
-      const h = await pinHash(text), me = (await getStaff(env)).find(z => z.pin === h);
       if (!me) { await fail(); return keep('❌ Невірний PIN. Введіть ще раз:'); }
       await env.DB.delete('fail:' + uid);
       return send({ text: `✅ Вітаю, ${esc(me.name)}! Ви увійшли як ${ROLE_ONE[me.role] || me.role}.\n\n` + (me.role === 'admin' ? ADMIN_HELP(env) : HELP(env)) }, await tgLogin(env, uid, me, chat));
