@@ -3,9 +3,6 @@ window.VVSkin = (() => {
   const BASE = { acc: '', bg: 'theme', contrast: 5, muted: 5, bgfx: 'none', r: 18, rb: 14, shape: 'auto', h: 48, pad: 16, gap: 10, card: 'solid', shadow: 'none', border: 'none', caps: false, font: '', fonth: 'same', fs: 15, hw: 800, prim: 'fill', sec: 'fill', seg: 'dark', tabs: 'seg', tbl: 'gold', nav: 'bar', navn: '8', navon: 'accent', navlbl: true, modal: 'center', anim: true };
   const PRE = {
     varvar: ['⭐ VARVAR', 'ваш стиль: світіння, Rubik, плаваюче меню', { bgfx: 'glow', r: 22, rb: 17, h: 42, pad: 11, gap: 11, shadow: 'soft', caps: true, font: 'rubik', fonth: 'rubik', fs: 14, hw: 700, nav: 'float' }],
-    graphite: ['Графіт', 'мʼякі тіні, лист знизу', { r: 20, rb: 14, card: 'grad', shadow: 'soft', border: 'hair', caps: true, font: 'manrope', tabs: 'pill', navn: '5', navon: 'dark', modal: 'sheet', h: 46, pad: 14 }],
-    glass: ['Скло', 'напівпрозоре, світіння', { bgfx: 'glow', r: 26, rb: 18, card: 'glass', shadow: 'deep', border: 'hair', font: 'manrope', prim: 'grad', seg: 'white', tabs: 'pill', nav: 'float', navn: '5', navon: 'dark', modal: 'sheet' }],
-    minimal: ['Мінімал', 'контури, щільно', { bg: 'amoled', contrast: 3, r: 12, rb: 10, card: 'outline', border: 'hair', caps: true, font: 'rubik', sec: 'outline', seg: 'line', tabs: 'line', tbl: 'frame', navn: '5', navon: 'text', modal: 'sheet', h: 42, pad: 12, gap: 8, hw: 700 }],
   };
   const BG = { black: ['#0b0b0d', '#151518', '#1c1c1f', '#26262a'], amoled: ['#000000', '#08080a', '#141416', '#1f1f22'], graphite: ['#131317', '#18181d', '#1f1f25', '#2a2a32'], blue: ['#0a0e16', '#0e1420', '#161c28', '#202838'], warm: ['#100d0a', '#16120e', '#1f1a15', '#2b241d'], green: ['#0a100d', '#0e1612', '#16201b', '#1f2c25'] };
   const FONT = { rubik: 'Rubik', manrope: 'Manrope', montserrat: 'Montserrat', nunito: 'Nunito', inter: 'Inter', roboto: 'Roboto', comfortaa: 'Comfortaa', pt: 'PT Sans' };
