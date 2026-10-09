@@ -1,7 +1,7 @@
 // 🛵 Замовлення за посиланням: самовивіз і доставка. Кожне — «віртуальний стіл» (tn.js): звичайний bill: з полем go,
 // тож працюють усі дії столу (дозамовлення, знижка, скасування, кухня, склад, закриття, звіти).
 import { getMenu, priceMap } from './menu.js';
-import { tg, esc, hhmm, dayKey, getBill, putBill, billItems, payable, logEvent, addStat, addDishes, L, editEv, closeTable, notify, openTables } from './ops.js';
+import { tg, esc, hhmm, dayKey, getBill, putBill, billItems, payable, discAmt, logEvent, addStat, addDishes, L, editEv, closeTable, notify, openTables } from './ops.js';
 import { GO_DEL, GO_PICK, isGo, tn } from './tn.js';
 import { courNotify } from './courier.js';
 import { getSite } from './site.js';
@@ -228,14 +228,14 @@ export async function goApi(b, env, me, t) {
     case 'cliGet': { const ph = normPhone(b.phone); if (!ph) return bad('Невірний номер'); const c = await getCli(env, ph); const { botName } = await import('./site.js'); return ok({ phone: ph, cli: c, mem: isMem(c), bot: await botName(env).catch(() => ''), cfg: await getGoCfg(env) }); }
     case 'cliSet': { // 🎁 телефон гостя в залі — щоб нарахувати кешбек при закритті
       const ph = b.phone ? normPhone(b.phone) : null; if (b.phone && !ph) return bad('Невірний номер');
-      const r = await L(env, 'bills', async () => { const x = await getBill(env, t); if (!x.total) return null; if (ph) x.cli = ph; else { delete x.cli; delete x.bonus; } await putBill(env, t, x); return x; });
+      const r = await L(env, 'bills', async () => { const x = await getBill(env, t); if (!x.total) return null; if (ph) x.cli = ph; else { delete x.cli; if (x.cert?.sum) x.bonus = x.cert.sum; else delete x.bonus; } /* сертифікат лишається */ await putBill(env, t, x); return x; });
       return r ? ok({ cli: ph ? await getCli(env, ph) : null }) : bad('Стіл порожній');
     }
     case 'cliBonus': {
       const c = await getGoCfg(env);
       const r = await L(env, 'bills', async () => { const x = await getBill(env, t); if (!x.total || !x.cli) return { error: 'Спершу вкажіть телефон гостя' };
-    const cl = await getCli(env, x.cli); if (!isMem(cl) && +b.sum) return { error: 'Гість не в програмі лояльності — спершу хай підключить бот гостей' }; const sum = Math.max(0, Math.round(+b.sum || 0)), max = Math.min(cl?.bal || 0, Math.floor(x.total * c.bmax / 100));
-    if (sum > max) return { error: `Можна списати до ${max} грн` }; if (sum) x.bonus = sum; else delete x.bonus; await putBill(env, t, x); return { bonus: sum }; });
+    const cl = await getCli(env, x.cli); if (!isMem(cl) && +b.sum) return { error: 'Гість не в програмі лояльності — спершу хай підключить бот гостей' }; const sum = Math.max(0, Math.round(+b.sum || 0)), cs = x.cert?.sum || 0, base = Math.max(0, x.total - discAmt(x) - (x.promo?.sum || 0) - cs), max = Math.min(cl?.bal || 0, Math.floor(base * c.bmax / 100)); /* від суми страв після знижки, акцій і сертифіката */
+    if (sum > max) return { error: `Можна списати до ${max} грн` }; if (sum + cs) x.bonus = sum + cs; else delete x.bonus; /* bonus = бонуси + сертифікат */ await putBill(env, t, x); return { bonus: sum }; });
       return r.error ? bad(r.error) : ok(r);
     }
   }

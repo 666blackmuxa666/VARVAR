@@ -121,6 +121,16 @@ async function apiTests() {
     await posOk(A, 'siteSet', { k: 'menuDesign', v: { menuTheme: back } });
     must((await posOk(A, 'siteMenuVer')).list.length >= 1, 'немає версій'); return 'ок';
   });
+  await step('🎟 сертифікат на столі → стіл видалено → сума повернулась на сертифікат', async () => {
+    const ph = '0670009' + String(Math.floor(Math.random() * 900) + 100), ask = await http('/api/cert', { sum: 500, from: 'QA', phone: ph, device: 'qa-cert-' + RUN });
+    if (ask.status === 403) return 'сертифікати вимкнені на тесті'; must(ask.status === 200, 'заявка ' + ask.status);
+    const c = ((await posOk(A, 'certList')).list || []).filter(x => x.st === 'new' && String(x.phone || '').endsWith(ph.slice(-7))).pop(); must(c, 'заявки немає в списку');
+    await posOk(A, 'certPay', { code: c.code, how: 'cash' });
+    const s = await posOk(A, 'state'), busy = new Set(s.tables.map(x => x.t)); let t2 = 0; for (let i = 1; i <= s.n; i++) if (!busy.has(i)) { t2 = i; break; } must(t2, 'немає вільного столу');
+    await posOk(A, 'order', { t: t2, items: [{ id: dish.id, q: 2 }] }); const u = await posOk(A, 'certUse', { t: t2, code: c.code }); must(u.use > 0, 'не списано');
+    await posOk(A, 'delete', { t: t2, reason: 'QA' });
+    const c2 = ((await posOk(A, 'certList')).list || []).find(x => x.code === c.code); must(c2 && c2.left === 500, 'залишок ' + c2?.left); return 'повернуто ' + u.use;
+  });
   await step('📜 склад: ручне додавання → ↩️ скасувати → залишок як був', async () => {
     const d = await posOk(A, 'skData'), x = (d.ing || []).find(i => !i.off); if (!x) return 'немає продуктів';
     const st0 = (y => (y.st?.k || 0) + (y.st?.b || 0))(x); await posOk(A, 'skAdj', { id: x.id, wh: 'k', q: 2, note: 'QA' });

@@ -238,6 +238,10 @@ async function _closeTable(env, t, who, pay = 'cash', print = true) {
   const bill = await getBill(env, t);
   if (!bill.total) return null;
   await promoFill(env, bill).catch(() => {}); // 🎁 акції й рівень — рахуються наново саме зараз (promo.js)
+  { /* 🎁 бонуси + сертифікат не більші за суму після знижки й акцій: зайве — спершу бонуси лишаються на рахунку гостя, потім повертається на сертифікат */
+    const room = Math.max(0, bill.total - discAmt(bill) - (bill.promo?.sum || 0)), cs = bill.cert?.sum || 0;
+    if ((bill.bonus || 0) > room) { const cli = Math.max(0, (bill.bonus || 0) - cs); bill.bonus = Math.max(0, Math.min(cli, room - cs)) + cs; if (!bill.bonus) delete bill.bonus;
+      if ((bill.bonus || 0) > room && bill.cert) { await putBill(env, t, bill); await (await import('./site.js')).certUse(env, t, bill.cert.code, who || '').catch(() => {}); const b2 = await getBill(env, t); if (b2.bonus) bill.bonus = b2.bonus; else delete bill.bonus; bill.cert = b2.cert; } } }
   // чайові входять у виручку тим способом, яким заплатив гість; при видачі списуються з готівки або картки
   const tip = (bill.tip || 0) + (bill.ktip || 0), sum = payable(bill) + tip, disc = discAmt(bill);
   const card = pay === 'card' ? sum : 0, cash = sum - card;
@@ -393,8 +397,9 @@ async function _splitTable(env, t, items, to, who) {
 }
 
 async function _deleteTable(env, t, who, reason = '') {
-  const bill = await getBill(env, t);
+  let bill = await getBill(env, t);
   if (!bill.total) return null;
+  if (bill.cert) { await (await import('./site.js')).certOff(env, t, who || '').catch(() => {}); bill = await getBill(env, t); } /* 🎟 сертифікат / подарунок ДН повертається, а не згорає */
   await env.DB.delete('bill:' + t);
   const kc = await kitchenCancel(env, +t, null, bill.opened);
   const dishes = []; for (const o of bill.log || []) for (const l of o.lines) { const x = l.match(LINE); if (x) dishes.push([x[2], +x[1], +x[3]]); }
@@ -537,8 +542,8 @@ async function _restoreTable(env, ref, who, day = dayKey()) {
 export async function reprintClosed(env, ref, who, day = dayKey()) {
   const x = await closedRec(env, ref, day);
   if (!x?.dishes?.length) return false;
-  const bill = { total: x.gross || (x.sum - (x.tip || 0)), ...(x.promo ? { promo: { lines: x.promo, sum: x.promoSum || 0 } } : {}), ...(x.bonus ? { bonus: x.bonus } : {}), disc: x.disc, ...(x.discSum != null ? { discSum: x.discSum } : {}), tip: (x.tip || 0) - (x.ktip || 0), ktip: x.ktip, log: [{ lines: x.dishes.map(([n, q, sum]) => `${q}× ${n} — ${sum}`) }] };
-  await queuePrint(env, 'receipt', await receipt(env, { table: x.t, bill, final: true, pay: x.card ? 'card' : 'cash', by: who }));
+  const bill = { total: x.gross || x.dishes.reduce((a, d) => a + (+d[2] || 0), 0) || (x.sum - (x.tip || 0)), /* сума страв до бонусів — щоб «сплачено» на копії = як у касі */ ...(x.promo ? { promo: { lines: x.promo, sum: x.promoSum || 0 } } : {}), ...(x.bonus ? { bonus: x.bonus } : {}), disc: x.disc, ...(x.discSum != null ? { discSum: x.discSum } : {}), tip: (x.tip || 0) - (x.ktip || 0), ktip: x.ktip, log: [{ lines: x.dishes.map(([n, q, sum]) => `${q}× ${n} — ${sum}`) }] };
+  await queuePrint(env, 'receipt', await receipt(env, { table: x.t, bill, final: true, pay: x.card && x.cash ? 'mix' : x.card ? 'card' : 'cash', by: who }));
   return true;
 }
 

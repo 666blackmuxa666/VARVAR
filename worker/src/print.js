@@ -108,7 +108,7 @@ export async function receipt(env, { table, bill, final, pay, by }) {
     ['total', final ? 'СПЛАЧЕНО' : 'ДО СПЛАТИ', `${payable(bill)} грн`],
     ...(bill.tip && rc.tips ? [['lr', 'Чайові', `${bill.tip} грн`]] : []), ...(bill.ktip && rc.tips ? [['lr', 'Подяка кухні', `${bill.ktip} грн`]] : []),
     ...((bill.tip || bill.ktip) && rc.tips ? [['lr', 'Разом з чайовими', `${payable(bill) + (bill.tip || 0) + (bill.ktip || 0)} грн`]] : []),
-    ...(final && pay && rc.pay ? [['lr', 'Оплата', pay === 'card' ? 'Картка' : 'Готівка']] : []),
+    ...(final && pay && rc.pay ? [['lr', 'Оплата', pay === 'card' ? 'Картка' : pay === 'mix' ? 'Готівка + картка' : 'Готівка']] : []),
     ['gap'],
     ...rc.foot.map(f => ['c', f]),
     ...(qrn ? [['gap'], ['img', qrn, 130], ['s', rc.qrText]] : []),
