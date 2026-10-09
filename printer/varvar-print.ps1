@@ -1,7 +1,11 @@
-﻿# VARVAR - print agent for receipt printer (Windows, PowerShell 5+)
-# Polls the VARVAR server every 3 s, prints kitchen tickets and receipts on the printer via the Windows driver.
-# Settings: varvar-print.config.json next to this file (api, key, printer).
-param([switch]$Test)
+﻿# VARVAR - universal print agent (Windows 7/8/10/11, PowerShell 2+)
+# Finds printers by itself: Windows printers (USB / network / Bluetooth with driver), network ESC/POS printers (port 9100),
+# USB receipt printers without driver (installs them as RAW), COM / Bluetooth serial printers.
+# Settings: varvar-print.config.json next to this file: { api, key, printer? }. "printer" is optional - auto if empty.
+# Which printer prints receipts and which prints kitchen tickets - chosen in the owner cabinet (Printer tab).
+param([switch]$Test, [switch]$Stop)
+# -Stop: stop running copies (installer / uninstall)
+if ($Stop) { Get-WmiObject Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -like '*varvar-print.ps1*' -and $_.ProcessId -ne $PID } | ForEach-Object { $_.Terminate() | Out-Null }; exit }
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]3072 } catch { try { [Net.ServicePointManager]::SecurityProtocol = 3072 } catch { } }
@@ -40,19 +44,30 @@ $logo = [System.Drawing.Image]::FromStream((New-Object IO.MemoryStream(,$logoByt
 # свіжий логотип із сайту (можна оновлювати без перевстановлення програми)
 try { $lb = [byte[]](Http 'GET' ($cfg.api + '/print/logo.png')).ResponseBody; $logo = [System.Drawing.Image]::FromStream((New-Object IO.MemoryStream(,$lb))) } catch { }
 
-$W = 280          # printable width, 1/100 inch (~71 mm)
-$fN = New-Object System.Drawing.Font('Arial', 9)
-$fB = New-Object System.Drawing.Font('Arial', 9, [System.Drawing.FontStyle]::Bold)
-$fT = New-Object System.Drawing.Font('Arial', 11, [System.Drawing.FontStyle]::Bold)
-$fBig = New-Object System.Drawing.Font('Arial', 16, [System.Drawing.FontStyle]::Bold)
-$fS = New-Object System.Drawing.Font('Arial', 7.5)
-$fI = New-Object System.Drawing.Font('Arial', 10, [System.Drawing.FontStyle]::Bold)
-$fK = New-Object System.Drawing.Font('Arial', 12, [System.Drawing.FontStyle]::Bold)
-$fTot = New-Object System.Drawing.Font('Arial', 14, [System.Drawing.FontStyle]::Bold)
+
+# ---------- layout (paper width / scale come from the server in the first line of each job: ['cfg', 58|80, scale%, logoW]) ----------
+$VER = '2.0'
+function Set-Cfg($l) {
+  $mm = 80; $sc = 100; $lw = 120
+  if ($l) { if ($l.Count -gt 1 -and $l[1]) { $mm = [int]$l[1] }; if ($l.Count -gt 2 -and $l[2]) { $sc = [int]$l[2] }; if ($l.Count -gt 3 -and $l[3]) { $lw = [int]$l[3] } }
+  $k = $sc / 100.0
+  $script:paperMM = $mm
+  $script:W = $(if ($mm -eq 58) { 190 } else { 280 })   # printable width, 1/100 inch
+  $script:logoW = [Math]::Min($script:W, $lw)
+  $script:fN = New-Object System.Drawing.Font('Arial', (9 * $k))
+  $script:fB = New-Object System.Drawing.Font('Arial', (9 * $k), [System.Drawing.FontStyle]::Bold)
+  $script:fT = New-Object System.Drawing.Font('Arial', (11 * $k), [System.Drawing.FontStyle]::Bold)
+  $script:fBig = New-Object System.Drawing.Font('Arial', (16 * $k), [System.Drawing.FontStyle]::Bold)
+  $script:fS = New-Object System.Drawing.Font('Arial', (7.5 * $k))
+  $script:fI = New-Object System.Drawing.Font('Arial', (10 * $k), [System.Drawing.FontStyle]::Bold)
+  $script:fK = New-Object System.Drawing.Font('Arial', (12 * $k), [System.Drawing.FontStyle]::Bold)
+  $script:fTot = New-Object System.Drawing.Font('Arial', (14 * $k), [System.Drawing.FontStyle]::Bold)
+}
+Set-Cfg $null
 $sfC = New-Object System.Drawing.StringFormat; $sfC.Alignment = 'Center'
 $sfR = New-Object System.Drawing.StringFormat; $sfR.Alignment = 'Far'
 
-# картинки для друку (QR тощо): /print/<name>.png, кешуються
+# pictures for printing (QR etc.): /print/<name>.png, cached
 $imgs = @{}
 function Get-Img($name) {
   if (-not $imgs.ContainsKey($name)) { $b = [byte[]](Http 'GET' ($cfg.api + '/print/' + $name + '.png')).ResponseBody; $imgs[$name] = [System.Drawing.Image]::FromStream((New-Object IO.MemoryStream(,$b))) }
@@ -63,7 +78,8 @@ function Measure-Job($g, $lines) {
   $h = 0
   foreach ($l in $lines) {
     switch ($l[0]) {
-      'logo' { $h += [int]($logo.Height * 120 / $logo.Width) + 8 }
+      'logo' { $h += [int]($logo.Height * $logoW / $logo.Width) + 8 }
+      'cfg'  { Set-Cfg $l }
       'big'  { $h += $g.MeasureString($l[1], $fBig, $W).Height + 2 }
       'hr'   { $h += 8 }
       'gap'  { $h += 14 }
@@ -88,7 +104,8 @@ function Draw-Job($g, $lines) {
   $y = 0
   foreach ($l in $lines) {
     switch ($l[0]) {
-      'logo' { $lw = 120; $lh = [int]($logo.Height * $lw / $logo.Width); $g.DrawImage($logo, [int](($W - $lw) / 2), $y, $lw, $lh); $y += $lh + 8 }
+      'cfg'  { }
+      'logo' { $lw = $logoW; $lh = [int]($logo.Height * $lw / $logo.Width); $g.DrawImage($logo, [int](($W - $lw) / 2), $y, $lw, $lh); $y += $lh + 8 }
       'big'  { $r = New-Object System.Drawing.RectangleF(0, $y, $W, 200); $g.DrawString($l[1], $fBig, [System.Drawing.Brushes]::Black, $r, $sfC); $y += $g.MeasureString($l[1], $fBig, $W).Height + 2 }
       'c'    { $r = New-Object System.Drawing.RectangleF(0, $y, $W, 200); $g.DrawString($l[1], $fN, [System.Drawing.Brushes]::Black, $r, $sfC); $y += $g.MeasureString($l[1], $fN, $W).Height + 1 }
       'hr'   { $p = New-Object System.Drawing.Pen([System.Drawing.Color]::Black, 1); $p.DashStyle = 'Dash'; $g.DrawLine($p, 0, $y + 4, $W, $y + 4); $y += 8 }
@@ -113,44 +130,169 @@ function Draw-Job($g, $lines) {
   }
 }
 
-function Print-Job($job) {
-  $lines = @($job.lines | ForEach-Object { ,@($_) })
+
+# ---------- RAW printing: Windows spooler (any driver incl. "Generic / Text Only"), TCP 9100, COM port ----------
+Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @"
+using System; using System.Runtime.InteropServices; using System.Drawing; using System.Drawing.Imaging; using System.IO;
+public class VVRaw {
+  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)] public class DOCINFO { public string pDocName; public string pOutputFile; public string pDataType; }
+  [DllImport("winspool.drv", CharSet=CharSet.Unicode, SetLastError=true)] static extern bool OpenPrinter(string n, out IntPtr h, IntPtr d);
+  [DllImport("winspool.drv", SetLastError=true)] static extern bool ClosePrinter(IntPtr h);
+  [DllImport("winspool.drv", CharSet=CharSet.Unicode, SetLastError=true)] static extern int StartDocPrinter(IntPtr h, int level, [In] DOCINFO di);
+  [DllImport("winspool.drv", SetLastError=true)] static extern bool EndDocPrinter(IntPtr h);
+  [DllImport("winspool.drv", SetLastError=true)] static extern bool StartPagePrinter(IntPtr h);
+  [DllImport("winspool.drv", SetLastError=true)] static extern bool EndPagePrinter(IntPtr h);
+  [DllImport("winspool.drv", SetLastError=true)] static extern bool WritePrinter(IntPtr h, byte[] b, int n, out int w);
+  public static void Send(string printer, byte[] data) {
+    IntPtr h; if (!OpenPrinter(printer, out h, IntPtr.Zero)) throw new Exception("OpenPrinter " + Marshal.GetLastWin32Error());
+    try { DOCINFO di = new DOCINFO(); di.pDocName = "VARVAR"; di.pDataType = "RAW";
+      if (StartDocPrinter(h, 1, di) == 0) throw new Exception("StartDoc " + Marshal.GetLastWin32Error());
+      StartPagePrinter(h); int w; WritePrinter(h, data, data.Length, out w); EndPagePrinter(h); EndDocPrinter(h);
+    } finally { ClosePrinter(h); }
+  }
+  // 1-bit ESC/POS raster (GS v 0) in bands + feed + cut
+  public static byte[] EscPos(Bitmap bmp) {
+    int w = bmp.Width, h = bmp.Height, bw = (w + 7) / 8; MemoryStream ms = new MemoryStream(); ms.Write(new byte[] { 0x1B, 0x40 }, 0, 2);
+    BitmapData bd = bmp.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+    byte[] px = new byte[bd.Stride * h]; Marshal.Copy(bd.Scan0, px, 0, px.Length); int st = bd.Stride; bmp.UnlockBits(bd);
+    for (int y0 = 0; y0 < h; y0 += 128) { int bh = Math.Min(128, h - y0); byte[] row = new byte[bw * bh];
+      for (int y = 0; y < bh; y++) for (int x = 0; x < w; x++) { int i = (y0 + y) * st + x * 4; if (px[i] + px[i + 1] + px[i + 2] < 384) row[y * bw + x / 8] |= (byte)(0x80 >> (x % 8)); }
+      ms.Write(new byte[] { 0x1D, 0x76, 0x30, 0, (byte)(bw % 256), (byte)(bw / 256), (byte)(bh % 256), (byte)(bh / 256) }, 0, 8); ms.Write(row, 0, row.Length); }
+    ms.Write(new byte[] { 0x1B, 0x64, 4, 0x1D, 0x56, 66, 0 }, 0, 7); return ms.ToArray();
+  }
+}
+"@
+
+# render a job to a 1-bit ESC/POS raster (203 dpi: 80 mm = 576 dots, 58 mm = 384 dots) + feed + cut
+function Job-EscPos($lines) {
+  $dots = $(if ($paperMM -eq 58) { 384 } else { 576 })
+  $bmp0 = New-Object System.Drawing.Bitmap(10, 10); $mg = [System.Drawing.Graphics]::FromImage($bmp0); $mg.PageUnit = 'Display'
+  $hh = Measure-Job $mg $lines; $mg.Dispose(); $bmp0.Dispose()
+  $k = $dots / $W; $hpx = [int](($hh + 20) * $k)
+  $bmp = New-Object System.Drawing.Bitmap($dots, $hpx); $bmp.SetResolution(100, 100)   # 1 px = 1/100 inch, like the printer; ScaleTransform -> 203 dpi dots
+  $g = [System.Drawing.Graphics]::FromImage($bmp); $g.Clear([System.Drawing.Color]::White)
+  $g.PageUnit = 'Pixel'; $g.ScaleTransform($k, $k); $g.TextRenderingHint = 'SingleBitPerPixelGridFit'
+  Draw-Job $g $lines; $g.Dispose()
+  $out = [VVRaw]::EscPos($bmp); $bmp.Dispose(); return $out
+}
+function Send-Tcp($ip, $bytes) { $c = New-Object Net.Sockets.TcpClient; $c.SendTimeout = 8000; $c.Connect($ip, 9100); $s = $c.GetStream(); $s.Write($bytes, 0, $bytes.Length); $s.Flush(); Start-Sleep -Milliseconds 300; $c.Close() }
+function Send-Com($port, $bytes) { $sp = New-Object IO.Ports.SerialPort($port, 9600); $sp.WriteTimeout = 8000; $sp.Open(); $sp.Write($bytes, 0, $bytes.Length); Start-Sleep -Milliseconds 500; $sp.Close() }
+
+# print through the Windows driver (vendor drivers: XP-80C, Epson TM, Star...) - drawn with GDI
+function Print-Win($name, $lines) {
   $bmp = New-Object System.Drawing.Bitmap(10, 10); $mg = [System.Drawing.Graphics]::FromImage($bmp); $mg.PageUnit = 'Display'
   $height = Measure-Job $mg $lines; $mg.Dispose(); $bmp.Dispose()
   $doc = New-Object System.Drawing.Printing.PrintDocument
-  $doc.PrinterSettings.PrinterName = $cfg.printer
-  if (-not $doc.PrinterSettings.IsValid) { throw "Printer '$($cfg.printer)' not found" }
-  $doc.DocumentName = "VARVAR $($job.kind)"
+  $doc.PrinterSettings.PrinterName = $name
+  if (-not $doc.PrinterSettings.IsValid) { throw "Printer '$name' not found" }
+  $doc.DocumentName = 'VARVAR'
   $doc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(4, 4, 4, 4)
-  $doc.DefaultPageSettings.PaperSize = New-Object System.Drawing.Printing.PaperSize('VARVAR', 315, [Math]::Max(200, $height + 20))
+  $doc.DefaultPageSettings.PaperSize = New-Object System.Drawing.Printing.PaperSize('VARVAR', ($W + 35), [Math]::Max(200, $height + 20))
   $doc.OriginAtMargins = $true
   $doc.add_PrintPage({ param($s, $e) $e.Graphics.TextRenderingHint = 'SingleBitPerPixelGridFit'; Draw-Job $e.Graphics $lines; $e.HasMorePages = $false })
   $doc.Print(); $doc.Dispose()
 }
 
-# -Test: один пробний друк у видимому вікні з усіма помилками
+# ---------- 🔎 discovery ----------
+$RX_RECEIPT = '(?i)(pos|receipt|thermal|xp-|xprinter|tm-|epson tm|star|tsp|rongta|rp\d|gprinter|sunmi|bixolon|citizen|hprt|zjiang|zj-|58|80|чек|термо)'
+$RX_VIRTUAL = '(?i)(pdf|xps|onenote|fax|send to|microsoft print|document writer|anydesk|teamviewer)'
+function Local-Nets {
+  $nets = @()
+  try { foreach ($a in (Get-WmiObject Win32_NetworkAdapterConfiguration -Filter 'IPEnabled=TRUE')) { foreach ($ip in @($a.IPAddress)) { if ($ip -match '^(\d+\.\d+\.\d+)\.\d+$' -and $ip -notmatch '^(127|169\.254)\.') { $nets += $matches[1] } } } } catch { }
+  return @($nets | Select-Object -Unique)
+}
+function Scan-9100 {
+  $found = @(); $tasks = @()
+  foreach ($n in (Local-Nets)) { for ($i = 1; $i -lt 255; $i++) { $c = New-Object Net.Sockets.TcpClient; $tasks += ,@($c, $c.BeginConnect("$n.$i", 9100, $null, $null), "$n.$i") } }
+  Start-Sleep -Milliseconds 1500
+  foreach ($t in $tasks) { try { if ($t[1].IsCompleted -and $t[0].Connected) { $found += $t[2] } } catch { }; try { $t[0].Close() } catch { } }
+  return $found
+}
+function Find-Devices {
+  $list = @()
+  $installed = @(); try { $installed = @(Get-WmiObject Win32_Printer | ForEach-Object { @{ name = $_.Name; port = $_.PortName; drv = $_.DriverName; def = $_.Default } }) } catch { foreach ($n in [System.Drawing.Printing.PrinterSettings]::InstalledPrinters) { $installed += @{ name = $n; port = ''; drv = ''; def = $false } } }
+  foreach ($p in $installed) { if ($p.name -match $RX_VIRTUAL) { continue }
+    $raw = $p.drv -match '(?i)generic|text only'
+    $type = $(if ($raw) { 'raw' } elseif ($p.port -match '^(IP_|\d+\.)|WSD') { 'winnet' } elseif ($p.port -match '^USB') { 'winusb' } elseif ($p.port -match '^(COM|BTH)') { 'winbt' } else { 'win' })
+    $list += New-Object PSObject -Property @{ id = $(if ($raw) { 'raw:' } else { 'win:' }) + $p.name; name = $p.name + $(if ($p.def) { ' (за замовчуванням)' } else { '' }); type = $type; rec = [bool]($p.name -match $RX_RECEIPT -or $p.drv -match $RX_RECEIPT); def = [bool]$p.def; port = $p.port } }
+  $taken = @($installed | ForEach-Object { $_.port })
+  foreach ($ip in (Scan-9100)) { if (-not ($taken | Where-Object { $_ -match [regex]::Escape($ip) })) { $list += New-Object PSObject -Property @{ id = 'net:' + $ip; name = "Мережевий принтер $ip"; type = 'net'; rec = $true; def = $false; port = $ip } } }
+  try { foreach ($c in [System.IO.Ports.SerialPort]::GetPortNames()) { if (-not ($taken -contains "$($c):")) { $list += New-Object PSObject -Property @{ id = 'com:' + $c; name = "COM / Bluetooth $c"; type = 'com'; rec = $false; def = $false; port = $c } } } } catch { }
+  return $list
+}
+# USB receipt printer plugged in without driver: add it as RAW printer on its USB port (needs admin once - installer asks)
+function Add-UsbRaw {
+  try {
+    $used = @(Get-WmiObject Win32_Printer | ForEach-Object { $_.PortName })
+    $usb = @()
+    try { $usb += @(Get-PrinterPort -ErrorAction Stop | Where-Object { $_.Name -match '^USB\d+' } | ForEach-Object { $_.Name }) } catch { }
+    try { Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Control\DeviceClasses\{28d78fad-5a12-11d1-ae5b-0000f803a8c2}' -ErrorAction Stop | ForEach-Object { $p = Get-ItemProperty ($_.PSPath + '\#\Device Parameters') -ErrorAction SilentlyContinue; if ($p -and $p.'Port Number') { $usb += ('USB{0:D3}' -f [int]$p.'Port Number') } } } catch { }
+    $usb = @($usb | Select-Object -Unique | Where-Object { -not ($used -contains $_) })
+    foreach ($u in $usb) { & rundll32 printui.dll,PrintUIEntry /if /b "VARVAR $u" /r "$u" /m "Generic / Text Only" /Z; Start-Sleep 3; Log "usb raw added $u" }
+  } catch { Log "usb add: $($_.Exception.Message)" }
+}
+
+$route = @{}; $devs = @(); $auto = $null
+function Pick-Auto {
+  if ($cfg.printer) { $m = $devs | Where-Object { $_.id -eq ('win:' + $cfg.printer) -or $_.id -eq ('raw:' + $cfg.printer) -or $_.name -eq $cfg.printer } | Select-Object -First 1; if ($m) { return $m.id } }
+  foreach ($f in @({ param($d) $d.rec -and $d.type -ne 'com' -and $d.type -ne 'net' }, { param($d) $d.type -eq 'net' }, { param($d) $d.type -eq 'raw' }, { param($d) $d.def }, { param($d) $d.type -ne 'com' }, { param($d) $true })) {
+    $m = $devs | Where-Object { & $f $_ } | Select-Object -First 1; if ($m) { return $m.id } }
+  return $null
+}
+function Hello {
+  $script:devs = @(Find-Devices)
+  if (-not ($devs | Where-Object { $_.rec })) { Add-UsbRaw; $script:devs = @(Find-Devices) }
+  $script:auto = Pick-Auto
+  try { $lb = [byte[]](Http 'GET' ($cfg.api + '/print/logo.png')).ResponseBody; $script:logo = [System.Drawing.Image]::FromStream((New-Object IO.MemoryStream(,$lb))) } catch { }
+  $body = '{"key":"' + $cfg.key + '","ver":"' + $VER + '","pc":"' + ($env:COMPUTERNAME -replace '"', '') + '","using":"' + ($auto -replace '\\', '\\' -replace '"', '') + '","devices":[' + (($devs | ForEach-Object { '{"id":"' + ($_.id -replace '\\', '\\' -replace '"', '') + '","name":"' + ($_.name -replace '\\', '\\' -replace '"', '') + '","type":"' + $_.type + '"}' }) -join ',') + ']}'
+  try { $r = FromJson ((Http 'POST' "$($cfg.api)/api/print/hello" $body).ResponseText); $script:route = @{}; if ($r.route.receipt) { $route.receipt = $r.route.receipt }; if ($r.route.kitchen) { $route.kitchen = $r.route.kitchen } } catch { Log "hello: $($_.Exception.Message)" }
+  Log "devices: $(($devs | ForEach-Object { $_.id }) -join ' | ') ; auto=$auto ; route=$($route.receipt)/$($route.kitchen)"
+}
+function Target($kind) {
+  $want = $(if ($kind -eq 'kitchen' -and $route.kitchen) { $route.kitchen } elseif ($route.receipt) { $route.receipt } else { $auto })
+  if (-not $want) { $want = $auto }
+  return $want
+}
+function Print-Job($job) {
+  $lines = @($job.lines | ForEach-Object { ,@($_) })
+  Set-Cfg $null; foreach ($l in $lines) { if ($l[0] -eq 'cfg') { Set-Cfg $l } }
+  $t = Target $job.kind
+  if (-not $t) { throw 'no printer found' }
+  $kind, $id = $t -split ':', 2
+  switch ($kind) {
+    'win' { Print-Win $id $lines }
+    'raw' { [VVRaw]::Send($id, (Job-EscPos $lines)) }
+    'net' { Send-Tcp $id (Job-EscPos $lines) }
+    'com' { Send-Com $id (Job-EscPos $lines) }
+    default { Print-Win $t $lines }
+  }
+}
+
+# -Test: visible window with found printers and one test print
 if ($Test) {
   try {
-    Write-Host "  Printer: $($cfg.printer)"
-    $names = [System.Drawing.Printing.PrinterSettings]::InstalledPrinters
-    Write-Host "  Installed printers: $($names -join ', ')"
-    $r = (Http 'GET' "$($cfg.api)/api/print/pull?key=$($cfg.key)").ResponseText
+    Write-Host '  Searching printers (USB, network, Bluetooth)...'
+    Hello
+    foreach ($d in $devs) { Write-Host ("   " + $(if ($d.id -eq $auto) { '>> ' } else { '   ' }) + $d.name + '  [' + $d.type + ']') }
+    if (-not $auto) { Write-Host '  No printer found. Plug in the printer (USB / network cable / Bluetooth pairing) and run install again.' -ForegroundColor Red; exit }
     Write-Host "  Server: OK"
-    Print-Job (New-Object PSObject -Property @{ id = 'test'; kind = 'test'; lines = @(,@('logo')) + @(,@('big', 'TEST OK')) + @(,@('c', 'VARVAR print')) + @(,@('hr')) + @(,@('lr', 'Printer', $cfg.printer)) + @(,@('hr')) + @(,@('gap')) })
-    Write-Host "  Test receipt sent to printer." -ForegroundColor Green
+    Print-Job (New-Object PSObject -Property @{ id = 'test'; kind = 'test'; lines = @(,@('logo')) + @(,@('big', 'TEST OK')) + @(,@('c', 'VARVAR print ' + $VER)) + @(,@('hr')) + @(,@('c', $auto)) + @(,@('hr')) + @(,@('gap')) })
+    Write-Host "  Test receipt sent to: $auto" -ForegroundColor Green
   } catch { Write-Host "  ERROR: $($_.Exception.Message)" -ForegroundColor Red }
   exit
 }
-Log "start, printer=$($cfg.printer)"
-$done = @{}
+Hello
+Log "start $VER, printer=$auto"
+$done = @{}; $nextHello = (Get-Date).AddMinutes(10)
 while ($true) {
   try {
-    $r = FromJson ((Http 'GET' "$($cfg.api)/api/print/pull?key=$($cfg.key)&wait=25").ResponseText)   # сервер тримає запит до появи чека
+    if ((Get-Date) -gt $nextHello) { Hello; $nextHello = (Get-Date).AddMinutes(10) }
+    $r = FromJson ((Http 'GET' "$($cfg.api)/api/print/pull?key=$($cfg.key)&wait=25").ResponseText)   # server holds the request until a job appears
     $ok = @()
     foreach ($job in $r.jobs) {
       if (-not $done.ContainsKey($job.id)) {
         try { Print-Job $job; $done[$job.id] = 1; Log "printed $($job.kind) $($job.id)" }
-        catch { Log "print error $($job.id): $($_.Exception.Message)"; continue }
+        catch { Log "print error $($job.id): $($_.Exception.Message)"; if ($_.Exception.Message -match 'not found|OpenPrinter|refused|no printer') { $nextHello = Get-Date }; continue }
       }
       $ok += $job.id
     }

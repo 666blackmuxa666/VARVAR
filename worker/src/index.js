@@ -102,6 +102,11 @@ export async function handle(req, env) {
       // програма друку і логотип через простий HTTP (Windows 7 не вміє TLS 1.2)
       if (/^\/snd\/[a-z0-9-]+\.mp3$/.test(url.pathname)) { const r = await fetch('https://666blackmuxa666.github.io/VARVAR' + url.pathname, { cf: { cacheTtl: 86400 } }); return new Response(r.body, { status: r.status, headers: { 'content-type': 'audio/mpeg', 'cache-control': 'public, max-age=86400', 'access-control-allow-origin': '*' } }); } // 🔊 звуки кухні
       { const qr = await qrRoute(env, url); if (qr) return qr; } // 🔳 QR столів — генеруються сервером
+      if (url.pathname === '/print/logo.png') { /* 🧾 логотип чека: свій (конструктор чека) → логотип закладу → VARVAR */
+        const P = await import('./print.js'), rc = await P.getRcpt(env); let key = rc.logoImg || '';
+        if (!key && env.VENUE && env.VENUE !== MAIN) { const s = await (await import('./site.js')).getSite(env), m = String(s.logo || '').match(/\/img\/([a-z0-9-]+)$/); if (m) key = 'img:' + m[1]; }
+        if (key) { const im = await env.DB.get(key, 'arrayBuffer'); if (im) return new Response(im, { headers: { 'content-type': 'image/png', 'cache-control': 'no-cache', 'access-control-allow-origin': '*' } }); }
+      }
       const pf = url.pathname.match(/^\/print\/(agent\.ps1|[a-z0-9-]+\.png)$/);
       if (pf) {
         const r = await fetch('https://666blackmuxa666.github.io/VARVAR/printer/' + (pf[1] === 'agent.ps1' ? 'varvar-print.ps1' : pf[1]), { cf: { cacheTtl: 30 } });

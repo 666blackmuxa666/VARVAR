@@ -7,7 +7,7 @@ import { cliClose, cliTouch, goKitchen, goButtons, goGone } from './delivery.js'
 import { reviewQueue } from './site.js';
 import { promoFill, promoClose } from './promo.js';
 import { courNotify } from './courier.js';
-import { queuePrint, kitchenTicket, receipt } from './print.js';
+import { queuePrint, kitchenTicket, receipt, getRcpt } from './print.js';
 import { consume, wasteDish } from './stock.js';
 
 export const tg = (env, method, body) => fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
@@ -108,7 +108,7 @@ async function _acceptOrder(env, oid, who, { editTg = true } = {}) {
   if (o.s === 'rej') return false;
   await env.DB.put('ord:' + oid, JSON.stringify({ ...o, s: 'acc', by: who, at: hhmm(), ...(o.go ? { g: 'acc' } : {}) }), { expirationTtl: BILL_TTL });
   if (o.lines?.length) { // замовлення гостя підтверджене → на кухню: бігунок + екран кухні
-    await queuePrint(env, 'kitchen', kitchenTicket({ table: o.t, kind: o.kind || 'ЗАМОВЛЕННЯ ГОСТЯ', lines: o.lines, comment: o.comment, by: `гість · прийняв ${who}` }));
+    await queuePrint(env, 'kitchen', kitchenTicket({ table: o.t, kind: o.kind || 'ЗАМОВЛЕННЯ ГОСТЯ', lines: o.lines, comment: o.comment, by: `гість · прийняв ${who}` }, await getRcpt(env)));
     await addKitchen(env, { t: o.t, by: 'гість', src: 'гість', comment: o.comment, lines: o.lines });
   }
   await editEv(env, list => { for (const e of list) if (e.oid === oid) { e.s = 'acc'; e.accBy = who; } });
@@ -132,7 +132,7 @@ async function _addWaiterOrder(env, d, who, comment = '', src = 'бот', urgent
   await Promise.all([
     addStat(env, 'orders', 1),
     addDishes(env, ok.map(i => ({ n: i.name, q: i.q, sum: i.price * i.q }))),
-    queuePrint(env, 'kitchen', kitchenTicket({ table: d.table, kind: 'ВІД ОФІЦІАНТА', lines, comment, by: who, urgent })),
+    queuePrint(env, 'kitchen', kitchenTicket({ table: d.table, kind: 'ВІД ОФІЦІАНТА', lines, comment, by: who, urgent }, await getRcpt(env))),
     addKitchen(env, { t: d.table, by: who, src: 'офіціант', comment, lines, urgent }),
     logEvent(env, { k: 'waiter', t: d.table, by: who, src, lines, comment, sum, ...(prev.length ? { prev } : {}) }),
   ]);

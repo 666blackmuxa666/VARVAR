@@ -9,8 +9,23 @@ import { doName, venueId } from './venue.js';
 // черга живе в Durable Object: програма друку чекає на /pull (long-poll), і чек віддається миттєво
 const q = env => env.PRINTQ.get(env.PRINTQ.idFromName(doName(venueId()))); // 🏪 своя черга друку в кожного закладу
 const qcall = (env, path, body) => q(env).fetch('https://q' + path, body ? { method: 'POST', body: JSON.stringify(body) } : undefined);
+// 🧾 конструктор чека (кабінет власника → Принтер): ширина паперу, масштаб, логотип, тексти, що показувати
+export const RCPT_DEF = { w: 80, scale: 100, logo: 1, logoW: 120, sub: 'FOOD & BAR', head: [], title: 'ЧЕК', pre: 'ПРЕЧЕК', preNote: 'не є фіскальним чеком', opened: 1, count: 1, itemSub: 1, pay: 1, tips: 1, waiter: 0,
+  foot: ['Дякуємо, що завітали!', 'Чекаємо на вас знову ♥'], footS: 'Меню і замовлення — QR-код на столі', qr: 0, qrText: 'Меню й замовлення онлайн', kBig: 1, kWaiter: 1, kTime: 1, feed: 1 };
+export const getRcpt = async env => ({ ...RCPT_DEF, ...((await env.DB.get('rcpt', 'json')) || {}) });
+const S = (v, n) => String(v ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
+export function cleanRcpt(b) {
+  const r = { ...RCPT_DEF }, B = x => (x ? 1 : 0), N = (v, a, z, d) => { v = Math.round(+v); return Number.isFinite(v) ? Math.min(z, Math.max(a, v)) : d; };
+  r.w = [58, 80].includes(+b.w) ? +b.w : 80; r.scale = N(b.scale, 70, 140, 100); r.logoW = N(b.logoW, 40, 260, 120); r.feed = N(b.feed, 0, 4, 1);
+  for (const k of ['logo', 'opened', 'count', 'itemSub', 'pay', 'tips', 'waiter', 'qr', 'kBig', 'kWaiter', 'kTime']) r[k] = B(b[k]);
+  for (const [k, n] of [['sub', 60], ['title', 30], ['pre', 30], ['preNote', 60], ['footS', 120], ['qrText', 60]]) r[k] = S(b[k], n);
+  r.head = [].concat(b.head || []).map(x => S(x, 60)).filter(Boolean).slice(0, 5); r.foot = [].concat(b.foot || []).map(x => S(x, 60)).filter(Boolean).slice(0, 5);
+  if (/^img:[a-z0-9-]{4,40}$/.test(b.logoImg || '')) r.logoImg = b.logoImg;
+  return r;
+}
 export async function queuePrint(env, kind, lines) {
-  const id = `${Date.now()}-${crypto.randomUUID().slice(0, 6)}`;
+  const id = `${Date.now()}-${crypto.randomUUID().slice(0, 6)}`, rc = await getRcpt(env);
+  lines = [['cfg', rc.w, rc.scale, rc.logoW], ...lines, ...Array.from({ length: rc.feed }, () => ['gap'])]; /* ширина паперу й масштаб — для програми друку */
   await qcall(env, '/push', { id, kind, lines });
   return id;
 }
@@ -45,12 +60,12 @@ export class PrintQ {
 }
 
 // бігунок на кухню/бар — без цін, стіл на чорній плашці
-export function kitchenTicket({ table, kind, lines, comment, by, urgent }) {
+export function kitchenTicket({ table, kind, lines, comment, by, urgent }, rc = RCPT_DEF) {
   return [
     ...(urgent ? [['invb', '!!! ТЕРМІНОВО !!!']] : []),
-    ['invb', +table > 1000 ? `${+table > 2000 ? 'САМОВИВІЗ' : 'ДОСТАВКА'} ${tn(table)}` : `СТІЛ ${table}`],
-    ['c', `${kind}  ·  ${hhmm()}`],
-    ...(by ? [['c', `Замовив: ${by}`]] : []),
+    [rc.kBig ? 'invb' : 'inv', +table > 1000 ? `${+table > 2000 ? 'САМОВИВІЗ' : 'ДОСТАВКА'} ${tn(table)}` : `СТІЛ ${table}`],
+    ['c', rc.kTime ? `${kind}  ·  ${hhmm()}` : kind],
+    ...(by && rc.kWaiter ? [['c', `Замовив: ${by}`]] : []),
     ['dbl'],
     ...lines.map(l => { const m = l.match(/^(\d+)× (.+?) — \d+$/); return ['k', m ? `${m[1]} × ${m[2]}` : l]; }),
     // «з собою» — окремою чорною плашкою, решта коментаря звичайним шрифтом з переносом
@@ -73,29 +88,31 @@ export async function receipt(env, { table, bill, final, pay, by }) {
   const fmt = t => new Date(t).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '');
   const count = [...agg.values()].reduce((s, a) => s + a.q, 0);
   const pr = (bill.promo?.lines || []).filter(l => l.amt || !l.info); // 🎁 «подарунок: додайте» без суми теж друкуємо
+  const rc = await getRcpt(env), qrn = rc.qr ? await (await import('./qr.js')).qrImg(env, 0) : '';
   return [
-    ['logo'],
-    ['s', 'FOOD & BAR'],
-    ['inv', final ? `ЧЕК № ${no}` : 'ПРЕЧЕК'],
-    ...(final ? [] : [['s', 'не є фіскальним чеком']]),
+    ...(rc.logo ? [['logo']] : []),
+    ...(rc.sub ? [['s', rc.sub]] : []), ...rc.head.map(h => ['c', h]),
+    ['inv', final ? `${rc.title || 'ЧЕК'} № ${no}` : rc.pre || 'ПРЕЧЕК'],
+    ...(final || !rc.preNote ? [] : [['s', rc.preNote]]),
     ['gap'],
     ['lr', +table > 2000 ? 'Самовивіз' : +table > 1000 ? 'Доставка' : 'Стіл', String(tn(table))],
-    ...(bill.opened ? [['lr', 'Відкрито', fmt(bill.opened)]] : []),
+    ...(bill.opened && rc.opened ? [['lr', 'Відкрито', fmt(bill.opened)]] : []),
+    ...(by && rc.waiter ? [['lr', 'Обслуговував', String(by)]] : []),
     ['lr', final ? 'Закрито' : 'Надруковано', fmt(Date.now())],
     ['dbl'],
-    ...[...agg].flatMap(([name, a]) => [['item', name, `${a.sum}`], ['sub', `${a.q} × ${Math.round(a.sum / a.q)} грн`]]),
+    ...[...agg].flatMap(([name, a]) => [['item', name, `${a.sum}`], ...(rc.itemSub ? [['sub', `${a.q} × ${Math.round(a.sum / a.q)} грн`]] : [])]),
     ['dbl'],
-    ['lr', 'Позицій', String(count)],
+    ...(rc.count ? [['lr', 'Позицій', String(count)]] : []),
     ...(bill.disc || pr.length || bill.bonus ? [['lr', 'Сума', `${bill.total} грн`]] : []), ...(bill.disc ? [['lr', `Знижка ${bill.disc}%`, `−${discAmt(bill)} грн`]] : []),
     ...pr.map(l => ['lr', l.n, l.amt ? `−${l.amt} грн` : '']), ...(bill.bonus ? [['lr', bill.cert ? 'Сертифікат / бонуси' : 'Бонуси', `−${bill.bonus} грн`]] : []), // 🎁 акції й рівень (promo.js)
     ['total', final ? 'СПЛАЧЕНО' : 'ДО СПЛАТИ', `${payable(bill)} грн`],
-    ...(bill.tip ? [['lr', 'Чайові', `${bill.tip} грн`]] : []), ...(bill.ktip ? [['lr', 'Подяка кухні', `${bill.ktip} грн`]] : []),
-    ...(bill.tip || bill.ktip ? [['lr', 'Разом з чайовими', `${payable(bill) + (bill.tip || 0) + (bill.ktip || 0)} грн`]] : []),
-    ...(final && pay ? [['lr', 'Оплата', pay === 'card' ? 'Картка' : 'Готівка']] : []),
+    ...(bill.tip && rc.tips ? [['lr', 'Чайові', `${bill.tip} грн`]] : []), ...(bill.ktip && rc.tips ? [['lr', 'Подяка кухні', `${bill.ktip} грн`]] : []),
+    ...((bill.tip || bill.ktip) && rc.tips ? [['lr', 'Разом з чайовими', `${payable(bill) + (bill.tip || 0) + (bill.ktip || 0)} грн`]] : []),
+    ...(final && pay && rc.pay ? [['lr', 'Оплата', pay === 'card' ? 'Картка' : 'Готівка']] : []),
     ['gap'],
-    ['c', 'Дякуємо, що завітали!'],
-    ['c', 'Чекаємо на вас знову ♥'],
-    ['s', 'Меню і замовлення — QR-код на столі'],
+    ...rc.foot.map(f => ['c', f]),
+    ...(qrn ? [['gap'], ['img', qrn, 130], ['s', rc.qrText]] : []),
+    ...(rc.footS ? [['s', rc.footS]] : []),
     ['gap'],
   ];
 }
@@ -113,6 +130,11 @@ export async function printApi(req, env, url) {
   if (url.pathname === '/api/print/pull') {
     const r = await qcall(env, '/pull?wait=' + (+url.searchParams.get('wait') || 0));
     return new Response(await r.text(), { headers: { 'content-type': 'application/json; charset=utf-8' } }); // charset — інакше PowerShell ламає кирилицю
+  }
+  if (url.pathname === '/api/print/hello' && req.method === 'POST') { /* 🔎 програма друку повідомляє, які принтери знайшла; у відповідь — куди що друкувати (вибір у кабінеті) */
+    const b = await req.json().catch(() => ({})), dev = [].concat(b.devices || []).slice(0, 30).map(d => ({ id: String(d.id || '').slice(0, 200), name: String(d.name || '').slice(0, 120), type: String(d.type || '').slice(0, 20) })).filter(d => d.id);
+    await env.DB.put('print_dev', JSON.stringify({ at: Date.now(), pc: String(b.pc || '').slice(0, 60), ver: String(b.ver || '').slice(0, 20), using: String(b.using || '').slice(0, 200), list: dev }));
+    return Response.json({ route: (await env.DB.get('print_route', 'json')) || {} }, { headers: { 'content-type': 'application/json; charset=utf-8' } });
   }
   if (url.pathname === '/api/print/ack') {
     // GET ?ids=a,b (старі Windows) або POST {ids}

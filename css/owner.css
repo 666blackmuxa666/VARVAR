@@ -180,3 +180,16 @@ tr.sum td { font-weight: 700; border-bottom: 0; }
 }
 /* шапка розділу налаштувань: головні дії в один ряд, пошук розтягується */
 .vhead { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; } .vhead input { flex: 1 1 200px; min-height: 36px; padding: 6px 12px; } .vhead .btn { white-space: nowrap; }
+/* 🧾 конструктор чека: перегляд — як термострічка (чорне на білому, Arial) */
+#sb.rc .sb-side { grid-template-rows: 1fr; }
+.rc-v { overflow: auto; padding: 14px; display: grid; gap: 12px; justify-items: center; align-content: start; min-height: 0; height: 100%; }
+.rp { background: #fff; color: #000; font-family: Arial, Helvetica, sans-serif; line-height: 1.25; padding: 14px 10px 6px; border-radius: 4px; box-shadow: 0 18px 50px #000a; display: flex; flex-direction: column; gap: 2px; }
+.rp-c { text-align: center; } .rp-c img { display: block; margin: 0 auto 6px; filter: grayscale(1) contrast(1.4); }
+.rp-s { font-size: .78em; } .rp-b { font-weight: 700; }
+.rp-inv { background: #000; color: #fff; text-align: center; font-weight: 700; font-size: 1.2em; padding: 3px 0; margin: 2px 0; } .rp-big { font-size: 1.7em; padding: 4px 0; }
+.rp-dbl { border-top: 1px solid #000; border-bottom: 1px solid #000; height: 3px; margin: 4px 0; } .rp-hr { border-top: 1px dashed #000; margin: 4px 0; }
+.rp-lr { display: flex; justify-content: space-between; gap: 8px; } .rp-i { font-weight: 700; font-size: 1.08em; } .rp-sub { font-size: .78em; padding-left: 8px; }
+.rp-k { font-weight: 700; font-size: 1.3em; }
+.rp-tot { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: #000; color: #fff; font-weight: 700; font-size: 1.45em; padding: 4px 6px; margin: 4px 0; }
+.rp-qr { width: 100px; height: 100px; margin: 4px auto; background: repeating-conic-gradient(#000 0 25%, #fff 0 50%) 0 0 / 14px 14px; outline: 6px solid #fff; }
+.rp-cut { text-align: center; color: #999; font-size: 11px; margin-top: 8px; }
