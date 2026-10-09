@@ -161,3 +161,7 @@ html[data-season]:not([data-season=""]) { --accent: var(--season); }
 #vvSeason { position: fixed; inset: 0; pointer-events: none; z-index: 5; overflow: hidden; } #vvSeason i { position: absolute; top: -40px; font-style: normal; font-size: 22px; opacity: .55; animation: vvfall linear infinite; }
 @keyframes vvfall { to { transform: translateY(110vh) rotate(260deg); } }
 @media (prefers-reduced-motion: reduce) { #vvSeason { display: none; } }
+
+/* 🍽 хіти — точно як картки меню: текстура під фото, PNG страви цілком */
+.hit .ph { display: grid; place-items: center; background: #1a1a1a url('../img/bg.jpg?v=3') center/cover; } .hit .ph img { width: 100%; height: 100%; object-fit: contain; display: block; }
+@media (min-width: 700px) { .hits { grid-template-columns: repeat(4, 1fr); } }

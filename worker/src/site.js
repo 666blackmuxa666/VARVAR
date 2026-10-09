@@ -32,7 +32,7 @@ export async function setSite(env, k, v) {
     else if (k === 'from' || k === 'to') { v = String(v).trim(); if (!/^([01]?\d|2[0-3]):[0-5]\d$/.test(v)) return { error: 'Формат часу: 11:00' }; s[k] = v.padStart(5, '0'); }
     else if (['rating'].includes(k)) { v = Math.round(+v * 10) / 10; if (!(v >= 0 && v <= 5)) return { error: 'Від 0 до 5' }; s[k] = v; }
     else if (['ratingN', 'preMin', 'certOn', 'bookOn'].includes(k)) { v = Math.max(0, Math.round(+v || 0)); s[k] = v; }
-    else if (k === 'hits') s.hits = [].concat(v || []).map(String).slice(0, 12);
+    else if (k === 'hits') s.hits = [].concat(v || []).map(String).slice(0, 4);
     else if (k === 'promoAdd') { const p = { id: crypto.randomUUID().slice(0, 6), t: String(v.t || '').slice(0, 80), d: String(v.d || '').slice(0, 300), img: String(v.img || '').slice(0, 200) }; if (!p.t) return { error: 'Назва акції?' }; s.promos = [...s.promos, p].slice(-10); }
     else if (k === 'promoDel') s.promos = s.promos.filter(p => p.id !== v);
     else if (k === 'quoteAdd') { const q = { t: String(v.t || '').slice(0, 300), a: String(v.a || '').slice(0, 40) }; if (!q.t) return { error: 'Текст?' }; s.quotes = [...s.quotes, q].slice(-6); }
@@ -61,8 +61,8 @@ export function openNow(s, at = hhmm()) { const h = dayHours(s, ['Mon', 'Tue', '
 // публічно для візитки: дані + хіти з меню (фото, ціни)
 export async function sitePublic(env) {
   const s = await getSite(env), menu = await getMenu(env), all = menu.categories.flatMap(c => c.items.filter(i => !i.hidden).map(i => ({ ...i, cat: c.id })));
-  let hits = s.hits.map(id => all.find(i => i.id === id)).filter(Boolean);
-  if (!hits.length) hits = all.filter(i => i.img && ['minimax', 'burgers', 'pasta', 'pans', 'salads'].includes(i.cat)).slice(0, 8);
+  let hits = s.hits.map(id => all.find(i => i.id === id)).filter(Boolean).slice(0, 4); /* 🍽 на візитці — 4 страви, як у меню */
+  if (!hits.length) { const ph = all.filter(i => i.img); hits = (ph.filter(i => ['minimax', 'burgers', 'pasta', 'pans', 'salads'].includes(i.cat)).length ? ph.filter(i => ['minimax', 'burgers', 'pasta', 'pans', 'salads'].includes(i.cat)) : ph).slice(0, 4); }
   const td = new Date().toLocaleDateString('sv-SE', { timeZone: TZ }); /* минулі події й прострочене оголошення / сезон — не віддаємо */
   if (s.events) s.events = s.events.filter(e => e.d >= td).sort((a, b) => (a.d + a.tm).localeCompare(b.d + b.tm));
   if (s.ann?.till && s.ann.till < td) s.ann = { ...s.ann, on: 0 }; if (s.season?.till && s.season.till < td) s.season = { k: '' };

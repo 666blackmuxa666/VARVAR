@@ -596,10 +596,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     applySkin();
   }
   const { BASE: SK_BASE, PRE: SK_PRE } = VVSkin;
-  const skinOf = () => {
-    const L = look(), m = L.skin || (S.lookV ? "venue" : "old");
-    return m === "own" ? __spreadValues(__spreadValues({}, SK_BASE), L.sk || {}) : m === "venue" && S.lookV ? __spreadValues(__spreadValues({}, SK_BASE), S.lookV) : null;
-  };
+  const skinOf = () => S.lookV ? __spreadValues(__spreadValues({}, SK_BASE), S.lookV) : null;
   function applySkin(over) {
     const K = over || skinOf();
     VVSkin.apply(K);
@@ -3514,7 +3511,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   function lookHTML() {
     const L = look(), opt = (k, v, l, extra = "") => `<button class="lk-o${L[k] == v ? " on" : ""}" data-a="look" data-k="${k}" data-v="${v}"${extra}>${l}</button>`;
     const ACC2 = ["", "#f2c14e", "#ff453a", "#ff9f0a", "#30d158", "#0a84ff", "#bf5af2", "#e0457b", "#4fe3c1", "#ffffff"];
-    return `<div class="grid2 set">${skinCard()}
+    return `<div class="grid2 set">
       <div class="card"><h3>\u{1F3A8} \u0422\u0435\u043C\u0430</h3><div class="lk-themes">${Object.entries(THEMES).map(([k, [l, T]]) => `<button class="lk-th${L.theme === k ? " on" : ""}" data-a="look" data-k="theme" data-v="${k}" style="background:${T.bg};color:${T.text}"><i style="background:${T.card}"><b style="background:${T.accent}"></b></i>${l}</button>`).join("")}</div>
         <div class="set-note muted" style="margin-top:12px">\u041A\u043E\u043B\u0456\u0440 \u0430\u043A\u0446\u0435\u043D\u0442\u0443 (\u043A\u043D\u043E\u043F\u043A\u0438, \u0432\u0438\u0434\u0456\u043B\u0435\u043D\u043D\u044F)</div><div class="lk-acc">${ACC2.map((c) => `<button class="lk-dot${L.accent === c ? " on" : ""}" data-a="look" data-k="accent" data-v="${c}" style="background:${c || "conic-gradient(#f2c14e,#e0457b,#3fb6ff,#5ed68a,#f2c14e)"}" title="${c || "\u044F\u043A \u0443 \u0442\u0435\u043C\u0456"}"></button>`).join("")}</div></div>
       <div class="card"><h3>\u{1F524} \u0428\u0440\u0438\u0444\u0442\u0438</h3><div class="set-note muted">\u041E\u0441\u043D\u043E\u0432\u043D\u0438\u0439 \u0448\u0440\u0438\u0444\u0442</div><div class="lk-row">${Object.entries(FONTS).map(([k, [l, f]]) => opt("font", k, l, f ? ` style="font-family:'${f}',sans-serif"` : "")).join("")}</div>
@@ -3833,40 +3830,10 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   const skCur = () => skinOf() || __spreadValues({}, SK_BASE);
   const skDiff = (K) => Object.fromEntries(Object.entries(K).filter(([k, v]) => SK_BASE[k] !== v));
   async function skEditor() {
-    const K = __spreadValues({}, skCur()), ch = (k, l, o) => `<div class="o"><span>${l}</span><div class="ch" data-k="${k}">${o.map(([v2, t]) => `<button data-v="${v2}" class="${String(K[k]) === v2 ? "on" : ""}">${t}</button>`).join("")}</div></div>`;
-    const rg = (k, l, a, b, st = 1) => `<div class="o"><span>${l}</span><div class="rg"><input type="range" data-k="${k}" min="${a}" max="${b}" step="${st}" value="${K[k]}"><output>${K[k]}</output></div></div>`;
-    const tg = (k, l) => `<label class="kv" style="cursor:pointer"><span>${l}</span><input type="checkbox" data-k="${k}" ${K[k] ? "checked" : ""} style="width:auto"></label>`;
-    const FN = [["", "\u042F\u043A \u0443 \u0442\u0435\u043C\u0456"], ["system", "\u0421\u0438\u0441\u0442\u0435\u043C\u043D\u0438\u0439"], ["rubik", "Rubik"], ["manrope", "Manrope"], ["montserrat", "Montserrat"], ["nunito", "Nunito"], ["inter", "Inter"]];
-    const body = `<div class="skc">
-      <h4>\u{1F3A8} \u041A\u043E\u043B\u044C\u043E\u0440\u0438</h4>${ch("bg", "\u0424\u043E\u043D", [["theme", "\u042F\u043A \u0443 \u0442\u0435\u043C\u0456"], ["black", "\u0427\u043E\u0440\u043D\u0438\u0439"], ["amoled", "AMOLED"], ["graphite", "\u0413\u0440\u0430\u0444\u0456\u0442"], ["blue", "\u0421\u0438\u043D\u044E\u0432\u0430\u0442\u0438\u0439"], ["warm", "\u0422\u0435\u043F\u043B\u0438\u0439"], ["green", "\u0417\u0435\u043B\u0435\u043D\u0443\u0432\u0430\u0442\u0438\u0439"]])}
-      <div class="o"><span>\u0410\u043A\u0446\u0435\u043D\u0442</span><div class="ch" data-k="acc">${["", "#f2c14e", "#ffb340", "#ff8a3d", "#ff5a5f", "#e879a6", "#a78bfa", "#7aa7ff", "#3ddc97"].map((c) => `<button data-v="${c}" class="${K.acc === c ? "on" : ""}" style="${c ? `background:${c};` : ""}min-width:30px">${c ? "&nbsp;" : "\u042F\u043A \u0443 \u0442\u0435\u043C\u0456"}</button>`).join("")}</div></div>
-      ${rg("contrast", "\u041A\u043E\u043D\u0442\u0440\u0430\u0441\u0442 \u043A\u0430\u0440\u0442\u043E\u043A", 0, 10)}${rg("muted", "\u042F\u0441\u043A\u0440\u0430\u0432\u0456\u0441\u0442\u044C \u0441\u0456\u0440\u043E\u0433\u043E \u0442\u0435\u043A\u0441\u0442\u0443", 0, 10)}${ch("bgfx", "\u0415\u0444\u0435\u043A\u0442 \u0444\u043E\u043D\u0443", [["none", "\u041D\u0435\u043C\u0430\u0454"], ["glow", "\u0421\u0432\u0456\u0442\u0456\u043D\u043D\u044F"], ["vignette", "\u0412\u0456\u043D\u044C\u0454\u0442\u043A\u0430"]])}
-      <h4>\u{1F537} \u0424\u043E\u0440\u043C\u0430</h4>${rg("r", "\u0417\u0430\u043E\u043A\u0440\u0443\u0433\u043B\u0435\u043D\u043D\u044F \u043A\u0430\u0440\u0442\u043E\u043A", 0, 30)}${rg("rb", "\u0417\u0430\u043E\u043A\u0440\u0443\u0433\u043B\u0435\u043D\u043D\u044F \u043A\u043D\u043E\u043F\u043E\u043A", 0, 26)}${ch("shape", "\u0424\u043E\u0440\u043C\u0430 \u043A\u043D\u043E\u043F\u043E\u043A", [["auto", "\u0417\u0430 \u043F\u043E\u0432\u0437\u0443\u043D\u043A\u043E\u043C"], ["pill", "\u041F\u0456\u043B\u044E\u043B\u044F"], ["square", "\u041A\u0432\u0430\u0434\u0440\u0430\u0442\u043D\u0456"]])}
-      ${rg("h", "\u0412\u0438\u0441\u043E\u0442\u0430 \u043A\u043D\u043E\u043F\u043E\u043A", 36, 56)}${rg("pad", "\u0412\u0456\u0434\u0441\u0442\u0443\u043F\u0438 \u0432 \u043A\u0430\u0440\u0442\u043A\u0430\u0445", 8, 22)}${rg("gap", "\u041F\u0440\u043E\u043C\u0456\u0436\u043A\u0438 \u043C\u0456\u0436 \u0431\u043B\u043E\u043A\u0430\u043C\u0438", 4, 18)}
-      <h4>\u{1F5C2} \u041A\u0430\u0440\u0442\u043A\u0438</h4>${ch("card", "\u0417\u0430\u043B\u0438\u0432\u043A\u0430", [["solid", "\u0421\u0443\u0446\u0456\u043B\u044C\u043D\u0430"], ["grad", "\u0413\u0440\u0430\u0434\u0456\u0454\u043D\u0442"], ["glass", "\u0421\u043A\u043B\u043E"], ["outline", "\u041A\u043E\u043D\u0442\u0443\u0440"]])}${ch("shadow", "\u0422\u0456\u043D\u044C", [["none", "\u041D\u0435\u043C\u0430\u0454"], ["soft", "\u041C\u02BC\u044F\u043A\u0430"], ["deep", "\u0413\u043B\u0438\u0431\u043E\u043A\u0430"], ["glow", "\u0421\u0432\u0456\u0442\u0456\u043D\u043D\u044F"]])}${ch("border", "\u0420\u0430\u043C\u043A\u0430", [["none", "\u041D\u0435\u043C\u0430\u0454"], ["hair", "\u0422\u043E\u043D\u043A\u0430"], ["accent", "\u0410\u043A\u0446\u0435\u043D\u0442"]])}${tg("caps", "\u0417\u0430\u0433\u043E\u043B\u043E\u0432\u043A\u0438 \u043A\u0430\u0440\u0442\u043E\u043A \u0432\u0435\u043B\u0438\u043A\u0438\u043C\u0438 \u043B\u0456\u0442\u0435\u0440\u0430\u043C\u0438")}
-      <h4>\u{1F524} \u0428\u0440\u0438\u0444\u0442</h4>${ch("font", "\u041E\u0441\u043D\u043E\u0432\u043D\u0438\u0439", FN)}${ch("fonth", "\u0417\u0430\u0433\u043E\u043B\u043E\u0432\u043A\u0438 \u0439 \u0441\u0443\u043C\u0438", [["same", "\u042F\u043A \u043E\u0441\u043D\u043E\u0432\u043D\u0438\u0439"], ...FN.slice(2)])}${rg("fs", "\u0420\u043E\u0437\u043C\u0456\u0440 \u0442\u0435\u043A\u0441\u0442\u0443", 13, 18)}${rg("hw", "\u0416\u0438\u0440\u043D\u0456\u0441\u0442\u044C \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043A\u0456\u0432", 500, 900, 100)}
-      <h4>\u{1F518} \u041A\u043D\u043E\u043F\u043A\u0438 \u0439 \u043F\u0435\u0440\u0435\u043C\u0438\u043A\u0430\u0447\u0456</h4>${ch("prim", "\u0413\u043E\u043B\u043E\u0432\u043D\u0430 \u043A\u043D\u043E\u043F\u043A\u0430", [["fill", "\u0417\u0430\u043B\u0438\u0432\u043A\u0430"], ["grad", "\u0413\u0440\u0430\u0434\u0456\u0454\u043D\u0442"], ["outline", "\u041A\u043E\u043D\u0442\u0443\u0440"]])}${ch("sec", "\u0417\u0432\u0438\u0447\u0430\u0439\u043D\u0456 \u043A\u043D\u043E\u043F\u043A\u0438", [["fill", "\u0417\u0430\u043B\u0438\u0432\u043A\u0430"], ["outline", "\u041A\u043E\u043D\u0442\u0443\u0440"], ["ghost", "\u041F\u0440\u043E\u0437\u043E\u0440\u0456"]])}
-      ${ch("seg", "\u041F\u0435\u0440\u0435\u043C\u0438\u043A\u0430\u0447", [["dark", "\u0422\u0435\u043C\u043D\u0438\u0439"], ["white", "\u0411\u0456\u043B\u0456 \u043F\u0456\u043B\u044E\u043B\u0456"], ["accent", "\u0410\u043A\u0446\u0435\u043D\u0442\u043D\u0438\u0439"], ["line", "\u041F\u0456\u0434\u043A\u0440\u0435\u0441\u043B\u0435\u043D\u043D\u044F"]])}${ch("tabs", "\u0412\u043A\u043B\u0430\u0434\u043A\u0438 \u0440\u043E\u0437\u0434\u0456\u043B\u0443", [["seg", "\u0421\u0435\u0433\u043C\u0435\u043D\u0442"], ["pill", "\u041F\u0456\u043B\u044E\u043B\u0456"], ["line", "\u041F\u0456\u0434\u043A\u0440\u0435\u0441\u043B\u0435\u043D\u043D\u044F"]])}
-      <h4>\u{1FA91} \u0417\u0430\u043B \u0456 \u043C\u0435\u043D\u044E</h4>${ch("tbl", "\u0417\u0430\u0439\u043D\u044F\u0442\u0438\u0439 \u0441\u0442\u0456\u043B", [["gold", "\u0417\u043E\u043B\u043E\u0442\u0438\u0439"], ["fill", "\u0417\u0430\u043B\u0438\u0432\u043A\u0430"], ["frame", "\u0420\u0430\u043C\u043A\u0430"], ["dot", "\u041A\u0440\u0430\u043F\u043A\u0430"]])}
-      ${ch("nav", "\u041D\u0438\u0436\u043D\u0454 \u043C\u0435\u043D\u044E", [["bar", "\u041F\u0440\u0438\u043A\u0440\u0456\u043F\u043B\u0435\u043D\u0435"], ["float", "\u041F\u043B\u0430\u0432\u0430\u044E\u0447\u0435"]])}${ch("navon", "\u0410\u043A\u0442\u0438\u0432\u043D\u0438\u0439 \u043F\u0443\u043D\u043A\u0442", [["accent", "\u0410\u043A\u0446\u0435\u043D\u0442"], ["dark", "\u041F\u043B\u0430\u0448\u043A\u0430"], ["text", "\u041B\u0438\u0448\u0435 \u043A\u043E\u043B\u0456\u0440"]])}${tg("navlbl", "\u041F\u0456\u0434\u043F\u0438\u0441\u0438 \u043F\u0456\u0434 \u0456\u043A\u043E\u043D\u043A\u0430\u043C\u0438")}
-      ${ch("modal", "\u0412\u0456\u043A\u043D\u0430 \u043D\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0456", [["center", "\u041F\u043E \u0446\u0435\u043D\u0442\u0440\u0443"], ["sheet", "\u0417\u043D\u0438\u0437\u0443"], ["full", "\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"]])}${tg("anim", "\u0410\u043D\u0456\u043C\u0430\u0446\u0456\u0457")}</div>`;
+    const K = __spreadValues({}, skCur()), body = VVSkin.editorHTML(K);
     const pm = modal({ title: "\u{1F3A8} \u041A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440 \u0441\u0442\u0438\u043B\u044E", body, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438 \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457", val: "own", cls: "primary" }, ...isAdmin() ? [{ label: "\u{1F3EA} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438 \u0434\u043B\u044F \u0432\u0441\u044C\u043E\u0433\u043E \u0437\u0430\u043A\u043B\u0430\u0434\u0443", val: "venue" }] : [], { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
     const box = $("#modal .skc"), upd = () => applySkin(K);
-    box.addEventListener("click", (e) => {
-      const b = e.target.closest(".ch button");
-      if (!b) return;
-      const g = b.parentElement, k = g.dataset.k;
-      K[k] = b.dataset.v;
-      g.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
-      upd();
-    });
-    box.addEventListener("input", (e) => {
-      const i = e.target;
-      if (!i.dataset.k) return;
-      K[i.dataset.k] = i.type === "checkbox" ? i.checked : +i.value;
-      if (i.nextElementSibling) i.nextElementSibling.textContent = i.value;
-      upd();
-    });
+    VVSkin.bind(box, K, upd);
     upd();
     const v = await pm;
     closeModal();

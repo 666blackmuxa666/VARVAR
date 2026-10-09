@@ -233,7 +233,7 @@
   }
   // 🎨 стиль (конструктор): «Стара каса» — без шару skin.css; «Стиль закладу» — від адміна (сервер); «Свій» — лише на цьому пристрої
   const { BASE: SK_BASE, PRE: SK_PRE } = VVSkin;
-  const skinOf = () => { const L = look(), m = L.skin || (S.lookV ? 'venue' : 'old'); return m === 'own' ? { ...SK_BASE, ...(L.sk || {}) } : m === 'venue' && S.lookV ? { ...SK_BASE, ...S.lookV } : null; };
+  const skinOf = () => (S.lookV ? { ...SK_BASE, ...S.lookV } : null); /* 🖌 стиль каси задає власник у кабінеті (Заклад і каса → Стиль каси) — однаковий на всіх пристроях */
   function applySkin(over) { const K = over || skinOf(); VVSkin.apply(K); if (K) document.body.classList.toggle('noanim', !K.anim || !look().anim); }
   async function loadLookV() { try { const r = await api('lookV'); S.lookV = r.look || null; applyLook(); } catch {} }
   const setLook = (k, v) => { store.set('look', { ...look(), [k]: v }); applyLook(); renderMain(); };

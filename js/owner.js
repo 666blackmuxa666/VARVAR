@@ -17,11 +17,11 @@
     const m = skMode(), V = window.VVSkin; if (!V) return;
     V.apply(m === 'old' ? null : m === 'follow' ? V.full(V.last()) : V.full(m.startsWith?.('pre:') ? V.PRE[m.slice(4)]?.[2] : store.get('sk', null)), false);
   }
-  skApply();
+  skApply(); window.OWNSKIN = skApply; /* повернути стиль кабінету після перегляду стилю каси */
   function skinCard() {
     const m = skMode(), V = window.VVSkin; if (!V) return '';
     const b = (v, t, sub) => `<button class="btn sm${m === v ? ' primary' : ''}" data-a="skin" data-v="${v}" title="${esc(sub)}">${t}</button>`;
-    return `<h2>🖌 Стиль кабінету</h2><div class="card"><div class="muted" style="font-size:13px;margin-bottom:10px">«Як у касі» — той самий стиль, що в касі на цьому пристрої. Свій стиль налаштовується в касі: Налаштування → Вигляд → 🎨 Конструктор (або вставте код).</div>
+    return `<h2>🖌 Стиль кабінету</h2><div class="card"><div class="muted" style="font-size:13px;margin-bottom:10px">«Як у касі» — той самий стиль, що в касі на цьому пристрої. Стиль каси закладу налаштовується тут: ⚙️ Налаштування → Заклад і каса → 🖌 Стиль каси (або вставте код).</div>
       <div class="btnrow">${b('follow', '🔗 Як у касі', 'стиль каси на цьому пристрої')}${b('old', '↩️ Стара', 'як було')}${Object.entries(V.PRE).map(([k, [t, sub]]) => b('pre:' + k, t, sub)).join('')}${m === 'own' ? b('own', '✏️ Свій', 'з коду') : ''}<button class="btn sm ghost" data-a="skinCode">📥 Вставити код</button></div></div>`;
   }
 
