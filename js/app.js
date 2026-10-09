@@ -405,7 +405,7 @@
       ${g === 'rej' ? '' : `<div class="go-steps">${steps.map(s => `<i class="${steps.indexOf(s) <= steps.indexOf(g) ? 'on' : ''}" title="${t(GST[s][1])}">${GST[s][0]}</i>`).join('')}</div>`}
       ${o.etaC && g === 'road' ? `<p class="go-st">🛵 ${t('goEtaC')} <b>~${new Date(o.etaC).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' })}</b></p>` : ''}${o.eta && !o.etaC && !['done', 'rej'].includes(g) ? `<p class="go-note">${t('goEta')} ~${new Date(o.eta).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' })}</p>` : ''}
       ${goCfg?.phone ? `<a class="btn ghost" href="tel:${esc(goCfg.phone.replace(/[^\d+]/g, ''))}">📞 ${esc(goCfg.phone)}</a>` : ''}<button class="btn alt" data-close>${t('goOk')}</button>`;
-    $('#goModal').hidden = false; $('#goModal').dataset.show = id;
+    ($('#sheet').hidden = true, $('#goModal').hidden = false); $('#goModal').dataset.show = id;
   }
   async function goPoll() {
     const act = goHist.filter(o => !['done', 'rej'].includes(o.g) && Date.now() - o.ts < 12 * 3600e3); if (!act.length) { $('#orderStatus').hidden = true; return; }
@@ -417,7 +417,7 @@
   }
   function goClick(el) {
     const d = el.dataset;
-    if ('goOut' in d) { goRead(); goForm(); delete $('#goModal').dataset.show; $('#goModal').hidden = false; goBal(); goPromo(); return true; }
+    if ('goOut' in d) { goRead(); goForm(); delete $('#goModal').dataset.show; ($('#sheet').hidden = true, $('#goModal').hidden = false); goBal(); goPromo(); return true; }
     if (d.goK) { goRead(); gf.kind = d.goK; goForm(); goPromo(); return true; }
     if (d.goP) { goRead(); gf.pay = d.goP; goForm(); return true; }
     if (d.goCut) { goRead(); gf.cut = Math.max(0, Math.min(20, gf.cut + +d.goCut)); goForm(); return true; }
@@ -482,7 +482,7 @@
     else if (el.dataset.ktip != null) { kt = el.dataset.ktip === 'own' ? { p: 0, own: true } : { p: +el.dataset.ktip, own: false }; renderTips(); if (kt.own) $('#ktipOwn').focus(); }
     else if (el.dataset.tip) { tip = el.dataset.tip === 'own' ? { p: 0, own: true } : { p: +el.dataset.tip, own: false }; renderTips(); if (tip.own) $('#tipOwn').focus(); }
     else if (el.dataset.pay) { $('#payModal').hidden = true; send(pendingType, el.dataset.pay); }
-    else if ('close' in el.dataset) el.closest('.modal') ? (el.closest('.modal').hidden = true) : closeAll();
+    else if ('close' in el.dataset) { if (el.closest('.modal')) el.closest('.modal').hidden = true; else closeAll(); if ($('#sheet').hidden) document.body.classList.remove('lock'); }
     else if (el.id === 'fab' || el.id === 'orderStatus') openSheet();
     else if (el.id === 'wifiBanner') showWifi();
     else if (el.id === 'lang') { const p = $('#langs'); p.hidden = !p.hidden; }
