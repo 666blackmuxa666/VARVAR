@@ -20,11 +20,23 @@ window.OWNSITE = (() => {
   const PAL = [['#121212', '#1c1c1c', '#f1f1f1', '#f2c14e', '#1a1400'], ['#0f1a14', '#16261d', '#e9f3ec', '#4cd38a', '#04170c'], ['#101522', '#182036', '#e8ecf7', '#5b8cff', '#ffffff'], ['#1a0f14', '#2a1820', '#f6e9ee', '#ff5c8a', '#ffffff'], ['#f6f5f2', '#ffffff', '#1d1d1f', '#1f6feb', '#ffffff'], ['#f3ebe1', '#fffaf3', '#3b2a1e', '#a0522d', '#ffffff'], ['#fff8ee', '#ffffff', '#2a1a0f', '#e63b2e', '#ffffff'], ['#eef3ef', '#ffffff', '#16251b', '#2f8f5b', '#ffffff']];
   const BGLIB = ['paper', 'linen', 'marble', 'concrete', 'slate', 'wood', 'night', 'bokeh', 'sunset', 'forest', 'ocean', 'wine'];
   const TABS = [['tpl', '🧩 Шаблон'], ['col', '🎨 Кольори й фон'], ['font', '🔤 Шрифти'], ['form', '🔘 Форма й рух'], ['hero', '🏠 Головний екран'], ['blk', '🧱 Блоки'], ['ev', '🎵 Афіша'], ['dock', '🧲 Панель і оголошення'], ['hrs', '🕐 Години й адреси'], ['soc', '📲 Соцмережі й QR'], ['seo', '🔍 SEO й мови'], ['sea', '🎉 Сезон'], ['ver', '🕰 Версії й код'], ['st', '📊 Відвідування']];
-  let C, D, O, tab = 'tpl', sub = null, dirty = false, frame, pv = false, tmr;
+  let C, D, O, tab = 'tpl', sub = null, dirty = false, frame, pv = false, tmr, M = 'site';
+  const TK = () => (M === 'menu' ? 'menuTheme' : 'theme');
+  const al = p => (M === 'menu' && /^theme(\.|$)/.test(p) ? 'menuTheme' + p.slice(5) : p); /* у меню «theme.*» = menuTheme */
+  const MDEF = { ...DEF, bg: '#141414', card: '#1d1d1d', text: '#eeeeee', r: 14, caps: 1, lay: 'grid', cols: 2, ratio: '1', fit: 'contain', phbg: 'tex', phC: '#222222', phImg: '', cats: 'pill', catsSticky: 1, ttl: 'l', ttlLine: 0, ttlSz: 30, desc: 1, size: 1, add: 'round', price: 'accent', logo: 0, note: { t: '', c: '#f2c14e' } };
+  const MTPL = {
+    varvar: ['🌙 Темний VARVAR', {}],
+    light: ['☀️ Світле', { ...TPL.light[1], lay: 'list', phbg: 'card', cats: 'line', add: 'plus', ttlLine: 1 }],
+    cafe: ['☕ Кав\'ярня', { ...TPL.cafe[1], lay: 'grid', phbg: 'color', phC: '#efe3d3', fit: 'contain', cats: 'pill', ttl: 'c', ttlLine: 1, caps: 0 }],
+    neon: ['🍸 Бар / неон', { ...TPL.neon[1], lay: 'big', ratio: '16/9', fit: 'cover', phbg: 'none', cats: 'box', add: 'wide' }],
+    pizza: ['🍕 Піцерія', { ...TPL.pizza[1], lay: 'grid', phbg: 'accent', cats: 'pill', add: 'plus', price: 'accent' }],
+    premium: ['🥂 Преміум', { ...TPL.premium[1], lay: 'text', cats: 'line', ttl: 'c', ttlLine: 1, add: 'plus', price: 'text', desc: 1 }],
+    print: ['📜 Як друковане', { ...DEF, mode: 'light', bg: '#fbf8f1', card: '#fbf8f1', text: '#222222', accent: '#8a1c1c', ink: '#ffffff', fh: 'Playfair Display', fb: 'Lora', lay: 'text', cats: 'line', ttl: 'c', ttlLine: 1, caps: 0, add: 'plus', price: 'text', bgfx: 'noise' }],
+  };
   const clone = x => JSON.parse(JSON.stringify(x ?? null));
-  const get = (p, o = D) => p.split('.').reduce((a, k) => a?.[k], o);
-  const set = (p, v) => { const k = p.split('.'), last = k.pop(); let o = D; for (const x of k) { if (o[x] == null || typeof o[x] !== 'object') o[x] = /^\d+$/.test(x) ? [] : {}; o = o[x]; } o[last] = v; };
-  const need = k => { if (k === 'theme' && !D.theme) D.theme = { ...DEF }; if (k === 'heroCfg' && !D.heroCfg) D.heroCfg = clone(HDEF); };
+  const get = (p, o = D) => al(p).split('.').reduce((a, k) => a?.[k], o);
+  const set = (p, v) => { const k = al(p).split('.'), last = k.pop(); let o = D; for (const x of k) { if (o[x] == null || typeof o[x] !== 'object') o[x] = /^\d+$/.test(x) ? [] : {}; o = o[x]; } o[last] = v; };
+  const need = k => { if (M === 'menu' && (k === 'theme' || k === 'menuTheme')) { if (!D.menuTheme) D.menuTheme = clone(MDEF); return; } if (k === 'theme' && !D.theme) D.theme = { ...DEF }; if (k === 'heroCfg' && !D.heroCfg) D.heroCfg = clone(HDEF); };
   const rid = () => Math.random().toString(36).slice(2, 8).padEnd(6, '0');
   const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' });
 
@@ -37,7 +49,7 @@ window.OWNSITE = (() => {
   const tgl = (p, l) => `<label class="sb-tg"><input type="checkbox" data-p="${p}" ${get(p) ? 'checked' : ''}><span>${l}</span></label>`;
   const imgf = (p, l) => { const u = get(p); return `<div class="sb-f">${l}<div class="sb-img"${u ? ` style="background-image:url('${esc(u)}')"` : ''}><button type="button" class="btn sm" data-sb="img" data-p="${p}">${u ? '🔄 Замінити' : '🖼 Завантажити'}</button>${u ? `<button type="button" class="btn sm" data-sb="imgDel" data-p="${p}">✕</button>` : ''}</div></div>`; };
   const card = (h, body, note) => `<div class="sb-card"><h4>${h}</h4>${note ? `<div class="sb-note">${note}</div>` : ''}${body}</div>`;
-  const preTheme = () => D.theme ? '' : `<div class="sb-note">Зараз сайт має стандартний вигляд. Будь-яка зміна тут створить власну тему.</div>`;
+  const preTheme = () => D[TK()] ? '' : `<div class="sb-note">Зараз сайт має стандартний вигляд. Будь-яка зміна тут створить власну тему.</div>`;
 
   // ---------- вкладки ----------
   const V = {
@@ -82,25 +94,47 @@ window.OWNSITE = (() => {
       + card('📋 Код стилю', `<div class="sb-row"><button type="button" class="btn sm" data-sb="code">📋 Скопіювати код</button><button type="button" class="btn sm" data-sb="codeIn">📥 Вставити код</button></div>`, 'Тема й головний екран одним рядком — щоб перенести дизайн в інший заклад.'),
     st: () => card('📊 За 30 днів', '<div id="sbSt"><div class="sb-note">…</div></div>', 'Перегляд рахується раз за візит гостя; натискання — раз на кнопку.'),
   };
+  const MTABS = [['tpl', '🧩 Шаблон'], ['col', '🎨 Кольори й фон'], ['font', '🔤 Шрифти'], ['card', '🗂 Картки страв'], ['ph', '🖼 Фото страв'], ['cats', '📑 Розділи'], ['btn', '➕ Кнопки й ціни'], ['top', '🏷 Шапка'], ['ver', '🕰 Версії й код']];
+  const MV = {
+    tpl: () => card('🧩 Готовий стиль меню', `<div class="sb-tpls">${Object.entries(MTPL).map(([k, [l, t]]) => { const x = { ...MDEF, ...t }; return `<button type="button" data-sb="tpl" data-k="${k}" style="background:${x.bg};color:${x.text};border-color:${x.accent};font-family:'${x.fh}',sans-serif"><i style="background:${x.accent}"></i>${l}</button>`; }).join('')}</div>`, 'Змінює все оформлення меню. Страви, ціни й фото не чіпає — вони редагуються в розділі «🍽 Меню».')
+      + card('🔗 Інше', `<div class="sb-row"><button type="button" class="btn sm" data-sb="mFromSite">🌐 Як на сайті-візитці</button><button type="button" class="btn sm" data-sb="std">↩️ Стандартний вигляд</button></div>`),
+    col: () => V.col(), font: () => V.font(),
+    card: () => preTheme() + card('🗂 Вигляд страв', chips('theme.lay', [['grid', '▦ Сітка'], ['list', '☰ Список з фото'], ['big', '▭ Великі фото'], ['text', '📜 Без фото']]) + (get('theme.lay') === 'grid' ? range('theme.cols', 'Карток у ряд на телефоні', 1, 3) : ''), 'Напої й додатки лишаються компактними, щоб меню не розтягувалось.')
+      + card('🔲 Картки', chips('theme.cards', [['line', 'З рамкою'], ['shadow', 'З тінню'], ['flat', 'Плоскі']]) + range('theme.r', 'Заокруглення', 0, 28, 'px'))
+      + card('📝 Що показувати', tgl('theme.desc', 'Опис страви') + tgl('theme.size', 'Вага / обʼєм') + tgl('theme.caps', 'НАЗВИ СТРАВ ВЕЛИКИМИ')),
+    ph: () => preTheme() + card('🖼 Фон під фото страв', chips('theme.phbg', [['tex', 'Текстура VARVAR'], ['card', 'Колір картки'], ['accent', 'Відтінок акценту'], ['color', 'Свій колір'], ['img', 'Фото / текстура'], ['none', 'Прозорий']])
+        + (get('theme.phbg') === 'color' ? `<div class="sb-cols">${color('theme.phC', 'Колір фону')}</div>` : '')
+        + (get('theme.phbg') === 'img' ? imgf('theme.phImg', 'Фон під фото') + `<div class="sb-lib">${BGLIB.map(n => `<button type="button" data-sb="libPh" data-u="img/site/${n}.webp" style="background-image:url('img/site/${n}.webp')"></button>`).join('')}</div>` : ''), 'Фото страв з прозорим фоном (PNG) лежать на цьому фоні.')
+      + card('📐 Форма фото', chips('theme.ratio', [['1', '◻ Квадрат'], ['4/3', '▭ 4:3'], ['16/9', '▬ 16:9'], ['3/4', '▯ 3:4']]) + chips('theme.fit', [['contain', 'Вписати цілком'], ['cover', 'Заповнити (обрізати)']])),
+    cats: () => preTheme() + card('📑 Вкладки розділів', chips('theme.cats', [['pill', 'Таблетки'], ['line', 'Підкреслення'], ['box', 'Квадратні']]) + tgl('theme.catsSticky', 'Прилипають угорі при прокрутці'))
+      + card('🔠 Заголовки розділів', chips('theme.ttl', [['l', '⬅ Ліворуч'], ['c', '⬌ По центру']]) + tgl('theme.ttlLine', 'Лінія біля заголовка') + range('theme.ttlSz', 'Розмір', 18, 44, 'px')),
+    btn: () => preTheme() + card('➕ Кнопка «додати»', chips('theme.add', [['round', 'Кнопка'], ['plus', 'Лише +'], ['wide', 'На всю ширину']]) + chips('theme.btn', [['fill', 'Заливка'], ['line', 'Контур'], ['pill', 'Таблетка']]))
+      + card('💰 Ціна', chips('theme.price', [['accent', 'Кольором акценту'], ['text', 'Кольором тексту']])),
+    top: () => preTheme() + card('🏷 Шапка', tgl('theme.logo', 'Логотип біля назви') + '<div class="sb-note">Логотип і назва — у розділі «🏪 Заклад».</div>')
+      + card('📣 Стрічка над меню', text('theme.note.t', 'Текст (порожньо — не показувати)', 'напр. Кухня працює до 22:00', 120) + `<div class="sb-cols">${color('theme.note.c', 'Колір')}</div>`),
+    ver: () => card('🕰 Попередні версії', '<div id="sbVer" class="sb-list"><div class="sb-note">…</div></div>', 'Зберігаються 5 останніх публікацій.')
+      + card('📋 Код стилю', `<div class="sb-row"><button type="button" class="btn sm" data-sb="code">📋 Скопіювати код</button><button type="button" class="btn sm" data-sb="codeIn">📥 Вставити код</button></div>`),
+  };
   const blocks = () => { const l = D.blocks?.length ? D.blocks : []; for (const id of Object.keys(STD)) if (!l.some(b => b.id === id)) l.push({ id, on: 1 }); D.blocks = l; return l; };
 
   // ---------- малювання ----------
   function draw() {
     const box = document.getElementById('sbP'); if (!box) return; const sy = box.scrollTop;
-    box.innerHTML = sub ? sub.html() : V[tab]();
+    box.innerHTML = sub ? sub.html() : (M === 'menu' ? MV : V)[tab]();
     box.scrollTop = sub ? 0 : sy;
     document.querySelectorAll('#sb .sb-tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
     document.getElementById('sbPub').classList.toggle('dirty', dirty);
-    if (!sub && tab === 'soc') qr(); if (!sub && tab === 'ver') ver(); if (!sub && tab === 'st') stats();
+    if (!sub && tab === 'soc' && M === 'site') qr(); if (!sub && tab === 'ver') ver(); if (!sub && tab === 'st') stats();
   }
-  function push() { clearTimeout(tmr); tmr = setTimeout(() => { try { frame?.contentWindow?.postMessage({ vvSite: D }, location.origin); } catch {} }, 90); }
+  function push() { clearTimeout(tmr); tmr = setTimeout(() => { try { frame?.contentWindow?.postMessage(M === 'menu' ? { vvMenu: D.menuTheme || null, brand: { logo: C.site.logo, name: C.site.name } } : { vvSite: D }, location.origin); } catch {} }, 90); }
   const touch = () => { dirty = true; document.getElementById('sbPub')?.classList.add('dirty'); push(); };
 
-  function open(ctx) {
-    C = ctx; O = {}; for (const k of KEYS) O[k] = clone(ctx.site[k]); D = clone(O); dirty = false; tab = 'tpl'; sub = null; pv = false;
-    const url = ctx.url + (ctx.url.includes('?') ? '&' : '?') + 'preview=1';
-    document.body.insertAdjacentHTML('beforeend', `<div id="sb"><div class="sb-top"><button type="button" class="btn sm" data-sb="close">✕</button><b>🎨 Конструктор сайту</b><span class="sb-sp"></span><button type="button" class="btn sm sb-pvb" data-sb="pv">👁 Перегляд</button><button type="button" class="btn sm" data-sb="undo" title="Скасувати зміни">↩️<span class="sb-lbl"> Скасувати</span></button><button type="button" class="btn sm primary" id="sbPub" data-sb="pub">💾<span class="sb-lbl"> Опублікувати</span></button></div>
-      <div class="sb-body"><div class="sb-side"><div class="sb-tabs">${TABS.map(([k, l]) => `<button type="button" data-sb="tab" data-t="${k}">${l}</button>`).join('')}</div><div class="sb-p" id="sbP"></div></div>
+  const keys = () => (M === 'menu' ? ['menuTheme'] : KEYS);
+  function open(ctx, mode = 'site') {
+    M = mode; C = ctx; O = {}; for (const k of keys()) O[k] = clone(ctx.site[k]); D = clone(O); dirty = false; tab = 'tpl'; sub = null; pv = false;
+    const url = (M === 'menu' ? ctx.url.replace('about.html', 'index.html') : ctx.url) + (ctx.url.includes('?') ? '&' : '?') + 'preview=1';
+    document.body.insertAdjacentHTML('beforeend', `<div id="sb"><div class="sb-top"><button type="button" class="btn sm" data-sb="close">✕</button><b>${M === 'menu' ? '🍽 Конструктор меню' : '🎨 Конструктор сайту'}</b><span class="sb-sp"></span><button type="button" class="btn sm sb-pvb" data-sb="pv">👁 Перегляд</button><button type="button" class="btn sm" data-sb="undo" title="Скасувати зміни">↩️<span class="sb-lbl"> Скасувати</span></button><button type="button" class="btn sm primary" id="sbPub" data-sb="pub">💾<span class="sb-lbl"> Опублікувати</span></button></div>
+      <div class="sb-body"><div class="sb-side"><div class="sb-tabs">${(M === 'menu' ? MTABS : TABS).map(([k, l]) => `<button type="button" data-sb="tab" data-t="${k}">${l}</button>`).join('')}</div><div class="sb-p" id="sbP"></div></div>
       <div class="sb-view"><div class="sb-dev"><button type="button" data-sb="dev" data-w="390" class="on">📱</button><button type="button" data-sb="dev" data-w="0">💻</button></div><div class="sb-fw"><iframe id="sbF" src="${esc(url)}" title="Перегляд"></iframe></div></div></div></div>`);
     frame = document.getElementById('sbF'); document.body.style.overflow = 'hidden';
     draw();
@@ -136,7 +170,7 @@ window.OWNSITE = (() => {
 
   async function ver() {
     const box = document.getElementById('sbVer'); if (!box) return;
-    try { const l = (await C.vapi('siteVer')).list; C._ver = l; box.innerHTML = l.length ? l.map((x, i) => `<div class="sb-li"><span>${new Date(x.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}${x.d.theme ? ` <i class="sb-dot" style="background:${x.d.theme.accent}"></i>` : ' · стандартний'}</span><span><button type="button" class="btn sm" data-sb="verBack" data-i="${i}">↩️ Повернути</button></span></div>`).join('') : '<div class="sb-note">Ще не публікували</div>'; } catch (e) { box.textContent = '⚠️ ' + e.message; }
+    try { const l = (await C.vapi(M === 'menu' ? 'siteMenuVer' : 'siteVer')).list; C._ver = l; box.innerHTML = l.length ? l.map((x, i) => `<div class="sb-li"><span>${new Date(x.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}${(x.d.theme || x.d.menuTheme) ? ` <i class="sb-dot" style="background:${(x.d.theme || x.d.menuTheme).accent}"></i>` : ' · стандартний'}</span><span><button type="button" class="btn sm" data-sb="verBack" data-i="${i}">↩️ Повернути</button></span></div>`).join('') : '<div class="sb-note">Ще не публікували</div>'; } catch (e) { box.textContent = '⚠️ ' + e.message; }
   }
   async function stats() {
     const box = document.getElementById('sbSt'); if (!box) return;
@@ -181,18 +215,21 @@ window.OWNSITE = (() => {
     if (a === 'undo') { if (dirty && !confirm('Скасувати всі зміни в чернетці?')) return; D = clone(O); dirty = false; sub = null; push(); return draw(); }
     if (a === 'pub') {
       el.disabled = true; el.textContent = '⏳';
-      try { const r = await C.vapi('siteSet', { k: 'siteDesign', v: D }); C.site = r.site; O = {}; for (const k of KEYS) O[k] = clone(r.site[k]); D = clone(O); dirty = false; C.toast('✅ Опубліковано — сайт оновиться за хвилину'); push(); C.onSave?.(r.site); }
+      try { const r = await C.vapi('siteSet', { k: M === 'menu' ? 'menuDesign' : 'siteDesign', v: D }); C.site = r.site; O = {}; for (const k of keys()) O[k] = clone(r.site[k]); D = clone(O); dirty = false; C.toast(M === 'menu' ? '✅ Опубліковано — меню оновиться за хвилину' : '✅ Опубліковано — сайт оновиться за хвилину'); push(); C.onSave?.(r.site); }
       catch (x) { C.toast('⚠️ ' + x.message); }
       el.disabled = false; el.innerHTML = '💾<span class="sb-lbl"> Опублікувати</span>'; return draw();
     }
     if (a === 'subBack') { sub = null; return draw(); }
     if (a === 'pick') { const top = d.p.split('.')[0]; need(top); set(d.p, d.v); touch(); return draw(); }
+    if (a === 'tpl' && M === 'menu') { D.menuTheme = { ...clone(MDEF), ...clone(MTPL[d.k][1]) }; touch(); C.toast('🧩 ' + MTPL[d.k][0]); return draw(); }
+    if (a === 'mFromSite') { if (!C.site.theme) return C.toast('На сайті стандартний вигляд — спершу оформіть сайт'); D.menuTheme = { ...clone(MDEF), ...clone(C.site.theme), r: Math.max(6, C.site.theme.r - 4) }; touch(); return draw(); }
+    if (a === 'libPh') { need('theme'); D.menuTheme.phImg = d.u; touch(); return draw(); }
     if (a === 'tpl') { const [, t, h] = TPL[d.k]; D.theme = { ...t, menu: D.theme?.menu || 0 }; D.heroCfg = { ...(D.heroCfg || clone(HDEF)), ...h }; touch(); C.toast('🧩 ' + TPL[d.k][0]); return draw(); }
     if (a === 'zero') { if (!confirm('Почати з нуля? Усі блоки, крім «Контакти», буде приховано (тексти не видаляються).')) return; D.heroCfg = { ...clone(HDEF), lay: 'plain', btns: ['call'], badge: 1, addr: 1 }; D.blocks = Object.keys(STD).map(id => ({ id, on: id === 'contacts' ? 1 : 0 })); D.dock = { on: 0, btns: [] }; D.ann = { on: 0 }; touch(); tab = 'blk'; return draw(); }
-    if (a === 'std') { D.theme = null; D.heroCfg = null; touch(); return draw(); }
-    if (a === 'pal') { need('theme'); const [bg, cd, tx, ac, ink] = PAL[+d.i]; Object.assign(D.theme, { bg, card: cd, text: tx, accent: ac, ink, mode: ['#f', '#e'].some(x => bg.startsWith(x)) ? 'light' : 'dark' }); touch(); return draw(); }
-    if (a === 'logoPal') { const src = C.site.logo || C.site.hero; if (!src) return C.toast('Спершу додайте логотип або головне фото в «🌐 Сайт»'); try { const c = await palette(src); need('theme'); const dark = D.theme.mode !== 'light'; Object.assign(D.theme, { accent: h2(c), ink: c.lum > 150 ? '#141414' : '#ffffff', ...(dark ? { bg: shade(c, .08), card: shade(c, .14) } : { bg: '#' + [c.r, c.g, c.b].map(v => Math.round(245 + (v - 245) * .06).toString(16).padStart(2, '0')).join(''), card: '#ffffff' }) }); touch(); C.toast('🪄 Кольори підібрано'); return draw(); } catch { return C.toast('⚠️ Не вдалося прочитати картинку'); } }
-    if (a === 'lib') { need('theme'); D.theme.bgImg = d.u; touch(); return draw(); }
+    if (a === 'std') { if (M === 'menu') D.menuTheme = null; else { D.theme = null; D.heroCfg = null; } touch(); return draw(); }
+    if (a === 'pal') { need('theme'); const [bg, cd, tx, ac, ink] = PAL[+d.i]; Object.assign(D[TK()], { bg, card: cd, text: tx, accent: ac, ink, mode: ['#f', '#e'].some(x => bg.startsWith(x)) ? 'light' : 'dark' }); touch(); return draw(); }
+    if (a === 'logoPal') { const src = C.site.logo || C.site.hero; if (!src) return C.toast('Спершу додайте логотип або головне фото в «🌐 Сайт»'); try { const c = await palette(src); need('theme'); const dark = D[TK()].mode !== 'light'; Object.assign(D[TK()], { accent: h2(c), ink: c.lum > 150 ? '#141414' : '#ffffff', ...(dark ? { bg: shade(c, .08), card: shade(c, .14) } : { bg: '#' + [c.r, c.g, c.b].map(v => Math.round(245 + (v - 245) * .06).toString(16).padStart(2, '0')).join(''), card: '#ffffff' }) }); touch(); C.toast('🪄 Кольори підібрано'); return draw(); } catch { return C.toast('⚠️ Не вдалося прочитати картинку'); } }
+    if (a === 'lib') { need('theme'); D[TK()].bgImg = d.u; touch(); return draw(); }
     if (a === 'img') { const u = await upload(); if (!u) return; const top = d.p.split('.')[0]; need(top); set(d.p, u); touch(); return draw(); }
     if (a === 'imgDel') { set(d.p, ''); touch(); return draw(); }
     if (a === 'mv' || a === 'rm' || a === 'add' || a === 'push') {
@@ -214,9 +251,9 @@ window.OWNSITE = (() => {
     if (a === 'hrsOn') { D.hours = Array.from({ length: 7 }, () => ({ f: C.site.from, t: C.site.to, off: 0 })); touch(); return draw(); }
     if (a === 'hrsOff') { D.hours = null; touch(); return draw(); }
     if (a === 'qrDl') { const c = document.querySelector('#sbQr canvas'), im = document.querySelector('#sbQr img'); const src = c ? c.toDataURL('image/png') : im?.src; if (!src) return; const l = document.createElement('a'); l.href = src; l.download = 'qr-site.png'; l.click(); return; }
-    if (a === 'verBack') { const x = C._ver?.[+d.i]; if (!x) return; for (const k of KEYS) if (k in x.d) D[k] = clone(x.d[k]); else if (['theme', 'heroCfg'].includes(k)) D[k] = null; touch(); C.toast('↩️ Версію в чернетці — перегляньте й опублікуйте'); return draw(); }
-    if (a === 'code') { const s = 'VARVAR-SITE ' + JSON.stringify({ theme: D.theme, heroCfg: D.heroCfg }); try { await navigator.clipboard.writeText(s); C.toast('📋 Код скопійовано'); } catch { prompt('Скопіюйте код:', s); } return; }
-    if (a === 'codeIn') { const s = prompt('Вставте код стилю (VARVAR-SITE {…})'); if (!s) return; try { const j = JSON.parse(s.replace(/^\s*VARVAR-SITE\s*/, '')); if (j.theme !== undefined) D.theme = j.theme; if (j.heroCfg !== undefined) D.heroCfg = j.heroCfg; touch(); C.toast('📥 Стиль у чернетці'); return draw(); } catch { return C.toast('⚠️ Невірний код'); } }
+    if (a === 'verBack') { const x = C._ver?.[+d.i]; if (!x) return; for (const k of keys()) if (k in x.d) D[k] = clone(x.d[k]); else if (['theme', 'heroCfg', 'menuTheme'].includes(k)) D[k] = null; touch(); C.toast('↩️ Версію в чернетці — перегляньте й опублікуйте'); return draw(); }
+    if (a === 'code') { const s = M === 'menu' ? 'VARVAR-MENU ' + JSON.stringify({ menuTheme: D.menuTheme }) : 'VARVAR-SITE ' + JSON.stringify({ theme: D.theme, heroCfg: D.heroCfg }); try { await navigator.clipboard.writeText(s); C.toast('📋 Код скопійовано'); } catch { prompt('Скопіюйте код:', s); } return; }
+    if (a === 'codeIn') { const s = prompt('Вставте код стилю (VARVAR-SITE {…})'); if (!s) return; try { const j = JSON.parse(s.replace(/^\s*VARVAR-(SITE|MENU)\s*/, '')); if (M === 'menu') { if (j.menuTheme !== undefined) D.menuTheme = j.menuTheme; else if (j.theme) D.menuTheme = { ...clone(MDEF), ...j.theme }; } else if (j.theme !== undefined) D.theme = j.theme; if (j.heroCfg !== undefined) D.heroCfg = j.heroCfg; touch(); C.toast('📥 Стиль у чернетці'); return draw(); } catch { return C.toast('⚠️ Невірний код'); } }
     if (a === 'aiTr') {
       const F = []; const add = (o, k) => { if (o?.[k]?.uk && !o[k].en) F.push([o[k], o[k].uk]); };
       for (const b of blocks()) { add(b, 't'); add(b, 'txt'); (b.items || []).forEach(x => add(x, 'l')); (b.links || []).forEach(x => add(x, 'l')); }

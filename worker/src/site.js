@@ -4,7 +4,7 @@ import { getMenu, priceMap } from './menu.js';
 import { tg, esc, hhmm, dayKey, L, logEvent, editEv, notify, addWaiterOrder, getBill, putBill, money, TZ, addMove, discAmt } from './ops.js';
 import { normPhone, fmtPhone, getCli, cliTouch } from './delivery.js';
 import { siteLink, venueId, MAIN } from './venue.js';
-import { cleanDesign, cleanExtra, cleanBlocks, dayHours, safeUrl } from './sitedesign.js';
+import { cleanDesign, cleanExtra, cleanBlocks, dayHours, safeUrl, cleanMenuTheme } from './sitedesign.js';
 
 // бот для гостей (окремий від бота персоналу): вхід у кабінет, нагадування, відгуки
 const gtg = (env, m, b) => tg({ ...env, BOT_TOKEN: env.GUEST_BOT_TOKEN || env.BOT_TOKEN }, m, b);
@@ -46,6 +46,10 @@ export async function setSite(env, k, v) {
       const prev = {}; for (const x of keys) if (s[x] !== undefined) prev[x] = s[x];
       if (Object.keys(prev).length) { const h = (await env.DB.get('site_ver', 'json')) || []; h.unshift({ at: Date.now(), d: prev }); await env.DB.put('site_ver', JSON.stringify(h.slice(0, 5))); }
       for (const x of keys) { if (d[x] === undefined) continue; if (d[x] === null) delete s[x]; else s[x] = d[x]; }
+    }
+    else if (k === 'menuDesign') { /* 🍽 дизайн меню; попередні 5 — для «↩️ Повернути» */
+      if (s.menuTheme !== undefined) { const h = (await env.DB.get('menu_ver', 'json')) || []; h.unshift({ at: Date.now(), d: { menuTheme: s.menuTheme } }); await env.DB.put('menu_ver', JSON.stringify(h.slice(0, 5))); }
+      const m = cleanMenuTheme(v?.menuTheme); if (m) s.menuTheme = m; else delete s.menuTheme;
     }
     else if (['dock', 'ann', 'hours', 'seo', 'soc', 'season', 'addrs', 'events', 'langs', 'chat'].includes(k)) { const d = cleanExtra({ [k]: v }); if (d[k] == null) delete s[k]; else s[k] = d[k]; }
     else return { error: 'Невідоме поле' };

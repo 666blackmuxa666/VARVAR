@@ -69,3 +69,14 @@ export function cleanDesign(v, std) {
 }
 // 🕐 години на сьогодні (з розкладу по днях або загальні from/to); день — 0=пн
 export function dayHours(s, wd) { const h = s.hours?.[wd]; if (h && (h.off || (h.f && h.t))) return h.off ? null : { from: h.f, to: h.t }; return { from: s.from, to: s.to }; }
+// 🍽 Дизайн онлайн-меню (index.html): тема + вигляд карток, фон під фото, вкладки розділів, кнопки
+export function cleanMenuTheme(t) {
+  if (!t || typeof t !== 'object') return null;
+  const b = cleanTheme(t);
+  return { ...b, caps: bit(t.caps ?? 1),
+    lay: one(t.lay, ['grid', 'list', 'big', 'text'], 'grid'), cols: num(t.cols, 1, 3, 2), ratio: one(t.ratio, ['1', '4/3', '16/9', '3/4'], '1'), fit: one(t.fit, ['contain', 'cover'], 'contain'),
+    phbg: one(t.phbg, ['tex', 'card', 'accent', 'color', 'img', 'none'], 'tex'), phC: col(t.phC, '#222222'), phImg: safeImg(t.phImg),
+    cats: one(t.cats, ['pill', 'line', 'box'], 'pill'), catsSticky: bit(t.catsSticky ?? 1), ttl: one(t.ttl, ['l', 'c'], 'l'), ttlLine: bit(t.ttlLine), ttlSz: num(t.ttlSz, 18, 44, 30),
+    desc: bit(t.desc ?? 1), size: bit(t.size ?? 1), add: one(t.add, ['round', 'plus', 'wide'], 'round'), price: one(t.price, ['accent', 'text'], 'accent'),
+    logo: bit(t.logo), note: { t: str(t.note?.t, 120), c: col(t.note?.c, '#f2c14e') } };
+}

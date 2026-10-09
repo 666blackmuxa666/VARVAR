@@ -113,6 +113,14 @@ async function apiTests() {
     must((await posOk(A, 'siteVer')).list.length >= 1, 'немає версій');
     await posOk(A, 'siteSet', { k: 'siteDesign', v: back }); return 'ок';
   });
+  await step('🍽 конструктор меню: дизайн у /api/menu, погане відкидається', async () => {
+    const back = (await posOk(A, 'siteGet')).site.menuTheme ?? null;
+    const x = (await posOk(A, 'siteSet', { k: 'menuDesign', v: { menuTheme: { mode: 'light', lay: 'list', cols: 9, phbg: 'img', phImg: 'javascript:1', accent: '#00ff00', fh: 'Bad' } } })).site.menuTheme;
+    must(x.lay === 'list' && x.cols === 3 && x.phImg === '' && x.fh === 'Rubik Dirt' && x.accent === '#00ff00', JSON.stringify(x));
+    must((await pos(W, 'siteSet', { k: 'menuDesign', v: { menuTheme: {} } })).status === 403, 'офіціант зміг');
+    await posOk(A, 'siteSet', { k: 'menuDesign', v: { menuTheme: back } });
+    must((await posOk(A, 'siteMenuVer')).list.length >= 1, 'немає версій'); return 'ок';
+  });
   await step('📜 склад: ручне додавання → ↩️ скасувати → залишок як був', async () => {
     const d = await posOk(A, 'skData'), x = (d.ing || []).find(i => !i.off); if (!x) return 'немає продуктів';
     const st0 = (y => (y.st?.k || 0) + (y.st?.b || 0))(x); await posOk(A, 'skAdj', { id: x.id, wh: 'k', q: 2, note: 'QA' });
