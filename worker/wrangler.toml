@@ -2,9 +2,15 @@ name = "varvar-menu"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
 compatibility_flags = ["nodejs_als"] # 🏪 контекст закладу в запиті (venue.js)
+workers_dev = true # стара адреса varvar-menu.varvar.workers.dev лишається (боти, принтер, каси)
+# 🌐 ATOM: власний домен — сайт закладів posatom.online/<заклад>/
+routes = [
+  { pattern = "posatom.online", custom_domain = true },
+  { pattern = "www.posatom.online", custom_domain = true },
+]
 
 [vars]
-ALLOWED_ORIGIN = "https://666blackmuxa666.github.io,http://localhost:8000"
+ALLOWED_ORIGIN = "https://666blackmuxa666.github.io,https://posatom.online,http://localhost:8000"
 TABLES = "15"
 SELF_URL = "https://varvar-menu.varvar.workers.dev"
 SITE_URL = "https://666blackmuxa666.github.io/VARVAR/"

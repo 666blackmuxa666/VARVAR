@@ -1,7 +1,7 @@
   // 🏪 заклад: ?v=<заклад> (з кабінету власника) запам'ятовується на цьому пристрої; без нього — VARVAR
   // параметр саме ?venue= (?v= у старих посиланнях — це номер версії для оновлення!); назва закладу обов'язково з літерою
   const okV = x => /^(?=.*[a-z])[a-z0-9][a-z0-9-]{1,30}$/.test(x || '') && x !== 'varvar';
-  const VENUE = (() => { const q = new URLSearchParams(location.search).get('venue'); try { if (q != null) { if (okV(q)) localStorage.setItem('pos_venue2', q); else localStorage.removeItem('pos_venue2'); } localStorage.removeItem('pos_venue'); const s = localStorage.getItem('pos_venue2') || ''; if (s && !okV(s)) { localStorage.removeItem('pos_venue2'); return ''; } return s; } catch { return okV(q) ? q : ''; } })();
+  const VENUE = (() => { const seg = /(^|\.)posatom\.online$/.test(location.hostname) ? location.pathname.split('/')[1] : null; if (seg != null) return okV(seg) ? seg : ''; /* 🌐 posatom.online/<заклад>/pos.html */ const q = new URLSearchParams(location.search).get('venue'); try { if (q != null) { if (okV(q)) localStorage.setItem('pos_venue2', q); else localStorage.removeItem('pos_venue2'); } localStorage.removeItem('pos_venue'); const s = localStorage.getItem('pos_venue2') || ''; if (s && !okV(s)) { localStorage.removeItem('pos_venue2'); return ''; } return s; } catch { return okV(q) ? q : ''; } })();
   const API = (new URLSearchParams(location.search).get('api') || (/workers\.dev$/.test(location.hostname) ? location.origin : 'https://varvar-menu.varvar.workers.dev')) + (VENUE ? '/v/' + VENUE : '');
   const $ = s => document.querySelector(s);
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));

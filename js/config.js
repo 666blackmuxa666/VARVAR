@@ -7,10 +7,11 @@ window.VARVAR = {
 };
 // 🏪 мультизаклад: ?v=<заклад> — свій сервер (/v/<заклад>), своє сховище в браузері й посилання між сторінками зберігають заклад
 (() => {
-  const C = window.VARVAR, v = new URLSearchParams(location.search).get('venue') || ''; // ?venue= (не ?v= — це версія)
+  const C = window.VARVAR, ATOM = /(^|\.)posatom\.online$/.test(location.hostname), seg = ATOM ? location.pathname.split('/')[1] || '' : '';
+  const v = ATOM ? (seg === 'varvar' || seg === 'owner' ? '' : seg) : new URLSearchParams(location.search).get('venue') || ''; // ?venue= (не ?v= — це версія); на posatom.online — зі шляху /<заклад>/
   C.venue = /^(?=.*[a-z])[a-z0-9][a-z0-9-]{1,30}$/.test(v) && v !== 'varvar' ? v : '';
   C.pre = C.venue ? 'vv_' + C.venue + '_' : 'vv_';
   if (C.venue) C.api += '/v/' + C.venue;
-  C.link = u => { if (!C.venue) return u; const [p, h] = u.split('#'); return p + (p.includes('?') ? '&' : '?') + 'venue=' + C.venue + (h != null ? '#' + h : ''); };
-  if (C.venue) document.addEventListener('click', e => { const a = e.target.closest?.('a[href]'); if (!a) return; const h = a.getAttribute('href'); if (/^(index|about)\.html/.test(h) && !/[?&]venue=/.test(h)) a.setAttribute('href', C.link(h)); }, true);
+  C.link = u => { if (!C.venue || ATOM) return u; /* на posatom.online заклад уже в шляху */ const [p, h] = u.split('#'); return p + (p.includes('?') ? '&' : '?') + 'venue=' + C.venue + (h != null ? '#' + h : ''); };
+  if (C.venue && !ATOM) document.addEventListener('click', e => { const a = e.target.closest?.('a[href]'); if (!a) return; const h = a.getAttribute('href'); if (/^(index|about)\.html/.test(h) && !/[?&]venue=/.test(h)) a.setAttribute('href', C.link(h)); }, true);
 })();

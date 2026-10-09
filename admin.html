@@ -11,7 +11,7 @@
 <button class="btn ghost" data-a="clear">Очистити всі</button>
 <pre id="out"></pre>
 </main>
-<script src="js/config.js?v=9"></script>
+<script src="js/config.js?v=12"></script>
 <script>
 document.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
   if (b.dataset.a === 'clear' && !confirm('Видалити всі мережі?')) return;

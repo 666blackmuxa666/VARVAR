@@ -21,6 +21,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   var _a;
   const okV = (x) => /^(?=.*[a-z])[a-z0-9][a-z0-9-]{1,30}$/.test(x || "") && x !== "varvar";
   const VENUE = (() => {
+    const seg = /(^|\.)posatom\.online$/.test(location.hostname) ? location.pathname.split("/")[1] : null;
+    if (seg != null) return okV(seg) ? seg : "";
     const q = new URLSearchParams(location.search).get("venue");
     try {
       if (q != null) {

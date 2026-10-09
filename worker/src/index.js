@@ -45,6 +45,7 @@ async function cached(req, path, run) {
 }
 export default {
   async fetch(req0, env) {
+    { const h = new URL(req0.url).hostname; if (h === 'posatom.online' || h === 'www.posatom.online') return atomSite(req0); } // 🌐 ATOM: сайт закладів на власному домені
     // 🏪 заклад: /v/<id>/… → запит без префікса + заголовок x-venue; без префікса — VARVAR
     const { venue, path: p } = splitVenue(new URL(req0.url)), req = venue === MAIN ? new Request(req0) : stripVenue(req0, venue, p);
     if (venue === MAIN) { req.headers.delete('x-venue'); req.headers.delete('x-venue-init'); } // заклад визначає лише адреса, не заголовок від клієнта
@@ -322,6 +323,21 @@ async function admin(b, ip, env) {
   return [{ ok: true, current: ipKey(ip), list }, 200];
 }
 
+// 🌐 posatom.online/<заклад>/… → файли сайту (GitHub Pages) без змін; заклад береться зі шляху (js/config.js).
+// /<заклад>/ — візитка; /<заклад>/?t=…&k=… (QR столу) — меню; /owner/ — кабінет власника; / — поки VARVAR
+async function atomSite(req) {
+  const url = new URL(req.url);
+  if (url.hostname === 'www.posatom.online') return Response.redirect('https://posatom.online' + url.pathname + url.search, 301);
+  if (url.pathname === '/' ) return Response.redirect('https://posatom.online/varvar/' + url.search, 302);
+  const m = url.pathname.match(/^\/([a-z0-9][a-z0-9-]{1,30})(\/.*)?$/); if (!m) return new Response('Not found', { status: 404 });
+  if (!m[2]) return Response.redirect(`https://posatom.online/${m[1]}/${url.search}`, 301);
+  let rest = m[2];
+  if (rest === '/') rest = m[1] === 'owner' ? '/owner.html' : url.search ? '/index.html' : '/about.html';
+  if (/\.\.|varvar-print\.config/.test(rest)) return new Response('Not found', { status: 404 });
+  const r = await fetch('https://666blackmuxa666.github.io/VARVAR' + rest, { cf: { cacheTtl: 60, cacheEverything: true } });
+  const ct = r.headers.get('content-type') || 'application/octet-stream';
+  return new Response(r.body, { status: r.status, headers: { 'content-type': ct, 'cache-control': /html/.test(ct) ? 'no-cache' : 'public, max-age=300' } });
+}
 async function proxySite(url) {
   const r = await fetch('https://666blackmuxa666.github.io/VARVAR' + url.pathname + url.search, { cf: { cacheTtl: 30 } });
   return new Response(r.body, { status: r.status, headers: { 'content-type': r.headers.get('content-type') || 'application/octet-stream', 'cache-control': 'no-cache' } });
