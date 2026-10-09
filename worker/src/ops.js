@@ -347,7 +347,7 @@ async function _moveTable(env, a, b, who) {
     B.orders = (B.orders || 0) + (A.orders || 0);
     B.opened = Math.min(B.opened || Date.now(), A.opened || Date.now());
     B.log = [...(B.log || []), ...(A.log || []).map(o => ({ ...o, kind: `${o.kind} (зі столу ${tn(a)})` }))].slice(-60);
-    B.check = B.check || A.check; B.waiter = B.waiter || A.waiter;
+    B.check = B.check || A.check; B.waiter = B.waiter || A.waiter; if (!B.cli && A.cli) B.cli = A.cli; /* 🎁 гість першого стола — щоб кешбек і візит не загубились */
     // знижка: кожен стіл зберігає свою — у гривнях (раніше знижка A діяла на весь рахунок B або губилась)
     const dA = discAmt(A), dB = discAmt(B), sameP = A.discSum == null && B.discSum == null && (A.disc || 0) === (B.disc || 0);
     B.total += A.total;

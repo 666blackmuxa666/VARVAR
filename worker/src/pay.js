@@ -51,10 +51,10 @@ export async function attConfirm(env, day, name, how, by) {
   if (!isDay(day)) return null; const m = mon(day), cfg = await getCfg(env);
   const x = await L(env, 'att:' + m, async () => {
     const a = await getAtt(env, m), x = a[day]?.[name]; if (!x) return null;
-    x.ok = how === 'n' ? -1 : 1; x.by = by || ''; await env.DB.put('att:' + m, JSON.stringify(a)); return x;
+    const fine = how === 'f' && !x.fined; if (fine) x.fined = 1; x.ok = how === 'n' ? -1 : 1; x.by = by || ''; await env.DB.put('att:' + m, JSON.stringify(a)); return { ...x, fine }; /* штраф — лише один раз */
   });
   if (!x) return null;
-  if (how === 'f' && cfg.lateFine) await payOp(env, { n: name, t: 'fine', sum: cfg.lateFine, note: `запізнення ${x.late || ''} хв (${day.slice(8)}.${day.slice(5, 7)})` }, by);
+  if (x.fine && cfg.lateFine) await payOp(env, { n: name, t: 'fine', sum: cfg.lateFine, day, note: `запізнення ${x.late || ''} хв (${day.slice(8)}.${day.slice(5, 7)})` }, by);
   await editEv(env, l => { for (const e of l) if (e.k === 'att' && e.n === name && e.day === day) { e.s = how === 'n' ? 'rej' : 'acc'; e.accBy = by; } }).catch(() => {});
   return x;
 }
@@ -100,9 +100,9 @@ export async function planCopyWeek(env, from, to) {
 }
 
 // ---------- 💸 операції: премія / штраф / аванс / виплата ----------
-export async function payOp(env, { n, t, sum, src, note }, by) {
+export async function payOp(env, { n, t, sum, src, note, day }, by) {
   sum = r0(sum); if (!OPS[t] || !(sum > 0) || !n) return { error: 'Потрібні людина, тип і сума' };
-  const d = dayKey(), m = mon(d), money_ = t === 'adv' || t === 'paid';
+  const d = dayKey(), money_ = t === 'adv' || t === 'paid', m = !money_ && isDay(day) ? mon(day) : mon(d); /* штраф / премія — у місяць самої зміни */
   src = src === 'card' ? 'card' : 'cash';
   // рух грошей і операція ЗП — під одним замком на обидва ключі; спершу читаємо обидва списки, потім пишемо підряд
   const op = await L(env, ['mov:' + d, 'pay:' + m], async () => {

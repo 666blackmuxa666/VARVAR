@@ -125,7 +125,8 @@ export async function bookPre(b, env) {
   for (const it of (Array.isArray(b.items) ? b.items : []).slice(0, 40)) { const p = P[it.id], q = Math.min(30, Math.max(0, parseInt(it.q, 10) || 0)); if (!p || !q) continue;
     const price = typeof p.p === 'number' ? p.p : Object.hasOwn(p.p, String(it.v)) ? p.p[it.v] : 0; if (!(price > 0)) continue; lines.push(`${q}× ${p.n}${typeof p.p === 'number' ? '' : ` ${it.v} ${p.s || 'л'}`} — ${price * q}`); }
   const ph = normPhone(b.phone);
-  const x = await bkEdit(env, id, y => { if (y.phone !== ph || ['no', 'came', 'noshow', 'cancel'].includes(y.st)) return false; y.pre = lines; y.preIds = b.items.slice(0, 40); });
+  let sent = false; const x = await bkEdit(env, id, y => { if (y.phone !== ph || ['no', 'came', 'noshow', 'cancel'].includes(y.st)) return false; if (y.preSent) { sent = true; return false; } y.pre = lines; y.preIds = b.items.slice(0, 40); });
+  if (sent) return [{ error: 'sent' }, 409]; /* уже на кухні — змінити можна лише через заклад */
   if (!x) return [{ error: 'bad' }, 400];
   await notify(env, `🍽 Передзамовлення до броні ${x.date.slice(8)}.${x.date.slice(5, 7)} о ${x.time} · ${esc(x.name)}:\n${lines.map(esc).join('\n')}`, { inline_keyboard: bkButtons(x) });
   return [{ ok: true, n: lines.length }, 200];

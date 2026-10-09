@@ -503,7 +503,7 @@ export async function handleUpdate(u, env) {
       const eid = crypto.randomUUID().replace(/-/g, '').slice(0, 10);
       await env.DB.put('expd:' + eid, JSON.stringify({ sum, note: note.trim().slice(0, 100) }), { expirationTtl: 3600 });
       return send({ text: `💸 Витрата <b>${money(sum)}</b>${note.trim() ? ` — ${esc(note.trim())}` : ''}\nЗвідки гроші?`,
-        markup: { inline_keyboard: [[{ text: '💵 З каси (готівка)', callback_data: `exs:${eid}:cash` }, { text: '💳 З карти', callback_data: `exs:${eid}:card` }], [{ text: 'Скасувати', callback_data: 'no' }]] } });
+        markup: { inline_keyboard: [[{ text: '💵 З каси (готівка)', callback_data: `exs:${eid}:cash` }, { text: '💳 З карти', callback_data: `exs:${eid}:card` }], [{ text: '📅 Це було вчора', callback_data: `exy:${eid}:1` }, { text: '📅 Позавчора', callback_data: `exy:${eid}:2` }], [{ text: 'Скасувати', callback_data: 'no' }]] } });
     }
     if (state.startsWith('stfp:') && admin) { const r = await editStaff(env, state.slice(5), { pin: text }); await send(staffEdited(r)); return send(await staffOne(env, state.slice(5))); }
     if (state === 'stfadd' && admin) {
@@ -575,6 +575,10 @@ export async function handleUpdate(u, env) {
   const admOnly = ADM.includes(text) || /^(\/revenue|\/wifi|\/menu|виручка|каса|звіти|витрата|видалити стіл)/.test(low);
   if (admOnly && !admin) return send({ text: `🔐 Це доступно лише адміністратору. Натисніть «${W.admin}».` });
   if (text === A.cash || low === 'каса') return send(await cashView(env));
+  if (admin && (low === 'постачальники' || low === 'борги' || low === '/sup')) { /* 🏭 борги постачальникам — як у касі (Склад → Постачальники) */
+    const r = await (await import('./suppliers.js')).supList(env), l = r.list.filter(x => x.debt > 0), tot = l.reduce((a, x) => a + x.debt, 0);
+    return send({ text: l.length ? `🏭 <b>Борги постачальникам: ${money(tot)}</b>\n${l.map(x => `• ${esc(x.n)} — <b>${money(x.debt)}</b>${x.over ? ` · ⏰ прострочено ${money(x.over)}` : ''}${x.phone ? ` · ${esc(x.phone)}` : ''}`).join('\n')}\n\nОплатити й переглянути накладні — у касі: Склад → 🏭 Постачальники.` : '✅ Боргів постачальникам немає.' });
+  }
   if (text === A.expense || low === 'витрата') { await env.DB.put('st:' + uid, 'exp', { expirationTtl: 600 }); return send({ text: '💸 Напишіть суму і на що, наприклад:\n<code>450 овочі на ринку</code>' }); }
   if (text === A.reports || low === '/revenue' || low === 'виручка' || low === 'звіти') return send(await reportsView(env));
   if (text === A.closed || text === A.delClosed) return send(await closedView(env));
@@ -857,12 +861,19 @@ async function handleCallback(q, env) {
   if (act === 'dcok') { const x = await delClosed(env, arg); await edit(x ? `🧹 Рахунок стола ${tn(x.t)} (${money(x.sum)}, ${x.at}) видалено з виручки.` : 'Цей рахунок уже видалено.'); return answer('Видалено'); }
   if (act === 'rst1') { await edit('⚠️ Точно? Це не можна скасувати.', { inline_keyboard: [[{ text: '♻️ Так, усе обнулити', callback_data: 'rst2' }, { text: 'Ні', callback_data: 'no' }]] }); return answer(''); }
   if (act === 'rst2') { const n = await resetAll(env); await edit(`♻️ <b>Усе обнулено</b> (${n} записів): звіти, каса, витрати, закриті рахунки, топ страв, стрічка, відкриті столи.\nМеню, Wi‑Fi, персонал і паролі не чіпались.`); return answer('Обнулено'); }
+  if (act === 'exy') { /* 📅 витрата за минулий день — як у касі */
+    const e = await env.DB.get('expd:' + arg, 'json'); if (!e) { await edit('⌛ Застаріло. Натисніть «💸 Витрата» ще раз.'); return answer(''); }
+    const n = Math.min(7, Math.max(1, +oid || 1)), d = new Date(Date.parse(dayKey() + 'T12:00:00Z') - n * 864e5).toISOString().slice(0, 10); e.day = d; await env.DB.put('expd:' + arg, JSON.stringify(e), { expirationTtl: 3600 });
+    await edit(`💸 Витрата <b>${money(e.sum)}</b>${e.note ? ` — ${esc(e.note)}` : ''}
+📅 за <b>${d.slice(8)}.${d.slice(5, 7)}</b>
+Звідки гроші?`, { inline_keyboard: [[{ text: '💵 З каси (готівка)', callback_data: `exs:${arg}:cash` }, { text: '💳 З карти', callback_data: `exs:${arg}:card` }], [{ text: 'Скасувати', callback_data: 'no' }]] }); return answer('');
+  }
   if (act === 'exs') {
     const e = await env.DB.get('expd:' + arg, 'json');
     if (!e) { await edit('⌛ Застаріло. Натисніть «💸 Витрата» ще раз.'); return answer(''); }
     await env.DB.delete('expd:' + arg);
-    await addExpense(env, { ...e, src: oid === 'card' ? 'card' : 'cash', at: hhmm(), by: who });
-    await edit(`✅ Витрату записано: <b>${money(e.sum)}</b> ${oid === 'card' ? '💳 з карти' : '💵 з каси'}${e.note ? ` — ${esc(e.note)}` : ''}`); return answer('Записано');
+    const { day: eday, ...e0 } = e; await addExpense(env, { ...e0, src: oid === 'card' ? 'card' : 'cash', at: hhmm(), by: who, ...(eday ? { late: 1 } : {}) }, eday || undefined);
+    await edit(`✅ Витрату записано${eday ? ` за ${eday.slice(8)}.${eday.slice(5, 7)}` : ''}: <b>${money(e.sum)}</b> ${oid === 'card' ? '💳 з карти' : '💵 з каси'}${e.note ? ` — ${esc(e.note)}` : ''}`); return answer('Записано');
   }
   if (act === 'exlist') { await send(await expListView(env)); return answer(''); }
   if (act === 'exdel') { await confirm('🗑 Видалити цю витрату?', 'exdelok:' + arg); return answer(''); }

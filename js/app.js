@@ -425,7 +425,7 @@
     if ('goSend' in d) { goSend(); return true; }
     if ('goPre' in d) { (async () => { const items = cartEntries().map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; });
       const { status } = await api('/api/bookpre', { id: BOOK, phone: store.get('bkPhone', store.get('goPhone', '')), items }).catch(() => ({ status: 0 }));
-      if (status === 200) { cart = {}; save(); refreshButtons(); renderFab(); $('#msg').textContent = '✅ ' + t('goPreOk'); setTimeout(() => { location.href = window.VARVAR.link('about.html#book'); }, 1500); } else $('#msg').textContent = t('error'); })(); return true; }
+      if (status === 200) { cart = {}; save(); refreshButtons(); renderFab(); $('#msg').textContent = '✅ ' + t('goPreOk'); setTimeout(() => { location.href = window.VARVAR.link('about.html#book'); }, 1500); } else $('#msg').textContent = status === 409 ? (lang === 'en' ? 'The kitchen already has your pre-order — please call us to change it' : 'Передзамовлення вже на кухні — щоб змінити, зателефонуйте нам') : t('error'); })(); return true; }
     if (d.goSt) { goShow(d.goSt); return true; }
     if (el.id === 'orderStatus' && el.dataset.go) { goShow(el.dataset.go); return true; }
     if (d.goRep) { const o = goHist.find(x => x.id === d.goRep); if (o) { o.items.forEach(([k, q]) => { const it = byId[k.split('|')[0]]; if (it) cart[k] = (cart[k] || 0) + q; }); save(); refreshButtons(); renderFab(); renderCart(); } return true; }

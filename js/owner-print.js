@@ -88,10 +88,11 @@ net session >nul 2>&1
 if errorlevel 1 goto elevate
 set D=%ProgramData%\\VARVAR-print
 if not exist "%D%" mkdir "%D%"
-icacls "%D%" /grant *S-1-5-32-545:(OI)(CI)M >nul 2>&1
+type nul >> "%D%\\varvar-print.log"
+icacls "%D%\\varvar-print.log" /grant *S-1-5-32-545:M >nul 2>&1
 echo  [1/4] Downloading the program...
 > "%D%\\varvar-print.config.json" echo {"api":"${http}","key":"${key}","printer":""}
-powershell -NoProfile -Command "$h=New-Object -ComObject WinHttp.WinHttpRequest.5.1; $h.Open('GET','${http}/print/agent.ps1',$false); $h.Send(); if ($h.Status -ne 200) { exit 1 }; [IO.File]::WriteAllBytes('%D%\\varvar-print.ps1',[byte[]]$h.ResponseBody)"
+powershell -NoProfile -Command "$ok=$false; foreach ($u in @('${api}/print/agent.ps1','${http}/print/agent.ps1')) { try { $h=New-Object -ComObject WinHttp.WinHttpRequest.5.1; try { [void]$h.GetType().InvokeMember('Option',[Reflection.BindingFlags]::SetProperty,$null,$h,@(9,0x0A80)) } catch {}; $h.Open('GET',$u,$false); $h.Send(); if ($h.Status -eq 200) { [IO.File]::WriteAllBytes('%D%\\varvar-print.ps1',[byte[]]$h.ResponseBody); $ok=$true; break } } catch {} }; if (-not $ok) { exit 1 }"
 if errorlevel 1 goto noserver
 echo  [2/4] Stopping old version...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%D%\\varvar-print.ps1" -Stop

@@ -68,7 +68,7 @@ export function promoCalc(cfg, { items, kind, cli, ph, now = Date.now(), manual 
     if (amt > 0 || r.type === 'sum') lines.push({ k: r.id, n, amt: Math.max(0, amt) });
   }
   // стеля: усі акції разом — не більше max% від суми страв
-  const cap = Math.floor(base * (cfg.max ?? 50) / 100); let left = cap;
+  const cap = Math.max(0, Math.floor(base * (cfg.max ?? 50) / 100) - Math.round(base * (+manual || 0) / 100)); let left = cap; /* ручна знижка офіціанта теж у стелі — разом не більше max% */
   for (const l of lines) { l.amt = Math.min(l.amt, left); left -= l.amt; }
   const sum = lines.reduce((s, l) => s + l.amt, 0);
   if (!lines.length && !lv) return null;
