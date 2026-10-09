@@ -64,8 +64,7 @@ export async function saveSecrets(env, patch) {
 }
 
 // 🔗 посилання на сайт закладу (меню, візитка): для VARVAR — як було; для інших — ?v=<заклад> (перед #якорем)
-export const SITE_BASE = 'https://666blackmuxa666.github.io/VARVAR/';
+export const SITE_BASE = 'https://posatom.online/'; // 🌐 ATOM: posatom.online/<заклад>/… (старі github.io-посилання й QR теж працюють)
 export function siteLink(path = '') {
-  const v = venueId(); if (v === MAIN) return SITE_BASE + path;
-  const [p, h] = path.split('#'); return SITE_BASE + (p || '') + (p.includes('?') ? '&' : '?') + 'venue=' + v + (h != null ? '#' + h : '');
+  const v = venueId(); return SITE_BASE + (v === MAIN ? 'varvar' : v) + '/' + path;
 }

@@ -165,7 +165,7 @@ window.OWNSITE = (() => {
   async function qr() {
     const box = document.getElementById('sbQr'); if (!box) return;
     if (!window.QRCode) { qrLib ||= new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; s.onload = res; s.onerror = rej; document.head.append(s); }); try { await qrLib; } catch { box.textContent = '⚠️ Не вдалося завантажити генератор QR'; return; } }
-    box.innerHTML = ''; new QRCode(box, { text: C.url, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+    box.innerHTML = ''; new QRCode(box, { text: C.pub || C.url, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
   }
 
   async function ver() {

@@ -10,4 +10,4 @@ export async function sendMail(env, to, subject, title, text, btn, link) {
     body: JSON.stringify({ sender: { email: env.MAIL_FROM, name: 'VARVAR' }, to: [{ email: to }], subject, htmlContent: html }) });
   return r.ok ? { ok: true } : { error: 'Лист не надіслано (' + r.status + ')' };
 }
-export const ownerLink = (kind, t) => `${SITE_BASE}owner.html#${kind}=${t}`;
+export const ownerLink = (kind, t) => `${SITE_BASE}owner/#${kind}=${t}`;

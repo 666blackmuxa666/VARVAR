@@ -2,6 +2,10 @@
 // Сервер: POST /api/owner (worker/src/owner.js). Цифри рахує кожен заклад сам.
 (() => {
   const API = new URLSearchParams(location.search).get('api') || (location.hostname === 'localhost' ? 'http://localhost:8787' : 'https://varvar-menu.varvar.workers.dev');
+  const ATOM = /(^|\.)posatom\.online$/.test(location.hostname);
+  /* 🌐 адреси сторінок закладу: на posatom.online — /<заклад>/<сторінка>, інакше — як раніше (?venue=) */
+  window.VVLOC = (id, page = '') => ATOM ? `/${id}/${page}` : location.pathname.replace(/owner\.html$/, '') + page + (id === 'varvar' ? '' : (page.includes('?') ? '&' : '?') + 'venue=' + id);
+  window.VVPUB = (id, page = '') => `https://posatom.online/${id}/${page === 'about.html' ? '' : page}`; /* гарна адреса для гостей і персоналу */
   const POS = location.pathname.replace(/owner\.html$/, '') + 'pos.html';
   const $ = s => document.querySelector(s), app = $('#app');
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -168,8 +172,8 @@
       <div class="kv"><span>🔗 Каса для персоналу<br><small class="muted">${esc(absOf(v.id, 'pos.html'))}</small></span><button class="btn sm" data-a="copy" data-u="${esc(absOf(v.id, 'pos.html'))}">Копіювати</button></div><div class="kv"><span>🌐 Сайт для гостей<br><small class="muted">${esc(absOf(v.id, 'about.html'))}</small></span><button class="btn sm" data-a="copy" data-u="${esc(absOf(v.id, 'about.html'))}">Копіювати</button></div></div>`).join('') || '<div class="muted">Закладів ще немає</div>'}</div>
       <h2>🔐 Акаунт</h2><div class="card"><div class="kv"><span>${esc(S.me.name)}<br><small class="muted">${esc(S.me.email)}</small></span><button class="btn sm" data-a="pass">Змінити пароль</button></div></div>${skinCard()}`;
   }
-  const absOf = (id, page) => location.origin + siteOf(id, page) + (id === 'varvar' && page === 'pos.html' ? '?venue=varvar' : ''); // VARVAR — явно, щоб пристрій «забув» інший заклад // повна адреса для персоналу / гостей
-  const siteOf = (id, page) => location.pathname.replace(/owner\.html$/, '') + page + (id === 'varvar' ? '' : '?venue=' + id);
+  const absOf = (id, page) => window.VVPUB(id, page); // VARVAR — явно, щоб пристрій «забув» інший заклад // повна адреса для персоналу / гостей
+  const siteOf = (id, page) => window.VVLOC(id, page);
   // 📨 Вхідні: 💡 побажання персоналу й 🆘 допомога з кас усіх закладів (платформа — усі; власник — свої)
   function inbox() {
     if (!S.ib) { api('inbox').then(r => { S.ib = r.list; render(); }).catch(e => toast('⚠️ ' + e.message)); return '<div class="muted">…</div>'; }
@@ -236,7 +240,7 @@
     if (a === 'reload') { S.plat = null; return start(); }
     if (a === 'per') { S.per = d.p; if (d.p === 'own') return render(); return load(); }
     if (a === 'perGo') { S.from = $('#pf').value; S.to = $('#pt').value; if (S.from > S.to) [S.from, S.to] = [S.to, S.from]; return load(); }
-    if (a === 'enter') { el.disabled = true; try { const r = await api('enter', { venue: d.v }); location.href = `${POS}?venue=${encodeURIComponent(d.v)}#tok=${r.token}&me=${encodeURIComponent(JSON.stringify(r.me))}${d.set ? '&set=' + d.set : ''}`; } catch (x) { toast('⚠️ ' + x.message); el.disabled = false; } return; }
+    if (a === 'enter') { el.disabled = true; try { const r = await api('enter', { venue: d.v }); location.href = `${ATOM ? '/' + encodeURIComponent(d.v) + '/pos.html' : POS}?venue=${encodeURIComponent(d.v)}#tok=${r.token}&me=${encodeURIComponent(JSON.stringify(r.me))}${d.set ? '&set=' + d.set : ''}`; } catch (x) { toast('⚠️ ' + x.message); el.disabled = false; } return; }
     if (a === 'vinfo') return vinfo(d.v);
     if (a === 'askEx') { e.preventDefault(); const f = $('#askF'); f.q.value = d.q; f.requestSubmit(); return; }
     if (a === 'vdemo') { el.disabled = true; toast('🎬 Створюю демо…'); try { const r = await VC.demo('cafe'); await start(); VC.open(r.venue.id, 'start'); toast('🎬 Демо готове — покажіть клієнту касу й сайт'); } catch (x) { toast('⚠️ ' + x.message); } el.disabled = false; return; }

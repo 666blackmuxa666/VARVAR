@@ -13,7 +13,7 @@ routes = [
 ALLOWED_ORIGIN = "https://666blackmuxa666.github.io,https://posatom.online,http://localhost:8000"
 TABLES = "15"
 SELF_URL = "https://varvar-menu.varvar.workers.dev"
-SITE_URL = "https://666blackmuxa666.github.io/VARVAR/"
+SITE_URL = "https://posatom.online/varvar/"
 
 # створіть: npx wrangler kv namespace create DB  → вставте id нижче
 [[kv_namespaces]]
