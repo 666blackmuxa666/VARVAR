@@ -7,13 +7,16 @@ export async function siteApi(b, env, me, t) {
   const needA = () => bad('admin', 403);
   switch (b.op) {
     case 'siteGet': return ok({ site: await getSite(env) });
-    case 'siteSet': { if (!admin) return needA(); const s = await setSite(env, String(b.k), b.v); if (s.error) return bad(s.error); await notify(env, `🖥 🌐 Сайт: змінено «${esc(String(b.k))}» — ${esc(who)}`); return ok({ site: s }); }
+    case 'siteAi': { if (!admin) return needA(); const m = b.do === 'about' ? await (await import('./menu.js')).getMenu(env) : null; const r = await (await import('./ai.js')).aiSite(env, { ...b, cats: m ? m.categories.filter(c => !c.tech).map(c => c.name?.uk || c.name).join(', ') : '' }); return r.error ? bad(r.error) : ok(r); }
+    case 'siteStats': { if (!admin) return needA(); const to = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' }), from = new Date(Date.now() - 29 * 864e5).toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' }); return ok(await (await import('./site.js')).siteStats(env, from, to)); }
+    case 'siteVer': { if (!admin) return needA(); return ok({ list: ((await env.DB.get('site_ver', 'json')) || []).map(x => ({ at: x.at, d: x.d })) }); }
+    case 'siteSet': { if (!admin) return needA(); const s = await setSite(env, String(b.k), b.v); if (s.error) return bad(s.error); await notify(env, b.k === 'siteDesign' ? `🖥 🌐 Сайт: опубліковано новий дизайн — ${esc(who)}` : `🖥 🌐 Сайт: змінено «${esc(String(b.k))}» — ${esc(who)}`); return ok({ site: s }); }
     case 'sitePhoto': {
       if (!admin) return needA();
       const m = String(b.data || '').match(/^data:image\/(jpeg|png|webp);base64,(.+)$/); if (!m) return bad('image'); // 🖼 logo — PNG (прозорий фон)
       const bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0)); if (bytes.length > 3e6) return bad('too_big');
       const id = 'site-' + crypto.randomUUID().slice(0, 8); await env.DB.put('img:' + id, bytes.buffer);
-      const url = `${env.SELF_URL}/img/${id}`, s = await setSite(env, b.logo ? 'logo' : b.hero ? 'hero' : 'photoAdd', url); return ok({ site: s, url });
+      const url = `${env.SELF_URL}/img/${id}`; if (b.raw) return ok({ url }); /* 🎨 фото для конструктора — у чернетку */ const s = await setSite(env, b.logo ? 'logo' : b.hero ? 'hero' : 'photoAdd', url); return ok({ site: s, url });
     }
     case 'bkList': return ok({ list: await bookList(env, isDay(b.from) ? b.from : undefined, isDay(b.to) ? b.to : undefined, !!b.all) });
     case 'bkEdit': { const r = await bookEditFields(env, String(b.id), b.f || {}, who); return r.error ? bad(r.error) : ok({ b: r }); }

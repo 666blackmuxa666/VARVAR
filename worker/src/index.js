@@ -4,7 +4,7 @@ import { BUILD } from './buildid.js';
 import { goOrder, goInfo, reco } from './delivery.js';
 import { promoQuote, promoFill } from './promo.js';
 import { courUpdate } from './courier.js';
-import { guestBot, guestCallback, guestText, guestHello, sitePublic, bookCreate, bookStatus, bookPre, certAsk, certPublic, meStart, mePoll, meData, meLogout, cron } from './site.js';
+import { guestBot, guestCallback, guestText, guestHello, sitePublic, bookCreate, bookStatus, bookPre, certAsk, certPublic, siteMsg, siteHit, meStart, mePoll, meData, meLogout, cron } from './site.js';
 // VARVAR — Cloudflare Worker: прийом замовлень, перевірка Wi‑Fi закладу, Telegram.
 // Secrets: BOT_TOKEN, CHAT_ID, ADMIN_PIN, TG_SECRET   Vars: ALLOWED_ORIGIN, TABLES, SELF_URL   KV: DB
 import { getMenu, priceMap } from './menu.js';
@@ -92,10 +92,10 @@ export async function handle(req, env) {
         return json({ ok: true, until, t: t || 0 });
       }
       if (url.pathname === '/api/ai' && req.method === 'POST') return json(...await aiHelp(await req.json(), env));
-      if (url.pathname === '/api/menu') return new Response(JSON.stringify(env.VENUE && env.VENUE !== MAIN ? { ...(await getMenu(env)), brand: await (async () => { const s = await (await import('./site.js')).getSite(env); return { name: s.name, logo: s.logo || '' }; })() } : await getMenu(env)), /* 🏪 назва закладу — разом з меню, без окремого запиту */ { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'no-cache' } });
+      if (url.pathname === '/api/menu') return new Response(JSON.stringify(await (async () => { const m = await getMenu(env), s = await (await import('./site.js')).getSite(env), th = s.theme?.menu ? s.theme : null; /* 🎨 стиль візитки й для меню */ return env.VENUE && env.VENUE !== MAIN ? { ...m, brand: { name: s.name, logo: s.logo || '', ...(th ? { theme: th } : {}) } } : th ? { ...m, brand: { theme: th } } : m; })()), /* 🏪 назва закладу — разом з меню, без окремого запиту */ { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'no-cache' } });
       if (url.pathname.startsWith('/img/')) {
         const b = await env.DB.get('img:' + url.pathname.slice(5), 'arrayBuffer');
-        if (b) return new Response(b, { headers: { 'content-type': new Uint8Array(b.slice(0, 4))[0] === 0x89 ? 'image/png' : 'image/jpeg', 'cache-control': 'public, max-age=31536000' } });
+        if (b) return new Response(b, { headers: { 'content-type': new Uint8Array(b.slice(0, 4))[0] === 0x89 ? 'image/png' : 'image/jpeg', 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=31536000' } });
         return proxySite(url); // статичні картинки сайту (для каси через запасну адресу)
       }
       if (url.pathname.startsWith('/api/print/')) return printApi(req, env, url);
@@ -131,6 +131,8 @@ export async function handle(req, env) {
       if (url.pathname === '/api/book' && req.method === 'POST') return json(...await bookCreate(await req.json(), ip, env));
       if (url.pathname === '/api/book') return json(await bookStatus(env, url.searchParams.get('id')) || { error: 'not_found' });
       if (url.pathname === '/api/bookpre' && req.method === 'POST') return json(...await bookPre(await req.json(), env));
+      if (url.pathname === '/api/sitemsg' && req.method === 'POST') return json(...await siteMsg(await req.json(), ip, env));
+      if (url.pathname === '/api/hit' && req.method === 'POST') return json(...await siteHit(await req.json().catch(() => ({})), env));
       if (url.pathname === '/api/cert' && req.method === 'POST') return json(...await certAsk(await req.json(), ip, env));
       if (url.pathname === '/api/cert') return json(await certPublic(env, url.searchParams.get('code')) || { error: 'not_found' });
       if (url.pathname === '/api/me/start') return json(await meStart(env));

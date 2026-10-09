@@ -117,7 +117,7 @@ export async function inboxBot(env, chat) {
 export const inboxClose = (env, ph, who) => inClose(env, ph, who);
 
 // ---------- 💬 чат гість ⇄ адміністратор ----------
-async function chatIn(env, ph, nm, text) {
+export async function chatIn(env, ph, nm, text) {
   const c = await getCli(env, ph), name = c?.name || nm;
   const r = await notify(env, `💬 <b>Гість пише</b> · ${esc(name)} · ${fmtPhone(ph)}\n${esc(text.slice(0, 1500))}\n\n<i>↩️ Відповісти — «Відповісти» на це повідомлення</i>`).catch(() => null);
   const mid = r && await r.json().then(j => j.result?.message_id).catch(() => null);

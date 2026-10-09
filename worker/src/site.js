@@ -4,13 +4,14 @@ import { getMenu, priceMap } from './menu.js';
 import { tg, esc, hhmm, dayKey, L, logEvent, editEv, notify, addWaiterOrder, getBill, putBill, money, TZ, addMove, discAmt } from './ops.js';
 import { normPhone, fmtPhone, getCli, cliTouch } from './delivery.js';
 import { siteLink, venueId, MAIN } from './venue.js';
+import { cleanDesign, cleanExtra, cleanBlocks, dayHours, safeUrl } from './sitedesign.js';
 
 // бот для гостей (окремий від бота персоналу): вхід у кабінет, нагадування, відгуки
 const gtg = (env, m, b) => tg({ ...env, BOT_TOKEN: env.GUEST_BOT_TOKEN || env.BOT_TOKEN }, m, b);
 
 // ---------- дані візитки ----------
 // 🧱 блоки сайту-візитки (порядок і показ задає власник у кабінеті)
-export const BLOCKS = ['about', 'promos', 'menu', 'gallery', 'hookah', 'banquet', 'book', 'cert', 'reviews', 'contacts'];
+export const BLOCKS = ['about', 'promos', 'menu', 'events', 'gallery', 'hookah', 'banquet', 'book', 'cert', 'reviews', 'contacts'];
 export const SITE_DEF = {
   name: 'Varvar Food Bar', tagline: 'Смачна їжа, кальяни й затишок у серці Буковелю',
   about: 'Varvar — фуд-бар у Поляниці, поруч із трасами Буковелю. Готуємо ситні мінімакс-тарілки, пасти, бургери й страви за власними рецептами, змішуємо коктейлі та забиваємо кальяни. Після катання — найкраще місце зігрітись і поїсти.',
@@ -38,18 +39,29 @@ export async function setSite(env, k, v) {
     else if (k === 'quoteDel') s.quotes = s.quotes.filter((_, i) => i !== +v);
     else if (k === 'photoAdd') s.photos = [...s.photos, String(v)].slice(-12);
     else if (k === 'photoDel') s.photos = s.photos.filter(p => p !== v);
-    else if (k === 'blocks') { const ok = new Set(BLOCKS); s.blocks = [].concat(v || []).filter(b => ok.has(b?.id)).map(b => ({ id: b.id, on: b.on ? 1 : 0 })).slice(0, BLOCKS.length); } // 🧱 конструктор сайту
+    else if (k === 'blocks') s.blocks = cleanBlocks(v, BLOCKS); /* 🧱 конструктор сайту */
+    else if (k === 'siteDesign') { /* 🎨 усе з конструктора за раз; попередні 5 версій — для «↩️ Повернути» */
+      const d = cleanDesign(v, BLOCKS), keys = ['theme', 'heroCfg', 'blocks', 'dock', 'ann', 'hours', 'seo', 'soc', 'season', 'addrs', 'events', 'langs', 'chat'];
+      if (s.hero && typeof s.hero !== 'string') s.hero = ''; /* стара помилка: обʼєкт у полі фото */
+      const prev = {}; for (const x of keys) if (s[x] !== undefined) prev[x] = s[x];
+      if (Object.keys(prev).length) { const h = (await env.DB.get('site_ver', 'json')) || []; h.unshift({ at: Date.now(), d: prev }); await env.DB.put('site_ver', JSON.stringify(h.slice(0, 5))); }
+      for (const x of keys) { if (d[x] === undefined) continue; if (d[x] === null) delete s[x]; else s[x] = d[x]; }
+    }
+    else if (['dock', 'ann', 'hours', 'seo', 'soc', 'season', 'addrs', 'events', 'langs', 'chat'].includes(k)) { const d = cleanExtra({ [k]: v }); if (d[k] == null) delete s[k]; else s[k] = d[k]; }
     else return { error: 'Невідоме поле' };
     await env.DB.put('site', JSON.stringify(s)); return s;
   });
 }
 // відчинено зараз?
-export function openNow(s, at = hhmm()) { const m = x => +x.slice(0, 2) * 60 + +x.slice(3), n = m(at), a = m(s.from), b = m(s.to); return a <= b ? n >= a && n < b : n >= a || n < b; }
+export function openNow(s, at = hhmm()) { const h = dayHours(s, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(new Date().toLocaleDateString('en-US', { timeZone: TZ, weekday: 'short' }))); if (!h) return false; const m = x => +x.slice(0, 2) * 60 + +x.slice(3), n = m(at), a = m(h.from), b = m(h.to); return a <= b ? n >= a && n < b : n >= a || n < b; }
 // публічно для візитки: дані + хіти з меню (фото, ціни)
 export async function sitePublic(env) {
   const s = await getSite(env), menu = await getMenu(env), all = menu.categories.flatMap(c => c.items.filter(i => !i.hidden).map(i => ({ ...i, cat: c.id })));
   let hits = s.hits.map(id => all.find(i => i.id === id)).filter(Boolean);
   if (!hits.length) hits = all.filter(i => i.img && ['minimax', 'burgers', 'pasta', 'pans', 'salads'].includes(i.cat)).slice(0, 8);
+  const td = new Date().toLocaleDateString('sv-SE', { timeZone: TZ }); /* минулі події й прострочене оголошення / сезон — не віддаємо */
+  if (s.events) s.events = s.events.filter(e => e.d >= td).sort((a, b) => (a.d + a.tm).localeCompare(b.d + b.tm));
+  if (s.ann?.till && s.ann.till < td) s.ann = { ...s.ann, on: 0 }; if (s.season?.till && s.season.till < td) s.season = { k: '' };
   return { ...s, open: openNow(s), hits: hits.map(i => ({ id: i.id, n: i.name, d: i.desc, p: i.price ?? i.variants?.[0]?.p, img: i.img, size: i.size })) };
 }
 
@@ -359,4 +371,28 @@ async function autoDay(env) {
   await env.DB.put(flag, '1', { expirationTtl: 3 * 86400 });
   if (c.autoZ) { const z = await o.dayZ(env, '🌙 авто', !!c.zPrint, prev); if (c.zTg) await notify(env, `🌙 <b>Автоматичний Z-звіт</b>\n${o.zDayText ? o.zDayText(z) : `${prev}: ${z.total} грн · чеків ${z.checks}`}`); }
   else if (c.zRemind) await notify(env, `🌙 День ${prev.slice(8)}.${prev.slice(5, 7)} закінчився, а Z-звіт не закрито. Каса → «🧾 Z-звіт», або увімкніть автоматичний Z у Налаштуваннях.`);
+}
+
+// ---------- 💬 «Написати нам» з сайту → стрічка каси + група (як чат бота гостей) ----------
+export async function siteMsg(b, ip, env) {
+  const s = await getSite(env); if (!s.chat) return [{ error: 'off' }, 403];
+  const name = String(b.name || '').trim().slice(0, 40), phone = normPhone(b.phone), text = String(b.text || '').trim().slice(0, 1000);
+  if (!name || !phone || text.length < 2) return [{ error: 'fields' }, 400];
+  const rk = 'smrl:' + String(b.device || ip).slice(0, 64), rn = +(await env.DB.get(rk)) || 0; if (rn >= 5) return [{ error: 'rate' }, 429];
+  await env.DB.put(rk, String(rn + 1), { expirationTtl: 3600 });
+  await (await import('./guestbot.js')).chatIn(env, phone, name, '🌐 з сайту: ' + text);
+  return [{ ok: 1 }, 200];
+}
+// ---------- 📊 відвідування сайту: перегляд і натискання (браузер шле раз за сесію на подію) ----------
+const HIT = { v: 1, order: 1, call: 1, book: 1, route: 1 };
+export async function siteHit(b, env) {
+  const e = String(b.e || ''); if (!HIT[e]) return [{ error: 'e' }, 400];
+  const d = dayKey(), k = 'sv:' + d.slice(0, 7);
+  await L(env, k, async () => { const m = (await env.DB.get(k, 'json')) || {}; const x = m[d] ||= {}; x[e] = (x[e] || 0) + 1; await env.DB.put(k, JSON.stringify(m)); });
+  return [{ ok: 1 }, 200];
+}
+export async function siteStats(env, from, to) {
+  const ms = [...new Set([from.slice(0, 7), to.slice(0, 7)])], all = Object.assign({}, ...(await Promise.all(ms.map(m => env.DB.get('sv:' + m, 'json')))).filter(Boolean)), r = { v: 0, order: 0, call: 0, book: 0, route: 0, days: {} };
+  for (const [d, x] of Object.entries(all)) if (d >= from && d <= to) { r.days[d] = x.v || 0; for (const k of Object.keys(HIT)) r[k] += x[k] || 0; }
+  return r;
 }

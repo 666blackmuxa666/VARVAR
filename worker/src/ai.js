@@ -70,10 +70,18 @@ async function alt(env, name, parts, o = {}) {
   } catch (e) { last = name + ' ' + m + ' ' + e.message; }
   throw new Error(last);
 }
+const KIMI_DAY = 15;
 async function backup(env, parts, o, why) {
   const order = o.ai && ALT[o.ai] ? [o.ai] : parts.some(p => p.inline_data) ? ['kimi'] : ['groq', 'kimi'];
   let err = why;
-  for (const n of order) { if (!env[ALT[n].key]) continue; try { console.log('ai fallback', n, String(err).slice(0, 200)); return await alt(env, n, parts, o); } catch (e) { err = e.message; } }
+  for (const n of order) {
+    if (!env[ALT[n].key]) continue;
+    if (n === 'kimi') { /* 💸 платна модель — лише як останній запас: не для дрібниць (o.free) і не більше KIMI_DAY разів на день */
+      if (o.free) continue; const k = 'kimi_n:' + new Date().toISOString().slice(0, 10), used = +(await env.DB.get(k)) || 0; if (used >= KIMI_DAY) { err = 'kimi ліміт на сьогодні'; continue; }
+      await env.DB.put(k, String(used + 1), { expirationTtl: 2 * 86400 });
+    }
+    try { console.log('ai fallback', n, String(err).slice(0, 200)); return await alt(env, n, parts, o); } catch (e) { err = e.message; }
+  }
   throw new Error(String(err));
 }
 
@@ -244,4 +252,24 @@ ${L.map((x, i) => `${i}. ${x.n} (${x.u})`).join('\n')}`;
     const seen = new Set();
     return { groups: (r.groups || []).map(g => [...new Set(g)].filter(i => L[i] && !seen.has(i) && seen.add(i)).map(i => L[i].id)).filter(g => g.length > 1).slice(0, 40) };
   } catch (e) { console.log('aiDups', e.message); return { error: 'Помічник зараз не відповідає — спробуйте ще раз за хвилину' }; }
+}
+
+// 🌐 ШІ для конструктора сайту: лише безкоштовні моделі (o.free) і ліміт на заклад — 5 на день / 30 на місяць
+export async function aiSite(env, b) {
+  if (!aiOn(env)) return { error: 'ШІ вимкнено' };
+  const d = new Date().toISOString().slice(0, 10), kd = 'aiq:site:' + d, km = 'aiq:site:' + d.slice(0, 7), nd = +(await env.DB.get(kd)) || 0, nm = +(await env.DB.get(km)) || 0;
+  if (nd >= 5 || nm >= 30) return { error: 'Ліміт ШІ для сайту вичерпано — спробуйте завтра' };
+  await env.DB.put(kd, String(nd + 1), { expirationTtl: 2 * 86400 }); await env.DB.put(km, String(nm + 1), { expirationTtl: 40 * 86400 });
+  try {
+    if (b.do === 'about') {
+      const r = await gemini(env, `Напиши текст блоку «Про нас» для сайту закладу українською: 3–4 речення, тепло й конкретно, без кліше й без вигаданих фактів (нагород, років роботи). Заклад: «${String(b.name || '').slice(0, 80)}». Адреса: ${String(b.addr || '').slice(0, 120)}. Розділи меню: ${String(b.cats || '').slice(0, 300)}. Слоган: ${String(b.tag || '').slice(0, 120)}.`, { schema: { type: 'OBJECT', properties: { text: { type: 'STRING' } }, required: ['text'] }, temperature: 0.7, timeout: 20000, free: 1 });
+      return { text: String(r.text || '').slice(0, 1500), left: 4 - nd };
+    }
+    if (b.do === 'tr') {
+      const L = [].concat(b.texts || []).map(x => String(x || '').slice(0, 1500)).slice(0, 60); if (!L.length) return { list: [] };
+      const r = await gemini(env, `Переклади з української на англійську тексти сайту ресторану. Збережи емодзі, числа, назви страв і закладу. Поверни масив перекладів у тому самому порядку, стільки ж елементів (${L.length}).\n` + L.map((x, i) => `${i}. ${x}`).join('\n'), { schema: { type: 'OBJECT', properties: { list: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['list'] }, temperature: 0.2, timeout: 30000, free: 1 });
+      return { list: L.map((_, i) => String(r.list?.[i] || '').slice(0, 1500)), left: 4 - nd };
+    }
+    return { error: 'do?' };
+  } catch (e) { console.log('aiSite', e.message); return { error: 'Помічник зараз не відповідає — спробуйте пізніше' }; }
 }

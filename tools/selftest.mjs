@@ -97,6 +97,22 @@ async function apiTests() {
     const l = (await posOk(A, 'taskList')).list; must(l.find(x => x.id === t.id)?.st === 'done', 'не відмічено');
     await posOk(A, 'taskDel', { id: t.id }); return ck ? 'кухар ✅' : 'адмін ✅';
   });
+  await step('🎨 конструктор сайту: дизайн зберігається, погане відкидається, офіціанту — ні', async () => {
+    const s0 = (await posOk(A, 'siteGet')).site, back = {}; for (const k of ['theme', 'heroCfg', 'blocks', 'dock', 'ann', 'events', 'chat']) back[k] = s0[k] ?? null;
+    const td = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
+    const v = { theme: { mode: 'light', bg: 'red', accent: '#ff0000', fh: 'Comic Sans', r: 99, evil: 1 }, heroCfg: { lay: 'split', btns: ['call', 'hack'], own: { t: 'X', u: 'javascript:alert(1)' } },
+      blocks: [{ id: 'contacts', on: 1, t: { uk: 'Де ми' } }, { id: 'c_qa01', type: 'links', on: 1, links: [{ l: { uk: 'ok' }, u: 'https://example.com' }, { l: { uk: 'bad' }, u: 'javascript:x' }] }, { id: 'c_<b>', type: 'text' }],
+      dock: { on: 1, btns: ['call', 'order'] }, events: [{ d: td, t: { uk: 'QA подія' } }, { d: 'вчора', t: { uk: 'погана' } }], chat: 1 };
+    const r = await posOk(A, 'siteSet', { k: 'siteDesign', v }), x = r.site;
+    must(x.theme.bg === '#121212' && x.theme.accent === '#ff0000' && x.theme.fh === 'Rubik Dirt' && x.theme.r === 28 && !('evil' in x.theme), 'тема: ' + JSON.stringify(x.theme));
+    must(x.heroCfg.btns.join() === 'call' && x.heroCfg.own.u === '' && typeof x.hero === 'string', 'кнопки: ' + JSON.stringify(x.heroCfg));
+    const cb = x.blocks.find(b => b.id === 'c_qa01'); must(cb && cb.links.length === 1 && !x.blocks.some(b => b.id === 'c_<b>'), 'блоки: ' + JSON.stringify(x.blocks));
+    must(x.events.length === 1, 'афіша: ' + JSON.stringify(x.events));
+    must((await pos(W, 'siteSet', { k: 'siteDesign', v })).status === 403, 'офіціант зміг');
+    const pub = (await http('/api/site')).j; must(pub.theme?.mode === 'light' && pub.events?.length === 1, 'публічно немає дизайну');
+    must((await posOk(A, 'siteVer')).list.length >= 1, 'немає версій');
+    await posOk(A, 'siteSet', { k: 'siteDesign', v: back }); return 'ок';
+  });
   await step('📜 склад: ручне додавання → ↩️ скасувати → залишок як був', async () => {
     const d = await posOk(A, 'skData'), x = (d.ing || []).find(i => !i.off); if (!x) return 'немає продуктів';
     const st0 = (y => (y.st?.k || 0) + (y.st?.b || 0))(x); await posOk(A, 'skAdj', { id: x.id, wh: 'k', q: 2, note: 'QA' });

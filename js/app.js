@@ -492,6 +492,13 @@
     m.categories.forEach(c => c.items = c.items.filter(it => !it.hidden));
     m.categories = m.categories.filter(c => c.items.length);
     menu = m;
+    if (m.brand?.theme) { /* 🎨 стиль візитки — і для меню (галочка в конструкторі сайту) */
+      const t = m.brand.theme, st = document.documentElement.style, hx = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), mix = (a, b, k) => '#' + hx(a).map((v, i) => Math.round(v + (hx(b)[i] - v) * k).toString(16).padStart(2, '0')).join('');
+      Object.entries({ '--bg': t.bg, '--card': t.card, '--line': mix(t.card, t.text, .12), '--text': t.text, '--muted': mix(t.text, t.bg, .42), '--accent': t.accent, '--accent-ink': t.ink, '--r': Math.max(4, t.r - 4) + 'px' }).forEach(([k, v]) => st.setProperty(k, v));
+      document.documentElement.style.colorScheme = t.mode === 'light' ? 'only light' : 'only dark'; document.body.style.background = t.bg;
+      const F = { 'Rubik Dirt': 'Rubik+Dirt', 'Russo One': 'Russo+One' }, fam = f => F[f] || f.replace(/ /g, '+') + ':wght@400;700';
+      if (t.fb !== 'Rubik' || t.fh !== 'Rubik Dirt') { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = `https://fonts.googleapis.com/css2?family=${[...new Set([t.fh, t.fb])].map(fam).join('&family=')}&display=swap`; document.head.append(l); document.body.style.fontFamily = `'${t.fb}', system-ui, sans-serif`; const h = document.createElement('style'); h.textContent = `h1,h2,.logo{font-family:'${t.fh}',sans-serif}`; document.head.append(h); }
+    }
     if (m.brand?.name) { document.title = m.brand.name + ' — меню'; const h = $('.logo'); if (h) h.textContent = m.brand.name; document.querySelectorAll('a.lang[href*="about.html"]').forEach(a => { a.textContent = a.textContent.replace('VARVAR', m.brand.name); }); }
     m.categories.forEach(c => c.items.forEach(it => { byId[it.id] = it; catOf[it.id] = c.id; }));
     packId = (m.categories.find(c => c.id === 'upakuvannia')?.items || [])[0]?.id || null;

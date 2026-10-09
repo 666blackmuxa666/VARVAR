@@ -95,3 +95,69 @@ input[type=date], input[type=time] { color-scheme: dark; }
 .certcard { width: min(100%, 560px); aspect-ratio: 1.6; border-radius: 26px; padding: 28px; display: grid; align-content: space-between; background: radial-gradient(circle at 80% 10%, #6b5216, transparent 55%), linear-gradient(135deg, #2a2210, #121212); border: 1px solid #6b5216; box-shadow: 0 30px 80px #0009; }
 .certcard .v { font-family: 'Rubik Dirt', Rubik; font-size: 30px; } .certcard .s { font-size: 54px; font-weight: 700; color: var(--accent); line-height: 1; } .certcard .c { font-family: ui-monospace, monospace; font-size: 20px; letter-spacing: .1em; }
 @media print { .nav, .dock, .foot, .noprint { display: none !important; } body { background: #fff; } }
+
+/* ===== 🎨 Конструктор (js/about-design.js) — діє лише коли власник зберіг дизайн (html[data-site]) ===== */
+html[data-site] body { background: var(--pagebg, var(--bg)); font-family: var(--fb); font-size: var(--fz); }
+html[data-site] h1, html[data-site] h2, html[data-site] .brand { font-family: var(--fh); }
+html[data-site][data-caps="1"] h1, html[data-site][data-caps="1"] h2 { text-transform: uppercase; letter-spacing: .03em; }
+html[data-site][data-mode="light"] { color-scheme: only light; }
+html[data-site][data-mode="light"] input[type=date], html[data-site][data-mode="light"] input[type=time] { color-scheme: light; }
+html[data-site] .nav { background: var(--navbg); }
+html[data-site][data-nav="solid"] .nav { background: var(--card); backdrop-filter: none; }
+html[data-site][data-nav="none"] .nav { position: absolute; left: 0; right: 0; background: transparent; border: 0; backdrop-filter: none; }
+html[data-site] .about p, html[data-site] .box p, html[data-site] .quote, html[data-site] .addr { color: var(--soft); }
+html[data-site] .promo { background: color-mix(in srgb, var(--accent) 14%, var(--card)); border-color: color-mix(in srgb, var(--accent) 38%, var(--card)); }
+html[data-site] .hit .ph { background-color: var(--card2); }
+html[data-site] .btn { border-radius: var(--r); }
+html[data-site] .btn.ghost { background: color-mix(in srgb, var(--text) 6%, transparent); border-color: color-mix(in srgb, var(--text) 20%, transparent); }
+html[data-site][data-btn="pill"] .btn { border-radius: 99px; }
+html[data-site][data-btn="line"] .btn:not(.alt):not(.ghost) { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
+html[data-site] .formbox, html[data-site] .modal .card { border-radius: calc(var(--r) + 4px); }
+html[data-site] .modal .card { background: var(--card); }
+html[data-site] .dock a { background: color-mix(in srgb, var(--card2) 94%, transparent); }
+html[data-site][data-cards="shadow"] :is(.feats div, .hit, .box, .formbox, .quote, .promo, .evc, .adr) { border-color: transparent; box-shadow: 0 10px 30px rgba(0,0,0,.28); }
+html[data-site][data-mode="light"][data-cards="shadow"] :is(.feats div, .hit, .box, .formbox, .quote, .promo, .evc, .adr) { box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+html[data-site][data-cards="flat"] :is(.feats div, .hit, .box, .formbox, .quote, .promo, .evc, .adr) { border-color: transparent; }
+html[data-site] .hero-bg::after { background: linear-gradient(180deg, rgba(0,0,0,calc(var(--dim, .4) * .6)) 0%, rgba(0,0,0,var(--dim, .4)) 45%, var(--bg) 100%); }
+html[data-site][data-mode="light"]:not([data-hero="plain"]):not([data-hero="logo"]):not([data-hero="split"]) .hero.ph .hero-in { color: #fff; } html[data-site][data-mode="light"]:not([data-hero="plain"]):not([data-hero="logo"]):not([data-hero="split"]) .hero.ph .addr { color: #eee; }
+
+/* 🏠 головний екран */
+html[data-hero] .hero.ph, html[data-hero="full"] .hero { min-height: var(--hh, 62vh); }
+.hero[data-al="c"] .hero-in { text-align: center; } .hero[data-al="c"] .cta { justify-content: center; } .hero[data-al="c"] .tag { margin-inline: auto; }
+#hLogo { width: 84px; height: 84px; object-fit: contain; border-radius: 20px; display: block; margin: 8px 0; } .hero[data-al="c"] #hLogo { margin-inline: auto; }
+html[data-hero="plain"] .hero-bg { display: none; } html[data-hero="plain"] .hero, html[data-hero="plain"] .hero.ph { min-height: 0; padding-top: 30px; } html[data-hero="plain"] .hero-in { color: var(--text); } html[data-hero="plain"] .addr { color: var(--muted) !important; }
+html[data-hero="logo"] .hero-bg { display: none; } html[data-hero="logo"] .hero, html[data-hero="logo"] .hero.ph { min-height: var(--hh, 62vh); align-items: center; } html[data-hero="logo"] .hero-in { text-align: center; color: var(--text); } html[data-hero="logo"] .cta { justify-content: center; } html[data-hero="logo"] #hLogo { width: 140px; height: 140px; margin: 0 auto 10px; } html[data-hero="logo"] .tag { margin-inline: auto; }
+html[data-hero="split"] .hero, html[data-hero="split"] .hero.ph { min-height: 0; display: grid; grid-template-rows: 46vh auto; align-items: stretch; }
+html[data-hero="split"] .hero-bg { position: relative; inset: auto; transform: none; grid-row: 1; } html[data-hero="split"] .hero-bg::after { display: none; } html[data-hero="split"] .hero-in { grid-row: 2; color: var(--text); } html[data-hero="split"] .addr { color: var(--muted) !important; }
+@media (min-width: 820px) { html[data-hero="split"] .hero, html[data-hero="split"] .hero.ph { grid-template-columns: 1fr 1fr; grid-template-rows: none; min-height: var(--hh, 62vh); } html[data-hero="split"] .hero-bg { grid-column: 2; grid-row: 1; border-radius: var(--r); margin: 20px 20px 20px 0; } html[data-hero="split"] .hero-in { grid-column: 1; grid-row: 1; align-self: center; padding-left: max(var(--gut), calc((100vw - 1100px) / 2)); } }
+
+/* 🧱 власні блоки */
+.cb-txt { font-size: 17px; max-width: 760px; color: var(--soft, #ddd); margin: 0; }
+.cb-media { display: grid; gap: 18px; align-items: center; } .cb-media img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: var(--r); }
+@media (min-width: 760px) { .cb-media { grid-template-columns: 1fr 1fr; } .cb-media.r img { order: 2; } }
+.cb-q { margin: 0; padding: 22px 24px; border-left: 4px solid var(--accent); background: var(--card); border-radius: var(--r); font-size: 20px; font-style: italic; color: var(--text); } .cb-q small { display: block; font-size: 14px; font-style: normal; color: var(--muted); margin-top: 8px; }
+.cb-sep { display: flex; align-items: center; gap: 14px; color: var(--accent); } .cb-sep::before, .cb-sep::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.soc.big { display: flex; flex-wrap: wrap; gap: 10px; } .soc.big a { padding: 10px 16px; border-radius: 99px; background: var(--card); border: 1px solid var(--line); text-decoration: none; color: var(--text); font-weight: 600; }
+/* 🎵 афіша */
+.evs { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.evc { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; display: grid; } .evc img { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
+.evc > div { padding: 14px 16px; display: grid; gap: 6px; } .evc small { color: var(--accent); font-weight: 700; text-transform: capitalize; } .evc b { font-size: 18px; } .evc p { margin: 0; color: var(--soft, #ddd); font-size: 15px; } .evc .btn { justify-self: start; min-height: 42px; }
+/* 📍 адреси, 🕐 години */
+.addrs { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); margin: -20px 0 40px; } .addrs h3 { grid-column: 1/-1; margin: 0; }
+.adr { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; display: grid; gap: 4px; } .adr span { color: var(--muted); font-size: 14px; } .adr a { font-weight: 600; text-decoration: none; }
+.hrs { display: inline-flex; flex-wrap: wrap; gap: 4px 12px; font-weight: 400; } .hrs span.on { color: var(--accent); font-weight: 700; }
+#vvChatB { margin-left: 8px; }
+/* 📣 оголошення */
+#vvAnn { padding: 9px var(--gut); text-align: center; font-weight: 600; font-size: 14px; }
+/* 🧲 панель на телефоні */
+body.has-dock { padding-bottom: calc(80px + env(safe-area-inset-bottom)); } @media (min-width: 820px) { body.has-dock { padding-bottom: 0; } }
+/* ✨ поява блоків */
+html[data-anim="fade"] main > section { opacity: 0; transition: opacity .7s ease; } html[data-anim="up"] main > section { opacity: 0; transform: translateY(26px); transition: opacity .7s ease, transform .7s ease; }
+html[data-anim] main > section.in { opacity: 1; transform: none; }
+html[data-site] .btn { transition: transform .15s ease, filter .15s ease; } @media (hover: hover) { html[data-site] .btn:hover { filter: brightness(1.08); transform: translateY(-1px); } }
+@media (prefers-reduced-motion: reduce) { html[data-anim] main > section { opacity: 1 !important; transform: none !important; transition: none; } }
+/* 🎉 сезон */
+html[data-season]:not([data-season=""]) { --accent: var(--season); }
+#vvSeason { position: fixed; inset: 0; pointer-events: none; z-index: 5; overflow: hidden; } #vvSeason i { position: absolute; top: -40px; font-style: normal; font-size: 22px; opacity: .55; animation: vvfall linear infinite; }
+@keyframes vvfall { to { transform: translateY(110vh) rotate(260deg); } }
+@media (prefers-reduced-motion: reduce) { #vvSeason { display: none; } }

@@ -31,7 +31,7 @@
   const money = n => `${Math.round(n).toLocaleString('uk-UA')} ₴`;
   const api = async (p, body, tok) => { const r = await fetch(API + p, body ? { method: 'POST', headers: { 'content-type': 'application/json', ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(body) } : { headers: tok ? { authorization: 'Bearer ' + tok } : {} }); return { status: r.status, data: await r.json().catch(() => ({})) }; };
   const kyivNow = () => new Date().toLocaleTimeString('en-GB', { timeZone: 'Europe/Kyiv', hour: '2-digit', minute: '2-digit', hour12: false });
-  const isOpen = s => { const m = x => +x.slice(0, 2) * 60 + +x.slice(3), n = m(kyivNow()), a = m(s.from), b = m(s.to); return a <= b ? n >= a && n < b : n >= a || n < b; };
+  const isOpen = s => { const h = window.VVD ? VVD.hoursToday(s) : s; if (!h) return false; const m = x => +x.slice(0, 2) * 60 + +x.slice(3), n = m(kyivNow()), a = m(h.from), b = m(h.to); return a <= b ? n >= a && n < b : n >= a || n < b; };
 
   function i18n() {
     document.documentElement.lang = lang; $('#lng').textContent = lang === 'uk' ? 'EN' : 'UA';
@@ -42,8 +42,8 @@
     const s = { promos: [], hits: [], photos: [], quotes: [], ...S, phone: S.phone || '' }, tel = 'tel:' + s.phone.replace(/[^\d+]/g, ''), maps = s.gmaps || (Array.isArray(s.geo) ? `https://www.google.com/maps?q=${s.geo[0]},${s.geo[1]}` : `https://www.google.com/maps?q=${encodeURIComponent(s.addr || s.name || '')}`); // новий заклад: полів може ще не бути
     $('#sName').textContent = s.name; $('#sTag').textContent = s.tagline; $('#sAddr').textContent = s.addr; $('#sAbout').textContent = s.about;
     if (s.hero) { $('#heroBg').style.backgroundImage = `url("${s.hero}")`; $('.hero').classList.add('ph'); }
-    const op = isOpen(s), bd = $('#openBadge'); bd.className = 'badge' + (op ? '' : ' off'); bd.textContent = `${op ? '🟢 ' + t('openNow') : '🔴 ' + t('closedNow')} · ${s.from}–${s.to}`;
-    $('#callA').href = tel; ['#routeA', '#routeB'].forEach(x => { $(x).href = maps; });
+    const op = isOpen(s), bd = $('#openBadge'); bd.className = 'badge' + (op ? '' : ' off'); const hh = window.VVD ? VVD.hoursToday(s) : s; bd.textContent = `${op ? '🟢 ' + t('openNow') : '🔴 ' + t('closedNow')}${hh ? ` · ${hh.from}–${hh.to}` : ''}`;
+    if ($('#callA')) $('#callA').href = tel; ['#routeA', '#routeB'].forEach(x => { if ($(x)) $(x).href = maps; });
     $('#cAddr').textContent = s.addr; $('#cHours').textContent = `${s.from}–${s.to}`; $('#cPhone').textContent = String(s.phone || '').replace(/^\+380(\d{2})(\d{3})(\d{2})(\d{2})$/, '+380 $1 $2 $3 $4'); $('#cPhone').href = tel;
     $('#socials').innerHTML = [s.insta && `<a href="${esc(s.insta)}" target="_blank" rel="noopener">Instagram</a>`, s.tg && `<a href="${esc(s.tg)}" target="_blank" rel="noopener">Telegram</a>`].filter(Boolean).join('');
     if (Array.isArray(s.geo) && s.geo.length === 2) $('#map').src = `https://www.google.com/maps?q=${s.geo[0]},${s.geo[1]}&z=16&output=embed`; else if (s.addr) $('#map').src = `https://www.google.com/maps?q=${encodeURIComponent(s.addr)}&z=16&output=embed`; else $('#map').hidden = true;
@@ -57,14 +57,9 @@
     $('#book').hidden = !s.bookOn; $('#cert').hidden = !s.certOn;
     // 🏪 назва й логотип закладу
     $('.nav .brand').innerHTML = s.logo ? `<img src="${esc(s.logo)}" alt="" style="height:30px;width:30px;object-fit:contain;border-radius:8px;vertical-align:middle;margin-right:8px">${esc(s.name)}` : esc(s.name); $('#fName').textContent = s.name; document.title = s.name;
-    if (window.VARVAR.venue) $('.feats')?.remove(); // переваги VARVAR (кальяни, банкети…) — не для інших закладів
-    // 🧱 конструктор: порядок і показ блоків
-    if (Array.isArray(s.blocks) && s.blocks.length) {
-      const main = $('main'), two = $('.two'), el = id => id === 'hookah' || id === 'banquet' ? two : $('#' + id), placed = new Set();
-      const ALL = ['about', 'promos', 'menu', 'gallery', 'hookah', 'banquet', 'book', 'cert', 'reviews', 'contacts'], list = [...s.blocks, ...ALL.filter(id => !s.blocks.some(b => b.id === id)).map(id => ({ id, on: 1 }))];
-      for (const b of list) { const x = el(b.id); if (!x) continue; if (b.id === 'hookah' || b.id === 'banquet') { $('#' + b.id).hidden = !b.on; } else if (!b.on) x.hidden = true; if (!placed.has(x)) { main.append(x); placed.add(x); } }
-      if (two && $('#hookah').hidden && $('#banquet').hidden) two.hidden = true;
-    }
+    if (window.VARVAR.venue) $('#about > .feats')?.remove(); // переваги VARVAR (кальяни, банкети…) — не для інших закладів
+    // 🎨 конструктор: тема, головний екран, блоки, панель, оголошення… (js/about-design.js)
+    if (window.VVD) VVD.apply(s, lang, t, maps);
   }
 
   // ---------- 📅 бронювання ----------
@@ -143,6 +138,21 @@
   const cm = location.hash.match(/^#cert=([A-Z0-9-]+)$/i); if (cm) { certPage(cm[1]); return; }
   i18n(); bookInit(); certInit();
   if (location.hash === '#me') me();
-  fetch(API + '/api/site').then(r => r.json()).then(s => { S = s; render(); }).catch(() => {});
+  // 👁 перегляд у конструкторі кабінету: чернетка приходить через postMessage, без запитів і без відправки форм
+  const PREVIEW = new URLSearchParams(location.search).has('preview');
+  if (PREVIEW) { addEventListener('message', e => { if (e.origin !== location.origin || !e.data?.vvSite) return; S = { ...(S || {}), ...e.data.vvSite }; render(); }); document.addEventListener('submit', e => e.preventDefault(), true); parent.postMessage({ vvReady: 1 }, location.origin); }
+  // 📊 лічильник і кнопки конструктора
+  document.addEventListener('click', e => {
+    const h = e.target.closest('[data-hit]'); if (h && window.VVD) VVD.hit(API, h.dataset.hit, PREVIEW);
+    const ev = e.target.closest('[data-evd]'); if (ev) { const f = $('#bookF'); if (f) f.date.value = ev.dataset.evd; }
+    if (e.target.closest('#vvChatB')) chat();
+  });
+  function chat() {
+    modal(`<h2>💬 ${lang === 'en' ? 'Message us' : 'Написати нам'}</h2><form id="chF"><div class="row2"><input name="name" required placeholder="${t('fName')}" value="${esc(store.get('goName', ''))}"><input name="phone" type="tel" required inputmode="tel" placeholder="${t('fPhone')}" value="${esc(store.get('goPhone', ''))}"></div><textarea name="text" rows="4" required minlength="2" maxlength="1000" placeholder="${lang === 'en' ? 'Your question' : 'Ваше питання'}"></textarea><button class="btn" type="submit">${lang === 'en' ? 'Send' : 'Надіслати'}</button><div class="msg" id="chMsg"></div></form>`);
+    $('#chF').onsubmit = async e => { e.preventDefault(); if (PREVIEW) return; const f = e.target, m = $('#chMsg'); m.textContent = '…';
+      const { status, data } = await api('/api/sitemsg', { name: f.name.value.trim(), phone: f.phone.value.trim(), text: f.text.value.trim(), device }).catch(() => ({ status: 0, data: {} }));
+      if (status === 200) { store.set('goName', f.name.value.trim()); store.set('goPhone', f.phone.value.trim()); f.innerHTML = `<p>✅ ${lang === 'en' ? 'Sent! We will reply in Telegram or call you.' : 'Надіслано! Відповімо в Telegram або зателефонуємо.'}</p>`; } else m.textContent = data.error === 'rate' ? t('rate') : t('errC'); };
+  }
+  fetch(API + '/api/site').then(r => r.json()).then(s => { S = s; render(); if (window.VVD) VVD.hit(API, 'v', PREVIEW); }).catch(() => {});
   setInterval(() => { if (S) render(); }, 60000);
 })();
