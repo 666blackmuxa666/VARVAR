@@ -1,3 +1,7 @@
+  // 📱 iPhone з головного екрана: телефон рахує екран коротшим (знизу смуга, меню задирається) — висота каси = фізична висота екрана
+  (() => { const pwa = matchMedia('(display-mode: standalone)').matches || navigator.standalone; if (!pwa) return; document.documentElement.classList.add('pwa');
+    const fit = () => { const land = Math.abs(window.orientation || 0) === 90 || innerWidth > innerHeight, h = land ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height); document.documentElement.style.setProperty('--appH', Math.max(h, innerHeight) + 'px'); };
+    fit(); addEventListener('resize', fit); addEventListener('orientationchange', () => setTimeout(fit, 300)); })();
   // 🏪 заклад: ?v=<заклад> (з кабінету власника) запам'ятовується на цьому пристрої; без нього — VARVAR
   // параметр саме ?venue= (?v= у старих посиланнях — це номер версії для оновлення!); назва закладу обов'язково з літерою
   const okV = x => /^(?=.*[a-z])[a-z0-9][a-z0-9-]{1,30}$/.test(x || '') && x !== 'varvar';
