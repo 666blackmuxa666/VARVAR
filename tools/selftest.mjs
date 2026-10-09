@@ -69,6 +69,12 @@ async function apiTests() {
   const dish = all.find(i => i.cat === 'pasta' && !i.hidden && i.price) || all.find(i => ['burgers', 'salads', 'soups'].includes(i.cat) && !i.hidden && i.price);
   const drink = all.find(i => i.cat === 'coffee' && !i.hidden && i.price);
 
+  // 🧹 тестова база спільна: ручні перевірки / аудит кнопок могли вимкнути функції — повертаємо, щоб тести не залежали від чужих кліків
+  await step('підготовка: доставка, самовивіз, сайт, лояльність увімкнені', async () => {
+    for (const k of ['on', 'del', 'pick']) await pos(A, 'goCfgSet', { k, v: 1 });
+    for (const k of ['bookOn', 'certOn']) await pos(A, 'siteSet', { k, v: 1 });
+    await pos(A, 'loySet', { on: 1 }); return 'ок';
+  });
   sect('Стіл → кухня → закриття');
   let T = 0;
   await step('вибрати вільний стіл', async () => {
