@@ -36,7 +36,7 @@
     const v = await pr; if (v !== 'ok') return closeModal();
     if ($('#gW').hidden === false) when = $('#gW').value.trim();
     const d = { kind, phone: $('#gP').value, name: $('#gN').value.trim(), addr: $('#gA').value.trim(), ent: $('#gE').value.trim(), when, pay, change: pay === 'cash' ? +$('#gCh').value || 0 : 0 }; closeModal();
-    if (!d.name) return toast('⚠️ Вкажіть імʼя'); if (kind === 'del' && !d.addr) return toast('⚠️ Вкажіть адресу');
+    if (kind === 'del' && !d.name) return toast('⚠️ Вкажіть імʼя'); if (kind === 'del' && !d.addr) return toast('⚠️ Вкажіть адресу'); /* 🥡 самовивіз — усе необовʼязково */
     if (d.when && !/^\d{1,2}:\d{2}$/.test(d.when)) return toast('⚠️ Час у форматі 19:30');
     S.goDraft = d; S.tw[-1] = true;
     if (fromT) { S.carts[-1] = S.carts[fromT] || {}; S.coms[-1] = S.coms[fromT] || ''; S.packAdj[-1] = S.packAdj[fromT] || 0; S.ur[-1] = S.ur[fromT]; S.carts[fromT] = {}; S.coms[fromT] = ''; S.tw[fromT] = false; S.packAdj[fromT] = 0; saveCarts(); }

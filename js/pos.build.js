@@ -2518,7 +2518,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     if ($("#gW").hidden === false) when = $("#gW").value.trim();
     const d = { kind, phone: $("#gP").value, name: $("#gN").value.trim(), addr: $("#gA").value.trim(), ent: $("#gE").value.trim(), when, pay, change: pay === "cash" ? +$("#gCh").value || 0 : 0 };
     closeModal();
-    if (!d.name) return toast("\u26A0\uFE0F \u0412\u043A\u0430\u0436\u0456\u0442\u044C \u0456\u043C\u02BC\u044F");
+    if (kind === "del" && !d.name) return toast("\u26A0\uFE0F \u0412\u043A\u0430\u0436\u0456\u0442\u044C \u0456\u043C\u02BC\u044F");
     if (kind === "del" && !d.addr) return toast("\u26A0\uFE0F \u0412\u043A\u0430\u0436\u0456\u0442\u044C \u0430\u0434\u0440\u0435\u0441\u0443");
     if (d.when && !/^\d{1,2}:\d{2}$/.test(d.when)) return toast("\u26A0\uFE0F \u0427\u0430\u0441 \u0443 \u0444\u043E\u0440\u043C\u0430\u0442\u0456 19:30");
     S.goDraft = d;
