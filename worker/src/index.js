@@ -334,7 +334,7 @@ async function atomSite(req) {
   let rest = m[2];
   if (rest === '/') rest = m[1] === 'owner' ? '/owner.html' : url.search ? '/index.html' : '/about.html';
   if (/\.\.|varvar-print\.config/.test(rest)) return new Response('Not found', { status: 404 });
-  const r = await fetch('https://666blackmuxa666.github.io/VARVAR' + rest, { cf: { cacheTtl: 60, cacheEverything: true } });
+  const r = await fetch('https://666blackmuxa666.github.io/VARVAR' + rest + (/\.html$/.test(rest) ? '' : url.search), { cf: { cacheTtl: /\.html$/.test(rest) ? 20 : 300, cacheEverything: true } }); /* ?v= — у ключ кешу, щоб оновлення приходили одразу */
   const ct = r.headers.get('content-type') || 'application/octet-stream';
   return new Response(r.body, { status: r.status, headers: { 'content-type': ct, 'cache-control': /html/.test(ct) ? 'no-cache' : 'public, max-age=300' } });
 }
