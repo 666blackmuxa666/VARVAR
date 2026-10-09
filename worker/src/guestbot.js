@@ -245,7 +245,7 @@ export async function gbApi(b, env, me) {
     case 'gbInbox': { const all = Object.values(await inGet(env)).sort((a, b) => b.open - a.open || b.last - a.last); return ok({ list: all.slice(0, 100).map(({ msgs, ...x }) => ({ ...x, lastMsg: msgs[msgs.length - 1] })) }); }
     case 'gbThread': { const x = (await inGet(env))[String(b.ph || '')]; if (!x) return bad('Не знайдено'); const c = await getCli(env, x.ph); return ok({ th: x, cli: c ? { n: c.n || 0, sum: c.sum || 0, bal: c.bal || 0, tg: !!c.chat } : null }); }
     case 'gbClose': return (await inClose(env, String(b.ph || ''), me.name)) ? ok() : bad('Не знайдено');
-    case 'gbReply': { const r = await chatReply(env, String(b.ph || ''), String(b.text || '').trim(), me.name); return r ? ok() : bad('Гість відключив бота'); }
+    case 'gbReply': { const r = await chatReply(env, String(b.ph || ''), String(b.text || '').trim(), me.name); return r ? ok() : bad(`Гість не в Telegram-боті (писав із сайту) — зателефонуйте: ${String(b.ph || '').replace(/^380(\d{2})(\d{3})(\d{2})(\d{2})$/, '+380 $1 $2 $3 $4')}`); }
   }
   return null;
 }

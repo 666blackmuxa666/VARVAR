@@ -155,7 +155,7 @@ window.OWNV = ctx => {
   const ask = (title, val, type = 'text', long) => new Promise(res => { let done = false; const bg = modal(esc(title), long ? `<textarea name="v" rows="6" style="width:100%;font:inherit;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px">${esc(val ?? '')}</textarea>` : `<input name="v" type="${type}" value="${esc(val ?? '')}">`, async f => { done = true; res(f.v.value); }); const t = setInterval(() => { if (!bg.isConnected) { clearInterval(t); if (!done) res(null); } }, 300); });
   // 📥 таблиця з Excel / Google Sheets → рядки меню (Розділ | Назва | Ціна | Опис | Вага), стовпці впізнаємо за заголовком або вмістом
   function parseTable(txt) {
-    const lines = txt.split(/\r?\n/).map(l => l.replace(/[ \r]+$/, '')).filter(l => l.trim()); // порожній перший стовпець (розділ лише в першому рядку групи) — не обрізаємо if (!lines.length) return [];
+    const lines = txt.split(/\r?\n/).map(l => l.replace(/[ \r]+$/, '')).filter(l => l.trim()); /* порожній перший стовпець (розділ лише в першому рядку групи) — не обрізаємо */ if (!lines.length) return [];
     const sep = lines[0].includes('\t') ? '\t' : lines[0].split(';').length > lines[0].split(',').length ? ';' : ',';
     const cells = lines.map(l => l.split(sep).map(x => x.replace(/^"|"$/g, '').trim()));
     const h = cells[0].map(x => x.toLowerCase()), has = re => h.findIndex(x => re.test(x));

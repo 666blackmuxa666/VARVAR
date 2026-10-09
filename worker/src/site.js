@@ -23,21 +23,24 @@ export const SITE_DEF = {
   hookah: '4 види кальянів і понад 50 смаків тютюну. Кальянщик підбере міцність і смак.',
   preMin: 20, certOn: 1, bookOn: 1,
 };
+const IMG_OK = u => /^(https:\/\/[^\s"'<>()]+|img\/[a-z0-9/_.-]+)$/i.test(u) && u.length <= 300;
 const TXT = ['name', 'tagline', 'about', 'phone', 'addr', 'insta', 'tg', 'gmaps', 'reviewsUrl', 'banquet', 'hookah', 'hero', 'logo'];
 export const getSite = async env => ({ ...SITE_DEF, ...((await env.DB.get('site', 'json')) || {}) });
 export async function setSite(env, k, v) {
   return L(env, 'site', async () => {
     const s = await getSite(env);
-    if (TXT.includes(k)) s[k] = String(v ?? '').trim().slice(0, k === 'about' || k === 'banquet' ? 1500 : 300);
+    if (['insta', 'tg', 'gmaps', 'reviewsUrl'].includes(k)) { const u = String(v ?? '').trim(); if (u && !safeUrl(u)) return { error: 'Посилання має починатися з https://' }; s[k] = safeUrl(u); } /* 🛡 лише https / tel: — ніякого javascript: на візитці */
+    else if (['hero', 'logo'].includes(k)) { const u = String(v ?? '').trim(); if (u && !IMG_OK(u)) return { error: 'Невірна адреса картинки' }; s[k] = u; }
+    else if (TXT.includes(k)) s[k] = String(v ?? '').trim().slice(0, k === 'about' || k === 'banquet' ? 1500 : 300);
     else if (k === 'from' || k === 'to') { v = String(v).trim(); if (!/^([01]?\d|2[0-3]):[0-5]\d$/.test(v)) return { error: 'Формат часу: 11:00' }; s[k] = v.padStart(5, '0'); }
     else if (['rating'].includes(k)) { v = Math.round(+v * 10) / 10; if (!(v >= 0 && v <= 5)) return { error: 'Від 0 до 5' }; s[k] = v; }
     else if (['ratingN', 'preMin', 'certOn', 'bookOn'].includes(k)) { v = Math.max(0, Math.round(+v || 0)); s[k] = v; }
     else if (k === 'hits') s.hits = [].concat(v || []).map(String).slice(0, 4);
-    else if (k === 'promoAdd') { const p = { id: crypto.randomUUID().slice(0, 6), t: String(v.t || '').slice(0, 80), d: String(v.d || '').slice(0, 300), img: String(v.img || '').slice(0, 200) }; if (!p.t) return { error: 'Назва акції?' }; s.promos = [...s.promos, p].slice(-10); }
+    else if (k === 'promoAdd') { const p = { id: crypto.randomUUID().slice(0, 6), t: String(v.t || '').slice(0, 80), d: String(v.d || '').slice(0, 300), img: IMG_OK(String(v.img || '')) ? String(v.img) : '' }; if (!p.t) return { error: 'Назва акції?' }; s.promos = [...s.promos, p].slice(-10); }
     else if (k === 'promoDel') s.promos = s.promos.filter(p => p.id !== v);
     else if (k === 'quoteAdd') { const q = { t: String(v.t || '').slice(0, 300), a: String(v.a || '').slice(0, 40) }; if (!q.t) return { error: 'Текст?' }; s.quotes = [...s.quotes, q].slice(-6); }
     else if (k === 'quoteDel') s.quotes = s.quotes.filter((_, i) => i !== +v);
-    else if (k === 'photoAdd') s.photos = [...s.photos, String(v)].slice(-12);
+    else if (k === 'photoAdd') { if (!IMG_OK(String(v))) return { error: 'Невірна адреса картинки' }; s.photos = [...s.photos, String(v)].slice(-12); }
     else if (k === 'photoDel') s.photos = s.photos.filter(p => p !== v);
     else if (k === 'blocks') s.blocks = cleanBlocks(v, BLOCKS); /* 🧱 конструктор сайту */
     else if (k === 'siteDesign') { /* 🎨 усе з конструктора за раз; попередні 5 версій — для «↩️ Повернути» */
@@ -147,9 +150,9 @@ export async function bookSet(env, id, st, who, { t } = {}) {
     return bkEdit(env, id, y => { y.preSent = Date.now(); });
   }
   if (!BST[st]) return { error: 'Невідомий статус' };
-  const x = await bkEdit(env, id, y => { y.st = st; y.by = who; if (t) y.t = +t; });
-  if (!x) return null;
-  await editEv(env, l => { for (const e of l) if (e.bid === id) { e.s = st === 'no' ? 'rej' : 'acc'; e.accBy = who; } }).catch(() => {});
+  let same = false; const x = await bkEdit(env, id, y => { same = y.st === st; y.st = st; y.by = who; if (t) y.t = +t; });
+  if (!x) return null; if (same) return x; /* повторне натискання (каса + Telegram) — без дубля гостю */
+  await editEv(env, l => { for (const e of l) if (e.bid === id) { e.s = st === 'no' || st === 'noshow' ? 'rej' : 'acc'; e.accBy = who; } }).catch(() => {});
   if (x.mid) await tg(env, 'editMessageText', { chat_id: env.CHAT_ID, message_id: x.mid, text: `${bkText(x)}\n\n${bkLabel(st)} — <b>${esc(who)}</b>`, parse_mode: 'HTML', reply_markup: { inline_keyboard: bkButtons(x) } }).catch(() => {});
   if (st === 'ok') await guestMsg(env, x.phone, `✅ Вашу бронь підтверджено: ${x.date.slice(8)}.${x.date.slice(5, 7)} о ${x.time}, ${x.people} гост. Чекаємо!`);
   if (st === 'no') await guestMsg(env, x.phone, `😔 На жаль, ${x.date.slice(8)}.${x.date.slice(5, 7)} о ${x.time} ми не можемо прийняти бронь. Зателефонуйте нам — підберемо інший час.`);
@@ -382,15 +385,16 @@ export async function siteMsg(b, ip, env) {
   const s = await getSite(env); if (!s.chat) return [{ error: 'off' }, 403];
   const name = String(b.name || '').trim().slice(0, 40), phone = normPhone(b.phone), text = String(b.text || '').trim().slice(0, 1000);
   if (!name || !phone || text.length < 2) return [{ error: 'fields' }, 400];
-  const rk = 'smrl:' + String(b.device || ip).slice(0, 64), rn = +(await env.DB.get(rk)) || 0; if (rn >= 5) return [{ error: 'rate' }, 429];
-  await env.DB.put(rk, String(rn + 1), { expirationTtl: 3600 });
+  for (const rk of ['smrl:' + String(b.device || ip).slice(0, 64), 'smri:' + String(ip).slice(0, 64)]) { const rn = +(await env.DB.get(rk)) || 0; if (rn >= (rk.startsWith('smri') ? 15 : 5)) return [{ error: 'rate' }, 429]; await env.DB.put(rk, String(rn + 1), { expirationTtl: 3600 }); } /* 🛡 і за пристроєм, і за IP */
   await (await import('./guestbot.js')).chatIn(env, phone, name, '🌐 з сайту: ' + text);
   return [{ ok: 1 }, 200];
 }
 // ---------- 📊 відвідування сайту: перегляд і натискання (браузер шле раз за сесію на подію) ----------
 const HIT = { v: 1, order: 1, call: 1, book: 1, route: 1 };
-export async function siteHit(b, env) {
+const HITS = new Map(); // 🛡 у памʼяті: не більше 20 подій за 10 хв з одного IP
+export async function siteHit(b, env, ip = '') {
   const e = String(b.e || ''); if (!HIT[e]) return [{ error: 'e' }, 400];
+  const now = Date.now(), h = HITS.get(ip) || { n: 0, t: now }; if (now - h.t > 600e3) { h.n = 0; h.t = now; } if (++h.n > 20) return [{ ok: 1 }, 200]; HITS.set(ip, h); if (HITS.size > 5000) HITS.clear();
   const d = dayKey(), k = 'sv:' + d.slice(0, 7);
   await L(env, k, async () => { const m = (await env.DB.get(k, 'json')) || {}; const x = m[d] ||= {}; x[e] = (x[e] || 0) + 1; await env.DB.put(k, JSON.stringify(m)); });
   return [{ ok: 1 }, 200];

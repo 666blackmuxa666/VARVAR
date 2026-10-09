@@ -502,7 +502,7 @@ async function _billBack(env, t, x, kind) {
   const b = await getBill(env, t), sum = x.dishes.reduce((a, d) => a + d[2], 0);
   b.total = (b.total || 0) + sum; b.orders = (b.orders || 0) + 1; b.opened = b.opened || Date.now();
   b.log = [...(b.log || []), { at: hhmm(), kind, lines }].slice(-60);
-  if (x.disc && !b.disc) { b.disc = x.disc; if (x.discSum != null && x.gross && x.discSum !== Math.round(x.gross * x.disc / 100)) b.discSum = x.discSum; } if (x.tip) b.tip = (b.tip || 0) + x.tip - (x.ktip || 0); if (x.ktip) b.ktip = (b.ktip || 0) + x.ktip; // на зайнятий стіл — додаються, а не губляться if (x.voids?.length) b.voids = [...(b.voids || []), ...x.voids]; if (x.w && !b.waiter) b.waiter = x.w;
+  if (x.disc && !b.disc) { b.disc = x.disc; if (x.discSum != null && x.gross && x.discSum !== Math.round(x.gross * x.disc / 100)) b.discSum = x.discSum; } if (x.tip) b.tip = (b.tip || 0) + x.tip - (x.ktip || 0); if (x.ktip) b.ktip = (b.ktip || 0) + x.ktip; /* на зайнятий стіл — додаються, а не губляться */ if (x.voids?.length) b.voids = [...(b.voids || []), ...x.voids]; if (x.w && !b.waiter) b.waiter = x.w;
   await putBill(env, t, b); return true;
 }
 // ↩️ відкрити закритий рахунок знову: знімається з виручки і повертається на стіл (щоб виправити й закрити заново)

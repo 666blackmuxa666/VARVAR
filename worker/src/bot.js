@@ -1,6 +1,7 @@
 // Telegram-бот закладу. Вхід: пароль офіціанта (столи, замовлення, закриття, стоп-лист)
 // і окремо пароль адміністратора (звіти, каса, видалення, меню, Wi‑Fi, персонал, паролі).
 // Уся логіка — у ops.js (та сама, що в касовій програмі POS).
+import { siteLink } from './venue.js';
 import { getMenu, handleMenuText, handleMenuPhoto, HELP as MENU_HELP } from './menu.js';
 import { tn, isGo } from './tn.js';
 import { courCashGive } from './courier.js';
@@ -37,7 +38,7 @@ export const COMMANDS = [
   ['stoplist', 'Стоп-лист (чого немає)'], ['admin', 'Режим адміністратора (пароль)'], ['help', 'Допомога'],
 ].map(([command, description]) => ({ command, description }));
 
-const POS_URL = env => (env.SITE_URL || '') + 'pos.html';
+const POS_URL = env => siteLink('pos.html'); /* 🌐 свій заклад: posatom.online/<заклад>/pos.html */
 const HELP = env => `<b>VARVAR — бот закладу</b>
 
 ${W.order} — записати замовлення кнопками: стіл → категорія → страва → кількість
@@ -261,7 +262,7 @@ async function wifiView(env) {
   const list = (await env.DB.get('venue_ips', 'json')) || [];
   return {
     text: `📶 <b>Мережі закладу</b> (звідси приймаються замовлення):\n` + (list.length ? list.map(x => `• ${x.k} — додано ${new Date(x.at).toLocaleDateString('uk-UA', { timeZone: TZ })}`).join('\n') : 'немає — замовлення не прийматимуться!') +
-      `\n\nДодати мережу: з телефону в Wi‑Fi закладу відкрийте ${(env.SITE_URL || '') + 'admin.html'} → PIN → «Це наша мережа».`,
+      `\n\nДодати мережу: з телефону в Wi‑Fi закладу відкрийте ${siteLink('admin.html')} → PIN → «Це наша мережа».`,
     markup: list.length ? { inline_keyboard: [[{ text: '🗑 Скинути всі мережі', callback_data: 'wifiask' }]] } : undefined,
   };
 }

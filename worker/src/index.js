@@ -10,7 +10,7 @@ import { guestBot, guestCallback, guestText, guestHello, sitePublic, bookCreate,
 import { getMenu, priceMap } from './menu.js';
 import { handleUpdate } from './bot.js';
 import { KITCHEN_HTML } from './kitchen.js';
-import { setDayH, tg, esc, getBill, putBill, addStat, addDishes, hhmm, logEvent, billItems, payable, addKitchen, getCfg } from './ops.js';
+import { setDayH, tg, esc, getBill, putBill, addStat, addDishes, hhmm, logEvent, editEv, billItems, payable, addKitchen, getCfg } from './ops.js';
 import { posApi, posLive } from './pos.js';
 import { queuePrint, kitchenTicket, printApi } from './print.js';
 export { PrintQ } from './print.js';
@@ -20,7 +20,7 @@ import { hubVenues } from './hub.js';
 import { ownerApi, intApi } from './owner.js';
 import { storeDB } from './store.js';
 import { qrKey, tableKey, qrRoute } from './qr.js';
-import { ALS, MAIN, doName, splitVenue, stripVenue, venueEnv } from './venue.js';
+import { ALS, MAIN, doName, splitVenue, stripVenue, venueEnv, siteLink } from './venue.js';
 
 const TYPES = { order: 'НОВЕ ЗАМОВЛЕННЯ', order_check: 'НОВЕ ЗАМОВЛЕННЯ', reorder: 'ДОЗАМОВЛЕННЯ', check: 'ПРОСЯТЬ ЧЕК' };
 const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;
@@ -133,12 +133,12 @@ export async function handle(req, env) {
       if (url.pathname === '/__cron') return env.INSTORE && req.headers.get('x-cron') ? json(await cron(env)) : json({ error: 'no' }, 403);
       // 🌐 візитка
       if (url.pathname === '/api/site') return new Response(JSON.stringify(await sitePublic(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
-      if (url.pathname === '/site') return Response.redirect((env.SITE_URL || 'https://666blackmuxa666.github.io/VARVAR/') + 'about.html', 302);
+      if (url.pathname === '/site') return Response.redirect(siteLink('about.html'), 302);
       if (url.pathname === '/api/book' && req.method === 'POST') return json(...await bookCreate(await req.json(), ip, env));
       if (url.pathname === '/api/book') return json(await bookStatus(env, url.searchParams.get('id')) || { error: 'not_found' });
       if (url.pathname === '/api/bookpre' && req.method === 'POST') return json(...await bookPre(await req.json(), env));
       if (url.pathname === '/api/sitemsg' && req.method === 'POST') return json(...await siteMsg(await req.json(), ip, env));
-      if (url.pathname === '/api/hit' && req.method === 'POST') return json(...await siteHit(await req.json().catch(() => ({})), env));
+      if (url.pathname === '/api/hit' && req.method === 'POST') return json(...await siteHit(await req.json().catch(() => ({})), env, ip));
       if (url.pathname === '/api/cert' && req.method === 'POST') return json(...await certAsk(await req.json(), ip, env));
       if (url.pathname === '/api/cert') return json(await certPublic(env, url.searchParams.get('code')) || { error: 'not_found' });
       if (url.pathname === '/api/me/start') return json(await meStart(env));
@@ -150,7 +150,7 @@ export async function handle(req, env) {
       if (url.pathname === '/api/goinfo') return json(await goInfo(env, url.searchParams.get('ph')));
       if (url.pathname === '/api/promo' && req.method === 'POST') return json(await promoQuote(await req.json(), env)); // 🎁 знижки кошика ?go
       if (url.pathname === '/api/reco') return json(await reco(env));
-      if (url.pathname === '/go') return Response.redirect((env.SITE_URL || 'https://666blackmuxa666.github.io/VARVAR/') + '?go' + (url.search ? '&' + url.search.slice(1) : ''), 302);
+      if (url.pathname === '/go') return Response.redirect(siteLink('index.html?go') + (url.search ? '&' + url.search.slice(1) : ''), 302);
       if (url.pathname === '/api/call' && req.method === 'POST') return json(...await callWaiter(await req.json(), ip, env));
       if (url.pathname === '/api/order' && req.method === 'POST') return json(...await order(await req.json(), ip, env));
       if (url.pathname === '/api/admin' && req.method === 'POST') return json(...await admin(await req.json(), ip, env));
@@ -297,6 +297,7 @@ async function orderRaw(b, ip, env) {
     ...(lines.length ? [addStat(env, 'orders', 1), addDishes(env, sold)] : []),
     env.DB.put('rl:' + dev, String(Date.now()), { expirationTtl: 60 }),
   ]);
+  if (await env.DB.get('nsT:' + table)) { await env.DB.delete('nsT:' + table); await editEv(env, l => { for (const e of l) if (e.k === 'noscan' && +e.t === +table && e.s !== 'acc') { e.s = 'acc'; e.accBy = 'гість замовив сам'; } }); } // 🚨 «не може замовити» гасне, коли гість таки замовив
   const res = [{ ok: true, id: oid, orderTotal: sum, tableTotal: bill.total }, 200];
   res.send = { oid, table, msg, lines };
   return res;
@@ -306,7 +307,7 @@ async function orderRaw(b, ip, env) {
 async function warnNotInVenue(env, table, ip, dev = '') {
   // у стрічку каси — кожна спроба (не частіше 1 разу на 5 хв з одного телефона)
   const dk = 'nv:' + (String(dev).slice(0, 64) || ip);
-  if (!(await env.DB.get(dk))) { await env.DB.put(dk, '1', { expirationTtl: 300 }); await logEvent(env, { k: 'noscan', t: table, s: 'new' }); }
+  if (!(await env.DB.get(dk))) { await env.DB.put(dk, '1', { expirationTtl: 300 }); await logEvent(env, { k: 'noscan', t: table, s: 'new' }); await env.DB.put('nsT:' + table, '1', { expirationTtl: 3 * 3600 }); }
   if (await env.DB.get('warned')) return;
   await env.DB.put('warned', '1', { expirationTtl: 1800 });
   await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: `🚫📵 Стіл ${tn(table)}: гість пробує замовити, але не відсканував QR-код (або минула година). Підійдіть і підкажіть відсканувати QR на столі 📷` });
