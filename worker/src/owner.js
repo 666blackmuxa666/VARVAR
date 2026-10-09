@@ -104,7 +104,8 @@ async function venueSum(env, from, to) {
   // зараз
   const open = await openTables(env), att = await getAtt(env, today.slice(0, 7)), onShift = Object.entries(att[today] || {}).filter(([, x]) => x && !x.out && x.ok !== -1).map(([n]) => n);
   const pr = await printStatus(env).catch(() => ({})), gin = await env.DB.get('gin', 'json') || {};
-  const now = { tables: open.filter(r => r.t < 1000).length, go: open.filter(r => r.t > 1000).length, openSum: open.reduce((a, r) => a + payable(r.b), 0), onShift, printer: pr.seen && Date.now() - pr.seen < 120e3 ? 1 : 0, printQ: pr.q || 0, inbox: Object.values(gin).filter(x => x.open).length, zToday: R.z.some(z => z.d === today) };
+  const supD = Object.values((await env.DB.get('sups', 'json')) || {}).reduce((a, x) => a + (x.debt || 0), 0); /* 🏭 борг постачальникам */
+  const now = { supDebt: Math.round(supD), tables: open.filter(r => r.t < 1000).length, go: open.filter(r => r.t > 1000).length, openSum: open.reduce((a, r) => a + payable(r.b), 0), onShift, printer: pr.seen && Date.now() - pr.seen < 120e3 ? 1 : 0, printQ: pr.q || 0, inbox: Object.values(gin).filter(x => x.open).length, zToday: R.z.some(z => z.d === today) };
   return { from, to, days, tot, now, risk: risks(R), name: (await env.DB.get('cfg:venue', 'json'))?.name || '' };
 }
 // 🚨 тривоги про втрати й крадіжки за період — згруповано «хто, скільки, на яку суму»

@@ -176,12 +176,13 @@ ${final ? `ЗАРАЗ дай фінальну пораду: поле "intro" (1 
 
 // 🧾 накладна з фото (або текст QR-коду) → постачальник, №, дата, рядки. Фото лише передається в запиті — ніде не зберігається.
 const BENCH = [['g', 'gemini-3.8-flash'], ['g', 'gemini-3.7-flash'], ['g', 'gemini-3.6-flash'], ['g', 'gemini-3.5-flash'], ['g', 'gemini-3.5-flash-lite'], ['g', 'gemini-3.1-flash-lite'], ['g', 'gemini-flash-latest'], ['g', 'gemini-flash-lite-latest'], ['g', 'gemma-4-31b-it'], ['groq', 'qwen/qwen3.8-27b'], ['kimi', 'kimi-k2.6']];
-const INV = { type: 'OBJECT', properties: { sup: { type: 'STRING' }, no: { type: 'STRING' }, date: { type: 'STRING' }, total: { type: 'NUMBER' },
+const INV = { type: 'OBJECT', properties: { sup: { type: 'STRING' }, sup_code: { type: 'STRING' }, sup_iban: { type: 'STRING' }, sup_phone: { type: 'STRING' }, sup_addr: { type: 'STRING' }, sup_legal: { type: 'STRING' }, no: { type: 'STRING' }, date: { type: 'STRING' }, total: { type: 'NUMBER' },
   lines: { type: 'ARRAY', items: { type: 'OBJECT', properties: { n: { type: 'STRING' }, q: { type: 'NUMBER' }, u: { type: 'STRING' }, price: { type: 'NUMBER' }, sum: { type: 'NUMBER' }, p: { type: 'STRING' }, cat: { type: 'STRING' }, bar: { type: 'BOOLEAN' }, pu: { type: 'STRING' }, pq: { type: 'NUMBER' }, bc: { type: 'STRING' } }, required: ['n', 'q', 'u', 'sum', 'p', 'cat', 'bar', 'pu', 'pq'] } } }, required: ['lines'] };
 async function invPrompt(env, images, text) {
   const { getIng } = await import('./stock.js'), ing = (await getIng(env)).filter(x => !x.off).slice(0, 300).map(x => x.n);
   const prompt = `Це ${images.length ? 'фото накладної / чека / рахунку постачальника' : 'вміст QR-коду накладної або чека'} українського ресторану. Витягни дані документа:
 - sup: постачальник (назва продавця / ФОП / магазину), коротко;
+- реквізити ПОСТАЧАЛЬНИКА (продавця, не покупця!), якщо є в документі: sup_legal — повна юридична назва (ФОП Іванов Іван Іванович / ТОВ «…»), sup_code — ЄДРПОУ або ІПН (лише цифри), sup_iban — IBAN (UA + 27 цифр), sup_phone — телефон, sup_addr — адреса; чого немає — порожньо;
 - no: номер документа; date: дата (ДД.ММ.РРРР);
 - total: загальна сума до сплати (з ПДВ);
 - lines: КОЖЕН товарний рядок по порядку: n — назва товару як у документі (без артикулів), q — кількість, u — одиниця як у документі (кг, г, л, мл, шт, уп, ящ, пач, пл…), price — ціна за одиницю, sum — сума рядка.
@@ -198,7 +199,8 @@ export async function aiInvoice(env, { images = [], text = '' }) {
     const lines = (r.lines || []).map(l => ({ n: String(l.n || '').trim().slice(0, 80), q: num(l.q), u: String(l.u || '').trim().slice(0, 10), price: num(l.price), sum: num(l.sum) || Math.round(num(l.price) * num(l.q) * 100) / 100,
       p: String(l.p || '').trim().slice(0, 60), cat: String(l.cat || '').slice(0, 30), bar: !!l.bar, pu: ['кг', 'л', 'шт'].includes(l.pu) ? l.pu : '', pq: num(l.pq) || 0, ...(/^\d{8,14}$/.test(String(l.bc || '').trim()) ? { bc: String(l.bc).trim() } : {}) })).filter(l => l.n && l.q > 0).slice(0, 120);
     if (!lines.length) return { error: 'Не вдалось прочитати рядки — сфотографуйте рівніше й ближче' };
-    return { sup: String(r.sup || '').trim().slice(0, 60), no: String(r.no || '').trim().slice(0, 30), date: String(r.date || '').trim().slice(0, 20), total: num(r.total), lines };
+    const rq = { legal: String(r.sup_legal || '').trim().slice(0, 120), code: String(r.sup_code || '').replace(/\D/g, '').slice(0, 10), iban: String(r.sup_iban || '').replace(/\s/g, '').toUpperCase().slice(0, 34), phone: String(r.sup_phone || '').trim().slice(0, 40), addr: String(r.sup_addr || '').trim().slice(0, 200) };
+    return { req: rq, sup: String(r.sup || '').trim().slice(0, 60), no: String(r.no || '').trim().slice(0, 30), date: String(r.date || '').trim().slice(0, 20), total: num(r.total), lines };
   } catch (e) { console.log('aiInvoice', e.message); return { error: 'Помічник зараз не відповідає — спробуйте ще раз за хвилину' }; }
 }
 

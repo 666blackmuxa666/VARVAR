@@ -111,10 +111,10 @@
   }
   function home() {
     if (!S.sum) return '<div class="muted">Рахуємо цифри всіх закладів…</div>';
-    const T = sumTot(S.sum), P = S.prev ? sumTot(S.prev) : null, now = S.sum.reduce((a, v) => { const n = v.now || {}; a.tables += n.tables || 0; a.go += n.go || 0; a.open += n.openSum || 0; a.staff += (n.onShift || []).length; return a; }, { tables: 0, go: 0, open: 0, staff: 0 });
+    const T = sumTot(S.sum), P = S.prev ? sumTot(S.prev) : null, now = S.sum.reduce((a, v) => { const n = v.now || {}; a.tables += n.tables || 0; a.go += n.go || 0; a.open += n.openSum || 0; a.staff += (n.onShift || []).length; a.sup += n.supDebt || 0; return a; }, { sup: 0, tables: 0, go: 0, open: 0, staff: 0 });
     const al = alerts(S.sum);
     return `<h2>🏠 Мережа сьогодні</h2><div class="kpis">
-      ${kpi('Виручка', money(T.rev), delta(T.rev, P?.rev))}${kpi('Чеків', T.n || 0, T.n ? 'середній ' + money(T.rev / T.n) : '')}${kpi('Зараз у залах', money(now.open), `${now.tables} столів · ${now.go} доставок`)}${kpi('На зміні', now.staff, 'людей')}${kpi('Чайові', money(T.tip))}${kpi('Знижки', money(T.disc))}</div>
+      ${kpi('Виручка', money(T.rev), delta(T.rev, P?.rev))}${kpi('Чеків', T.n || 0, T.n ? 'середній ' + money(T.rev / T.n) : '')}${kpi('Зараз у залах', money(now.open), `${now.tables} столів · ${now.go} доставок`)}${kpi('На зміні', now.staff, 'людей')}${kpi('Чайові', money(T.tip))}${kpi('Знижки', money(T.disc))}${now.sup ? kpi('💸 Винні постачальникам', money(now.sup), 'деталі — у касі: Склад → 🏭') : ''}</div>
       <h2>🧠 Запитай у даних</h2><form class="card" id="askF" style="display:grid;gap:8px"><div class="btnrow" style="flex-wrap:nowrap"><input name="q" placeholder="Напр.: який заклад заробив найбільше цього місяця і чому?" autocomplete="off"><button class="btn primary">Запитати</button></div><div class="muted" style="font-size:12px">${['Скільки заробили на доставці за тиждень?', 'Чому вчора впала виручка?', 'Які страви приносять найбільше грошей?'].map(x => `<a href="#" data-a="askEx" data-q="${esc(x)}" style="margin-right:10px">${esc(x)}</a>`).join('')}</div><div id="askA" style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(S.askA || '')}</div></form>
       <h2>🚨 Тривоги ${al.length ? `<span class="muted">(${al.length})</span>` : ''}</h2>${al.length ? al.map(([c, t]) => `<div class="alert ${c}">${t}</div>`).join('') : '<div class="card muted">Усе спокійно 👌</div>'}
       <h2>🏪 Заклади</h2><div class="grid">${S.sum.map(venueCard).join('')}</div>`;

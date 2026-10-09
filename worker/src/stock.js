@@ -294,7 +294,7 @@ export async function dishesUsing(env, ids) {
 // d: { sup, no, date, pay: cash|card|debt, lines: [{ id?, n, q, price?, sum, f? (одиниць складу в 1 од. накладної), wh?, src? (назва з накладної), add?: { n, u, home, cat } }] }
 export async function invoiceSave(env, d, who) {
   const sup = String(d.sup || '').trim().slice(0, 60) || 'Без постачальника', pay = ['cash', 'card', 'debt'].includes(d.pay) ? d.pay : 'debt';
-  const cfg = await getCfg(env);
+  const cfg = await getCfg(env), sp = sup !== 'Без постачальника' ? await (await import('./suppliers.js')).supEnsure(env, sup, d.req || {}).catch(() => null) : null; /* 🏭 профіль постачальника створюється / доповнюється сам */
   const r = await lk(env, async () => {
     const l = await getIng(env), im = new Map(l.map(x => [x.id, x])), al = (await env.DB.get('al', 'json')) || {};
     const lines = [], rows = [], alerts = [], ch = new Set();
@@ -320,11 +320,11 @@ export async function invoiceSave(env, d, who) {
     if (!lines.length) return { error: 'Немає жодного рядка з кількістю' };
     const id = uid(), total = r2(lines.reduce((a, x) => a + x.sum, 0));
     rows.forEach(x => { x.ref = id; });
-    const inv = { id, ts: Date.now(), at: hhmm(), day: dayKey(), sup, no: String(d.no || '').slice(0, 30), date: String(d.date || '').slice(0, 20), pay, by: who || '', src: ['photo', 'code', 'hand'].includes(d.src) ? d.src : 'hand', lines, total };
+    const inv = { id, ts: Date.now(), at: hhmm(), day: dayKey(), sup, no: String(d.no || '').slice(0, 30), date: String(d.date || '').slice(0, 20), pay, by: who || '', src: ['photo', 'code', 'hand'].includes(d.src) ? d.src : 'hand', lines, total, ...(sp ? { sid: sp.id } : {}) };
     await jr(env, rows);
     const low = lowCheck(l, ch);
     await Promise.all([putIng(env, l), env.DB.put('al', JSON.stringify(al)), env.DB.put('inv:' + id, JSON.stringify(inv))]);
-    const ik = 'invl:' + dayKey().slice(0, 7), il = (await env.DB.get(ik, 'json')) || []; il.push({ id, ts: inv.ts, day: inv.day, sup, no: inv.no, total, pay, by: inv.by, n: lines.length }); await env.DB.put(ik, JSON.stringify(il));
+    const ik = 'invl:' + dayKey().slice(0, 7), il = (await env.DB.get(ik, 'json')) || []; il.push({ id, ts: inv.ts, day: inv.day, sup, no: inv.no, total, pay, by: inv.by, n: lines.length, ...(sp ? { sid: sp.id } : {}) }); await env.DB.put(ik, JSON.stringify(il));
     if (pay === 'debt') await supDebt(env, sup, total);
     return { inv, alerts, low };
   });
@@ -529,6 +529,14 @@ export async function stockApi(b, env, me, ai) {
     case 'skCountFinish': { const r = await countFinish(env, cook ? 'k' : b.wh, who); if (r?.doc && !admin) r.doc = { ...r.doc, short: undefined, over: undefined, lines: r.doc.lines.map(({ sum, ...x }) => x) }; return R(r); }
     case 'skCountList': { const l = await countList(env); return ok({ list: admin ? l : l.map(({ short, over, ...x }) => x) }); }
     case 'skCountUndo': { if (!admin) return R({ error: 'admin' }); const r = await countUndo(env, String(b.id), who); if (r.error) return R(r); await notify(env, `↩️ Скасовано інвентаризацію — ${esc(who || '')}`).catch(() => {}); return R(r); }
+    case 'skSupList': { const r = await (await import('./suppliers.js')).supList(env); if (!admin) r.list = r.list.map(({ debt, over, n30, year, ...x }) => x); return ok(r); }
+    case 'skSupCard': { const r = await (await import('./suppliers.js')).supCard(env, String(b.id)); if (r && !admin) { delete r.debt; delete r.year; delete r.avg; r.inv = r.inv.map(({ total, ...x }) => x); r.prod = r.prod.map(({ sum, last, prev, first, ...x }) => x); } return R(r); }
+    case 'skSupSave': { if (!admin) return bad('Лише адмін'); return R(await (await import('./suppliers.js')).supSave(env, b.p || {})); }
+    case 'skSupMerge': { if (!admin) return bad('Лише адмін'); return R(await (await import('./suppliers.js')).supMerge(env, String(b.to || ''), String(b.from || ''))); }
+    case 'skSupPay': { if (!admin) return bad('Лише адмін'); let n = 0, sum = 0; for (const id of [].concat(b.ids || []).slice(0, 60)) { const r = await invPay(env, String(id), b.src === 'card' ? 'card' : 'cash', who); if (r) { n++; sum += r.total || 0; } } if (n) await notify(env, `💸 Оплачено постачальнику: ${n} накл. · ${money(sum)} (${b.src === 'card' ? 'картка' : 'готівка'}) — ${esc(who || '')}`).catch(() => {}); return ok({ n, sum }); }
+    case 'skSupOrder': return R(await (await import('./suppliers.js')).supOrder(env, String(b.id), purchaseList));
+    case 'skSupAct': { if (!admin) return bad('Лише адмін'); return R(await (await import('./suppliers.js')).supAct(env, String(b.id), isDay(b.from) ? b.from : '2000-01-01', isDay(b.to) ? b.to : dayKey())); }
+    case 'skSupPrices': { if (!admin) return bad('Лише адмін'); return ok({ list: await (await import('./suppliers.js')).supPrices(env) }); }
     case 'skCountDoc': { const d = await countDoc(env, String(b.id)); if (d && !admin) { delete d.short; delete d.over; d.lines = d.lines.map(({ sum, ...x }) => x); } return R(d && { doc: d }); }
     // плюси / мінуси
     case 'skReport': { if (!isDay(b.from) || !isDay(b.to)) return bad('Невірний період'); return R(await costReport(env, b.from, b.to)); }

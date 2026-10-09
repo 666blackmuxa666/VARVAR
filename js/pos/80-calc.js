@@ -2,6 +2,7 @@
     const K = S.sk, t = K.tab;
     if (!S.data.sk || ['stock', 'prod', 'inv', 'cards'].includes(t)) S.data.sk = await api('skData');
     if (t === 'buy') S.data.skBuy = await api('skBuy');
+    if (t === 'sup') S.data.skSup = await api('skSupList');
     if (t === 'inv' && !K.draft) S.data.skInv = await api('skInvList');
     if ((t === 'cards' || t === 'prod') && isAdmin()) { if (!S.menu) await loadMenu(); S.data.skCost = await api('skCost'); }
     if (t === 'tech') S.data.skTech = await api('skTech');
@@ -11,14 +12,14 @@
   }
   function calcHTML() {
     const K = S.sk, tabs = SK_TABS(); if (!tabs.some(x => x[0] === K.tab)) K.tab = tabs[0][0];
-    const sub = { stock: 'залишки на складах Кухня і Бар', buy: 'що докупити — по постачальниках', inv: 'прихід товару: фото, код або вручну', cards: 'калькуляційні карти й собівартість страв', tech: 'склад і грамовка страв', prod: 'напівфабрикати: соуси, тісто, заготовки', count: 'перерахунок фактичних залишків', menu: 'страви, ціни, фото', stop: 'що зараз не продається', rep: 'фудкост, прибуток страв, нестачі й списання' }[K.tab];
+    const sub = { sup: 'профілі, борги, оплата, замовлення, акти звірки', stock: 'залишки на складах Кухня і Бар', buy: 'що докупити — по постачальниках', inv: 'прихід товару: фото, код або вручну', cards: 'калькуляційні карти й собівартість страв', tech: 'склад і грамовка страв', prod: 'напівфабрикати: соуси, тісто, заготовки', count: 'перерахунок фактичних залишків', menu: 'страви, ціни, фото', stop: 'що зараз не продається', rep: 'фудкост, прибуток страв, нестачі й списання' }[K.tab];
     const head = `<div class="rhead"><div><h1>Склад</h1><span class="muted">${sub}</span></div></div>
       <div class="seg rsec">${tabs.map(([k, l]) => `<button class="${K.tab === k ? 'on' : ''}" data-a="skTab" data-t="${k}">${l}</button>`).join('')}</div>`;
     if (!S.data.sk) return head + '<div class="muted" style="margin:16px 4px">Завантаження…</div>';
     if (K.card && (K.tab === 'cards' || K.tab === 'prod')) return head + `<div class="sk">${skCardEdHTML()}</div>`;
     if (K.tab === 'menu') return head + `<div class="sk sk-emb">${menuHTML()}</div>`;
     if (K.tab === 'stop') return head + `<div class="sk sk-emb">${stopHTML()}</div>`;
-    return head + `<div class="sk">${{ stock: skStockHTML, buy: skBuyHTML, inv: skInvHTML, cards: skCardsHTML, tech: skTechHTML, prod: skProdHTML, count: skCountHTML, rep: skRepHTML }[K.tab]()}</div>`;
+    return head + `<div class="sk">${{ stock: skStockHTML, buy: skBuyHTML, inv: skInvHTML, sup: skSupHTML, cards: skCardsHTML, tech: skTechHTML, prod: skProdHTML, count: skCountHTML, rep: skRepHTML }[K.tab]()}</div>`;
   }
   // 📦 склад
   function skStockHTML() {
@@ -217,7 +218,7 @@
     const d = S.sk.draft, bad = d.lines.findIndex(l => !(+l.q > 0) || (!l.id && !l.add));
     if (!d.lines.length) return toast('⚠️ Немає позицій');
     if (bad >= 0) return toast(`⚠️ Рядок ${bad + 1}: оберіть продукт і кількість (або приберіть рядок ✕)`);
-    const inv = { sup: $('#dSup')?.value.trim() || d.sup, no: $('#dNo')?.value.trim() || d.no, date: $('#dDate')?.value.trim() || d.date, pay, src: d.src, lines: d.lines.map(l => ({ id: l.id || null, q: +l.q, f: +l.f || 1, sum: +l.sum || 0, src: l.n || '', ...(l.chk ? { chk: 1 } : {}), ...(l.add ? { add: l.add } : {}) })) };
+    const inv = { sup: $('#dSup')?.value.trim() || d.sup, no: $('#dNo')?.value.trim() || d.no, date: $('#dDate')?.value.trim() || d.date, pay, src: d.src, ...(d.req ? { req: d.req } : {}), lines: d.lines.map(l => ({ id: l.id || null, q: +l.q, f: +l.f || 1, sum: +l.sum || 0, src: l.n || '', ...(l.chk ? { chk: 1 } : {}), ...(l.add ? { add: l.add } : {}) })) };
     const r = await act('skInvSave', { inv }, '🧾 Накладну записано'); if (!r) return;
     S.sk.draft = null; S.data.sk = null;
     if (r.alerts?.length) modal({ title: '🔺 Подорожчання', text: r.alerts.map(a => `${a.n}: ${money(a.from)} → ${money(a.to)} / ${a.u} (+${a.pct}%)`).join(' · '), buttons: [{ label: 'Зрозуміло', val: 1, cls: 'primary' }] });
@@ -232,7 +233,7 @@
       const images = await Promise.all(files.map(f => shrink(f, 1800, .82)));
       const r = await api('skInvParse', { images }, 120000);
       if (!S.data.sk) S.data.sk = await api('skData');
-      S.sk.draft = { sup: r.sup, no: r.no, date: r.date, total: r.total, src: 'photo', lines: r.lines.map(l => ({ ...l, q0: l.q, f: l.add || (l.f && l.f !== 1) ? l.f : skAutoF(l) })) };
+      S.sk.draft = { sup: r.sup, req: r.req, no: r.no, date: r.date, total: r.total, src: 'photo', lines: r.lines.map(l => ({ ...l, q0: l.q, f: l.add || (l.f && l.f !== 1) ? l.f : skAutoF(l) })) };
       if (!S.data.skInv) S.data.skInv = await api('skInvList').catch(() => null);
     } catch (e) { toast('⚠️ ' + errText(e.message)); }
     S.sk.busy = false; renderMain();

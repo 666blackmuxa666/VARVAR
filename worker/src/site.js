@@ -321,6 +321,7 @@ export async function cron(env) {
   await (await import('./brand.js')).brandBots(env).catch(e => console.log('brand', e.message)); // 🎨 аватари й описи ботів (раз на версію)
   await (await import('./backup.js')).backupDaily(env).catch(e => console.log('backup', e.message)); // 💾 щоночі
   await (await import('./guestbot.js')).gbDaily(env).catch(e => console.log('gbDaily', e.message)); // 🎂 ДН + 👋 «сплячі»
+  await (await import('./suppliers.js')).supDaily(env).catch(e => console.log('supDaily', e.message)); // ⏰ оплата постачальникам
   // відгуки
   const due = await L(env, 'revq', async () => { const q = (await env.DB.get('revq', 'json')) || [], d = q.filter(x => x.at <= now); if (d.length) await env.DB.put('revq', JSON.stringify(q.filter(x => x.at > now))); return d; });
   for (const r of due) { await guestMsg(env, r.ph, `🙏 Дякуємо, що завітали у ${(await getSite(env)).name}! Як вам усе сподобалось?`, { inline_keyboard: [[1, 2, 3, 4, 5].map(n => ({ text: '⭐'.repeat(n === 5 ? 1 : 0) + n, callback_data: `rv:${r.id}:${n}` }))] }); await env.DB.put('rvph:' + r.id, r.ph, { expirationTtl: 7 * 86400 }); out.push('rv'); }

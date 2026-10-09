@@ -139,6 +139,20 @@ async function apiTests() {
     await posOk(A, 'skCountUndo', { id: d.id }); must((await pos(A, 'skCountUndo', { id: d.id })).status === 400, 'скасовано двічі');
     must(Math.abs(((await posOk(A, 'skData')).ing.find(i => i.id === x.id).st?.k || 0) - st0) < 1e-6, 'залишок не повернувся'); return x.n;
   });
+  await step('🏭 постачальник: накладна → профіль з реквізитами → борг → оплата → акт звірки', async () => {
+    const x = (await posOk(A, 'skData')).ing.find(i => !i.off && !i.grp); if (!x) return 'немає продуктів';
+    const nm = 'QA Постач ' + RUN, code = String(30000000 + Math.floor(Math.random() * 9e6));
+    const inv = (await posOk(A, 'skInvSave', { inv: { sup: nm, pay: 'debt', src: 'hand', req: { code, iban: 'UA213223130000026007233566001', phone: '+380671112233', legal: 'ТОВ «QA»' }, lines: [{ id: x.id, q: 2, f: 1, sum: 300 }] } })).inv;
+    must(inv.sid, 'профіль не привʼязано');
+    const l = (await posOk(A, 'skSupList')).list, me = l.find(p => p.id === inv.sid); must(me && me.debt === 300, 'борг ' + me?.debt);
+    const c = await posOk(A, 'skSupCard', { id: inv.sid }); must(c.p.code === code && c.p.iban.startsWith('UA21') && c.prod.length === 1, 'картка: ' + JSON.stringify(c.p));
+    must((await pos(W, 'skSupPay', { ids: [inv.id], src: 'cash' })).status !== 200, 'офіціант оплатив');
+    const pay = await posOk(A, 'skSupPay', { ids: [inv.id], src: 'cash' }); must(pay.n === 1, 'не оплачено');
+    must((await posOk(A, 'skSupList')).list.find(p => p.id === inv.sid).debt === 0, 'борг не зник');
+    const act = await posOk(A, 'skSupAct', { id: inv.sid, from: '2000-01-01' }); must(act.plus === 300 && act.saldo === 0, 'акт ' + JSON.stringify(act).slice(0, 200));
+    const again = (await posOk(A, 'skInvSave', { inv: { sup: nm.toUpperCase(), pay: 'cash', src: 'hand', req: { code }, lines: [{ id: x.id, q: 1, f: 1, sum: 150 }] } })).inv; must(again.sid === inv.sid, 'дубль профілю');
+    await posOk(A, 'skInvDel', { id: again.id }); await posOk(A, 'skInvDel', { id: inv.id }); return 'ок';
+  });
   await step('📜 склад: ручне додавання → ↩️ скасувати → залишок як був', async () => {
     const d = await posOk(A, 'skData'), x = (d.ing || []).find(i => !i.off); if (!x) return 'немає продуктів';
     const st0 = (y => (y.st?.k || 0) + (y.st?.b || 0))(x); await posOk(A, 'skAdj', { id: x.id, wh: 'k', q: 2, note: 'QA' });
