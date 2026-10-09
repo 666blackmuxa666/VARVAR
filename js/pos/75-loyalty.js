@@ -34,7 +34,7 @@
     const D = S.data.loy; if (!D) { if (!S._loyL) { S._loyL = 1; loadLoy().finally(() => { S._loyL = 0; }); } return '<div class="muted">Завантаження…</div>'; }
     const c = D.cfg, tab = S.loyTab || 'cli', adm = isAdmin();
     const TABS = [['cli', '👥 Клієнти'], ['lvl', '🏅 Рівні'], ['rules', '🎯 Акції'], ...(adm ? [['rep', '📊 Звіт'], ['bot', '🤖 Бот гостей']] : [])];
-    const seg = `<div class="seg wrap" style="margin:12px 0">${TABS.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-a="loyTab" data-s="${k}">${l}</button>`).join('')}</div>`;
+    const seg = `<div class="seg wrap" style="margin:12px 0">${TABS.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-a="loyTab" data-s="${k}">${l}</button>`).join('')}${adm ? '<button class="btn sm" data-a="certs">🎟 Сертифікати</button>' : ''}</div>`;
     let body = '';
     if (tab === 'lvl') body = `<div class="grid2 set">
       <div class="card"><h3>🏅 Рівні постійних клієнтів</h3><div class="muted set-note">Рівень рахується сам за телефоном (візити або сума). «Вручну» — призначає адмін у картці клієнта (VIP, персонал, друзі). Знижка рівня й ручна знижка офіціанта не складаються — діє більша.</div>

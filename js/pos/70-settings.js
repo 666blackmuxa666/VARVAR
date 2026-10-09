@@ -42,7 +42,7 @@
     const row = (l, v, btn, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ''}</span><span class="kv-r"><b>${v}</b>${btn}</span></div>`;
     const ch = (a, extra = '') => `<button class="btn sm" data-a="${a}"${extra}>змінити</button>`;
     const staff = st ? [...st.staff].sort((a, b) => (a.role || '').localeCompare(b.role || '') || a.name.localeCompare(b.name)) : null;
-    const OWN = ['venue', 'site', 'test'], SS = [['venue', '🏪 Заклад'], ['rules', '⚙️ Правила роботи'], ['site', '🌐 Сайт'], ['go', '🛵 Доставка'], ['loy', '🎁 Лояльність'], ['look', '🎨 Вигляд'], ['printer', '🖨 Принтер'], ['test', '🧪 Тест']].filter(([k]) => !OWN.includes(k) || S.setTab === k) /* заклад, сайт і тест — у кабінеті власника (👑 відкриває їх тут за посиланням) */, cur = only || (SS0 => SS0.includes(S.setTab) ? S.setTab : 'rules')(['venue', 'rules', 'site', 'go', 'loy', 'look', 'printer', 'test']);
+    const OWN = ['test'], SS = [['rules', '⚙️ Правила роботи'], ['go', '🛵 Доставка'], ['loy', '🎁 Лояльність'], ['look', '🎨 Вигляд'], ['printer', '🖨 Принтер'], ['test', '🧪 Тест']].filter(([k]) => !OWN.includes(k) || S.setTab === k) /* заклад і сайт — у кабінеті власника; тест — за посиланням */, cur = only || (SS0 => SS0.includes(S.setTab) ? S.setTab : 'rules')(['rules', 'go', 'loy', 'look', 'printer', 'test']);
     const part = {};
     part.people = `<div class="grid2 set">
       ${[['admin', '🔐 Адміністратори'], ['waiter', '🧑‍🍳 Офіціанти'], ['cook', '👨‍🍳 Кухня'], ['courier', '🛵 Кур\'єри']].map(([r, t]) => { const l = staff ? staff.filter(s => (ROLE[s.role] ? s.role : 'waiter') === r) : null;
@@ -75,7 +75,6 @@
         <div class="scrollbox sm">${wf ? wf.list.map(x => `<div class="kv"><span>${esc(x.k)}</span><span class="muted">${new Date(x.at).toLocaleDateString('uk-UA')}</span></div>`).join('') || '<div class="muted">немає збережених адрес</div>' : ''}</div>
         <div class="btnrow"><button class="btn sm primary" data-a="wifiAdd">➕ Це наша мережа</button><button class="btn sm red" data-a="wifiClear">Скинути всі</button></div></div></div>`;
     part.go = goSetHTML();
-    part.site = siteHTML(); part.venue = venueHTML();
     part.loy = loyHTML(); // 🎁 75-loyalty.js
     part.look = lookHTML();
     part.printer = printerCards();

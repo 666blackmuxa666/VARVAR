@@ -278,7 +278,7 @@
       if (S.view === 'books') await loadBooks();
       if (S.view === 'calc') await loadCalc();
       if (S.view === 'team') { await loadPay(); S.data.staff = await api('staff'); }
-      if (S.view === 'settings') { S.data.staff = await api('staff'); S.data.wifi = await api('wifi'); S.data.gocfg = (await api('goCfg')).cfg; S.data.cours = await api('courList').catch(() => null); S.data.site = (await api('siteGet')).site; S.data.rates = await api('siteRates', { from: iso(Date.now() - 30 * 864e5), to: todayK() }).catch(() => null); if (!S.menu) await loadMenu(); }
+      if (S.view === 'settings') { S.data.staff = await api('staff'); S.data.wifi = await api('wifi'); S.data.gocfg = (await api('goCfg')).cfg; S.data.cours = await api('courList').catch(() => null); if (!S.menu) await loadMenu(); }
       if (['stop', 'menu'].includes(S.view) && !S.menu) await loadMenu();
     } catch {}
     renderMain();
@@ -436,18 +436,7 @@
       case 'certT': certT(t); break;
       case 'bonCert': { const v = await choose('🎁 Бонуси · 🎟 Сертифікат', S.tables[t]?.cli ? 'Гість за телефоном уже вказаний' : 'Що застосувати до рахунку?', [{ label: S.tables[t]?.cli ? '🎁 Гість і бонуси' : '🎁 Бонуси гостя (за телефоном)', val: 'cli', cls: 'primary' }, { label: '🎟 Сертифікат (код)', val: 'cert' }, { label: '🎂 Подарунок на ДН', val: 'bd' }]); if (v === 'cli') cliT(t); else if (v === 'cert') certT(t); else if (v === 'bd') bdGiftT(t); break; }
       case 'certs': { const r = await api('certList').catch(() => null); if (!r) break; await modal({ title: '🎟 Сертифікати', body: `<div class="bk-list">${r.list.map(c => `<div class="kv"><span><b>${c.code}</b> · ${money(c.sum)}${c.left !== c.sum ? ` · залишок ${money(c.left)}` : ''}<br><small class="muted">від ${esc(c.from)}${c.to ? ' для ' + esc(c.to) : ''} · ${fmtPh(c.phone)} · ${{ new: '⏳ не оплачено', ok: '✅ активний', no: '❌ скасовано' }[c.st]}</small></span>${c.st === 'new' ? `<span class="kv-r"><button class="btn sm green" data-a="certPay" data-c="${c.code}" data-h="cash">💵</button><button class="btn sm" data-a="certPay" data-c="${c.code}" data-h="card">💳</button><button class="btn sm red" data-a="certDel" data-c="${c.code}">🗑</button></span>` : `<span class="kv-r"><button class="btn sm red" data-a="certDel" data-c="${c.code}">🗑</button></span>`}</div>`).join('') || '<div class="muted">Ще немає</div>'}</div>`, buttons: [{ label: 'Закрити', val: null }] }); break; }
-      case 'siteSet': { const k = el.dataset.k, cur = S.data.site?.[k]; const v = ['about', 'banquet', 'hookah'].includes(k) ? await askLong(el.dataset.l || k, String(cur ?? '')) : await askVal(el.dataset.l || k, String(cur ?? ''), ['rating', 'ratingN'].includes(k) ? 'number' : 'text'); if (v == null) break; const r = await act('siteSet', { k, v }, '💾 Збережено — уже на сайті'); if (r) { S.data.site = r.site; if (k === 'name') { S.brand = { ...S.brand, name: r.site.name }; store.set('brand', S.brand); applyBrand(); } renderMain(); } break; }
-      case 'siteTgl': { const k = el.dataset.k, r = await act('siteSet', { k, v: S.data.site[k] ? 0 : 1 }, '💾 Збережено'); if (r) { S.data.site = r.site; renderMain(); } break; }
       case 'copyLink': try { await navigator.clipboard.writeText(el.dataset.u); toast('🔗 Скопійовано'); } catch { prompt('Скопіюйте посилання:', el.dataset.u); } break;
-      case 'siteDel': { const r = await act('siteSet', { k: el.dataset.k, v: el.dataset.v }, '🗑 Прибрано'); if (r) { S.data.site = r.site; if (el.dataset.k === 'logo') { S.brand = { ...S.brand, logo: '' }; store.set('brand', S.brand); applyBrand(); } renderMain(); } break; }
-      case 'sitePromo': { const tt = await ask('🎉 Назва акції', 'Щасливі години 15–17'); if (!tt) break; const d = await ask('Опис (необовʼязково)', '−20% на коктейлі'); const r = await act('siteSet', { k: 'promoAdd', v: { t: tt, d: d || '' } }, '🎉 Додано'); if (r) { S.data.site = r.site; renderMain(); } break; }
-      case 'siteQuote': { const tt = await ask('💬 Текст відгуку'); if (!tt) break; const a = await ask('Автор', 'Олена, Google'); const r = await act('siteSet', { k: 'quoteAdd', v: { t: tt, a: a || '' } }, '💬 Додано'); if (r) { S.data.site = r.site; renderMain(); } break; }
-      case 'siteImg': siteImg(el.dataset.h, el.dataset.l); break;
-      case 'siteHits': { const sel = new Set(S.data.site.hits);
-        const v = await modal({ title: '🍽 Хіти на сайті', text: 'До 12 страв; порожньо — автоматично', body: `<div class="bk-list">${itemsAll().filter(i => !i.hidden).map(i => `<label class="kv"><span>${esc(i.name.uk)}${i.img ? ' 📷' : ''}</span><input type="checkbox" class="hitC" value="${i.id}" ${sel.has(i.id) ? 'checked' : ''} style="width:22px;height:22px"></label>`).join('')}</div>`, buttons: [{ label: '💾 Зберегти', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
-        const ids = [...document.querySelectorAll('.hitC:checked')].map(x => x.value).slice(0, 12); closeModal(); if (v !== 'ok') break;
-        const r = await act('siteSet', { k: 'hits', v: ids }, '🍽 Збережено'); if (r) { S.data.site = r.site; renderMain(); } break; }
-      case 'siteCopy': { const u = 'https://666blackmuxa666.github.io/VARVAR/about.html'; try { await navigator.clipboard.writeText(u); toast('📋 ' + u); } catch { await ask('Посилання', u); } break; }
       case 'goSt': if (await act('goSt', { t, st: el.dataset.s }, '✔ ' + GOST[el.dataset.s])) loadState().catch(() => {}); break;
       case 'goDone': goDone(t); break;
       case 'goDoneT': goDone(+el.dataset.t); break;

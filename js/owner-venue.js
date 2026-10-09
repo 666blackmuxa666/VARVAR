@@ -12,11 +12,14 @@ window.OWNV = ctx => {
     if (!r.ok || j.error) throw new Error(errText(j.error) || 'Помилка ' + r.status); return j;
   }
   const errText = e => ({ admin: 'Потрібні права адміна', image: 'Невірний формат картинки', too_big: 'Завеликий файл', not_found: 'Не знайдено' }[e] || e);
-  const SEC = [['start', '🚀 Запуск'], ['venue', '🏪 Заклад і каса'], ['site', '🌐 Сайт'], ['menu', '🍽 Меню'], ['go', '🛵 Доставка'], ['staff', '👥 Персонал'], ['bots', '🤖 Боти'], ['printer', '🖨 Принтер'], ['log', '📜 Журнал'], ['bak', '💾 Бекапи']];
+  const SEC0 = [['start', '🚀 Запуск'], ['venue', '🏪 Заклад і каса'], ['site', '🌐 Сайт'], ['menu', '🍽 Меню'], ['go', '🛵 Доставка'], ['staff', '👥 Персонал'], ['bots', '🤖 Боти'], ['printer', '🖨 Принтер'], ['log', '🛡 Журнал і копії']];
+  /* 🚀 Запуск — лише поки заклад не налаштований (VARVAR — ніколи) */
+  const doneKey = id => 'own_ready_' + id, isDone = id => { if (id === 'varvar') return true; try { return localStorage.getItem(doneKey(id)) === '1'; } catch { return false; } };
+  const secs = () => SEC0.filter(([k]) => k !== 'start' || !isDone(S.cfgV?.id));
   const V = () => S.cfgV; // { id, sec, d: {…дані розділу} }
 
   async function load() {
-    const v = V(); if (!SEC.some(x => x[0] === v.sec)) v.sec = 'venue'; v.d = null; render();
+    const v = V(); if (!secs().some(x => x[0] === v.sec)) v.sec = 'venue'; v.d = null; render();
     try {
       const id = v.id, sec = v.sec;
       if (sec === 'start' || sec === 'bots' || sec === 'printer') v.d = { ready: await api('ready', { venue: id }) };
@@ -28,8 +31,7 @@ window.OWNV = ctx => {
       if (sec === 'menu') v.d = { menu: (await vapi(id, 'menu')).menu };
       if (sec === 'go') v.d = { go: (await vapi(id, 'goCfg')).cfg };
       if (sec === 'staff') v.d = await vapi(id, 'staff');
-      if (sec === 'bak') v.d = { list: (await api('bak', { venue: id, do: 'list' })).list };
-      if (sec === 'log') v.d = { list: (await vapi(id, 'alog', { m: S.logM || '' })).list };
+      if (sec === 'log') { const [a, b] = await Promise.all([vapi(id, 'alog', { m: S.logM || '' }), api('bak', { venue: id, do: 'list' }).catch(() => ({ list: [] }))]); v.d = { list: a.list, bak: b.list }; }
     } catch (e) { toast('⚠️ ' + e.message); v.d = { err: e.message }; }
     render();
   }
@@ -39,7 +41,7 @@ window.OWNV = ctx => {
 
   function view() {
     const v = V(), venue = S.venues.find(x => x.id === v.id) || { name: v.id };
-    const tabs = `<div class="seg2">${SEC.map(([k, l]) => `<button class="${v.sec === k ? 'on' : ''}" data-a="vsec" data-s="${k}">${l}</button>`).join('')}</div>`;
+    const tabs = `<div class="seg2">${secs().map(([k, l]) => `<button class="${v.sec === k ? 'on' : ''}" data-a="vsec" data-s="${k}">${l}</button>`).join('')}</div>`;
     const head = `<div class="btnrow" style="align-items:center;margin-bottom:10px">${S.venues.length > 1 ? '<button class="btn sm ghost" data-a="vpickBack">← Інший заклад</button>' : ''}<h2 style="margin:0">⚙️</h2>${S.venues.length > 1 ? `<select id="vpick" style="max-width:320px;font-weight:700">${S.venues.map(x => `<option value="${x.id}" ${x.id === v.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>` : `<h2 style="margin:0">${esc(venue.name)}</h2>`}</div>${tabs}`;
     if (!v.d) return head + '<div class="muted">Завантаження…</div>';
     if (v.d.err) return head + `<div class="alert red">${esc(v.d.err)}</div>`;
@@ -51,7 +53,7 @@ window.OWNV = ctx => {
       const list = [[r.name && r.name !== 'Новий заклад', 'Назва', 'venue', esc(r.name || '')], [r.logo, 'Логотип', 'venue', 'квадратний PNG — у касі й на сайті'], [r.contacts, 'Контакти й години', 'site', 'телефон, адреса — для сайту й ботів'],
         [r.items > 0, 'Меню', 'menu', r.items ? `${r.items} страв у ${r.cats} розділах` : 'вручну або імпорт з Excel / Google'], [true, 'Зал', 'venue', `${r.tables} столів`], [r.staff > 0, 'Персонал', 'staff', r.staff ? `${r.staff} працівників` : 'надішліть посилання каси й коди'],
         [r.bots.staff && r.bots.group, 'Бот персоналу й група', 'bots', 'замовлення, броні, звіти — у Telegram'], [r.bots.guest, 'Бот гостей', 'bots', 'бонуси, броні, статус замовлення'], [r.site, 'Сайт-візитка', 'site', 'опис і головне фото'], [r.printer === 1, 'Принтер', 'printer', r.printer ? 'був на зв\'язку' : 'програма друку на комп\'ютері з принтером']];
-      const done = list.filter(x => x[0]).length;
+      const done = list.filter(x => x[0]).length; if (done === list.length) try { localStorage.setItem(doneKey(v.id), '1'); } catch {}
       return `<div class="card"><h3>🚀 Готовність закладу: ${done} з ${list.length}</h3><div style="height:8px;border-radius:5px;background:var(--card2);overflow:hidden;margin-bottom:10px"><div style="height:100%;width:${done / list.length * 100}%;background:var(--green)"></div></div>${list.map(x => it(...x)).join('')}</div>
         <div class="muted" style="font-size:13px;margin-top:8px">Усе можна змінювати будь-коли — тут або в касі закладу (⚙️ Налаштування).</div>`;
     },
@@ -99,22 +101,22 @@ window.OWNV = ctx => {
       const L = v.d.live || {}, ext = v.id !== 'varvar';
       if (L.err) return `<div class="alert red">${esc(L.err)}</div>`;
       const st = (b, need) => !b?.on ? `<b class="muted">⬜ не підключено</b>` : !b.ok ? `<b style="color:var(--red)">❌ ${esc(b.err || 'не працює')}</b>` : b.lastErr ? `<b style="color:var(--orange)">⚠️ ${esc(b.lastErr)}</b>` : !b.hook ? `<b style="color:var(--orange)">⚠️ не отримує повідомлень</b>` : `<b style="color:var(--green)">✅ працює</b>`;
-      const card = (b, ic, title, what) => `<div class="card"><h3>${ic} ${title}</h3><div class="kv"><span>${b?.user ? `<a href="https://t.me/${esc(b.user)}" target="_blank">@${esc(b.user)}</a>${b.name ? ` <small class="muted">${esc(b.name)}</small>` : ''}` : '<span class="muted">—</span>'}</span>${st(b)}</div><div class="muted" style="font-size:13px">${what}</div>${b?.pending > 20 ? `<div class="muted" style="font-size:12px">У черзі ${b.pending} непрочитаних оновлень</div>` : ''}</div>`;
+      const card = (b, ic, title, what, k) => `<div class="card"><h3>${ic} ${title}</h3><div class="kv"><span>${b?.user ? `<a href="https://t.me/${esc(b.user)}" target="_blank">@${esc(b.user)}</a>${b.name ? ` <small class="muted">${esc(b.name)}</small>` : ''}` : '<span class="muted">—</span>'}</span>${st(b)}</div><div class="muted" style="font-size:13px">${what}</div>${b?.pending > 20 ? `<div class="muted" style="font-size:12px">У черзі ${b.pending} непрочитаних оновлень</div>` : ''}${ext ? `<button class="btn sm ${b?.on ? '' : 'primary'}" data-a="vbotNew" data-k="${k}" style="margin-top:8px">${b?.on ? '🔁 Замінити бота' : '➕ Створити бота'}</button>` : ''}</div>`;
       const g = L.group || {};
       return `<div class="vhead"><button class="btn sm" data-a="vsec" data-s="bots">🔄 Перевірити ще раз</button>${g.ok ? '<button class="btn sm" data-a="vbotTest">📨 Тест у групу</button>' : ''}</div>
-        <div class="grid">${card(L.staff, '🧑‍🍳', 'Бот персоналу', 'Замовлення, броні, звіти, ЗП — для працівників.')}
+        <div class="grid">${card(L.staff, '🧑‍🍳', 'Бот персоналу', 'Замовлення, броні, звіти, ЗП — для працівників.', 'BOT_TOKEN')}
         <div class="card"><h3>👥 Група персоналу</h3><div class="kv"><span>${g.title ? esc(g.title) : '<span class="muted">—</span>'}</span>${!g.on ? '<b class="muted">⬜ не підключена</b>' : g.ok ? '<b style="color:var(--green)">✅ бот у групі</b>' : `<b style="color:var(--red)">❌ ${esc(g.err || '')}</b>`}</div><div class="muted" style="font-size:13px">Сюди приходять сповіщення: нові замовлення, броні, Z-звіт. Щоб підключити — додайте бота персоналу в робочу групу.</div></div>
-        ${card(L.guest, '🍔', 'Бот гостей', 'Вхід у кабінет гостя, бонуси, статус броні, «Написати нам».')}${card(L.courier, '🛵', 'Бот курʼєрів', 'Доставки для курʼєрів.')}
-        ${ext ? `<div class="card" style="grid-column:1/-1"><h3>➕ Підключити / замінити бота</h3><ol class="muted" style="font-size:13px;padding-left:18px;margin:0 0 10px"><li>Telegram → <a href="https://t.me/BotFather" target="_blank">@BotFather</a> → /newbot → назва й імʼя бота</li><li>Скопіюйте токен (123456:ABC…) і вставте в потрібне поле</li><li>Бота персоналу додайте в робочу групу — вона підключиться сама</li></ol>
-          <form id="vbf" style="display:grid;gap:8px"><input name="BOT_TOKEN" placeholder="🧑‍🍳 Токен бота персоналу" autocomplete="off"><input name="GUEST_BOT_TOKEN" placeholder="🍔 Токен бота гостей" autocomplete="off"><input name="COURIER_BOT_TOKEN" placeholder="🛵 Токен бота курʼєрів" autocomplete="off"><div class="err" id="vberr"></div><button class="btn primary">💾 Перевірити й зберегти</button></form>${L.staff?.ok || L.guest?.ok ? '<button class="btn sm" data-a="vbrand" style="margin-top:10px">🎨 Оформити ботів (назва й логотип закладу)</button>' : ''}</div>` : '<div class="muted" style="font-size:13px;grid-column:1/-1">VARVAR: токени ботів зберігаються на сервері. Стан вище — справжній, перевірено в Telegram щойно.</div>'}</div>`;
+        ${card(L.guest, '🍔', 'Бот гостей', 'Вхід у кабінет гостя, бонуси, статус броні, «Написати нам».', 'GUEST_BOT_TOKEN')}${card(L.courier, '🛵', 'Бот курʼєрів', 'Доставки для курʼєрів.', 'COURIER_BOT_TOKEN')}
+        ${ext ? (L.staff?.ok || L.guest?.ok ? '<div class="card" style="grid-column:1/-1"><h3>🎨 Оформлення</h3><div class="muted" style="font-size:13px;margin-bottom:8px">Назва, опис і аватарка всіх ботів — з назви й логотипа закладу.</div><button class="btn sm" data-a="vbrand">🎨 Оформити ботів</button></div>' : '') : '<div class="muted" style="font-size:13px;grid-column:1/-1">VARVAR: токени ботів зберігаються на сервері. Стан вище — справжній, перевірено в Telegram щойно.</div>'}</div>`;
     },
     bak(v) {
-      const plat = S.me.role === 'platform', l = v.d.list;
+      const plat = S.me.role === 'platform', l = v.d.bak || [];
       return `<div class="card"><h3>💾 Резервні копії</h3><div class="muted" style="font-size:13px;margin-bottom:8px">Щоночі система сама зберігає повну копію даних закладу (меню, чеки, звіти, склад, персонал, гості) і тримає 7 днів. ${plat ? 'Відновити можна будь-яку.' : 'Якщо щось зламалось — розробник відновить потрібний день (🆘 Допомога).'}</div>
         <div class="btnrow" style="margin-bottom:8px"><button class="btn sm primary" data-a="bakNow">💾 Зробити копію зараз</button></div>
         ${l.length ? l.map(b => `<div class="kv"><span>${/^\d{4}-\d\d-\d\d$/.test(b.tag) ? '🌙 ' + b.tag.split('-').reverse().join('.') : esc(b.tag)}<br><small class="muted">${b.at ? new Date(b.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''} · ${b.n || '?'} записів · ${b.kb || '?'} КБ</small></span><span style="display:flex;gap:6px"><button class="btn sm" data-a="bakGet" data-t="${esc(b.tag)}">⬇️</button>${plat ? `<button class="btn sm red" data-a="bakRestore" data-t="${esc(b.tag)}">♻️ Відновити</button>` : ''}</span></div>`).join('') : '<div class="muted">Копій ще немає — перша буде вночі (або натисніть «Зробити копію зараз»).</div>'}</div>`;
     },
-    log(v) {
+    log(v) { return SECV.bak(v) + '<h3 style="margin:18px 4px 8px">📜 Журнал змін</h3>' + SECV.log0(v); },
+    log0(v) {
       const m = S.logM || new Date().toLocaleDateString('sv-SE').slice(0, 7), q = (S.logQ || '').toLowerCase(), l = v.d.list.filter(x => !q || x.t.toLowerCase().includes(q));
       return `<div class="btnrow" style="margin-bottom:10px;align-items:center"><input type="month" id="logM" value="${m}" style="max-width:170px;min-height:34px;padding:6px 10px"><input id="logQ" placeholder="🔎 Хто / що (напр. Меню, Олег)" value="${esc(S.logQ || '')}" style="max-width:260px;min-height:34px;padding:6px 12px"></div>
         <div class="card">${l.length ? l.slice(0, 500).map(x => `<div class="kv"><span style="min-width:0;overflow-wrap:anywhere">${esc(x.t)}</span><small class="muted" style="white-space:nowrap">${new Date(x.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</small></div>`).join('') : '<div class="muted">Записів немає</div>'}</div>
@@ -181,6 +183,20 @@ window.OWNV = ctx => {
     }
     if (a === 'vstfAdd') return modal('➕ Новий працівник', `<label>Імʼя<input name="n" required maxlength="30"></label><label>PIN (4 цифри)<input name="p" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4"></label><label>Роль<select name="r"><option value="waiter">🧑‍🍳 Офіціант</option><option value="cook">👨‍🍳 Кухар</option><option value="courier">🛵 Курʼєр</option><option value="admin">👑 Адмін</option></select></label>`, async f => { await vapi(id, 'staffAdd', { name: f.n.value.trim(), pin: f.p.value, role: f.r.value }); toast('👥 Додано'); load(); });
     // 🤖 боти
+    if (a === 'vbotNew') { /* 🤖 майстер: Telegram дозволяє створити бота лише через @BotFather — ведемо по кроках і підставляємо готові назви */
+      const nm = S.venues.find(x => x.id === id)?.name || id, W = { BOT_TOKEN: ['🧑‍🍳 бот персоналу', ' · персонал', 'staff'], GUEST_BOT_TOKEN: ['🍔 бот гостей', '', ''], COURIER_BOT_TOKEN: ['🛵 бот курʼєрів', ' · курʼєри', 'courier'] }[d.k];
+      const TR = { а: 'a', б: 'b', в: 'v', г: 'h', ґ: 'g', д: 'd', е: 'e', є: 'ie', ж: 'zh', з: 'z', и: 'y', і: 'i', ї: 'i', й: 'i', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'shch', ь: '', ю: 'iu', я: 'ia', 'ʼ': '', "'": '' };
+      const slug = nm.toLowerCase().split('').map(c => TR[c] ?? c).join('').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 20) || 'cafe', title = nm + W[1], user = slug + (W[2] ? '_' + W[2] : '') + '_bot';
+      const cp = t => `<button type="button" class="btn sm" data-cp="${esc(t)}">📋</button>`;
+      const bg = modal('➕ Створити ' + W[0], `<ol style="padding-left:18px;margin:0;display:grid;gap:12px;font-size:14px">
+          <li>Відкрийте <a class="btn sm primary" href="https://t.me/BotFather?start=newbot" target="_blank">@BotFather</a> і надішліть йому <b>/newbot</b></li>
+          <li>Назва бота (що бачать люди):<div class="kv"><b>${esc(title)}</b>${cp(title)}</div></li>
+          <li>Імʼя бота (латиницею, закінчується на <b>bot</b>). Якщо зайняте — додайте цифру:<div class="kv"><b>${esc(user)}</b>${cp(user)}</div></li>
+          <li>BotFather надішле токен (виглядає як <code>123456789:AA…</code>) — скопіюйте й вставте сюди:</li></ol>
+          <label style="margin-top:8px">Токен<input name="tok" required autocomplete="off" placeholder="123456789:AA…"></label><div class="muted" style="font-size:12px">Після збереження система сама перевірить бота, підключить його, поставить назву, опис і логотип закладу.${d.k === 'BOT_TOKEN' ? ' Потім додайте бота у вашу робочу групу Telegram — вона підключиться сама.' : ''}</div>`,
+        async f => { const tok = f.tok.value.trim(); if (!/^\d{6,12}:[\w-]{30,}$/.test(tok)) throw new Error('Це не схоже на токен — скопіюйте повністю з повідомлення BotFather'); const r = await api('secrets', { venue: id, f: { [d.k]: tok } }); toast('✅ Підключено: ' + Object.values(r.names || {}).map(n => '@' + n).join(', ')); load(); });
+      bg.addEventListener('click', async e => { const b = e.target.closest('[data-cp]'); if (!b) return; try { await navigator.clipboard.writeText(b.dataset.cp); toast('📋 Скопійовано'); } catch { prompt('Скопіюйте:', b.dataset.cp); } });
+      return; }
     if (a === 'vbotTest') { el.disabled = true; try { const r = await api('bots', { venue: id, test: 1 }); toast(r.sent ? '📨 Надіслано — перевірте групу' : '⚠️ ' + (r.err || 'не вдалося')); } catch (x) { toast('⚠️ ' + x.message); } el.disabled = false; return; }
     // 🖨 принтер — як у касі
     if (a === 'vpqDel') return act(() => vapi(id, 'printClear', { id: d.id }), '🗑 Видалено');

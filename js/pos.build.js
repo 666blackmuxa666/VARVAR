@@ -682,8 +682,6 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         S.data.wifi = await api("wifi");
         S.data.gocfg = (await api("goCfg")).cfg;
         S.data.cours = await api("courList").catch(() => null);
-        S.data.site = (await api("siteGet")).site;
-        S.data.rates = await api("siteRates", { from: iso(Date.now() - 30 * 864e5), to: todayK() }).catch(() => null);
         if (!S.menu) await loadMenu();
       }
       if (["stop", "menu"].includes(S.view) && !S.menu) await loadMenu();
@@ -890,7 +888,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     renderMain();
   });
   document.addEventListener("click", async (e) => {
-    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v;
+    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u;
     const el = e.target.closest("[data-a]");
     if (!el) return;
     const a = el.dataset.a, t = S.open;
@@ -1203,30 +1201,6 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         await modal({ title: "\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438", body: `<div class="bk-list">${r.list.map((c) => `<div class="kv"><span><b>${c.code}</b> \xB7 ${money(c.sum)}${c.left !== c.sum ? ` \xB7 \u0437\u0430\u043B\u0438\u0448\u043E\u043A ${money(c.left)}` : ""}<br><small class="muted">\u0432\u0456\u0434 ${esc(c.from)}${c.to ? " \u0434\u043B\u044F " + esc(c.to) : ""} \xB7 ${fmtPh(c.phone)} \xB7 ${{ new: "\u23F3 \u043D\u0435 \u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E", ok: "\u2705 \u0430\u043A\u0442\u0438\u0432\u043D\u0438\u0439", no: "\u274C \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E" }[c.st]}</small></span>${c.st === "new" ? `<span class="kv-r"><button class="btn sm green" data-a="certPay" data-c="${c.code}" data-h="cash">\u{1F4B5}</button><button class="btn sm" data-a="certPay" data-c="${c.code}" data-h="card">\u{1F4B3}</button><button class="btn sm red" data-a="certDel" data-c="${c.code}">\u{1F5D1}</button></span>` : `<span class="kv-r"><button class="btn sm red" data-a="certDel" data-c="${c.code}">\u{1F5D1}</button></span>`}</div>`).join("") || '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454</div>'}</div>`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
         break;
       }
-      case "siteSet": {
-        const k = el.dataset.k, cur = (_j = S.data.site) == null ? void 0 : _j[k];
-        const v = ["about", "banquet", "hookah"].includes(k) ? await askLong(el.dataset.l || k, String(cur != null ? cur : "")) : await askVal(el.dataset.l || k, String(cur != null ? cur : ""), ["rating", "ratingN"].includes(k) ? "number" : "text");
-        if (v == null) break;
-        const r = await act("siteSet", { k, v }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E \u2014 \u0443\u0436\u0435 \u043D\u0430 \u0441\u0430\u0439\u0442\u0456");
-        if (r) {
-          S.data.site = r.site;
-          if (k === "name") {
-            S.brand = __spreadProps(__spreadValues({}, S.brand), { name: r.site.name });
-            store.set("brand", S.brand);
-            applyBrand();
-          }
-          renderMain();
-        }
-        break;
-      }
-      case "siteTgl": {
-        const k = el.dataset.k, r = await act("siteSet", { k, v: S.data.site[k] ? 0 : 1 }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
-        if (r) {
-          S.data.site = r.site;
-          renderMain();
-        }
-        break;
-      }
       case "copyLink":
         try {
           await navigator.clipboard.writeText(el.dataset.u);
@@ -1235,67 +1209,6 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
           prompt("\u0421\u043A\u043E\u043F\u0456\u044E\u0439\u0442\u0435 \u043F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F:", el.dataset.u);
         }
         break;
-      case "siteDel": {
-        const r = await act("siteSet", { k: el.dataset.k, v: el.dataset.v }, "\u{1F5D1} \u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
-        if (r) {
-          S.data.site = r.site;
-          if (el.dataset.k === "logo") {
-            S.brand = __spreadProps(__spreadValues({}, S.brand), { logo: "" });
-            store.set("brand", S.brand);
-            applyBrand();
-          }
-          renderMain();
-        }
-        break;
-      }
-      case "sitePromo": {
-        const tt = await ask("\u{1F389} \u041D\u0430\u0437\u0432\u0430 \u0430\u043A\u0446\u0456\u0457", "\u0429\u0430\u0441\u043B\u0438\u0432\u0456 \u0433\u043E\u0434\u0438\u043D\u0438 15\u201317");
-        if (!tt) break;
-        const d = await ask("\u041E\u043F\u0438\u0441 (\u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)", "\u221220% \u043D\u0430 \u043A\u043E\u043A\u0442\u0435\u0439\u043B\u0456");
-        const r = await act("siteSet", { k: "promoAdd", v: { t: tt, d: d || "" } }, "\u{1F389} \u0414\u043E\u0434\u0430\u043D\u043E");
-        if (r) {
-          S.data.site = r.site;
-          renderMain();
-        }
-        break;
-      }
-      case "siteQuote": {
-        const tt = await ask("\u{1F4AC} \u0422\u0435\u043A\u0441\u0442 \u0432\u0456\u0434\u0433\u0443\u043A\u0443");
-        if (!tt) break;
-        const a2 = await ask("\u0410\u0432\u0442\u043E\u0440", "\u041E\u043B\u0435\u043D\u0430, Google");
-        const r = await act("siteSet", { k: "quoteAdd", v: { t: tt, a: a2 || "" } }, "\u{1F4AC} \u0414\u043E\u0434\u0430\u043D\u043E");
-        if (r) {
-          S.data.site = r.site;
-          renderMain();
-        }
-        break;
-      }
-      case "siteImg":
-        siteImg(el.dataset.h, el.dataset.l);
-        break;
-      case "siteHits": {
-        const sel = new Set(S.data.site.hits);
-        const v = await modal({ title: "\u{1F37D} \u0425\u0456\u0442\u0438 \u043D\u0430 \u0441\u0430\u0439\u0442\u0456", text: "\u0414\u043E 12 \u0441\u0442\u0440\u0430\u0432; \u043F\u043E\u0440\u043E\u0436\u043D\u044C\u043E \u2014 \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u043D\u043E", body: `<div class="bk-list">${itemsAll().filter((i) => !i.hidden).map((i) => `<label class="kv"><span>${esc(i.name.uk)}${i.img ? " \u{1F4F7}" : ""}</span><input type="checkbox" class="hitC" value="${i.id}" ${sel.has(i.id) ? "checked" : ""} style="width:22px;height:22px"></label>`).join("")}</div>`, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
-        const ids = [...document.querySelectorAll(".hitC:checked")].map((x) => x.value).slice(0, 12);
-        closeModal();
-        if (v !== "ok") break;
-        const r = await act("siteSet", { k: "hits", v: ids }, "\u{1F37D} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
-        if (r) {
-          S.data.site = r.site;
-          renderMain();
-        }
-        break;
-      }
-      case "siteCopy": {
-        const u = "https://666blackmuxa666.github.io/VARVAR/about.html";
-        try {
-          await navigator.clipboard.writeText(u);
-          toast("\u{1F4CB} " + u);
-        } catch (e2) {
-          await ask("\u041F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F", u);
-        }
-        break;
-      }
       case "goSt":
         if (await act("goSt", { t, st: el.dataset.s }, "\u2714 " + GOST[el.dataset.s])) loadState().catch(() => {
         });
@@ -1329,7 +1242,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       }
       case "crDone": {
         const tt = +el.dataset.t, b = S.tables[tt];
-        const pay = ((_k = b == null ? void 0 : b.go) == null ? void 0 : _k.paid) ? "card" : await choose(`\u{1F91D} ${tn(tt)} \u0432\u0438\u0434\u0430\u043D\u043E`, `\u0414\u043E \u0441\u043F\u043B\u0430\u0442\u0438 ${money(b.pay2)}${b.go.change ? ` \xB7 \u0440\u0435\u0448\u0442\u0430 \u0437 ${b.go.change}` : ""}`, [{ label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430", val: "cash", cls: "green" }, { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u043A\u0430", val: "card", cls: "blue" }]);
+        const pay = ((_j = b == null ? void 0 : b.go) == null ? void 0 : _j.paid) ? "card" : await choose(`\u{1F91D} ${tn(tt)} \u0432\u0438\u0434\u0430\u043D\u043E`, `\u0414\u043E \u0441\u043F\u043B\u0430\u0442\u0438 ${money(b.pay2)}${b.go.change ? ` \xB7 \u0440\u0435\u0448\u0442\u0430 \u0437 ${b.go.change}` : ""}`, [{ label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430", val: "cash", cls: "green" }, { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u043A\u0430", val: "card", cls: "blue" }]);
         if (!pay) break;
         if (await act("courAct", { t: tt, act: "done", arg: pay }, "\u2705 \u0412\u0438\u0434\u0430\u043D\u043E")) {
           await loadState().catch(() => {
@@ -1372,7 +1285,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         }
         break;
       case "goCourSet": {
-        const n = await ask("\u{1F464} \u041A\u0443\u0440'\u0454\u0440 (\u0456\u043C\u02BC\u044F)", ((_m = (_l = S.tables[t]) == null ? void 0 : _l.go) == null ? void 0 : _m.cour) || "");
+        const n = await ask("\u{1F464} \u041A\u0443\u0440'\u0454\u0440 (\u0456\u043C\u02BC\u044F)", ((_l = (_k = S.tables[t]) == null ? void 0 : _k.go) == null ? void 0 : _l.cour) || "");
         if (n != null && await act("goCour", { t, n }, "\u2714")) loadState().catch(() => {
         });
         break;
@@ -1392,7 +1305,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         break;
       }
       case "goCfg": {
-        const k = el.dataset.k, cur = (_n = S.data.gocfg) == null ? void 0 : _n[k];
+        const k = el.dataset.k, cur = (_m = S.data.gocfg) == null ? void 0 : _m[k];
         const v = ["on", "del", "pick"].includes(k) ? cur ? 0 : 1 : await ask(el.dataset.l || k, String(cur != null ? cur : ""), ["phone", "zone", "from", "to"].includes(k) ? "text" : "number");
         if (v == null) break;
         const r = await act("goCfgSet", { k, v }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
@@ -1611,7 +1524,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
           }, 3e3);
           break;
         }
-        if (await act("printClear", { id: el.dataset.id }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) (_o = el.closest("[data-pq]")) == null ? void 0 : _o.remove();
+        if (await act("printClear", { id: el.dataset.id }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) (_n = el.closest("[data-pq]")) == null ? void 0 : _n.remove();
         break;
       }
       case "pQr": {
@@ -1629,7 +1542,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       }
       case "expense": {
         const v = await modal({ title: "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0430", body: '<div class="form"><input id="eSum" inputmode="decimal" placeholder="\u0421\u0443\u043C\u0430, \u20B4"><input id="eNote" placeholder="\u041D\u0430 \u0449\u043E (\u043D\u0430\u043F\u0440. \u043E\u0432\u043E\u0447\u0456 \u043D\u0430 \u0440\u0438\u043D\u043A\u0443)">' + (isAdmin() ? `<label class="muted" style="font-size:13px">\u{1F4C5} \u0417\u0430 \u0434\u0435\u043D\u044C<input id="eDay" type="date" value="${todayK()}" max="${todayK()}"></label>` : "") + "</div>", buttons: [{ label: "\u{1F4B5} \u0417 \u043A\u0430\u0441\u0438", val: "cash", cls: "primary" }, { label: "\u{1F4B3} \u0417 \u043A\u0430\u0440\u0442\u0438", val: "card" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
-        const sum = v && +$("#eSum").value.replace(",", "."), note = v && $("#eNote").value, day = v && ((_p = $("#eDay")) == null ? void 0 : _p.value) !== todayK() ? ((_q = $("#eDay")) == null ? void 0 : _q.value) || "" : "";
+        const sum = v && +$("#eSum").value.replace(",", "."), note = v && $("#eNote").value, day = v && ((_o = $("#eDay")) == null ? void 0 : _o.value) !== todayK() ? ((_p = $("#eDay")) == null ? void 0 : _p.value) || "" : "";
         closeModal();
         if (v && sum) {
           await act("expense", __spreadValues({ sum, note, src: v }, day ? { day } : {}), day ? `\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0443 \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u043E \u0437\u0430 ${day.split("-").reverse().join(".")}` : "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0443 \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u043E");
@@ -1694,7 +1607,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         break;
       }
       case "cfgTgl": {
-        const k = el.dataset.k, cur = (_v = (_u = (_s = (_r = S.data.staff) == null ? void 0 : _r.cfg) == null ? void 0 : _s[k]) != null ? _u : (_t = S.cfg) == null ? void 0 : _t[k]) != null ? _v : +(el.dataset.def || 0);
+        const k = el.dataset.k, cur = (_u = (_t = (_r = (_q = S.data.staff) == null ? void 0 : _q.cfg) == null ? void 0 : _r[k]) != null ? _t : (_s = S.cfg) == null ? void 0 : _s[k]) != null ? _u : +(el.dataset.def || 0);
         if (await act("cfgSet", { k, v: cur ? 0 : 1 }, "\u2699\uFE0F \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
           loadView();
           loadState().catch(() => {
@@ -2851,73 +2764,6 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       });
     }
   }
-  async function siteImg(hero, logo) {
-    const f = await new Promise((res) => {
-      const i = document.createElement("input");
-      i.type = "file";
-      i.accept = "image/*";
-      i.onchange = () => res(i.files[0]);
-      i.click();
-    });
-    if (!f) return;
-    const img = await new Promise((r2) => {
-      const im = new Image();
-      im.onload = () => r2(im);
-      im.src = URL.createObjectURL(f);
-    }), k = Math.min(1, (logo ? 512 : 1600) / Math.max(img.width, img.height)), c = document.createElement("canvas");
-    c.width = img.width * k;
-    c.height = img.height * k;
-    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-    const r = await act("sitePhoto", { data: logo ? c.toDataURL("image/png") : c.toDataURL("image/jpeg", 0.82), hero: !!hero, logo: !!logo }, logo ? "\u{1F5BC} \u041B\u043E\u0433\u043E\u0442\u0438\u043F \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E" : "\u{1F4F7} \u0424\u043E\u0442\u043E \u0434\u043E\u0434\u0430\u043D\u043E");
-    if (r) {
-      S.data.site = r.site;
-      if (logo) {
-        S.brand = __spreadProps(__spreadValues({}, S.brand), { logo: r.url });
-        store.set("brand", S.brand);
-        applyBrand();
-      }
-      renderMain();
-    }
-  }
-  function venueHTML() {
-    const s = S.data.site;
-    if (!s) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
-    const link = location.origin + location.pathname + (VENUE ? "?venue=" + VENUE : "");
-    return `<div class="grid2 set">
-      <div class="card"><h3>\u{1F3EA} \u0417\u0430\u043A\u043B\u0430\u0434</h3><button class="sf press" data-a="siteSet" data-k="name" data-l="\u041D\u0430\u0437\u0432\u0430 \u0437\u0430\u043A\u043B\u0430\u0434\u0443"><i>\u{1F37D}</i><span><small>\u041D\u0430\u0437\u0432\u0430 \u0437\u0430\u043A\u043B\u0430\u0434\u0443</small><b>${esc(s.name || "\u043D\u0435 \u0432\u043A\u0430\u0437\u0430\u043D\u043E")}</b></span><em>\u270F\uFE0F</em></button>
-        <div class="muted set-note">\u041D\u0430\u0437\u0432\u0430 \u2014 \u0443 \u043A\u0430\u0441\u0456, \u0443 \u0432\u0456\u043A\u043D\u0456 \u0432\u0445\u043E\u0434\u0443, \u043D\u0430 \u0441\u0430\u0439\u0442\u0456 \u0439 \u0443 \u043F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u043D\u044F\u0445 \u0431\u043E\u0442\u0456\u0432 \u0433\u043E\u0441\u0442\u044F\u043C.</div></div>
-      <div class="card"><h3>\u{1F5BC} \u041B\u043E\u0433\u043E\u0442\u0438\u043F</h3><div style="display:flex;gap:14px;align-items:center"><button class="brand-up press" data-a="siteImg" data-l="1">${s.logo ? `<img src="${esc(s.logo)}" alt="">` : "<span>\u2795</span>"}</button><div class="muted" style="font-size:13px">\u041D\u0430\u0439\u043A\u0440\u0430\u0449\u0435 \u2014 \u043A\u0432\u0430\u0434\u0440\u0430\u0442\u043D\u0438\u0439 PNG.${s.logo ? '<br><button class="btn sm" data-a="siteDel" data-k="logo" data-v="" style="margin-top:8px">\u2715 \u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u043B\u043E\u0433\u043E\u0442\u0438\u043F</button>' : ""}</div></div></div>
-      <div class="card"><h3>\u{1F517} \u041A\u0430\u0441\u0430 \u0434\u043B\u044F \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\u0443</h3><div class="kv"><span style="min-width:0;overflow-wrap:anywhere"><small class="muted">${esc(link)}</small></span><button class="btn sm" data-a="copyLink" data-u="${esc(link)}">\u041A\u043E\u043F\u0456\u044E\u0432\u0430\u0442\u0438</button></div>
-        <div class="muted set-note">\u0412\u0456\u0434\u043A\u0440\u0438\u0439\u0442\u0435 \u043D\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0456 \u0447\u0438 \u043F\u043B\u0430\u043D\u0448\u0435\u0442\u0456 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430 \u2014 \u0434\u0430\u043B\u0456 \u043A\u043E\u0434 \u0440\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u0457, \u0456\u043C'\u044F \u0439 PIN.</div></div></div>`;
-  }
-  function siteHTML() {
-    const s = S.data.site;
-    if (!s) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
-    const U = "https://666blackmuxa666.github.io/VARVAR/about.html" + (VENUE ? "?venue=" + VENUE : "");
-    const f = (k, ic, l, v, ph) => `<button class="sf press" data-a="siteSet" data-k="${k}" data-l="${esc(l)}"><i>${ic}</i><span><small>${l}</small><b class="${v ? "" : "muted"}">${v ? esc(v) : esc(ph || "\u043D\u0435 \u0432\u043A\u0430\u0437\u0430\u043D\u043E")}</b></span><em>\u270F\uFE0F</em></button>`;
-    const sw2 = (k, l, hint) => `<button class="sf press" data-a="siteTgl" data-k="${k}"><span><b>${l}</b><small>${hint}</small></span><span class="switch ${s[k] ? "on" : ""}"></span></button>`;
-    const item = (id) => itemsAll().find((i) => i.id === id);
-    return `<div class="site-top card"><div><h3>\u{1F310} \u0421\u0430\u0439\u0442-\u0432\u0456\u0437\u0438\u0442\u043A\u0430</h3><span class="muted">\u0417\u043C\u0456\u043D\u0438 \u0437\u02BC\u044F\u0432\u043B\u044F\u044E\u0442\u044C\u0441\u044F \u043D\u0430 \u0441\u0430\u0439\u0442\u0456 \u043E\u0434\u0440\u0430\u0437\u0443</span></div><div class="btnrow"><a class="btn sm primary" href="${U}" target="_blank" rel="noopener">\u{1F517} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438</a><button class="btn sm" data-a="siteCopy">\u{1F4CB} \u041F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F</button></div></div>
-    <div class="grid2 set">
-      <div class="card"><h3>\u{1F3F7} \u041E\u0441\u043D\u043E\u0432\u043D\u0435</h3>${f("tagline", "\u2728", "\u0421\u043B\u043E\u0433\u0430\u043D", s.tagline)}${f("about", "\u{1F4DD}", "\u041F\u0440\u043E \u043D\u0430\u0441", s.about)}</div>
-      <div class="card"><h3>\u{1F4CD} \u041A\u043E\u043D\u0442\u0430\u043A\u0442\u0438</h3>${f("phone", "\u{1F4DE}", "\u0422\u0435\u043B\u0435\u0444\u043E\u043D", s.phone)}${f("addr", "\u{1F4CD}", "\u0410\u0434\u0440\u0435\u0441\u0430", s.addr)}
-        <div class="sf2">${f("from", "\u{1F550}", "\u0412\u0456\u0434\u043A\u0440\u0438\u0432\u0430\u0454\u043C\u043E\u0441\u044C", s.from)}${f("to", "\u{1F559}", "\u0417\u0430\u0447\u0438\u043D\u044F\u0454\u043C\u043E\u0441\u044C", s.to)}</div></div>
-      <div class="card"><h3>\u{1F4F7} \u0424\u043E\u0442\u043E</h3>
-        <button class="site-hero press" data-a="siteImg" data-h="1" style="${s.hero ? `background-image:url('${esc(s.hero)}')` : ""}"><span>${s.hero ? "\u{1F504} \u0417\u0430\u043C\u0456\u043D\u0438\u0442\u0438 \u0433\u043E\u043B\u043E\u0432\u043D\u0435 \u0444\u043E\u0442\u043E" : "\u{1F5BC} \u0414\u043E\u0434\u0430\u0442\u0438 \u0433\u043E\u043B\u043E\u0432\u043D\u0435 \u0444\u043E\u0442\u043E"}</span></button>
-        <div class="site-gal">${s.photos.map((u) => `<div style="background-image:url('${esc(u)}')"><button data-a="siteDel" data-k="photoDel" data-v="${esc(u)}" title="\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438">\u2715</button></div>`).join("")}<button class="add press" data-a="siteImg">\uFF0B<small>\u0433\u0430\u043B\u0435\u0440\u0435\u044F</small></button></div></div>
-      <div class="card"><h3>\u{1F37D} \u0425\u0456\u0442\u0438 \u043C\u0435\u043D\u044E</h3><div class="site-hits">${s.hits.length ? s.hits.map((id) => {
-      const it = item(id);
-      return it ? `<span>${it.img ? `<i style="background-image:url('${esc(it.img)}')"></i>` : ""}${esc(it.name.uk)}</span>` : "";
-    }).join("") : '<span class="muted">\u0410\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u043D\u043E \u2014 \u0441\u0442\u0440\u0430\u0432\u0438 \u0437 \u0444\u043E\u0442\u043E</span>'}</div><button class="btn sm" data-a="siteHits" style="margin-top:10px">\u270F\uFE0F \u041E\u0431\u0440\u0430\u0442\u0438 \u0441\u0442\u0440\u0430\u0432\u0438</button></div>
-      <div class="card"><h3>\u{1F389} \u0410\u043A\u0446\u0456\u0457 \u0442\u0430 \u043F\u043E\u0434\u0456\u0457</h3>${s.promos.map((p) => `<div class="site-promo"><div><b>${esc(p.t)}</b>${p.d ? `<small>${esc(p.d)}</small>` : ""}</div><button class="btn sm red" data-a="siteDel" data-k="promoDel" data-v="${p.id}">\u{1F5D1}</button></div>`).join("") || '<div class="muted set-note">\u041D\u0435\u043C\u0430\u0454 \u2014 \u0431\u043B\u043E\u043A \u043D\u0430 \u0441\u0430\u0439\u0442\u0456 \u043F\u0440\u0438\u0445\u043E\u0432\u0430\u043D\u0438\u0439</div>'}<button class="btn sm primary" data-a="sitePromo">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438 \u0430\u043A\u0446\u0456\u044E</button></div>
-      <div class="card"><h3>\u2B50 \u0412\u0456\u0434\u0433\u0443\u043A\u0438</h3><div class="sf2">${f("rating", "\u2B50", "\u0420\u0435\u0439\u0442\u0438\u043D\u0433 Google", s.rating ? String(s.rating) : "", "\u2014")}${f("ratingN", "\u{1F4AC}", "\u0412\u0456\u0434\u0433\u0443\u043A\u0456\u0432", s.ratingN ? String(s.ratingN) : "", "0")}</div>
-        ${s.quotes.map((q, i) => `<div class="site-promo"><div><i>\xAB${esc(q.t)}\xBB</i><small>\u2014 ${esc(q.a)}</small></div><button class="btn sm red" data-a="siteDel" data-k="quoteDel" data-v="${i}">\u{1F5D1}</button></div>`).join("")}<button class="btn sm" data-a="siteQuote">\u2795 \u0426\u0438\u0442\u0430\u0442\u0430 \u0432\u0456\u0434\u0433\u0443\u043A\u0443</button>
-        ${S.data.rates ? `<div class="site-rate"><b>${S.data.rates.avg || "\u2014"}</b><span>\u043E\u0446\u0456\u043D\u043A\u0430 \u0433\u043E\u0441\u0442\u0435\u0439 \u0443 \u0431\u043E\u0442\u0456 \u0437\u0430 30 \u0434\u043D\u0456\u0432 \xB7 ${S.data.rates.n} \u043E\u0446\u0456\u043D\u043E\u043A</span></div>` : ""}</div>
-      <div class="card"><h3>\u{1F517} \u0421\u043E\u0446\u043C\u0435\u0440\u0435\u0436\u0456 \u0439 \u043A\u0430\u0440\u0442\u0438</h3>${f("insta", "\u{1F4F8}", "Instagram", s.insta, "https://instagram.com/\u2026")}${f("tg", "\u2708\uFE0F", "Telegram-\u043A\u0430\u043D\u0430\u043B", s.tg, "https://t.me/\u2026")}${f("gmaps", "\u{1F5FA}", "Google Maps", s.gmaps)}${f("reviewsUrl", "\u270D\uFE0F", "\u041F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F \xAB\u0417\u0430\u043B\u0438\u0448\u0438\u0442\u0438 \u0432\u0456\u0434\u0433\u0443\u043A\xBB", s.reviewsUrl)}</div>
-      <div class="card"><h3>\u{1F389} \u0411\u0430\u043D\u043A\u0435\u0442\u0438 \xB7 \u{1F4A8} \u041A\u0430\u043B\u044C\u044F\u043D\u0438</h3>${f("banquet", "\u{1F389}", "\u0411\u0430\u043D\u043A\u0435\u0442\u0438 \u0439 \u043A\u0435\u0439\u0442\u0435\u0440\u0438\u043D\u0433", s.banquet)}${f("hookah", "\u{1F4A8}", "\u041A\u0430\u043B\u044C\u044F\u043D\u0438", s.hookah)}</div>
-      <div class="card"><h3>\u2699\uFE0F \u0424\u0443\u043D\u043A\u0446\u0456\u0457 \u0441\u0430\u0439\u0442\u0443</h3>${sw2("bookOn", "\u{1F4C5} \u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F", "\u0424\u043E\u0440\u043C\u0430 \u0431\u0440\u043E\u043D\u0456 \u0439 \u0431\u0430\u043D\u043A\u0435\u0442\u0456\u0432 \u043D\u0430 \u0441\u0430\u0439\u0442\u0456")}${sw2("certOn", "\u{1F39F} \u041F\u043E\u0434\u0430\u0440\u0443\u043D\u043A\u043E\u0432\u0456 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438", "\u0417\u0430\u044F\u0432\u043A\u0438 \u043D\u0430 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 \u0437 \u0441\u0430\u0439\u0442\u0443")}<button class="btn sm" data-a="certs" style="margin-top:10px">\u{1F39F} \u0423\u0441\u0456 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438</button></div>
-    </div>`;
-  }
   async function loadKq() {
     const r = await api("kitchen");
     const list = r.list || [];
@@ -3688,7 +3534,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const row = (l, v, btn, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ""}</span><span class="kv-r"><b>${v}</b>${btn}</span></div>`;
     const ch = (a, extra = "") => `<button class="btn sm" data-a="${a}"${extra}>\u0437\u043C\u0456\u043D\u0438\u0442\u0438</button>`;
     const staff = st ? [...st.staff].sort((a, b) => (a.role || "").localeCompare(b.role || "") || a.name.localeCompare(b.name)) : null;
-    const OWN = ["venue", "site", "test"], SS = [["venue", "\u{1F3EA} \u0417\u0430\u043A\u043B\u0430\u0434"], ["rules", "\u2699\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438"], ["site", "\u{1F310} \u0421\u0430\u0439\u0442"], ["go", "\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430"], ["loy", "\u{1F381} \u041B\u043E\u044F\u043B\u044C\u043D\u0456\u0441\u0442\u044C"], ["look", "\u{1F3A8} \u0412\u0438\u0433\u043B\u044F\u0434"], ["printer", "\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["test", "\u{1F9EA} \u0422\u0435\u0441\u0442"]].filter(([k]) => !OWN.includes(k) || S.setTab === k), cur = only || ((SS0) => SS0.includes(S.setTab) ? S.setTab : "rules")(["venue", "rules", "site", "go", "loy", "look", "printer", "test"]);
+    const OWN = ["test"], SS = [["rules", "\u2699\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438"], ["go", "\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430"], ["loy", "\u{1F381} \u041B\u043E\u044F\u043B\u044C\u043D\u0456\u0441\u0442\u044C"], ["look", "\u{1F3A8} \u0412\u0438\u0433\u043B\u044F\u0434"], ["printer", "\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440"], ["test", "\u{1F9EA} \u0422\u0435\u0441\u0442"]].filter(([k]) => !OWN.includes(k) || S.setTab === k), cur = only || ((SS0) => SS0.includes(S.setTab) ? S.setTab : "rules")(["rules", "go", "loy", "look", "printer", "test"]);
     const part = {};
     part.people = `<div class="grid2 set">
       ${[["admin", "\u{1F510} \u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440\u0438"], ["waiter", "\u{1F9D1}\u200D\u{1F373} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0438"], ["cook", "\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u043D\u044F"], ["courier", "\u{1F6F5} \u041A\u0443\u0440'\u0454\u0440\u0438"]].map(([r, t]) => {
@@ -3726,8 +3572,6 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         <div class="scrollbox sm">${wf ? wf.list.map((x) => `<div class="kv"><span>${esc(x.k)}</span><span class="muted">${new Date(x.at).toLocaleDateString("uk-UA")}</span></div>`).join("") || '<div class="muted">\u043D\u0435\u043C\u0430\u0454 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u0438\u0445 \u0430\u0434\u0440\u0435\u0441</div>' : ""}</div>
         <div class="btnrow"><button class="btn sm primary" data-a="wifiAdd">\u2795 \u0426\u0435 \u043D\u0430\u0448\u0430 \u043C\u0435\u0440\u0435\u0436\u0430</button><button class="btn sm red" data-a="wifiClear">\u0421\u043A\u0438\u043D\u0443\u0442\u0438 \u0432\u0441\u0456</button></div></div></div>`;
     part.go = goSetHTML();
-    part.site = siteHTML();
-    part.venue = venueHTML();
     part.loy = loyHTML();
     part.look = lookHTML();
     part.printer = printerCards();
@@ -4139,7 +3983,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     }
     const c = D.cfg, tab = S.loyTab || "cli", adm = isAdmin();
     const TABS2 = [["cli", "\u{1F465} \u041A\u043B\u0456\u0454\u043D\u0442\u0438"], ["lvl", "\u{1F3C5} \u0420\u0456\u0432\u043D\u0456"], ["rules", "\u{1F3AF} \u0410\u043A\u0446\u0456\u0457"], ...adm ? [["rep", "\u{1F4CA} \u0417\u0432\u0456\u0442"], ["bot", "\u{1F916} \u0411\u043E\u0442 \u0433\u043E\u0441\u0442\u0435\u0439"]] : []];
-    const seg = `<div class="seg wrap" style="margin:12px 0">${TABS2.map(([k, l]) => `<button class="${tab === k ? "on" : ""}" data-a="loyTab" data-s="${k}">${l}</button>`).join("")}</div>`;
+    const seg = `<div class="seg wrap" style="margin:12px 0">${TABS2.map(([k, l]) => `<button class="${tab === k ? "on" : ""}" data-a="loyTab" data-s="${k}">${l}</button>`).join("")}${adm ? '<button class="btn sm" data-a="certs">\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438</button>' : ""}</div>`;
     let body = "";
     if (tab === "lvl") body = `<div class="grid2 set">
       <div class="card"><h3>\u{1F3C5} \u0420\u0456\u0432\u043D\u0456 \u043F\u043E\u0441\u0442\u0456\u0439\u043D\u0438\u0445 \u043A\u043B\u0456\u0454\u043D\u0442\u0456\u0432</h3><div class="muted set-note">\u0420\u0456\u0432\u0435\u043D\u044C \u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F \u0441\u0430\u043C \u0437\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u043E\u043C (\u0432\u0456\u0437\u0438\u0442\u0438 \u0430\u0431\u043E \u0441\u0443\u043C\u0430). \xAB\u0412\u0440\u0443\u0447\u043D\u0443\xBB \u2014 \u043F\u0440\u0438\u0437\u043D\u0430\u0447\u0430\u0454 \u0430\u0434\u043C\u0456\u043D \u0443 \u043A\u0430\u0440\u0442\u0446\u0456 \u043A\u043B\u0456\u0454\u043D\u0442\u0430 (VIP, \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B, \u0434\u0440\u0443\u0437\u0456). \u0417\u043D\u0438\u0436\u043A\u0430 \u0440\u0456\u0432\u043D\u044F \u0439 \u0440\u0443\u0447\u043D\u0430 \u0437\u043D\u0438\u0436\u043A\u0430 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430 \u043D\u0435 \u0441\u043A\u043B\u0430\u0434\u0430\u044E\u0442\u044C\u0441\u044F \u2014 \u0434\u0456\u0454 \u0431\u0456\u043B\u044C\u0448\u0430.</div>
