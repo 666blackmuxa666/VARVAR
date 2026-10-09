@@ -355,7 +355,7 @@ async function atomApi(req, env, url) {
   const ip = req.headers.get('CF-Connecting-IP') || '', H = hub(env);
   try {
     if (url.pathname === '/api/atom' && req.method === 'GET') { // 🎁 скільки місць за акцією лишилось — з реальних закладів
-      const n = (await H.venueList()).filter(v => v.id !== MAIN && v.id !== DEMO && v.status !== 'off').length;
+      const n = (await H.venueList()).filter(v => v.id !== MAIN && v.id !== DEMO && !v.id.startsWith('demo-') && v.status !== 'off').length;
       return new Response(JSON.stringify({ left: Math.max(0, ATOM_FREE - n), total: ATOM_FREE, demo: !!(await H.venueGet(DEMO)) }), { headers: { ...h, 'cache-control': 'public, max-age=300' } });
     }
     if (req.method !== 'POST') return J({ error: 'method' }, 405);
