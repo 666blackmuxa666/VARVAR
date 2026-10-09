@@ -217,7 +217,7 @@
     const d = S.sk.draft, bad = d.lines.findIndex(l => !(+l.q > 0) || (!l.id && !l.add));
     if (!d.lines.length) return toast('⚠️ Немає позицій');
     if (bad >= 0) return toast(`⚠️ Рядок ${bad + 1}: оберіть продукт і кількість (або приберіть рядок ✕)`);
-    const inv = { sup: $('#dSup')?.value.trim() || d.sup, no: $('#dNo')?.value.trim() || d.no, date: $('#dDate')?.value.trim() || d.date, pay, src: d.src, lines: d.lines.map(l => ({ id: l.id || null, q: +l.q, f: +l.f || 1, sum: +l.sum || 0, src: l.n || '', ...(l.add ? { add: l.add } : {}) })) };
+    const inv = { sup: $('#dSup')?.value.trim() || d.sup, no: $('#dNo')?.value.trim() || d.no, date: $('#dDate')?.value.trim() || d.date, pay, src: d.src, lines: d.lines.map(l => ({ id: l.id || null, q: +l.q, f: +l.f || 1, sum: +l.sum || 0, src: l.n || '', ...(l.chk ? { chk: 1 } : {}), ...(l.add ? { add: l.add } : {}) })) };
     const r = await act('skInvSave', { inv }, '🧾 Накладну записано'); if (!r) return;
     S.sk.draft = null; S.data.sk = null;
     if (r.alerts?.length) modal({ title: '🔺 Подорожчання', text: r.alerts.map(a => `${a.n}: ${money(a.from)} → ${money(a.to)} / ${a.u} (+${a.pct}%)`).join(' · '), buttons: [{ label: 'Зрозуміло', val: 1, cls: 'primary' }] });
@@ -525,11 +525,11 @@
         const dl = a === 'skDlPick', i = +el.dataset.i, l = dl ? K.draft.lines[i] : K.card.items[i]; if (!l) break;
         const id = await skPick(dl && l.n ? `Що це: «${l.n}»?` : 'Оберіть продукт', () => true, true); if (!id) break;
         if (id === '__new') { const nw = await skNewIng(l.n || '', l.u || 'кг', 'k'); if (nw) { l.add = nw; l.id = null; } }
-        else { l.id = id; delete l.add; const x = S.data.sk.ing.find(y => y.id === id); if (dl) { l.ok = 'ok'; l.f = skAutoF(l); } else if (x && l.loss == null && x.loss) l.loss = x.loss; }
+        else { l.id = id; delete l.add; const x = S.data.sk.ing.find(y => y.id === id); if (dl) { l.ok = 'ok'; l.f = skAutoF(l); l.chk = 1; } else if (x && l.loss == null && x.loss) l.loss = x.loss; }
         renderMain(); break; }
       case 'skDlCand': { const l = K.draft.lines[+el.dataset.i]; if (!l) break; const id = el.dataset.id; // вибір кандидата одним тапом (запамʼятається в al при записі)
         if (id === '__new') { const nw = await skNewIng(l.p || l.n || '', l.pu || l.u || 'кг', l.bar ? 'b' : 'k'); if (!nw) break; l.add = nw; l.id = null; }
-        else { l.id = id; delete l.add; l.f = skAutoF(l); }
+        else { l.id = id; delete l.add; l.f = skAutoF(l); l.chk = 1; /* людина сама обрала — запамʼятати без ❓ */ }
         l.ok = 'ok'; delete l.c; renderMain(); break; }
       case 'skDlDel': K.draft.lines.splice(+el.dataset.i, 1); renderMain(); break;
       case 'skDlAdd': K.draft.lines.push({ id: null, n: '', q: '', f: 1, sum: '' }); renderMain(); break;

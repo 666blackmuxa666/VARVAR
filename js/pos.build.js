@@ -4636,7 +4636,7 @@ ${g.sup}:
     const d = S.sk.draft, bad = d.lines.findIndex((l) => !(+l.q > 0) || !l.id && !l.add);
     if (!d.lines.length) return toast("\u26A0\uFE0F \u041D\u0435\u043C\u0430\u0454 \u043F\u043E\u0437\u0438\u0446\u0456\u0439");
     if (bad >= 0) return toast(`\u26A0\uFE0F \u0420\u044F\u0434\u043E\u043A ${bad + 1}: \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u043F\u0440\u043E\u0434\u0443\u043A\u0442 \u0456 \u043A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044C (\u0430\u0431\u043E \u043F\u0440\u0438\u0431\u0435\u0440\u0456\u0442\u044C \u0440\u044F\u0434\u043E\u043A \u2715)`);
-    const inv = { sup: ((_a2 = $("#dSup")) == null ? void 0 : _a2.value.trim()) || d.sup, no: ((_b = $("#dNo")) == null ? void 0 : _b.value.trim()) || d.no, date: ((_c = $("#dDate")) == null ? void 0 : _c.value.trim()) || d.date, pay, src: d.src, lines: d.lines.map((l) => __spreadValues({ id: l.id || null, q: +l.q, f: +l.f || 1, sum: +l.sum || 0, src: l.n || "" }, l.add ? { add: l.add } : {})) };
+    const inv = { sup: ((_a2 = $("#dSup")) == null ? void 0 : _a2.value.trim()) || d.sup, no: ((_b = $("#dNo")) == null ? void 0 : _b.value.trim()) || d.no, date: ((_c = $("#dDate")) == null ? void 0 : _c.value.trim()) || d.date, pay, src: d.src, lines: d.lines.map((l) => __spreadValues(__spreadValues({ id: l.id || null, q: +l.q, f: +l.f || 1, sum: +l.sum || 0, src: l.n || "" }, l.chk ? { chk: 1 } : {}), l.add ? { add: l.add } : {})) };
     const r = await act("skInvSave", { inv }, "\u{1F9FE} \u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0443 \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u043E");
     if (!r) return;
     S.sk.draft = null;
@@ -5274,6 +5274,7 @@ ${g.sup}:
           if (dl) {
             l.ok = "ok";
             l.f = skAutoF(l);
+            l.chk = 1;
           } else if (x && l.loss == null && x.loss) l.loss = x.loss;
         }
         renderMain();
@@ -5292,6 +5293,7 @@ ${g.sup}:
           l.id = id;
           delete l.add;
           l.f = skAutoF(l);
+          l.chk = 1;
         }
         l.ok = "ok";
         delete l.c;

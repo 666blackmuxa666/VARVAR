@@ -46,12 +46,19 @@ function score(q, qs, p, idf, vocab) {
 }
 export const SURE = 0.8, GAP = 0.12, WEAK = 0.4;
 // → { id, ok: 'bc'|'mem'|'name'|'sure'|'guess'|'', sc, c: [{id,n,u,sc}] (кандидати для «❓ перевірте»), f? }
+// 🚫 жодного спільного слова між назвою з документа й продуктом (Jack Daniel's ≠ Jim Beam, Трафальгар ≠ Bombay) — не зараховуємо мовчки
+export function clash(n, x) { const q = toks(n), t = toks(x.n); return q.length > 0 && t.length > 0 && !t.some(w => q.some(y => same(y, w))); }
 export function matchOne(ln, I, al, sk) {
+  const m = matchOne0(ln, I, al, sk);
+  if (m.id && m.ok !== 'bc' && !m.chk && ln.n) { const x = I.P.find(p => p.x.id === m.id)?.x; if (x && clash(ln.n, x)) return { ...m, ok: 'guess', sc: Math.min(m.sc || 0, 0.5), c: [{ id: x.id, n: x.n, u: x.u, sc: 0.5 }, ...(m.c || []).filter(c => c.id !== x.id)].slice(0, 3) }; }
+  return m;
+}
+function matchOne0(ln, I, al, sk) {
   const l = I.P.map(p => p.x), has = id => l.some(x => x.id === id);
   if (ln.bc) { const x = l.find(y => (y.bc || []).includes(String(ln.bc))); if (x) return { id: x.id, ok: 'bc', sc: 1 }; }
   for (const s of [ln.n, ln.p].filter(Boolean)) { // памʼять: цей постачальник → будь-який постачальник
     const nn = nrm(s), m = al[sk + nn] || Object.entries(al).find(([k]) => k.endsWith('|' + nn))?.[1];
-    if (m && has(m.id)) return { id: m.id, f: m.f, ok: 'mem', sc: 1 };
+    if (m && has(m.id)) return { id: m.id, f: m.f, ok: 'mem', sc: 1, ...(m.chk ? { chk: 1 } : {}) }; /* chk — людина вже підтвердила саме цю заміну */
   }
   for (const s of [ln.n, ln.p].filter(Boolean)) { const x = l.find(y => nrm(y.n) === nrm(s)); if (x) return { id: x.id, ok: 'name', sc: 1 }; }
   const qs = size(ln.n) || size(ln.p), sc = new Map();

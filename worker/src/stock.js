@@ -313,7 +313,7 @@ export async function invoiceSave(env, d, who) {
       const old = Math.max(0, tot(x));
       x.cost = old + bq > 0 ? r2((old * (x.cost || 0) + sum) / (old + bq)) : r2(up);
       if (up > 0) x.lp = r2(up); x.sup = sup; x.st[w] = r3((x.st[w] || 0) + bq); ch.add(x.id);
-      if (ln.src && norm(ln.src) !== norm(x.n)) al[norm(sup) + '|' + norm(ln.src)] = { id: x.id, f };
+      if (ln.src && norm(ln.src) !== norm(x.n)) al[norm(sup) + '|' + norm(ln.src)] = { id: x.id, f, ...(ln.chk ? { chk: 1 } : {}) }; /* chk: людина підтвердила ❓ — більше не питати */
       lines.push({ id: x.id, n: x.n, u: x.u, q, f, bq, sum, wh: w, ...(ln.src ? { src: String(ln.src).slice(0, 80) } : {}) });
       rows.push(row('in', x, w, bq, who, `${sup}${d.no ? ' №' + d.no : ''}`));
     }
