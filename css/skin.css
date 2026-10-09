@@ -8,8 +8,10 @@ html[data-skin] h1, html[data-skin] h2, html[data-skin] .card h3, html[data-skin
 html[data-skin][data-sk-caps="1"] .card > h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
 
 /* ---- фон ---- */
-html[data-skin][data-sk-bgfx="glow"] body { background: radial-gradient(90% 50% at 0% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%), radial-gradient(80% 45% at 100% 100%, #5a4bff1f, transparent 60%), var(--bg); }
-html[data-skin][data-sk-bgfx="vignette"] body { background: radial-gradient(120% 80% at 50% 0%, var(--bg2), var(--bg) 70%); }
+/* 📱 фон — на html: Safari малює його й під рядком стану та панеллю браузера (без чорних смуг) */
+html[data-skin][data-sk-bgfx="glow"] { background: radial-gradient(90% 50% at 0% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%) fixed, radial-gradient(80% 45% at 100% 100%, #5a4bff1f, transparent 60%) fixed, var(--bg); }
+html[data-skin][data-sk-bgfx="glow"] body { background: transparent; }
+html[data-skin][data-sk-bgfx="vignette"] { background: radial-gradient(120% 80% at 50% 0%, var(--bg2), var(--bg) 70%) fixed, var(--bg); } html[data-skin][data-sk-bgfx="vignette"] body { background: transparent; }
 html[data-skin][data-sk-bgfx] .nav, html[data-skin][data-sk-bgfx] main { background-color: transparent; }
 
 /* ---- картки й плитки ---- */
