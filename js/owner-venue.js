@@ -41,8 +41,8 @@ window.OWNV = ctx => {
 
   function view() {
     const v = V(), venue = S.venues.find(x => x.id === v.id) || { name: v.id };
-    const tabs = `<div class="seg2">${secs().map(([k, l]) => `<button class="${v.sec === k ? 'on' : ''}" data-a="vsec" data-s="${k}">${l}</button>`).join('')}</div>`;
-    const head = `<div class="btnrow" style="align-items:center;margin-bottom:10px">${S.venues.length > 1 ? '<button class="btn sm ghost" data-a="vpickBack">← Інший заклад</button>' : ''}<h2 style="margin:0">⚙️</h2>${S.venues.length > 1 ? `<select id="vpick" style="max-width:320px;font-weight:700">${S.venues.map(x => `<option value="${x.id}" ${x.id === v.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>` : `<h2 style="margin:0">${esc(venue.name)}</h2>`}</div>${tabs}`;
+    const tabs = `<div class="vtabs" style="--c:${secs().length % 4 && secs().length % 3 === 0 ? 3 : 4}">${secs().map(([k, l]) => { const [ic, ...t] = l.split(' '); return `<button class="${v.sec === k ? 'on' : ''}" data-a="vsec" data-s="${k}"><i>${ic}</i><span>${t.join(' ')}</span></button>`; }).join('')}</div>`;
+    const head = `<div class="vtop">${S.venues.length > 1 ? '<button class="btn sm ghost" data-a="vpickBack" title="Інший заклад">←</button>' : ''}${S.venues.length > 1 ? `<select id="vpick">${S.venues.map(x => `<option value="${x.id}" ${x.id === v.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>` : `<h2 style="margin:0">${esc(venue.name)}</h2>`}</div>${tabs}`;
     if (!v.d) return head + '<div class="muted">Завантаження…</div>';
     if (v.d.err) return head + `<div class="alert red">${esc(v.d.err)}</div>`;
     return head + (SECV[v.sec] || (() => ''))(v, venue);
