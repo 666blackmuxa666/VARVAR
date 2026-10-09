@@ -838,3 +838,11 @@ body.noanim .ev.noscan.blink{outline:3px solid #ff453a}
   .sk-new { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; } .sk-new .sk-scan { grid-column: 1 / -1; font-size: 16px; padding: 12px; } .sk-new .btn { min-height: 42px; font-size: 13px; }
 }
 .set-own{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted);padding:10px 14px;margin-bottom:10px}
+/* ⏳ чекає підтвердження: світиться й блимає кольором, після ✅ гасне (.done) */
+.ev.wait{animation:evwait 1s ease-in-out infinite alternate}
+.ev.guest.wait{--wc:#30d158;background:linear-gradient(135deg,#0f3a1c,#0d2614);border:2px solid #30d158}.ev.guest.wait .top b{color:#7ee29a}
+.ev.check.wait{--wc:#c2185b;background:linear-gradient(135deg,#3a0f22,#240a16);border:2px solid #c2185b}
+.ev.book.wait{--wc:#0a84ff;background:linear-gradient(135deg,#0d2440,#0a1628);border:2px solid #0a84ff}
+.ev.cert.wait{--wc:#ffd60a;background:linear-gradient(135deg,#3a3008,#221c05);border:2px solid #ffd60a}
+@keyframes evwait{to{box-shadow:0 0 0 4px color-mix(in srgb,var(--wc,#ff9f0a) 35%,transparent),0 0 24px var(--wc,#ff9f0a)}}
+body.noanim .ev.wait{outline:3px solid var(--wc,#ff9f0a)}
