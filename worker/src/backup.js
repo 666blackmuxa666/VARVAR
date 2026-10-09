@@ -10,7 +10,7 @@ const pre = () => 'bak:' + venueId() + ':';
 export async function backupNow(env, tag = dayKey()) {
   const data = await env.DB.dump(), json = JSON.stringify(data), buf = await gz(json);
   if (buf.byteLength > 24e6) throw new Error('Бекап завеликий для KV (' + Math.round(buf.byteLength / 1e6) + ' МБ)');
-  await env.DB.kv.put(pre() + tag, buf, { expirationTtl: 8 * 86400, metadata: { at: Date.now(), n: data.length, kb: Math.round(buf.byteLength / 1024), raw: Math.round(json.length / 1024) } });
+  await env.DB.kv.put(pre() + tag, buf, { ...(tag === 'demo' ? {} : { expirationTtl: 8 * 86400 }), metadata: { at: Date.now(), n: data.length, kb: Math.round(buf.byteLength / 1024), raw: Math.round(json.length / 1024) } });
   return { tag, n: data.length, kb: Math.round(buf.byteLength / 1024) };
 }
 export async function backupList(env) {

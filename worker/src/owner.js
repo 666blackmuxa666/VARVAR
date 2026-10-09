@@ -23,6 +23,10 @@ async function callVenue(env, venue, path, body, init) {
   return r.json();
 }
 
+// 📱 демо ATOM: адмін-сесія без PIN; заклад atom-demo щоночі повертається до еталону (save — зберегти еталон, reset — повернути)
+export const demoLogin = (env, id) => callVenue(env, id, '/__int/login', { name: 'Гість демо' });
+export const demoSnap = (env, id, op) => callVenue(env, id, '/__int/demosnap', { do: op }).catch(e => ({ error: e.message }));
+
 // ---------- усередині закладу ----------
 export async function intApi(req, env, path) {
   if (!env.INSTORE || !env.MASTER_KEY || req.headers.get('x-int') !== await intSecret(env)) return [{ error: 'no' }, 403];
@@ -42,6 +46,10 @@ export async function intApi(req, env, path) {
     await env.DB.put('pos:' + token, JSON.stringify({ ...me, at: Date.now() }), { expirationTtl: 12 * 3600 });
     return [{ ok: true, token, me }, 200];
   }
+  if (path === '/__int/demosnap' && env.VENUE === 'atom-demo') { const B = await import('./backup.js');
+    if (b.do === 'save') return [await B.backupNow(env, 'demo'), 200];
+    if (b.do === 'reset') return [await B.backupRestore(env, 'demo', 'нічне скидання демо'), 200];
+    return [{ error: 'unknown' }, 400]; }
   if (path === '/__int/whoami') { const s = /^[a-f0-9]{32}$/.test(b.token || '') ? await env.DB.get('pos:' + b.token, 'json') : null; return [{ admin: s?.role === 'admin', name: s?.name || '' }, 200]; }
   if (path === '/__int/secrets') { // 🤖 токени ботів закладу → перевірка getMe, збереження, вебхуки
     if (env.VENUE === MAIN) return [{ error: 'VARVAR — секрети через wrangler' }, 400];
@@ -177,7 +185,7 @@ export async function ownerApi(req, env) {
     case 'logout': await H.logout(tok); return ok();
     case 'me': return ok({ me, venues: await mine(), seen: await H.seenAll(), inbox: (await H.msgList(plat ? null : me.venues)).filter(m => !m.done).length });
     case 'sum': { // аналітика: кожен заклад рахує сам, паралельно
-      const vs = (await mine()).filter(v => v.status !== 'off' && (!b.venues?.length || b.venues.includes(v.id))); // ⛔ вимкнені — не в аналітиці
+      const vs = (await mine()).filter(v => v.status !== 'off' && v.id !== 'atom-demo' && (!b.venues?.length || b.venues.includes(v.id))); // ⛔ вимкнені — не в аналітиці
       const out = await Promise.all(vs.map(async v => ({ ...(await callVenue(env, v.id, '/__int/sum', { from: b.from, to: b.to, pnl: !!b.pnl }).catch(e => ({ error: e.message }))), id: v.id, name: v.name, status: v.status })));
       return ok({ list: out });
     }
@@ -234,6 +242,13 @@ ${JSON.stringify(data.filter(Boolean))}
       await env.STORE.get(env.STORE.idFromName(doName(String(b.id)))).wipe().catch(() => {});
       if (env.DB.kv) { const l = await env.DB.kv.list({ prefix: 'bak:' + String(b.id) + ':' }); for (const x of l.keys) await env.DB.kv.delete(x.name); } // 💾 бекапи теж — щоб новий заклад з тією ж адресою їх не побачив
       return ok(); }
+    case 'leads': { const days = Math.min(90, +b.days || 30); return ok({ list: await H.leadList(), hits: await H.hitStats(days), demo: !!(await H.venueGet('atom-demo')) }); } // 🚀 CRM «Продажі»
+    case 'leadNew': { const r = await H.leadAdd({ ...b, src: 'вручну' }, 'own:' + Date.now()); return r.error ? bad(r.error) : ok({ lead: r }); }
+    case 'leadSet': { const r = await H.leadSet(String(b.id), b.f || {}); return r.error ? bad(r.error) : ok({ lead: r }); }
+    case 'demo': { // 📱 демо-каса: створити (власник — платформа) / зберегти поточний стан як еталон для нічного скидання
+      if (b.do === 'create') { if (await H.venueGet('atom-demo')) return bad('Демо вже є'); const v = await H.venueCreate({ id: 'atom-demo', name: 'ATOM Демо-кавʼярня', owner: me.email, city: 'Демо' }); if (v.error) return bad(v.error); const r = await callVenue(env, v.id, '/__int/init', { name: v.name }, true); return r.error ? bad(r.error) : ok(); }
+      if (b.do === 'save') { const r = await demoSnap(env, 'atom-demo', 'save'); return r.error ? bad(r.error) : ok(r); }
+      return bad('unknown'); }
     case 'venueSet': { const v = await H.venueSet(String(b.id), b.f || {}); return v.error ? bad(v.error) : ok({ venue: v }); }
   }
   return bad('unknown');

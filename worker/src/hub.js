@@ -118,8 +118,35 @@ export class Hub extends DurableObject {
   async msgSet(id, f, venues) { const m = await this.st.get('msg:' + id); if (!m || (venues && !venues.includes(m.venue))) return { error: 'Не знайдено' }; if (f.del) { await this.st.delete('msg:' + id); return { ok: true }; } m.done = m.done ? 0 : Date.now(); await this.st.put('msg:' + id, m); return m; }
   async seen(id) { const k = 'seen:' + id; await this.st.put(k, Date.now()); }
   async seenAll() { return Object.fromEntries([...(await this.st.list({ prefix: 'seen:' }))].map(([k, v]) => [k.slice(5), v])); }
+  // 🚀 ATOM: заявки з сайту posatom.online (CRM «Продажі»), ліміт з IP, статистика переглядів
+  async leadAdd(l, ip) {
+    const rk = 'lrl:' + ip, r = (await this.st.get(rk)) || []; const now = Date.now(), fresh = r.filter(t => now - t < 3600e3);
+    if (fresh.length >= 3) return { error: 'Забагато заявок — спробуйте пізніше або напишіть у Telegram' };
+    await this.st.put(rk, [...fresh, now]);
+    const id = now.toString(36) + rnd(3), x = { id, name: String(l.name || '').trim().slice(0, 60), phone: String(l.phone || '').trim().slice(0, 30), place: String(l.place || '').trim().slice(0, 80), city: String(l.city || '').trim().slice(0, 60), msg: String(l.msg || '').trim().slice(0, 800), src: String(l.src || '').slice(0, 30), st: 'new', note: '', next: 0, at: now };
+    await this.st.put('lead:' + id, x); await this.hit('lead'); return x;
+  }
+  async leadList() { return [...(await this.st.list({ prefix: 'lead:', reverse: true, limit: 500 })).values()]; }
+  async leadSet(id, f) {
+    const x = await this.st.get('lead:' + id); if (!x) return { error: 'Не знайдено' };
+    if (f.del) { await this.st.delete('lead:' + id); return { ok: true }; }
+    if (f.st && ['new', 'call', 'demo', 'trial', 'won', 'lost'].includes(f.st)) x.st = f.st;
+    if (f.note != null) x.note = String(f.note).slice(0, 1000);
+    if (f.next != null) { x.next = +f.next || 0; x.rem = 0; }
+    if (f.venue) x.venue = String(f.venue).slice(0, 31);
+    x.upd = Date.now(); await this.st.put('lead:' + id, x); return x;
+  }
+  async leadDue() { // ⏰ нагадування «подзвонити» — один раз
+    const now = Date.now(), out = [];
+    for (const [k, x] of await this.st.list({ prefix: 'lead:' })) if (x.next && x.next <= now && !x.rem && !['won', 'lost'].includes(x.st)) { x.rem = now; await this.st.put(k, x); out.push(x); }
+    return out;
+  }
+  async hit(kind) { const d = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' }), k = 'ah:' + d, v = (await this.st.get(k)) || {}; v[kind] = (v[kind] || 0) + 1; await this.st.put(k, v); }
+  async hitOnce(ip) { const k = 'ahip:' + ip; if (await this.st.get(k)) return; await this.st.put(k, 1); await this.hit('view'); this.ctx.storage.setAlarm?.(Date.now() + 864e5); }
+  async alarm() { const l = await this.st.list({ prefix: 'ahip:' }); if (l.size) await this.st.delete([...l.keys()]); }
+  async hitStats(days) { const out = []; for (let i = days - 1; i >= 0; i--) { const d = new Date(Date.now() - i * 864e5).toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' }); out.push({ d, ...((await this.st.get('ah:' + d)) || {}) }); } return out; }
 }
 
 export const hub = env => env.HUB.get(env.HUB.idFromName('hub'));
 // активні заклади (для Cron); VARVAR окремо (MAIN)
-export async function hubVenues(env) { if (!env.HUB) return []; return (await hub(env).venueList()).filter(v => v.id !== MAIN && v.status !== 'off').map(v => v.id); }
+export async function hubVenues(env) { if (!env.HUB) return []; return (await hub(env).venueList()).filter(v => v.id !== MAIN && v.status !== 'off').map(v => v.id);}

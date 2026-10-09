@@ -282,8 +282,8 @@ window.OWNV = ctx => {
     try { const r = await api('secrets', { venue: S.cfgV.id, f: x }); toast('✅ Підключено й оформлено: ' + Object.values(r.names).map(n => '@' + n).join(', ')); load(); } catch (y) { err.textContent = y.message; }
   });
   // 🎬 демо-заклад для показу клієнту: меню-шаблон + тексти сайту
-  async function demo(type = 'cafe') {
-    const id = 'demo-' + Math.random().toString(36).slice(2, 6), name = 'Демо · ' + TPL[type][0].replace(/^\S+\s/, '');
+  async function demo(type = 'cafe', fixed, title) { /* fixed — сталий id (демо-каса сайту ATOM: atom-demo) */
+    const id = fixed || 'demo-' + Math.random().toString(36).slice(2, 6), name = title || 'Демо · ' + TPL[type][0].replace(/^\S+\s/, '');
     const r = await api('venueNew', { id, name, owner: S.me.email, city: 'Демо' });
     await vapi(id, 'menuImport', { rows: TPL[type][1] });
     for (const [k, v] of [['tagline', 'Смачно, швидко, з любов\'ю'], ['about', 'Демонстраційний заклад: так виглядатиме сайт вашого закладу — меню, замовлення з собою й доставка, бронювання, сертифікати.'], ['phone', '+380 00 000 00 00'], ['addr', 'вул. Демонстраційна, 1'], ['from', '09:00'], ['to', '22:00']]) await vapi(id, 'siteSet', { k, v }).catch(() => {});

@@ -42,6 +42,8 @@ export async function posApi(b, req, env) {
   const admin = me.role === 'admin', who = me.name;
   const t = +b.t || 0;
   const needAdmin = () => [{ error: 'admin' }, 403];
+  // 📱 демо-каса ATOM (сайт продажу): усе можна спробувати, крім платного ШІ, Telegram, друку, персоналу й кодів
+  if (env.VENUE === 'atom-demo' && /^(help|aiBench|photo[A-Z]|menuPhoto|menuImport|skInvParse|skCardAi|skDups|print|rcpt|closedPrint|precheck|qrNew|regCode|staff[A-Z]|wifi|courTg|reset|lookVSet|site[A-Z]*Ai|aiSite|gbSend|chat)/.test(b.op || '')) return [{ error: '🔒 У демо це вимкнено — підключіть свій заклад' }, 403];
   const ok = (x = {}) => [{ ok: true, ...x }, 200];
   // 👨‍🍳 кухар: черга кухні + вибити замовлення + стоп-лист; решта — ні
   // 🧮 Розрахунок: склад, техкарти, накладні, інвентаризація — свої права (адмін / кухар)

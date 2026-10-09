@@ -16,7 +16,7 @@ import { queuePrint, kitchenTicket, printApi } from './print.js';
 export { PrintQ } from './print.js';
 export { Store } from './store.js';
 export { Hub } from './hub.js';
-import { hubVenues } from './hub.js';
+import { hubVenues, hub } from './hub.js';
 import { ownerApi, intApi } from './owner.js';
 import { storeDB } from './store.js';
 import { qrKey, tableKey, qrRoute } from './qr.js';
@@ -45,7 +45,7 @@ async function cached(req, path, run) {
 }
 export default {
   async fetch(req0, env) {
-    { const h = new URL(req0.url).hostname; if (h === 'posatom.online' || h === 'www.posatom.online') return atomSite(req0); } // 🌐 ATOM: сайт закладів на власному домені
+    { const h = new URL(req0.url).hostname; if (h === 'posatom.online' || h === 'www.posatom.online') return atomSite(req0, env); } // 🌐 ATOM: сайт закладів на власному домені
     // 🏪 заклад: /v/<id>/… → запит без префікса + заголовок x-venue; без префікса — VARVAR
     const { venue, path: p } = splitVenue(new URL(req0.url)), req = venue === MAIN ? new Request(req0) : stripVenue(req0, venue, p);
     if (venue === MAIN) { req.headers.delete('x-venue'); req.headers.delete('x-venue-init'); } // заклад визначає лише адреса, не заголовок від клієнта
@@ -62,6 +62,12 @@ export default {
   // ⏰ кожні 5 хв: нагадування про броні, запити відгуків (виконується всередині Store)
   // ⏰ кожні 5 хв — у кожному активному закладі (VARVAR + заклади з HUB)
   async scheduled(ev, env, ctx) {
+    const kh = new Date().toLocaleString('en-GB', { timeZone: 'Europe/Kyiv', hour: '2-digit', minute: '2-digit', hour12: false });
+    if (env.HUB) ctx.waitUntil((async () => { // 🚀 ATOM: нагадування «подзвонити» по заявках; о 4:00 — демо-каса до еталону
+      const due = await hub(env).leadDue().catch(() => []);
+      for (const x of due) await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `⏰ <b>Подзвонити</b>: ${esc(x.name)} · ${esc(x.phone)}${x.place ? ' · ' + esc(x.place) : ''}${x.note ? '\n📝 ' + esc(x.note) : ''}` }).catch(() => {});
+      if (kh >= '04:00' && kh < '04:05') await (await import('./owner.js')).demoSnap(env, 'atom-demo', 'reset');
+    })());
     const list = [MAIN, ...(await hubVenues(env).catch(() => []))];
     ctx.waitUntil(Promise.all(list.map(v => env.STORE.get(env.STORE.idFromName(doName(v))).fetch(new Request('https://in/__cron', { headers: { 'x-cron': '1', ...(v === MAIN ? {} : { 'x-venue': v }) } })).catch(() => {}))));
   },
@@ -326,18 +332,50 @@ async function admin(b, ip, env) {
 
 // 🌐 posatom.online/<заклад>/… → файли сайту (GitHub Pages) без змін; заклад береться зі шляху (js/config.js).
 // /<заклад>/ — візитка; /<заклад>/?t=…&k=… (QR столу) — меню; /owner/ — кабінет власника; / — поки VARVAR
-async function atomSite(req) {
+async function atomSite(req, env) {
   const url = new URL(req.url);
   if (url.hostname === 'www.posatom.online') return Response.redirect('https://posatom.online' + url.pathname + url.search, 301);
-  if (url.pathname === '/' ) return Response.redirect('https://posatom.online/varvar/' + url.search, 302);
+  if (url.pathname.startsWith('/api/')) return atomApi(req, env, url);
+  if (url.pathname === '/' || url.pathname === '/atom.html') { if (url.pathname === '/atom.html') return Response.redirect('https://posatom.online/', 301); req = new Request('https://posatom.online/atom/'); }
+
   const m = url.pathname.match(/^\/([a-z0-9][a-z0-9-]{1,30})(\/.*)?$/); if (!m) return new Response('Not found', { status: 404 });
   if (!m[2]) return Response.redirect(`https://posatom.online/${m[1]}/${url.search}`, 301);
   let rest = m[2];
-  if (rest === '/') rest = m[1] === 'owner' ? '/owner.html' : url.search ? '/index.html' : '/about.html';
+  if (m[1] === 'atom' && rest === '/') rest = '/atom.html';
+  else if (rest === '/') rest = m[1] === 'owner' ? '/owner.html' : url.search ? '/index.html' : '/about.html';
   if (/\.\.|varvar-print\.config/.test(rest)) return new Response('Not found', { status: 404 });
   const r = await fetch('https://666blackmuxa666.github.io/VARVAR' + rest + (/\.html$/.test(rest) ? '' : url.search), { cf: { cacheTtl: /\.html$/.test(rest) ? 20 : 300, cacheEverything: true } }); /* ?v= — у ключ кешу, щоб оновлення приходили одразу */
   const ct = r.headers.get('content-type') || 'application/octet-stream';
   return new Response(r.body, { status: r.status, headers: { 'content-type': ct, 'cache-control': /html/.test(ct) ? 'no-cache' : 'public, max-age=300' } });
+}
+// 🚀 API сайту ATOM: заявка, перегляд, лічильник акції, вхід у демо-касу
+const ATOM_FREE = 20, DEMO = 'atom-demo';
+async function atomApi(req, env, url) {
+  const h = { 'content-type': 'application/json', 'cache-control': 'no-store' }, J = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: h });
+  const ip = req.headers.get('CF-Connecting-IP') || '', H = hub(env);
+  try {
+    if (url.pathname === '/api/atom' && req.method === 'GET') { // 🎁 скільки місць за акцією лишилось — з реальних закладів
+      const n = (await H.venueList()).filter(v => v.id !== MAIN && v.id !== DEMO && v.status !== 'off').length;
+      return new Response(JSON.stringify({ left: Math.max(0, ATOM_FREE - n), total: ATOM_FREE, demo: !!(await H.venueGet(DEMO)) }), { headers: { ...h, 'cache-control': 'public, max-age=300' } });
+    }
+    if (req.method !== 'POST') return J({ error: 'method' }, 405);
+    const b = await req.json().catch(() => ({}));
+    if (url.pathname === '/api/atomhit') { if (ip) await H.hitOnce(ip); return J({ ok: true }); }
+    if (url.pathname === '/api/lead') {
+      if (b.web) return J({ ok: true }); // 🍯 пастка для ботів
+      const phone = String(b.phone || '').replace(/[^\d+]/g, ''); if (!/^\+?\d{9,13}$/.test(phone)) return J({ error: 'Вкажіть телефон' }, 400);
+      if (String(b.name || '').trim().length < 2) return J({ error: 'Вкажіть імʼя' }, 400);
+      const x = await H.leadAdd({ ...b, phone }, ip); if (x.error) return J(x, 429);
+      const e = s => String(s || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+      await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `🚀 <b>Заявка ATOM</b>\n👤 ${e(x.name)} · ${e(x.phone)}\n🏪 ${e(x.place) || '—'}${x.city ? ' · ' + e(x.city) : ''}${x.msg ? '\n💬 ' + e(x.msg) : ''}\n\nКабінет → 🚀 Продажі` }).catch(() => {});
+      return J({ ok: true });
+    }
+    if (url.pathname === '/api/demo') { // 📱 демо-каса: адмін-сесія демо-закладу (щоночі скидається)
+      if (!(await H.venueGet(DEMO))) return J({ error: 'Демо ще готується' }, 404);
+      const r = await (await import('./owner.js')).demoLogin(env, DEMO); return r.token ? J({ ok: true, token: r.token, venue: DEMO }) : J({ error: r.error || 'Не вдалося' }, 500);
+    }
+    return J({ error: 'not found' }, 404);
+  } catch (e) { return J({ error: 'Помилка, спробуйте ще раз' }, 500); }
 }
 async function proxySite(url) {
   const r = await fetch('https://666blackmuxa666.github.io/VARVAR' + url.pathname + url.search, { cf: { cacheTtl: 30 } });

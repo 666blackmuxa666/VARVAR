@@ -200,11 +200,11 @@
   }
   function render() {
     if (!S.me) return;
-    const plat = S.me.role === 'platform', TABS = [['home', '🏠 Мережа'], ['an', '📊 Аналітика'], ['ven', '🏪 Заклади'], ['cfg', '⚙️ Налаштування'], ['inbox', `📨 Вхідні${S.inboxN ? ` <i class="bdg">${S.inboxN}</i>` : ''}`], ...(plat ? [['plat', '🌐 Платформа']] : [])];
+    const plat = S.me.role === 'platform', TABS = [['home', '🏠 Мережа'], ['an', '📊 Аналітика'], ['ven', '🏪 Заклади'], ['cfg', '⚙️ Налаштування'], ['inbox', `📨 Вхідні${S.inboxN ? ` <i class="bdg">${S.inboxN}</i>` : ''}`], ...(plat ? [['crm', '🚀 Продажі'], ['plat', '🌐 Платформа']] : [])];
     if (!TABS.some(x => x[0] === S.tab)) S.tab = 'home';
     app.innerHTML = `<header class="top"><div class="in"><img src="img/icon.png" alt=""><b>Кабінет власника</b><div class="who"><b>${esc(S.me.name)}</b><span class="muted">${plat ? '👑 платформа' : 'власник'}</span></div><div class="icogrp"><button class="icobtn" data-a="help" title="Допомога">🆘</button><button class="icobtn" data-a="out" title="Вийти">🚪</button></div></div>
       <nav class="tabs">${TABS.map(([k, l]) => `<button class="${S.tab === k ? 'on' : ''}" data-a="tab" data-t="${k}">${l}</button>`).join('')}<button data-a="reload">🔄</button></nav></header>
-      <main>${S.tab === 'cfg' ? (S.cfgV ? VC.view() : pickVenue()) : S.tab === 'home' ? home() : S.tab === 'an' ? analytics() : S.tab === 'ven' ? venues() : S.tab === 'inbox' ? inbox() : platform()}</main>`;
+      <main>${S.tab === 'cfg' ? (S.cfgV ? VC.view() : pickVenue()) : S.tab === 'home' ? home() : S.tab === 'an' ? analytics() : S.tab === 'ven' ? venues() : S.tab === 'inbox' ? inbox() : S.tab === 'crm' && plat ? OWNCRM.view({ api, toast, render, modal, kpi, VC, enter: goPos }) : platform()}</main>`;
   }
 
   // ---------- модалки ----------
@@ -226,6 +226,7 @@
       try { const r = await api('secrets', { venue: id, f: x }); err.textContent = ''; toast('✅ Збережено: ' + Object.values(r.names).map(n => '@' + n).join(', ')); f.reset(); } catch (y) { err.textContent = y.message; } });
   }
 
+  async function goPos(v, set) { const r = await api('enter', { venue: v }); location.href = `${ATOM ? '/' + encodeURIComponent(v) + '/pos.html' : POS}?venue=${encodeURIComponent(v)}#tok=${r.token}&me=${encodeURIComponent(JSON.stringify(r.me))}${set ? '&set=' + set : ''}`; }
   // ---------- кліки ----------
   document.addEventListener('click', async e => {
     const el = e.target.closest('[data-a]'); if (!el) return; const a = el.dataset.a, d = el.dataset;
@@ -237,10 +238,10 @@
     if (a === 'ibDone' || a === 'ibDel') { if (a === 'ibDel' && !confirm('Видалити повідомлення?')) return; try { await api('inboxSet', { id: d.id, del: a === 'ibDel' }); const m = S.ib.find(x => x.id === d.id); if (a === 'ibDel') S.ib = S.ib.filter(x => x !== m); else m.done = m.done ? 0 : Date.now(); S.inboxN = S.ib.filter(x => !x.done).length; render(); } catch (x) { toast('⚠️ ' + x.message); } return; }
     if (a === 'tab' && d.t === 'inbox') S.ib = null;
     if (a === 'tab') { S.cfgV = null; S.tab = d.t; store.set('tab', d.t); if (d.t === 'home' || d.t === 'an') return load(); return render(); }
-    if (a === 'reload') { S.plat = null; return start(); }
+    if (a === 'reload') { S.plat = null; window.OWNCRM?.reset(); return start(); }
     if (a === 'per') { S.per = d.p; if (d.p === 'own') return render(); return load(); }
     if (a === 'perGo') { S.from = $('#pf').value; S.to = $('#pt').value; if (S.from > S.to) [S.from, S.to] = [S.to, S.from]; return load(); }
-    if (a === 'enter') { el.disabled = true; try { const r = await api('enter', { venue: d.v }); location.href = `${ATOM ? '/' + encodeURIComponent(d.v) + '/pos.html' : POS}?venue=${encodeURIComponent(d.v)}#tok=${r.token}&me=${encodeURIComponent(JSON.stringify(r.me))}${d.set ? '&set=' + d.set : ''}`; } catch (x) { toast('⚠️ ' + x.message); el.disabled = false; } return; }
+    if (a === 'enter') { el.disabled = true; try { await goPos(d.v, d.set); } catch (x) { toast('⚠️ ' + x.message); el.disabled = false; } return; }
     if (a === 'vinfo') return vinfo(d.v);
     if (a === 'askEx') { e.preventDefault(); const f = $('#askF'); f.q.value = d.q; f.requestSubmit(); return; }
     if (a === 'vdemo') { el.disabled = true; toast('🎬 Створюю демо…'); try { const r = await VC.demo('cafe'); await start(); VC.open(r.venue.id, 'start'); toast('🎬 Демо готове — покажіть клієнту касу й сайт'); } catch (x) { toast('⚠️ ' + x.message); } el.disabled = false; return; }
