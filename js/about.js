@@ -1,5 +1,6 @@
 // VARVAR — сайт-візитка: дані з /api/site (редагуються в касі й боті), бронювання, сертифікати, кабінет гостя
 (() => {
+  if (window.VARVAR?.moving) return; // ↪️ переходимо на posatom.online
   const API = window.VARVAR.api, $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
   const store = { get(k, d) { try { const v = localStorage.getItem((window.VARVAR.pre || 'vv_') + k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem((window.VARVAR.pre || 'vv_') + k, JSON.stringify(v)); } catch {} } };
   const device = store.get('device', null) || (() => { const d = crypto.randomUUID(); store.set('device', d); return d; })();

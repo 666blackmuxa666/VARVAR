@@ -1,4 +1,5 @@
 (() => {
+  if (window.VARVAR?.moving) return; // ↪️ переходимо на posatom.online
   // 👁 перегляд у конструкторі меню (кабінет): дизайн приходить через postMessage; замовлення й виклики не відправляються
   if (new URLSearchParams(location.search).has('preview')) {
     const f0 = window.fetch; window.fetch = (u, o) => (o && o.method && o.method !== 'GET' ? Promise.reject(new Error('preview')) : f0(u, o));
