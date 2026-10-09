@@ -428,6 +428,17 @@ export async function countFinish(env, wh, who) {
   await notify(env, `📝 <b>Інвентаризація · ${WH[wh]}</b> (${esc(who || '')})\nПораховано позицій: ${r.doc.lines.length}\n🔻 Нестача: <b>${money(-r.doc.short)}</b> · 🔺 Надлишок: <b>${money(r.doc.over)}</b>${top.length ? '\n\n' + top.map(x => `${x.diff < 0 ? '🔻' : '🔺'} ${esc(x.n)}: ${x.diff > 0 ? '+' : ''}${fq(x.diff, x.u)} (${x.sum > 0 ? '+' : ''}${money(x.sum)})`).join('\n') : ''}`).catch(() => {});
   return r;
 }
+// ↩️ скасувати інвентаризацію: різницю «факт − система» віднімаємо назад (рух після неї зберігається); у журналі — зворотні рядки
+export async function countUndo(env, id, who) {
+  return lk(env, async () => {
+    const d = await env.DB.get('cnt:' + id, 'json'); if (!d) return { error: 'Не знайдено' }; if (d.undo) return { error: 'Вже скасовано' };
+    const l = await getIng(env), im = new Map(l.map(x => [x.id, x])), rows = [];
+    for (const ln of d.lines) { if (!ln.diff) continue; const x = im.get(ln.id); if (!x) continue; x.st[d.wh] = r3((x.st[d.wh] || 0) - ln.diff); rows.push({ ...row('cnt', x, d.wh, -ln.diff, who, '↩️ скасовано інвентаризацію ' + d.day, id), sum: r2(-(ln.sum || 0)) }); }
+    d.undo = { ts: Date.now(), by: who || '' }; await jr(env, rows); await putIng(env, l); await env.DB.put('cnt:' + id, JSON.stringify(d));
+    const cl = (await env.DB.get('cntl', 'json')) || []; const c = cl.find(x => x.id === id); if (c) c.undo = 1; await env.DB.put('cntl', JSON.stringify(cl));
+    return { ok: 1, n: rows.length };
+  });
+}
 export const countList = async env => ((await env.DB.get('cntl', 'json')) || []).slice().reverse();
 export const countDoc = async (env, id) => env.DB.get('cnt:' + id, 'json');
 
@@ -517,6 +528,7 @@ export async function stockApi(b, env, me, ai) {
     case 'skCountSave': return R(await countSave(env, cook ? 'k' : b.wh, b.f, who));
     case 'skCountFinish': { const r = await countFinish(env, cook ? 'k' : b.wh, who); if (r?.doc && !admin) r.doc = { ...r.doc, short: undefined, over: undefined, lines: r.doc.lines.map(({ sum, ...x }) => x) }; return R(r); }
     case 'skCountList': { const l = await countList(env); return ok({ list: admin ? l : l.map(({ short, over, ...x }) => x) }); }
+    case 'skCountUndo': { if (!admin) return R({ error: 'admin' }); const r = await countUndo(env, String(b.id), who); if (r.error) return R(r); await notify(env, `↩️ Скасовано інвентаризацію — ${esc(who || '')}`).catch(() => {}); return R(r); }
     case 'skCountDoc': { const d = await countDoc(env, String(b.id)); if (d && !admin) { delete d.short; delete d.over; d.lines = d.lines.map(({ sum, ...x }) => x); } return R(d && { doc: d }); }
     // плюси / мінуси
     case 'skReport': { if (!isDay(b.from) || !isDay(b.to)) return bad('Невірний період'); return R(await costReport(env, b.from, b.to)); }

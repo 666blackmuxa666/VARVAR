@@ -131,6 +131,14 @@ async function apiTests() {
     await posOk(A, 'delete', { t: t2, reason: 'QA' });
     const c2 = ((await posOk(A, 'certList')).list || []).find(x => x.code === c.code); must(c2 && c2.left === 500, 'залишок ' + c2?.left); return 'повернуто ' + u.use;
   });
+  await step('📝 інвентаризація → ↩️ скасувати → залишок як був', async () => {
+    const x = (await posOk(A, 'skData')).ing.find(i => !i.off && !i.grp); if (!x) return 'немає продуктів';
+    const st0 = x.st?.k || 0; await posOk(A, 'skCountSave', { wh: 'k', f: { [x.id]: st0 + 3 } }); const d = (await posOk(A, 'skCountFinish', { wh: 'k' })).doc;
+    must(Math.abs(((await posOk(A, 'skData')).ing.find(i => i.id === x.id).st?.k || 0) - (st0 + 3)) < 1e-6, 'інвентаризація не застосувалась');
+    must((await pos(W, 'skCountUndo', { id: d.id })).status !== 200, 'офіціант скасував');
+    await posOk(A, 'skCountUndo', { id: d.id }); must((await pos(A, 'skCountUndo', { id: d.id })).status === 400, 'скасовано двічі');
+    must(Math.abs(((await posOk(A, 'skData')).ing.find(i => i.id === x.id).st?.k || 0) - st0) < 1e-6, 'залишок не повернувся'); return x.n;
+  });
   await step('📜 склад: ручне додавання → ↩️ скасувати → залишок як був', async () => {
     const d = await posOk(A, 'skData'), x = (d.ing || []).find(i => !i.off); if (!x) return 'немає продуктів';
     const st0 = (y => (y.st?.k || 0) + (y.st?.b || 0))(x); await posOk(A, 'skAdj', { id: x.id, wh: 'k', q: 2, note: 'QA' });

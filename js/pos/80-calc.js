@@ -455,7 +455,7 @@
     let cat = '';
     const rows = shown.map(x => { const h = x.cat !== cat ? `<div class="cnt-cat">${esc(cat = x.cat || 'Інше')}</div>` : '';
       return h + `<div class="cnt-r"><span>${x.semi ? '🍳 ' : ''}${esc(x.n)}<br><small class="muted">система: ${fq(x.st?.[wh] || 0, x.u)}</small></span><input data-cf="${x.id}" inputmode="decimal" value="${esc(K.cf[x.id] ?? '')}" placeholder="факт, ${x.u}"><span class="cnt-d" id="cfd${x.id}">${diffH(x)}</span></div>`; }).join('');
-    const hist = (S.data.skCnts || []).slice(0, 15).map(c => `<div class="kv press" data-a="skCntView" data-id="${c.id}"><span>${c.day.slice(8)}.${c.day.slice(5, 7)} · ${WHN[c.wh]} · ${esc(c.by)} <span class="muted">· ${c.n} поз.</span></span>${adm ? `<span class="kv-r"><b class="neg">${money(c.short)}</b><b class="good">+${money(c.over)}</b></span>` : ''}</div>`).join('');
+    const hist = (S.data.skCnts || []).slice(0, 15).map(c => `<div class="kv press" data-a="skCntView" data-id="${c.id}"><span>${c.undo ? '<s class="muted">' : ''}${c.day.slice(8)}.${c.day.slice(5, 7)} · ${WHN[c.wh]} · ${esc(c.by)} <span class="muted">· ${c.n} поз.</span>${c.undo ? ' ↩️</s>' : ''}</span>${adm ? `<span class="kv-r"><b class="neg">${money(c.short)}</b><b class="good">+${money(c.over)}</b></span>` : ''}</div>`).join('');
     return `<div class="sk-tools">${adm ? `<div class="chips">${['k', 'b'].map(w => `<button class="chip ${wh === w ? 'on' : ''}" data-a="skCwh" data-w="${w}">${WHN[w]}</button>`).join('')}</div>` : ''}<input id="skCq" placeholder="🔎 Пошук продукту" value="${esc(K.cq)}"></div>
       <div class="card"><div class="rhead"><div><h3 style="margin:0">📝 ${WHN[wh]}: внесено ${n} з ${all.length}</h3><span class="muted">Пишіть фактичний залишок (можна «250 г»). Чернетка зберігається сама — можна рахувати з планшета частинами. Порожні рядки не змінюються.</span></div>
         <button class="btn primary" data-a="skCntFin" ${n ? '' : 'disabled'}>✅ Завершити</button></div>${rows || '<div class="muted">На цьому складі ще немає продуктів</div>'}</div>
@@ -479,7 +479,9 @@
     const adm = isAdmin(), ch = d.lines.filter(x => x.diff);
     await modal({ title: `📝 ${WHN[d.wh]} · ${d.day}`, body: `${adm ? `<div class="kv tot"><span>🔻 Нестача</span><b class="money neg">${money(d.short)}</b></div><div class="kv"><span>🔺 Надлишок</span><b class="money good">+${money(d.over)}</b></div>` : ''}
       <div class="sk-jr">${ch.map(x => `<div class="kv"><span>${esc(x.n)}<br><small class="muted">було ${fq(x.sys, x.u)} → факт ${fq(x.fact, x.u)}</small></span><b class="${x.diff < 0 ? 'neg' : 'good'}">${x.diff > 0 ? '+' : ''}${fq(x.diff, x.u)}${adm && x.sum != null ? ` · ${money(x.sum)}` : ''}</b></div>`).join('') || '<div class="muted">Усе збіглося ✅</div>'}</div>
-      <div class="muted" style="font-size:12px;margin-top:8px">Пораховано позицій: ${d.lines.length} · ${esc(d.by)}</div>`, buttons: [{ label: 'Закрити', val: null }] });
+      <div class="muted" style="font-size:12px;margin-top:8px">Пораховано позицій: ${d.lines.length} · ${esc(d.by)}${d.undo ? ` · ↩️ скасовано (${esc(d.undo.by)})` : ''}</div>`, buttons: [...(adm && !d.undo && ch.length ? [{ label: '↩️ Скасувати інвентаризацію', val: 'undo', cls: 'red' }] : []), { label: 'Закрити', val: null }] }).then(async v => {
+      if (v !== 'undo') return; if (!(await confirmBox('↩️ Скасувати інвентаризацію?', 'Залишки повернуться як були до неї (рух після неї — продажі, накладні — збережеться). У журналі складу зʼявляться зворотні рядки.'))) return;
+      if (await act('skCountUndo', { id: d.id }, '↩️ Інвентаризацію скасовано')) loadView(); });
   }
   // 📊 плюси / мінуси
   function skRepHTML() {
