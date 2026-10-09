@@ -81,7 +81,7 @@
     part.test = `<div class="grid2 set"><div class="card"><h3>🧪 Тест</h3><div class="muted set-note">Тимчасово, до запуску.</div><button class="btn sm red" data-a="reset">♻️ Обнулити все</button></div></div>`;
     if (only) return part[only];
     return `<div class="rhead"><div><h1>Налаштування</h1><span class="muted">правила роботи, принтер</span></div><div class="icogrp">${isAdmin() ? `<a class="btn icobtn" href="owner.html${VENUE ? '' : '#pos=' + S.token}" target="_blank" rel="noopener" title="Кабінет власника">👑</a>` : ''}<button class="btn icobtn" data-a="zpHelp" title="Допомога">🆘</button></div></div>
-      <div class="seg rsec">${SS.map(([k, l]) => `<button class="${cur === k ? 'on' : ''}" data-a="setTab" data-s="${k}">${l}</button>`).join('')}</div>${OWN.includes(cur) ? '' : `<div class="card set-own"><span>🌐 Сайт, 🏪 заклад (назва, логотип, посилання), QR-коди, боти й бекапи — у <b>кабінеті власника</b></span>${isAdmin() ? `<a class="btn sm" href="owner.html" target="_blank" rel="noopener">👑 Відкрити</a>` : ''}</div>`}${part[cur]}`;
+      <div class="seg rsec">${SS.map(([k, l]) => `<button class="${cur === k ? 'on' : ''}" data-a="setTab" data-s="${k}">${l}</button>`).join('')}</div>${part[cur]}`;
   }
   async function menuEdit(id) {
     const it = itemsAll().find(i => i.id === id) || null;
