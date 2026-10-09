@@ -54,7 +54,7 @@ export async function setSite(env, k, v) {
       if (s.menuTheme !== undefined) { const h = (await env.DB.get('menu_ver', 'json')) || []; h.unshift({ at: Date.now(), d: { menuTheme: s.menuTheme } }); await env.DB.put('menu_ver', JSON.stringify(h.slice(0, 5))); }
       const m = cleanMenuTheme(v?.menuTheme); if (m) s.menuTheme = m; else delete s.menuTheme;
     }
-    else if (['dock', 'ann', 'hours', 'seo', 'soc', 'season', 'addrs', 'events', 'langs', 'chat'].includes(k)) { const d = cleanExtra({ [k]: v }); if (d[k] == null) delete s[k]; else s[k] = d[k]; }
+    else if (['dock', 'ann', 'hours', 'seo', 'soc', 'season', 'addrs', 'events', 'langs', 'chat', 'legal'].includes(k)) { const d = cleanExtra({ [k]: v }); if (d[k] == null) delete s[k]; else s[k] = d[k]; }
     else return { error: 'Невідоме поле' };
     await env.DB.put('site', JSON.stringify(s)); return s;
   });

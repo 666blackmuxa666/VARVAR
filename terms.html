@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#141414">
+<title>Умови та реквізити</title>
+<link rel="icon" href="img/icon.png">
+<style>
+:root { color-scheme: only dark; --bg: #121212; --card: #1c1c1c; --line: #2e2e2e; --text: #f1f1f1; --muted: #9c9c9c; --accent: #f2c14e; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 Rubik, system-ui, -apple-system, sans-serif; }
+main { max-width: 760px; margin: 0 auto; padding: 24px 16px 60px; }
+h1 { font-size: 28px; margin: 8px 0 4px; } h2 { font-size: 19px; margin: 28px 0 8px; color: var(--accent); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; }
+.kv { display: grid; grid-template-columns: 170px 1fr; gap: 4px 12px; } .kv span { color: var(--muted); } @media (max-width: 520px) { .kv { grid-template-columns: 1fr; } .kv b { margin-bottom: 6px; } }
+p { margin: 0 0 10px; white-space: pre-line; } a { color: var(--accent); }
+.back { display: inline-block; margin-bottom: 8px; text-decoration: none; font-weight: 600; }
+.muted { color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="about.html">← На сайт</a>
+  <h1 id="tName">Умови та реквізити</h1>
+  <div class="muted" id="tUpd"></div>
+
+  <h2>🏛 Реквізити продавця</h2>
+  <div class="card kv" id="tReq"><span>Завантаження…</span><b></b></div>
+
+  <h2>💳 Оплата</h2>
+  <div class="card"><p id="tPay"></p></div>
+
+  <h2>🛵 Доставка й самовивіз</h2>
+  <div class="card"><p id="tDel"></p></div>
+
+  <h2>↩️ Обмін і повернення</h2>
+  <div class="card"><p id="tRet"></p></div>
+
+  <h2>📞 Контакти</h2>
+  <div class="card kv" id="tCont"></div>
+</main>
+<script src="js/config.js?v=14"></script>
+<script>
+(() => {
+  if (window.VARVAR?.moving) return;
+  const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const D = {
+    pay: 'Оплата приймається готівкою або карткою в закладі, а також онлайн на сайті через платіжну систему LiqPay (ПриватБанк) — Visa, Mastercard, Apple Pay, Google Pay. Дані картки вводяться на захищеній сторінці LiqPay і не передаються нам. Після успішної оплати замовлення автоматично позначається оплаченим.',
+    del: 'Самовивіз — у закладі за адресою, вказаною нижче, у робочі години.\nДоставка — у межах зони доставки закладу. Вартість доставки, мінімальна сума замовлення й орієнтовний час показуються під час оформлення замовлення на сайті. Про готовність і статус замовлення повідомляємо на сайті та в Telegram.',
+    ret: 'Ми готуємо страви й напої на замовлення, тому якісні продукти харчування та напої (у т.ч. алкогольні) обміну й поверненню не підлягають (Закон України «Про захист прав споживачів», Постанова КМУ № 172).\nЯкщо страва неякісна, не відповідає замовленню або чогось не вистачає — повідомте нам у день отримання за телефоном нижче: ми замінимо страву або повернемо кошти.\nСкасувати онлайн-замовлення можна до початку його приготування — гроші повертаються повністю на ту саму картку протягом 1–7 банківських днів (строк залежить від банку-емітента).\nПодарункові сертифікати діють до вказаної в них дати; невикористаний залишок грошима не повертається, крім випадків, передбачених законом.',
+  };
+  fetch(window.VARVAR.api + '/api/site').then(r => r.json()).then(s => {
+    const L = s.legal || {}, row = (l, v) => v ? `<span>${l}</span><b>${esc(v)}</b>` : '';
+    document.title = 'Умови та реквізити — ' + (s.name || ''); $('#tName').textContent = 'Умови та реквізити · ' + (s.name || '');
+    $('#tReq').innerHTML = (row('Продавець', L.name) + row('ІПН / ЄДРПОУ', L.code) + row('Юридична адреса', L.addr) + row('Заклад', s.name) + row('Адреса закладу', s.addr)) || '<span>Реквізити ще не заповнені</span><b></b>';
+    $('#tPay').textContent = L.pay || D.pay; $('#tDel').textContent = L.del || D.del; $('#tRet').textContent = L.ret || D.ret;
+    $('#tCont').innerHTML = row('Телефон', L.phone || s.phone) + row('Email', L.email) + row('Адреса', s.addr) + row('Години роботи', s.from && s.to ? `${s.from}–${s.to}` : '');
+  }).catch(() => { $('#tReq').innerHTML = '<span>Не вдалося завантажити</span><b></b>'; });
+})();
+</script>
+</body>
+</html>

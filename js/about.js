@@ -58,7 +58,7 @@
     $('#revA').href = s.gmaps; $('#revW').href = s.reviewsUrl || s.gmaps;
     $('#book').hidden = !s.bookOn; $('#cert').hidden = !s.certOn;
     // 🏪 назва й логотип закладу
-    $('.nav .brand').innerHTML = s.logo ? `<img src="${esc(s.logo)}" alt="" style="height:30px;width:30px;object-fit:contain;border-radius:8px;vertical-align:middle;margin-right:8px">${esc(s.name)}` : esc(s.name); $('#fName').textContent = s.name; document.title = s.name;
+    $('.nav .brand').innerHTML = s.logo ? `<img src="${esc(s.logo)}" alt="" style="height:30px;width:30px;object-fit:contain;border-radius:8px;vertical-align:middle;margin-right:8px">${esc(s.name)}` : esc(s.name); $('#fName').textContent = s.name; { const L = s.legal || {}; const f = $('#fLegal'); if (f) f.textContent = [L.name, L.code ? 'ІПН/ЄДРПОУ ' + L.code : '', L.addr].filter(Boolean).join(' · '); } /* 🏛 реквізити (LiqPay) */ document.title = s.name;
     if (window.VARVAR.venue) $('#about > .feats')?.remove(); // переваги VARVAR (кальяни, банкети…) — не для інших закладів
     // 🎨 конструктор: тема, головний екран, блоки, панель, оголошення… (js/about-design.js)
     if (window.VVD) VVD.apply(s, lang, t, maps);

@@ -58,6 +58,7 @@ export function cleanExtra(x = {}) {
   if ('season' in x) { const s = x.season || {}; r.season = { k: one(s.k, ['', 'ny', 'hw', 'summer', 'easter', 'love'], ''), till: day(s.till) }; }
   if ('addrs' in x) r.addrs = [].concat(x.addrs || []).slice(0, 5).map(a => ({ n: str(a?.n, 60), a: str(a?.a, 200), h: str(a?.h, 60), p: str(a?.p, 30), m: safeUrl(a?.m) })).filter(a => a.a);
   if ('events' in x) r.events = [].concat(x.events || []).slice(0, 20).map(e => ({ id: /^[a-z0-9]{4,8}$/.test(e?.id) ? e.id : crypto.randomUUID().slice(0, 6), d: day(e?.d), tm: hm(e?.tm), t: tr(e?.t, 80), txt: tr(e?.txt, 400), img: safeImg(e?.img), book: bit(e?.book) })).filter(e => e.d && e.t.uk);
+  if ('legal' in x) { const l = x.legal || {}; r.legal = { name: str(l.name, 120), code: str(l.code, 20), addr: str(l.addr, 200), phone: str(l.phone, 30), email: str(l.email, 80), pay: str(l.pay, 2000), del: str(l.del, 2000), ret: str(l.ret, 3000) }; } /* 🏛 реквізити й умови (вимога LiqPay) */
   if ('langs' in x) r.langs = bit(x.langs);
   if ('chat' in x) r.chat = bit(x.chat);
   return r;
