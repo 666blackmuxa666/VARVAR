@@ -333,10 +333,10 @@ async function admin(b, ip, env) {
 // 🌐 posatom.online/<заклад>/… → файли сайту (GitHub Pages) без змін; заклад береться зі шляху (js/config.js).
 // /<заклад>/ — візитка; /<заклад>/?t=…&k=… (QR столу) — меню; /owner/ — кабінет власника; / — поки VARVAR
 async function atomSite(req, env) {
-  const url = new URL(req.url);
+  let url = new URL(req.url);
   if (url.hostname === 'www.posatom.online') return Response.redirect('https://posatom.online' + url.pathname + url.search, 301);
   if (url.pathname.startsWith('/api/')) return atomApi(req, env, url);
-  if (url.pathname === '/' || url.pathname === '/atom.html') { if (url.pathname === '/atom.html') return Response.redirect('https://posatom.online/', 301); req = new Request('https://posatom.online/atom/'); }
+  if (url.pathname === '/' || url.pathname === '/atom.html') { if (url.pathname === '/atom.html') return Response.redirect('https://posatom.online/', 301); url = new URL('https://posatom.online/atom/' + url.search); }
 
   const m = url.pathname.match(/^\/([a-z0-9][a-z0-9-]{1,30})(\/.*)?$/); if (!m) return new Response('Not found', { status: 404 });
   if (!m[2]) return Response.redirect(`https://posatom.online/${m[1]}/${url.search}`, 301);
