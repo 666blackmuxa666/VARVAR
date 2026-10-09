@@ -60,6 +60,17 @@ export async function intApi(req, env, path) {
     if (f.GUEST_BOT_TOKEN) await (await import('./site.js')).botName(e2).catch(() => {}); if (f.COURIER_BOT_TOKEN) await (await import('./courier.js')).courBot?.(e2).catch(() => {});
     return [{ ok: true, has, names, brand: br?.out }, 200];
   }
+  if (path === '/__int/bots') { /* 🤖 справжній стан ботів: питаємо сам Telegram (getMe, getWebhookInfo, getChat) */
+    const { getSecrets } = await import('./venue.js'), sec = env.VENUE === MAIN ? env : { ...env, ...(await getSecrets(env)) };
+    const call = async (tok, m, q = {}) => { if (!tok) return null; try { const r = await fetch(`https://api.telegram.org/bot${tok}/${m}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(q), signal: AbortSignal.timeout(6000) }); return await r.json(); } catch (e) { return { ok: false, description: e.message }; } };
+    const one = async tok => { if (!tok) return { on: 0 }; const [me, wh] = await Promise.all([call(tok, 'getMe'), call(tok, 'getWebhookInfo')]); if (!me?.ok) return { on: 1, ok: 0, err: me?.description || 'не відповідає' };
+      const w = wh?.result || {}; return { on: 1, ok: 1, user: me.result.username, name: me.result.first_name, hook: !!w.url, pending: w.pending_update_count || 0, lastErr: w.last_error_date && Date.now() / 1000 - w.last_error_date < 86400 ? w.last_error_message : '' }; };
+    const [staff, guest, courier] = await Promise.all([one(sec.BOT_TOKEN), one(sec.GUEST_BOT_TOKEN), one(sec.COURIER_BOT_TOKEN)]);
+    let group = { on: sec.CHAT_ID ? 1 : 0 };
+    if (sec.CHAT_ID && sec.BOT_TOKEN) { const g = await call(sec.BOT_TOKEN, 'getChat', { chat_id: sec.CHAT_ID }); group = g?.ok ? { on: 1, ok: 1, title: g.result.title || g.result.first_name || '' } : { on: 1, ok: 0, err: g?.description || 'бот не бачить групу' }; }
+    if (b.test && sec.CHAT_ID && sec.BOT_TOKEN) { const t = await call(sec.BOT_TOKEN, 'sendMessage', { chat_id: sec.CHAT_ID, text: '✅ Тест з кабінету власника — бот персоналу пише в цю групу.' }); return [{ sent: !!t?.ok, err: t?.ok ? '' : t?.description }, 200]; }
+    return [{ staff, guest, courier, group }, 200];
+  }
   if (path === '/__int/ready') { // 🚀 чек-лист запуску закладу
     const { getSecrets } = await import('./venue.js'), sec = env.VENUE === MAIN ? { BOT_TOKEN: env.BOT_TOKEN, GUEST_BOT_TOKEN: env.GUEST_BOT_TOKEN, COURIER_BOT_TOKEN: env.COURIER_BOT_TOKEN, CHAT_ID: env.CHAT_ID } : await getSecrets(env);
     const { getMenu } = await import('./menu.js'), { getSite } = await import('./site.js'), { getGoCfg } = await import('./delivery.js'), { getStaff } = await import('./ops.js');
@@ -171,6 +182,7 @@ export async function ownerApi(req, env) {
     }
     case 'enter': { if (!isVenueId(b.venue) || !(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/login', { name: me.name, email: me.email }); await H.seen(b.venue); return r.token ? ok({ token: r.token, me: r.me, venue: b.venue }) : bad(r.error || 'Не вдалось'); }
     case 'brand': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/brand', {}); return r.error ? bad(r.error) : ok(r); }
+    case 'bots': { if (!(await may(b.venue))) return bad('Немає доступу', 403); return ok(await callVenue(env, b.venue, '/__int/bots', { test: !!b.test })); }
     case 'ready': { if (!(await may(b.venue))) return bad('Немає доступу', 403); return ok(await callVenue(env, b.venue, '/__int/ready', {})); }
     case 'codes': { if (!(await may(b.venue))) return bad('Немає доступу', 403); return ok(await callVenue(env, b.venue, '/__int/codes', {})); }
     case 'secrets': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/secrets', b.f || {}); return r.error ? bad(r.error) : ok(r); }

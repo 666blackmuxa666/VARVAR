@@ -178,3 +178,5 @@ tr.sum td { font-weight: 700; border-bottom: 0; }
   #sb.pv .sb-side { display: none; } #sb.pv .sb-view { display: grid; } #sb.pv .sb-dev { display: none; } #sb.pv .sb-view { grid-template-rows: minmax(0, 1fr); } #sb.pv .sb-fw { max-width: none !important; margin: 0; border-radius: 0; border: 0; }
   .sb-top b { display: none; }
 }
+/* шапка розділу налаштувань: головні дії в один ряд, пошук розтягується */
+.vhead { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; } .vhead input { flex: 1 1 200px; min-height: 36px; padding: 6px 12px; } .vhead .btn { white-space: nowrap; }
