@@ -34,6 +34,7 @@ a { color: var(--accent); }
 .err { color: var(--red); min-height: 20px; text-align: center; font-size: 14px; }
 
 /* каркас */
+.top { padding-top: env(safe-area-inset-top); } /* 📱 відступ під годинник і батарею, як у касі */
 .top { position: sticky; top: 0; z-index: 5; background: #0b0b0dcc; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--line); }
 .top .in { max-width: 1200px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 12px; }
 .top img { width: 34px; height: 34px; border-radius: 9px; background: #fff; }
