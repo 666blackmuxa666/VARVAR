@@ -18,7 +18,7 @@ export async function tableKey(env, t, key) {
 }
 export const qrUrl = async (env, t, key) => siteLink(t ? `?t=${t}&k=${await tableKey(env, t, key)}` : `?k=${key || await qrKey(env)}`);
 // назва картинки для принтера: у назві — частина ключа, тож після «нових кодів» програма друку не візьме стару з памʼяті
-export const qrImg = async (env, t) => `qr${t ? '-t' + t : ''}-${(await qrKey(env)).slice(0, 6)}`;
+export const qrImg = async (env, t) => `qr${t ? '-t' + t : ''}-${(await qrKey(env)).slice(0, 6)}-a`; // -a: адреса posatom.online (стара картинка без -a могла лишитись у кеші з github.io)
 
 // ---------- PNG без бібліотек: 8-біт сірий, zlib через CompressionStream ----------
 const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
@@ -39,7 +39,7 @@ export async function qrPng(text, scale = 8) {
 }
 // /print/qr-t3-ab12cd.png (принтер) або /print/qr-t3-ab12cd.png?s=20 (друкарня, великий)
 export async function qrRoute(env, url) {
-  const m = url.pathname.match(/^\/print\/qr(?:-t(\d{1,3}))?-([a-f0-9]{6})\.png$/); if (!m) return null;
+  const m = url.pathname.match(/^\/print\/qr(?:-t(\d{1,3}))?-([a-f0-9]{6})(?:-a)?\.png$/); if (!m) return null;
   const key = await qrKey(env); if (!key.startsWith(m[2])) return new Response('old', { status: 404 });
   const s = Math.min(24, Math.max(4, +url.searchParams.get('s') || 8));
   return new Response(await qrPng(await qrUrl(env, +m[1] || 0, key), s), { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000', 'access-control-allow-origin': '*' } });
