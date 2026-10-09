@@ -71,7 +71,7 @@ html[data-skin] .modal { border-radius: calc(var(--sk-r) + 4px); }
 
 /* ---- нижнє меню (телефон / планшет) ---- */
 @media (max-width: 980px) {
-  html[data-skin][data-sk-nav="float"] .nav { margin: 0 10px calc(8px + env(safe-area-inset-bottom)); padding: 5px; border: 1px solid var(--line2); border-radius: 22px; box-shadow: 0 10px 30px #00000080; }
+  html[data-skin][data-sk-nav="float"] .nav { margin: 0 10px max(6px, calc(env(safe-area-inset-bottom) - 18px)); /* 📱 нижче, над смужкою iPhone — без порожнечі знизу */ padding: 5px; border: 1px solid var(--line2); border-radius: 22px; box-shadow: 0 10px 30px #00000080; }
   html[data-skin][data-sk-navlbl="0"] .nav button { font-size: 0; padding-block: 10px; }
 }
 html[data-skin][data-sk-navon="dark"] .nav button.on { background: var(--card2); color: var(--text); box-shadow: none; }

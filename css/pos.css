@@ -335,7 +335,7 @@ main { overflow: auto; padding: 22px 24px 40px; }
 /* iPhone/iPad «на головному екрані»: на весь екран, під вирізом/статус-баром нічого не ховається */
 html, body { height: 100%; height: 100dvh; }
 body { position: fixed; top: 0; right: 0; bottom: 0; left: 0; overscroll-behavior: none; }
-body { height: auto; } /* 📱 з головного екрана iPhone: висоту дає fixed top/bottom 0 — до самого низу екрана (100dvh там коротший) */
+html { background: var(--bg); } body { height: auto; } /* 📱 з головного екрана iPhone: висоту дає fixed top/bottom 0 — до самого низу екрана (100dvh там коротший) */
 .app { height: 100%; }
 .app { height: 100%; padding-top: env(safe-area-inset-top); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
 .login { padding-top: env(safe-area-inset-top); }
