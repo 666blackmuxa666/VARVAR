@@ -19,18 +19,6 @@ var __spreadValues = (a, b) => {
 var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
 (() => {
   var _a;
-  (() => {
-    const pwa = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
-    if (!pwa) return;
-    document.documentElement.classList.add("pwa");
-    const fit = () => {
-      const land = Math.abs(window.orientation || 0) === 90 || innerWidth > innerHeight, h = land ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
-      document.documentElement.style.setProperty("--appH", Math.max(h, innerHeight) + "px");
-    };
-    fit();
-    addEventListener("resize", fit);
-    addEventListener("orientationchange", () => setTimeout(fit, 300));
-  })();
   const okV = (x) => /^(?=.*[a-z])[a-z0-9][a-z0-9-]{1,30}$/.test(x || "") && x !== "varvar";
   const VENUE = (() => {
     const seg = /(^|\.)posatom\.online$/.test(location.hostname) ? location.pathname.split("/")[1] : null;
