@@ -158,7 +158,7 @@ export async function handle(req, env) {
         const x = await L.lpVerify(['sub', 'ai'].includes(kind) ? L.lpPlatform(env) : L.lpKeys(env), f.get('data'), f.get('signature'));
         if (!x) return json({ error: 'sign' }, 403);
         const r = kind === 'go' ? await (await import('./delivery.js')).goPaid(env, x) : await (await import('./lpay.js')).lpCallback(env, kind, x);
-        return json(r || { ok: true }, r?.error && r.error !== 'expired' ? 400 : 200);
+        return json(r || { ok: true }); // підпис правильний — завжди 200, інакше LiqPay повторює callback по колу (про проблему вже сказали в Telegram)
       }
       if (url.pathname === '/api/tpay') { const T = await import('./lpay.js'); if (req.method === 'POST') { const b = await req.json(), si = await scanInfo(env, b.device); /* як для замовлень: сканував QR (сесія діє) або Wi‑Fi закладу */
         return json(...await T.tpayStart(env, b, { scan: si?.until > Date.now() ? si.t || 0 : -1, wifi: await inVenue(env, ip) })); } return json(await T.tpayState(env, url.searchParams.get('id'))); } // 🍽 оплата столу з QR

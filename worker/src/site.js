@@ -223,6 +223,7 @@ export async function certPaid(env, x) {
   if (!c0) { await late('заявка вже протермінована'); return { error: 'expired' }; }
   if (c0.st !== 'new') { if (c0.st === 'no' || !c0.lp) await late(c0.st === 'no' ? 'заявку відхилено' : 'сертифікат уже оплачено раніше'); return { ok: true, dup: 1 }; }
   const { lpOk } = await import('./liqpay.js'); if (!lpOk(x)) return { ok: true, fail: 1 };
+  if (Math.round(+x.amount || 0) + 1 < c0.sum) { await late(`сума ${Math.round(+x.amount || 0)} грн менша за сертифікат ${c0.sum} грн — не активовано`); return { ok: true, fail: 1 }; } /* 💳 недоплата — не активуємо */
   await env.DB.put('cert:' + code, JSON.stringify({ ...c0, lp: String(x.payment_id || '') })); /* без терміну: тепер справжній сертифікат */
   await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; if (!l.includes(code)) l.push(code); await env.DB.put('certs', JSON.stringify(l.slice(-500))); });
   const c = await certPay(env, code, 'online', '🌐 LiqPay'); if (!c) return { error: 'state' };

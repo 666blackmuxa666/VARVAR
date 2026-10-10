@@ -336,3 +336,6 @@ details, .hist, .tw, .go-ord { border-radius: 16px; }
 .tpay-tips button { padding: 6px 12px; border-radius: 99px; border: 1px solid var(--line); background: transparent; color: inherit; font: inherit; }
 .tpay-tips button.on { background: var(--accent); color: #111; border-color: var(--accent); }
 .tpay-go { width: 100%; }
+
+/* [hidden] сильніший за display кнопок (.btn має display:flex) */
+.btn[hidden], button[hidden] { display: none !important; }
