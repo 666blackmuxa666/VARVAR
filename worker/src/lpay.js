@@ -14,19 +14,24 @@ const TIPS = [0, 5, 10, 15];
 export const tDue = b => Math.max(0, payable(b) - (b.paid?.net || 0));
 export async function tpayOn(env) { const c = await getGoCfg(env); return !!(c.qrpay && lpKeys(env)); }
 
-async function tableOk(env, t, k) { t = Math.round(+t || 0); return t > 0 && t < 1000 && String(k || '') === await tableKey(env, t) ? t : 0; }
+async function tableOk(env, t, k, device) {
+  t = Math.round(+t || 0); if (!(t > 0 && t < 1000)) return 0;
+  if (k && String(k) === await tableKey(env, t)) return t;
+  const si = device ? await env.DB.get('scan:' + String(device).slice(0, 64), 'json') : null; /* 📱 сканував QR (стіл або загальний) і сесія ще діє */
+  return si && si.until > Date.now() && (!si.t || si.t === t) ? t : 0;
+}
 
 // гість: почати оплату столу → посилання LiqPay
 export async function tpayStart(env, b) {
   if (!(await tpayOn(env))) return [{ error: 'off' }, 403];
-  const t = await tableOk(env, b.t, b.k); if (!t) return [{ error: 'bad_qr' }, 403];
+  const t = await tableOk(env, b.t, b.k, b.device); if (!t) return [{ error: 'bad_qr' }, 403];
   const bill = await getBill(env, t); if (!bill?.total) return [{ error: 'empty' }, 400];
   await promoFill(env, bill).catch(() => {});
   const due = tDue(bill); if (due < 1) return [{ error: 'paid' }, 400];
   const pct = TIPS.includes(+b.tip) ? +b.tip : 0, tip = Math.round(due * pct / 100), amount = due + tip;
   const id = Date.now().toString(36) + [...crypto.getRandomValues(new Uint8Array(3))].map(x => x.toString(16).padStart(2, '0')).join('');
   await env.DB.put('tpp:' + id, JSON.stringify({ t, due, tip, amount, at: Date.now() }), { expirationTtl: 3600 });
-  const f = await lpForm(lpKeys(env), { order_id: `tb-${env.VENUE || 'varvar'}-${id}`, amount, description: `Рахунок · стіл ${tn(t)}${tip ? ` · чайові ${tip} грн` : ''}`, result_url: siteLink(`?t=${t}&k=${b.k}&tpaid=${id}`), server_url: env.SELF_URL + '/api/lp/table' });
+  const f = await lpForm(lpKeys(env), { order_id: `tb-${env.VENUE || 'varvar'}-${id}`, amount, description: `Рахунок · стіл ${tn(t)}${tip ? ` · чайові ${tip} грн` : ''}`, result_url: siteLink(`?tpaid=${id}`), server_url: env.SELF_URL + '/api/lp/table' });
   return [{ ok: true, pay: f.url, id, sum: amount }, 200];
 }
 export async function tpayState(env, id) {

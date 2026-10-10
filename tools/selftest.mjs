@@ -282,6 +282,9 @@ async function apiTests() {
       const q = await posOk(A, 'qrInfo'); tk = new URL(q.list.find(x => x.t === TT).url).searchParams.get('k');
       await posOk(A, 'order', { t: TT, items: [{ id: dish.id, q: 1 }] });
       const bad = await http('/api/tpay', { t: TT, k: 'deadbeef', tip: 10 }); must(bad.status === 403, 'чужий ключ ' + bad.status);
+      { const dv = 'qa-tp-' + RUN, q0 = await posOk(A, 'qrInfo'), gk = new URL(q0.all.replace('/print/', '/').replace(/\.png$/, '')).pathname; /* загальний QR → сесія сканування → оплата без ключа столу */
+        const sc = await http('/api/scan', { k: new URL((await posOk(A, 'qrInfo')).list[0].url).searchParams.get('k'), t: 1, device: dv }); must(sc.j.ok, 'scan ' + JSON.stringify(sc.j));
+        const no = await http('/api/tpay', { t: TT, device: dv }); must(no.status === 403, 'чужий стіл за сесією столу 1: ' + no.status); }
       const r = await http('/api/tpay', { t: TT, k: tk, tip: 10 }); must(r.status === 200 && r.j.pay, `${r.status} ${JSON.stringify(r.j).slice(0, 200)}`); tp = r.j;
       const f = lpSign({ order_id: 'tb-varvar-' + tp.id, status: 'sandbox', amount: tp.sum, payment_id: 777 }); const c = await lpPost('/api/lp/table', f); must(c.status === 200 && c.j.ok, 'cb ' + JSON.stringify(c.j));
       const st = await posOk(A, 'state'), b = st.tables.find(x => x.t === TT); must(b?.pwait && b.paid?.sum === tp.sum, 'стіл: ' + JSON.stringify(b?.paid));
