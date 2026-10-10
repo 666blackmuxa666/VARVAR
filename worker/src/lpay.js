@@ -1,7 +1,8 @@
 // 💳 Оплата рахунку столу з QR (LiqPay закладу) + callback для сертифікатів / підписки ATOM / балансу ШІ.
 // Стіл: гість платить фактичний рахунок (рахує сервер) + чайові → bill.paid, стіл НЕ закривається:
 // у касі плитка червона, у стрічці «💳 оплачено — підтвердіть» (✅ закрити · ✏️ стіл · ❌ повернути гроші).
-import { getBill, putBill, payable, logEvent, editEv, L, notify, closeTable, esc, tg } from './ops.js';
+import { getBill, putBill, payable, logEvent, editEv, L, notify, closeTable, esc, tg, addWaiterOrder } from './ops.js';
+import { getMenu, priceMap } from './menu.js';
 import { getGoCfg } from './delivery.js';
 import { lpKeys, lpForm, lpOk, lpApi, lpRefund } from './liqpay.js';
 import { tableKey } from './qr.js';
@@ -26,12 +27,19 @@ export async function tpayStart(env, b, at) {
   if (!(await tpayOn(env))) return [{ error: 'off' }, 403];
   if ((env.VENUE || 'varvar') !== 'varvar' && await env.DB.get('cfg:lock')) return [{ error: 'off' }, 403]; // ⛔ підписка не оплачена
   const t = await tableOk(env, b.t, b.k, at); if (!t) return [{ error: 'bad_qr' }, 403];
-  const bill = await getBill(env, t); if (!bill?.total) return [{ error: 'empty' }, 400];
-  await promoFill(env, bill).catch(() => {});
-  const due = tDue(bill); if (due < 1) return [{ error: 'paid' }, 400];
+  const bill = await getBill(env, t);
+  // 🛒 «Замовити + чек» → 🌐: нові страви з кошика гостя (ціни — з меню на сервері) оплачуються разом із рахунком і йдуть на кухню після оплати
+  const PR = Array.isArray(b.items) && b.items.length ? priceMap(await getMenu(env)) : null, items = [];
+  if (PR) for (const it of b.items.slice(0, 60)) { const p = PR[it.id], q = Math.min(50, Math.max(0, parseInt(it.q, 10) || 0)); if (!p || !q) continue;
+    const price = typeof p.p === 'number' ? p.p : Object.hasOwn(p.p, String(it.v)) ? p.p[it.v] : 0; if (!(price > 0)) continue;
+    items.push({ name: p.n + (typeof p.p === 'number' ? '' : ` ${it.v} ${p.s || 'л'}`), price, q }); }
+  const extra = items.reduce((a, i) => a + i.price * i.q, 0);
+  if (!bill?.total && !extra) return [{ error: 'empty' }, 400];
+  if (bill?.total) await promoFill(env, bill).catch(() => {});
+  const due = (bill?.total ? tDue(bill) : 0) + extra; if (due < 1) return [{ error: 'paid' }, 400];
   const pct = TIPS.includes(+b.tip) ? +b.tip : 0, tip = b.tipSum != null ? Math.max(0, Math.min(due, Math.round(+b.tipSum || 0))) : Math.round(due * pct / 100), amount = due + tip; /* tipSum — сума з вікна «Хочу чек» */
   const id = Date.now().toString(36) + [...crypto.getRandomValues(new Uint8Array(3))].map(x => x.toString(16).padStart(2, '0')).join('');
-  await env.DB.put('tpp:' + id, JSON.stringify({ t, due, tip, amount, at: Date.now() }), { expirationTtl: 3600 });
+  await env.DB.put('tpp:' + id, JSON.stringify({ t, due, tip, amount, at: Date.now(), ...(items.length ? { items, comment: String(b.comment || '').slice(0, 300) } : {}) }), { expirationTtl: 3600 });
   const f = await lpForm(lpKeys(env), { order_id: `tb-${env.VENUE || 'varvar'}-${id}`, amount, description: `Рахунок · стіл ${tn(t)}${tip ? ` · чайові ${tip} грн` : ''}`, result_url: siteLink(`?tpaid=${id}`), server_url: env.SELF_URL + '/api/lp/table' });
   return [{ ok: true, pay: f.url, id, sum: amount }, 200];
 }
@@ -53,6 +61,7 @@ async function tablePaid(env, x) {
     const p = await env.DB.get('tpp:' + id, 'json'); if (!p) { if (lpOk(x)) await notify(env, `⚠️ Онлайн-оплата столу ${Math.round(+x.amount || 0)} грн прийшла пізніше години — не зараховано (${esc(String(x.order_id))}). Зарахуйте вручну або поверніть гроші в LiqPay.`).catch(() => {}); return { error: 'expired' }; }
     if (p.done) return { ok: true, dup: 1 };
     if (!lpOk(x)) { await env.DB.put('tpp:' + id, JSON.stringify({ ...p, fail: x.status || 'error' }), { expirationTtl: 3600 }); return { ok: true, fail: 1 }; }
+    if (p.items?.length) await addWaiterOrder(env, { table: p.t, items: p.items }, '🌐 гість (QR)', ['💳 ОПЛАЧЕНО ОНЛАЙН', p.comment].filter(Boolean).join(' · '), 'сайт').catch(e => console.log('tpay items', e.message)); /* страви — на кухню й у рахунок */
     const amount = Math.round(+x.amount || 0), tip = Math.min(p.tip, amount), net = amount - tip, pay = { id, lp: String(x.payment_id || ''), order: String(x.order_id), amt: amount, at: Date.now(), ...(x.status === 'sandbox' ? { test: 1 } : {}) };
     const ok = await L(env, 'bills', async () => {
       const b = await getBill(env, p.t); if (!b?.total) return false;

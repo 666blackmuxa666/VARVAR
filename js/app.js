@@ -35,14 +35,14 @@
   document.addEventListener('click', async e => {
     const tp = e.target.closest('[data-tptip]'); if (tp) { tpTip = +tp.dataset.tptip; renderCart(); return; }
     const go = e.target.closest('[data-tpay], [data-pay="online"]'); if (!go) return; go.disabled = true; const fromChk = go.dataset.pay === 'online'; /* 🌐 з кошика або з вікна «Хочу чек» */
-    try { const { status, data } = await api('/api/tpay', { t: qt || table, k: qt ? qk : '', device, tip: tpTip, ...(fromChk ? { tipSum: tipAmount() + ktipAmount() } : {}) }); if (status !== 200 || !data.pay) throw new Error({ bad_qr: '📷 Відскануйте QR на столі ще раз — і спробуйте знову', empty: 'Рахунок столу порожній', paid: '✅ Рахунок уже оплачено', off: 'Онлайн-оплата зараз вимкнена — оплатіть офіціанту' }[data?.error] || t('tPayFail')); try { localStorage.setItem('vv_tpay', data.id); } catch {} location.href = data.pay; }
+    try { const { status, data } = await api('/api/tpay', { t: qt || table, k: qt ? qk : '', device, tip: tpTip, ...(fromChk ? { tipSum: tipAmount() + ktipAmount() } : {}), ...(fromChk && pendingType === 'order_check' ? { items: cartEntries().map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; }), comment: $('#comment')?.value || '' } : {}) }); if (status !== 200 || !data.pay) throw new Error({ bad_qr: '📷 Відскануйте QR на столі ще раз — і спробуйте знову', empty: 'Рахунок столу порожній', paid: '✅ Рахунок уже оплачено', off: 'Онлайн-оплата зараз вимкнена — оплатіть офіціанту' }[data?.error] || t('tPayFail')); try { localStorage.setItem('vv_tpay', data.id); if (fromChk && pendingType === 'order_check') localStorage.setItem('vv_tpay_cart', data.id); } catch {} location.href = data.pay; }
     catch (er) { go.disabled = false; alert(er?.message || t('tPayFail')); }
   });
   (async () => { const id = qs.get('tpaid'); if (!id) return; history.replaceState(null, '', location.pathname); /* повернулись з LiqPay */
     const bar = document.getElementById('wifiBanner'); const show = (txt, ok) => { bar.hidden = false; bar.className = 'wifi-banner' + (ok ? ' go-ok' : ''); bar.textContent = txt; };
     show('⏳ ' + t('tPayWait'), 1);
     for (let i = 0; i < 12; i++) { let r = null; try { r = (await api('/api/tpay?id=' + encodeURIComponent(id))).data; } catch {}
-      if (r?.st === 'paid') { show('✅ ' + t('tPayOk'), 1); setTimeout(() => location.reload(), 2500); return; } if (r?.st === 'fail' || r?.st === 'none' && i > 3) break; await new Promise(z => setTimeout(z, i < 4 ? 2500 : 5000)); }
+      if (r?.st === 'paid') { try { if (localStorage.getItem('vv_tpay_cart') === id) { cart = {}; save(); localStorage.removeItem('vv_tpay_cart'); } } catch {} show('✅ ' + t('tPayOk'), 1); setTimeout(() => location.reload(), 2500); return; } if (r?.st === 'fail' || r?.st === 'none' && i > 3) break; await new Promise(z => setTimeout(z, i < 4 ? 2500 : 5000)); }
     show('⚠️ ' + t('tPayFail')); })();
   const GO = qs.has('go'), BOOK = /^\d{8}[a-f0-9]{6}$/.test(qs.get('book') || '') ? qs.get('book') : ''; // BOOK — передзамовлення до броні // 🛵 замовлення за посиланням: лише з собою (самовивіз / доставка)
   if (GO) { tw = true; document.body.classList.add('go'); }
@@ -282,7 +282,7 @@
     table = lockOn() ? String(lockT) : $('#table').value; save();
     if (!table) { $('#msg').textContent = t('chooseTable'); $('#table').focus(); return; }
     // запит чека — спершу питаємо спосіб оплати
-    if ((type === 'check' || type === 'order_check') && !pay) { pendingType = type; tip = { p: 0, own: false }; kt = { p: 0, own: false }; $('#tipOwn').value = ''; $('#ktipOwn').value = ''; renderTips(); $('#payOnl').hidden = !(qrpay && type === 'check' && bill && (bill.due ?? bill.pay) > 0 && (inVenue || qk)); $('#payModal').hidden = false; return; }
+    if ((type === 'check' || type === 'order_check') && !pay) { pendingType = type; tip = { p: 0, own: false }; kt = { p: 0, own: false }; $('#tipOwn').value = ''; $('#ktipOwn').value = ''; renderTips(); $('#payOnl').hidden = !(qrpay && table && (inVenue || qk) && (type === 'check' ? bill && (bill.due ?? bill.pay) > 0 : cartEntries().length > 0)); /* 🌐 «Замовити + чек» — разом з новими стравами */ $('#payModal').hidden = false; return; }
     const items = type === 'check' ? [] : cartEntries();
     busy = true; $('#msg').textContent = '…';
     try {

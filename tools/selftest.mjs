@@ -298,6 +298,15 @@ async function apiTests() {
       must(!st.tables.some(x => x.t === 13), 'стіл лишився'); must(!st.events.some(e => e.k === 'tpay' && e.t === 13 && e.s === 'new'), 'подія ще блимає');
       must((s1.z.onl || 0) - (s0.z.onl || 0) === tp.sum, `онлайн ${s0.z.onl} → ${s1.z.onl}`); return `+${tp.sum}`;
     });
+    await step('«Замовити + чек» → 🌐: нові страви оплачуються разом і після оплати йдуть у рахунок і на кухню', async () => {
+      const T9 = 9; { const b = (await posOk(A, 'state')).tables.find(x => x.t === T9); if (b?.paid) await pos(A, 'tpayOk', { t: T9, print: false }); else if (b) await pos(A, 'delete', { t: T9, reason: 'QA прибирання' }); }
+      const k9 = new URL((await posOk(A, 'qrInfo')).list.find(x => x.t === T9).url).searchParams.get('k');
+      const r = await http('/api/tpay', { t: T9, k: k9, items: [{ id: dish.id, q: 2 }], tipSum: 0 }); must(r.status === 200 && r.j.sum === dish.price * 2, `${r.status} ${JSON.stringify(r.j)}`);
+      must(!(await posOk(A, 'state')).tables.some(x => x.t === T9), 'страви в рахунку до оплати');
+      const c = await lpPost('/api/lp/table', lpSign({ order_id: 'tb-varvar-' + r.j.id, status: 'sandbox', amount: r.j.sum, payment_id: 31 })); must(c.j.ok, JSON.stringify(c.j));
+      const b = (await posOk(A, 'state')).tables.find(x => x.t === T9); must(b?.pay2 === r.j.sum && b.paid?.sum === r.j.sum && b.pwait, 'рахунок: ' + JSON.stringify({ pay2: b?.pay2, paid: b?.paid }));
+      must((await posOk(A, 'kitchen')).list.some(e => e.t === T9 && !e.done), 'не пішло на кухню');
+      await posOk(A, 'tpayOk', { t: T9, print: false }); return r.j.sum + ' грн'; });
     await posOk(A, 'goCfgSet', { k: 'qrpay', v: 0 });
   }
 
