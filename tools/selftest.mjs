@@ -291,8 +291,10 @@ async function apiTests() {
       const del = await pos(A, 'delete', { t: TT, reason: 'QA' }); must(del.status === 400, 'оплачений стіл видалився'); return tp.sum + ' грн';
     });
     await step('✅ підтвердити → стіл закрито як 🌐 онлайн (з чайовими), подія погасла', async () => {
-      const s0 = await posOk(A, 'shift'); await posOk(A, 'tpayOk', { t: TT, print: false }); const s1 = await posOk(A, 'shift'), st = await posOk(A, 'state');
-      must(!st.tables.some(x => x.t === TT), 'стіл лишився'); must(!st.events.some(e => e.k === 'tpay' && e.t === TT && e.s === 'new'), 'подія ще блимає');
+      await posOk(A, 'order', { t: 13, items: [{ id: dish.id, q: 1 }] }); await posOk(A, 'move', { t: TT, to: 13 }); /* 🔗 об'єднали оплачений стіл з іншим — оплата й подія переходять */
+      { const st = await posOk(A, 'state'), b = st.tables.find(x => x.t === 13); must(b?.paid?.sum === tp.sum && b.pwait, 'оплата не перейшла: ' + JSON.stringify(b?.paid)); must(st.events.some(e => e.k === 'tpay' && e.t === 13 && e.s === 'new'), 'подія не перейшла'); }
+      const s0 = await posOk(A, 'shift'); await posOk(A, 'tpayOk', { t: 13, print: false }); const s1 = await posOk(A, 'shift'), st = await posOk(A, 'state');
+      must(!st.tables.some(x => x.t === 13), 'стіл лишився'); must(!st.events.some(e => e.k === 'tpay' && e.t === 13 && e.s === 'new'), 'подія ще блимає');
       must((s1.z.onl || 0) - (s0.z.onl || 0) === tp.sum, `онлайн ${s0.z.onl} → ${s1.z.onl}`); return `+${tp.sum}`;
     });
     await posOk(A, 'goCfgSet', { k: 'qrpay', v: 0 });

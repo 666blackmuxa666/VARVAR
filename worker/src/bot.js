@@ -170,7 +170,7 @@ async function expListView(env) {
 }
 async function reportsView(env) {
   const r = await reportsData(env);
-  const line = (label, d) => `<b>${label}:</b> ${money(d.closed)} (💵 ${money(d.cash)} · 💳 ${money(d.card)})\n   витрати ${money(d.exp)} · <b>чистими ${money(d.closed - d.exp)}</b> · столів ${d.tables}${d.tables ? ` · сер. чек ${money(d.closed / d.tables)}` : ''}${d.disc ? ` · знижки ${money(d.disc)}` : ''}${d.tip ? ` · чайові ${money(d.tip)} (не виручка)` : ''}`;
+  const line = (label, d) => `<b>${label}:</b> ${money(d.closed)} (💵 ${money(d.cash)} · 💳 ${money(d.card - (d.onl || 0))}${d.onl ? ` · 🌐 ${money(d.onl)}` : ''})\n   витрати ${money(d.exp)} · <b>чистими ${money(d.closed - d.exp)}</b> · столів ${d.tables}${d.tables ? ` · сер. чек ${money(d.closed / d.tables)}` : ''}${d.disc ? ` · знижки ${money(d.disc)}` : ''}${d.tip ? ` · чайові ${money(d.tip)} (не виручка)` : ''}`;
   const [d0, ...rest] = r.rows;
   return { text: [`📊 <b>Звіти</b>`, line(...d0), `У залі ще відкрито: <b>${money(r.open)}</b>`, '', ...rest.map(x => line(...x)), '',
     `<i>Виручка — закриті рахунки після знижок, без чайових. Чистими = виручка − витрати.</i>`, '', '🔎 <b>Детальніше</b> — оберіть період і розріз:'].join('\n'), markup: repMarkup('m') };
@@ -781,6 +781,10 @@ async function handleCallback(q, env) {
       { inline_keyboard: [[{ text: `🪑 Стіл ${tn(d.table)}`, callback_data: 'tbl:' + d.table }, { text: '🧾 Закрити стіл', callback_data: 'cls:' + d.table }]] });
     return answer('Додано');
   }
+  if (act === 'tpok' || act === 'tprf') { // 💳 стіл оплачено з QR: ✅ закрити (доплату — готівкою) / ↩️ повернути гроші (лише адмін) — як у касі
+    const r = await (await import('./lpay.js')).tpayApi({ op: act === 'tpok' ? 'tpayOk' : 'tpayRefund', t: +arg, pay: 'cash' }, env, { role: admin ? 'admin' : 'waiter', name: who + ' · бот' });
+    if (r[0].error) return answer('⚠️ ' + r[0].error);
+    await edit(act === 'tpok' ? `✅ Стіл ${tn(arg)}: онлайн-оплату підтверджено, стіл закрито (${esc(who)})` : `↩️ Стіл ${tn(arg)}: гостю повернуто ${money(r[0].sum)} (${esc(who)})`); return answer(act === 'tpok' ? 'Закрито' : 'Повернуто'); }
   if (act === 'clsok') { await edit(closedText(await closeTable(env, +arg, who, oid === 'card' ? 'card' : 'cash', opt !== 'np'))); return answer('Закрито'); }
   if (act === 'pre') return answer(await precheck(env, +arg, who) ? '🖨 Пречек відправлено на принтер' : `Стіл ${tn(arg)} порожній`);
   if (act === 'dsc') { // знижка
@@ -801,7 +805,7 @@ async function handleCallback(q, env) {
     return answer('');
   }
   if (act === 'splt' || act === 'spli') { // spli:t:to:idx — перенести 1 шт позиції idx
-    if (act === 'spli') { const it = billItems(await getBill(env, arg))[+opt]; if (it) { const r = await splitTable(env, +arg, [{ name: it.name, q: 1 }], +oid, who + ' · бот'); if (!r) return answer('Не вдалось'); } }
+    if (act === 'spli') { const it = billItems(await getBill(env, arg))[+opt]; if (it) { const r = await splitTable(env, +arg, [{ name: it.name, q: 1 }], +oid, who + ' · бот'); if (r?.error) return answer(r.error); if (!r) return answer('Не вдалось'); } }
     const items = billItems(await getBill(env, arg)), to = await getBill(env, oid);
     await edit(`✂️ <b>Стіл ${tn(arg)} → стіл ${tn(oid)}</b>\nНатискайте позиції — кожне натискання переносить 1 шт.\n\nНа столі ${tn(oid)}: <b>${money(to.total || 0)}</b>${(to.log || []).filter(o => o.kind.startsWith('✂️')).flatMap(o => o.lines).map(l => '\n• ' + esc(l)).join('')}`,
       { inline_keyboard: [...items.map((x, i) => [{ text: `➡️ ${x.name} (${x.q} шт)`.slice(0, 60), callback_data: `spli:${arg}:${oid}:${i}` }]), [{ text: '✅ Готово', callback_data: 'tbl:' + oid }]] });

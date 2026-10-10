@@ -129,7 +129,8 @@ export class Hub extends DurableObject {
   async payOnce(pid) { const k = 'lpp:' + pid; if (await this.st.get(k)) return false; await this.st.put(k, Date.now()); return true; }
   // 🚀 ATOM: заявки з сайту posatom.online (CRM «Продажі»), ліміт з IP, статистика переглядів
   async leadAdd(l, ip) {
-    const rk = 'lrl:' + ip, r = (await this.st.get(rk)) || []; const now = Date.now(), fresh = r.filter(t => now - t < 3600e3);
+    if (!ip.startsWith('own:')) this.ctx.storage.setAlarm?.(Date.now() + 864e5);
+    const rk = 'lrl:' + (ip || 'none').slice(0, 64), r = (await this.st.get(rk)) || []; const now = Date.now(), fresh = r.filter(t => now - t < 3600e3);
     if (fresh.length >= 3) return { error: 'Забагато заявок — спробуйте пізніше або напишіть у Telegram' };
     await this.st.put(rk, [...fresh, now]);
     const id = now.toString(36) + rnd(3), x = { id, name: String(l.name || '').trim().slice(0, 60), phone: String(l.phone || '').trim().slice(0, 30), place: String(l.place || '').trim().slice(0, 80), city: String(l.city || '').trim().slice(0, 60), msg: String(l.msg || '').trim().slice(0, 800), src: String(l.src || '').slice(0, 30), st: 'new', note: '', next: 0, at: now };
@@ -158,8 +159,8 @@ export class Hub extends DurableObject {
     return out;
   }
   async hit(kind) { const d = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' }), k = 'ah:' + d, v = (await this.st.get(k)) || {}; v[kind] = (v[kind] || 0) + 1; await this.st.put(k, v); }
-  async hitOnce(ip) { const k = 'ahip:' + ip; if (await this.st.get(k)) return; await this.st.put(k, 1); await this.hit('view'); this.ctx.storage.setAlarm?.(Date.now() + 864e5); }
-  async alarm() { const l = await this.st.list({ prefix: 'ahip:' }); if (l.size) await this.st.delete([...l.keys()]); }
+  async hitOnce(ip) { if (!ip) return; const k = 'ahip:' + ip.slice(0, 64); if (await this.st.get(k)) return; await this.st.put(k, 1); await this.hit('view'); this.ctx.storage.setAlarm?.(Date.now() + 864e5); }
+  async alarm() { for (const p of ['ahip:', 'lrl:']) { const l = await this.st.list({ prefix: p }); if (l.size) await this.st.delete([...l.keys()].slice(0, 1000)); } } // щодоби: перегляди й ліміти заявок з IP
   async hitStats(days) { const out = []; for (let i = days - 1; i >= 0; i--) { const d = new Date(Date.now() - i * 864e5).toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' }); out.push({ d, ...((await this.st.get('ah:' + d)) || {}) }); } return out; }
 }
 

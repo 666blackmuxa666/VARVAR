@@ -43,9 +43,9 @@ export async function posApi(b, req, env) {
   const t = +b.t || 0;
   const needAdmin = () => [{ error: 'admin' }, 403];
   // ⛔ підписку ATOM не оплачено (5+ днів) — каса лише для перегляду: нові замовлення й чеки — ні
-  if (/^(order|close|accept|split|move|discount|precheck|goNew|goSt|tpayOk)$/.test(b.op || '') && env.VENUE !== 'varvar' && await env.DB.get('cfg:lock')) return [{ error: '⛔ Підписку ATOM не оплачено — каса в режимі перегляду. Оплатіть у кабінеті власника (💳 Оплата)' }, 402];
+  if (/^(order|close|accept|split|move|discount|precheck|goNew|goSt|tpayOk|tip|tipPay|cashMove|closedEdit|closedReopen|voidBack|tableBack|expense|shiftOpen|menuSave|menuDel|catAdd|menuImport)$/.test(b.op || '') && env.VENUE !== 'varvar' && await env.DB.get('cfg:lock')) return [{ error: '⛔ Підписку ATOM не оплачено — каса в режимі перегляду. Оплатіть у кабінеті власника (💳 Оплата)' }, 402];
   // 📱 демо-каса ATOM (сайт продажу): усе можна спробувати, крім платного ШІ, Telegram, друку, персоналу й кодів
-  if (env.VENUE === 'atom-demo' && /^(help|aiBench|photo[A-Z]|menuPhoto|menuImport|skInvParse|skCardAi|skDups|print|rcpt|closedPrint|precheck|qrNew|regCode|staff[A-Z]|wifi|courTg|reset|lookVSet|site[A-Z]*Ai|aiSite|gbSend|chat)/.test(b.op || '')) return [{ error: '🔒 У демо це вимкнено — підключіть свій заклад' }, 403];
+  if (env.VENUE === 'atom-demo' && /Гість демо/.test(me.name || '') && /^(help|aiBench|photo[A-Z]|menuPhoto|menuImport|skInvParse|skCardAi|skDups|print|rcpt|closedPrint|precheck|qrNew|regCode|staff[A-Z]|wifi|courTg|reset|lookVSet|site[A-Z]*Ai|aiSite|gbSend|chat|menuSave|menuDel|menuUndo|catAdd|cfgSet|closedRefund|tpayRefund|closedDel|zDel|bak|go[A-Z]*Cfg|goCfgSet|siteSet|siteDesign|menuDesign)/.test(b.op || '')) return [{ error: '🔒 У демо це вимкнено — підключіть свій заклад' }, 403];
   const ok = (x = {}) => [{ ok: true, ...x }, 200];
   // 👨‍🍳 кухар: черга кухні + вибити замовлення + стоп-лист; решта — ні
   // 🧮 Розрахунок: склад, техкарти, накладні, інвентаризація — свої права (адмін / кухар)
@@ -128,7 +128,7 @@ export async function posApi(b, req, env) {
     }
     case 'discount': { const r = await setDiscount(env, t, b.pct, who, admin); if (r?.error) return [{ error: r.error }, 400]; if (r) await notify(env, `🖥 % Стіл ${tn(t)}: ${r.disc ? `знижка ${r.disc}% — до сплати ${money(payable(r))}` : 'знижку прибрано'} — ${esc(who)}`); return ok(); }
     case 'tip': { if (+b.sum || !admin) return [{ error: 'Чайові додає лише гість. Прибрати може адміністратор.' }, 403]; const r = await setTip(env, t, b.sum, who); if (r) await notify(env, `🖥 💝 Стіл ${tn(t)}: ${r.tip ? `чайові ${money(r.tip)}` : 'чайові прибрано'} — ${esc(who)}`); return ok(); }
-    case 'split': { const r = await splitTable(env, t, b.items, +b.to, who); if (!r) return [{ error: 'Нічого не перенесено' }, 400]; await notify(env, `🖥 ✂️ Стіл ${tn(t)} розділено → <b>стіл ${tn(r.to)}</b> (${money(r.sum)}): ${esc(r.lines.join(', '))} — ${esc(who)}`, tgBtns(r.to)); return ok({ r }); }
+    case 'split': { const r = await splitTable(env, t, b.items, +b.to, who); if (!r) return [{ error: 'Нічого не перенесено' }, 400]; if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 ✂️ Стіл ${tn(t)} розділено → <b>стіл ${tn(r.to)}</b> (${money(r.sum)}): ${esc(r.lines.join(', '))} — ${esc(who)}`, tgBtns(r.to)); return ok({ r }); }
     case 'move': { const r = await moveTable(env, t, +b.to, who); if (r) await notify(env, `🖥 ${r.merged ? `🔗 Стіл ${tn(t)} об'єднано зі столом ${tn(b.to)}` : `↔️ Стіл ${tn(t)} перенесено на стіл ${tn(b.to)}`} — ${esc(who)}`, tgBtns(+b.to)); return ok({ r }); }
     case 'accept': return ok({ done: await acceptOrder(env, String(b.oid), who) });
     case 'reject': { const o = await rejectOrder(env, String(b.oid), who); return o ? ok() : [{ error: 'Вже прийнято або відхилено' }, 400]; }

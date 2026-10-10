@@ -247,6 +247,7 @@ async function _closeTable(env, t, who, pay = 'cash', print = true) {
   /* 🌐 онлайн (LiqPay) — безготівка, але окремо від терміналу (onl ⊂ card). Оплачене гостем наперед (go.paid / paid з QR) — завжди онлайн; доплату — тим способом, що обрали на касі */
   const pre = Math.round(bill.go?.paid?.sum || bill.paid?.sum || 0), onl = pay === 'online' ? sum : Math.min(pre, sum), rest = sum - onl;
   const card = onl + (pay === 'card' ? rest : 0), cash = sum - card; if (onl && !rest) pay = 'online';
+  if (pre > sum + 1) notify(env, `⚠️ Стіл ${tn(t)}: гість оплатив онлайн ${pre} грн, а рахунок ${sum} грн — переплата ${pre - sum} грн. Поверніть різницю в кабінеті LiqPay.`).catch(() => {}); /* 💳 зменшили рахунок після оплати */
   if (print) await queuePrint(env, 'receipt', await receipt(env, { table: t, bill, final: true, pay, by: who }));
   await env.DB.delete('bill:' + t);
   const kq = kitchenClosed(env, [+t]); // стіл закрили — його замовлення зникають з черги кухні (паралельно з виручкою)
@@ -356,10 +357,12 @@ async function _moveTable(env, a, b, who) {
     B.total += A.total;
     if (!sameP && dA + dB) { B.discSum = dA + dB; B.disc = Math.max(1, Math.round(B.discSum / B.total * 100)); B.discBy = B.discBy || A.discBy; } if (A.voids) B.voids = [...(B.voids || []), ...A.voids];
     if (A.tip) B.tip = (B.tip || 0) + A.tip; if (A.ktip) B.ktip = (B.ktip || 0) + A.ktip; // чайові обох столів сумуються (раніше чайові A губились)
+    if (A.paid) { B.paid = { sum: (B.paid?.sum || 0) + A.paid.sum, net: (B.paid?.net || 0) + A.paid.net, list: [...(B.paid?.list || []), ...(A.paid.list || [])] }; B.pwait = B.pwait || A.pwait; B.check = true; B.pay = 'online'; } /* 💳 онлайн-оплата A переходить на B */
     await putBill(env, b, B);
   } else await putBill(env, b, A);
   await env.DB.delete('bill:' + a);
   await kqMut(env, l => { for (const e of l) if (!e.done && e.t === a) e.t = b; }); // кухня бачить новий номер стола
+  if (A.paid) await editEv(env, l => { for (const e of l) if (e.k === 'tpay' && +e.t === a) e.t = b; }); // 💳 подія «оплачено» — на новий стіл
   // статуси замовлень гостей переходять на новий стіл
   await logEvent(env, { k: 'move', t: b, from: a, by: who, text: merged ? `стіл ${tn(a)} об'єднано зі столом ${tn(b)}` : `стіл ${tn(a)} → ${tn(b)}` });
   return { merged, released };
@@ -368,6 +371,7 @@ async function _moveTable(env, a, b, who) {
 // ✂️ розділити рахунок: обрані позиції (назва + кількість) переходять на стіл «to» (вільний — новий рахунок, зайнятий — додаються)
 async function _splitTable(env, t, items, to, who) {
   t = +t; to = +to; if (!t || !to || t === to) return null;
+  if ((await getBill(env, t)).paid || (await getBill(env, to)).paid) return { error: 'Стіл оплачено онлайн — спершу ✅ підтвердіть оплату, потім розділяйте' };
   const released = await releaseBon(env, t, who);
   const A = await getBill(env, t); if (!A.total) return null;
   const moved = [];
@@ -512,6 +516,7 @@ async function _billBack(env, t, x, kind) {
   b.total = (b.total || 0) + sum; b.orders = (b.orders || 0) + 1; b.opened = b.opened || Date.now();
   b.log = [...(b.log || []), { at: hhmm(), kind, lines }].slice(-60);
   if (x.disc && !b.disc) { b.disc = x.disc; if (x.discSum != null && x.gross && x.discSum !== Math.round(x.gross * x.disc / 100)) b.discSum = x.discSum; } if (x.tip) b.tip = (b.tip || 0) + x.tip - (x.ktip || 0); if (x.ktip) b.ktip = (b.ktip || 0) + x.ktip; /* на зайнятий стіл — додаються, а не губляться */ if (x.voids?.length) b.voids = [...(b.voids || []), ...x.voids]; if (x.w && !b.waiter) b.waiter = x.w;
+  if (x.onl && x.lpo?.length) { const tp = Math.min(x.tip || 0, x.onl); b.paid = { sum: (b.paid?.sum || 0) + x.onl, net: (b.paid?.net || 0) + x.onl - tp, list: [...(b.paid?.list || []), ...x.lpo.map(p => ({ order: p.o, amt: p.a }))] }; b.check = true; b.pay = 'online'; } /* 💳 гість уже заплатив онлайн — при повторному закритті лише доплата */
   await putBill(env, t, b); return true;
 }
 // ↩️ відкрити закритий рахунок знову: знімається з виручки і повертається на стіл (щоб виправити й закрити заново)

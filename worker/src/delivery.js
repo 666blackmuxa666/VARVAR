@@ -67,7 +67,7 @@ export async function goSet(env, t, st, who, { pay, cour } = {}) {
   if (!isGo(t) || !ST[st]) return null;
   const b0 = await getBill(env, t); if (!b0.go) return null;
   if (st === 'done') {
-    const g = b0.go, p = g.paid ? 'online' : pay || (g.pay === 'card' ? 'card' : 'cash');
+    const g = b0.go, p = pay || (g.pay === 'card' ? 'card' : 'cash'); /* оплачене онлайн рахує _closeTable (go.paid); доплату — обраним способом */
     const r = await closeTable(env, t, who, p); if (!r) return null;
     await markOrd(env, g.oid, 'done');
     return { ...r, done: 1 };
@@ -91,9 +91,9 @@ export async function goPaid(env, x) {
     if (await env.DB.get('ord:' + oid)) return { ok: true, dup: 1 };
     const p = await env.DB.get('gop:' + oid, 'json'); if (!p) { if (lpOk(x)) await notify(env, `⚠️ Онлайн-оплата ${Math.round(+x.amount || 0)} грн прийшла пізніше 30 хв — замовлення вже знято (${esc(String(x.order_id))}). Поверніть гроші в кабінеті LiqPay або зателефонуйте гостю.`).catch(() => {}); return { error: 'expired' }; }
     if (!lpOk(x)) { await env.DB.put('gop:' + oid, JSON.stringify({ ...p, fail: x.status || 'error' }), { expirationTtl: 3600 }); return { ok: true, fail: 1 }; }
-    const sum = Math.round(+x.amount || 0); if (sum + 1 < p.amount) return { error: 'amount' };
+    const sum = Math.round(+x.amount || 0); if (sum + 1 < p.amount) { await notify(env, `⚠️ Онлайн-оплата ${sum} грн менша за замовлення (${p.amount} грн) — ${esc(p.b.name)} ${esc(p.b.phone)}. Замовлення не створено, поверніть гроші в LiqPay.`).catch(() => {}); await env.DB.put('gop:' + oid, JSON.stringify({ ...p, fail: 'amount' }), { expirationTtl: 3600 }); return { ok: true, fail: 1 }; }
     const [r] = await goOrder({ ...p.b, _paid: { sum, lp: String(x.payment_id || ''), at: Date.now(), ...(x.status === 'sandbox' ? { test: 1 } : {}) }, _oid: oid }, 'lp', env);
-    if (r.error) await notify(env, `⚠️ Оплачено онлайн ${sum} грн, але замовлення не створилось (${r.error}) — ${p.b.name} ${p.b.phone}. Поверніть гроші або зателефонуйте гостю.`).catch(() => {});
+    if (r.error) { await notify(env, `⚠️ Оплачено онлайн ${sum} грн, але замовлення не створилось (${esc(r.error)}) — ${esc(p.b.name)} ${esc(p.b.phone)}. Поверніть гроші або зателефонуйте гостю.`).catch(() => {}); await env.DB.put('gop:' + oid, JSON.stringify({ ...p, fail: 'order' }), { expirationTtl: 3600 }); return { ok: true, fail: 1 }; } /* 200 — щоб LiqPay не повторював і не дублював сповіщення */
     return r;
   });
 }
@@ -105,10 +105,10 @@ export async function goPayState(env, oid) {
 }
 export async function goOrder(b, ip, env) {
   const c = await getGoCfg(env), kind = b.kind === 'del' ? 'del' : 'pick';
-  if (!c.on || !c[kind]) return [{ error: 'off' }, 403];
-  if ((env.VENUE || 'varvar') !== 'varvar' && await env.DB.get('cfg:lock')) return [{ error: 'off' }, 403]; // ⛔ підписка не оплачена
+  if (!b._paid && (!c.on || !c[kind])) return [{ error: 'off' }, 403]; // гість уже заплатив — замовлення створюємо, навіть якщо щойно вимкнули/зачинились
+  if (!b._paid && (env.VENUE || 'varvar') !== 'varvar' && await env.DB.get('cfg:lock')) return [{ error: 'off' }, 403]; // ⛔ підписка не оплачена
   const when = /^\d{1,2}:\d{2}$/.test(b.when || '') ? String(b.when).padStart(5, '0') : '';
-  if (!isOpen(c, when || hhmm())) return [{ error: 'closed', from: c.from, to: c.to }, 403];
+  if (!b._paid && !isOpen(c, when || hhmm())) return [{ error: 'closed', from: c.from, to: c.to }, 403];
   const phone = normPhone(b.phone), name = String(b.name || '').trim().slice(0, 40);
   if (!phone || !name) return [{ error: 'contact' }, 400];
   const addr = String(b.addr || '').trim().slice(0, 200); if (kind === 'del' && addr.length < 5) return [{ error: 'addr' }, 400];
@@ -122,7 +122,7 @@ export async function goOrder(b, ip, env) {
     sum += price * q; sold.push({ n, q, sum: price * q }); lines.push(`${q}× ${n} — ${price * q}`);
   }
   if (!lines.length) return [{ error: 'empty' }, 400];
-  if (sum < c.min) return [{ error: 'min', min: c.min }, 400];
+  if (!b._paid && sum < c.min) return [{ error: 'min', min: c.min }, 400];
   if (sum > 30000) return [{ error: 'too_big' }, 400];
   const fee = kind === 'del' && !(c.free && sum >= c.free) ? c.fee : 0;
   const cli = await getCli(env, phone), bonus = Math.min(Math.max(0, Math.round(+b.bonus || 0)), isMem(cli) ? cli.bal || 0 : 0, Math.floor(sum * c.bmax / 100));

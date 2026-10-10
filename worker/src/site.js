@@ -218,8 +218,10 @@ export async function certAsk(b, ip, env) {
 }
 // 💳 callback LiqPay: сертифікат оплачено онлайн → активний (у список, стрічка, гостю код)
 export async function certPaid(env, x) {
-  const pre = `ct-${env.VENUE || 'varvar'}-`, oid = String(x.order_id || ''); if (!oid.startsWith(pre)) return { error: 'order' }; const code = oid.slice(pre.length); const c0 = await getCert(env, code); if (!c0) return { error: 'expired' };
-  if (c0.st !== 'new') return { ok: true, dup: 1 };
+  const pre = `ct-${env.VENUE || 'varvar'}-`, oid = String(x.order_id || ''); if (!oid.startsWith(pre)) return { error: 'order' }; const code = oid.slice(pre.length); const c0 = await getCert(env, code);
+  const { lpOk: ok0 } = await import('./liqpay.js'), late = why => ok0(x) ? notify(env, `⚠️ Сертифікат ${esc(code)}: онлайн-оплата ${Math.round(+x.amount || 0)} грн прийшла, але ${why}. Активуйте вручну або поверніть гроші в LiqPay.`).catch(() => {}) : null;
+  if (!c0) { await late('заявка вже протермінована'); return { error: 'expired' }; }
+  if (c0.st !== 'new') { if (c0.st === 'no' || !c0.lp) await late(c0.st === 'no' ? 'заявку відхилено' : 'сертифікат уже оплачено раніше'); return { ok: true, dup: 1 }; }
   const { lpOk } = await import('./liqpay.js'); if (!lpOk(x)) return { ok: true, fail: 1 };
   await env.DB.put('cert:' + code, JSON.stringify({ ...c0, lp: String(x.payment_id || '') })); /* без терміну: тепер справжній сертифікат */
   await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; if (!l.includes(code)) l.push(code); await env.DB.put('certs', JSON.stringify(l.slice(-500))); });

@@ -44,7 +44,7 @@ function card(t, b) {
 const kbNew = (t, b) => ({ inline_keyboard: [[{ text: '✋ Беру', callback_data: `cb:${t}:take` }, { text: '🗺 Маршрут', url: mapsUrl(b.go.addr) }]] });
 const kbMine = (t, b) => ({ inline_keyboard: [
   ...(b.go.st !== 'road' ? [[{ text: '🛵 Поїхав', callback_data: `cb:${t}:road` }]] : [[5, 10, 15, 20].map(m => ({ text: `⏱ ${m} хв`, callback_data: `cb:${t}:eta:${m}` }))]),
-  [{ text: '🤝 Видано 💵', callback_data: `cb:${t}:done:cash` }, { text: '🤝 Видано 💳', callback_data: `cb:${t}:done:card` }],
+  b.go.paid && b.go.paid.sum >= (b.pay2 ?? b.go.paid.sum) ? [{ text: '🤝 Видано (оплачено онлайн)', callback_data: `cb:${t}:done:cash` }] : [{ text: '🤝 Видано 💵', callback_data: `cb:${t}:done:cash` }, { text: '🤝 Видано 💳', callback_data: `cb:${t}:done:card` }], /* 🌐 оплачено — гроші не брати */
   [{ text: '🗺 Маршрут', url: mapsUrl(b.go.addr) }, { text: '⚠️ Проблема', callback_data: `cb:${t}:prob` }],
   [{ text: '💬 Кухні: буду за 5 хв', callback_data: `cb:${t}:km:soon` }, { text: '💬 Я на місці', callback_data: `cb:${t}:km:here` }]] });
 

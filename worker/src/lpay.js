@@ -1,7 +1,7 @@
 // 💳 Оплата рахунку столу з QR (LiqPay закладу) + callback для сертифікатів / підписки ATOM / балансу ШІ.
 // Стіл: гість платить фактичний рахунок (рахує сервер) + чайові → bill.paid, стіл НЕ закривається:
 // у касі плитка червона, у стрічці «💳 оплачено — підтвердіть» (✅ закрити · ✏️ стіл · ❌ повернути гроші).
-import { getBill, putBill, payable, logEvent, editEv, L, notify, closeTable, esc } from './ops.js';
+import { getBill, putBill, payable, logEvent, editEv, L, notify, closeTable, esc, tg } from './ops.js';
 import { getGoCfg } from './delivery.js';
 import { lpKeys, lpForm, lpOk, lpApi, lpRefund } from './liqpay.js';
 import { tableKey } from './qr.js';
@@ -24,6 +24,7 @@ async function tableOk(env, t, k, at = {}) {
 // гість: почати оплату столу → посилання LiqPay
 export async function tpayStart(env, b, at) {
   if (!(await tpayOn(env))) return [{ error: 'off' }, 403];
+  if ((env.VENUE || 'varvar') !== 'varvar' && await env.DB.get('cfg:lock')) return [{ error: 'off' }, 403]; // ⛔ підписка не оплачена
   const t = await tableOk(env, b.t, b.k, at); if (!t) return [{ error: 'bad_qr' }, 403];
   const bill = await getBill(env, t); if (!bill?.total) return [{ error: 'empty' }, 400];
   await promoFill(env, bill).catch(() => {});
@@ -49,7 +50,7 @@ export async function lpCallback(env, kind, x) {
 async function tablePaid(env, x) {
   const id = String(x.order_id || '').split('-').pop();
   return L(env, 'tpp:' + id, async () => {
-    const p = await env.DB.get('tpp:' + id, 'json'); if (!p) return { error: 'expired' };
+    const p = await env.DB.get('tpp:' + id, 'json'); if (!p) { if (lpOk(x)) await notify(env, `⚠️ Онлайн-оплата столу ${Math.round(+x.amount || 0)} грн прийшла пізніше години — не зараховано (${esc(String(x.order_id))}). Зарахуйте вручну або поверніть гроші в LiqPay.`).catch(() => {}); return { error: 'expired' }; }
     if (p.done) return { ok: true, dup: 1 };
     if (!lpOk(x)) { await env.DB.put('tpp:' + id, JSON.stringify({ ...p, fail: x.status || 'error' }), { expirationTtl: 3600 }); return { ok: true, fail: 1 }; }
     const amount = Math.round(+x.amount || 0), tip = Math.min(p.tip, amount), net = amount - tip, pay = { id, lp: String(x.payment_id || ''), order: String(x.order_id), amt: amount, at: Date.now(), ...(x.status === 'sandbox' ? { test: 1 } : {}) };
@@ -62,7 +63,7 @@ async function tablePaid(env, x) {
     await env.DB.put('tpp:' + id, JSON.stringify({ ...p, done: 1, lp: pay.lp, amount }), { expirationTtl: 7 * 86400 });
     if (!ok) { await notify(env, `⚠️ Стіл ${tn(p.t)}: гість оплатив онлайн ${amount} грн, але рахунку вже немає (закрили). Поверніть гроші в LiqPay або врахуйте вручну.`).catch(() => {}); return { ok: true, orphan: 1 }; }
     await logEvent(env, { k: 'tpay', t: p.t, s: 'new', sum: amount, tip, pid: id, ...(pay.test ? { test: 1 } : {}) });
-    await notify(env, `💳 <b>Стіл ${tn(p.t)} оплатив онлайн</b> ${amount} грн${tip ? ` (з них 💝 чайові ${tip})` : ''}${pay.test ? ' · 🧪 тест' : ''}\nПідтвердіть у касі — стіл закриється.`).catch(() => {});
+    await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `💳 <b>Стіл ${tn(p.t)} оплатив онлайн</b> ${amount} грн${tip ? ` (з них 💝 чайові ${tip})` : ''}${pay.test ? ' · 🧪 тест' : ''}\nПідтвердіть — стіл закриється (тут або в касі).`, reply_markup: { inline_keyboard: [[{ text: '✅ Підтвердити', callback_data: 'tpok:' + p.t }, { text: '↩️ Повернути', callback_data: 'tprf:' + p.t }]] } }).catch(() => {});
     return { ok: true };
   });
 }

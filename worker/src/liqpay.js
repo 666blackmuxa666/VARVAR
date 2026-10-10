@@ -8,7 +8,7 @@ async function sign(priv, data) { const h = await crypto.subtle.digest('SHA-1', 
 
 export const lpKeys = env => env.LIQPAY_PUBLIC && env.LIQPAY_PRIVATE ? { pub: env.LIQPAY_PUBLIC, priv: env.LIQPAY_PRIVATE, sandbox: /^sandbox_/.test(env.LIQPAY_PUBLIC) } : null;
 // платформа (підписка ATOM, баланс ШІ) — завжди ключі VARVAR з кореневого env, а не закладу
-export const lpPlatform = env => env.PLATFORM_LP_PUB ? { pub: env.PLATFORM_LP_PUB, priv: env.PLATFORM_LP_PRIV, sandbox: /^sandbox_/.test(env.PLATFORM_LP_PUB) } : lpKeys(env);
+export const lpPlatform = env => env.PLATFORM_LP_PUB ? { pub: env.PLATFORM_LP_PUB, priv: env.PLATFORM_LP_PRIV, sandbox: /^sandbox_/.test(env.PLATFORM_LP_PUB) } : env.VENUE && env.VENUE !== 'varvar' ? null : lpKeys(env); /* ніколи — ключі закладу (інакше заклад «оплатив би» підписку сам собі) */
 
 // форма для переходу на checkout: { url, data, signature } — сторінка робить POST-форму (або GET з параметрами)
 export async function lpForm(k, p) {
