@@ -89,7 +89,7 @@ export async function goPaid(env, x) {
   const oid = String(x.order_id || '').split('-').pop(); if (!/^[a-f0-9]{10}$/.test(oid)) return { error: 'order' };
   return L(env, 'gop:' + oid, async () => {
     if (await env.DB.get('ord:' + oid)) return { ok: true, dup: 1 };
-    const p = await env.DB.get('gop:' + oid, 'json'); if (!p) return { error: 'expired' };
+    const p = await env.DB.get('gop:' + oid, 'json'); if (!p) { if (lpOk(x)) await notify(env, `⚠️ Онлайн-оплата ${Math.round(+x.amount || 0)} грн прийшла пізніше 30 хв — замовлення вже знято (${esc(String(x.order_id))}). Поверніть гроші в кабінеті LiqPay або зателефонуйте гостю.`).catch(() => {}); return { error: 'expired' }; }
     if (!lpOk(x)) { await env.DB.put('gop:' + oid, JSON.stringify({ ...p, fail: x.status || 'error' }), { expirationTtl: 3600 }); return { ok: true, fail: 1 }; }
     const sum = Math.round(+x.amount || 0); if (sum + 1 < p.amount) return { error: 'amount' };
     const [r] = await goOrder({ ...p.b, _paid: { sum, lp: String(x.payment_id || ''), at: Date.now(), ...(x.status === 'sandbox' ? { test: 1 } : {}) }, _oid: oid }, 'lp', env);
@@ -135,7 +135,7 @@ export async function goOrder(b, ip, env) {
     await promoFill(env, pre).catch(() => {});
     const amount = sum + fee - bonus - (pre.promo?.sum || 0); if (amount < 1) return [{ error: 'empty' }, 400];
     const items = (Array.isArray(b.items) ? b.items : []).slice(0, 60).map(i => ({ id: String(i.id).slice(0, 40), ...(i.v ? { v: String(i.v).slice(0, 20) } : {}), q: Math.min(50, parseInt(i.q, 10) || 1) }));
-    await Promise.all([env.DB.put('gop:' + oid, JSON.stringify({ b: { kind, name, phone, addr, ent, when: b.when || '', cut, pay: 'online', bonus, comment: note, device: String(b.device || '').slice(0, 64), src: String(b.src || '').slice(0, 20), items }, amount, at: Date.now() }), { expirationTtl: 3600 }),
+    await Promise.all([env.DB.put('gop:' + oid, JSON.stringify({ b: { kind, name, phone, addr, ent, when: b.when || '', cut, pay: 'online', bonus, comment: note, device: String(b.device || '').slice(0, 64), src: String(b.src || '').slice(0, 20), items }, amount, at: Date.now() }), { expirationTtl: 1800 }), // ⏳ не оплатив за 30 хв — замовлення знімається
       env.DB.put(rk, String(rn + 1), { expirationTtl: 600 })]);
     const f = await lpForm(k, { order_id: `go-${env.VENUE || 'varvar'}-${oid}`, amount, description: `${TYPES[kind] === 'ДОСТАВКА' ? 'Доставка' : 'Замовлення з собою'} · ${name}`, result_url: siteLink(`?go&paid=${oid}`), server_url: env.SELF_URL + '/api/lp/go' });
     return [{ ok: true, pay: f.url, id: oid, sum: amount, wait: 1 }, 200];
