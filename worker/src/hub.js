@@ -135,6 +135,13 @@ export class Hub extends DurableObject {
     const id = now.toString(36) + rnd(3), x = { id, name: String(l.name || '').trim().slice(0, 60), phone: String(l.phone || '').trim().slice(0, 30), place: String(l.place || '').trim().slice(0, 80), city: String(l.city || '').trim().slice(0, 60), msg: String(l.msg || '').trim().slice(0, 800), src: String(l.src || '').slice(0, 30), st: 'new', note: '', next: 0, at: now };
     await this.st.put('lead:' + id, x); await this.hit('lead'); return x;
   }
+  // 💬 контакти сайту ATOM (кабінет → 🚀 Продажі): телефон, посилання Telegram і Viber
+  async atomCfg(f) {
+    const c = (await this.st.get('atomcfg')) || {}; if (!f) return c;
+    const url = v => { v = String(v || '').trim().slice(0, 200); return !v || /^(https:\/\/|viber:\/\/|tg:\/\/)/.test(v) ? v : ''; };
+    const n = { phone: String(f.phone ?? c.phone ?? '').trim().slice(0, 30), tg: url(f.tg ?? c.tg), viber: url(f.viber ?? c.viber) };
+    await this.st.put('atomcfg', n); return n;
+  }
   async leadList() { return [...(await this.st.list({ prefix: 'lead:', reverse: true, limit: 500 })).values()]; }
   async leadSet(id, f) {
     const x = await this.st.get('lead:' + id); if (!x) return { error: 'Не знайдено' };

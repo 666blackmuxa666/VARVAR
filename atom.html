@@ -318,9 +318,10 @@ footer a { color: var(--muted); }
     </form>
     <div class="contacts">
       <div class="m">Або напишіть напряму — відповідаємо швидко:</div>
-      <div class="ph">+380 68 311 58 48</div>
-      <a class="btn btn-ghost" href="https://t.me/+380683115848" target="_blank" rel="noopener">✈️ Написати в Telegram</a>
-      <a class="btn btn-ghost" href="viber://chat?number=%2B380683115848">💜 Написати у Viber</a>
+      <div class="ph" id="cPh">+380 68 311 58 48</div>
+      <a class="btn btn-ghost" id="cTg" href="https://t.me/+380683115848" target="_blank" rel="noopener">✈️ Написати в Telegram</a>
+      <a class="btn btn-ghost" id="cVb" href="viber://chat?number=%2B380683115848">💜 Написати у Viber</a>
+      <a class="btn btn-ghost" id="cCall" href="tel:+380683115848">📞 Подзвонити</a>
       <div class="m" style="margin-top:8px">Демо, налаштування й перший місяць — безкоштовно. Нічого не потрібно купувати.</div>
     </div>
   </div>
@@ -380,7 +381,10 @@ footer a { color: var(--muted); }
   const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -40px' }) : null;
   document.querySelectorAll('.rv').forEach(el => io ? io.observe(el) : el.classList.add('on'));
   // 🎁 лічильник акції (реальні заклади) + перегляд
-  fetch('/api/atom').then(r => r.json()).then(d => { if (d.left == null) return; $('#pLeft').textContent = d.left; $('#pTot').textContent = d.total; $('#pBar').style.width = Math.round((d.total - d.left) / d.total * 100) + '%'; }).catch(() => {});
+  fetch('/api/atom').then(r => r.json()).then(d => { const c = d.contacts || {}; /* 💬 контакти — з кабінету (🚀 Продажі → Контакти сайту) */
+    if (c.phone) { $('#cPh').textContent = c.phone; const n = c.phone.replace(/[^\d+]/g, ''); $('#cCall').href = 'tel:' + n; $('#cVb').href = c.viber || 'viber://chat?number=' + encodeURIComponent(n); }
+    if (c.tg) $('#cTg').href = c.tg; if (c.viber) $('#cVb').href = c.viber;
+    if (d.left == null) return; $('#pLeft').textContent = d.left; $('#pTot').textContent = d.total; $('#pBar').style.width = Math.round((d.total - d.left) / d.total * 100) + '%'; }).catch(() => {});
   try { if (!sessionStorage.getItem('ah')) { sessionStorage.setItem('ah', 1); fetch('/api/atomhit', { method: 'POST', body: '{}' }).catch(() => {}); } } catch {}
   // 📱 демо-каса
   document.querySelectorAll('[data-demo]').forEach(b => b.addEventListener('click', async () => {

@@ -262,6 +262,7 @@ ${JSON.stringify(data.filter(Boolean))}
       if (env.DB.kv) { const l = await env.DB.kv.list({ prefix: 'bak:' + String(b.id) + ':' }); for (const x of l.keys) await env.DB.kv.delete(x.name); } // 💾 бекапи теж — щоб новий заклад з тією ж адресою їх не побачив
       return ok(); }
     case 'leads': { const days = Math.min(90, +b.days || 30); return ok({ list: await H.leadList(), hits: await H.hitStats(days), demo: !!(await H.venueGet('atom-demo')) }); } // 🚀 CRM «Продажі»
+    case 'atomCfg': return ok({ cfg: await H.atomCfg(b.set ? b.f || {} : undefined) }); // 💬 контакти сайту ATOM
     case 'leadNew': { const r = await H.leadAdd({ ...b, src: 'вручну' }, 'own:' + Date.now()); return r.error ? bad(r.error) : ok({ lead: r }); }
     case 'leadSet': { const r = await H.leadSet(String(b.id), b.f || {}); return r.error ? bad(r.error) : ok({ lead: r }); }
     case 'demo': { // 📱 демо-каса: створити (власник — платформа) / зберегти поточний стан як еталон для нічного скидання

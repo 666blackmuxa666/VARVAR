@@ -26,7 +26,7 @@ window.OWNCRM = (() => {
     const L = D.list.filter(x => F === 'all' ? 1 : F === 'open' ? !['won', 'lost'].includes(x.st) : F === 'due' ? x.next && x.next < Date.now() + 864e5 && !['won', 'lost'].includes(x.st) : x.st === F);
     return `<h2>🚀 Продажі ATOM</h2><div class="chips">${[[7, '7 днів'], [30, '30 днів'], [90, '90 днів']].map(([k, l]) => `<button class="${P === k ? 'on' : ''}" data-crm="per" data-v="${k}">${l}</button>`).join('')}</div>${stats()}
       <div class="card" style="margin-top:12px"><h3>📱 Демо-каса для сайту</h3><div class="muted" style="font-size:13px;margin-bottom:8px">Кнопка «Спробувати касу» на posatom.online відкриває заклад <b>atom-demo</b> без PIN. Щоночі о 4:00 він повертається до еталону. Налаштуйте його як вітрину (меню, фото, сайт) і натисніть «📸 Зберегти еталон». У демо вимкнено ШІ, Telegram, друк, персонал і коди.</div>
-        <div class="btnrow">${D.demo ? '<button class="btn sm" data-crm="demoGo">Каса демо →</button><button class="btn sm" data-crm="demoCfg">⚙️ Налаштувати</button><button class="btn sm primary" data-crm="demoSave">📸 Зберегти еталон</button>' : '<button class="btn sm primary" data-crm="demoNew">🎬 Створити демо-касу</button>'}<a class="btn sm ghost" href="https://posatom.online/" target="_blank" rel="noopener">🌐 Сайт ATOM</a></div></div>
+        <div class="btnrow">${D.demo ? '<button class="btn sm" data-crm="demoGo">Каса демо →</button><button class="btn sm" data-crm="demoCfg">⚙️ Налаштувати</button><button class="btn sm primary" data-crm="demoSave">📸 Зберегти еталон</button>' : '<button class="btn sm primary" data-crm="demoNew">🎬 Створити демо-касу</button>'}<a class="btn sm ghost" href="https://posatom.online/" target="_blank" rel="noopener">🌐 Сайт ATOM</a><button class="btn sm" data-crm="cont">💬 Контакти сайту</button></div></div>
       <h2>📋 Заявки</h2><div class="chips">${[['open', 'В роботі'], ['due', '⏰ Дзвонити'], ['new', '🆕 Нові'], ['won', '✅ Клієнти'], ['lost', '❌ Відмови'], ['all', 'Усі']].map(([k, l]) => `<button class="${F === k ? 'on' : ''}" data-crm="f" data-v="${k}">${l}</button>`).join('')}<button data-crm="add">➕ Додати вручну</button></div>
       <div class="grid">${L.map(card).join('') || '<div class="muted">Порожньо — заявки з posatom.online зʼявляться тут і в Telegram</div>'}</div>`;
   }
@@ -50,6 +50,10 @@ window.OWNCRM = (() => {
     }
     if (a === 'demoNew') { el.disabled = true; C.toast('🎬 Створюю демо-касу…'); try { await C.VC.demo('cafe', 'atom-demo', 'ATOM Демо-кавʼярня'); await C.api('demo', { do: 'save' }); D = null; C.toast('✅ Демо-каса готова, еталон збережено'); C.render(); } catch (y) { C.toast('⚠️ ' + y.message); el.disabled = false; } return; }
     if (a === 'demoSave') { el.disabled = true; try { await C.api('demo', { do: 'save' }); C.toast('📸 Еталон збережено — щоночі демо повертатиметься до цього стану'); } catch (y) { C.toast('⚠️ ' + y.message); } el.disabled = false; return; }
+    if (a === 'cont') { let c = {}; try { c = (await C.api('atomCfg')).cfg || {}; } catch {}
+      return C.modal('💬 Контакти на сайті ATOM', `<div class="muted" style="font-size:13px">Кнопки «Написати в Telegram / Viber» і «Подзвонити» на posatom.online.<br>Telegram: <b>https://t.me/ваш_логін</b> (особистий) або посилання на бота / чат. Viber: <b>viber://chat?number=%2B380…</b> або посилання-запрошення в спільноту.</div>
+        <label>📞 Телефон<input name="phone" value="${esc(c.phone || '+380 68 311 58 48')}"></label><label>✈️ Telegram<input name="tg" placeholder="https://t.me/…" value="${esc(c.tg)}"></label><label>💜 Viber<input name="viber" placeholder="viber://chat?number=%2B380…" value="${esc(c.viber)}"></label>`,
+        async f => { await C.api('atomCfg', { set: 1, f: { phone: f.phone.value, tg: f.tg.value, viber: f.viber.value } }); C.toast('💾 Збережено — на сайті за кілька хвилин'); }); }
     if (a === 'demoGo') return C.enter('atom-demo');
     if (a === 'demoCfg') return C.VC.open('atom-demo');
   });
