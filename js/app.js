@@ -34,8 +34,8 @@
   let qrpay = false, tpTip = 0; // 💳 оплата рахунку столу з QR (LiqPay закладу)
   document.addEventListener('click', async e => {
     const tp = e.target.closest('[data-tptip]'); if (tp) { tpTip = +tp.dataset.tptip; renderCart(); return; }
-    const go = e.target.closest('[data-tpay]'); if (!go) return; go.disabled = true;
-    try { const { status, data } = await api('/api/tpay', { t: qt || table, k: qt ? qk : '', device, tip: tpTip }); if (status !== 200 || !data.pay) throw 0; try { localStorage.setItem('vv_tpay', data.id); } catch {} location.href = data.pay; }
+    const go = e.target.closest('[data-tpay], [data-pay="online"]'); if (!go) return; go.disabled = true; const fromChk = go.dataset.pay === 'online'; /* 🌐 з кошика або з вікна «Хочу чек» */
+    try { const { status, data } = await api('/api/tpay', { t: qt || table, k: qt ? qk : '', device, tip: tpTip, ...(fromChk ? { tipSum: tipAmount() + ktipAmount() } : {}) }); if (status !== 200 || !data.pay) throw 0; try { localStorage.setItem('vv_tpay', data.id); } catch {} location.href = data.pay; }
     catch { go.disabled = false; alert(t('tPayFail')); }
   });
   (async () => { const id = qs.get('tpaid'); if (!id) return; history.replaceState(null, '', location.pathname); /* повернулись з LiqPay */
@@ -282,7 +282,7 @@
     table = lockOn() ? String(lockT) : $('#table').value; save();
     if (!table) { $('#msg').textContent = t('chooseTable'); $('#table').focus(); return; }
     // запит чека — спершу питаємо спосіб оплати
-    if ((type === 'check' || type === 'order_check') && !pay) { pendingType = type; tip = { p: 0, own: false }; kt = { p: 0, own: false }; $('#tipOwn').value = ''; $('#ktipOwn').value = ''; renderTips(); $('#payModal').hidden = false; return; }
+    if ((type === 'check' || type === 'order_check') && !pay) { pendingType = type; tip = { p: 0, own: false }; kt = { p: 0, own: false }; $('#tipOwn').value = ''; $('#ktipOwn').value = ''; renderTips(); $('#payOnl').hidden = !(qrpay && type === 'check' && bill && (bill.due ?? bill.pay) > 0 && (scanUntil > Date.now() || qk)); $('#payModal').hidden = false; return; }
     const items = type === 'check' ? [] : cartEntries();
     busy = true; $('#msg').textContent = '…';
     try {
@@ -513,6 +513,7 @@
     else if (el.dataset.send) send(el.dataset.send);
     else if (el.dataset.ktip != null) { kt = el.dataset.ktip === 'own' ? { p: 0, own: true } : { p: +el.dataset.ktip, own: false }; renderTips(); if (kt.own) $('#ktipOwn').focus(); }
     else if (el.dataset.tip) { tip = el.dataset.tip === 'own' ? { p: 0, own: true } : { p: +el.dataset.tip, own: false }; renderTips(); if (tip.own) $('#tipOwn').focus(); }
+    else if (el.dataset.pay === 'online') return; /* обробляє слухач оплати столу */
     else if (el.dataset.pay) { $('#payModal').hidden = true; send(pendingType, el.dataset.pay); }
     else if ('close' in el.dataset) { if (el.closest('.modal')) el.closest('.modal').hidden = true; else closeAll(); if ($('#sheet').hidden) document.body.classList.remove('lock'); }
     else if (el.id === 'fab' || el.id === 'orderStatus') openSheet();
