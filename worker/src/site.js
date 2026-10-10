@@ -69,7 +69,8 @@ export async function sitePublic(env) {
   const td = new Date().toLocaleDateString('sv-SE', { timeZone: TZ }); /* минулі події й прострочене оголошення / сезон — не віддаємо */
   if (s.events) s.events = s.events.filter(e => e.d >= td).sort((a, b) => (a.d + a.tm).localeCompare(b.d + b.tm));
   if (s.ann?.till && s.ann.till < td) s.ann = { ...s.ann, on: 0 }; if (s.season?.till && s.season.till < td) s.season = { k: '' };
-  return { ...s, open: openNow(s), hits: hits.map(i => ({ id: i.id, n: i.name, d: i.desc, p: i.price ?? i.variants?.[0]?.p, img: i.img, size: i.size })) };
+  const onl = !!((await (await import('./delivery.js')).getGoCfg(env)).onl && (await import('./liqpay.js')).lpKeys(env)); /* 💳 сертифікат онлайн — той самий перемикач, що й замовлення */
+  return { ...s, certOnl: s.certOn && onl ? 1 : 0, open: openNow(s), hits: hits.map(i => ({ id: i.id, n: i.name, d: i.desc, p: i.price ?? i.variants?.[0]?.p, img: i.img, size: i.size })) };
 }
 
 // ---------- 📅 бронювання ----------
@@ -202,6 +203,12 @@ export async function certAsk(b, ip, env) {
   if (!phone || !from || !(sum >= 100 && sum <= 50000)) return [{ error: 'bad' }, 400];
   const rk = 'ctrl:' + String(b.device || ip).slice(0, 64), rn = +(await env.DB.get(rk)) || 0; if (rn >= 3) return [{ error: 'rate' }, 429];
   const code = certCode(), c = { code, sum, left: sum, from, to, phone, note: String(b.note || '').slice(0, 200), st: 'new', at: Date.now(), uses: [] };
+  if (b.pay === 'online') { // 💳 онлайн: сертифікат активується лише після оплати (callback /api/lp/cert)
+    const LP = await import('./liqpay.js'), k = LP.lpKeys(env); if (!k || !(await (await import('./delivery.js')).getGoCfg(env)).onl) return [{ error: 'off' }, 403];
+    await env.DB.put('cert:' + code, JSON.stringify({ ...c, onl: 1 }), { expirationTtl: 3 * 86400 }); await env.DB.put(rk, String(rn + 1), { expirationTtl: 3600 });
+    const f = await LP.lpForm(k, { order_id: `ct-${env.VENUE || 'varvar'}-${code}`, amount: sum, description: `Подарунковий сертифікат ${sum} грн`, result_url: siteLink('about.html#cert=' + code), server_url: env.SELF_URL + '/api/lp/cert' });
+    return [{ ok: true, pay: f.url, code }, 200];
+  }
   await env.DB.put('cert:' + code, JSON.stringify(c)); await env.DB.put(rk, String(rn + 1), { expirationTtl: 3600 });
   await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; l.push(code); await env.DB.put('certs', JSON.stringify(l.slice(-500))); });
   await logEvent(env, { k: 'cert', code, s: 'new', text: `🎁 Сертифікат ${money(sum)} · від ${from}${to ? ' для ' + to : ''} · ${fmtPhone(phone)} — чекає оплати` });
@@ -209,12 +216,24 @@ export async function certAsk(b, ip, env) {
   await guestMsg(env, phone, `🎁 Заявку на сертифікат ${money(sum)} отримали. Адміністратор зв'яжеться щодо оплати.`);
   return [{ ok: true }, 200];
 }
+// 💳 callback LiqPay: сертифікат оплачено онлайн → активний (у список, стрічка, гостю код)
+export async function certPaid(env, x) {
+  const pre = `ct-${env.VENUE || 'varvar'}-`, oid = String(x.order_id || ''); if (!oid.startsWith(pre)) return { error: 'order' }; const code = oid.slice(pre.length); const c0 = await getCert(env, code); if (!c0) return { error: 'expired' };
+  if (c0.st !== 'new') return { ok: true, dup: 1 };
+  const { lpOk } = await import('./liqpay.js'); if (!lpOk(x)) return { ok: true, fail: 1 };
+  await env.DB.put('cert:' + code, JSON.stringify({ ...c0, lp: String(x.payment_id || '') })); /* без терміну: тепер справжній сертифікат */
+  await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; if (!l.includes(code)) l.push(code); await env.DB.put('certs', JSON.stringify(l.slice(-500))); });
+  const c = await certPay(env, code, 'online', '🌐 LiqPay'); if (!c) return { error: 'state' };
+  await logEvent(env, { k: 'cert', code, s: 'acc', accBy: '🌐 онлайн', text: `🎁 Сертифікат ${money(c.sum)} · від ${c.from}${c.to ? ' для ' + c.to : ''} — 💳 оплачено онлайн${x.status === 'sandbox' ? ' · 🧪 тест' : ''}` });
+  await notify(env, `🎁 <b>Сертифікат оплачено онлайн</b> ${money(c.sum)} · код <b>${code}</b>\nвід ${esc(c.from)}${c.to ? ` для ${esc(c.to)}` : ''}`).catch(() => {});
+  return { ok: true };
+}
 export const getCert = async (env, code) => (await env.DB.get('cert:' + String(code || '').toUpperCase().trim(), 'json')) || null;
 // оплачено → активний (надходження в касу як рух грошей), або скасовано
 export async function certPay(env, code, how, who) {
   const c = await L(env, 'cert:' + code, async () => { const c = await getCert(env, code); if (!c || c.st !== 'new') return null; c.st = how === 'no' ? 'no' : 'ok'; c.paid = how; c.paidAt = Date.now(); c.by = who; await env.DB.put('cert:' + code, JSON.stringify(c)); return c; });
   if (!c) return null;
-  if (c.st === 'ok') await addMove(env, { type: how === 'card' ? 'kin' : 'in', sum: c.sum, note: `🎁 Сертифікат ${code} (${c.from})`, by: who }).catch(() => {}); // гроші за сертифікат — у касу / на картку
+  if (c.st === 'ok') await addMove(env, { type: how === 'card' || how === 'online' ? 'kin' : 'in', sum: c.sum, note: `🎁 Сертифікат ${code} (${c.from})${how === 'online' ? ' · 🌐 онлайн' : ''}`, by: who }).catch(() => {}); // гроші за сертифікат — у касу / на картку
   await editEv(env, l => { for (const e of l) if (e.code === code) { e.s = c.st === 'ok' ? 'acc' : 'rej'; e.accBy = who; } }).catch(() => {});
   if (c.st === 'ok') await guestMsg(env, c.phone, `🎁 Сертифікат ${money(c.sum)} активовано!\nКод: <b>${code}</b>\nСторінка для подарунку: ${siteLink('about.html#cert=' + code)}`);
   return c;

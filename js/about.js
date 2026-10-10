@@ -56,7 +56,7 @@
     $('#rate').textContent = s.rating ? `⭐ ${s.rating}${s.ratingN ? ` · ${s.ratingN}` : ''}` : '';
     $('#quotes').innerHTML = s.quotes.map(q => `<div class="quote">«${esc(q.t)}»<small>— ${esc(q.a)}</small></div>`).join('');
     $('#revA').href = s.gmaps; $('#revW').href = s.reviewsUrl || s.gmaps;
-    $('#book').hidden = !s.bookOn; $('#cert').hidden = !s.certOn;
+    $('#book').hidden = !s.bookOn; $('#cert').hidden = !s.certOn; if (s.certOn && s.certOnl) { const cb = $('#certF button[type=submit]'); cb.removeAttribute('data-t'); cb.textContent = lang === 'en' ? '💳 Pay online' : '💳 Оплатити онлайн'; }
     // 🏪 назва й логотип закладу
     $('.nav .brand').innerHTML = s.logo ? `<img src="${esc(s.logo)}" alt="" style="height:30px;width:30px;object-fit:contain;border-radius:8px;vertical-align:middle;margin-right:8px">${esc(s.name)}` : esc(s.name); $('#fName').textContent = s.name; { const L = s.legal || {}; const f = $('#fLegal'); if (f) f.textContent = [L.name, L.code ? 'ІПН/ЄДРПОУ ' + L.code : '', L.addr].filter(Boolean).join(' · '); } /* 🏛 реквізити (LiqPay) */ document.title = s.name;
     if (window.VARVAR.venue) $('#about > .feats')?.remove(); // переваги VARVAR (кальяни, банкети…) — не для інших закладів
@@ -99,7 +99,8 @@
     $$('#certSum button').forEach(b => b.onclick = () => { $$('#certSum button').forEach(x => x.classList.toggle('on', x === b)); f.sum.hidden = b.dataset.v !== 'own'; sum = b.dataset.v === 'own' ? 0 : +b.dataset.v; if (!f.sum.hidden) f.sum.focus(); });
     f.onsubmit = async e => {
       e.preventDefault(); const m = $('#certMsg'), v = sum || +f.sum.value; m.textContent = '…';
-      const { status, data } = await api('/api/cert', { sum: v, from: f.from.value.trim(), to: f.to.value.trim(), phone: f.phone.value.trim(), device }).catch(() => ({ status: 0, data: {} }));
+      const { status, data } = await api('/api/cert', { sum: v, from: f.from.value.trim(), to: f.to.value.trim(), phone: f.phone.value.trim(), device, ...(S?.certOnl ? { pay: 'online' } : {}) }).catch(() => ({ status: 0, data: {} }));
+      if (status === 200 && data.pay) { location.href = data.pay; return; } /* 💳 онлайн-оплата сертифіката */
       m.textContent = status === 200 ? t('certOk') : data.error === 'rate' ? t('rate') : t('errC'); if (status === 200) f.reset();
     };
   }

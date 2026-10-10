@@ -267,6 +267,14 @@ async function apiTests() {
     });
     await posOk(A, 'goCfgSet', { k: 'onl', v: 0 });
 
+    await step('🎁 сертифікат онлайн: посилання → callback → активний, повтор без дубля', async () => {
+      await posOk(A, 'goCfgSet', { k: 'onl', v: 1 });
+      const r = await http('/api/cert', { sum: 500, from: 'QA Даритель', to: 'QA', phone: '0670007' + String(Math.floor(Math.random() * 900) + 100), device: 'qa-ct-' + RUN, pay: 'online' });
+      must(r.status === 200 && r.j.pay && r.j.code, `${r.status} ${JSON.stringify(r.j)}`);
+      const f = lpSign({ order_id: 'ct-varvar-' + r.j.code, status: 'sandbox', amount: 500, payment_id: 999 }), c1 = await lpPost('/api/lp/cert', f), c2 = await lpPost('/api/lp/cert', f);
+      must(c1.j.ok && !c1.j.dup && c2.j.dup, JSON.stringify([c1.j, c2.j]));
+      const ev = (await posOk(A, 'state')).events.find(e => e.k === 'cert' && e.code === r.j.code); must(ev?.s === 'acc', 'подія ' + JSON.stringify(ev));
+      await posOk(A, 'goCfgSet', { k: 'onl', v: 0 }); return r.j.code; });
     // 🍽 оплата рахунку столу з QR → червоний стіл → ✅ підтвердити
     const TT = 14; let tk = '', tp = null;
     await step('стіл з QR: /api/tpay → посилання; callback → стіл «оплачено», подія чекає підтвердження', async () => {
