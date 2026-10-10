@@ -346,7 +346,20 @@
     if (goCfg && (!goCfg.on || !goCfg.open)) { bar.hidden = false; bar.textContent = !goCfg.on ? '⛔ ' + t('goOff') : `🕐 ${t('goClosed')} ${goCfg.from}–${goCfg.to}`; }
     if (BOOK) { bar.hidden = false; bar.className = 'wifi-banner go-ok'; bar.textContent = '📅 ' + t('goPreBar'); }
     else if (goCfg) { bar.hidden = false; bar.className = 'wifi-banner go-ok'; bar.textContent = `🥡 ${t('goHello')}${goCfg.del ? ' · 🛵 ' + t('goDel') : ''}`; }
-    goPoll(); renderFab();
+    goPoll(); renderFab(); goPayBack();
+  }
+  // 🌐 повернулись з LiqPay (?paid=<id>): кілька перевірок, доки LiqPay повідомить сервер (без постійного опитування)
+  async function goPayBack() {
+    const id = qs.get('paid'), p = store.get('goPend', null); if (!id || !p || p.id !== id) return;
+    const bar = $('#wifiBanner'); bar.hidden = false; bar.className = 'wifi-banner go-ok'; bar.textContent = '⏳ ' + t('goPayWait');
+    for (let i = 0; i < 12; i++) {
+      let r = null; try { r = (await api('/api/gopay?id=' + id)).data; } catch {}
+      if (r?.st === 'paid') { goHist.push({ id, no: r.no || '', ts: Date.now(), at: new Date().toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' }), sum: p.sum, items: p.items, g: 'new', paid: 1, eta: Date.now() + (goCfg?.prep || 30) * 60e3 });
+        store.set('goPend', null); cart = {}; packAdj = 0; save(); goSave(); bar.textContent = '✅ ' + t('goPaid'); history.replaceState(null, '', location.pathname + '?go'); refreshButtons(); renderFab(); renderCart(); goShow(id); return; }
+      if (r?.st === 'fail' || r?.st === 'none' && i > 3) break;
+      await new Promise(z => setTimeout(z, i < 4 ? 2500 : 5000));
+    }
+    bar.className = 'wifi-banner'; bar.textContent = '⚠️ ' + t('goPayFail'); history.replaceState(null, '', location.pathname + '?go');
   }
   function goWhenOpts() {
     if (!goCfg) return [];
@@ -376,7 +389,7 @@
       <label class="go-row"><span>🕐 ${t(gf.kind === 'del' ? 'goWhenDel' : 'goWhen')}</span><select id="gWhen">${c.open ? `<option value="">${t('goAsap')} (~${c.prep} ${t('goMin')})</option>` : ''}${w.map(x => `<option ${gf.when === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
       <label class="go-row"><span>🍴 ${t('goCut')}</span><span class="qty"><button data-go-cut="-1">−</button><b>${gf.cut}</b><button data-go-cut="1">+</button></span></label>
       <div class="go-sub">${t('goPay')}</div>
-      <div class="seg2"><button class="${gf.pay === 'cash' ? 'on' : ''}" data-go-p="cash">💵 ${t('goCash')}</button><button class="${gf.pay === 'card' ? 'on' : ''}" data-go-p="card">💳 ${t('goCard')}</button></div>
+      <div class="seg2"><button class="${gf.pay === 'cash' ? 'on' : ''}" data-go-p="cash">💵 ${t('goCash')}</button><button class="${gf.pay === 'card' ? 'on' : ''}" data-go-p="card">💳 ${t('goCard')}</button>${goCfg?.onl ? `<button class="${gf.pay === 'online' ? 'on' : ''}" data-go-p="online">🌐 ${t('goOnline')}</button>` : ''}</div>
       ${gf.pay === 'cash' ? `<label class="go-row"><span>💵 ${t('goChange')}</span><select id="gChange">${[0, 200, 500, 1000].map(v => `<option value="${v}" ${gf.change === v ? 'selected' : ''}>${v ? `${t('goFrom')} ${v}` : t('goNoChange')}</option>`).join('')}</select></label>` : ''}
       ${gf.bal > 0 && c.bmax ? `<label class="go-row go-bonus"><span>🎁 ${t('goBonus')} <b>${money(gf.bal)}</b></span><input type="checkbox" id="gUseB" ${gf.useB ? 'checked' : ''}></label>` : c.cash ? `<div class="go-note">🎁 ${t('goCashback')} ${c.cash}%</div>` : ''}
       <div class="go-sum"><div><span>${t('goFood')}</span><b>${money(sum)}</b></div>${goFee() ? `<div><span>🛵 ${t('goDel')}</span><b>${money(goFee())}</b></div>` : gf.kind === 'del' ? `<div><span>🛵 ${t('goDel')}</span><b>0</b></div>` : ''}${(gf.pr?.lines || []).filter(l => l.amt).map(l => `<div><span>${esc(l.n)}</span><b>−${money(l.amt)}</b></div>`).join('')}${goBonus() ? `<div><span>🎁 ${t('goBonusUse')}</span><b>−${money(goBonus())}</b></div>` : ''}<div class="tot"><span>${t('total')}</span><b>${money(goTotal())}</b></div></div>
@@ -395,6 +408,8 @@
       const { status, data } = await api('/api/go', { kind: gf.kind, name: gf.name, phone: gf.phone, addr: gf.addr, ent: gf.ent, when: gf.when, cut: gf.cut, pay: gf.pay, change: gf.change, bonus: goBonus(), comment: $('#comment').value, device, src: qs.get('src') || '',
         items: [...items.map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; }), ...(packId && packQty() ? [{ id: packId, q: packQty() }] : [])] });
       if (status !== 200) { m.textContent = { closed: `${t('goClosed')} ${data.from}–${data.to}`, min: `${t('goMinSum')} ${money(data.min || 0)}`, rate: t('wait'), contact: t('goNeedContact'), addr: t('goNeedAddr'), off: t('goOff') }[data.error] || t('error'); return; }
+      if (data.pay) { /* 🌐 онлайн: кошик лишається до підтвердження оплати; замовлення зʼявиться в закладі після оплати */
+        store.set('goPend', { id: data.id, sum: data.sum, ts: Date.now(), items: items.map(([k, q]) => [k, q]) }); m.textContent = t('goPayGo'); location.href = data.pay; return; }
       goHist.push({ id: data.id, no: data.no, ts: Date.now(), at: new Date().toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' }), sum: data.sum, items: items.map(([k, q]) => [k, q]), g: 'new', eta: Date.now() + data.eta * 60e3 });
       cart = {}; packAdj = 0; gf.useB = false; gf.pr = null; gf.bal = 0; $('#comment').value = ''; save(); goSave();
       $('#goModal').hidden = true; refreshButtons(); renderFab(); renderCart(); goShow(data.id);

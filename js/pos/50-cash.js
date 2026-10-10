@@ -15,7 +15,7 @@
       <div class="bal-c tot"><span>💰 Разом</span><b class="money">${money(B.total)}</b><small>${B.tipOwed ? `з них чайові ${money(B.tipOwed)} · вільних <b>${money(B.free)}</b>` : `з ${B.from ? B.from.split('-').reverse().join('.') : '—'}`}</small></div></div>` : '';
     // 1. головне: виручка за сьогодні, готівка/картка, кнопка Z
     const hero = `<div class="cash-hero on"><div class="hero-main"><div class="muted">${today}</div><div class="hero-l">Виручка за сьогодні</div><div class="hero-n money">${money(z.total)}</div>${z.tip ? `<div class="muted" style="font-size:13px">без чайових · + 💝 ${money(z.tip)} чайові персоналу</div>` : ''}
-        <div class="split"><div class="bar2"><i style="width:${pc}%"></i></div><div class="split-l"><span>💵 Готівка <b class="money">${money(z.cash)}</b></span><span>💳 Картка <b class="money">${money(z.card)}</b></span></div></div></div>
+        <div class="split"><div class="bar2"><i style="width:${pc}%"></i></div><div class="split-l"><span>💵 Готівка <b class="money">${money(z.cash)}</b></span><span>💳 Картка <b class="money">${money(z.card)}</b>${z.onl ? `<small class="muted"> з них 🌐 онлайн ${money(z.onl)}</small>` : ''}</span></div></div></div>
       <button class="btn primary zbtn" data-a="zDay">🧾 Z-звіт<small>переглянути · друк · закрити день</small></button></div>`;
     // 2. плитки
     const tiles = [['🧾 Чеків', z.checks], ['Ø Середній чек', z.checks ? money(z.total / z.checks) : '—'], ['🏷 Знижки', money(z.disc)], ['💝 Чайові', money(z.tip || 0)], ['💸 Витрати', money(z.exCash + z.exCard)], ['📈 Чистими', money(z.net), 'green'], ['⏳ Відкрито в залі', z.openTables ? `${money(z.openSum)} · ${z.openTables} ст.` : '—']];
@@ -82,7 +82,7 @@
     const r = await api('shift').catch(() => null), z = r?.z; if (!z) return toast('Не вдалося завантажити');
     const kv = (l, v, st = '') => `<div class="kv"${st}><span>${l}</span><b class="money">${v}</b></div>`, sg = n => (n > 0 ? '+' : '') + money(n);
     const B = r.bal, tb = Object.entries(z.tipBy || {});
-    const body = `<div class="card" style="margin:0 0 10px">${kv('🧾 Чеків', z.checks)}${kv('💵 Готівка', money(z.cash))}${kv('💳 Картка', money(z.card))}${z.disc ? kv('🏷 Знижки', money(z.disc)) : ''}
+    const body = `<div class="card" style="margin:0 0 10px">${kv('🧾 Чеків', z.checks)}${kv('💵 Готівка', money(z.cash))}${kv('💳 Картка', money(z.card))}${z.onl ? kv('&nbsp;&nbsp;💳 термінал', money(z.card - z.onl)) + kv('&nbsp;&nbsp;🌐 онлайн (LiqPay)', money(z.onl)) : ''}${z.disc ? kv('🏷 Знижки', money(z.disc)) : ''}
         ${kv('<b>📈 Виручка</b> <small class="muted">без чайових</small>', money(z.total), ' style="font-size:17px"')}</div>
       ${z.tip ? `<div class="card" style="margin:0 0 10px">${kv('💝 Чайові (персоналу)', money(z.tip))}${tb.map(([n, v]) => kv('👤 ' + esc(n), money(v))).join('')}</div>` : ''}
       <div class="card" style="margin:0 0 10px">${kv('💸 Витрати' + (z.exCard ? ` <small class="muted">з картки ${money(z.exCard)}</small>` : ''), money(z.exCash + z.exCard))}${z.mvCash ? kv('🔁 Рух готівки', sg(z.mvCash)) : ''}${z.mvCard ? kv('🔁 Рух картки', sg(z.mvCard)) : ''}${z.salOut ? kv('👷 Зарплата', money(z.salOut)) : ''}

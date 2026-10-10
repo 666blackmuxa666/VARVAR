@@ -61,6 +61,12 @@ export async function intApi(req, env, path) {
       if (!me?.ok) return [{ error: `Токен ${nm}: Telegram не приймає` }, 400]; f[k] = String(v).trim(); names[nm] = me.result.username;
     }
     if (b.CHAT_ID != null) f.CHAT_ID = String(b.CHAT_ID);
+    if (b.LIQPAY_PUBLIC != null || b.LIQPAY_PRIVATE != null) { // 💳 ключі LiqPay закладу: перевіряємо запитом статусу (неіснуючий order_id → відповідь з підписом прийнята)
+      const pub = String(b.LIQPAY_PUBLIC || '').trim(), priv = String(b.LIQPAY_PRIVATE || '').trim();
+      if (!/^(sandbox_)?i\d{6,20}$/.test(pub) || !/^(sandbox_)?[\w]{20,80}$/.test(priv)) return [{ error: 'Ключі LiqPay: невірний формат (public_key починається з i… або sandbox_i…)' }, 400];
+      const r = await (await import('./liqpay.js')).lpApi({ pub, priv }, { action: 'status', order_id: 'check-' + Date.now() }).catch(() => null);
+      if (r?.err_code === 'invalid_signature' || /public_key/i.test(r?.err_description || '')) return [{ error: 'LiqPay не приймає ці ключі' }, 400];
+      f.LIQPAY_PUBLIC = pub; f.LIQPAY_PRIVATE = priv; }
     const has = await saveSecrets(env, f);
     if (f.BOT_TOKEN) await fetch(`https://api.telegram.org/bot${f.BOT_TOKEN}/setWebhook`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: env.SELF_URL + '/tg', secret_token: env.TG_SECRET, allowed_updates: ['message', 'callback_query', 'my_chat_member'] }) }).catch(() => {});
     if (f.GUEST_BOT_TOKEN) await env.DB.delete('g2hook'); if (f.COURIER_BOT_TOKEN) await env.DB.delete('g3hook'); // вебхуки гостей/кур'єрів поставляться самі з новим env
@@ -102,8 +108,8 @@ async function venueSum(env, from, to) {
   const today = dayKey(); from = isDay(from) ? from : today; to = isDay(to) ? to : from;
   const R = await reportRange(env, from, to) || { checks: [], voids: [], removed: [], exp: [], z: [] };
   const days = {};
-  for (const c of R.checks) { const d = days[c.d] ||= { rev: 0, n: 0, cash: 0, card: 0, tip: 0, disc: 0, go: 0, goRev: 0 }; d.rev += c.sum; d.n++; d.cash += c.cash; d.card += c.card; d.tip += c.tip; d.disc += c.disc; if (c.go) { d.go++; d.goRev += c.sum; } }
-  const tot = Object.values(days).reduce((a, d) => { for (const k in d) a[k] = (a[k] || 0) + d[k]; return a; }, { rev: 0, n: 0, cash: 0, card: 0, tip: 0, disc: 0, go: 0, goRev: 0 });
+  for (const c of R.checks) { const d = days[c.d] ||= { rev: 0, n: 0, cash: 0, card: 0, onl: 0, tip: 0, disc: 0, go: 0, goRev: 0 }; d.rev += c.sum; d.n++; d.cash += c.cash; d.card += c.card; d.onl += c.onl || 0; d.tip += c.tip; d.disc += c.disc; if (c.go) { d.go++; d.goRev += c.sum; } }
+  const tot = Object.values(days).reduce((a, d) => { for (const k in d) a[k] = (a[k] || 0) + d[k]; return a; }, { rev: 0, n: 0, cash: 0, card: 0, onl: 0, tip: 0, disc: 0, go: 0, goRev: 0 });
   tot.avg = tot.n ? Math.round(tot.rev / tot.n) : 0;
   tot.voids = R.voids.length; tot.voidSum = R.voids.reduce((a, v) => a + (v.sum || 0), 0);
   tot.removed = R.removed.length; tot.removedSum = R.removed.reduce((a, v) => a + (v.sum || 0), 0);

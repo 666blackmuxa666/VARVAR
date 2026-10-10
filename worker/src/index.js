@@ -152,6 +152,14 @@ export async function handle(req, env) {
       if (url.pathname === '/api/me/logout' && req.method === 'POST') { await meLogout(env, (req.headers.get('authorization') || '').slice(7)); return json({ ok: true }); }
       if (url.pathname === '/api/me') { const d = await meData(env, (req.headers.get('authorization') || '').slice(7)); return d ? json(d) : json({ error: 'auth' }, 401); }
       // 🛵 замовлення за посиланням (самовивіз / доставка)
+      if (url.pathname.startsWith('/api/lp/') && req.method === 'POST') { // 💳 callback LiqPay (data + signature); ключі — закладу (go, table, cert) або платформи (sub, ai)
+        const kind = url.pathname.slice(8), f = new URLSearchParams(await req.text()), L = await import('./liqpay.js');
+        const x = await L.lpVerify(['sub', 'ai'].includes(kind) ? L.lpPlatform(env) : L.lpKeys(env), f.get('data'), f.get('signature'));
+        if (!x) return json({ error: 'sign' }, 403);
+        const r = kind === 'go' ? await (await import('./delivery.js')).goPaid(env, x) : await (await import('./lpay.js')).lpCallback(env, kind, x);
+        return json(r || { ok: true }, r?.error && r.error !== 'expired' ? 400 : 200);
+      }
+      if (url.pathname === '/api/gopay') return json(await (await import('./delivery.js')).goPayState(env, url.searchParams.get('id')));
       if (url.pathname === '/api/go' && req.method === 'POST') return json(...await goOrder(await req.json(), ip, env));
       if (url.pathname === '/api/goinfo') return json(await goInfo(env, url.searchParams.get('ph')));
       if (url.pathname === '/api/promo' && req.method === 'POST') return json(await promoQuote(await req.json(), env)); // 🎁 знижки кошика ?go

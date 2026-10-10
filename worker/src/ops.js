@@ -244,11 +244,13 @@ async function _closeTable(env, t, who, pay = 'cash', print = true) {
       if ((bill.bonus || 0) > room && bill.cert) { await putBill(env, t, bill); await (await import('./site.js')).certUse(env, t, bill.cert.code, who || '').catch(() => {}); const b2 = await getBill(env, t); if (b2.bonus) bill.bonus = b2.bonus; else delete bill.bonus; bill.cert = b2.cert; } } }
   // чайові входять у виручку тим способом, яким заплатив гість; при видачі списуються з готівки або картки
   const tip = (bill.tip || 0) + (bill.ktip || 0), sum = payable(bill) + tip, disc = discAmt(bill);
-  const card = pay === 'card' ? sum : 0, cash = sum - card;
+  /* 🌐 онлайн (LiqPay) — безготівка, але окремо від терміналу (onl ⊂ card). Оплачене гостем наперед (go.paid / paid з QR) — завжди онлайн; доплату — тим способом, що обрали на касі */
+  const pre = Math.round(bill.go?.paid?.sum || bill.paid?.sum || 0), onl = pay === 'online' ? sum : Math.min(pre, sum), rest = sum - onl;
+  const card = onl + (pay === 'card' ? rest : 0), cash = sum - card; if (onl && !rest) pay = 'online';
   if (print) await queuePrint(env, 'receipt', await receipt(env, { table: t, bill, final: true, pay, by: who }));
   await env.DB.delete('bill:' + t);
   const kq = kitchenClosed(env, [+t]); // стіл закрили — його замовлення зникають з черги кухні (паралельно з виручкою)
-  await bump(env, 'day:' + dayKey(), d => { d.closed = (d.closed || 0) + sum; d.tables = (d.tables || 0) + 1; d.cash = (d.cash || 0) + cash; d.card = (d.card || 0) + card; if (disc) d.disc = (d.disc || 0) + disc; if (tip) d.tip = (d.tip || 0) + tip; });
+  await bump(env, 'day:' + dayKey(), d => { d.closed = (d.closed || 0) + sum; d.tables = (d.tables || 0) + 1; d.cash = (d.cash || 0) + cash; d.card = (d.card || 0) + card; if (onl) d.onl = (d.onl || 0) + onl; if (disc) d.disc = (d.disc || 0) + disc; if (tip) d.tip = (d.tip || 0) + tip; });
   // страви рахунку — щоб при видаленні закритого рахунку відняти їх і з «топ страв»
   const dishes = []; for (const o of bill.log || []) for (const l of o.lines) { const x = l.match(LINE); if (x) dishes.push([x[2], +x[1], +x[3]]); }
   const waiter = bill.waiter || who || ''; // чайові — офіціанту стола (хто першим вибив/прийняв), а не тому, хто закрив
@@ -258,7 +260,7 @@ async function _closeTable(env, t, who, pay = 'cash', print = true) {
     kq,
     (async () => { if (tipSplit) for (const [n, v] of Object.entries(tipSplit)) await addTipBal(env, n, v); })(), // один ключ — по черзі
     (async () => { if (bill.cli) { await promoClose(env, bill, sum - tip).catch(() => {}); await reviewQueue(env, bill.cli, sum).catch(() => {}); } })(),
-    logClosed(env, { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), t, sum, cash, card, ...(bill.cli ? { used: Math.max(0, (bill.bonus || 0) - (bill.cert?.sum || 0)), cb: cbGot } : {}), ...(bill.go ? { go: bill.go.kind, ...(bill.go.cour ? { cour: bill.go.cour } : {}), ...(bill.go.fee ? { fee: bill.go.fee } : {}), gt: { at: bill.go.at, acc: bill.go.accAt, take: bill.go.takeAt, road: bill.go.roadAt, done: Date.now(), when: bill.go.when || '', prob: bill.go.prob?.k || '' } } : {}), ...(bill.bonus ? { bonus: bill.bonus } : {}), ...(bill.cert ? { cert: bill.cert } : {}), ...(bill.cli ? { cli: bill.cli } : {}), ...(bill.promo?.sum ? { promo: bill.promo.lines.filter(l => l.amt).map(({ k, n, amt }) => ({ k, n, amt })), promoSum: bill.promo.sum } : {}), at: hhmm(), by: who || '', w: waiter, orders: bill.orders || 0, dishes, ...(tip ? { tip, tipSplit, ...(bill.ktip ? { ktip: bill.ktip } : {}) } : {}), ...(bill.voids?.length ? { voids: bill.voids } : {}), ...(bill.promo?.sum && !disc ? { gross: bill.total } : {}), ...(disc ? { gross: bill.total, disc: bill.disc, discSum: disc } : {}) }),
+    logClosed(env, { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), t, sum, cash, card, ...(onl ? { onl, lp: bill.paid?.lp || bill.go?.paid?.lp || '' } : {}), ...(bill.cli ? { used: Math.max(0, (bill.bonus || 0) - (bill.cert?.sum || 0)), cb: cbGot } : {}), ...(bill.go ? { go: bill.go.kind, ...(bill.go.cour ? { cour: bill.go.cour } : {}), ...(bill.go.fee ? { fee: bill.go.fee } : {}), gt: { at: bill.go.at, acc: bill.go.accAt, take: bill.go.takeAt, road: bill.go.roadAt, done: Date.now(), when: bill.go.when || '', prob: bill.go.prob?.k || '' } } : {}), ...(bill.bonus ? { bonus: bill.bonus } : {}), ...(bill.cert ? { cert: bill.cert } : {}), ...(bill.cli ? { cli: bill.cli } : {}), ...(bill.promo?.sum ? { promo: bill.promo.lines.filter(l => l.amt).map(({ k, n, amt }) => ({ k, n, amt })), promoSum: bill.promo.sum } : {}), at: hhmm(), by: who || '', w: waiter, orders: bill.orders || 0, dishes, ...(tip ? { tip, tipSplit, ...(bill.ktip ? { ktip: bill.ktip } : {}) } : {}), ...(bill.voids?.length ? { voids: bill.voids } : {}), ...(bill.promo?.sum && !disc ? { gross: bill.total } : {}), ...(disc ? { gross: bill.total, disc: bill.disc, discSum: disc } : {}) }),
     logEvent(env, { k: 'close', t, by: who, sum, pay, print }),
   ]);
   return { t, sum, cash, card, disc, tip };
@@ -424,7 +426,7 @@ async function _delClosed(env, ref, day = dayKey()) {
   if (!x || x.del || x.rm) return null;
   x.rm = 1; await env.DB.put(k, JSON.stringify(list)); // rm — прибраний з виручки (del — стіл видалений до закриття)
   await bump(env, 'day:' + day, d => { d.closed = Math.max(0, (d.closed || 0) - x.sum); d.tables = Math.max(0, (d.tables || 0) - 1);
-    d.cash = Math.max(0, (d.cash || 0) - (x.cash ?? x.sum)); d.card = Math.max(0, (d.card || 0) - (x.card || 0)); d.orders = Math.max(0, (d.orders || 0) - (x.orders || 0));
+    d.cash = Math.max(0, (d.cash || 0) - (x.cash ?? x.sum)); d.card = Math.max(0, (d.card || 0) - (x.card || 0)); if (x.onl) d.onl = Math.max(0, (d.onl || 0) - x.onl); d.orders = Math.max(0, (d.orders || 0) - (x.orders || 0));
     if (x.discSum) d.disc = Math.max(0, (d.disc || 0) - x.discSum); if (x.tip) d.tip = Math.max(0, (d.tip || 0) - x.tip); });
   if (x.dishes?.length) await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q: -q, sum: -sum })), day, { stock: false }); // страву віддали — продукти витрачені
   for (const [n, v] of Object.entries(tipSplitOf(x))) await addTipBal(env, n, -v);
@@ -474,13 +476,14 @@ async function _editClosed(env, ref, p, who, day = dayKey()) {
   // чайові: перерахувати розподіл, якщо змінились сума чи офіціант
   const oSplit = tipSplitOf(x); let split = oSplit;
   if (tip !== oTip || w !== (x.w || x.by || '')) { const kt = Math.min(x.ktip || 0, tip); split = tip ? await splitTip(env, w, tip - kt, kt) : {}; }
-  Object.assign(x, { t, w, sum, cash, card, dishes });
+  const oOnl = x.onl || 0, onl = Math.min(oOnl, card); /* 🌐 онлайн не може бути більшим за безготівку */
+  Object.assign(x, { t, w, sum, cash, card, dishes }); if (onl) x.onl = onl; else delete x.onl;
   if (pct) Object.assign(x, { disc: pct, discSum, gross }); else { delete x.disc; delete x.discSum; delete x.gross; }
   if (tip) Object.assign(x, { tip, tipSplit: split }); else { delete x.tip; delete x.tipSplit; delete x.ktip; }
   if (x.ktip && x.ktip > tip) x.ktip = tip;
   (x.edits = x.edits || []).push({ at: hhmm(), ts: Date.now(), by: who || '', what: what.join(', ') });
   await env.DB.put(k, JSON.stringify(list));
-  await bump(env, 'day:' + day, d => { d.closed = (d.closed || 0) + sum - old.sum; d.cash = (d.cash || 0) + cash - oCash; d.card = (d.card || 0) + card - oCard;
+  await bump(env, 'day:' + day, d => { d.closed = (d.closed || 0) + sum - old.sum; d.cash = (d.cash || 0) + cash - oCash; d.card = (d.card || 0) + card - oCard; if (onl !== oOnl) d.onl = Math.max(0, (d.onl || 0) + onl - oOnl);
     d.disc = Math.max(0, (d.disc || 0) + discSum - (old.discSum || 0)); d.tip = Math.max(0, (d.tip || 0) + tip - oTip); });
   if (dd.length) await addDishes(env, dd, day); // топ страв того дня + склад: додане списується, прибране повертається
   if (split !== oSplit) { for (const [n, v] of Object.entries(oSplit)) await addTipBal(env, n, -v); for (const [n, v] of Object.entries(split)) await addTipBal(env, n, v); }
@@ -493,7 +496,7 @@ async function _restoreClosed(env, ref, who, day = dayKey()) {
   if (!x || !x.rm || x.reopen || x.del) return null;
   delete x.rm; await env.DB.put(k, JSON.stringify(list));
   await bump(env, 'day:' + day, d => { d.closed = (d.closed || 0) + x.sum; d.tables = (d.tables || 0) + 1;
-    d.cash = (d.cash || 0) + (x.cash ?? x.sum); d.card = (d.card || 0) + (x.card || 0); d.orders = (d.orders || 0) + (x.orders || 0);
+    d.cash = (d.cash || 0) + (x.cash ?? x.sum); d.card = (d.card || 0) + (x.card || 0); if (x.onl) d.onl = (d.onl || 0) + x.onl; d.orders = (d.orders || 0) + (x.orders || 0);
     if (x.discSum) d.disc = (d.disc || 0) + x.discSum; if (x.tip) d.tip = (d.tip || 0) + x.tip; });
   if (x.dishes?.length) await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q, sum })), day, { stock: false });
   for (const [n, v] of Object.entries(tipSplitOf(x))) await addTipBal(env, n, v);
@@ -543,7 +546,7 @@ export async function reprintClosed(env, ref, who, day = dayKey()) {
   const x = await closedRec(env, ref, day);
   if (!x?.dishes?.length) return false;
   const bill = { total: x.gross || x.dishes.reduce((a, d) => a + (+d[2] || 0), 0) || (x.sum - (x.tip || 0)), /* сума страв до бонусів — щоб «сплачено» на копії = як у касі */ ...(x.promo ? { promo: { lines: x.promo, sum: x.promoSum || 0 } } : {}), ...(x.bonus ? { bonus: x.bonus } : {}), disc: x.disc, ...(x.discSum != null ? { discSum: x.discSum } : {}), tip: (x.tip || 0) - (x.ktip || 0), ktip: x.ktip, log: [{ lines: x.dishes.map(([n, q, sum]) => `${q}× ${n} — ${sum}`) }] };
-  await queuePrint(env, 'receipt', await receipt(env, { table: x.t, bill, final: true, pay: x.card && x.cash ? 'mix' : x.card ? 'card' : 'cash', by: who }));
+  await queuePrint(env, 'receipt', await receipt(env, { table: x.t, bill, final: true, pay: x.card && x.cash ? 'mix' : x.onl ? 'online' : x.card ? 'card' : 'cash', by: who }));
   return true;
 }
 
@@ -606,14 +609,14 @@ export async function cashData(env) {
   const mov = await getMov(env), mvCash = mov.reduce((a, m) => a + moveCash(m), 0), mvCard = mov.reduce((a, m) => a + moveCard(m), 0);
   const tipOut = mov.filter(m => !m.del && (m.type === 'tipc' || m.type === 'tipk')).reduce((a, m) => a + m.sum, 0);
   const salOut = mov.filter(m => !m.del && (m.type === 'salc' || m.type === 'salk')).reduce((a, m) => a + m.sum, 0); // 👷 зарплата — теж витрата
-  return { day: dayKey(), float: d.float || 0, cash: d.cash || 0, card: d.card || 0, disc: d.disc || 0, tip: d.tip || 0, exCash, exCard, mvCash, mvCard, tipOut, salOut, net: (d.cash || 0) + (d.card || 0) - (d.tip || 0) - exCash - exCard - salOut, open, exp, mov }; // як у Z-звіті: без чайових
+  return { day: dayKey(), float: d.float || 0, cash: d.cash || 0, card: d.card || 0, onl: d.onl || 0, disc: d.disc || 0, tip: d.tip || 0, exCash, exCard, mvCash, mvCard, tipOut, salOut, net: (d.cash || 0) + (d.card || 0) - (d.tip || 0) - exCash - exCard - salOut, open, exp, mov }; // як у Z-звіті: без чайових
 }
 export async function sumDays(env, keys) {
   const days = await env.DB.getMany(keys.map(k => 'day:' + k), 'json'), exps = await env.DB.getMany(keys.map(k => 'exp:' + k), 'json');
   return keys.reduce((a, _, i) => {
     const d = days[i] || {}, e = (exps[i] || []).filter(x => !x.del).reduce((s, x) => s + x.sum, 0);
     return { closed: a.closed + (d.closed || 0) - (d.tip || 0), tip: a.tip + (d.tip || 0), tables: a.tables + (d.tables || 0), orders: a.orders + (d.orders || 0),
-      cash: a.cash + (d.cash ?? d.closed ?? 0), card: a.card + (d.card || 0), disc: a.disc + (d.disc || 0), exp: a.exp + e };
+      cash: a.cash + (d.cash ?? d.closed ?? 0), card: a.card + (d.card || 0), onl: (a.onl || 0) + (d.onl || 0), disc: a.disc + (d.disc || 0), exp: a.exp + e };
   }, { closed: 0, tip: 0, tables: 0, orders: 0, cash: 0, card: 0, disc: 0, exp: 0 });
 }
 const daysOfMonth = (ym, upto) => [...Array(upto)].map((_, i) => `${ym}-${String(i + 1).padStart(2, '0')}`);
@@ -679,7 +682,7 @@ export async function shiftData(env) {
   const open = await openTables(env);
   // чайові — не виручка закладу (як у dayZData): total без них, показуються окремо; inBox — фізична готівка, чайові в ній є, поки не видані (рух tipc)
   const tip = sum(recs, x => x.tip), tipBy = {}; recs.forEach(x => Object.entries(tipSplitOf(x)).forEach(([n, v]) => { tipBy[n] = (tipBy[n] || 0) + v; }));
-  return { lastZ: s ? null : await lastZrec(env), open: !!s, id: s?.id, opened: s?.opened || 0, by: s?.by || '', float, checks: recs.length, cash, card, gross: cash + card, total: cash + card - tip, tip, tipBy, disc: sum(recs, x => x.discSum),
+  return { lastZ: s ? null : await lastZrec(env), open: !!s, id: s?.id, opened: s?.opened || 0, by: s?.by || '', float, checks: recs.length, cash, card, onl: sum(recs, x => x.onl), gross: cash + card, total: cash + card - tip, tip, tipBy, disc: sum(recs, x => x.discSum),
     exCash, exCard, mvCash, mvCard, inBox: float + cash - exCash + mvCash, openTables: open.length, openSum: open.reduce((a, r) => a + payable(r.b), 0) };
 }
 // «Загальна сума» для відкриття каси: уся готівка за весь час (готівка від гостей − витрати готівкою)
@@ -721,14 +724,14 @@ export async function closeShift(env, counted, who, print = true) {
 }
 const fmtDT = t => new Date(t).toLocaleString('uk-UA', { timeZone: TZ, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '');
 export const zText = z => [`🔒 <b>Касу закрито</b> (${fmtDT(z.opened)} — ${fmtDT(z.closed)})`, '',
-  `Чеків: ${z.checks} · виручка <b>${money(z.total)}</b>`, `💵 ${money(z.cash)} · 💳 ${money(z.card)}${z.disc ? ` · знижки ${money(z.disc)}` : ''}`, z.tip ? `💝 Чайові (не виручка, персоналу): ${money(z.tip)}` : '', '',
+  `Чеків: ${z.checks} · виручка <b>${money(z.total)}</b>`, `💵 ${money(z.cash)} · 💳 ${money(z.card)}${z.onl ? ` (🌐 ${money(z.onl)})` : ''}${z.disc ? ` · знижки ${money(z.disc)}` : ''}`, z.tip ? `💝 Чайові (не виручка, персоналу): ${money(z.tip)}` : '', '',
   `На початок ${money(z.float)} + готівка ${money(z.cash)} − витрати ${money(z.exCash)}${z.mvCash ? ` ${z.mvCash > 0 ? '+' : '−'} рух коштів ${money(Math.abs(z.mvCash))}` : ''}`, `= <b>має бути в касі ${money(z.inBox)}</b>`,
   z.counted != null ? `Пораховано: ${money(z.counted)} · ${z.diff ? `<b>різниця ${z.diff > 0 ? '+' : ''}${money(z.diff)}</b>` : 'збігається ✅'}` : '',
   z.openTables ? `\n⚠️ Ще відкрито столів: ${z.openTables} (${money(z.openSum)})` : ''].filter(x => x !== '').join('\n');
 function zTicket(z) {
   return [['invb', 'Z-ЗВІТ'], ['c', 'Закриття каси'], ['gap'],
     ['lr', 'Відкрито', fmtDT(z.opened)], ['lr', 'Закрито', fmtDT(z.closed)], ['lr', 'Відкрив', z.by || '—'], ['lr', 'Закрив', z.closedBy || '—'], ['dbl'],
-    ['lr', 'Чеків', String(z.checks)], ['lr', 'Готівка', `${z.cash} грн`], ['lr', 'Картка', `${z.card} грн`], ...(z.disc ? [['lr', 'Знижки', `${z.disc} грн`]] : []), ...(z.tip ? [['lr', '− Чайові (персоналу)', `${z.tip} грн`], ...Object.entries(z.tipBy || {}).map(([n, s]) => ['lr', `  ${n}`, `${s} грн`])] : []),
+    ['lr', 'Чеків', String(z.checks)], ['lr', 'Готівка', `${z.cash} грн`], ['lr', 'Картка', `${z.card} грн`], ...(z.onl ? [['lr', ' з них онлайн', `${z.onl} грн`]] : []), ...(z.disc ? [['lr', 'Знижки', `${z.disc} грн`]] : []), ...(z.tip ? [['lr', '− Чайові (персоналу)', `${z.tip} грн`], ...Object.entries(z.tipBy || {}).map(([n, s]) => ['lr', `  ${n}`, `${s} грн`])] : []),
     ['total', 'ВИРУЧКА', `${z.total} грн`], ['dbl'],
     ['lr', 'На початок', `${z.float} грн`], ['lr', '+ Готівка', `${z.cash} грн`], ['lr', '− Витрати (готівка)', `${z.exCash} грн`], ...(z.mvCash ? [['lr', 'Рух коштів (готівка)', `${z.mvCash > 0 ? '+' : ''}${z.mvCash} грн`]] : []), ...(z.exCard ? [['lr', 'Витрати з картки', `${z.exCard} грн`]] : []),
     ['total', 'В КАСІ', `${z.inBox} грн`],
@@ -748,7 +751,7 @@ export async function dayZData(env, day = dayKey()) {
   const tipBy = {}; recs.forEach(x => Object.entries(tipSplitOf(x)).forEach(([n, v]) => { tipBy[n] = (tipBy[n] || 0) + v; }));
   // виручка — без чайових (чайові — гроші персоналу); готівка/картка — фактично отримані (з чайовими)
   const tip = sum(recs, x => x.tip);
-  return { day, tipBy, checks: recs.length, cash, card, gross: cash + card, total: cash + card - tip, disc: sum(recs, x => x.discSum), tip, exCash, exCard, mvCash, mvCard,
+  return { day, tipBy, checks: recs.length, cash, card, onl: sum(recs, x => x.onl), gross: cash + card, total: cash + card - tip, disc: sum(recs, x => x.discSum), tip, exCash, exCard, mvCash, mvCard,
     tipOut: sum(movs.filter(m => m.type === 'tipc' || m.type === 'tipk'), m => m.sum),
     salOut: sum(movs.filter(m => m.type === 'salc' || m.type === 'salk'), m => m.sum),
     net: cash + card - tip - exCash - exCard - sum(movs.filter(m => m.type === 'salc' || m.type === 'salk'), m => m.sum), orders: (d || {}).orders || 0, dels: cl.filter(x => x.del || x.rm).length,
@@ -771,13 +774,13 @@ export async function dayX(env, who, day = dayKey()) {
 }
 const dm = d => d.split('-').reverse().join('.');
 export const zDayText = z => [`🧾 <b>Z-звіт за ${dm(z.day)}</b>`, '',
-  `Чеків: ${z.checks} · виручка <b>${money(z.total)}</b>`, `💵 Готівка: ${money(z.cash)}`, `💳 Картка: ${money(z.card)}`,
+  `Чеків: ${z.checks} · виручка <b>${money(z.total)}</b>`, `💵 Готівка: ${money(z.cash)}`, `💳 Картка: ${money(z.card)}${z.onl ? ` (термінал ${money(z.card - z.onl)} · 🌐 онлайн ${money(z.onl)})` : ''}`,
   z.disc ? `🏷 Знижки: ${money(z.disc)}` : '', z.tip ? `💝 Чайові (не виручка, персоналу): ${money(z.tip)}${Object.keys(z.tipBy || {}).length ? '\n' + Object.entries(z.tipBy).map(([n, s]) => `   👤 ${esc(n)}: ${money(s)}`).join('\n') : ''}` : '', `💸 Витрати: ${money(z.exCash + z.exCard)}${z.exCard ? ` (з картки ${money(z.exCard)})` : ''}`,
   z.mvCash || z.mvCard ? `🔁 Рух коштів: готівка ${z.mvCash >= 0 ? '+' : ''}${money(z.mvCash)}${z.mvCard ? `, картка ${z.mvCard >= 0 ? '+' : ''}${money(z.mvCard)}` : ''}` : '',
   `📈 Чистими: <b>${money(z.net)}</b>`, z.openTables ? `\n⚠️ Ще відкрито столів: ${z.openTables} (${money(z.openSum)})` : ''].filter(x => x !== '').join('\n');
 function zDayTicket(z, x) {
   return [['invb', x ? 'X-ЗВІТ' : 'Z-ЗВІТ'], ['c', dm(z.day)], ['gap'], ['lr', 'Надруковано', fmtDT(z.closed)], ['lr', 'Хто', z.closedBy || '—'], ['dbl'],
-    ['lr', 'Чеків', String(z.checks)], ['lr', 'Готівка', `${z.cash} грн`], ['lr', 'Картка', `${z.card} грн`], ...(z.disc ? [['lr', 'Знижки', `${z.disc} грн`]] : []), ...(z.tip ? [['lr', '− Чайові (персоналу)', `${z.tip} грн`]] : []),
+    ['lr', 'Чеків', String(z.checks)], ['lr', 'Готівка', `${z.cash} грн`], ['lr', 'Картка', `${z.card} грн`], ...(z.onl ? [['lr', ' з них онлайн', `${z.onl} грн`]] : []), ...(z.disc ? [['lr', 'Знижки', `${z.disc} грн`]] : []), ...(z.tip ? [['lr', '− Чайові (персоналу)', `${z.tip} грн`]] : []),
     ['total', 'ВИРУЧКА', `${z.total} грн`], ['dbl'],
     ['lr', 'Витрати (готівка)', `${z.exCash} грн`], ...(z.exCard ? [['lr', 'Витрати (картка)', `${z.exCard} грн`]] : []),
     ...(z.mvCash ? [['lr', 'Рух коштів (готівка)', `${z.mvCash > 0 ? '+' : ''}${z.mvCash} грн`]] : []), ...(z.mvCard ? [['lr', 'Рух коштів (картка)', `${z.mvCard > 0 ? '+' : ''}${z.mvCard} грн`]] : []),
@@ -791,7 +794,7 @@ export async function reportRange(env, from, to) {
   const [cl, ex, zz, mm, vv] = await Promise.all(['closed:', 'exp:', 'z:', 'mov:', 'void:'].map(p => env.DB.getMany(days.map(d => p + d), 'json')));
   return {
     from, to,
-    checks: days.flatMap((d, i) => (cl[i] || []).filter(x => !x.del && !x.rm).map(x => ({ d, id: x.id, at: x.at, t: x.t, sum: x.sum, cash: x.cash ?? x.sum, card: x.card || 0, by: x.by || '', w: x.w || x.by || '', disc: x.discSum || 0, pct: x.disc || 0, tip: x.tip || 0, tipSplit: tipSplitOf(x), dishes: x.dishes || [], voids: x.voids || [], ...(x.go ? { go: x.go, cour: x.cour || '', fee: x.fee || 0 } : {}), ...(x.bonus ? { bonus: x.bonus } : {}) }))),
+    checks: days.flatMap((d, i) => (cl[i] || []).filter(x => !x.del && !x.rm).map(x => ({ d, id: x.id, at: x.at, t: x.t, sum: x.sum, cash: x.cash ?? x.sum, card: x.card || 0, onl: x.onl || 0, by: x.by || '', w: x.w || x.by || '', disc: x.discSum || 0, pct: x.disc || 0, tip: x.tip || 0, tipSplit: tipSplitOf(x), dishes: x.dishes || [], voids: x.voids || [], ...(x.go ? { go: x.go, cour: x.cour || '', fee: x.fee || 0 } : {}), ...(x.bonus ? { bonus: x.bonus } : {}) }))),
     voids: days.flatMap((d, i) => (vv[i] || []).map(x => ({ d, ...x }))),
     removed: days.flatMap((d, i) => (cl[i] || []).filter(x => x.rm).map(x => ({ d, id: x.id, at: x.at, t: x.t, sum: x.sum, by: x.by || '', reopen: !!x.reopen }))),
     exp: days.flatMap((d, i) => (ex[i] || []).map((x, j) => ({ d, i: j, del: !!x.del, at: x.at, sum: x.sum, src: x.src, note: x.note || '', by: x.by || '' })).filter(x => !x.del)),

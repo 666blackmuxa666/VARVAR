@@ -42,7 +42,7 @@
   function repChecks(r) {
     const R = S.rep, dishF = R.grp || R.cat || R.q.trim(), q = R.q.trim().toLowerCase();
     const dishOk = n => { if (!dishF) return true; const x = dishOf(n); if (R.grp && x?.grp !== R.grp) return false; if (R.cat && x?.cat !== R.cat) return false; return !q || n.toLowerCase().includes(q); };
-    const checks = (r?.checks || []).filter(c => (!R.pay || (R.pay === 'card' ? c.card > 0 : c.cash > 0)) && (!R.by || (c.w || c.by) === R.by || c.by === R.by) && (!R.t || String(c.t) === R.t))
+    const checks = (r?.checks || []).filter(c => (!R.pay || (R.pay === 'onl' ? c.onl > 0 : R.pay === 'card' ? c.card > 0 : c.cash > 0)) && (!R.by || (c.w || c.by) === R.by || c.by === R.by) && (!R.t || String(c.t) === R.t))
       .map(c => { const ds = c.dishes.filter(([n]) => dishOk(n)); return { ...c, ds, val: dishF ? ds.reduce((a, [, , s]) => a + s, 0) : c.sum - (c.tip || 0) }; }).filter(c => !dishF || c.ds.length);
     return { checks, dishF };
   }
@@ -51,7 +51,7 @@
     const R = S.rep, { checks, dishF } = repChecks(r), sum = (l, f) => l.reduce((a, x) => a + (f(x) || 0), 0);
     const total = sum(checks, c => c.val), n = checks.length, exp = R.by || R.t || dishF || R.pay ? null : sum(r.exp, e => e.sum);
     const tipOut = sum((r.mov || []).filter(m => m.type === 'tipc' || m.type === 'tipk'), m => m.sum), salOut = sum((r.mov || []).filter(m => m.type === 'salc' || m.type === 'salk'), m => m.sum);
-    return { checks, dishF, total, n, avg: n ? total / n : 0, qty: sum(checks, c => sum(c.ds, d => d[1])), cash: sum(checks, c => c.cash), card: sum(checks, c => c.card), disc: sum(checks, c => c.disc), tip: sum(checks, c => c.tip), exp, tipOut, net: exp == null ? null : total - exp - salOut, salOut }; // зарплата — теж витрата // виручка вже без чайових
+    return { checks, dishF, total, n, avg: n ? total / n : 0, qty: sum(checks, c => sum(c.ds, d => d[1])), cash: sum(checks, c => c.cash), card: sum(checks, c => c.card), onl: sum(checks, c => c.onl), disc: sum(checks, c => c.disc), tip: sum(checks, c => c.tip), exp, tipOut, net: exp == null ? null : total - exp - salOut, salOut }; // зарплата — теж витрата // виручка вже без чайових
   }
   const delta = (a, b, inv) => { if (b == null || !isFinite(b) || !b) return ''; const p = Math.round((a - b) / Math.abs(b) * 100); return `<em class="dl ${(inv ? -p : p) > 0 ? 'up' : (inv ? -p : p) < 0 ? 'down' : ''}" title="попередній період: ${money(b)}">${p > 0 ? '▲' : p < 0 ? '▼' : '='} ${Math.abs(p)}%</em>`; };
   // стовпчиковий графік; pts: [підпис, значення, підказка, день для переходу]
@@ -79,20 +79,20 @@
       <div class="chips scroll">${PER.map(([k, l]) => `<button class="chip ${R.p === k ? 'on' : ''}" data-a="rp" data-p="${k}">${l}</button>`).join('')}</div>
       ${R.p === 'c' ? `<div class="frow" style="margin-top:10px"><label>З<input type="date" id="rFrom" value="${from}"></label><label>По<input type="date" id="rTo" value="${to}"></label></div>` : ''}`;
     const filters = R.fo || nF ? `<div class="filters" style="margin-top:10px">${R.fo ? `<div class="frow">
-        <label>Оплата<select data-f="pay">${opt('', 'Усі', R.pay)}${opt('cash', '💵 Готівка', R.pay)}${opt('card', '💳 Карта', R.pay)}</select></label>
+        <label>Оплата<select data-f="pay">${opt('', 'Усі', R.pay)}${opt('cash', '💵 Готівка', R.pay)}${opt('card', '💳 Карта', R.pay)}${opt('onl', '🌐 Онлайн', R.pay)}</select></label>
         <label>Офіціант<select data-f="by">${opt('', 'Усі', R.by)}${waiters.map(w => opt(w, w, R.by)).join('')}</select></label>
         <label>Група<select data-f="grp">${opt('', 'Усе', R.grp)}${S.groups.map(g => opt(g.id, g.name, R.grp)).join('')}</select></label>
         <label>Категорія<select data-f="cat">${opt('', 'Усі', R.cat)}${cats.map(c => opt(c.id, c.name.uk, R.cat)).join('')}</select></label>
         <label>Стіл<select data-f="t">${opt('', 'Усі', R.t)}${tables.map(t => opt(String(t), 'Стіл ' + tn(t), R.t)).join('')}</select></label>
         <label>Страва<input id="rQ" placeholder="🔎 назва" value="${esc(R.q)}"></label></div>` : ''}
-        ${nF ? `<div class="chips">${[R.pay && (R.pay === 'card' ? '💳 Карта' : '💵 Готівка'), R.by && '👤 ' + R.by, R.grp && (S.groups.find(g => g.id === R.grp) || {}).name, R.cat && (cats.find(c => c.id === R.cat)?.name.uk || R.cat), R.t && 'Стіл ' + tn(R.t), R.q.trim() && '🔎 ' + R.q.trim()].filter(Boolean).map(x => `<span class="chip on sm">${esc(x)}</span>`).join('')}<button class="chip" data-a="rReset">✕ Скинути</button></div>` : ''}</div>` : '';
+        ${nF ? `<div class="chips">${[R.pay && (R.pay === 'onl' ? '🌐 Онлайн' : R.pay === 'card' ? '💳 Карта' : '💵 Готівка'), R.by && '👤 ' + R.by, R.grp && (S.groups.find(g => g.id === R.grp) || {}).name, R.cat && (cats.find(c => c.id === R.cat)?.name.uk || R.cat), R.t && 'Стіл ' + tn(R.t), R.q.trim() && '🔎 ' + R.q.trim()].filter(Boolean).map(x => `<span class="chip on sm">${esc(x)}</span>`).join('')}<button class="chip" data-a="rReset">✕ Скинути</button></div>` : ''}</div>` : '';
     if (!r) return head + filters + '<div class="muted" style="margin:16px 4px">Завантаження…</div>';
 
     const st = repStats(r), pv = repStats(S.data.prev), { checks, dishF } = st, gross = st.total + st.disc;
     const kpi = (l, v, raw, pr, cls) => `<div class="kpi ${cls || ''}"><span>${l}</span><b class="money">${v}</b>${pv ? delta(raw, pr) : ''}</div>`;
     const kpis = `<div class="kpis">${kpi('Виручка', money(st.total), st.total, pv?.total, 'accent')}${kpi('Чеків', st.n, st.n, pv?.n)}${kpi('Середній чек', st.n ? money(st.avg) : '—', st.avg, pv?.avg)}${st.net != null ? kpi('Чистими', money(st.net), st.net, pv?.net, 'green') : kpi('Продано позицій', st.qty, st.qty, pv?.qty)}</div>`;
     const cp = share(st.cash, st.cash + st.card);
-    const pills = `<div class="pills">${!dishF ? `<div class="pill wide"><div class="psplit"><i style="width:${cp}%"></i></div><div class="psplit-l"><span>💵 Готівка <b class="money">${money(st.cash)}</b> <span class="muted">${cp}%</span></span><span>💳 Карта <b class="money">${money(st.card)}</b> <span class="muted">${st.cash + st.card ? Math.round((100 - cp) * 10) / 10 : 0}%</span></span></div></div>
+    const pills = `<div class="pills">${!dishF ? `<div class="pill wide"><div class="psplit"><i style="width:${cp}%"></i></div><div class="psplit-l"><span>💵 Готівка <b class="money">${money(st.cash)}</b> <span class="muted">${cp}%</span></span><span>💳 Карта <b class="money">${money(st.card)}</b>${st.onl ? ` <span class="muted">(🌐 ${money(st.onl)})</span>` : ''} <span class="muted">${st.cash + st.card ? Math.round((100 - cp) * 10) / 10 : 0}%</span></span></div></div>
       <div class="pill"><span>🏷 Знижки</span><b class="money">${money(st.disc)}</b><small>${share(st.disc, gross)}% від суми</small></div><div class="pill"><span>💝 Чайові</span><b class="money">${money(st.tip)}</b>${st.tipOut ? `<small>видано ${money(st.tipOut)}</small>` : ''}</div>` : ''}
       ${st.exp != null ? `<div class="pill"><span>💸 Витрати</span><b class="money">${money(st.exp)}</b>${pv?.exp != null ? delta(st.exp, pv.exp, 1) : ''}</div>` : ''}
       <div class="pill"><span>🍽 Позицій</span><b>${st.qty}</b><small>${st.n ? (st.qty / st.n).toFixed(1) : 0} у чеку</small></div>${(() => { // 🛵 канали продажу
@@ -157,7 +157,7 @@
       const line = (kind, x, l, v, back) => `<div class="kv rrow${back ? ' del' : ''}"><span>${l}</span><span class="kv-r"><b class="money">${v}</b>${kind === 'checks' && !back && x.id && isAdmin() ? `<button class="xb" data-a="cEdit" data-ref="${esc(x.id)}" data-d="${x.d}" title="Відкрити й редагувати">✏️</button>` : ''}${kind !== 'checks' || x.id ? xb(kind, x, back) : ''}</span></div>`;
       const dd = d => d.slice(8) + '.' + d.slice(5, 7);
       let act = [], gone = [], empty = '';
-      if (T === 'checks') { act = [...checks].reverse().slice(0, 300).map(c => line('checks', c, `${dd(c.d)} ${c.at} · стіл ${tn(c.t)} · ${esc(waiterOf(c))} ${c.card ? '💳' : '💵'}${c.disc ? ' 🏷' : ''}${c.tip ? ` · 💝 ${money(c.tip)}` : ''}<br><small class="muted">${c.ds.map(([nm, qq]) => `${qq}× ${esc(nm)}`).join(', ')}</small>`, money(c.val)));
+      if (T === 'checks') { act = [...checks].reverse().slice(0, 300).map(c => line('checks', c, `${dd(c.d)} ${c.at} · стіл ${tn(c.t)} · ${esc(waiterOf(c))} ${c.onl ? '🌐' : c.card ? '💳' : '💵'}${c.disc ? ' 🏷' : ''}${c.tip ? ` · 💝 ${money(c.tip)}` : ''}<br><small class="muted">${c.ds.map(([nm, qq]) => `${qq}× ${esc(nm)}`).join(', ')}</small>`, money(c.val)));
         gone = (r.removed || []).filter(x => !x.reopen).map(x => line('checks', x, `${dd(x.d)} ${x.at} · стіл ${tn(x.t)} · ${esc(x.by)} <span class="muted">· знято з виручки</span>`, money(x.sum), 1)); empty = 'Немає чеків'; }
       if (T === 'exp') { act = [...r.exp].filter(e => !e.del).reverse().map(e => line('exp', e, `${dd(e.d)} ${e.at} ${e.src === 'card' ? '💳' : '💵'} ${esc(e.note || 'Витрата')} <span class="muted">${esc(e.by)}</span>`, money(e.sum)));
         gone = (r.expDel || []).map(e => line('exp', e, `${dd(e.d)} ${e.at} ${esc(e.note || 'Витрата')}`, money(e.sum), 1)); empty = 'Витрат немає'; }

@@ -95,7 +95,7 @@
   // ---------- екрани ----------
   const kpi = (l, v, sub = '') => `<div class="kpi"><span>${l}</span><b class="money">${v}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
   const delta = (a, b) => !b ? '' : `<span class="${a >= b ? 'up' : 'down'}">${a >= b ? '▲' : '▼'} ${Math.abs(Math.round((a - b) / b * 100))}%</span> до мин. тижня`;
-  const sumTot = l => l.reduce((a, v) => { const t = v.tot || {}; for (const k of ['rev', 'n', 'tip', 'disc', 'go', 'goRev', 'voids', 'voidSum', 'removed', 'removedSum', 'exp', 'cash', 'card']) a[k] = (a[k] || 0) + (t[k] || 0); return a; }, {});
+  const sumTot = l => l.reduce((a, v) => { const t = v.tot || {}; for (const k of ['rev', 'n', 'tip', 'disc', 'go', 'goRev', 'voids', 'voidSum', 'removed', 'removedSum', 'exp', 'cash', 'card', 'onl']) a[k] = (a[k] || 0) + (t[k] || 0); return a; }, {});
   function alerts(list) {
     const out = [];
     for (const v of list) {
@@ -141,7 +141,7 @@
       ${S.sum.length > 1 ? `<div class="legend">${S.sum.map((v, j) => `<span><i style="background:${COLORS[j % COLORS.length]}"></i>${esc(v.name)}</span>`).join('')}</div>` : ''}</div>` : '';
     const row = (nm, x, cls = '') => `<tr class="${cls}"><td>${nm}</td><td class="money">${money(x.rev)}</td><td>${x.n || 0}</td><td class="money">${x.n ? money(x.rev / x.n) : '—'}</td><td class="money">${money(x.tip)}</td><td class="money">${money(x.disc)}</td><td>${x.go || 0}</td><td>${x.voids || 0}</td><td>${x.removed || 0}</td><td class="money">${money(x.exp)}</td></tr>`;
     const rank = [...S.sum].sort((a, b) => (b.tot?.rev || 0) - (a.tot?.rev || 0));
-    return `<h2>📊 Аналітика</h2>${seg}<div class="kpis">${kpi('Виручка', money(T.rev))}${kpi('Чеків', T.n || 0)}${kpi('Середній чек', T.n ? money(T.rev / T.n) : '—')}${kpi('🛵 Доставка', money(T.goRev), `${T.go || 0} замовлень`)}${kpi('Чайові', money(T.tip))}${kpi('Витрати з каси', money(T.exp))}${(() => { const n = S.sum.reduce((a, v) => a + (v.tot?.plan?.n || 0), 0), ok = S.sum.reduce((a, v) => a + (v.tot?.plan?.ok || 0), 0); return n ? kpi('📋 План персоналу', Math.round(ok / n * 100) + '%', `${ok} з ${n} завдань`) : ''; })()}</div>
+    return `<h2>📊 Аналітика</h2>${seg}<div class="kpis">${kpi('Виручка', money(T.rev))}${kpi('Чеків', T.n || 0)}${kpi('Середній чек', T.n ? money(T.rev / T.n) : '—')}${kpi('💳 Оплати', money(T.cash || 0), `💵 готівка · 💳 термінал ${money((T.card || 0) - (T.onl || 0))} · 🌐 онлайн ${money(T.onl || 0)}`)}${kpi('🛵 Доставка', money(T.goRev), `${T.go || 0} замовлень`)}${kpi('Чайові', money(T.tip))}${kpi('Витрати з каси', money(T.exp))}${(() => { const n = S.sum.reduce((a, v) => a + (v.tot?.plan?.n || 0), 0), ok = S.sum.reduce((a, v) => a + (v.tot?.plan?.ok || 0), 0); return n ? kpi('📋 План персоналу', Math.round(ok / n * 100) + '%', `${ok} з ${n} завдань`) : ''; })()}</div>
       <div style="margin-top:12px">${chart}</div>
       ${(() => { const R = S.sum.flatMap(v => (v.risk || []).map(r => [r.lvl, `<b>${esc(v.name)}</b>: ${esc(r.text)}`])); return `<h2>🚨 Ризики за період ${R.length ? `<span class="muted">(${R.length})</span>` : ''}</h2>${R.length ? R.map(([c, t]) => `<div class="alert ${c}">${t}</div>`).join('') : '<div class="card muted">Підозрілих дій не знайдено 👌</div>'}`; })()}
       ${pnlHTML()}

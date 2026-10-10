@@ -29,7 +29,7 @@ window.OWNV = ctx => {
       if (sec === 'bots') v.d.live = await api('bots', { venue: id }).catch(e => ({ err: e.message }));
       if (sec === 'printer') { const [q, rc] = await Promise.all([vapi(id, 'printQ').catch(() => ({ list: [] })), vapi(id, 'rcptGet').catch(() => ({}))]); Object.assign(v.d, { q: q.list, rc: rc.rcpt, dev: rc.dev, route: rc.route || {} }); }
       if (sec === 'menu') v.d = { menu: (await vapi(id, 'menu')).menu };
-      if (sec === 'go') v.d = { go: (await vapi(id, 'goCfg')).cfg };
+      if (sec === 'go') { const r = await vapi(id, 'goCfg'); v.d = { go: r.cfg, lp: r.lp, main: r.main }; }
       if (sec === 'staff') v.d = await vapi(id, 'staff');
       if (sec === 'log') { const [a, b] = await Promise.all([vapi(id, 'alog', { m: S.logM || '' }), api('bak', { venue: id, do: 'list' }).catch(() => ({ list: [] }))]); v.d = { list: a.list, bak: b.list }; }
     } catch (e) { toast('⚠️ ' + e.message); v.d = { err: e.message }; }
@@ -89,7 +89,10 @@ window.OWNV = ctx => {
     go(v) {
       const g = v.d.go, N = [['min', '💰 Мінімальна сума', '₴'], ['fee', '🛵 Ціна доставки', '₴'], ['free', '🎁 Безкоштовно від', '₴ (0 — ні)'], ['prep', '⏱ Час приготування', 'хв'], ['cash', '💸 Кешбек бонусами', '%'], ['bmax', '🎁 Бонусами можна оплатити до', '%']];
       return `<div class="grid"><div class="card"><h3>🛵 Замовлення з собою й доставка</h3>${tgl('Приймати замовлення з сайту', g.on, 'vgoTgl', 'on')}${tgl('🛵 Доставка', g.del, 'vgoTgl', 'del')}${tgl('🥡 Самовивіз', g.pick, 'vgoTgl', 'pick')}${row('🕐 Приймаємо з', g.from, 'vgo', 'from')}${row('🕙 Приймаємо до', g.to, 'vgo', 'to')}</div>
-        <div class="card"><h3>💰 Гроші</h3>${N.map(([k, l, u]) => row(l, g[k] + ' ' + u, 'vgo', k)).join('')}</div><div class="card"><h3>📍 Зона й контакт</h3>${row('📍 Зона доставки', g.zone, 'vgo', 'zone')}${row('📞 Телефон для гостей', g.phone, 'vgo', 'phone')}</div></div>`;
+        <div class="card"><h3>💰 Гроші</h3>${N.map(([k, l, u]) => row(l, g[k] + ' ' + u, 'vgo', k)).join('')}</div><div class="card"><h3>📍 Зона й контакт</h3>${row('📍 Зона доставки', g.zone, 'vgo', 'zone')}${row('📞 Телефон для гостей', g.phone, 'vgo', 'phone')}</div>
+        <div class="card"><h3>💳 Онлайн-оплата (LiqPay)</h3><div class="muted" style="font-size:13px;margin-bottom:8px">${v.d.lp ? (v.d.lp.sandbox ? '🧪 Підключено <b>тестові</b> ключі — гроші не списуються, лише перевірка.' : '✅ Підключено — гроші надходять на LiqPay закладу.') : '⚪ Не підключено.'} Оплачене онлайн видно в касі окремо: 💵 готівка · 💳 термінал · 🌐 онлайн.</div>
+          ${v.d.lp ? tgl('🌐 Оплата замовлень онлайн (з собою, доставка)', g.onl, 'vgoTgl', 'onl') + tgl('🍽 Оплата рахунку столу з QR', g.qrpay, 'vgoTgl', 'qrpay') : ''}
+          ${v.d.main ? '<div class="muted" style="font-size:12px">Ключі VARVAR — у налаштуваннях сервера (через розробника).</div>' : `<form id="vlpf" style="display:grid;gap:8px;margin-top:8px"><input name="LIQPAY_PUBLIC" placeholder="public_key (з кабінету LiqPay → API)" autocomplete="off"><input name="LIQPAY_PRIVATE" type="password" placeholder="private_key" autocomplete="off"><button class="btn sm primary">💾 Зберегти ключі</button><div class="err" id="vlperr"></div></form>`}</div></div>`;
     },
     staff(v) {
       const d = v.d, R = { admin: '👑 Адмін', waiter: '🧑‍🍳 Офіціант', cook: '👨‍🍳 Кухар', courier: '🛵 Кур\'єр' }, link = window.VVPUB(v.id, 'pos.html');
@@ -277,6 +280,8 @@ window.OWNV = ctx => {
   document.addEventListener('input', e => { if (e.target.id === 'logQ' && S.cfgV) { S.logQ = e.target.value; clearTimeout(S.lqT); S.lqT = setTimeout(() => { const p = e.target.selectionStart; render(); const i = $('#logQ'); if (i) { i.focus(); i.setSelectionRange(p, p); } }, 250); } });
   document.addEventListener('input', e => { if (e.target.id === 'mq' && S.cfgV) { S.mq = e.target.value; clearTimeout(S.mqT); S.mqT = setTimeout(() => { const p = e.target.selectionStart; render(); const i = $('#mq'); if (i) { i.focus(); i.setSelectionRange(p, p); } }, 250); } });
   document.addEventListener('submit', async e => {
+    if (e.target.id === 'vlpf' && S.cfgV) { e.preventDefault(); const f = e.target, err = $('#vlperr'), x = { LIQPAY_PUBLIC: f.LIQPAY_PUBLIC.value.trim(), LIQPAY_PRIVATE: f.LIQPAY_PRIVATE.value.trim() }; if (!x.LIQPAY_PUBLIC || !x.LIQPAY_PRIVATE) { err.textContent = 'Потрібні обидва ключі'; return; } err.textContent = '…';
+      try { await api('secrets', { venue: S.cfgV.id, f: x }); toast('💳 Ключі LiqPay збережено'); load(); } catch (y) { err.textContent = y.message; } return; }
     if (e.target.id !== 'vbf' || !S.cfgV) return; e.preventDefault(); const f = e.target, err = $('#vberr'), x = {};
     for (const k of ['BOT_TOKEN', 'GUEST_BOT_TOKEN', 'COURIER_BOT_TOKEN']) if (f[k].value.trim()) x[k] = f[k].value.trim(); if (!Object.keys(x).length) return; err.textContent = '…';
     try { const r = await api('secrets', { venue: S.cfgV.id, f: x }); toast('✅ Підключено й оформлено: ' + Object.values(r.names).map(n => '@' + n).join(', ')); load(); } catch (y) { err.textContent = y.message; }

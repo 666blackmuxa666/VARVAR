@@ -237,6 +237,37 @@ async function apiTests() {
     });
   } else rec('кур\'єр не зареєстрований — сценарій пропущено', false);
 
+  sect('💳 Онлайн-оплата LiqPay (пісочниця тестового сервера)');
+  {
+    const { createHash } = await import('node:crypto'), PRIV = 'sandbox_test_private_key';
+    const lpSign = obj => { const data = Buffer.from(JSON.stringify(obj)).toString('base64'); return { data, signature: createHash('sha1').update(PRIV + data + PRIV).digest('base64') }; };
+    const lpPost = async (path, f) => { const r = await fetch(API + path, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(f).toString() }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+    let po = null;
+    await step('увімкнено онлайн → /api/go pay=online дає посилання LiqPay, у касі замовлення ще немає', async () => {
+      await posOk(A, 'goCfgSet', { k: 'onl', v: 1 });
+      const r = await http('/api/go', { kind: 'pick', name: 'QA Онлайн', phone: '0670005' + String(Math.floor(Math.random() * 900) + 100), pay: 'online', items: [{ id: dish.id, q: 2 }], device: 'qa-lp-' + RUN });
+      must(r.status === 200 && /liqpay\.ua\/api\/3\/checkout/.test(r.j.pay || '') && r.j.id, `${r.status} ${JSON.stringify(r.j).slice(0, 200)}`); po = r.j;
+      const w = await http('/api/gopay?id=' + po.id); must(w.j.st === 'wait', 'стан ' + JSON.stringify(w.j));
+      const ev = (await posOk(A, 'state')).tables.filter(x => x.go?.oid === po.id); must(!ev.length, 'замовлення вже в касі до оплати'); return po.sum + ' грн';
+    });
+    await step('callback з підробленим підписом → 403', async () => {
+      const f = lpSign({ order_id: 'go-varvar-' + po.id, status: 'success', amount: po.sum }); const r = await lpPost('/api/lp/go', { data: f.data, signature: 'AAAA' + f.signature.slice(4) }); must(r.status === 403, 'статус ' + r.status);
+    });
+    let gt = 0;
+    await step('callback «sandbox» → замовлення в касі з позначкою «оплачено»; повтор не дублює', async () => {
+      const f = lpSign({ order_id: 'go-varvar-' + po.id, status: 'sandbox', amount: po.sum, payment_id: 12345 });
+      const r1 = await lpPost('/api/lp/go', f), r2 = await lpPost('/api/lp/go', f); must(r1.status === 200 && r1.j.ok, 'r1 ' + JSON.stringify(r1.j)); must(r2.j.dup, 'повтор: ' + JSON.stringify(r2.j));
+      const w = await http('/api/gopay?id=' + po.id); must(w.j.st === 'paid' && w.j.no, 'стан ' + JSON.stringify(w.j));
+      const b = (await posOk(A, 'state')).tables.filter(x => x.go?.oid === po.id); must(b.length === 1 && b[0].go.paid?.sum === po.sum, 'у касі: ' + JSON.stringify(b.map(x => x.go)).slice(0, 200)); gt = b[0].t; return w.j.no;
+    });
+    await step('закриття оплаченого → у зміні 🌐 онлайн окремо від терміналу', async () => {
+      const s0 = await posOk(A, 'shift'); await posOk(A, 'accept', { oid: po.id }).catch(() => {});
+      await posOk(A, 'goSt', { t: gt, st: 'done', pay: 'cash' }); const s1 = await posOk(A, 'shift');
+      const d = x => x.z?.onl || 0; must(d(s1) - d(s0) === po.sum, `онлайн у зміні ${d(s0)} → ${d(s1)} (${JSON.stringify(s1).slice(0, 160)})`); return `+${po.sum} онлайн`;
+    });
+    await posOk(A, 'goCfgSet', { k: 'onl', v: 0 });
+  }
+
   sect('Скасування доставки в касі → гість бачить «скасовано»');
   const dev = 'qa-cx-' + RUN, goNew = (n = 1) => http('/api/go', { kind: 'del', name: 'QA Скасування', phone: '0670003' + String(Math.floor(Math.random() * 900) + 100), addr: 'вул. Тестова 3', when: '12:00', pay: 'cash', items: [{ id: dish.id, q: n }, { id: drink.id, q: 1 }], device: dev });
   const gStatus = async id => { const o = await http('/api/orders?ids=' + id); const x = Array.isArray(o.j) ? o.j.find(y => y.id === id) || o.j[0] : o.j[id] || o.j.list?.find?.(y => y.id === id) || o.j; return { x, raw: JSON.stringify(o.j).slice(0, 200) }; };

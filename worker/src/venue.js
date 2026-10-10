@@ -43,13 +43,13 @@ async function hookSecret(env, venue) {
   const k = await crypto.subtle.importKey('raw', enc.encode(env.MASTER_KEY), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   return [...new Uint8Array(await crypto.subtle.sign('HMAC', k, enc.encode('tg:' + venue)))].slice(0, 24).map(x => x.toString(16).padStart(2, '0')).join('');
 }
-export const SECRET_KEYS = ['BOT_TOKEN', 'GUEST_BOT_TOKEN', 'COURIER_BOT_TOKEN', 'CHAT_ID', 'PRINT_KEY'];
+export const SECRET_KEYS = ['BOT_TOKEN', 'GUEST_BOT_TOKEN', 'COURIER_BOT_TOKEN', 'CHAT_ID', 'PRINT_KEY', 'LIQPAY_PUBLIC', 'LIQPAY_PRIVATE']; // 💳 LiqPay — свій у кожного закладу
 
 // env закладу: для VARVAR — як є (секрети wrangler); для інших — секрети з його сховища, свої адреси
 export async function venueEnv(env, venue, DB) {
-  if (!venue || venue === MAIN) return { ...env, VENUE: MAIN };
+  if (!venue || venue === MAIN) return { ...env, VENUE: MAIN, PLATFORM_LP_PUB: env.LIQPAY_PUBLIC, PLATFORM_LP_PRIV: env.LIQPAY_PRIVATE };
   const s = await unseal(env, await DB.get('cfg:secrets')).catch(() => ({}));
-  const e = { ...env, PLATFORM_BOT: env.BOT_TOKEN, PLATFORM_CHAT: env.CHAT_ID, VENUE: venue, SELF_URL: `${env.SELF_URL}/v/${venue}`, TG_SECRET: await hookSecret(env, venue), IMG_PRE: venue + '/' };
+  const e = { ...env, PLATFORM_BOT: env.BOT_TOKEN, PLATFORM_CHAT: env.CHAT_ID, PLATFORM_LP_PUB: env.LIQPAY_PUBLIC, PLATFORM_LP_PRIV: env.LIQPAY_PRIVATE, VENUE: venue, SELF_URL: `${env.SELF_URL}/v/${venue}`, TG_SECRET: await hookSecret(env, venue), IMG_PRE: venue + '/' };
   for (const k of SECRET_KEYS) e[k] = s[k] || ''; // жодних «запасних» секретів VARVAR — інакше чужий заклад писав би в нашу групу
   e.ADMIN_PIN = ''; // PIN Wi‑Fi адміна VARVAR — не для інших закладів
   return e;
