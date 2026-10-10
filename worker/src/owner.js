@@ -66,7 +66,8 @@ export async function intApi(req, env, path) {
       if (!me?.ok) return [{ error: `Токен ${nm}: Telegram не приймає` }, 400]; f[k] = String(v).trim(); names[nm] = me.result.username;
     }
     if (b.CHAT_ID != null) f.CHAT_ID = String(b.CHAT_ID);
-    if (b.LIQPAY_PUBLIC != null || b.LIQPAY_PRIVATE != null) { // 💳 ключі LiqPay закладу: перевіряємо запитом статусу (неіснуючий order_id → відповідь з підписом прийнята)
+    if (b.LIQPAY_PUBLIC === '' && b.LIQPAY_PRIVATE === '') { f.LIQPAY_PUBLIC = ''; f.LIQPAY_PRIVATE = ''; } // 🗑 відключити LiqPay закладу
+    else if (b.LIQPAY_PUBLIC != null || b.LIQPAY_PRIVATE != null) { // 💳 ключі LiqPay закладу: перевіряємо запитом статусу (неіснуючий order_id → відповідь з підписом прийнята)
       const pub = String(b.LIQPAY_PUBLIC || '').trim(), priv = String(b.LIQPAY_PRIVATE || '').trim();
       if (!/^(sandbox_)?i\d{6,20}$/.test(pub) || !/^(sandbox_)?[\w]{20,80}$/.test(priv)) return [{ error: 'Ключі LiqPay: невірний формат (public_key починається з i… або sandbox_i…)' }, 400];
       const r = await (await import('./liqpay.js')).lpApi({ pub, priv }, { action: 'status', order_id: 'check-' + Date.now() }).catch(() => null);
