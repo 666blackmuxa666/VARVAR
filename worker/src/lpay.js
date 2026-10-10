@@ -14,17 +14,17 @@ const TIPS = [0, 5, 10, 15];
 export const tDue = b => Math.max(0, payable(b) - (b.paid?.net || 0));
 export async function tpayOn(env) { const c = await getGoCfg(env); return !!(c.qrpay && lpKeys(env)); }
 
-async function tableOk(env, t, k, device) {
+async function tableOk(env, t, k, at = {}) {
   t = Math.round(+t || 0); if (!(t > 0 && t < 1000)) return 0;
   if (k && String(k) === await tableKey(env, t)) return t;
-  const si = device ? await env.DB.get('scan:' + String(device).slice(0, 64), 'json') : null; /* 📱 сканував QR (стіл або загальний) і сесія ще діє */
-  return si && si.until > Date.now() && (!si.t || si.t === t) ? t : 0;
+  if (at.scan === 0 || at.scan === t) return t; /* 📱 сесія сканування QR діє (загальний QR — будь-який стіл, QR столу — лише свій) */
+  return at.wifi && at.scan < 0 ? t : 0; /* 📶 Wi‑Fi закладу, як і для замовлень */
 }
 
 // гість: почати оплату столу → посилання LiqPay
-export async function tpayStart(env, b) {
+export async function tpayStart(env, b, at) {
   if (!(await tpayOn(env))) return [{ error: 'off' }, 403];
-  const t = await tableOk(env, b.t, b.k, b.device); if (!t) return [{ error: 'bad_qr' }, 403];
+  const t = await tableOk(env, b.t, b.k, at); if (!t) return [{ error: 'bad_qr' }, 403];
   const bill = await getBill(env, t); if (!bill?.total) return [{ error: 'empty' }, 400];
   await promoFill(env, bill).catch(() => {});
   const due = tDue(bill); if (due < 1) return [{ error: 'paid' }, 400];

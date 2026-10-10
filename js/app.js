@@ -35,8 +35,8 @@
   document.addEventListener('click', async e => {
     const tp = e.target.closest('[data-tptip]'); if (tp) { tpTip = +tp.dataset.tptip; renderCart(); return; }
     const go = e.target.closest('[data-tpay], [data-pay="online"]'); if (!go) return; go.disabled = true; const fromChk = go.dataset.pay === 'online'; /* 🌐 з кошика або з вікна «Хочу чек» */
-    try { const { status, data } = await api('/api/tpay', { t: qt || table, k: qt ? qk : '', device, tip: tpTip, ...(fromChk ? { tipSum: tipAmount() + ktipAmount() } : {}) }); if (status !== 200 || !data.pay) throw 0; try { localStorage.setItem('vv_tpay', data.id); } catch {} location.href = data.pay; }
-    catch { go.disabled = false; alert(t('tPayFail')); }
+    try { const { status, data } = await api('/api/tpay', { t: qt || table, k: qt ? qk : '', device, tip: tpTip, ...(fromChk ? { tipSum: tipAmount() + ktipAmount() } : {}) }); if (status !== 200 || !data.pay) throw new Error({ bad_qr: '📷 Відскануйте QR на столі ще раз — і спробуйте знову', empty: 'Рахунок столу порожній', paid: '✅ Рахунок уже оплачено', off: 'Онлайн-оплата зараз вимкнена — оплатіть офіціанту' }[data?.error] || t('tPayFail')); try { localStorage.setItem('vv_tpay', data.id); } catch {} location.href = data.pay; }
+    catch (er) { go.disabled = false; alert(er?.message || t('tPayFail')); }
   });
   (async () => { const id = qs.get('tpaid'); if (!id) return; history.replaceState(null, '', location.pathname); /* повернулись з LiqPay */
     const bar = document.getElementById('wifiBanner'); const show = (txt, ok) => { bar.hidden = false; bar.className = 'wifi-banner' + (ok ? ' go-ok' : ''); bar.textContent = txt; };
@@ -161,7 +161,7 @@
       ${bill && bill.tip ? `<div class="hist-line"><span>💝 ${t('tipLbl')}</span><span>+${money(bill.tip)}</span></div>` : ''}${bill && bill.disc ? `<div class="hist-line disc"><span>${t('discount')} ${bill.disc}%</span><span>−${money(bill.gross - bill.pay)}</span></div>` : ''}
       <div class="hist-total"><span>${t('tableTotal')}</span><b>${money(bill ? bill.pay : tableTotal || 0)}</b></div>
       ${bill?.paid ? `<div class="hist-line"><span>✅ ${t('tPaid')}</span><span>${money(bill.paid)}</span></div>` : ''}
-      ${qrpay && table && (scanUntil > Date.now() || qk) && bill && (bill.due ?? bill.pay) > 0 ? (() => { const due = bill.due ?? bill.pay, tip = Math.round(due * tpTip / 100); /* 💳 оплата столу з QR: сума — з сервера, чайові на вибір */
+      ${qrpay && table && (inVenue || qk) && bill && (bill.due ?? bill.pay) > 0 ? (() => { const due = bill.due ?? bill.pay, tip = Math.round(due * tpTip / 100); /* 💳 оплата столу з QR: сума — з сервера, чайові на вибір */
         return `<div class="tpay"><div class="tpay-tips">💝 ${[0, 5, 10, 15].map(p => `<button class="${tpTip === p ? 'on' : ''}" data-tptip="${p}">${p ? p + '%' : t('tipNo')}</button>`).join('')}</div><button class="btn tpay-go" data-tpay="1">💳 ${bill.paid ? t('tDue') : t('tPay')} · ${money(due + tip)}</button></div>`; })() : ''}
       <div class="hist-note">${t('billNote')}</div></div>` : '';
     const first = !hist.orders.length && !bill;
@@ -282,7 +282,7 @@
     table = lockOn() ? String(lockT) : $('#table').value; save();
     if (!table) { $('#msg').textContent = t('chooseTable'); $('#table').focus(); return; }
     // запит чека — спершу питаємо спосіб оплати
-    if ((type === 'check' || type === 'order_check') && !pay) { pendingType = type; tip = { p: 0, own: false }; kt = { p: 0, own: false }; $('#tipOwn').value = ''; $('#ktipOwn').value = ''; renderTips(); $('#payOnl').hidden = !(qrpay && type === 'check' && bill && (bill.due ?? bill.pay) > 0 && (scanUntil > Date.now() || qk)); $('#payModal').hidden = false; return; }
+    if ((type === 'check' || type === 'order_check') && !pay) { pendingType = type; tip = { p: 0, own: false }; kt = { p: 0, own: false }; $('#tipOwn').value = ''; $('#ktipOwn').value = ''; renderTips(); $('#payOnl').hidden = !(qrpay && type === 'check' && bill && (bill.due ?? bill.pay) > 0 && (inVenue || qk)); $('#payModal').hidden = false; return; }
     const items = type === 'check' ? [] : cartEntries();
     busy = true; $('#msg').textContent = '…';
     try {
