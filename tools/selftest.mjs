@@ -266,6 +266,26 @@ async function apiTests() {
       const d = x => x.z?.onl || 0; must(d(s1) - d(s0) === po.sum, `онлайн у зміні ${d(s0)} → ${d(s1)} (${JSON.stringify(s1).slice(0, 160)})`); return `+${po.sum} онлайн`;
     });
     await posOk(A, 'goCfgSet', { k: 'onl', v: 0 });
+
+    // 🍽 оплата рахунку столу з QR → червоний стіл → ✅ підтвердити
+    const TT = 14; let tk = '', tp = null;
+    await step('стіл з QR: /api/tpay → посилання; callback → стіл «оплачено», подія чекає підтвердження', async () => {
+      await posOk(A, 'goCfgSet', { k: 'qrpay', v: 1 });
+      const q = await posOk(A, 'qrInfo'); tk = new URL(q.list.find(x => x.t === TT).url).searchParams.get('k');
+      await posOk(A, 'order', { t: TT, items: [{ id: dish.id, q: 1 }] });
+      const bad = await http('/api/tpay', { t: TT, k: 'deadbeef', tip: 10 }); must(bad.status === 403, 'чужий ключ ' + bad.status);
+      const r = await http('/api/tpay', { t: TT, k: tk, tip: 10 }); must(r.status === 200 && r.j.pay, `${r.status} ${JSON.stringify(r.j).slice(0, 200)}`); tp = r.j;
+      const f = lpSign({ order_id: 'tb-varvar-' + tp.id, status: 'sandbox', amount: tp.sum, payment_id: 777 }); const c = await lpPost('/api/lp/table', f); must(c.status === 200 && c.j.ok, 'cb ' + JSON.stringify(c.j));
+      const st = await posOk(A, 'state'), b = st.tables.find(x => x.t === TT); must(b?.pwait && b.paid?.sum === tp.sum, 'стіл: ' + JSON.stringify(b?.paid));
+      must(st.events.some(e => e.k === 'tpay' && e.t === TT && e.s === 'new'), 'немає події tpay');
+      const del = await pos(A, 'delete', { t: TT, reason: 'QA' }); must(del.status === 400, 'оплачений стіл видалився'); return tp.sum + ' грн';
+    });
+    await step('✅ підтвердити → стіл закрито як 🌐 онлайн (з чайовими), подія погасла', async () => {
+      const s0 = await posOk(A, 'shift'); await posOk(A, 'tpayOk', { t: TT, print: false }); const s1 = await posOk(A, 'shift'), st = await posOk(A, 'state');
+      must(!st.tables.some(x => x.t === TT), 'стіл лишився'); must(!st.events.some(e => e.k === 'tpay' && e.t === TT && e.s === 'new'), 'подія ще блимає');
+      must((s1.z.onl || 0) - (s0.z.onl || 0) === tp.sum, `онлайн ${s0.z.onl} → ${s1.z.onl}`); return `+${tp.sum}`;
+    });
+    await posOk(A, 'goCfgSet', { k: 'qrpay', v: 0 });
   }
 
   sect('Скасування доставки в касі → гість бачить «скасовано»');

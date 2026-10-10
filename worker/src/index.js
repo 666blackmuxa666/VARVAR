@@ -86,8 +86,8 @@ export async function handle(req, env) {
         const bill = table ? await getBill(env, table) : null; if (bill?.total) await promoFill(env, bill).catch(() => {}); // 🎁 акції — гостю теж
         // bill — актуальний рахунок (з урахуванням змін офіціанта: прибрані позиції, знижка, перенос)
         const si = await scanInfo(env, url.searchParams.get('device')), sc = si?.until || 0;
-        return json({ inVenue: sc > Date.now() || await inVenue(env, ip), scanUntil: sc, scanT: sc > Date.now() ? si.t || 0 : 0, tableTotal: bill ? payable(bill) : undefined,
-          bill: bill && bill.total ? { items: billItems(bill).map(x => [x.name, x.q, x.sum]), gross: bill.total, disc: bill.disc || 0, pay: payable(bill), ...(bill.promo?.sum ? { promo: bill.promo.lines.filter(l => l.amt).map(l => [l.n, l.amt]) } : {}), tip: bill.tip || 0, ktip: bill.ktip || 0 } : null });
+        return json({ qrpay: await (await import('./lpay.js')).tpayOn(env) ? 1 : 0, inVenue: sc > Date.now() || await inVenue(env, ip), scanUntil: sc, scanT: sc > Date.now() ? si.t || 0 : 0, tableTotal: bill ? payable(bill) : undefined,
+          bill: bill && bill.total ? { items: billItems(bill).map(x => [x.name, x.q, x.sum]), gross: bill.total, disc: bill.disc || 0, pay: payable(bill), ...(bill.promo?.sum ? { promo: bill.promo.lines.filter(l => l.amt).map(l => [l.n, l.amt]) } : {}), tip: bill.tip || 0, ktip: bill.ktip || 0, ...(bill.paid ? { paid: bill.paid.sum, due: Math.max(0, payable(bill) - (bill.paid.net || 0)) } : {}) } : null });
       }
       if (url.pathname === '/api/scan' && req.method === 'POST') { // QR на столі → 1 година на замовлення
         const b = await req.json(); const dev = String(b.device || '').slice(0, 64);
@@ -159,6 +159,7 @@ export async function handle(req, env) {
         const r = kind === 'go' ? await (await import('./delivery.js')).goPaid(env, x) : await (await import('./lpay.js')).lpCallback(env, kind, x);
         return json(r || { ok: true }, r?.error && r.error !== 'expired' ? 400 : 200);
       }
+      if (url.pathname === '/api/tpay') { const T = await import('./lpay.js'); return req.method === 'POST' ? json(...await T.tpayStart(env, await req.json())) : json(await T.tpayState(env, url.searchParams.get('id'))); } // 🍽 оплата столу з QR
       if (url.pathname === '/api/gopay') return json(await (await import('./delivery.js')).goPayState(env, url.searchParams.get('id')));
       if (url.pathname === '/api/go' && req.method === 'POST') return json(...await goOrder(await req.json(), ip, env));
       if (url.pathname === '/api/goinfo') return json(await goInfo(env, url.searchParams.get('ph')));

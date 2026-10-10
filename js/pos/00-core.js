@@ -481,6 +481,10 @@
       case 'closeT': closeFlow(); break;
       case 'delTable': { const reason = await voidReason(`Видалити весь стіл ${tn(t)}? Сума НЕ піде у виручку`); if (reason) { const r = await act('delete', { t, reason }, `🗑 Стіл ${tn(t)} видалено`); if (r) closeSheet(); } break; }
       case 'evAck': act('evAck', { id: el.dataset.id }, '✅ Ви йдете до гостя'); break;
+      case 'tpayOk': { const tt = +el.dataset.t, b = S.tables[tt]; const due = b?.paid ? Math.max(0, b.pay2 - (b.paid.net || 0)) : 0; /* 💳 оплачено з QR: доплату — обраним способом */
+        let pay = 'cash'; if (due > 0) { pay = await choose(`Стіл ${tn(tt)}: доплата ${money(due)}`, 'Гість оплатив онлайн не все (додали страви). Як доплатили?', [{ label: '💵 Готівка', val: 'cash' }, { label: '💳 Термінал', val: 'card' }]); if (!pay) break; }
+        const r = await act('tpayOk', { t: tt, pay }, `✅ Стіл ${tn(tt)} закрито — 🌐 онлайн`); if (r && S.open === tt) closeSheet(); break; }
+      case 'tpayRefund': { const tt = +el.dataset.t, b = S.tables[tt]; if (await confirmBox(`Повернути гостю ${money(b?.paid?.sum || 0)} на картку?`, `Стіл ${tn(tt)} лишиться відкритим. Повернення через LiqPay — гроші прийдуть гостю за 1–7 днів.`)) await act('tpayRefund', { t: tt }, '↩️ Гроші повернуто гостю'); break; }
       case 'accept': act('accept', { oid: el.dataset.oid }, '✅ Прийнято — пішло на кухню'); break;
       case 'reject': if (await confirmBox('Відхилити замовлення гостя?', 'Позиції приберуться з рахунку, на кухню не піде, гість побачить «відхилено»')) { await act('reject', { oid: el.dataset.oid }, '❌ Відхилено'); loadState().catch(() => {}); } break;
       case 'cBack': if (await confirmBox('Повернути рахунок у виручку?', 'Сума, страви й чайові знову зарахуються')) { await act('closedBack', { ref: el.dataset.ref, day: S.data.cday }, '↩️ Повернуто у виручку'); loadView(); } break;

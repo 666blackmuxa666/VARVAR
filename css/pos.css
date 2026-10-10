@@ -852,3 +852,4 @@ body.noanim .ev.wait{outline:3px solid var(--wc,#ff9f0a)}
 .sup-l { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 .sup-c { text-align: left; display: grid; gap: 4px; padding: 14px; width: 100%; } .sup-h { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; } .sup-h b { font-size: 16px; overflow-wrap: anywhere; }
 .sup-card h4 { margin: 14px 0 6px; font-size: 14px; color: var(--accent); } .sup-card .kpis { margin-bottom: 4px; }
+.ev.tpay{--wc:#ff453a}

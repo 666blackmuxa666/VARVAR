@@ -64,6 +64,8 @@ export async function posApi(b, req, env) {
   if (b.op === 'aiBench') { if (!admin) return needAdmin(); const imgs = (Array.isArray(b.images) ? b.images : []).slice(0, 3).map(x => String(x).replace(/^data:image\/\w+;base64,/, '')).filter(x => x.length > 1000 && x.length < 6e6); if (!imgs.length) return [{ error: 'Додайте фото' }, 400]; return [{ ok: true, list: await (await import('./ai.js')).aiBench(env, imgs) }, 200]; } // 🧪 порівняння ШІ на накладній
   if (b.op === 'lookV') return [{ ok: true, look: await env.DB.get('lookv', 'json') }, 200]; // 🎨 стиль закладу (конструктор)
   if (b.op === 'lookVSet') { if (!admin) return needAdmin(); const v = b.look && typeof b.look === 'object' ? JSON.stringify(b.look).slice(0, 4000) : null; if (v) await env.DB.put('lookv', v); else await env.DB.delete('lookv'); return [{ ok: true }, 200]; }
+  if (b.op === 'delete' && (await (await import('./ops.js')).getBill(env, +b.t || 0))?.paid) return [{ error: 'Стіл оплачено онлайн — спершу ❌ поверніть гроші або ✅ підтвердіть оплату' }, 400];
+  if (b.op === 'tpayOk' || b.op === 'tpayRefund') return (await import('./lpay.js')).tpayApi(b, env, me); // 💳 стіл оплачено з QR
   if (/^task[A-Z]/.test(b.op || '')) return (await import('./tasks.js')).taskApi(b, env, me); // 📋 план на день
   if (/^photo[A-Z]/.test(b.op || '')) { if (!admin) return needAdmin(); return (await import('./photoai.js')).photoApi(b, env, who); } // 📸 ШІ-фото страв
   if (/^idea[A-Z]/.test(b.op || '')) return (await import('./ideas.js')).ideaApi(b, env, me); // 💡 побажання розробнику

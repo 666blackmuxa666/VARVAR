@@ -330,3 +330,9 @@ details, .hist, .tw, .go-ord { border-radius: 16px; }
 .go-sum { border-top-style: solid; border-color: color-mix(in srgb, var(--text) 10%, transparent); padding-top: 10px; } .go-sum .tot b, .go-sum .tot span:last-child { color: var(--accent); }
 .fab { border-radius: 22px; padding: 10px 22px 10px 10px; box-shadow: 0 12px 34px color-mix(in srgb, var(--accent) 35%, transparent), 0 8px 28px rgba(0,0,0,.55); }
 .fab span { border-radius: 14px; }
+/* 💳 оплата рахунку столу з QR */
+.tpay { display: grid; gap: 8px; margin-top: 10px; }
+.tpay-tips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 14px; }
+.tpay-tips button { padding: 6px 12px; border-radius: 99px; border: 1px solid var(--line); background: transparent; color: inherit; font: inherit; }
+.tpay-tips button.on { background: var(--accent); color: #111; border-color: var(--accent); }
+.tpay-go { width: 100%; }

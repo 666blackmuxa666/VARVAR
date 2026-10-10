@@ -31,6 +31,19 @@
   let scanUntil = store.get('scan', 0), lockT = store.get('lockT', 0);
   const lockOn = () => lockT && scanUntil > Date.now();
   const qs = new URLSearchParams(location.search), qk = qs.get('k'), qt = qs.get('t');
+  let qrpay = false, tpTip = 0; // 💳 оплата рахунку столу з QR (LiqPay закладу)
+  document.addEventListener('click', async e => {
+    const tp = e.target.closest('[data-tptip]'); if (tp) { tpTip = +tp.dataset.tptip; renderCart(); return; }
+    const go = e.target.closest('[data-tpay]'); if (!go) return; go.disabled = true;
+    try { const { status, data } = await api('/api/tpay', { t: qt, k: qk, tip: tpTip }); if (status !== 200 || !data.pay) throw 0; try { localStorage.setItem('vv_tpay', data.id); } catch {} location.href = data.pay; }
+    catch { go.disabled = false; alert(t('tPayFail')); }
+  });
+  (async () => { const id = qs.get('tpaid'); if (!id) return; history.replaceState(null, '', location.pathname + `?t=${qt}&k=${qk}`); /* повернулись з LiqPay */
+    const bar = document.getElementById('wifiBanner'); const show = (txt, ok) => { bar.hidden = false; bar.className = 'wifi-banner' + (ok ? ' go-ok' : ''); bar.textContent = txt; };
+    show('⏳ ' + t('tPayWait'), 1);
+    for (let i = 0; i < 12; i++) { let r = null; try { r = (await api('/api/tpay?id=' + encodeURIComponent(id))).data; } catch {}
+      if (r?.st === 'paid') { show('✅ ' + t('tPayOk'), 1); setTimeout(() => location.reload(), 2500); return; } if (r?.st === 'fail' || r?.st === 'none' && i > 3) break; await new Promise(z => setTimeout(z, i < 4 ? 2500 : 5000)); }
+    show('⚠️ ' + t('tPayFail')); })();
   const GO = qs.has('go'), BOOK = /^\d{8}[a-f0-9]{6}$/.test(qs.get('book') || '') ? qs.get('book') : ''; // BOOK — передзамовлення до броні // 🛵 замовлення за посиланням: лише з собою (самовивіз / доставка)
   if (GO) { tw = true; document.body.classList.add('go'); }
   const scanP = qk ? fetch(C.api + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ k: qk, t: qt, device }) })
@@ -147,6 +160,9 @@
       ${bill ? bill.items.map(([n, q, sm]) => `<div class="hist-line"><span>${q}× ${esc(n)}</span><span>${money(sm)}</span></div>`).join('') : ''}
       ${bill && bill.tip ? `<div class="hist-line"><span>💝 ${t('tipLbl')}</span><span>+${money(bill.tip)}</span></div>` : ''}${bill && bill.disc ? `<div class="hist-line disc"><span>${t('discount')} ${bill.disc}%</span><span>−${money(bill.gross - bill.pay)}</span></div>` : ''}
       <div class="hist-total"><span>${t('tableTotal')}</span><b>${money(bill ? bill.pay : tableTotal || 0)}</b></div>
+      ${bill?.paid ? `<div class="hist-line"><span>✅ ${t('tPaid')}</span><span>${money(bill.paid)}</span></div>` : ''}
+      ${qrpay && qk && qt && bill && (bill.due ?? bill.pay) > 0 ? (() => { const due = bill.due ?? bill.pay, tip = Math.round(due * tpTip / 100); /* 💳 оплата столу з QR: сума — з сервера, чайові на вибір */
+        return `<div class="tpay"><div class="tpay-tips">💝 ${[0, 5, 10, 15].map(p => `<button class="${tpTip === p ? 'on' : ''}" data-tptip="${p}">${p ? p + '%' : t('tipNo')}</button>`).join('')}</div><button class="btn tpay-go" data-tpay="1">💳 ${bill.paid ? t('tDue') : t('tPay')} · ${money(due + tip)}</button></div>`; })() : ''}
       <div class="hist-note">${t('billNote')}</div></div>` : '';
     const first = !hist.orders.length && !bill;
     const hasItems = rows.length > 0;
@@ -248,7 +264,7 @@
     try {
       await scanP;
       const { data } = await api('/api/status?device=' + device + (table ? '&table=' + table : ''));
-      inVenue = !!data.inVenue; if (data.scanUntil) { scanUntil = data.scanUntil; store.set('scan', scanUntil); } lockT = data.scanT || 0; store.set('lockT', lockT); if (lockT) { table = String(lockT); save(); }
+      qrpay = !!data.qrpay; inVenue = !!data.inVenue; if (data.scanUntil) { scanUntil = data.scanUntil; store.set('scan', scanUntil); } lockT = data.scanT || 0; store.set('lockT', lockT); if (lockT) { table = String(lockT); save(); }
       if (table && typeof data.tableTotal === 'number') {
         // стіл закрили (/close) — сесія скінчилась
         if (data.tableTotal === 0 && hist.orders.length) { hist = { ts: 0, orders: [] }; save(); renderStatus(); }
