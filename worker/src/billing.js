@@ -11,7 +11,8 @@ export const PRICE = 500, GRACE = 5, AI_TOPS = [100, 200, 500];
 const FREE_IDS = id => id === MAIN || id === 'atom-demo' || id.startsWith('demo-');
 const DAY = 864e5, addMonth = ts => { const d = new Date(ts); d.setMonth(d.getMonth() + 1); return d.getTime(); };
 const ymd = ts => new Date(ts).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv' });
-export const tillOf = v => v.paidTill || (v.at || Date.now()) + 30 * DAY;
+const LAUNCH = Date.parse('2026-10-10T00:00:00+03:00'); // заклади, створені до запуску оплат, — 30 днів від запуску
+export const tillOf = v => v.paidTill || Math.max(v.at || Date.now(), LAUNCH) + 30 * DAY;
 const say = (env, text) => tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text }).catch(() => {});
 
 // стан оплати закладу для кабінету
