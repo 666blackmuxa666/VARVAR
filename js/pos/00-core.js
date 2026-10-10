@@ -497,6 +497,7 @@
       case 'cEdit': cEdit(el.dataset.ref, el.dataset.d || undefined); break;
       case 'cPrint': act('closedPrint', { ref: el.dataset.ref, day: S.data.cday }, '🖨 Чек відправлено'); break;
       case 'cDay': { const v = +el.dataset.v, base = S.data.cday || S.data.ctoday; if (!v || !base) S.cday = ''; else { const d = new Date(base + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + v); const k = d.toISOString().slice(0, 10); S.cday = k >= S.data.ctoday ? '' : k; } S.data.closed = null; renderMain(); loadView(); break; }
+      case 'cRefund': if (await confirmBox(`Повернути гостю ${money(+el.dataset.s)} на картку?`, 'Гроші повернуться через LiqPay (1–7 днів), чек зніметься з виручки')) await act('closedRefund', { ref: el.dataset.ref, day: S.data.cday }, '↩️ Повернуто гостю'); loadView(); break;
       case 'cDel': if (await confirmBox('Видалити рахунок з виручки?', 'Сума, страви й замовлення віднімуться зі звітів')) await act('closedDel', { ref: el.dataset.ref, day: S.data.cday }, '🧹 Видалено з виручки'); loadView(); break;
       case 'stopOff': S.stopOff = !S.stopOff; renderMain(); break;
       case 'stopT': await act('stop', { id: el.dataset.id, hidden: el.dataset.h === '1' }); break;

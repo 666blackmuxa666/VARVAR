@@ -113,7 +113,7 @@
     return `<button class="add ${q ? 'on' : ''}" data-add="${esc(key)}" data-label="${esc(label)}">${q ? `<i>${q}</i>` : ''}${esc(label)}</button>`;
   };
   function refreshButtons() {
-    document.querySelectorAll('[data-add]').forEach(b => {
+    document.querySelectorAll('button[data-add]').forEach(b => { /* лише кнопки: на <html> конструктор меню ставить data-add="round" (стиль кнопки) */
       const q = cart[b.dataset.add] || 0;
       b.classList.toggle('on', q > 0);
       b.innerHTML = (q ? `<i>${q}</i>` : '') + esc(b.dataset.label);

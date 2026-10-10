@@ -216,17 +216,17 @@
     }
     return best;
   }
-  const payL = x => x.card ? '💳 карта' : '💵 готівка';
+  const payL = x => x.onl ? (x.onl < x.sum ? `🌐 онлайн ${money(x.onl)} + ${x.card > x.onl ? '💳' : '💵'} ${money(x.sum - x.onl)}` : '🌐 онлайн') : x.card && (x.cash ?? 0) ? `💵 ${money(x.cash)} + 💳 ${money(x.card)}` : x.card ? '💳 карта' : '💵 готівка';
   function closedHTML() {
     const l = S.data.closed; if (!l) return '<div class="head"><h1>Закриті</h1></div><div class="muted">Завантаження…</div>';
     const isToday = !S.data.cday || S.data.cday === S.data.ctoday, dTitle = isToday ? 'сьогодні' : S.data.cday.split('-').reverse().join('.');
     const nav = `<button class="btn sm" data-a="cDay" data-v="-1">◀</button>${isToday ? '' : '<button class="btn sm" data-a="cDay" data-v="1">▶</button><button class="btn sm" data-a="cDay" data-v="0">Сьогодні</button>'}`;
     const gone = x => x.del || x.rm, ok = l.filter(x => !gone(x));
     return `<div class="head"><h1>Закриті ${dTitle}</h1>${nav}<div class="stat">Рахунків<b>${ok.length}</b></div><div class="stat">Разом<b class="money">${money(ok.reduce((s, x) => s + x.sum, 0))}</b></div>
-      <div class="stat">💵<b class="money">${money(ok.reduce((s, x) => s + (x.cash ?? x.sum), 0))}</b></div><div class="stat">💳<b class="money">${money(ok.reduce((s, x) => s + (x.card || 0), 0))}</b></div></div>
+      <div class="stat">💵<b class="money">${money(ok.reduce((s, x) => s + (x.cash ?? x.sum), 0))}</b></div><div class="stat">💳<b class="money">${money(ok.reduce((s, x) => s + (x.card || 0) - (x.onl || 0), 0))}</b></div>${ok.some(x => x.onl) ? `<div class="stat">🌐<b class="money">${money(ok.reduce((s, x) => s + (x.onl || 0), 0))}</b></div>` : ''}</div>
       <div class="cards">${[...l].reverse().map((x, i) => { const ref = x.id || (l.length - 1 - i); return `<div class="card" style="${gone(x) ? 'opacity:.45' : ''}"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
         <h3 style="margin:0;flex:1">${x.at} · Стіл ${tn(x.t)} · <span class="money">${money(x.sum)}</span> ${x.reopen ? '↩️ відкрито знову' : x.restored ? '↩️ стіл відновлено' : x.del ? '🗑 стіл видалено' : x.rm ? '🧹 знято з виручки' : payL(x)}${x.disc ? ` · знижка ${x.disc}%` : ''}</h3><span class="muted">${esc(x.by || '')}</span>
-        ${!gone(x) && x.dishes?.length ? `<button class="btn sm" data-a="cPrint" data-ref="${ref}">🖨 Чек</button>` : ''}${!gone(x) && isAdmin() ? `<button class="btn sm" data-a="cEdit" data-ref="${ref}" data-d="${S.data.cday || ''}">✏️ Відкрити</button>` : ''}${!gone(x) && isAdmin() ? `<button class="btn sm red" data-a="cDel" data-ref="${ref}">🗑 З виручки</button>` : ''}
+        ${!gone(x) && x.dishes?.length ? `<button class="btn sm" data-a="cPrint" data-ref="${ref}">🖨 Чек</button>` : ''}${!gone(x) && isAdmin() ? `<button class="btn sm" data-a="cEdit" data-ref="${ref}" data-d="${S.data.cday || ''}">✏️ Відкрити</button>` : ''}${!gone(x) && isAdmin() ? `<button class="btn sm red" data-a="cDel" data-ref="${ref}">🗑 З виручки</button>` : ''}${!gone(x) && isAdmin() && x.lpo?.length ? `<button class="btn sm red" data-a="cRefund" data-ref="${ref}" data-s="${x.onl}">↩️ Повернути ${money(x.onl)} на картку</button>` : ''}
         ${isAdmin() && !x.del && !x.reopen && x.dishes?.length ? `<button class="btn sm" data-a="cReopen" data-ref="${ref}">↩️ Відкрити знову</button>` : ''}
         ${isAdmin() && x.rm && !x.reopen && !x.del ? `<button class="btn sm green" data-a="cBack" data-ref="${ref}">↩️ У виручку</button>` : ''}
         ${isAdmin() && x.del && !x.restored && (x.dishes?.length || x.voids?.length) ? `<button class="btn sm green" data-a="tBack" data-ref="${ref}">↩️ Відновити стіл</button>` : ''}</div>

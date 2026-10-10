@@ -245,7 +245,7 @@ async function apiTests() {
     let po = null;
     await step('увімкнено онлайн → /api/go pay=online дає посилання LiqPay, у касі замовлення ще немає', async () => {
       await posOk(A, 'goCfgSet', { k: 'onl', v: 1 });
-      const r = await http('/api/go', { kind: 'pick', name: 'QA Онлайн', phone: '0670005' + String(Math.floor(Math.random() * 900) + 100), pay: 'online', items: [{ id: dish.id, q: 2 }], device: 'qa-lp-' + RUN });
+      const r = await http('/api/go', { kind: 'pick', name: 'QA Онлайн', phone: '0670005' + String(Math.floor(Math.random() * 900) + 100), when: '12:00', pay: 'online', items: [{ id: dish.id, q: 2 }], device: 'qa-lp-' + RUN });
       must(r.status === 200 && /liqpay\.ua\/api\/3\/checkout/.test(r.j.pay || '') && r.j.id, `${r.status} ${JSON.stringify(r.j).slice(0, 200)}`); po = r.j;
       const w = await http('/api/gopay?id=' + po.id); must(w.j.st === 'wait', 'стан ' + JSON.stringify(w.j));
       const ev = (await posOk(A, 'state')).tables.filter(x => x.go?.oid === po.id); must(!ev.length, 'замовлення вже в касі до оплати'); return po.sum + ' грн';

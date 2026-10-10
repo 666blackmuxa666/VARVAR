@@ -3,7 +3,7 @@
 // у касі плитка червона, у стрічці «💳 оплачено — підтвердіть» (✅ закрити · ✏️ стіл · ❌ повернути гроші).
 import { getBill, putBill, payable, logEvent, editEv, L, notify, closeTable, esc } from './ops.js';
 import { getGoCfg } from './delivery.js';
-import { lpKeys, lpForm, lpOk, lpApi } from './liqpay.js';
+import { lpKeys, lpForm, lpOk, lpApi, lpRefund } from './liqpay.js';
 import { tableKey } from './qr.js';
 import { siteLink } from './venue.js';
 import { promoFill } from './promo.js';
@@ -82,7 +82,7 @@ export async function tpayApi(b, env, me) {
     const bill = await getBill(env, t), gp = bill?.go?.paid && !bill.go.paid.ref ? bill.go.paid : null; /* 🛵 доставка/з собою, оплачені онлайн */
     const list = gp ? [{ order: `go-${env.VENUE || 'varvar'}-${bill.go.oid}`, amt: gp.sum }] : bill?.paid?.list || []; if (!list.length) return [{ error: 'Немає що повертати' }, 400];
     const fails = [];
-    for (const p of list) { const r = await lpApi(k, { action: 'refund', order_id: p.order, amount: p.amt }); if (!['reversed', 'success', 'sandbox'].includes(r.status) && r.result !== 'ok') fails.push(`${p.amt} грн: ${r.err_description || r.status}`); }
+    for (const p of list) { const r = await lpRefund(k, p.order, p.amt); if (r.error) fails.push(`${p.amt} грн: ${r.error}`); }
     if (fails.length) return [{ error: 'LiqPay не повернув: ' + fails.join('; ') }, 400];
     const sum = list.reduce((a, p) => a + p.amt, 0);
     if (gp) await L(env, 'bills', async () => { const x = await getBill(env, t); if (x?.go?.paid) { x.go.paid.ref = Date.now(); await putBill(env, t, x); } });

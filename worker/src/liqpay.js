@@ -31,3 +31,13 @@ export async function lpApi(k, p) {
 }
 // для тестів: зібрати «callback» тими самими ключами
 export async function lpFake(k, obj) { const data = b64(JSON.stringify(obj)); return { data, signature: await sign(k.priv, data) }; }
+// ↩️ повернення: спершу стан платежу (вже повернено? ще в обробці?), далі refund; повна відповідь — у журнал воркера (wrangler tail)
+export async function lpRefund(k, order, amt) {
+  const st = await lpApi(k, { action: 'status', order_id: order }); console.log('lp status', order, JSON.stringify(st).slice(0, 400));
+  if (['reversed', 'refund'].includes(st.status)) return { ok: true, already: 1 };
+  const tries = [{ action: 'refund', order_id: order, amount: amt }, { action: 'refund', order_id: order }];
+  let r = null;
+  for (const p of tries) { r = await lpApi(k, p); console.log('lp refund', order, JSON.stringify(p), JSON.stringify(r).slice(0, 400)); if (r.result === 'ok' || ['reversed', 'success', 'sandbox'].includes(r.status)) return { ok: true }; }
+  const why = { wait_accept: 'платіж ще не зарахований магазину (LiqPay перевіряє магазин) — поверніть пізніше або в кабінеті LiqPay', processing: 'платіж ще обробляється — спробуйте за кілька хвилин' }[st.status];
+  return { error: why || `${r?.err_description || r?.status || 'помилка'}${r?.err_code ? ' (' + r.err_code + ')' : ''}${st.status ? ' · стан платежу: ' + st.status : ''}` };
+}

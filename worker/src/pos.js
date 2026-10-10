@@ -179,6 +179,12 @@ export async function posApi(b, req, env) {
     case 'tableBack': { if (!admin) return needAdmin(); const x = await restoreTable(env, String(b.ref), who, b.day); if (x) await notify(env, `🖥 ↩️ <b>Стіл ${tn(x.t)}</b> відновлено (${money(x.sum)}) — ${esc(who)}`, tgBtns(x.t)); return ok({ x }); }
     case 'closedEdit': { if (!admin) return needAdmin(); const r = await editClosed(env, String(b.ref), b.p, who, b.day); if (r.error) return [{ error: r.error }, 400];
       if (r.what.length) await notify(env, `🖥 ✏️ <b>Чек стола ${tn(r.x.t)}</b> (${r.x.at}${isDay(b.day) && b.day !== dayKey() ? ', ' + b.day : ''}) змінено: ${esc(r.what.join(', '))}\nБуло ${money(r.was)} → <b>${money(r.x.sum)}</b> · ${payLabel(r.x.cash, r.x.card)} — ${esc(who)}`); return ok({ x: r.x, what: r.what }); }
+    case 'closedRefund': { // ↩️ закритий чек оплачено онлайн → повернути гостю через LiqPay і зняти чек з виручки
+      if (!admin) return needAdmin(); const day = b.day || dayKey(), x = (await getClosed(env, day)).find(c => c.id === String(b.ref));
+      if (!x?.lpo?.length) return [{ error: 'Цей чек не оплачувався онлайн' }, 400]; if (x.del || x.rm) return [{ error: 'Чек уже знято з виручки' }, 400];
+      const LP = await import('./liqpay.js'), k = LP.lpKeys(env); if (!k) return [{ error: 'LiqPay не підключено' }, 400];
+      for (const p of x.lpo) { const r = await LP.lpRefund(k, p.o, p.a); if (r.error) return [{ error: 'LiqPay не повернув: ' + r.error }, 400]; }
+      await delClosed(env, String(b.ref), day); await notify(env, `🖥 ↩️ Повернуто гостю онлайн ${money(x.onl)} — стіл ${tn(x.t)} (${x.at}), чек знято з виручки — ${esc(who)}`); return ok({ sum: x.onl }); }
     case 'closedDel': { if (!admin) return needAdmin(); const x = await delClosed(env, String(b.ref), b.day); if (x) await notify(env, `🖥 🧹 Закритий рахунок стола ${tn(x.t)} (${money(x.sum)}, ${x.at}) видалено з виручки — ${esc(who)}`); return ok({ x }); }
   }
 
