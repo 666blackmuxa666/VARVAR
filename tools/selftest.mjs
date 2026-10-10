@@ -279,6 +279,7 @@ async function apiTests() {
     const TT = 14; let tk = '', tp = null;
     await step('стіл з QR: /api/tpay → посилання; callback → стіл «оплачено», подія чекає підтвердження', async () => {
       await posOk(A, 'goCfgSet', { k: 'qrpay', v: 1 });
+      for (const t of [TT, 13]) { const b = (await posOk(A, 'state')).tables.find(x => x.t === t); if (b?.paid) await pos(A, 'tpayOk', { t, print: false }); else if (b) await pos(A, 'delete', { t, reason: 'QA прибирання' }); } /* 🧹 залишки ручних перевірок у спільній базі */
       const q = await posOk(A, 'qrInfo'); tk = new URL(q.list.find(x => x.t === TT).url).searchParams.get('k');
       await posOk(A, 'order', { t: TT, items: [{ id: dish.id, q: 1 }] });
       { const dv = 'qa-tp-' + RUN, q0 = await posOk(A, 'qrInfo'), gk = new URL(q0.all.replace('/print/', '/').replace(/\.png$/, '')).pathname; /* загальний QR → сесія сканування → оплата без ключа столу */
