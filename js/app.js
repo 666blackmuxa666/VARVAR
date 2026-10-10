@@ -404,7 +404,7 @@
       ${gf.kind === 'del' ? `<input id="gAddr" placeholder="${t('goAddr')}" value="${esc(gf.addr)}" autocomplete="street-address"><input id="gEnt" placeholder="${t('goEnt')}" value="${esc(gf.ent)}">${c.zone ? `<div class="go-note">📍 ${esc(c.zone)}</div>` : ''}` : ''}
       <label class="go-row"><span>🕐 ${t(gf.kind === 'del' ? 'goWhenDel' : 'goWhen')}</span><select id="gWhen">${c.open ? `<option value="">${t('goAsap')} (~${c.prep} ${t('goMin')})</option>` : ''}${w.map(x => `<option ${gf.when === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
       <label class="go-row"><span>🍴 ${t('goCut')}</span><span class="qty"><button data-go-cut="-1">−</button><b>${gf.cut}</b><button data-go-cut="1">+</button></span></label>
-      <div class="go-sub">${t('goPay')}</div>
+      <div class="go-sub">${(goCfg?.onl ? '💳 ' + t('goPayHow') : t('goPay'))}</div>
       <div class="seg2"><button class="${gf.pay === 'cash' ? 'on' : ''}" data-go-p="cash">💵 ${t('goCash')}</button><button class="${gf.pay === 'card' ? 'on' : ''}" data-go-p="card">💳 ${t('goCard')}</button>${goCfg?.onl ? `<button class="${gf.pay === 'online' ? 'on' : ''}" data-go-p="online">🌐 ${t('goOnline')}</button>` : ''}</div>
       ${gf.pay === 'cash' ? `<label class="go-row"><span>💵 ${t('goChange')}</span><select id="gChange">${[0, 200, 500, 1000].map(v => `<option value="${v}" ${gf.change === v ? 'selected' : ''}>${v ? `${t('goFrom')} ${v}` : t('goNoChange')}</option>`).join('')}</select></label>` : ''}
       ${gf.bal > 0 && c.bmax ? `<label class="go-row go-bonus"><span>🎁 ${t('goBonus')} <b>${money(gf.bal)}</b></span><input type="checkbox" id="gUseB" ${gf.useB ? 'checked' : ''}></label>` : c.cash ? `<div class="go-note">🎁 ${t('goCashback')} ${c.cash}%</div>` : ''}
