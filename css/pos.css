@@ -112,7 +112,8 @@ main { overflow: auto; padding: 22px 24px 40px; }
 .ev .tm { color: var(--muted); font-size: 12px; }
 .ev .lines { margin: 6px 0 0; color: #d1d1d6; white-space: pre-line; font-size: 13.5px; }
 .ev .com { color: var(--accent); margin-top: 4px; }
-.ev .act { display: flex; gap: 8px; margin-top: 10px; }
+.ev .act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.ev .act .btn { white-space: nowrap; }
 .ev.guest { border-left: 4px solid var(--green); }
 .ev.guest.acc { border-left-color: #30d15855; }
 .ev.check { border-left: 4px solid var(--orange); }
