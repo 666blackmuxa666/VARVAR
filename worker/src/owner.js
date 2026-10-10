@@ -17,7 +17,7 @@ const rnd = n => [...crypto.getRandomValues(new Uint8Array(n))].map(x => x.toStr
 const isDay = d => /^\d{4}-\d{2}-\d{2}$/.test(d || '');
 
 // виклик закладу зсередини воркера
-async function callVenue(env, venue, path, body, init) {
+export async function callVenue(env, venue, path, body, init) {
   const h = { 'content-type': 'application/json', 'x-int': await intSecret(env), ...(venue === MAIN ? {} : { 'x-venue': venue }), ...(init ? { 'x-venue-init': '1' } : {}) };
   const r = await env.STORE.get(env.STORE.idFromName(doName(venue))).fetch(new Request('https://in' + path, { method: 'POST', headers: h, body: JSON.stringify(body || {}) }));
   return r.json();
@@ -50,6 +50,11 @@ export async function intApi(req, env, path) {
     if (b.do === 'save') return [await B.backupNow(env, 'demo'), 200];
     if (b.do === 'reset') return [await B.backupRestore(env, 'demo', 'нічне скидання демо'), 200];
     return [{ error: 'unknown' }, 400]; }
+  if (path === '/__int/aibal') { const { aiBal } = await import('./photoai.js'); return [await aiBal(env), 200]; } // 🤖 баланс ШІ
+  if (path === '/__int/aitop') { const sum = Math.round(+b.sum || 0); if (!(sum > 0)) return [{ error: 'sum' }, 400];
+    const a = await env.DB.locked('aibal', async () => { const x = (await env.DB.get('aibal', 'json')) || { bal: 0, h: [] }; if (x.h.some(h => h.lp && h.lp === b.lp)) return x; x.bal = Math.round((x.bal + sum) * 100) / 100; x.h = [{ ts: Date.now(), sum, what: '💳 Поповнення LiqPay', lp: String(b.lp || ''), ...(b.test ? { test: 1 } : {}) }, ...x.h].slice(0, 200); await env.DB.put('aibal', JSON.stringify(x)); return x; });
+    return [a, 200]; }
+  if (path === '/__int/lock') { if (b.on) await env.DB.put('cfg:lock', JSON.stringify({ why: String(b.why || 'sub'), at: Date.now() })); else await env.DB.delete('cfg:lock'); return [{ ok: true }, 200]; } // ⛔ підписка не оплачена — лише перегляд
   if (path === '/__int/whoami') { const s = /^[a-f0-9]{32}$/.test(b.token || '') ? await env.DB.get('pos:' + b.token, 'json') : null; return [{ admin: s?.role === 'admin', name: s?.name || '' }, 200]; }
   if (path === '/__int/secrets') { // 🤖 токени ботів закладу → перевірка getMe, збереження, вебхуки
     if (env.VENUE === MAIN) return [{ error: 'VARVAR — секрети через wrangler' }, 400];
@@ -221,6 +226,13 @@ ${JSON.stringify(data.filter(Boolean))}
       if (!(await may(b.venue))) return bad('Немає доступу', 403); const op = String(b.do || 'list');
       if (op === 'restore' && (!plat || b.confirm !== b.venue)) return bad(plat ? 'Для підтвердження введіть адресу закладу' : 'Відновлення — лише через розробника (🆘 Допомога)', 403);
       const r = await callVenue(env, b.venue, '/__int/bak', { do: op, tag: b.tag, who: me.name }); return r.error ? bad(r.error) : ok(r); }
+    case 'bill': { // 💳 оплата ATOM і баланс ШІ закладу
+      if (!(await may(b.venue))) return bad('Немає доступу', 403); const v = await H.venueGet(b.venue); if (!v) return bad('Немає закладу');
+      const B = await import('./billing.js'), ai = b.venue === MAIN ? null : await callVenue(env, b.venue, '/__int/aibal', {}).catch(() => null);
+      return ok({ sub: B.billState(v), ai: ai && { bal: ai.bal, h: (ai.h || []).slice(0, 30) }, tops: B.AI_TOPS, lp: !!(await import('./liqpay.js')).lpPlatform(env) }); }
+    case 'billPay': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const v = await H.venueGet(b.venue); if (!v) return bad('Немає закладу');
+      const r = await (await import('./billing.js')).billLink(env, v, b.kind === 'ai' ? 'ai' : 'sub', { auto: !!b.auto, sum: b.sum }); return r.error ? bad(r.error) : ok({ url: r.url }); }
+    case 'billUnsub': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const v = await H.venueGet(b.venue); const r = await (await import('./billing.js')).billUnsub(env, v); return r.error ? bad(r.error) : ok(); }
     case 'pass': { const r = await H.acctPass(me.email, b.pass); return r.error ? bad(r.error) : ok(); }
   }
   // ---- консоль платформи ----
@@ -255,6 +267,11 @@ ${JSON.stringify(data.filter(Boolean))}
       if (b.do === 'create') { if (await H.venueGet('atom-demo')) return bad('Демо вже є'); const v = await H.venueCreate({ id: 'atom-demo', name: 'ATOM Демо-кавʼярня', owner: me.email, city: 'Демо' }); if (v.error) return bad(v.error); const r = await callVenue(env, v.id, '/__int/init', { name: v.name }, true); return r.error ? bad(r.error) : ok(); }
       if (b.do === 'save') { const r = await demoSnap(env, 'atom-demo', 'save'); return r.error ? bad(r.error) : ok(r); }
       return bad('unknown'); }
+    case 'billMark': { // 👑 платформа: оплата готівкою/переказом — +N міс вручну, або задати дату
+      const v = await H.venueGet(String(b.id)); if (!v) return bad('Немає закладу'); const B = await import('./billing.js');
+      let till = B.tillOf(v); if (b.till) till = Date.parse(b.till + 'T23:59:59+03:00'); else { const d = new Date(Math.max(Date.now(), till)); d.setMonth(d.getMonth() + Math.max(1, Math.min(12, +b.months || 1))); till = d.getTime(); }
+      if (!(till > 0)) return bad('Невірна дата');
+      await H.venueBill(v.id, { paidTill: till, locked: 0, ...(b.till ? {} : { pay: { ts: Date.now(), sum: 0, lp: 'вручну · ' + me.name } }) }); await callVenue(env, v.id, '/__int/lock', { on: 0 }).catch(() => {}); return ok({ till }); }
     case 'venueSet': { const v = await H.venueSet(String(b.id), b.f || {}); return v.error ? bad(v.error) : ok({ venue: v }); }
   }
   return bad('unknown');

@@ -5,6 +5,9 @@ import { getMenu, saveMenu, menuLock } from './menu.js';
 import { dayKey } from './ops.js';
 
 export const FREE = 20, PRICE = 5, DAY_CAP = 30;
+// 🤖 баланс ШІ закладу (₴): поповнення з кабінету через LiqPay платформи (billing.js), списання — тут
+export const aiBal = async env => (await env.DB.get('aibal', 'json')) || { bal: 0, h: [] };
+export async function aiCharge(env, sum, what, who) { return env.DB.locked('aibal', async () => { const a = await aiBal(env); a.bal = Math.round((a.bal - sum) * 100) / 100; a.h = [{ ts: Date.now(), sum: -sum, what: String(what || '').slice(0, 60), by: String(who || '').slice(0, 40) }, ...a.h].slice(0, 200); await env.DB.put('aibal', JSON.stringify(a)); return a; }); }
 const MODEL = 'gemini-2.5-flash-image';
 export const STYLE0 = 'Професійне фуд-фото для меню ресторану. Страва в центрі кадру, вид під кутом 45°, темний матовий фон (графітовий камінь), тепле мʼяке бокове світло, глибокі мʼякі тіні, невелика глибина різкості, апетитно й реалістично. Без тексту, без рук, без логотипів, без зайвих предметів. Квадрат 1:1.';
 
@@ -12,7 +15,7 @@ const month = () => dayKey().slice(0, 7);
 async function quota(env) { const k = 'phq:' + month(), q = (await env.DB.get(k, 'json')) || { n: 0, over: 0, d: {} }; return { k, q }; }
 export async function photoInfo(env) {
   const st = (await env.DB.get('cfg:photoStyle', 'json')) || {}, { q } = await quota(env);
-  return { prompt: st.prompt || '', def: STYLE0, refs: (st.refs || []).map(k => `${env.SELF_URL}/img/${k}?v=${st.v || 0}`), n: q.n, over: q.over, free: FREE, price: PRICE, on: !!env.GEMINI_IMG_KEY };
+  return { prompt: st.prompt || '', def: STYLE0, refs: (st.refs || []).map(k => `${env.SELF_URL}/img/${k}?v=${st.v || 0}`), n: q.n, over: q.over, free: FREE, price: PRICE, on: !!env.GEMINI_IMG_KEY, bal: (env.VENUE || 'varvar') === 'varvar' ? null : (await aiBal(env)).bal };
 }
 const b64 = buf => { let s = ''; const u = new Uint8Array(buf); for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
 const unData = d => { const m = String(d || '').match(/^data:image\/(jpeg|png|webp);base64,(.+)$/); return m ? { mime: 'image/' + m[1], data: m[2] } : null; };
@@ -53,6 +56,8 @@ async function photoMake(b, env, who) {
   if (!it) return [{ error: 'Страву не знайдено' }, 400];
   const { k, q } = await quota(env), today = dayKey();
   if ((q.d[today] || 0) >= DAY_CAP) return [{ error: `Сьогодні вже ${DAY_CAP} фото — продовжимо завтра` }, 429];
+  const paid = q.n >= FREE && (env.VENUE || 'varvar') !== 'varvar'; /* 🤖 понад ліміт — з балансу ШІ закладу (VARVAR — без оплати) */
+  if (paid && (await aiBal(env)).bal < PRICE) return [{ error: `Безкоштовні ${FREE} фото цього місяця використано. Поповніть баланс ШІ в кабінеті власника (💳 Оплата) — ${PRICE} ₴ за фото`, bal: 1 }, 402];
   if (q.n >= FREE && !b.pay) return [{ error: 'pay', n: q.n, free: FREE, price: PRICE }, 402]; // каса питає «понад ліміт — 5 ₴, продовжити?»
   if (await env.DB.get('phbusy')) return [{ error: 'Інше фото ще генерується — зачекайте кілька секунд' }, 429];
   await env.DB.put('phbusy', '1', { expirationTtl: 60 });
@@ -72,6 +77,7 @@ async function photoMake(b, env, who) {
     if (!img?.data) return [{ error: 'ШІ не повернув фото (можливо, відмовив через опис) — змініть опис і спробуйте ще' }, 502];
     const bytes = Uint8Array.from(atob(img.data), c => c.charCodeAt(0));
     await env.DB.put('img:draft-' + id, bytes.buffer, { expirationTtl: 7 * 86400 });
+    if (paid) await aiCharge(env, PRICE, `📸 ${it.name.uk}`, who);
     q.n++; if (q.n > FREE) q.over++; q.d = { [today]: (q.d[today] || 0) + 1 }; await env.DB.put(k, JSON.stringify(q), { expirationTtl: 400 * 86400 });
     return [{ ok: true, draft: `${env.SELF_URL}/img/draft-${id}?v=${Date.now().toString(36)}`, n: q.n, over: q.over, free: FREE, price: PRICE }, 200];
   } finally { await env.DB.delete('phbusy'); }

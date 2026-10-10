@@ -533,6 +533,16 @@ async function loyTests(A, W, dish) {
     { const ol = (await own({ op: 'login', email: OE, pass: 'owner-pass-123' })).j.token; must((await ownT(ol, 'bak', { venue: VID, do: 'restore', tag: b.j.tag, confirm: VID })).status === 403, 'власник відновив'); }
     const r = await ownT(PT, 'bak', { venue: VID, do: 'restore', tag: b.j.tag, confirm: VID }); must(r.j.ok, JSON.stringify(r.j));
     must(!(await vpos(VA, 'state')).j.tables.some(x => x.t === 5), 'після відновлення стіл 5 лишився'); });
+  await step('💳 оплата ATOM: пробний місяць → callback підписки +1 міс (без дубля), поповнення ШІ', async () => {
+    const { createHash } = await import('node:crypto'), PRIV = 'sandbox_test_private_key';
+    const cb = async (path, obj) => { const data = Buffer.from(JSON.stringify(obj)).toString('base64'), signature = createHash('sha1').update(PRIV + data + PRIV).digest('base64');
+      const r = await fetch(API + path, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ data, signature }).toString() }); return r.json(); };
+    const b0 = (await ownT(PT, 'bill', { venue: VID })).j; must(b0.sub?.trial && b0.ai?.bal === 0, JSON.stringify(b0).slice(0, 200));
+    const l = await ownT(PT, 'billPay', { venue: VID, kind: 'sub', auto: true }); must(/liqpay\.ua/.test(l.j.url || ''), JSON.stringify(l.j));
+    const pid = 'qa' + Date.now(); for (let i = 0; i < 2; i++) await cb('/api/lp/sub', { order_id: `sub-${VID}-x1`, status: 'subscribed', action: 'subscribe', amount: 500, payment_id: pid });
+    const b1 = (await ownT(PT, 'bill', { venue: VID })).j.sub, days = Math.round((b1.till - b0.sub.till) / 864e5); must(!b1.trial && b1.auto && days >= 28 && days <= 31, `till +${days} дн, auto=${b1.auto}`);
+    await cb('/api/lp/ai', { order_id: `ai-${VID}-x2`, status: 'sandbox', amount: 100, payment_id: pid + 'a' });
+    const b2 = (await ownT(PT, 'bill', { venue: VID })).j; must(b2.ai.bal === 100, 'баланс ' + b2.ai.bal); return `+${days} дн · ШІ ${b2.ai.bal} ₴`; });
   await step('📴 офлайн-черга: повтор з тим самим qid не дублює замовлення', async () => {
     const it = (await http(`/v/${VID}/api/menu`)).j.categories.flatMap(c => c.items).find(i => typeof i.price === 'number'), qid = 'qa' + Date.now().toString(36);
     for (let i = 0; i < 2; i++) must((await vpos(VA, 'order', { t: 6, items: [{ id: it.id, q: 1 }], qid })).status === 200, 'order');

@@ -66,6 +66,7 @@ export default {
     if (env.HUB) ctx.waitUntil((async () => { // 🚀 ATOM: нагадування «подзвонити» по заявках; о 4:00 — демо-каса до еталону
       const due = await hub(env).leadDue().catch(() => []);
       for (const x of due) await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `⏰ <b>Подзвонити</b>: ${esc(x.name)} · ${esc(x.phone)}${x.place ? ' · ' + esc(x.place) : ''}${x.note ? '\n📝 ' + esc(x.note) : ''}` }).catch(() => {});
+      if (kh >= '10:00' && kh < '10:05') await (await import('./billing.js')).billDaily(env).catch(e => console.log('billDaily', e.message)); // 💳 нагадування й блокування підписки
       if (kh >= '04:00' && kh < '04:05') await (await import('./owner.js')).demoSnap(env, 'atom-demo', 'reset');
     })());
     const list = [MAIN, ...(await hubVenues(env).catch(() => []))];
@@ -245,6 +246,7 @@ async function order(b, ip, env) {
   return [r[0], r[1]];
 }
 async function orderRaw(b, ip, env) {
+  if ((env.VENUE || 'varvar') !== 'varvar' && await env.DB.get('cfg:lock')) return [{ error: 'off' }, 403]; // ⛔ підписка ATOM не оплачена
   const table = tableNum(b.table, env), type = b.type;
   if (!table || !TYPES[type]) return [{ error: 'bad_request' }, 400];
   const sc = await scanInfo(env, b.device);

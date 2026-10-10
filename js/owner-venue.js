@@ -12,7 +12,7 @@ window.OWNV = ctx => {
     if (!r.ok || j.error) throw new Error(errText(j.error) || 'Помилка ' + r.status); return j;
   }
   const errText = e => ({ admin: 'Потрібні права адміна', image: 'Невірний формат картинки', too_big: 'Завеликий файл', not_found: 'Не знайдено' }[e] || e);
-  const SEC0 = [['start', '🚀 Запуск'], ['venue', '🏪 Заклад і каса'], ['site', '🌐 Сайт'], ['menu', '🍽 Меню'], ['go', '🛵 Доставка'], ['staff', '👥 Персонал'], ['bots', '🤖 Боти'], ['printer', '🖨 Принтер'], ['log', '🛡 Журнал і копії']];
+  const SEC0 = [['start', '🚀 Запуск'], ['venue', '🏪 Заклад і каса'], ['site', '🌐 Сайт'], ['menu', '🍽 Меню'], ['go', '🛵 Доставка'], ['staff', '👥 Персонал'], ['bots', '🤖 Боти'], ['printer', '🖨 Принтер'], ['pay', '💳 Оплата'], ['log', '🛡 Журнал і копії']];
   /* 🚀 Запуск — лише поки заклад не налаштований (VARVAR — ніколи) */
   const doneKey = id => 'own_ready_' + id, isDone = id => { if (id === 'varvar') return true; try { return localStorage.getItem(doneKey(id)) === '1'; } catch { return false; } };
   const secs = () => SEC0.filter(([k]) => k !== 'start' || !isDone(S.cfgV?.id));
@@ -29,6 +29,7 @@ window.OWNV = ctx => {
       if (sec === 'bots') v.d.live = await api('bots', { venue: id }).catch(e => ({ err: e.message }));
       if (sec === 'printer') { const [q, rc] = await Promise.all([vapi(id, 'printQ').catch(() => ({ list: [] })), vapi(id, 'rcptGet').catch(() => ({}))]); Object.assign(v.d, { q: q.list, rc: rc.rcpt, dev: rc.dev, route: rc.route || {} }); }
       if (sec === 'menu') v.d = { menu: (await vapi(id, 'menu')).menu };
+      if (sec === 'pay') v.d = await api('bill', { venue: id });
       if (sec === 'go') { const r = await vapi(id, 'goCfg'); v.d = { go: r.cfg, lp: r.lp, main: r.main }; }
       if (sec === 'staff') v.d = await vapi(id, 'staff');
       if (sec === 'log') { const [a, b] = await Promise.all([vapi(id, 'alog', { m: S.logM || '' }), api('bak', { venue: id, do: 'list' }).catch(() => ({ list: [] }))]); v.d = { list: a.list, bak: b.list }; }
@@ -93,6 +94,19 @@ window.OWNV = ctx => {
         <div class="card"><h3>💳 Онлайн-оплата (LiqPay)</h3><div class="muted" style="font-size:13px;margin-bottom:8px">${v.d.lp ? (v.d.lp.sandbox ? '🧪 Підключено <b>тестові</b> ключі — гроші не списуються, лише перевірка.' : '✅ Підключено — гроші надходять на LiqPay закладу.') : '⚪ Не підключено.'} Оплачене онлайн видно в касі окремо: 💵 готівка · 💳 термінал · 🌐 онлайн.</div>
           ${v.d.lp ? tgl('🌐 Оплата замовлень онлайн (з собою, доставка)', g.onl, 'vgoTgl', 'onl') + tgl('🍽 Оплата рахунку столу з QR', g.qrpay, 'vgoTgl', 'qrpay') : ''}
           ${v.d.main ? '<div class="muted" style="font-size:12px">Ключі VARVAR — у налаштуваннях сервера (через розробника).</div>' : `<form id="vlpf" style="display:grid;gap:8px;margin-top:8px"><input name="LIQPAY_PUBLIC" placeholder="public_key (з кабінету LiqPay → API)" autocomplete="off"><input name="LIQPAY_PRIVATE" type="password" placeholder="private_key" autocomplete="off"><button class="btn sm primary">💾 Зберегти ключі</button><div class="err" id="vlperr"></div></form>`}</div></div>`;
+    },
+    pay(v) { // 💳 підписка ATOM + баланс ШІ (оплата — LiqPay платформи)
+      const d = v.d, s = d.sub || {}, dt = ts => new Date(ts).toLocaleDateString('uk-UA'), plat = S.me?.role === 'platform';
+      const sub = s.free ? '<div class="muted">Цей заклад — без оплати (VARVAR / демо).</div>' : `
+        <div class="kv"><span>${s.trial ? '🎁 Пробний місяць до' : '✅ Оплачено до'}</span><b style="color:${s.left < 0 ? '#ff6b6b' : s.left <= 3 ? 'var(--accent)' : 'inherit'}">${dt(s.till)}${s.left < 0 ? ` · прострочено ${-s.left} дн.` : ` · ${s.left} дн.`}</b></div>
+        ${s.lock ? '<div class="alert red" style="margin:8px 0">⛔ Каса в режимі перегляду — оплатіть, і все запрацює одразу</div>' : s.left < 0 ? `<div class="alert" style="margin:8px 0">⚠️ Оплата прострочена — ще ${Math.max(0, 5 + s.left)} дн. до режиму перегляду</div>` : ''}
+        <div class="kv"><span>🔁 Автосписання щомісяця</span><b>${s.auto ? '✅ увімкнено' : '⚪ вимкнено'}</b></div>
+        <div class="btnrow" style="margin-top:10px">${d.lp ? `<button class="btn primary" data-a="vbPay">💳 Оплатити ${s.price} ₴</button>${s.auto ? '<button class="btn" data-a="vbUnsub">⏹ Вимкнути автосписання</button>' : '<button class="btn" data-a="vbAuto">🔁 Оплатити й списувати щомісяця</button>'}` : '<span class="muted">Онлайн-оплата скоро — поки оплата через розробника</span>'}${plat ? '<button class="btn sm ghost" data-a="vbMark">👑 Позначити оплату вручну</button>' : ''}</div>
+        ${s.pays?.length ? `<details style="margin-top:10px"><summary class="muted">Історія оплат</summary>${s.pays.map(p => `<div class="kv"><span>${dt(p.ts)}${p.test ? ' · 🧪' : ''}</span><b>${p.sum ? p.sum + ' ₴' : esc(p.lp)}</b></div>`).join('')}</details>` : ''}`;
+      const ai = d.ai ? `<div class="kv"><span>🤖 Баланс ШІ</span><b class="money">${d.ai.bal} ₴</b></div><div class="muted" style="font-size:13px;margin:6px 0">20 ШІ-фото на місяць безкоштовно, далі — 5 ₴ за фото з балансу.</div>
+        ${d.lp ? `<div class="btnrow">${(d.tops || []).map(n => `<button class="btn sm" data-a="vbTop" data-n="${n}">➕ ${n} ₴</button>`).join('')}</div>` : ''}
+        ${d.ai.h?.length ? `<details style="margin-top:10px"><summary class="muted">Рух балансу</summary>${d.ai.h.map(h => `<div class="kv"><span>${dt(h.ts)} · ${esc(h.what)}${h.test ? ' 🧪' : ''}</span><b>${h.sum > 0 ? '+' : ''}${h.sum} ₴</b></div>`).join('')}</details>` : ''}` : '<div class="muted">VARVAR — ШІ без оплати.</div>';
+      return `<div class="grid"><div class="card"><h3>💳 Підписка ATOM · ${s.price || 500} ₴/міс</h3>${sub}</div><div class="card"><h3>🤖 Баланс ШІ</h3>${ai}</div></div>`;
     },
     staff(v) {
       const d = v.d, R = { admin: '👑 Адмін', waiter: '🧑‍🍳 Офіціант', cook: '👨‍🍳 Кухар', courier: '🛵 Кур\'єр' }, link = window.VVPUB(v.id, 'pos.html');
@@ -243,6 +257,9 @@ window.OWNV = ctx => {
     if (a === 'vphotoDel') return act(() => vapi(id, 'siteSet', { k: 'photoDel', v: d.u }), '🗑 Прибрано');
     if (a === 'vimg') { const data = await img(d.k === 'logo' ? 512 : 1600, d.k === 'logo'); if (!data) return; return act(() => vapi(id, 'sitePhoto', { data, logo: d.k === 'logo', hero: d.k === 'hero' }), '🖼 Збережено'); }
     if (a === 'vgo') { const x = await ask(el.closest('.kv')?.querySelector('span')?.firstChild?.textContent || d.k, v.d.go[d.k], ['from', 'to', 'zone', 'phone'].includes(d.k) ? 'text' : 'number'); if (x == null) return; return act(() => vapi(id, 'goCfgSet', { k: d.k, v: x }), '💾 Збережено'); }
+    if (a === 'vbPay' || a === 'vbAuto' || a === 'vbTop') { el.disabled = true; try { const r = await api('billPay', { venue: id, kind: a === 'vbTop' ? 'ai' : 'sub', auto: a === 'vbAuto', sum: +d.n || 0 }); location.href = r.url; } catch (x) { toast('⚠️ ' + x.message); el.disabled = false; } return; }
+    if (a === 'vbUnsub') { if (!confirm('Вимкнути автосписання? Оплачений період лишається.')) return; return act(() => api('billUnsub', { venue: id }), '⏹ Автосписання вимкнено'); }
+    if (a === 'vbMark') return modal('👑 Оплата вручну', '<div class="muted" style="font-size:13px">Готівка / переказ: додати місяці або задати дату «оплачено до».</div><label>Місяців<input name="m" type="number" min="1" max="12" value="1"></label><label>або дата<input name="d" type="date"></label>', f => act(() => api('billMark', { id, months: +f.m.value || 1, till: f.d.value || '' }), '✅ Збережено'));
     if (a === 'vgoTgl') return act(() => vapi(id, 'goCfgSet', { k: d.k, v: d.on === '1' ? 0 : 1 }), '💾 Збережено');
     if (a === 'vcfg') { const x = await ask(el.closest('.kv')?.querySelector('span')?.firstChild?.textContent || d.k, d.k === 'tables' ? v.d.n : v.d.cfg[d.k], 'number'); if (x == null) return; return act(() => vapi(id, 'cfgSet', { k: d.k, v: x }), '💾 Збережено'); }
     if (a === 'vcfgTgl') return act(() => vapi(id, 'cfgSet', { k: d.k, v: d.on === '1' ? 0 : 1 }), '💾 Збережено');

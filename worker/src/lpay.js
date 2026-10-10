@@ -74,12 +74,14 @@ export async function tpayApi(b, env, me) {
   if (b.op === 'tpayRefund') {
     if (!admin) return [{ error: 'Повернення — лише адмін' }, 403];
     const k = lpKeys(env); if (!k) return [{ error: 'LiqPay не підключено' }, 400];
-    const bill = await getBill(env, t), list = bill?.paid?.list || []; if (!list.length) return [{ error: 'Немає що повертати' }, 400];
+    const bill = await getBill(env, t), gp = bill?.go?.paid && !bill.go.paid.ref ? bill.go.paid : null; /* 🛵 доставка/з собою, оплачені онлайн */
+    const list = gp ? [{ order: `go-${env.VENUE || 'varvar'}-${bill.go.oid}`, amt: gp.sum }] : bill?.paid?.list || []; if (!list.length) return [{ error: 'Немає що повертати' }, 400];
     const fails = [];
     for (const p of list) { const r = await lpApi(k, { action: 'refund', order_id: p.order, amount: p.amt }); if (!['reversed', 'success', 'sandbox'].includes(r.status) && r.result !== 'ok') fails.push(`${p.amt} грн: ${r.err_description || r.status}`); }
     if (fails.length) return [{ error: 'LiqPay не повернув: ' + fails.join('; ') }, 400];
     const sum = list.reduce((a, p) => a + p.amt, 0);
-    await L(env, 'bills', async () => { const x = await getBill(env, t); if (!x?.paid) return; const tip = x.paid.sum - x.paid.net; x.tip = Math.max(0, (x.tip || 0) - tip); if (!x.tip) delete x.tip; delete x.paid; delete x.pwait; delete x.pay; await putBill(env, t, x); });
+    if (gp) await L(env, 'bills', async () => { const x = await getBill(env, t); if (x?.go?.paid) { x.go.paid.ref = Date.now(); await putBill(env, t, x); } });
+    else await L(env, 'bills', async () => { const x = await getBill(env, t); if (!x?.paid) return; const tip = x.paid.sum - x.paid.net; x.tip = Math.max(0, (x.tip || 0) - tip); if (!x.tip) delete x.tip; delete x.paid; delete x.pwait; delete x.pay; await putBill(env, t, x); });
     await ackEv(env, t, 'rej', who);
     await logEvent(env, { k: 'shift', by: who, text: `↩️ Стіл ${tn(t)}: повернуто гостю онлайн-оплату ${sum} грн` });
     return [{ ok: true, sum }, 200];

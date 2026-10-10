@@ -106,6 +106,7 @@ export async function goPayState(env, oid) {
 export async function goOrder(b, ip, env) {
   const c = await getGoCfg(env), kind = b.kind === 'del' ? 'del' : 'pick';
   if (!c.on || !c[kind]) return [{ error: 'off' }, 403];
+  if ((env.VENUE || 'varvar') !== 'varvar' && await env.DB.get('cfg:lock')) return [{ error: 'off' }, 403]; // ⛔ підписка не оплачена
   const when = /^\d{1,2}:\d{2}$/.test(b.when || '') ? String(b.when).padStart(5, '0') : '';
   if (!isOpen(c, when || hhmm())) return [{ error: 'closed', from: c.from, to: c.to }, 403];
   const phone = normPhone(b.phone), name = String(b.name || '').trim().slice(0, 40);

@@ -118,6 +118,15 @@ export class Hub extends DurableObject {
   async msgSet(id, f, venues) { const m = await this.st.get('msg:' + id); if (!m || (venues && !venues.includes(m.venue))) return { error: 'Не знайдено' }; if (f.del) { await this.st.delete('msg:' + id); return { ok: true }; } m.done = m.done ? 0 : Date.now(); await this.st.put('msg:' + id, m); return m; }
   async seen(id) { const k = 'seen:' + id; await this.st.put(k, Date.now()); }
   async seenAll() { return Object.fromEntries([...(await this.st.list({ prefix: 'seen:' }))].map(([k, v]) => [k.slice(5), v])); }
+  // 💳 оплата ATOM: оплачено до, автосписання, історія оплат; payOnce — один платіж LiqPay обробляється один раз
+  async venueBill(id, f) {
+    const v = await this.st.get('venue:' + id); if (!v) return { error: 'Немає закладу' };
+    for (const k of ['paidTill', 'auto', 'subOrder', 'locked']) if (f[k] !== undefined) v[k] = f[k];
+    if (f.status && ['active', 'trial', 'off'].includes(f.status)) v.status = f.status;
+    if (f.pay) v.pays = [f.pay, ...(v.pays || [])].slice(0, 36);
+    await this.st.put('venue:' + id, v); return v;
+  }
+  async payOnce(pid) { const k = 'lpp:' + pid; if (await this.st.get(k)) return false; await this.st.put(k, Date.now()); return true; }
   // 🚀 ATOM: заявки з сайту posatom.online (CRM «Продажі»), ліміт з IP, статистика переглядів
   async leadAdd(l, ip) {
     const rk = 'lrl:' + ip, r = (await this.st.get(rk)) || []; const now = Date.now(), fresh = r.filter(t => now - t < 3600e3);
