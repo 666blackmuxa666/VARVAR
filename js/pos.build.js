@@ -2231,9 +2231,19 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     renderSheet();
     if (keepKb && !searching()) (_e = $("#search")) == null ? void 0 : _e.focus();
   }
+  for (const ev of ["change", "compositionend"]) document.addEventListener(ev, (e) => {
+    if (e.target.id === "cartCom") S.coms[S.open] = e.target.value;
+  });
   async function sendCart() {
     const t = S.open, cart = cartOf(t), pk = packItem(), pq = pk ? packQ(t) : 0, items = [...Object.values(cart).map((x) => ({ id: x.id, v: x.v, q: x.q })), ...pq ? [{ id: pk.id, q: pq }] : []];
     if (!items.length) return;
+    {
+      const ci = $("#cartCom");
+      if (ci) {
+        ci.blur();
+        S.coms[t] = ci.value.trim();
+      }
+    }
     const btn = document.querySelector('[data-a="send"]');
     if (btn) btn.disabled = true;
     const r = await act("order", __spreadProps(__spreadValues({ t: t === -1 ? 0 : t }, t === -1 ? { go: S.goDraft } : {}), { items, urgent: !!S.ur[t], comment: [S.tw[t] && t !== -1 ? "\u0417 \u0421\u041E\u0411\u041E\u042E" : "", S.coms[t] || ""].filter(Boolean).join(" \xB7 ") }));
@@ -2250,6 +2260,10 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       return;
     }
     if (r) {
+      {
+        const ci = $("#cartCom");
+        if (ci) ci.value = "";
+      }
       S.carts[t] = {};
       S.coms[t] = "";
       S.tw[t] = false;

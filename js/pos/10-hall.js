@@ -143,13 +143,15 @@
       if (c && gr && curGrp() !== 'fav') { S.grp = gr.id; S.cat = c.id; } }
     renderSheet(); if (keepKb && !searching()) $('#search')?.focus();
   }
+  for (const ev of ['change', 'compositionend']) document.addEventListener(ev, e => { if (e.target.id === 'cartCom') S.coms[S.open] = e.target.value; }); // 📝 iPad: підказки клавіатури
   async function sendCart() {
     const t = S.open, cart = cartOf(t), pk = packItem(), pq = pk ? packQ(t) : 0, items = [...Object.values(cart).map(x => ({ id: x.id, v: x.v, q: x.q })), ...(pq ? [{ id: pk.id, q: pq }] : [])];
     if (!items.length) return;
+    { const ci = $('#cartCom'); if (ci) { ci.blur(); S.coms[t] = ci.value.trim(); } } /* 📝 iPad: останнє слово з підказок клавіатури потрапляє в поле вже після натискання — беремо текст прямо з поля, інакше коментар «їде» до наступного замовлення */
     const btn = document.querySelector('[data-a="send"]'); if (btn) btn.disabled = true;
     const r = await act('order', { t: t === -1 ? 0 : t, ...(t === -1 ? { go: S.goDraft } : {}), items, urgent: !!S.ur[t], comment: [S.tw[t] && t !== -1 ? 'З СОБОЮ' : '', S.coms[t] || ''].filter(Boolean).join(' · ') });
     if (r && t === -1) { S.carts[-1] = {}; S.coms[-1] = ''; saveCarts(); S.goDraft = null; S.mobileMenu = false; toast(`🛵 ${tn(r.t)}: відправлено на кухню`); await loadState().catch(() => {}); openTable(r.t); return; }
-    if (r) { S.carts[t] = {}; S.coms[t] = ''; S.tw[t] = false; S.ur[t] = false; S.packAdj[t] = 0; saveCarts(); S.mobileMenu = false; toast(r.queued ? `📴 Стіл ${tn(t)}: немає зв'язку — замовлення збережено, кухня отримає, щойно з'явиться інтернет` : `🖨 Стіл ${tn(t)}: відправлено на кухню`); if (!r.queued) await loadState().catch(() => {}); }
+    if (r) { { const ci = $('#cartCom'); if (ci) ci.value = ''; } S.carts[t] = {}; S.coms[t] = ''; S.tw[t] = false; S.ur[t] = false; S.packAdj[t] = 0; saveCarts(); S.mobileMenu = false; toast(r.queued ? `📴 Стіл ${tn(t)}: немає зв'язку — замовлення збережено, кухня отримає, щойно з'явиться інтернет` : `🖨 Стіл ${tn(t)}: відправлено на кухню`); if (!r.queued) await loadState().catch(() => {}); }
     else if (btn) btn.disabled = false;
   }
   async function closeFlow() {
