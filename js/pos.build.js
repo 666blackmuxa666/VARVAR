@@ -2191,7 +2191,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     });
   }
   async function addItem(id) {
-    var _a2, _b, _c;
+    var _a2, _b, _c, _d, _e;
     const wasKb = searching();
     const it = itemsAll().find((i) => i.id === id);
     if (!it) return;
@@ -2214,9 +2214,17 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       S.q = "";
       const se = $("#search");
       if (se) se.value = "";
+      const c = (_c = S.menu) == null ? void 0 : _c.categories.find((x) => x.items.some((i) => i.id === it.id)), gr = c && ((_d = S.groups) == null ? void 0 : _d.find((x) => {
+        var _a3;
+        return (_a3 = x.cats) == null ? void 0 : _a3.includes(c.id);
+      }));
+      if (c && gr && curGrp() !== "fav") {
+        S.grp = gr.id;
+        S.cat = c.id;
+      }
     }
     renderSheet();
-    if (keepKb && !searching()) (_c = $("#search")) == null ? void 0 : _c.focus();
+    if (keepKb && !searching()) (_e = $("#search")) == null ? void 0 : _e.focus();
   }
   async function sendCart() {
     const t = S.open, cart = cartOf(t), pk = packItem(), pq = pk ? packQ(t) : 0, items = [...Object.values(cart).map((x) => ({ id: x.id, v: x.v, q: x.q })), ...pq ? [{ id: pk.id, q: pq }] : []];

@@ -137,7 +137,9 @@
     const key = it.id + (v ? '|' + v : ''), cart = cartOf(S.open);
     cart[key] ||= { id: it.id, v, name: it.name.uk + (vv ? ` ${vv.v} ${it.size || ''}`.trimEnd() : ''), price: vv ? vv.p : it.price, q: 0 };
     const keepKb = wasKb || searching(); cart[key].q++; saveCarts();
-    if (S.q) { S.q = ''; const se = $('#search'); if (se) se.value = ''; } // знайшли й додали — пошук очищується, можна одразу писати нове
+    if (S.q) { S.q = ''; const se = $('#search'); if (se) se.value = ''; // знайшли й додали — пошук очищується, можна одразу писати нове
+      const c = S.menu?.categories.find(x => x.items.some(i => i.id === it.id)), gr = c && S.groups?.find(x => x.cats?.includes(c.id)); /* і відкривається розділ цієї страви, а не перша вкладка групи (була «Кава» замість «Пиво») */
+      if (c && gr && curGrp() !== 'fav') { S.grp = gr.id; S.cat = c.id; } }
     renderSheet(); if (keepKb && !searching()) $('#search')?.focus();
   }
   async function sendCart() {
