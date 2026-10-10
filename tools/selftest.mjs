@@ -301,6 +301,14 @@ async function apiTests() {
     await posOk(A, 'goCfgSet', { k: 'qrpay', v: 0 });
   }
 
+  sect('🍳 З собою: розрахувались одразу — замовлення лишається на кухні');
+  await step('закрили стіл до готовності → картка на кухні з «оплачено», зникає після «Готово»', async () => {
+    const T7 = 12; { const b = (await posOk(A, 'state')).tables.find(x => x.t === T7); if (b) await pos(A, 'delete', { t: T7, reason: 'QA прибирання' }); }
+    await posOk(A, 'order', { t: T7, items: [{ id: dish.id, q: 1 }] }); await posOk(A, 'close', { t: T7, pay: 'cash', print: false });
+    const k = (await posOk(A, 'kitchen')).list.filter(e => e.t === T7 && !e.done); must(k.length && k.every(e => e.paid), 'на кухні: ' + JSON.stringify(k).slice(0, 200));
+    for (const e of k) await posOk(A, 'kDone', { id: e.id }); must(!(await posOk(A, 'kitchen')).list.some(e => e.t === T7 && !e.done), 'не зникла після «Готово»'); return k.length + ' карт.';
+  });
+
   sect('Скасування доставки в касі → гість бачить «скасовано»');
   const dev = 'qa-cx-' + RUN, goNew = (n = 1) => http('/api/go', { kind: 'del', name: 'QA Скасування', phone: '0670003' + String(Math.floor(Math.random() * 900) + 100), addr: 'вул. Тестова 3', when: '12:00', pay: 'cash', items: [{ id: dish.id, q: n }, { id: drink.id, q: 1 }], device: dev });
   const gStatus = async id => { const o = await http('/api/orders?ids=' + id); const x = Array.isArray(o.j) ? o.j.find(y => y.id === id) || o.j[0] : o.j[id] || o.j.list?.find?.(y => y.id === id) || o.j; return { x, raw: JSON.stringify(o.j).slice(0, 200) }; };

@@ -250,7 +250,7 @@ async function _closeTable(env, t, who, pay = 'cash', print = true) {
   if (pre > sum + 1) notify(env, `⚠️ Стіл ${tn(t)}: гість оплатив онлайн ${pre} грн, а рахунок ${sum} грн — переплата ${pre - sum} грн. Поверніть різницю в кабінеті LiqPay.`).catch(() => {}); /* 💳 зменшили рахунок після оплати */
   if (print) await queuePrint(env, 'receipt', await receipt(env, { table: t, bill, final: true, pay, by: who }));
   await env.DB.delete('bill:' + t);
-  const kq = kitchenClosed(env, [+t]); // стіл закрили — його замовлення зникають з черги кухні (паралельно з виручкою)
+  const kq = kitchenClosed(env, [+t]); // стіл закрили — замовлення лишаються на кухні з позначкою «оплачено» (паралельно з виручкою)
   await bump(env, 'day:' + dayKey(), d => { d.closed = (d.closed || 0) + sum; d.tables = (d.tables || 0) + 1; d.cash = (d.cash || 0) + cash; d.card = (d.card || 0) + card; if (onl) d.onl = (d.onl || 0) + onl; if (disc) d.disc = (d.disc || 0) + disc; if (tip) d.tip = (d.tip || 0) + tip; });
   // страви рахунку — щоб при видаленні закритого рахунку відняти їх і з «топ страв»
   const dishes = []; for (const o of bill.log || []) for (const l of o.lines) { const x = l.match(LINE); if (x) dishes.push([x[2], +x[1], +x[3]]); }
@@ -875,7 +875,7 @@ export async function kitchenMsg(env, id, text, who) {
 // стіл закрито/звільнено — активні картки кухні цих столів знімаються з черги (без «готово» у стрічку)
 async function _kitchenClosed(env, tables) {
   const l = await getKq(env); let ch = false;
-  for (const e of l) if (!e.done && tables.includes(e.t)) { e.done = 1; e.doneAt = Date.now(); e.closed = 1; ch = true; }
+  for (const e of l) if (!e.done && !e.paid && tables.includes(e.t)) { e.paid = 1; ch = true; } /* 💰 стіл розрахували — страви НЕ зникають з кухні (з собою платять одразу), лише позначка «оплачено»; зникають після «Готово» */
   if (ch) await putKq(env, l);
 }
 // скасування з рахунку → на кухні страва червона «СКАСОВАНО» (name=null — увесь стіл)
