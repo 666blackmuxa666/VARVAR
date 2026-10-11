@@ -94,6 +94,13 @@ async function apiTests() {
   await step('кухня: почати → готово', async () => {
     must(kq, 'немає картки'); await posOk(K || A, 'kStart', { id: kq.id }); const r = await posOk(K || A, 'kDone', { id: kq.id }); must(r.e?.done, 'не done');
   });
+  await step('💬 коментарі під подією стрічки: коментар, @згадка, реакція, видалення', async () => {
+    const ev = (await posOk(A, 'state')).events.slice(-1)[0]; must(ev?.id, 'немає подій');
+    must((await pos(W, 'evCom', { id: ev.id, text: '  ' })).status === 400, 'порожній прийнято');
+    const e1 = (await posOk(W, 'evCom', { id: ev.id, text: 'QA тест @Кухня' })).e, c = e1.cm.slice(-1)[0]; must(c.m?.includes('Кухня') && c.by, 'без згадки');
+    if (K) { const r = await posOk(K, 'evRx', { id: ev.id, rx: '👍', c: c.i }); must(r.e.cm.find(x => x.i === c.i).rx['👍'].length === 1, 'реакція'); const d = await pos(K, 'evComDel', { id: ev.id, c: c.i }); must(d.status === 400, 'чужий коментар видалено'); }
+    const e2 = (await posOk(W, 'evComDel', { id: ev.id, c: c.i })).e; must(!e2.cm?.some(x => x.i === c.i), 'не видалено');
+  });
   await step('📋 план на день: адмін додає, кухар бачить своє й відмічає', async () => {
     const st = (await posOk(A, 'taskList')).staff, ck = K && st.find(s => s.r === 'cook'); 
     const t = (await posOk(A, 'taskAdd', { n: 'QA протерти вітрину', who: { k: 'r', r: 'cook' }, imp: 1 })).t; must(t?.id, 'не додано');

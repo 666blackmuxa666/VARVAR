@@ -51,7 +51,7 @@ export async function posApi(b, req, env) {
   // 🧮 Розрахунок: склад, техкарти, накладні, інвентаризація — свої права (адмін / кухар)
   if (/^sk[A-Z]/.test(b.op || '')) return stockApi(b, env, me, { invoice: aiInvoice, card: aiCard, dups: aiDups });
   if (/^zp[A-Z]/.test(b.op || '')) return payApi(b, env, me); // 👷 зміни й зарплата
-  if (me.role === 'cook' && !['logout', 'state', 'menu', 'fav', 'order', 'accept', 'reject', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'printTest', 'ideaAdd', 'ideaList', 'ideaDel', 'help', 'taskList', 'taskMark', 'taskPh', 'lookV'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
+  if (me.role === 'cook' && !['logout', 'state', 'menu', 'fav', 'order', 'accept', 'reject', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'evCom', 'evComDel', 'evRx', 'evSeen', 'evVoice', 'evVoiceGet', 'evNames', 'printTest', 'ideaAdd', 'ideaList', 'ideaDel', 'help', 'taskList', 'taskMark', 'taskPh', 'lookV'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
 
   // 🛵 кур'єр: лише свої доставки
   if (me.role === 'courier' && !['logout', 'state', 'goSt', 'goCour', 'zpIn', 'zpOut', 'zpMy', 'ideaAdd', 'ideaList', 'ideaDel', 'help', 'courMe', 'courTg', 'courAct', 'taskList', 'taskMark', 'taskPh', 'lookV'].includes(b.op)) return [{ error: 'Кур\'єр — лише доставки' }, 403];
@@ -160,6 +160,42 @@ export async function posApi(b, req, env) {
     case 'rcptTest': { if (!admin) return needAdmin(); const P = await import('./print.js'); await queuePrint(env, 'test', await P.receipt(env, { table: 5, final: false, by: who, bill: { opened: Date.now() - 50 * 60e3, total: 640, log: [{ lines: ['2× Капучино — 130', '1× Бургер класичний — 290', '1× Лимонад — 220'] }] } })); return ok(); }
     case 'printRoute': { if (!admin) return needAdmin(); const r = { receipt: String(b.receipt || '').slice(0, 200), kitchen: String(b.kitchen || '').slice(0, 200) }; await env.DB.put('print_route', JSON.stringify(r)); return ok({ route: r }); }
     case 'evAck': { let ok = 0; await editEv(env, l => { const e = l.find(x => x.id === b.id && x.k === 'noscan'); if (e && e.s !== 'acc') { e.s = 'acc'; e.accBy = who; ok = 1; } }); return ok ? [{ ok: true }, 200] : [{ error: 'Вже підтверджено' }, 400]; } // 🚨 «гість не може замовити» — хтось іде
+    // 💬 коментарі під подіями стрічки (як в Instagram): усе в самій події ev:<день> — без окремих запитів, приходить зі станом
+    case 'evCom': case 'evComDel': case 'evRx': case 'evSeen': case 'evPin': case 'evVoice': {
+      const id = String(b.id || ''), RX = ['👍', '✅', '🔥', '❤️', '😂', '😮'];
+      let text = b.op === 'evCom' ? String(b.text || '').trim().slice(0, 300) : '', vid = '';
+      if (b.op === 'evCom' && !text) return [{ error: 'Порожній коментар' }, 400];
+      if (b.op === 'evVoice') { const m = String(b.data || '').match(/^data:audio\/[\w.+-]+(;codecs=[\w.]+)?;base64,(.+)$/); if (!m) return [{ error: 'audio' }, 400]; const bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0)); if (bytes.length > 100e3) return [{ error: 'Голосове задовге (до ~50 с)' }, 400];
+        vid = crypto.randomUUID().slice(0, 12); await env.DB.put('vc:' + vid, JSON.stringify({ mime: String(b.data).slice(5, String(b.data).indexOf(';')), b64: m[2] }), { expirationTtl: 3 * 86400 }); }
+      let err = '', res = null;
+      await editEv(env, l => {
+        const e = l.find(x => x.id === id); if (!e) { err = 'Подію не знайдено (стрічка за сьогодні)'; return; }
+        const cm = (e.cm ||= []);
+        if (b.op === 'evCom' || b.op === 'evVoice') {
+          if (cm.length >= 40) { err = 'Забагато коментарів під цією подією'; return; }
+          if (JSON.stringify(l).length > 100e3) { err = 'Стрічка за сьогодні переповнена'; return; }
+          const at = [...new Set((text.match(/@[^\s@,.!?]{2,24}/g) || []).map(x => x.slice(1)))].slice(0, 5);
+          cm.push({ i: crypto.randomUUID().slice(0, 6), by: who, ts: Date.now(), at: hhmm(), text, ...(vid ? { v: vid, d: Math.min(60, +b.dur || 0) } : {}), ...(at.length ? { m: at } : {}) });
+          e.seen = [who];
+        } else if (b.op === 'evComDel') {
+          const i = cm.findIndex(c => c.i === b.c); if (i < 0) { err = 'Вже видалено'; return; }
+          if (cm[i].by !== who && !admin) { err = 'Видалити можна лише свій коментар'; return; }
+          cm.splice(i, 1);
+        } else if (b.op === 'evRx') {
+          if (!RX.includes(b.rx)) { err = 'Реакція?'; return; }
+          const tgt = b.c ? cm.find(c => c.i === b.c) : e; if (!tgt) { err = 'Коментар видалено'; return; }
+          const r = (tgt.rx ||= {}), a = (r[b.rx] ||= []), i = a.indexOf(who); if (i >= 0) a.splice(i, 1); else a.push(who); if (!a.length) delete r[b.rx]; if (!Object.keys(r).length) delete tgt.rx;
+        } else if (b.op === 'evSeen') { if ((e.seen ||= []).includes(who)) { err = '-'; return; } e.seen.push(who); }
+        else if (b.op === 'evPin') { if (!admin && e.by !== who) { err = 'Закріпити може адміністратор'; return; } if (e.pin) delete e.pin; else e.pin = who; }
+        if (!cm.length) delete e.cm;
+        res = e;
+      }).catch(x => { err = x.message; });
+      if (err === '-') return ok({ e: res });
+      if (err) { if (vid) await env.DB.delete('vc:' + vid); return [{ error: err }, 400]; }
+      return ok({ e: res });
+    }
+    case 'evVoiceGet': { const v = /^[a-f0-9-]{12}$/.test(String(b.v)) && await env.DB.get('vc:' + b.v, 'json'); return v ? ok(v) : [{ error: 'Голосове вже видалено (зберігаються 3 дні)' }, 404]; }
+    case 'evNames': return ok({ list: (await getStaff(env)).map(s => s.name).concat('Кухня') });
     case 'printClear': { if (!admin) return needAdmin(); const r = await printClear(env, b.id ? String(b.id) : ''); if (r.n) await notify(env, `🖥 🗑 Черга друку: ${b.id ? 'видалено 1 завдання' : `очищено (${r.n})`} — ${esc(who)}`).catch(() => {}); return ok(r); }
     case 'printQr': { const { qrImg } = await import('./qr.js'); if (b.all) { const n = tablesCount(env); for (let i = 1; i <= n; i++) await queuePrint(env, 'qr', QR_PRINT(i, await qrImg(env, i))); return ok({ n }); }
       await queuePrint(env, 'qr', QR_PRINT(+b.t || 0, await qrImg(env, +b.t || 0))); return ok(); }
