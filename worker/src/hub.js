@@ -121,7 +121,7 @@ export class Hub extends DurableObject {
   // 💳 оплата ATOM: оплачено до, автосписання, історія оплат; payOnce — один платіж LiqPay обробляється один раз
   async venueBill(id, f) {
     const v = await this.st.get('venue:' + id); if (!v) return { error: 'Немає закладу' };
-    for (const k of ['paidTill', 'auto', 'subOrder', 'locked']) if (f[k] !== undefined) v[k] = f[k];
+    for (const k of ['paidTill', 'auto', 'subOrder', 'locked', 'unlockErr']) if (f[k] !== undefined) v[k] = f[k];
     if (f.status && ['active', 'trial', 'off'].includes(f.status)) v.status = f.status;
     if (f.pay) v.pays = [f.pay, ...(v.pays || [])].slice(0, 36);
     await this.st.put('venue:' + id, v); return v;

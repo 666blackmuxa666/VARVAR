@@ -372,9 +372,9 @@ export async function guestCallback(q, env) {
     await answer(''); return true;
   }
   if (act === 'bkg') {
-    const x = await bkEdit(env, id, y => { if (v === 'no') y.st = 'cancel'; else y.sure = 1; });
-    await edit(x ? (v === 'no' ? '↩️ Бронь скасовано. Чекаємо іншим разом!' : '✅ Чудово, чекаємо!') : 'Бронь не знайдено');
-    if (x) await notify(env, `${v === 'no' ? '↩️ Гість СКАСУВАВ' : '✅ Гість підтвердив'} бронь ${x.time} · ${esc(x.name)}`);
+    let late = 0; const x = await bkEdit(env, id, y => { if (!['new', 'ok'].includes(y.st)) { late = 1; return; } if (v === 'no') y.st = 'cancel'; else y.sure = 1; });
+    await edit(!x ? 'Бронь не знайдено' : late ? 'ℹ️ Бронь уже неактивна — змінити її можна, зателефонувавши закладу.' : v === 'no' ? '↩️ Бронь скасовано. Чекаємо іншим разом!' : '✅ Чудово, чекаємо!');
+    if (x && !late) await notify(env, `${v === 'no' ? '↩️ Гість СКАСУВАВ' : '✅ Гість підтвердив'} бронь ${x.time} · ${esc(x.name)}`);
     await answer(''); return true;
   }
   return false;

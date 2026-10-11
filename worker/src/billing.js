@@ -58,8 +58,10 @@ export async function billPaid(env, kind, x) {
   // sub: +1 місяць від пізнішої з дат (зараз / оплачено до)
   const till = addMonth(Math.max(Date.now(), tillOf(v)));
   await H.venueBill(vid, { locked: 0, paidTill: till, pay: { ts: Date.now(), sum, lp: pid, ...(test ? { test: 1 } : {}) }, ...(x.action === 'subscribe' || x.status === 'subscribed' ? { auto: 1, subOrder: String(x.order_id) } : {}), ...(v.status === 'off' || v.status === 'trial' ? { status: 'active' } : {}) });
-  await (await import('./owner.js')).callVenue(env, vid, '/__int/lock', { on: 0 }).catch(() => {});
-  await say(env, `💳 <b>Оплата ATOM</b> · ${esc(v.name)}: ${sum} грн → оплачено до ${ymd(till)}${test ? ' · 🧪 тест' : ''}`);
+  // розблокування: 3 спроби; не вдалось — тривога платформі й позначка, щоб щоденна перевірка повторила
+  let un = 0; for (let i = 0; i < 3 && !un; i++) un = await (await import('./owner.js')).callVenue(env, vid, '/__int/lock', { on: 0 }).then(() => 1, () => 0);
+  if (!un) await H.venueBill(vid, { unlockErr: 1 });
+  await say(env, `💳 <b>Оплата ATOM</b> · ${esc(v.name)}: ${sum} грн → оплачено до ${ymd(till)}${test ? ' · 🧪 тест' : ''}${un ? '' : '\n⚠️ <b>Касу НЕ розблоковано</b> — повторю завтра о 10:00 або розблокуйте вручну'}`);
   return { ok: true };
 }
 
@@ -74,6 +76,7 @@ export async function billDaily(env) {
       if (acct && mailOn(env)) await sendMail(env, acct.email, 'Оплата ATOM', '💳 Оплата ATOM', `${t} Оплатіть 500 ₴ або увімкніть автосписання в кабінеті власника. Після ${GRACE} днів без оплати каса перейде в режим перегляду (дані зберігаються).`, '💳 Оплатити', 'https://posatom.online/owner/#pay').catch(() => {});
       await say(env, `⏰ ${esc(t)} Власник: ${esc(acct?.email || v.owner)}`);
     }
+    if (v.unlockErr && !s.lock) { const ok = await callVenue(env, v.id, '/__int/lock', { on: 0 }).then(() => 1, () => 0); if (ok) { await H.venueBill(v.id, { unlockErr: 0, locked: 0 }); await say(env, `🔓 «${esc(v.name)}»: касу розблоковано після оплати`); } else await say(env, `⚠️ «${esc(v.name)}»: оплачено, але касу досі не розблоковано`); continue; }
     if (s.left === -GRACE - 1 || (s.lock && !v.locked)) { await callVenue(env, v.id, '/__int/lock', { on: 1, why: 'sub' }).catch(() => {}); await H.venueBill(v.id, { locked: 1 }); await say(env, `⛔ «${esc(v.name)}»: підписка не оплачена ${GRACE}+ днів — каса в режимі перегляду`); }
   }
 }
