@@ -566,7 +566,7 @@ export async function reprintClosed(env, ref, who, day = dayKey()) {
 
 // ---------- фінанси ----------
 export const getExp = async (env, day = dayKey()) => (await env.DB.get('exp:' + day, 'json')) || [];
-async function _addExpense(env, e, day = dayKey()) { const k = 'exp:' + day; const l = await getExp(env, day); l.push({ ts: Date.now(), ...e }); await env.DB.put(k, JSON.stringify(l)); return l.length - 1; }
+async function _addExpense(env, e, day = dayKey()) { const k = 'exp:' + day; const l = await getExp(env, day); l.push({ ts: Date.now(), at: hhmm(), ...e }); await env.DB.put(k, JSON.stringify(l)); return l.length - 1; }
 // 🗑/↩️ запис дня (витрата / рух коштів / Z-звіт): прапорець del, будь-який день
 async function _flagRec(env, pfx, day, i, del) { const k = pfx + day, l = (await env.DB.get(k, 'json')) || []; const x = l[+i]; if (!x || !!x.del === del) return false; if (del) x.del = 1; else delete x.del; await env.DB.put(k, JSON.stringify(l)); return true; }
 // ---------- рух коштів (не витрати): внесення / вилучення готівки, обмін картка ↔ готівка ----------

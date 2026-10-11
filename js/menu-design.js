@@ -15,13 +15,13 @@ window.VVM = (() => {
     $('#mtNote')?.remove();
     if (!t) { fonts(''); return; }
     const card2 = mix(t.card, t.text, .07);
-    const bg = { solid: t.bg, grad: `linear-gradient(${t.ang ?? 160}deg, ${t.bg}, ${t.bg2 || t.bg}) fixed`, img: t.bgImg ? `linear-gradient(${rgba(t.bg, .8)}, ${rgba(t.bg, .9)}), url("${t.bgImg}") center/cover fixed` : t.bg,
-      photo: t.bgImg ? `linear-gradient(${rgba(t.bg, t.mode === "light" ? .74 : .55)}, ${rgba(t.bg, t.mode === "light" ? .9 : .86)}), url("${t.bgImg}") center/cover fixed` : t.bg,
+    const bg = { solid: t.bg, grad: `linear-gradient(${t.ang ?? 160}deg, ${t.bg}, ${t.bg2 || t.bg}) fixed`, img: t.bgImg ? `linear-gradient(${rgba(t.bg, .8)}, ${rgba(t.bg, .9)}), url("${new URL(t.bgImg, document.baseURI).href}") center/cover fixed` : t.bg,
+      photo: t.bgImg ? `linear-gradient(${rgba(t.bg, t.mode === "light" ? .74 : .55)}, ${rgba(t.bg, t.mode === "light" ? .9 : .86)}), url("${new URL(t.bgImg, document.baseURI).href}") center/cover fixed` : t.bg,
       aurora: `radial-gradient(60% 50% at 12% 0%, ${rgba(t.accent, .3)}, transparent 70%), radial-gradient(50% 45% at 100% 30%, ${rgba(t.bg2 || t.accent, .34)}, transparent 70%), radial-gradient(70% 55% at 45% 105%, ${rgba(t.accent, .16)}, transparent 70%), ${t.bg}`,
       vign: `radial-gradient(110% 70% at 50% 0%, ${rgba(t.text, .08)}, transparent 60%), radial-gradient(140% 110% at 50% 45%, transparent 55%, rgba(0,0,0,${t.mode === 'light' ? .12 : .6})), ${t.bg}`,
       dots: `radial-gradient(${rgba(t.text, .09)} 1.2px, transparent 1.4px) 0 0/18px 18px, ${t.bg}`, grid: `linear-gradient(${rgba(t.text, .05)} 1px, transparent 1px) 0 0/28px 28px, linear-gradient(90deg, ${rgba(t.text, .05)} 1px, transparent 1px) 0 0/28px 28px, ${t.bg}`,
       noise: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.09'/%3E%3C/svg%3E"), ${t.bg}` }[t.bgfx] || t.bg;
-    const ph = { tex: '', card: card2, accent: mix(t.accent, t.card, .55), color: t.phC || card2, img: t.phImg ? `${card2} url("${t.phImg}") center/cover` : card2, none: 'transparent' }[t.phbg || 'tex'];
+    const ph = { tex: '', card: card2, accent: mix(t.accent, t.card, .55), color: t.phC || card2, img: t.phImg ? `${card2} url("${new URL(t.phImg, document.baseURI).href}") center/cover` : card2, none: 'transparent' }[t.phbg || 'tex'];
     const v = { '--bg': t.bg, '--card': t.card, '--card2': card2, '--line': mix(t.card, t.text, .12), '--text': t.text, '--muted': mix(t.text, t.bg, .42), '--accent': t.accent, '--accent-ink': t.ink, '--r': t.r + 'px',
       '--fh': `'${t.fh}', '${t.fb}', system-ui, sans-serif`, '--fb': `'${t.fb}', system-ui, sans-serif`, '--fz': { s: '14px', m: '15px', l: '17px' }[t.fs] || '15px', '--pagebg': bg, '--catbg': rgba(t.bg, .92),
       '--cols': t.cols || 2, '--ratio': t.ratio || '1', '--fit': t.fit || 'contain', '--ttlsz': (t.ttlSz || 30) + 'px', ...(ph ? { '--phbg': ph } : {}) };
