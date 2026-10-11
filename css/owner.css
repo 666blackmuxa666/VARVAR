@@ -222,3 +222,5 @@ tr.sum td { font-weight: 700; border-bottom: 0; }
 .as-rst { margin-left: auto; width: 26px; height: 26px; border-radius: 8px; background: var(--card); flex: none; }
 .as-crs { display: flex; flex-wrap: wrap; gap: 6px; } .as-cr { padding: 6px 10px; border-radius: 99px; font-size: 13px; background: var(--card2); font-variant-numeric: tabular-nums; } .as-cr.ok { color: #4ade80; } .as-cr.bad { color: #ffb020; }
 #sb.as .sb-fw iframe { background: #0f0b1a; }
+.sb-tpls button { min-height: 76px; transition: transform .15s; box-shadow: inset 0 0 0 1px rgba(255,255,255,.04); } .sb-tpls button:hover { transform: translateY(-2px); }
+.sb-tpls span { display: flex; flex-direction: column; gap: 3px; min-width: 0; } .sb-tpls b { font-size: 15px; font-weight: 600; line-height: 1.15; overflow-wrap: anywhere; } .sb-tpls small { font-size: 11px; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

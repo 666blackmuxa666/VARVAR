@@ -1,0 +1,24 @@
+# Фото фонів конструктора сайту — CC0 / Public Domain (Openverse), підпис автора не потрібен
+
+- goldleaf.webp — CC0 · rawpixel · https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIyLTA1L3B4MTAxMzk2Mi1pbWFnZS1rd3Z5N2Z1OC5qcGc.jpg
+- darkwood.webp — CC0 · stocksnap · https://cdn.stocksnap.io/img-thumbs/960w/EFCCQO0PWN.jpg
+- walnut.webp — CC0 · rawpixel · https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvZnJ3b29kZW5fdGFibGVfdGV4dHVyZV9vbGQtaW1hZ2Uta3liY2Q5MjYuanBn.jpg
+- malachite.webp — CC0 · rawpixel · https://images.rawpixel.com/image_1300/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIzLTA0L3BkbWlzYzExLWJnLXNtaXRoc25jaHNkbTE5NzI0MjIwN2FtYXR0Zmx5bm4taW1hZ2UtMDcuanBn.jpg
+- barnight.webp — CC0 · rawpixel · https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvcHgxMDgwMjQ5LWltYWdlLWt3eXJkNm5yLmpwZw.jpg
+- coffee.webp — CC0 · stocksnap · https://cdn.stocksnap.io/img-thumbs/960w/OTQJFKY0L7.jpg
+- pizzafire.webp — CC0 · stocksnap · https://cdn.stocksnap.io/img-thumbs/960w/F7EPDH2L1A.jpg
+- oven.webp — CC0 · rawpixel · https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvc3YyMDMyMzEtaW1hZ2Uta3d2dWY0bHYuanBn.jpg
+- cocktail.webp — CC0 · rawpixel · https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9zdGF0aWMvaW1hZ2Uvd2Vic2l0ZS8yMDIyLTA0L2xyL3B4MTA2OTgxMi1pbWFnZS1rd3Z3ZHMxNC5qcGc.jpg
+- mixology.webp — CC0 · rawpixel · https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvYnMxMTE4LWltYWdlLWt3dnlscnc0LmpwZw.jpg
+- embers.webp — CC0 · stocksnap · https://cdn.stocksnap.io/img-thumbs/960w/A11GSJHTRD.jpg
+- champagne.webp — CC0 · rawpixel · https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvcHg3Njc0MDItaW1hZ2Uta3d5b2s1YWMuanBn.jpg
+- leather.webp — CC0 · rawpixel · https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIyLTA1L3B4NzcxMjU1LWltYWdlLWt3dnhlODl2LmpwZw.jpg
+- blackleather.webp — CC0 · rawpixel · https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9zdGF0aWMvaW1hZ2Uvd2Vic2l0ZS8yMDIyLTA0L2xyL3B4NDk3MDM5LWltYWdlLWt3dnZlNWVxLmpwZw.jpg
+- darklinen.webp — CC0 · stocksnap · https://cdn.stocksnap.io/img-thumbs/960w/KXTLKQCVOS.jpg
+- blush.webp — CC0 · stocksnap · https://cdn.stocksnap.io/img-thumbs/960w/JXLLDMKHEE.jpg
+- marbling.webp — CC0 · rawpixel · https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDI0LTExL3BkbWlzY3Byb2plY3QyNi1yaWprc3JwLWQtMDAtMTE1OS1pbWFnZV8yLmpwZw.jpg
+- stucco.webp — CC0 · rawpixel · https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvZnJzdHJ1Y3R1cmVfYXJlYV9iYWNrZ3JvdW5kX3BsYXN0ZXItaW1hZ2Utam9iNjMwLWUtbDBnMDU4YnUuanBn.jpg
+- tropic.webp — CC0 · rawpixel · https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvZmwyODkzMDc0MjY3NC1pbWFnZS1reWNqZ3lweC5qcGc.jpg
+- neonsign.webp — CC0 · stocksnap · https://cdn.stocksnap.io/img-thumbs/960w/BLWIJ7OK5M.jpg
+- sushi.webp — CC0 · stocksnap · https://cdn.stocksnap.io/img-thumbs/960w/EZWO30D5TV.jpg
+- charcoal.webp — CC0 · rawpixel · https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvcHg2MjA3NTAtaW1hZ2Uta3d2dmNnbXEuanBn.jpg

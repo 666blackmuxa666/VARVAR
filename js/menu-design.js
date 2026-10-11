@@ -2,7 +2,7 @@
 // вкладки розділів, кнопки, оголошення. Без налаштувань меню виглядає як раніше.
 window.VVM = (() => {
   const R = document.documentElement, st = R.style, $ = s => document.querySelector(s);
-  const FW = { 'Rubik': 'Rubik:wght@400;500;700', 'Rubik Dirt': 'Rubik+Dirt', 'Russo One': 'Russo+One' };
+  const FW = { 'Rubik': 'Rubik:wght@400;500;700', 'Rubik Dirt': 'Rubik+Dirt', 'Russo One': 'Russo+One', 'Cormorant Garamond': 'Cormorant+Garamond:wght@400;600;700', 'Prata': 'Prata', 'Forum': 'Forum', 'Tenor Sans': 'Tenor+Sans', 'Yeseva One': 'Yeseva+One', 'Old Standard TT': 'Old+Standard+TT:wght@400;700', 'Spectral': 'Spectral:wght@400;700', 'Alice': 'Alice', 'Philosopher': 'Philosopher:wght@400;700', 'Poiret One': 'Poiret+One', 'Inter': 'Inter:wght@400;700', 'Jost': 'Jost:wght@400;700', 'Raleway': 'Raleway:wght@400;700', 'Golos Text': 'Golos+Text:wght@400;700', 'Onest': 'Onest:wght@400;700', 'Tektur': 'Tektur:wght@400;700', 'Dela Gothic One': 'Dela+Gothic+One', 'Pacifico': 'Pacifico', 'Lobster': 'Lobster', 'Marck Script': 'Marck+Script', 'Amatic SC': 'Amatic+SC:wght@400;700', 'Bad Script': 'Bad+Script', 'Press Start 2P': 'Press+Start+2P' };
   const fam = f => FW[f] || f.replace(/ /g, '+') + ':wght@400;700';
   const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
   const mix = (a, b, k) => '#' + hex(a).map((v, i) => Math.round(v + (hex(b)[i] - v) * k).toString(16).padStart(2, '0')).join('');
@@ -16,6 +16,9 @@ window.VVM = (() => {
     if (!t) { fonts(''); return; }
     const card2 = mix(t.card, t.text, .07);
     const bg = { solid: t.bg, grad: `linear-gradient(${t.ang ?? 160}deg, ${t.bg}, ${t.bg2 || t.bg}) fixed`, img: t.bgImg ? `linear-gradient(${rgba(t.bg, .8)}, ${rgba(t.bg, .9)}), url("${t.bgImg}") center/cover fixed` : t.bg,
+      photo: t.bgImg ? `linear-gradient(${rgba(t.bg, t.mode === "light" ? .74 : .55)}, ${rgba(t.bg, t.mode === "light" ? .9 : .86)}), url("${t.bgImg}") center/cover fixed` : t.bg,
+      aurora: `radial-gradient(60% 50% at 12% 0%, ${rgba(t.accent, .3)}, transparent 70%), radial-gradient(50% 45% at 100% 30%, ${rgba(t.bg2 || t.accent, .34)}, transparent 70%), radial-gradient(70% 55% at 45% 105%, ${rgba(t.accent, .16)}, transparent 70%), ${t.bg}`,
+      vign: `radial-gradient(110% 70% at 50% 0%, ${rgba(t.text, .08)}, transparent 60%), radial-gradient(140% 110% at 50% 45%, transparent 55%, rgba(0,0,0,${t.mode === 'light' ? .12 : .6})), ${t.bg}`,
       dots: `radial-gradient(${rgba(t.text, .09)} 1.2px, transparent 1.4px) 0 0/18px 18px, ${t.bg}`, grid: `linear-gradient(${rgba(t.text, .05)} 1px, transparent 1px) 0 0/28px 28px, linear-gradient(90deg, ${rgba(t.text, .05)} 1px, transparent 1px) 0 0/28px 28px, ${t.bg}`,
       noise: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.09'/%3E%3C/svg%3E"), ${t.bg}` }[t.bgfx] || t.bg;
     const ph = { tex: '', card: card2, accent: mix(t.accent, t.card, .55), color: t.phC || card2, img: t.phImg ? `${card2} url("${t.phImg}") center/cover` : card2, none: 'transparent' }[t.phbg || 'tex'];
