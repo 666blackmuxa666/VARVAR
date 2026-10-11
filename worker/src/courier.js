@@ -125,6 +125,7 @@ export async function courShiftEnd(env, name) {
 
 // ---------- ⏰ ніхто не взяв: 3 хв — кур'єрам ще раз, 5 хв — адміну ----------
 export async function courWatch(env) {
+  await (await import('./kitbot.js')).kitHook(env).catch(() => {}); // 👨‍🍳 вебхук бота кухні — автоматично
   if (env.COURIER_BOT_TOKEN && (await env.DB.get('g3hook')) !== env.SELF_URL) await courBot(env).catch(() => {}); // вебхук бота кур'єрів — автоматично
   for (const r of await openTables(env)) {
     const g = r.b.go; if (!g || g.kind !== 'del' || g.cour || !['acc', 'cook', 'ready'].includes(g.st) || !g.accAt) continue;
