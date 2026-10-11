@@ -142,7 +142,7 @@ export async function posApi(b, req, env) {
     case 'kitchen': {
       const open = new Set((await openTables(env)).map(r => r.t)), stale = [...new Set((await getKq(env)).filter(e => !e.done && !open.has(e.t)).map(e => e.t))];
       if (stale.length) await kitchenClosed(env, stale); // стіл уже закритий — картка лишається, позначка «оплачено»
-      const l = await getKq(env); return ok({ list: l.filter(e => !e.done).concat(l.filter(e => e.done && !e.cancelled && !e.closed).slice(-10)) }); }
+      const l = await getKq(env), { KV } = await import('./kitchen.js'); return ok({ kv: KV, list: l.filter(e => !e.done).concat(l.filter(e => e.done && !e.cancelled && !e.closed).slice(-10)) }); }
     case 'kDone': return ok({ e: await kitchenDone(env, String(b.id), b.i == null ? null : +b.i, who) });
     case 'kStart': return ok({ e: await kitchenStart(env, String(b.id), who) });
     case 'kUndo': return ok({ e: await kitchenUndo(env, String(b.id)) });
