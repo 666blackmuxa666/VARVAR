@@ -173,8 +173,8 @@
   function skInvHTML() {
     const K = S.sk; if (K.draft) return skDraftHTML();
     const I = S.data.skInv, adm = isAdmin();
-    const top = `<div class="card"><h3>Нова накладна</h3>${K.busy ? '<div class="sk-busy">🔎 Розпізнаю накладну… зазвичай 10–30 секунд</div>' : `<div class="sk-new"><label class="btn primary sk-scan">📷 Сканувати накладну<input type="file" id="skPhoto" accept="image/*" capture="environment" hidden></label><label class="btn">🖼 З галереї<input type="file" id="skPhoto2" accept="image/*" multiple hidden></label><button class="btn" data-a="skHand">✏️ Вручну</button>${isAdmin() ? '<label class="btn sm">🧪 Порівняти ШІ<input type="file" id="skBench" accept="image/*" multiple hidden></label>' : ''}</div>`}
-      <div class="muted" style="font-size:12px;margin-top:8px">«Сканувати» одразу відкриває камеру — сфотографуйте накладну рівно, при гарному світлі. Кілька сторінок — «З галереї». Розпізнає Gemini — ви перевіряєте й підтверджуєте. Фото ніде не зберігається.</div></div>`;
+    const top = `<div class="card"><h3>Нова накладна</h3>${K.busy ? '<div class="sk-busy">🔎 Розпізнаю накладну… зазвичай 10–30 секунд</div>' : `<div class="sk-new"><label class="btn primary sk-scan">📷 Сканувати накладну<input type="file" id="skPhoto" accept="image/*" capture="environment" hidden></label><label class="btn">🖼 З галереї<input type="file" id="skPhoto2" accept="image/*" multiple hidden></label><button class="btn" data-a="skLink">🔗 Онлайн-чек</button><button class="btn" data-a="skHand">✏️ Вручну</button>${isAdmin() ? '<label class="btn sm">🧪 Порівняти ШІ<input type="file" id="skBench" accept="image/*" multiple hidden></label>' : ''}</div>`}
+      <div class="muted" style="font-size:12px;margin-top:8px">«Сканувати» одразу відкриває камеру — сфотографуйте накладну рівно, при гарному світлі. Кілька сторінок — «З галереї». Онлайн-чек (Checkbox, ДПС…) — вставте посилання або відскануйте його QR. Розпізнає Gemini — ви перевіряєте й підтверджуєте. Фото ніде не зберігається.</div></div>`;
     if (!I) return top + '<div class="muted">Завантаження…</div>';
     const debts = Object.entries(I.sups || {}).filter(([, s]) => s.debt > 0);
     const dH = adm && debts.length ? `<div class="card"><h3>💸 Борги постачальникам <span class="muted">· ${money(debts.reduce((a, [, s]) => a + s.debt, 0))}</span></h3>${debts.map(([n, s]) => `<div class="kv"><span>${esc(n)}</span><b class="money" style="color:var(--red)">${money(s.debt)}</b></div>`).join('')}</div>` : '';
@@ -520,6 +520,7 @@
       case 'skShare': skShare(el.dataset.g); break;
       case 'skHand': if (!S.data.skInv) S.data.skInv = await api('skInvList').catch(() => null); K.draft = { sup: '', no: '', date: '', total: 0, src: 'hand', lines: [{ id: null, n: '', q: '', f: 1, sum: '' }] }; renderMain(); break;
       case 'skScan': skScan(); break;
+      case 'skLink': { const u = await ask('🔗 Онлайн-чек', 'Вставте посилання на чек (з SMS, пошти чи QR)'); if (u && /^https?:\/\//.test(u.trim())) skCode(u.trim()); else if (u) toast('⚠️ Потрібне посилання, що починається з https://'); break; }
       case 'skCam': skCam(); break;
       case 'skBcBind': { const c = el.dataset.c; if (!isAdmin()) { toast('Привʼязати штрихкод може адміністратор'); break; } camStop?.(); camStop = null; modalResolve?.('ok'); await new Promise(z => setTimeout(z, 50));
         const id = await skPick(`Штрихкод ${c} — який це продукт?`); if (!id) break; const x = S.data.sk.ing.find(y => y.id === id);

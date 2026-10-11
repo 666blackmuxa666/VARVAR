@@ -190,8 +190,18 @@ async function invPrompt(env, images, text) {
 Якщо є колонки з ПДВ і без ПДВ — бери з ПДВ. Числа — з крапкою. Не вигадуй рядків, не пропускай. Знижку/доставку — окремим рядком, якщо є. Відповідь — JSON.${text ? '\n\nВміст коду:\n' + text : ''}`;
   return prompt;
 }
+// 🔗 онлайн-чек за посиланням (Checkbox, ДПС, інші ПРРО) → текст сторінки; один запит назовні
+export async function rcptText(url) {
+  const u = new URL(url), cb = /checkbox/.test(u.hostname) && (url.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i) || [])[0];
+  const r = await fetch(cb ? `https://api.checkbox.in.ua/api/v1/receipts/${cb}/text` : u.href, { headers: { 'user-agent': 'Mozilla/5.0', accept: 'text/html,text/plain,application/json' }, redirect: 'follow', signal: AbortSignal.timeout(12000) });
+  if (!r.ok) throw new Error('Сторінка чека не відкрилась (' + r.status + ')');
+  const t = (await r.text()).replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ').replace(/<br\s*\/?>|<\/(p|div|tr|li|h\d)>/gi, '\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+  if ((t.match(/\d+[.,]\d{2}/g) || []).length < 2) throw new Error('На сторінці немає товарів — відкрийте чек і сфотографуйте екран');
+  return t.slice(0, 12000);
+}
 export async function aiInvoice(env, { images = [], text = '' }) {
   if (!aiOn(env)) return { error: 'AI вимкнено' };
+  if (/^https?:\/\/\S+$/.test(text.trim())) { try { text = await rcptText(text.trim()); } catch (e) { return { error: e.message }; } }
   const prompt = await invPrompt(env, images, text);
   try {
     const r = await gemini(env, [{ text: prompt }, ...images.map(d => ({ inline_data: { mime_type: 'image/jpeg', data: d } }))], { schema: INV, timeout: 50000, budget: 60000, race: 3, temperature: 0.1, prefer: ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.1-flash-lite', 'gemini-3.5-flash'] });

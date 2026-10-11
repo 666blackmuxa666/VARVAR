@@ -105,7 +105,11 @@ export async function invPhoto(m, env, uid) {
   const f = await (await tg(env, 'getFile', { file_id: ph.file_id })).json();
   const buf = new Uint8Array(await (await fetch(`https://api.telegram.org/file/bot${env.BOT_TOKEN}/${f.result.file_path}`)).arrayBuffer());
   let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
-  const r = await aiInvoice(env, { images: [btoa(bin)] }); // фото далі ніде не зберігається
+  return invDraft(env, uid, await aiInvoice(env, { images: [btoa(bin)] })); // фото далі ніде не зберігається
+}
+// 🔗 посилання на онлайн-чек → та сама чернетка
+export const invLink = async (url, env, uid) => invDraft(env, uid, await aiInvoice(env, { text: url }));
+async function invDraft(env, uid, r) {
   if (r.error) return { text: '⚠️ ' + r.error };
   const k = 'invd:' + uid, prev = await env.DB.get(k, 'json');
   const lines = await matchLines(env, r.sup || prev?.sup || '', r.lines);

@@ -12,7 +12,7 @@ import { tablePick, catsView, obCallback, getOb, putOb } from './orderui.js';
 import { queuePrint, printStatus, printClear } from './print.js';
 import { loyBotText, loyBotCb, promoFill, promoFillMany } from './promo.js';
 import { payroll, payText, payOp, attConfirm, swapStep, shiftIn, shiftOut, getAtt } from './pay.js';
-import { calcView, stockCmd, invPhoto, stockCallback, stockCallbackW, stockCallbackX, stockState } from './stockbot.js';
+import { calcView, stockCmd, invPhoto, invLink, stockCallback, stockCallbackW, stockCallbackX, stockState } from './stockbot.js';
 import {
   L, tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
   precheck, setDiscount, splitTable, restoreVoid, getVoids, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
@@ -618,6 +618,7 @@ export async function handleUpdate(u, env) {
 
   // --- 🧮 розрахунок: склад, списання, заготовки, інвентаризація, техкарти ---
   if (text === A.calc) return send(await calcView(env));
+  if (admin && /^https?:\/\/\S+$/.test(text.trim()) && /check|чек|receipt|cashreg|tax\.gov|checkbox/i.test(text)) { await send({ text: '🔎 Читаю чек за посиланням… 10–30 с' }); return send(await invLink(text.trim(), env, uid)); }
   if (admin) { const r = await stockCmd(text, env, who); if (r) return send(r); }
 
   // --- замовлення від офіціанта текстом: «номер столу» + рядки «страва кількість» ---
