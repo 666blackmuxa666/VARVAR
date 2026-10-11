@@ -5,10 +5,11 @@ import { tg, esc, dayKey, L, getStaff, getKq, pinHash, kitchenDone, kitchenStart
 import { getAtt } from './pay.js';
 import { getMenu } from './menu.js';
 import { tn } from './tn.js';
+import { stockCmd, invPhoto, invLink, stockCallback, stockCallbackW, stockCallbackX, stockState } from './stockbot.js';
 
 const ktg = (env, m, b) => tg({ ...env, BOT_TOKEN: env.KITCHEN_BOT_TOKEN }, m, b).then(r => r.json()).catch(() => null);
 const getLinks = async env => (await env.DB.get('kittg', 'json')) || {}; // { chat_id: staff id }
-const KB = { keyboard: [[{ text: '📋 Черга' }, { text: '⛔ Стоп-лист' }], [{ text: '🚪 Вийти' }]], resize_keyboard: true, is_persistent: true };
+const KB = { keyboard: [[{ text: '📋 Черга' }, { text: '⛔ Стоп-лист' }], [{ text: '🧮 Склад' }, { text: '🗑 Списання' }], [{ text: '🚪 Вийти' }]], resize_keyboard: true, is_persistent: true };
 const HALL = ['⏳ Затримка 5–10 хв', '❌ Закінчилась страва', '🙋 Заберіть замовлення', '❓ Уточніть замовлення'];
 
 export async function kitHook(env) {
@@ -89,6 +90,12 @@ export async function kitUpdate(u, env) {
       if (r) await logEvent(env, { k: 'shift', by: who, text: `${r.hidden ? '⛔' : '✅'} ${r.name.uk} — ${r.hidden ? 'у стоп-листі' : 'знову в меню'}` });
       await kitUpdate({ callback_query: { ...q, data: 'sc:' + id } }, env); return;
     }
+    if (/^sk/.test(a)) { // 🧮 склад — ті самі екрани, що в боті команди; кухарю — як у касі (без звітів і штрихкодів)
+      if (me.role !== 'admin' && !SK_COOK.has(a)) return ans('🔐 Лише для адміністратора');
+      const kenv = { ...env, BOT_TOKEN: env.KITCHEN_BOT_TOKEN }, r = (await stockCallback(a, id, kenv, chat, who)) || (await stockCallbackW(a, id, i, kenv, chat, who)) || (await stockCallbackX(a, id, kenv, chat, who));
+      if (r) { if (['skis', 'skix', 'skipp', 'skim'].includes(a)) await ktg(env, 'editMessageText', { chat_id: chat, message_id: mid, text: r.text, parse_mode: 'HTML', reply_markup: r.markup }); else await ktg(env, 'sendMessage', { chat_id: chat, text: r.text, parse_mode: 'HTML', reply_markup: r.markup || KB }); }
+      return ans('');
+    }
     if (a === 'sb') { await ktg(env, 'editMessageText', { chat_id: chat, message_id: mid, ...(await stopView(env)) }); return ans(''); }
     return ans('');
   }
@@ -105,6 +112,18 @@ export async function kitUpdate(u, env) {
     return ktg(env, 'sendMessage', { chat_id: chat, text: `✅ ${esc(s.name)}, ви на кухні!\nНові замовлення приходитимуть сюди. Кнопки під карткою — «🔥 Почав» і «✅ Готово».`, parse_mode: 'HTML', reply_markup: KB });
   }
   if (text === '🚪 Вийти') { await L(env, 'kittg', async () => { const l = await getLinks(env); delete l[chat]; await env.DB.put('kittg', JSON.stringify(l)); }); return ktg(env, 'sendMessage', { chat_id: chat, text: '🚪 Ви вийшли. Замовлення сюди більше не приходять.', reply_markup: { remove_keyboard: true } }); }
+  const kenv = { ...env, BOT_TOKEN: env.KITCHEN_BOT_TOKEN }, who = me.name + ' · бот кухні';
+  const say = r => ktg(env, 'sendMessage', { chat_id: chat, text: r.text, parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: r.markup || KB });
+  if (text === '🧮 Склад') { await env.DB.delete('st:' + chat); return say(SK_VIEW); }
+  if (text === '🗑 Списання') return say({ text: '🗑 Напишіть: <code>списати сир фета 0.3 зіпсувався</code>\n(продукт, кількість — можна <code>250 г</code>, причина)' });
+  const state = text && !text.startsWith('/') && text !== '📋 Черга' && await env.DB.get('st:' + chat);
+  if (state && /^sk/.test(state)) { await env.DB.delete('st:' + chat); const r = await stockState(state, text, kenv, chat, who); if (r) return say(r); }
+  if (m.photo) { if (!/^накладн/i.test((m.caption || '').trim())) return say({ text: '📷 Щоб записати накладну — надішліть фото з підписом <code>накладна</code>' }); await say({ text: '🔎 Розпізнаю накладну… 10–30 с' }); return say(await invPhoto(m, kenv, chat)); }
+  if (/^https:\/\/\S+$/.test(text)) { await say({ text: '🔎 Читаю чек за посиланням… 10–30 с' }); return say(await invLink(text, kenv, chat)); }
+  if (text && text !== '📋 Черга') {
+    if (me.role !== 'admin' && /^(\+|штрихкод|техкарта)/i.test(text)) return say({ text: '🔐 Оприбуткування, штрихкоди й техкарти — адміністратор' });
+    const r = await stockCmd(text, kenv, who); if (r) return say(r);
+  }
   if (text === '⛔ Стоп-лист') return ktg(env, 'sendMessage', { chat_id: chat, ...(await stopView(env)) });
   // 📋 черга (і будь-що інше)
   const l = (await getKq(env)).filter(e => !e.done);
@@ -113,6 +132,13 @@ export async function kitUpdate(u, env) {
   for (const e of l.slice(-10)) { const r = await send(env, chat, e); if (r?.ok) msgs[e.id] = r.result.message_id; }
   for (const [id, mid] of Object.entries(msgs)) { const k = 'kbm:' + id, x = (await env.DB.get(k, 'json')) || {}; x[chat] = mid; await env.DB.put(k, JSON.stringify(x), { expirationTtl: 86400 }); }
 }
+const SK_COOK = new Set(['skst', 'skbuy', 'skinvl', 'skip', 'skipp', 'skis', 'skix', 'skim', 'skcnm', 'skcn', 'skcf', 'skprl', 'skpr']);
+const SK_VIEW = { text: `🧮 <b>Склад кухні</b>
+📷 Фото з підписом <code>накладна</code> або посилання на онлайн-чек — запишу накладну
+<code>списати сир фета 0.3 зіпсувався</code>
+<code>перемістити лимон 1 в бар</code>
+<code>заготовка соус зелений 3</code>
+<code>інв кухня філе 14.5</code> … <code>інв кухня кінець</code>`, markup: { inline_keyboard: [[{ text: '📦 Залишки', callback_data: 'skst' }, { text: '🛒 Закупівля', callback_data: 'skbuy' }], [{ text: '📝 Інвентаризація', callback_data: 'skcnm' }, { text: '🍳 Заготовки', callback_data: 'skprl' }], [{ text: '🧾 Накладні', callback_data: 'skinvl' }]] } };
 async function stopView(env) {
   const cs = await stopCats(env), n = cs.reduce((a, c) => a + c.items.filter(i => i.hidden).length, 0);
   return { text: `⛔ <b>Стоп-лист</b>${n ? ` · зараз ${n}` : ''}\nОберіть розділ:`, parse_mode: 'HTML', reply_markup: { inline_keyboard: cs.map(c => [{ text: `${c.name?.uk || c.id}${c.items.some(i => i.hidden) ? ' ⛔' : ''}`, callback_data: 'sc:' + c.id }]) } };
