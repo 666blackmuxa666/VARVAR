@@ -113,7 +113,7 @@ export async function payOp(env, { n, t, sum, src, note, day }, by) {
     if (money_) await env.DB.put(k, JSON.stringify(ml));
     l.push(op); await env.DB.put('pay:' + m, JSON.stringify(l)); return op;
   });
-  await logEvent(env, { k: 'shift', by, text: `${OPS[t]}: ${n} — ${sum} грн${money_ ? (src === 'card' ? ' (з картки)' : ' (з каси)') : ''}${note ? ' · ' + note : ''}` });
+  /* у стрічку не пишемо — її бачать усі; ЗП видно лише в розділі зарплат */
   return { op };
 }
 export async function payOpDel(env, month, id, back) {
