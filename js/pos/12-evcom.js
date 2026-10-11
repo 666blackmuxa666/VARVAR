@@ -11,7 +11,8 @@
   // підвал картки в стрічці: реакції · 💬 N + останній коментар · 👁 хто бачив
   function evFoot(e) {
     const n = e.cm?.length || 0, last = n ? e.cm[n - 1] : null, un = evUnread(e);
-    return `${evRx(e)}<div class="evf">${e.pin ? '<span class="pin">📌</span>' : ''}<span class="evc${un ? ' un' : ''}${evMention(e) ? ' me' : ''}">💬 ${n || ''}${un ? ' нове' : ''}</span>${last ? `<span class="evl"><b>${esc(last.by)}:</b> ${last.v ? '🎙 голосове' : esc(last.text)}</span>` : '<span class="evl muted">коментувати…</span>'}${e.seen?.length ? `<span class="seen" title="${esc(e.seen.join(', '))}">👁 ${e.seen.length}</span>` : ''}</div>`;
+    if (!n && !e.pin && !e.rx) return ''; // без коментарів — картка як раніше, без підпису
+    return `${evRx(e)}<div class="evf">${e.pin ? '<span class="pin">📌</span>' : ''}<span class="evc${un ? ' un' : ''}${evMention(e) ? ' me' : ''}">💬 ${n || ''}${un ? ' нове' : ''}</span>${last ? `<span class="evl"><b>${esc(last.by)}:</b> ${last.v ? '🎙 голосове' : esc(last.text)}</span>` : '<span class="evl"></span>'}${e.seen?.length ? `<span class="seen" title="${esc(e.seen.join(', '))}">👁 ${e.seen.length}</span>` : ''}</div>`;
   }
   // порядок стрічки: 📌 закріплені зверху; режим «💬 Обговорення» — лише з коментарями, непрочитані першими
   function evList() {

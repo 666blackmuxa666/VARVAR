@@ -2435,7 +2435,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   function evFoot(e) {
     var _a2, _b;
     const n = ((_a2 = e.cm) == null ? void 0 : _a2.length) || 0, last = n ? e.cm[n - 1] : null, un = evUnread(e);
-    return `${evRx(e)}<div class="evf">${e.pin ? '<span class="pin">\u{1F4CC}</span>' : ""}<span class="evc${un ? " un" : ""}${evMention(e) ? " me" : ""}">\u{1F4AC} ${n || ""}${un ? " \u043D\u043E\u0432\u0435" : ""}</span>${last ? `<span class="evl"><b>${esc(last.by)}:</b> ${last.v ? "\u{1F399} \u0433\u043E\u043B\u043E\u0441\u043E\u0432\u0435" : esc(last.text)}</span>` : '<span class="evl muted">\u043A\u043E\u043C\u0435\u043D\u0442\u0443\u0432\u0430\u0442\u0438\u2026</span>'}${((_b = e.seen) == null ? void 0 : _b.length) ? `<span class="seen" title="${esc(e.seen.join(", "))}">\u{1F441} ${e.seen.length}</span>` : ""}</div>`;
+    if (!n && !e.pin && !e.rx) return "";
+    return `${evRx(e)}<div class="evf">${e.pin ? '<span class="pin">\u{1F4CC}</span>' : ""}<span class="evc${un ? " un" : ""}${evMention(e) ? " me" : ""}">\u{1F4AC} ${n || ""}${un ? " \u043D\u043E\u0432\u0435" : ""}</span>${last ? `<span class="evl"><b>${esc(last.by)}:</b> ${last.v ? "\u{1F399} \u0433\u043E\u043B\u043E\u0441\u043E\u0432\u0435" : esc(last.text)}</span>` : '<span class="evl"></span>'}${((_b = e.seen) == null ? void 0 : _b.length) ? `<span class="seen" title="${esc(e.seen.join(", "))}">\u{1F441} ${e.seen.length}</span>` : ""}</div>`;
   }
   function evList() {
     let l = [...S.events].reverse();
