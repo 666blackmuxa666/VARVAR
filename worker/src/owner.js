@@ -263,6 +263,13 @@ ${JSON.stringify(data.filter(Boolean))}
       return ok(); }
     case 'leads': { const days = Math.min(90, +b.days || 30); return ok({ list: await H.leadList(), hits: await H.hitStats(days), demo: !!(await H.venueGet('atom-demo')) }); } // 🚀 CRM «Продажі»
     case 'atomCfg': return ok({ cfg: await H.atomCfg(b.set ? b.f || {} : undefined) }); // 💬 контакти сайту ATOM
+    case 'atomDesign': { // 🎨 конструктор сайту ATOM: дизайн у KV (воркер вшиває його в сторінку) + 10 попередніх версій
+      const kv = env.DB.kv || env.DB, cur = await kv.get('atom:design', 'json'), vers = (await kv.get('atom:design:v', 'json')) || [];
+      if (!b.set) return ok({ d: cur || {}, vers });
+      const d = atomDesignClean(b.d); if (JSON.stringify(d).length > 30000) return bad('Забагато тексту');
+      if (cur && Object.keys(cur).length) vers.unshift({ at: Date.now(), d: cur });
+      await kv.put('atom:design', JSON.stringify(d)); await kv.put('atom:design:v', JSON.stringify(vers.slice(0, 10)));
+      return ok({ d, vers: vers.slice(0, 10) }); }
     case 'leadNew': { const r = await H.leadAdd({ ...b, src: 'вручну' }, 'own:' + Date.now()); return r.error ? bad(r.error) : ok({ lead: r }); }
     case 'leadSet': { const r = await H.leadSet(String(b.id), b.f || {}); return r.error ? bad(r.error) : ok({ lead: r }); }
     case 'demo': { // 📱 демо-каса: створити (власник — платформа) / зберегти поточний стан як еталон для нічного скидання
@@ -277,4 +284,21 @@ ${JSON.stringify(data.filter(Boolean))}
     case 'venueSet': { const v = await H.venueSet(String(b.id), b.f || {}); return v.error ? bad(v.error) : ok({ venue: v }); }
   }
   return bad('unknown');
+}
+
+// 🎨 дизайн сайту ATOM: лише відомі ключі, кольори #rrggbb, шрифти зі списку, тексти — простий текст
+export const ATOM_FONTS = ['Unbounded', 'Manrope', 'Inter', 'Montserrat', 'Rubik', 'Golos Text', 'Onest', 'Nunito', 'Comfortaa', 'Exo 2', 'Oswald', 'Russo One', 'Playfair Display', 'Lora', 'Prata', 'Roboto Slab', 'Philosopher', 'Tenor Sans', 'Raleway', 'Open Sans'];
+const ATOM_TOK = ['bg', 'bg2', 'card', 'card2', 'line', 'text', 'muted', 'gold', 'gold2', 'vio', 'vio2', 'ok', 'ink'], ATOM_SEC = ['hero', 'feat', 'who', 'demo', 'steps', 'calc', 'cmp', 'price', 'faq', 'lead'];
+export function atomDesignClean(x) {
+  x = x && typeof x === 'object' ? x : {}; const d = {}, c = {};
+  for (const k of ATOM_TOK) if (/^#[0-9a-f]{6}$/i.test(x.c?.[k] || '')) c[k] = x.c[k].toLowerCase();
+  if (Object.keys(c).length) d.c = c;
+  for (const k of ['fh', 'fb']) if (ATOM_FONTS.includes(x[k])) d[k] = x[k];
+  if (x.r != null && +x.r >= 0 && +x.r <= 40) d.r = Math.round(+x.r);
+  if (x.sp != null && +x.sp >= 32 && +x.sp <= 140) d.sp = Math.round(+x.sp);
+  const fx = {}; for (const k of ['grad', 'glow', 'phone', 'anim', 'facts']) if (x.fx?.[k] === 0) fx[k] = 0; if (Object.keys(fx).length) d.fx = fx;
+  if (Array.isArray(x.order)) { const o = [...new Set(x.order.filter(k => ATOM_SEC.includes(k)))]; if (o.length) d.order = o; }
+  if (Array.isArray(x.off)) { const o = [...new Set(x.off.filter(k => ATOM_SEC.includes(k)))]; if (o.length) d.off = o; }
+  if (x.t && typeof x.t === 'object') { const t = {}; for (const [k, v] of Object.entries(x.t)) if (/^[a-z]{2,6}\.[a-z0-9]{1,5}$/.test(k) && typeof v === 'string') t[k] = v.slice(0, 600); if (Object.keys(t).length) d.t = t; }
+  return d;
 }

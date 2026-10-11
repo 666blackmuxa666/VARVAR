@@ -212,3 +212,13 @@ tr.sum td { font-weight: 700; border-bottom: 0; }
 .crm-st { margin: 8px 0; } .crm-st button { font-size: 12px; padding: 5px 9px; }
 .crm-ph { user-select: all; }
 .st.crm-new { background: #f2c14e33; color: #f2c14e; } .st.crm-won { background: #30d15833; color: #30d158; } .st.crm-lost { background: #ff453a22; color: #ff6b6b; }
+/* 🎨 конструктор сайту ATOM */
+.as-ths { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.as-th { display: grid; gap: 6px; padding: 10px; border-radius: 12px; border: 1px solid; text-align: left; font-size: 13px; }
+.as-sw { display: inline-flex; gap: 3px; vertical-align: middle; } .as-sw i { width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 0 1px #0004; }
+.as-pick { display: grid; justify-items: center; gap: 2px; font-size: 12px; color: var(--muted); } .as-pick input { width: 46px; height: 46px; padding: 0; border: 0; background: none; border-radius: 12px; }
+.as-hue { background: linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) !important; height: 10px; border-radius: 99px; -webkit-appearance: none; appearance: none; }
+.as-cols { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; } .as-cols .sb-col { line-height: 1.25; } .as-hex { color: var(--muted); font-family: ui-monospace, monospace; }
+.as-rst { margin-left: auto; width: 26px; height: 26px; border-radius: 8px; background: var(--card); flex: none; }
+.as-crs { display: flex; flex-wrap: wrap; gap: 6px; } .as-cr { padding: 6px 10px; border-radius: 99px; font-size: 13px; background: var(--card2); font-variant-numeric: tabular-nums; } .as-cr.ok { color: #4ade80; } .as-cr.bad { color: #ffb020; }
+#sb.as .sb-fw iframe { background: #0f0b1a; }

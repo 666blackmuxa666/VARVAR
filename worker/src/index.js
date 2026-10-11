@@ -358,6 +358,11 @@ async function atomSite(req, env) {
   if (/\.\.|varvar-print\.config/.test(rest)) return new Response('Not found', { status: 404 });
   const r = await fetch('https://666blackmuxa666.github.io/VARVAR' + rest + (/\.html$/.test(rest) ? '' : url.search), { cf: { cacheTtl: /\.html$/.test(rest) ? 20 : 300, cacheEverything: true } }); /* ?v= — у ключ кешу, щоб оновлення приходили одразу */
   const ct = r.headers.get('content-type') || 'application/octet-stream';
+  if (rest === '/atom.html' && r.ok) { // 🎨 дизайн із конструктора — одразу в сторінку (без миготіння старих кольорів)
+    const d = await (env.DB.kv || env.DB).get('atom:design', { cacheTtl: 60 }).catch(() => null);
+    const html = (await r.text()).replace('<!--ATOMD-->', d ? `<script>window.ATOMD=${d.replace(/</g, '\\u003c')}</script>` : '');
+    return new Response(html, { headers: { 'content-type': ct, 'cache-control': 'no-cache' } });
+  }
   return new Response(r.body, { status: r.status, headers: { 'content-type': ct, 'cache-control': /html/.test(ct) ? 'no-cache' : 'public, max-age=300' } });
 }
 // 🚀 API сайту ATOM: заявка, перегляд, лічильник акції, вхід у демо-касу
