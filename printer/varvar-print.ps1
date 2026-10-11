@@ -46,7 +46,7 @@ try { $lb = [byte[]](Http 'GET' ($cfg.api + '/print/logo.png')).ResponseBody; $l
 
 
 # ---------- layout (paper width / scale come from the server in the first line of each job: ['cfg', 58|80, scale%, logoW]) ----------
-$VER = '2.0'
+$VER = '2.1'
 function Set-Cfg($l) {
   $mm = 80; $sc = 100; $lw = 120
   if ($l) { if ($l.Count -gt 1 -and $l[1]) { $mm = [int]$l[1] }; if ($l.Count -gt 2 -and $l[2]) { $sc = [int]$l[2] }; if ($l.Count -gt 3 -and $l[3]) { $lw = [int]$l[3] } }
@@ -256,7 +256,7 @@ function Target($kind) {
 function Print-Job($job) {
   $lines = @($job.lines | ForEach-Object { ,@($_) })
   Set-Cfg $null; foreach ($l in $lines) { if ($l[0] -eq 'cfg') { Set-Cfg $l } }
-  $t = Target $job.kind
+  $t = $(if ($job.dev -and ($devs | Where-Object { $_.id -eq $job.dev })) { $job.dev } else { Target $job.kind })   # several printers: server says which one
   if (-not $t) { throw 'no printer found' }
   $kind, $id = $t -split ':', 2
   switch ($kind) {

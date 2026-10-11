@@ -545,7 +545,8 @@ export async function handleUpdate(u, env) {
   if (low === 'принтер' || low === '/printer') {
     const { seen, q } = await printStatus(env);
     const ok = Date.now() - seen < 60e3;
-    return send({ text: `🖨 <b>Принтер</b>: ${ok ? '✅ на звʼязку' : seen ? `❌ немає звʼязку з ${hhmm(seen)}` : '❌ програма друку ще не запускалась'}\nУ черзі: ${q}`, markup: { inline_keyboard: [[{ text: '🖨 Тестовий друк', callback_data: 'ptest' }, { text: '🔳 QR меню', callback_data: 'pqr' }], ...(q && admin ? [[{ text: `🗑 Очистити чергу (${q})`, callback_data: 'pclr' }]] : [])] } });
+    const { st } = await (await import('./print.js')).getRoute(env), GE = { kitchen: '🍳', bar: '🍹', hookah: '💨', other: '🧩' };
+    return send({ text: `🖨 <b>Принтер</b>: ${ok ? '✅ на звʼязку' : seen ? `❌ немає звʼязку з ${hhmm(seen)}` : '❌ програма друку ще не запускалась'}\nУ черзі: ${q}${st.length ? '\n\n' + st.map(x => `• <b>${esc(x.name)}</b>: ${x.g.map(g => GE[g]).join('')}${x.r ? '🧾' : ''}${x.n > 1 ? ` ×${x.n}` : ''}`).join('\n') + '\n<i>Розподіл — у касі: Налаштування → 🖨 Принтер</i>' : ''}`, markup: { inline_keyboard: [[{ text: '🖨 Тестовий друк', callback_data: 'ptest' }, { text: '🔳 QR меню', callback_data: 'pqr' }], ...(q && admin ? [[{ text: `🗑 Очистити чергу (${q})`, callback_data: 'pclr' }]] : [])] } });
   }
   if (text === W.kitchen || low === '/kitchen') return send(await kitchenView(env));
   if (text === W.book || low === '/book' || low === 'броні') return booksSend(env, send);

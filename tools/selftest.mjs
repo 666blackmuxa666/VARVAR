@@ -101,6 +101,22 @@ async function apiTests() {
     if (K) { const r = await posOk(K, 'evRx', { id: ev.id, rx: '👍', c: c.i }); must(r.e.cm.find(x => x.i === c.i).rx['👍'].length === 1, 'реакція'); const d = await pos(K, 'evComDel', { id: ev.id, c: c.i }); must(d.status === 400, 'чужий коментар видалено'); }
     const e2 = (await posOk(W, 'evComDel', { id: ev.id, c: c.i })).e; must(!e2.cm?.some(x => x.i === c.i), 'не видалено');
   });
+  await step('🖨 кілька принтерів: бігунок ділиться кухня/бар, копії, перенос на інший', async () => {
+    const back = (await posOk(A, 'rcptGet')).route, s0 = await posOk(A, 'state'), busy = new Set(s0.tables.map(x => x.t)); let t = s0.n; while (busy.has(t)) t--;
+    try {
+      const r = await posOk(A, 'printRoute', { st: [{ id: 'qk', name: 'QA Кухня', g: ['kitchen', 'other'], n: 1 }, { id: 'qb', name: 'QA Бар', g: ['bar', 'hookah', 'evil'], r: 1, n: 2 }] });
+      must(r.route.st[1].g.join() === 'bar,hookah' && r.route.st[1].n === 2, 'маршрут: ' + JSON.stringify(r.route));
+      must((await pos(W, 'printRoute', { st: [] })).status === 403, 'офіціант змінив принтери');
+      const q0 = new Set((await posOk(A, 'printQ')).list.map(j => j.id));
+      await posOk(A, 'order', { t, items: [{ id: dish.id, q: 1 }, { id: drink.id, q: 1 }] });
+      const nw = (await posOk(A, 'printQ')).list.filter(j => !q0.has(j.id) && j.kind === 'kitchen');
+      must(nw.filter(j => j.st === 'qk').length === 1 && nw.filter(j => j.st === 'qb').length === 2, 'завдання: ' + JSON.stringify(nw.map(j => j.st)));
+      await posOk(A, 'printMove', { id: nw[0].id, st: 'qb' }); must((await posOk(A, 'printQ')).list.find(j => j.id === nw[0].id)?.st === 'qb', 'не перенесено');
+      for (const j of nw) await posOk(A, 'printClear', { id: j.id });
+      await posOk(A, 'close', { t, pay: 'cash', print: false });
+    } finally { await posOk(A, 'printRoute', back); }
+    return 'кухня ×1, бар ×2';
+  });
   await step('📋 план на день: адмін додає, кухар бачить своє й відмічає', async () => {
     const st = (await posOk(A, 'taskList')).staff, ck = K && st.find(s => s.r === 'cook'); 
     const t = (await posOk(A, 'taskAdd', { n: 'QA протерти вітрину', who: { k: 'r', r: 'cook' }, imp: 1 })).t; must(t?.id, 'не додано');

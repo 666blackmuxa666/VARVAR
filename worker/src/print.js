@@ -23,11 +23,45 @@ export function cleanRcpt(b) {
   if (/^img:[a-z0-9-]{4,40}$/.test(b.logoImg || '')) r.logoImg = b.logoImg;
   return r;
 }
-export async function queuePrint(env, kind, lines) {
-  const id = `${Date.now()}-${crypto.randomUUID().slice(0, 6)}`, rc = await getRcpt(env);
+// 🖨 кілька принтерів: route = { st: [{ id, name, dev, g: ['kitchen','bar','hookah','other'], r: чеки 0/1, n: копій 1–3 }] }
+// стара форма { receipt, kitchen } → 2 принтери (так працює VARVAR до першого збереження)
+const PG = ['kitchen', 'bar', 'hookah', 'other'];
+export function cleanRoute(b) {
+  if (!Array.isArray(b?.st)) { const st = []; if (b?.receipt || b?.kitchen) { if (b.kitchen && b.kitchen !== b.receipt) st.push({ id: 'k', name: 'Кухня', dev: b.kitchen, g: [...PG], r: 0, n: 1 }, { id: 'r', name: 'Каса', dev: b.receipt || '', g: [], r: 1, n: 1 }); else st.push({ id: 'r', name: 'Принтер', dev: b.receipt || b.kitchen, g: [...PG], r: 1, n: 1 }); } return { st }; }
+  const st = b.st.slice(0, 6).map((x, i) => ({ id: /^[\w-]{1,12}$/.test(x.id || '') ? x.id : 'p' + i, name: S(x.name, 30) || `Принтер ${i + 1}`, dev: S(x.dev, 200), g: PG.filter(g => [].concat(x.g || []).includes(g)), r: x.r ? 1 : 0, n: Math.min(3, Math.max(1, Math.round(+x.n) || 1)) }));
+  return { st };
+}
+export const getRoute = async env => cleanRoute((await env.DB.get('print_route', 'json')) || {});
+// для старої програми друку (до 2.1): куди чеки й куди бігунки
+const legacy = r => ({ receipt: (r.st.find(x => x.r) || {}).dev || '', kitchen: (r.st.find(x => x.g.includes('kitchen')) || r.st.find(x => x.g.length) || {}).dev || '' });
+async function push(env, kind, lines, rc, extra = {}) {
+  const id = `${Date.now()}-${crypto.randomUUID().slice(0, 6)}`;
   lines = [['cfg', rc.w, rc.scale, rc.logoW], ...lines, ...Array.from({ length: rc.feed }, () => ['gap'])]; /* ширина паперу й масштаб — для програми друку */
-  await qcall(env, '/push', { id, kind, lines });
+  await qcall(env, '/push', { id, kind, lines, ...extra });
   return id;
+}
+export async function queuePrint(env, kind, lines) {
+  const rc = await getRcpt(env);
+  if (kind === 'kitchen') return push(env, kind, lines, rc);
+  const st = (await getRoute(env)).st.find(x => x.r); if (!st) return push(env, kind, lines, rc); // чеки, Z, QR, тест — на принтер з 🧾
+  const n = ['receipt', 'precheck'].includes(kind) ? st.n : 1; let id;
+  for (let i = 0; i < n; i++) id = await push(env, kind, lines, rc, { st: st.id, sn: st.name, dev: st.dev });
+  return id;
+}
+// 👨‍🍳 бігунок ділиться між принтерами за групами страв (кухня / бар / кальян / інше); без налаштувань — один бігунок, як раніше
+export async function queueKitchen(env, t) {
+  const [rc, { st }] = await Promise.all([getRcpt(env), getRoute(env)]), ks = st.filter(x => x.g.length);
+  if (!ks.length) return push(env, 'kitchen', kitchenTicket(t, rc), rc);
+  const { getMenu } = await import('./menu.js'), { dishResolver, groupOf } = await import('./ops.js'), res = dishResolver(await getMenu(env));
+  const by = new Map();
+  for (const l of t.lines) { const m = l.match(/^\d+× (.+?) — \d+$/), g = groupOf(res(m ? m[1] : l)?.cat); const s = ks.find(x => x.g.includes(g)) || ks.find(x => x.g.includes('kitchen')) || ks[0]; by.set(s, [...(by.get(s) || []), l]); }
+  const parts = [...by], N = parts.length;
+  for (const [i, [s, lines]] of parts.entries()) for (let c = 0; c < s.n; c++) await push(env, 'kitchen', kitchenTicket({ ...t, lines, kind: N > 1 ? `${t.kind} · ${s.name} ${i + 1}/${N}` : t.kind }, rc), rc, { st: s.id, sn: s.name, dev: s.dev });
+}
+// 🔁 завдання з черги — на інший принтер (якщо той зламався)
+export async function printMove(env, id, sid) {
+  const s = (await getRoute(env)).st.find(x => x.id === sid); if (!s) return { error: 'Принтер не знайдено' };
+  return (await qcall(env, '/move', { id, st: s.id, sn: s.name, dev: s.dev })).json();
 }
 export const printStatus = async env => (await qcall(env, '/status')).json();
 // 🗑 черга: список завдань (для каси) і очищення — уся або одне (id)
@@ -42,7 +76,8 @@ export class PrintQ {
     const u = new URL(req.url);
     if (u.pathname === '/push') { const j = await req.json(); await this.st.put('j:' + j.id, j); this.wake(); return new Response('ok'); }
     if (u.pathname === '/status') return Response.json({ seen: (await this.st.get('seen')) || 0, q: (await this.st.list({ prefix: 'j:' })).size });
-    if (u.pathname === '/list') { const l = [...(await this.st.list({ prefix: 'j:', limit: 100 })).values()]; return Response.json(l.map(j => ({ id: j.id, kind: j.kind, at: +String(j.id).split('-')[0] || 0, txt: (j.lines || []).filter(x => ['big', 'b', 'c', 'l'].includes(x[0]) && x[1]).slice(0, 2).map(x => x[1]).join(' · ').slice(0, 80) }))); }
+    if (u.pathname === '/move') { const b = await req.json(), j = /^[\w-]+$/.test(b.id) && await this.st.get('j:' + b.id); if (!j) return Response.json({ error: 'Завдання вже надруковано' }); await this.st.put('j:' + j.id, { ...j, st: b.st, sn: b.sn, dev: b.dev }); this.wake(); return Response.json({ ok: 1 }); }
+    if (u.pathname === '/list') { const l = [...(await this.st.list({ prefix: 'j:', limit: 100 })).values()]; return Response.json(l.map(j => ({ id: j.id, kind: j.kind, st: j.st || '', sn: j.sn || '', at: +String(j.id).split('-')[0] || 0, txt: (j.lines || []).filter(x => ['big', 'b', 'c', 'l'].includes(x[0]) && x[1]).slice(0, 2).map(x => x[1]).join(' · ').slice(0, 80) }))); }
     if (u.pathname === '/clear') { const { id } = await req.json(); const keys = id ? (/^[\w-]+$/.test(id) ? ['j:' + id] : []) : [...(await this.st.list({ prefix: 'j:' })).keys()]; if (keys.length) await this.st.delete(keys); return Response.json({ n: keys.length }); }
     if (u.pathname === '/ack') { const { ids } = await req.json(); await this.st.delete(ids.filter(id => /^[\w-]+$/.test(id)).map(id => 'j:' + id)); return new Response('ok'); }
     if (u.pathname === '/pull') {
@@ -134,7 +169,7 @@ export async function printApi(req, env, url) {
   if (url.pathname === '/api/print/hello' && req.method === 'POST') { /* 🔎 програма друку повідомляє, які принтери знайшла; у відповідь — куди що друкувати (вибір у кабінеті) */
     const b = await req.json().catch(() => ({})), dev = [].concat(b.devices || []).slice(0, 30).map(d => ({ id: String(d.id || '').slice(0, 200), name: String(d.name || '').slice(0, 120), type: String(d.type || '').slice(0, 20) })).filter(d => d.id);
     await env.DB.put('print_dev', JSON.stringify({ at: Date.now(), pc: String(b.pc || '').slice(0, 60), ver: String(b.ver || '').slice(0, 20), using: String(b.using || '').slice(0, 200), list: dev }));
-    return Response.json({ route: (await env.DB.get('print_route', 'json')) || {} }, { headers: { 'content-type': 'application/json; charset=utf-8' } });
+    const r = await getRoute(env); return Response.json({ route: { ...legacy(r), st: r.st } }, { headers: { 'content-type': 'application/json; charset=utf-8' } });
   }
   if (url.pathname === '/api/print/ack') {
     // GET ?ids=a,b (старі Windows) або POST {ids}
