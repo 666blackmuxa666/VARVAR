@@ -13,9 +13,9 @@ const KB = { keyboard: [[{ text: '📋 Черга' }, { text: '⛔ Стоп-ли
 const HALL = ['⏳ Затримка 5–10 хв', '❌ Закінчилась страва', '🙋 Заберіть замовлення', '❓ Уточніть замовлення'];
 
 export async function kitHook(env) {
-  if (!env.KITCHEN_BOT_TOKEN || (await env.DB.get('g4hook')) === env.SELF_URL) return;
+  if (!env.KITCHEN_BOT_TOKEN || (await env.DB.get('g4hook2')) === env.SELF_URL) return;
   const r = await ktg(env, 'setWebhook', { url: env.SELF_URL + '/tg4', secret_token: env.TG_SECRET, allowed_updates: ['message', 'callback_query'] });
-  if (r?.ok) await env.DB.put('g4hook', env.SELF_URL);
+  if (r?.ok) await env.DB.put('g4hook2', env.SELF_URL);
 }
 // хто отримує: кухарі на зміні; нікого на зміні — усі підключені
 async function targets(env) {
