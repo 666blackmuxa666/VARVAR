@@ -1,9 +1,10 @@
 // 🎨 Оформлення трьох Telegram-ботів: аватар з емблемою (img/bots/*.png), ім'я, опис, команди.
 // Виконується один раз на версію (ключ brand:<V>) з Cron. Змінили картинки/тексти — підніміть V.
-const V = 'v1', IMG = 'https://666blackmuxa666.github.io/VARVAR/img/bots/';
+const V = 'v2', IMG = 'https://666blackmuxa666.github.io/VARVAR/img/bots/';
 const BOTS = [
   { tok: 'BOT_TOKEN', img: 'staff', name: 'Varvar · Команда 🧑‍🍳', short: '🧑‍🍳 Робочий бот персоналу Varvar: столи, кухня, зміни, склад.', desc: '🧑‍🍳 Бот команди Varvar Food Bar.\n\nЗамовлення й столи, кухня, зміни й зарплата, склад, броні, звіти.\n\n🔐 Вхід — ваш PIN з каси.' },
   { tok: 'GUEST_BOT_TOKEN', img: 'guest', name: 'Varvar Food Bar 🍔', short: '🍔 Замовлення, бонуси, броні й сертифікати Varvar — Буковель.', desc: '🍔 Varvar Food Bar · Поляниця (Буковель)\n\n• замовлення з собою й доставка\n• 🎁 бонуси й статус замовлення\n• 📅 броні та 🎟 сертифікати\n• 💬 зв\'язок з адміністратором\n\nНатисніть «Почати» 👇', cmds: [{ command: 'start', description: '📱 Меню' }, { command: 'menu', description: '📱 Меню' }] },
+  { tok: 'KITCHEN_BOT_TOKEN', img: 'kitchen', name: 'Varvar · Кухня 👨‍🍳', short: '👨‍🍳 Бот кухні Varvar: нові замовлення, «Готово», стоп-лист.', desc: '👨‍🍳 Бот кухні Varvar Food Bar.\n\nНові замовлення одразу на телефон, «🔥 Почав», «✅ Готово», повідомлення в зал, стоп-лист.\n\n🔐 Вхід — ваш PIN кухаря з каси.' },
   { tok: 'COURIER_BOT_TOKEN', img: 'courier', name: 'Varvar · Доставка 🛵', short: '🛵 Бот кур\'єрів Varvar: нові доставки, маршрут, видача.', desc: '🛵 Бот кур\'єрів Varvar Food Bar.\n\nНові доставки, «Беру», маршрут, час прибуття, видача й готівка.\n\n🔐 Вхід — ваш код кур\'єра.' },
 ];
 const call = (tok, m, body) => fetch(`https://api.telegram.org/bot${tok}/${m}`, body instanceof FormData ? { method: 'POST', body } : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json()).catch(e => ({ ok: false, description: e.message }));

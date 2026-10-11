@@ -1066,10 +1066,10 @@ export async function addMove(env, ...a) { return L(env, 'mov:' + dayKey(), () =
 export async function delMove(env, i, day) { day = cDay(day); return L(env, 'mov:' + day, () => _flagRec(env, 'mov:', day, i, true)); }
 export async function restoreMove(env, i, day) { day = cDay(day); return L(env, 'mov:' + day, () => _flagRec(env, 'mov:', day, i, false)); }
 export async function reconcile(env, ...a) { return L(env, 'mov:' + dayKey(), () => _reconcile(env, ...a)); }
-export async function addKitchen(env, ...a) { return L(env, 'kq:' + dayKey(), () => _addKitchen(env, ...a)); }
-async function kqEdit(env, ...a) { return L(env, 'kq:' + dayKey(), () => _kqEdit(env, ...a)); }
+export async function addKitchen(env, ...a) { const e = await L(env, 'kq:' + dayKey(), () => _addKitchen(env, ...a)); if (e) await (await import('./kitbot.js')).kitNotify(env, e).catch(() => {}); return e; } // 👨‍🍳 → бот кухні
+async function kqEdit(env, ...a) { const e = await L(env, 'kq:' + dayKey(), () => _kqEdit(env, ...a)); if (e) await (await import('./kitbot.js')).kitSync(env, e).catch(() => {}); return e; }
 export async function kitchenClosed(env, ...a) { return L(env, 'kq:' + dayKey(), () => _kitchenClosed(env, ...a)); }
-async function kitchenCancel(env, ...a) { return L(env, 'kq:' + dayKey(), () => _kitchenCancel(env, ...a)); }
+async function kitchenCancel(env, t, ...a) { const r = await L(env, 'kq:' + dayKey(), () => _kitchenCancel(env, t, ...a)); if (r?.length) await (await import('./kitbot.js')).kitSyncTable(env, t).catch(() => {}); return r; }
 export async function toggleFav(env, ...a) { return L(env, 'fav', () => _toggleFav(env, ...a)); }
 export async function addStaff(env, ...a) { return L(env, 'staff', () => _addStaff(env, ...a)); }
 export async function delStaff(env, ...a) { return L(env, 'staff', () => _delStaff(env, ...a)); }

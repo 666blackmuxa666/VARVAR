@@ -362,7 +362,15 @@ async function shiftToggle(env, s) {
 }
 
 // вхід: привʼязка Telegram → працівник (tgs:), сесія за роллю (admin → ще й режим адміна). Повертає клавіатуру
+// 👨‍🍳🛵 кухар і кур'єр працюють у своїх ботах — бот команди їм не відкривається (як у касі: кожна роль бачить своє)
+async function helpFor(env, role) {
+  if (role === 'admin') return ADMIN_HELP(env);
+  if (role === 'cook') { const r = env.KITCHEN_BOT_TOKEN && await fetch(`https://api.telegram.org/bot${env.KITCHEN_BOT_TOKEN}/getMe`).then(r => r.json()).catch(() => null); return `👨‍🍳 Для кухарів — окремий бот кухні${r?.result?.username ? ' @' + r.result.username : ''}: туди приходять замовлення, там «Готово» і стоп-лист. Увійдіть у нього тим самим PIN.`; }
+  if (role === 'courier') { const n = env.COURIER_BOT_TOKEN && await (await import('./courier.js')).courBot(env); return `🛵 Для кур'єрів — бот доставки${n ? ' @' + n : ''}. Підключіть його в касі: «✈️ Telegram».`; }
+  return HELP(env);
+}
 async function tgLogin(env, uid, s, chat) {
+  if (s.role === 'cook' || s.role === 'courier') { await env.DB.delete('wlog:' + uid); return { remove_keyboard: true }; }
   await env.DB.put('tgs:' + uid, s.id); await env.DB.put('wlog:' + uid, JSON.stringify({ name: s.name, role: s.role, at: Date.now() }));
   if (s.role !== 'admin') return KEYBOARD;
   await env.DB.put('adm:' + uid, JSON.stringify({ name: s.name, at: Date.now() }), { expirationTtl: ADMIN_TTL }); await env.DB.delete('kbw:' + uid); return ADMIN_KB;
@@ -403,7 +411,7 @@ export async function handleUpdate(u, env) {
       if (role) { await env.DB.put('st:' + uid, 'regn:' + role, { expirationTtl: 900 }); return send({ text: `🆕 Реєстрація (${ROLE_ONE[role]}). Напишіть своє імʼя:` }, { remove_keyboard: true }); }
       if (!me) { await fail(); return keep('❌ Невірний PIN. Введіть ще раз:'); }
       await env.DB.delete('fail:' + uid);
-      return send({ text: `✅ Вітаю, ${esc(me.name)}! Ви увійшли як ${ROLE_ONE[me.role] || me.role}.\n\n` + (me.role === 'admin' ? ADMIN_HELP(env) : HELP(env)) }, await tgLogin(env, uid, me, chat));
+      return send({ text: `✅ Вітаю, ${esc(me.name)}! Ви увійшли як ${ROLE_ONE[me.role] || me.role}.\n\n` + await helpFor(env, me.role) }, await tgLogin(env, uid, me, chat));
     }
     if (state.startsWith('regn:')) { const name = text.replace(/:/g, ' ').trim().slice(0, 30); if (!name) return send({ text: 'Напишіть імʼя' }); await env.DB.put('st:' + uid, `regp:${state.slice(5)}:${name}`, { expirationTtl: 900 }); return send({ text: `Привіт, ${esc(name)}! Придумайте свій PIN — 4 цифри (повідомлення одразу видалиться):` }, { remove_keyboard: true }); }
     if (state.startsWith('regp:')) {
@@ -411,7 +419,7 @@ export async function handleUpdate(u, env) {
       if (!/^\d{4}$/.test(text)) { await env.DB.put('st:' + uid, state, { expirationTtl: 900 }); return send({ text: 'PIN — рівно 4 цифри:' }, { remove_keyboard: true }); }
       const r = await addStaff(env, name, text, role); if (r.error) { await env.DB.put('st:' + uid, state, { expirationTtl: 900 }); return send({ text: '⚠️ ' + r.error + '\nВведіть інший PIN:' }, { remove_keyboard: true }); }
       await notify(env, `👥 Новий працівник: <b>${esc(r.s.name)}</b> (${ROLE_ONE[role]}) — зареєструвався в Telegram-боті`).catch(() => {});
-      return send({ text: `👋 Вітаю, ${esc(r.s.name)}! PIN збережено — ним же входите в касу.\n\n` + (role === 'admin' ? ADMIN_HELP(env) : HELP(env)) }, await tgLogin(env, uid, r.s, chat));
+      return send({ text: `👋 Вітаю, ${esc(r.s.name)}! PIN збережено — ним же входите в касу.\n\n` + await helpFor(env, role) }, await tgLogin(env, uid, r.s, chat));
     }
     if (state?.startsWith('bkt:') && waiter) { const r = await bookSet(env, state.slice(4), 'kit', who, { t: +text }); return send({ text: r?.error ? '⚠️ ' + r.error : `🔥 Передзамовлення відправлено на кухню · стіл ${+text}` }); }
     if (state.startsWith('goe:') && admin) { // ✏️ доставка: та сама goEdit, що й у касі
