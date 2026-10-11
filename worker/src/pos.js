@@ -173,7 +173,7 @@ export async function posApi(b, req, env) {
         const cm = (e.cm ||= []);
         if (b.op === 'evCom' || b.op === 'evVoice') {
           if (cm.length >= 40) { err = 'Забагато коментарів під цією подією'; return; }
-          if (JSON.stringify(l).length > 100e3) { err = 'Стрічка за сьогодні переповнена'; return; }
+          if (JSON.stringify(l).length > 1.5e6) { err = 'Стрічка за сьогодні переповнена'; return; }
           const at = [...new Set((text.match(/@[^\s@,.!?]{2,24}/g) || []).map(x => x.slice(1)))].slice(0, 5);
           cm.push({ i: crypto.randomUUID().slice(0, 6), by: who, ts: Date.now(), at: hhmm(), text, ...(vid ? { v: vid, d: Math.min(60, +b.dur || 0) } : {}), ...(at.length ? { m: at } : {}) });
           e.seen = [who];
