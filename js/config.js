@@ -8,7 +8,7 @@ window.VARVAR = {
 // 🏪 мультизаклад: ?v=<заклад> — свій сервер (/v/<заклад>), своє сховище в браузері й посилання між сторінками зберігають заклад
 (() => {
   // ↪️ старі QR і посилання (github.io) → posatom.online: лише сторінки гостя (меню, візитка); каса й кабінет лишаються, щоб нікого не вибило з входу
-  if (location.hostname === '666blackmuxa666.github.io') { const pg = (location.pathname.match(/\/VARVAR\/(index\.html|about\.html)?$/) || [])[1];
+  if (location.hostname === '666blackmuxa666.github.io' && !/[?&]preview\b/.test(location.search)) { /* перегляд у конструкторі — без переходу, інакше кабінет не достукається до рамки */ const pg = (location.pathname.match(/\/VARVAR\/(index\.html|about\.html)?$/) || [])[1];
     if (pg !== undefined || /\/VARVAR\/?$/.test(location.pathname)) { const q = new URLSearchParams(location.search), vn = q.get('venue'); q.delete('venue'); const qs = q.toString();
       location.replace(`https://posatom.online/${/^(?=.*[a-z])[a-z0-9][a-z0-9-]{1,30}$/.test(vn || '') ? vn : 'varvar'}/${pg || 'index.html'}${qs ? '?' + qs.replace(/=(&|$)/g, '$1') : ''}${location.hash}`); window.VARVAR.moving = 1; return; } } /* moving — меню й візитка не стартують на старій адресі */
   const C = window.VARVAR, ATOM = /(^|\.)posatom\.online$/.test(location.hostname), seg = ATOM ? location.pathname.split('/')[1] || '' : '';
