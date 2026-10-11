@@ -581,7 +581,7 @@ async function _addMove(env, m) {
   if (!MOVE[m.type] || !(m.sum > 0)) return null;
   const k = 'mov:' + dayKey(), l = await getMov(env); const e = { ts: Date.now(), at: hhmm(), type: m.type, sum: Math.round(m.sum), note: String(m.note || '').slice(0, 100), by: m.by || '' };
   l.push(e); await env.DB.put(k, JSON.stringify(l));
-  await logEvent(env, { k: 'shift', by: e.by, text: `${MOVE[e.type]} ${e.sum} грн${e.note ? ' · ' + e.note : ''}` });
+  /* у стрічку не пишемо — рухи грошей видно лише в касі */
   return e;
 }
 // 💰 залишки за весь час (змін немає — усе переходить з дня в день):
