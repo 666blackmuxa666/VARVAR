@@ -86,12 +86,15 @@ export async function goKitchen(env, t, st) { if (!isGo(t)) return; const b = aw
 const TYPES = { del: 'ДОСТАВКА', pick: 'САМОВИВІЗ' };
 // 💳 callback LiqPay: оплачено → створюємо замовлення з позначкою «оплачено» (ідемпотентно); не оплачено — гість може спробувати ще
 export async function goPaid(env, x) {
-  const oid = String(x.order_id || '').split('-').pop(); if (!/^[a-f0-9]{10}$/.test(oid)) return { error: 'order' };
+  const parts = String(x.order_id || '').split('-'), oid = parts.pop(); if (!/^[a-f0-9]{10}$/.test(oid)) return { error: 'order' };
+  if (parts.length > 1 && parts.slice(1).join('-') !== (env.VENUE || 'varvar')) return { error: 'venue' }; // замовлення іншого закладу
+  if (x.currency && x.currency !== 'UAH') { await notify(env, `⚠️ Онлайн-оплата в ${esc(String(x.currency))} замість гривні (${esc(String(x.order_id))}) — перевірте в LiqPay.`).catch(() => {}); return { ok: true, fail: 1 }; }
   return L(env, 'gop:' + oid, async () => {
     if (await env.DB.get('ord:' + oid)) return { ok: true, dup: 1 };
     const p = await env.DB.get('gop:' + oid, 'json'); if (!p) { if (lpOk(x)) await notify(env, `⚠️ Онлайн-оплата ${Math.round(+x.amount || 0)} грн прийшла пізніше 30 хв — замовлення вже знято (${esc(String(x.order_id))}). Поверніть гроші в кабінеті LiqPay або зателефонуйте гостю.`).catch(() => {}); return { error: 'expired' }; }
-    if (!lpOk(x)) { await env.DB.put('gop:' + oid, JSON.stringify({ ...p, fail: x.status || 'error' }), { expirationTtl: 3600 }); return { ok: true, fail: 1 }; }
+    if (!lpOk(x)) { if (['reversed', 'failure', 'error'].includes(x.status) && !p.fail) await notify(env, `⚠️ Онлайн-оплата не пройшла (${esc(String(x.status))}) — ${esc(p.b.name)} ${esc(p.b.phone)}, ${p.amount} грн. Гість може спробувати ще раз або зателефонуйте.`).catch(() => {}); await env.DB.put('gop:' + oid, JSON.stringify({ ...p, fail: x.status || 'error' }), { expirationTtl: 3600 }); return { ok: true, fail: 1 }; }
     const sum = Math.round(+x.amount || 0); if (sum + 1 < p.amount) { await notify(env, `⚠️ Онлайн-оплата ${sum} грн менша за замовлення (${p.amount} грн) — ${esc(p.b.name)} ${esc(p.b.phone)}. Замовлення не створено, поверніть гроші в LiqPay.`).catch(() => {}); await env.DB.put('gop:' + oid, JSON.stringify({ ...p, fail: 'amount' }), { expirationTtl: 3600 }); return { ok: true, fail: 1 }; }
+    if (sum > p.amount + 1) await notify(env, `⚠️ Гість переплатив онлайн: ${sum} грн замість ${p.amount} — ${esc(p.b.name)} ${esc(p.b.phone)}. Поверніть ${sum - p.amount} грн у LiqPay.`).catch(() => {});
     const [r] = await goOrder({ ...p.b, _paid: { sum, lp: String(x.payment_id || ''), at: Date.now(), ...(x.status === 'sandbox' ? { test: 1 } : {}) }, _oid: oid }, 'lp', env);
     if (r.error) { await notify(env, `⚠️ Оплачено онлайн ${sum} грн, але замовлення не створилось (${esc(r.error)}) — ${esc(p.b.name)} ${esc(p.b.phone)}. Поверніть гроші або зателефонуйте гостю.`).catch(() => {}); await env.DB.put('gop:' + oid, JSON.stringify({ ...p, fail: 'order' }), { expirationTtl: 3600 }); return { ok: true, fail: 1 }; } /* 200 — щоб LiqPay не повторював і не дублював сповіщення */
     return r;
@@ -176,13 +179,14 @@ export async function goOrder(b, ip, env) {
 export async function goFromPos(env, g, who) {
   const kind = g.kind === 'del' ? 'del' : 'pick', phone = normPhone(g.phone), c = await getGoCfg(env);
   const t = await goAlloc(env, kind);
-  const go = { kind, name: String(g.name || '').trim().slice(0, 40), phone, addr: String(g.addr || '').trim().slice(0, 200), ent: String(g.ent || '').trim().slice(0, 60), when: /^\d{1,2}:\d{2}$/.test(g.when || '') ? g.when : '', pay: g.pay === 'card' ? 'card' : 'cash', change: Math.max(0, +g.change || 0), cut: 0, note: '', fee: kind === 'del' ? c.fee : 0, st: 'acc', at: Date.now(), src: 'каса', by: who };
+  const go = { kind, name: String(g.name || '').trim().slice(0, 40), phone, addr: String(g.addr || '').trim().slice(0, 200), ent: String(g.ent || '').trim().slice(0, 60), when: /^\d{1,2}:\d{2}$/.test(g.when || '') ? g.when : '', pay: g.pay === 'card' ? 'card' : 'cash', change: Math.max(0, +g.change || 0), cut: 0, note: '', fee: kind === 'del' ? c.fee : 0, free: c.free || 0, st: 'acc', at: Date.now(), src: 'каса', by: who };
   return { t, go };
 }
 // після першого замовлення з каси — дописати go і рядок доставки
 export async function goAttach(env, t, go) {
   return L(env, 'bills', async () => {
     const b = await getBill(env, t); if (!b.total) return null; b.go = go; if (go.phone) b.cli = go.phone;
+    if (go.free && b.total >= go.free) go.fee = 0; delete go.free; // 🆓 поріг безкоштовної — як на сайті
     if (go.fee && !(b.log || []).some(o => o.lines.some(l => l.includes('🛵 Доставка')))) { b.total += go.fee; b.log.push({ at: hhmm(), kind: 'доставка', lines: [`1× 🛵 Доставка — ${go.fee}`] }); }
     if (go.kind === 'del') b.go.accAt = Date.now();
     await putBill(env, t, b); if (go.kind === 'del') courNotify(env, t, 'new').catch(() => {}); if (go.phone) await cliTouch(env, go.phone, x => { if (go.name) x.name = go.name; if (go.addr && !x.addr.includes(go.addr)) x.addr = [go.addr, ...x.addr].slice(0, 5); });
@@ -261,7 +265,7 @@ export async function goApi(b, env, me, t) {
     case 'cliGet': { const ph = normPhone(b.phone); if (!ph) return bad('Невірний номер'); const c = await getCli(env, ph); const { botName } = await import('./site.js'); return ok({ phone: ph, cli: c, mem: isMem(c), bot: await botName(env).catch(() => ''), cfg: await getGoCfg(env) }); }
     case 'cliSet': { // 🎁 телефон гостя в залі — щоб нарахувати кешбек при закритті
       const ph = b.phone ? normPhone(b.phone) : null; if (b.phone && !ph) return bad('Невірний номер');
-      const r = await L(env, 'bills', async () => { const x = await getBill(env, t); if (!x.total) return null; if (ph) x.cli = ph; else { delete x.cli; if (x.cert?.sum) x.bonus = x.cert.sum; else delete x.bonus; } /* сертифікат лишається */ await putBill(env, t, x); return x; });
+      const r = await L(env, 'bills', async () => { const x = await getBill(env, t); if (!x.total) return null; const drop = () => { if (x.cert?.sum) x.bonus = x.cert.sum; else delete x.bonus; }; /* бонуси списуються лише з того, чиї вони */ if (ph) { if (x.cli && x.cli !== ph) drop(); x.cli = ph; } else { delete x.cli; drop(); } /* сертифікат лишається */ await putBill(env, t, x); return x; });
       return r ? ok({ cli: ph ? await getCli(env, ph) : null }) : bad('Стіл порожній');
     }
     case 'cliBonus': {

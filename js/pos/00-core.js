@@ -170,7 +170,7 @@
       clearTimeout(reloadT);
       reloadT = setTimeout(() => {
         m = { keys: [...pendKeys] }; pendKeys.clear();
-        loadState().catch(() => {});
+        if (m.keys.some(k => k !== 'tpq')) loadState().catch(() => {}); // лише черга планшета — без перезавантаження стану
         if (m.keys.includes('menu') || m.keys.includes('fav')) loadMenu().catch(() => {});
         if (m.keys.includes('kq') && (isCook() || S.view === 'kq')) loadKq().catch(() => {});
         if (m.keys.includes('tpq')) window.TABP?.check();

@@ -119,7 +119,7 @@ html[data-site][data-cards="shadow"] :is(.feats div, .hit, .box, .formbox, .quot
 html[data-site][data-mode="light"][data-cards="shadow"] :is(.feats div, .hit, .box, .formbox, .quote, .promo, .evc, .adr) { box-shadow: 0 8px 24px rgba(0,0,0,.08); }
 html[data-site][data-cards="flat"] :is(.feats div, .hit, .box, .formbox, .quote, .promo, .evc, .adr) { border-color: transparent; }
 html[data-site] .hero-bg::after { background: linear-gradient(180deg, rgba(0,0,0,calc(var(--dim, .4) * .6)) 0%, rgba(0,0,0,var(--dim, .4)) 45%, var(--bg) 100%); }
-html[data-site][data-mode="light"]:not([data-hero="plain"]):not([data-hero="logo"]):not([data-hero="split"]) .hero.ph .hero-in { color: #fff; } html[data-site][data-mode="light"]:not([data-hero="plain"]):not([data-hero="logo"]):not([data-hero="split"]) .hero.ph .addr { color: #eee; }
+html[data-site][data-mode="light"]:not([data-hero="plain"]):not([data-hero="logo"]):not([data-hero="split"]) .hero .hero-in { color: #fff; } html[data-site][data-mode="light"]:not([data-hero="plain"]):not([data-hero="logo"]):not([data-hero="split"]) .hero .addr { color: #eee; }
 
 /* 🏠 головний екран */
 html[data-hero] .hero.ph, html[data-hero="full"] .hero { min-height: var(--hh, 62vh); }

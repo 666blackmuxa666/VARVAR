@@ -339,3 +339,6 @@ details, .hist, .tw, .go-ord { border-radius: 16px; }
 
 /* [hidden] сильніший за display кнопок (.btn має display:flex) */
 .btn[hidden], button[hidden] { display: none !important; }
+/* 🎨 конструктор меню: кнопка «Офіціант» і логотип читаються на будь-якій темі */
+html[data-mt="1"] .call-btn { background: color-mix(in srgb, var(--accent) 16%, var(--bg)); border-color: color-mix(in srgb, var(--accent) 55%, transparent); color: var(--text); }
+html[data-mt="1"] .top .logo { font-size: clamp(16px, 5.2vw, 26px); letter-spacing: 0; }

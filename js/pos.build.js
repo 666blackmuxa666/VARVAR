@@ -489,7 +489,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         var _a2;
         m = { keys: [...pendKeys] };
         pendKeys.clear();
-        loadState().catch(() => {
+        if (m.keys.some((k) => k !== "tpq")) loadState().catch(() => {
         });
         if (m.keys.includes("menu") || m.keys.includes("fav")) loadMenu().catch(() => {
         });

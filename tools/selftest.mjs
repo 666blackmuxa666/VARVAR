@@ -126,7 +126,7 @@ async function apiTests() {
       await posOk(A, 'order', { t, items: [{ id: dish.id, q: 1 }] });
       const j = (await posOk(K || A, 'tabJobs', { dev })).jobs; must(j.length === 1 && j[0].lines.some(l => l[0] === 'k'), 'завдань: ' + j.length);
       must((await posOk(A, 'printQ')).list.some(x => x.id === j[0].id), 'не видно в черзі');
-      await posOk(K || A, 'tabAck', { ids: [j[0].id] }); must(!(await posOk(A, 'tabJobs', { dev })).jobs.length, 'не підтверджено');
+      await posOk(K || A, 'tabAck', { ids: [j[0].id], dev }); must(!(await posOk(A, 'tabJobs', { dev })).jobs.length, 'не підтверджено');
       await posOk(A, 'close', { t, pay: 'cash', print: false });
     } finally { await posOk(A, 'printRoute', back); await posOk(A, 'tabReg', { id: dev, off: 1 }); }
   });

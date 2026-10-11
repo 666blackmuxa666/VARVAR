@@ -113,6 +113,7 @@ async function invDraft(env, uid, r) {
   if (r.error) return { text: '⚠️ ' + r.error };
   const k = 'invd:' + uid, prev = await env.DB.get(k, 'json');
   const lines = await matchLines(env, r.sup || prev?.sup || '', r.lines);
+  if (prev && prev.lines?.length && Math.abs((r.total || 0) - (prev.total || 0)) < 1 && (r.no || '') === (prev.no || '') && r.lines.length === prev.lines.length) return { text: '⚠️ Цей документ уже в чернетці — не додаю вдруге.\n\n' + draftView(prev).text, markup: draftView(prev).markup }; // той самий чек / фото двічі
   const d = prev ? { ...prev, lines: [...prev.lines, ...lines], total: (prev.total || 0) + (r.total || 0) } : { sup: r.sup, no: r.no, date: r.date, total: r.total, lines };
   await env.DB.put(k, JSON.stringify(d), { expirationTtl: 900 });
   return draftView(d);

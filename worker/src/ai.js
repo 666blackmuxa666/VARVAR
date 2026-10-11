@@ -192,10 +192,13 @@ async function invPrompt(env, images, text) {
 }
 // 🔗 онлайн-чек за посиланням (Checkbox, ДПС, інші ПРРО) → текст сторінки; один запит назовні
 export async function rcptText(url) {
-  const u = new URL(url), cb = /checkbox/.test(u.hostname) && (url.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i) || [])[0];
+  const u = new URL(url); if (u.protocol !== 'https:' || /^(localhost|[\d.]+|\[.*\])$|\.(local|internal|workers\.dev)$|posatom\.online$/i.test(u.hostname)) throw new Error('Потрібне звичайне https-посилання на чек');
+  const cb = /checkbox/.test(u.hostname) && (url.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i) || [])[0];
   const r = await fetch(cb ? `https://api.checkbox.in.ua/api/v1/receipts/${cb}/text` : u.href, { headers: { 'user-agent': 'Mozilla/5.0', accept: 'text/html,text/plain,application/json' }, redirect: 'follow', signal: AbortSignal.timeout(12000) });
   if (!r.ok) throw new Error('Сторінка чека не відкрилась (' + r.status + ')');
-  const t = (await r.text()).replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ').replace(/<br\s*\/?>|<\/(p|div|tr|li|h\d)>/gi, '\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+  if (!/text|json|html/i.test(r.headers.get('content-type') || 'text')) throw new Error('За посиланням не сторінка чека');
+  let raw = ''; const rd = r.body.getReader(), dec = new TextDecoder(); for (;;) { const { done, value } = await rd.read(); if (done) break; raw += dec.decode(value, { stream: true }); if (raw.length > 300000) { rd.cancel().catch(() => {}); break; } } // не більше ~300 КБ
+  const t = raw.replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ').replace(/<br\s*\/?>|<\/(p|div|tr|li|h\d)>/gi, '\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
   if ((t.match(/\d+[.,]\d{2}/g) || []).length < 2) throw new Error('На сторінці немає товарів — відкрийте чек і сфотографуйте екран');
   return t.slice(0, 12000);
 }

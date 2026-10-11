@@ -106,6 +106,12 @@ async function _acceptOrder(env, oid, who, { editTg = true } = {}) {
   const o = (await env.DB.get('ord:' + oid, 'json')) || {};
   if (o.s === 'acc') return false;
   if (o.s === 'rej') return false;
+  // стіл могли перенести / закрити / замовлення прибрали з рахунку — шукаємо, де воно зараз
+  if (o.lines?.length && o.t) {
+    let t = null; if ((await getBill(env, o.t)).log?.some(x => x.oid === oid)) t = o.t; else for (const r of await openTables(env)) if ((r.b.log || []).some(x => x.oid === oid)) { t = r.t; break; }
+    if (t == null) { await env.DB.put('ord:' + oid, JSON.stringify({ ...o, s: 'rej', by: who, at: hhmm(), ...(o.go ? { g: 'rej' } : {}) }), { expirationTtl: BILL_TTL }); await editEv(env, list => { for (const e of list) if (e.oid === oid) e.s = 'rej'; }); return false; }
+    o.t = t;
+  }
   await env.DB.put('ord:' + oid, JSON.stringify({ ...o, s: 'acc', by: who, at: hhmm(), ...(o.go ? { g: 'acc' } : {}) }), { expirationTtl: BILL_TTL });
   if (o.lines?.length) { // замовлення гостя підтверджене → на кухню: бігунок + екран кухні
     await queueKitchen(env, { table: o.t, kind: o.kind || 'ЗАМОВЛЕННЯ ГОСТЯ', lines: o.lines, comment: o.comment, by: `гість · прийняв ${who}` });
@@ -461,7 +467,9 @@ async function _editClosed(env, ref, p, who, day = dayKey()) {
   const gross = dishes.length ? sumS(dishes) : oGross;
   const pct = p.disc != null ? Math.max(0, Math.min(100, Math.round(+p.disc || 0))) : (x.disc || 0);
   const discSum = !pct ? 0 : pct === (x.disc || 0) && gross === oGross && x.discSum != null ? x.discSum : Math.round(gross * pct / 100);
-  const net = Math.max(0, gross - discSum - other);
+  const pS = x.promoSum || 0, pNew = pS && gross !== oGross && oGross ? Math.round(pS * gross / oGross) : pS; // 🎁 знижка рівня / акції — у відсотках, тож рахується від нових страв
+  if (pNew !== pS) { x.promoSum = pNew; what.push(`акція ${pS}→${pNew}`); }
+  const net = Math.max(0, gross - discSum - (other - Math.min(other, pS) + pNew));
   const tip = p.tip != null ? Math.max(0, Math.min(10000, Math.round(+p.tip || 0))) : oTip, sum = net + tip;
   const pay = ['cash', 'card', 'mix'].includes(p.pay) ? p.pay : oCard && oCash ? 'mix' : oCard ? 'card' : 'cash';
   const cash = pay === 'cash' ? sum : pay === 'card' ? 0 : Math.max(0, Math.min(sum, Math.round(p.cash != null ? +p.cash || 0 : oCash))), card = sum - cash;
@@ -1015,7 +1023,7 @@ export async function acceptOrder(env, ...a) {
 export async function rejectOrder(env, ...a) { // 🛵 доставка зникла — кур'єру «скасовано» (рахунок читаємо до видалення)
   const o0 = /^[a-z0-9]{6,12}$/.test(a[0] || '') ? await env.DB.get('ord:' + a[0], 'json') : null, b0 = o0?.go && o0.t ? await getBill(env, o0.t) : null;
   const o = await L(env, ['ord:' + a[0], 'bills'], () => _rejectOrder(env, ...a));
-  if (o && b0?.go && !(await getBill(env, o0.t)).total) await courNotify(env, o0.t, 'gone', '', b0).catch(() => {});
+  if (o && b0?.go && !(await getBill(env, o0.t)).total) { await courNotify(env, o0.t, 'gone', '', b0).catch(() => {}); await goGone(env, b0).catch(() => {}); }
   return o;
 }
 export async function addWaiterOrder(env, ...a) { return L(env, 'bills', () => _addWaiterOrder(env, ...a)); }

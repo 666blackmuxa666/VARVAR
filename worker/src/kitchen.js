@@ -1,7 +1,7 @@
 // 👨‍🍳 Легкий кухонний екран для старих планшетів (iPad 2 / iOS 9): відкривається по http://…workers.dev/kitchen
 // Старий Safari не довіряє сучасним сертифікатам (https) і не знає новий JS — тому тут ES5, XMLHttpRequest, flexbox, без grid.
 // версія сторінки кухні: змінили kitchen.js → підняти KV, і старий iPad сам перезавантажиться (сервер віддає kv у відповіді «kitchen»)
-export const KV = '2';
+export const KV = '3';
 export const KITCHEN_HTML = `<!doctype html><html lang="uk"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><meta name="apple-mobile-web-app-capable" content="yes">
 <title>VARVAR кухня</title><style>
@@ -31,7 +31,8 @@ export const KITCHEN_HTML = `<!doctype html><html lang="uk"><head><meta charset=
 <script>
 var T=localStorage.getItem('ktok')||'',seen=null,ctx=null,list=[];
 function $(i){return document.getElementById(i)}
-function api(op,b,cb){var x=new XMLHttpRequest();x.open('POST','/api/pos',true);x.setRequestHeader('Content-Type','application/json');if(T)x.setRequestHeader('Authorization','Bearer '+T);
+var BASE=location.pathname.replace(/\/(k|kitchen)\/?$/,''); // /v/<заклад>/k → запити в свій заклад
+function api(op,b,cb){var x=new XMLHttpRequest();x.open('POST',BASE+'/api/pos',true);x.setRequestHeader('Content-Type','application/json');if(T)x.setRequestHeader('Authorization','Bearer '+T);
  x.onreadystatechange=function(){if(x.readyState!==4)return;var j={};try{j=JSON.parse(x.responseText)}catch(e){}if(x.status===401&&op!=='login'){T='';localStorage.removeItem('ktok');show();return}$('st').textContent=x.status===200?'':'⚠️ немає звʼязку';cb&&cb(j,x.status)};
  b=b||{};b.op=op;x.send(JSON.stringify(b))}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -120,7 +121,7 @@ document.addEventListener('click',function(ev){var t=ev.target,a;
 setInterval(function(){if(T&&tab==='f'&&!wsOk)feed()},20000);
 $('gate').style.display='block';show();
 // 🔌 живе зʼєднання (як у касі): сервер сам каже «кухня змінилась» — без опитування кожні 4 с; без зʼєднання — запасне опитування раз на 20 с
-var ws=null,wsOk=0,wsT=0;function live(){if(!T||!window.WebSocket)return;try{ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/pos/live?token='+T)}catch(e){return}
+var ws=null,wsOk=0,wsT=0;function live(){if(!T||!window.WebSocket)return;try{ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+BASE+'/api/pos/live?token='+T)}catch(e){return}
  ws.onopen=function(){wsOk=1;load()};ws.onmessage=function(m){if(m.data==='pong')return;var j={};try{j=JSON.parse(m.data)}catch(e){}if(j.type==='changed'&&j.keys&&tab==='f'&&String(j.keys).indexOf('ev')>=0)feed();if(j.type==='changed'&&j.keys&&(String(j.keys).indexOf('kq')>=0||String(j.keys).indexOf('menu')>=0)){clearTimeout(wsT);wsT=setTimeout(load,150)}};
  ws.onclose=function(){wsOk=0;setTimeout(live,5000)};ws.onerror=function(){try{ws.close()}catch(e){}}}
 setInterval(function(){if(ws&&wsOk)try{ws.send('ping')}catch(e){}},25000);

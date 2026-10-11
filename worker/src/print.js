@@ -45,8 +45,8 @@ async function push(env, kind, lines, rc, extra = {}) {
 const tabPut = async (env, fn) => { const { L } = await import('./ops.js'); return L(env, ['tpq'], async () => { const l = (await env.DB.get('tpq', 'json')) || [], n = fn(l); if (JSON.stringify(n) !== JSON.stringify(l)) await env.DB.put('tpq', JSON.stringify(n), { expirationTtl: 86400 }); return n; }); };
 // принтери для вибору: знайдені програмою на компʼютері + підключені до планшетів (📱)
 export async function allDev(env) { const d = (await env.DB.get('print_dev', 'json')) || null, t = (await env.DB.get('print_tab', 'json')) || []; if (!d && !t.length) return null; return { ...(d || {}), list: [...(d?.list || []), ...t.map(x => ({ id: x.id, name: '📱 ' + x.name, type: x.type }))] }; }
-export const tabJobs = async (env, dev) => ((await env.DB.get('tpq', 'json')) || []).filter(j => j.dev === dev);
-export const tabAck = (env, ids) => tabPut(env, l => l.filter(j => !ids.includes(j.id)));
+export const tabJobs = async (env, dev) => ((await env.DB.get('tpq', 'json')) || []).filter(j => j.dev === dev && Date.now() - (+String(j.id).split('-')[0] || Date.now()) < 6 * 3600e3); // старші 6 год — не друкувати
+export const tabAck = (env, ids, dev) => tabPut(env, l => l.filter(j => !ids.includes(j.id) || (dev && j.dev !== dev))); // з планшета — лише свої завдання
 export async function tabReg(env, d) { // планшет повідомляє свій принтер → зʼявляється у списку «що на який принтер»
   const id = /^tab:[a-z0-9]{4,16}$/.test(d.id || '') ? d.id : null; if (!id) return { error: 'id' };
   const l = ((await env.DB.get('print_tab', 'json')) || []).filter(x => x.id !== id);
@@ -107,6 +107,8 @@ export class PrintQ {
     if (u.pathname === '/pull') {
       await this.st.put('seen', Date.now());
       let jobs = await this.jobs();
+      const old = jobs.filter(j => Date.now() - (+String(j.id).split('-')[0] || Date.now()) > 6 * 3600e3); // 🗑 бігунки старші 6 год — не друкувати після ремонту принтера
+      if (old.length) { await this.st.delete(old.map(j => 'j:' + j.id)); jobs = jobs.filter(j => !old.includes(j)); }
       const wait = Math.min(+u.searchParams.get('wait') || 0, 25);
       if (!jobs.length && wait) {
         await new Promise(r => { const t = setTimeout(r, wait * 1000); this.wait.push(() => { clearTimeout(t); r(); }); });

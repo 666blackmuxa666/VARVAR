@@ -46,7 +46,7 @@ try { $lb = [byte[]](Http 'GET' ($cfg.api + '/print/logo.png')).ResponseBody; $l
 
 
 # ---------- layout (paper width / scale come from the server in the first line of each job: ['cfg', 58|80, scale%, logoW]) ----------
-$VER = '2.1'
+$VER = '2.2'
 function Set-Cfg($l) {
   $mm = 80; $sc = 100; $lw = 120
   if ($l) { if ($l.Count -gt 1 -and $l[1]) { $mm = [int]$l[1] }; if ($l.Count -gt 2 -and $l[2]) { $sc = [int]$l[2] }; if ($l.Count -gt 3 -and $l[3]) { $lw = [int]$l[3] } }
@@ -283,20 +283,21 @@ if ($Test) {
 }
 Hello
 Log "start $VER, printer=$auto"
-$done = @{}; $nextHello = (Get-Date).AddMinutes(10)
+$done = @{}; $fails = 0; $nextHello = (Get-Date).AddMinutes(10)
 while ($true) {
   try {
     if ((Get-Date) -gt $nextHello) { Hello; $nextHello = (Get-Date).AddMinutes(10) }
     $r = FromJson ((Http 'GET' "$($cfg.api)/api/print/pull?key=$($cfg.key)&wait=25").ResponseText)   # server holds the request until a job appears
-    $ok = @()
+    $ok = @(); $bad = 0
     foreach ($job in $r.jobs) {
       if (-not $done.ContainsKey($job.id)) {
         try { Print-Job $job; $done[$job.id] = 1; Log "printed $($job.kind) $($job.id)" }
-        catch { Log "print error $($job.id): $($_.Exception.Message)"; if ($_.Exception.Message -match 'not found|OpenPrinter|refused|no printer') { $nextHello = Get-Date }; continue }
+        catch { Log "print error $($job.id): $($_.Exception.Message)"; if ($_.Exception.Message -match 'not found|OpenPrinter|refused|no printer') { $nextHello = Get-Date }; $bad++; continue }
       }
       $ok += $job.id
     }
     if ($ok.Count) { Http 'GET' "$($cfg.api)/api/print/ack?key=$($cfg.key)&ids=$($ok -join ',')" | Out-Null }
     if ($done.Count -gt 500) { $done = @{} }
+    if ($bad) { $fails = [Math]::Min(($fails + 1), 6); Start-Sleep (10 * $fails) } else { $fails = 0 }   # printer error (no paper / off): wait 10..60 s, do not hammer the server
   } catch { Log "net error: $($_.Exception.Message)"; Start-Sleep 5 }
 }

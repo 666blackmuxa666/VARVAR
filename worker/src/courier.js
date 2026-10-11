@@ -32,19 +32,19 @@ async function targets(env) {
   return (on.length ? on : cours).map(n => [n, links[n]]);
 }
 const items = b => (b.log || []).flatMap(o => o.lines).filter(l => !l.includes('🛵 Доставка')).map(l => l.replace(/ — \d+$/, ''));
-const pay2 = b => Math.max(0, (b.total || 0) - (b.discSum ?? Math.round((b.total || 0) * (b.disc || 0) / 100)) - (b.bonus || 0));
+const pay2 = b => Math.max(0, (b.total || 0) - (b.discSum ?? Math.round((b.total || 0) * (b.disc || 0) / 100)) - (b.bonus || 0) - (b.promo?.sum || 0));
 function card(t, b) {
   const g = b.go;
   return [`🛵 <b>${tn(t)}</b> · ${g.when ? `<b>на ${g.when}</b>` : 'якнайшвидше'}${g.st === 'ready' ? ' · 🍽 <b>ГОТОВО</b>' : g.st === 'cook' ? ' · 🔥 готується' : ''}`,
     `👤 ${esc(g.name || '')} · ${fmtPhone(g.phone)}`, `📍 ${esc(g.addr || '')}${g.ent ? ` (${esc(g.ent)})` : ''}`,
     `🍽 ${items(b).map(esc).join(', ')}${g.cut ? ` · 🍴${g.cut}` : ''}`,
-    g.paid ? '💳 <b>оплачено онлайн</b>' : `${g.pay === 'card' ? '💳 термінал' : '💵 готівка'} · до сплати <b>${pay2(b)} ₴</b>${g.change ? ` · решта з <b>${g.change}</b>` : ''}`,
+    g.paid ? (pay2(b) > g.paid.sum + 1 ? `💳 оплачено онлайн ${g.paid.sum} ₴ · <b>доплата ${pay2(b) - g.paid.sum} ₴</b>` : '💳 <b>оплачено онлайн</b>') : `${g.pay === 'card' ? '💳 термінал' : '💵 готівка'} · до сплати <b>${pay2(b)} ₴</b>${g.change ? ` · решта з <b>${g.change}</b>` : ''}`,
     g.note ? `💬 ${esc(g.note)}` : ''].filter(Boolean).join('\n');
 }
 const kbNew = (t, b) => ({ inline_keyboard: [[{ text: '✋ Беру', callback_data: `cb:${t}:take` }, { text: '🗺 Маршрут', url: mapsUrl(b.go.addr) }]] });
 const kbMine = (t, b) => ({ inline_keyboard: [
   ...(b.go.st !== 'road' ? [[{ text: '🛵 Поїхав', callback_data: `cb:${t}:road` }]] : [[5, 10, 15, 20].map(m => ({ text: `⏱ ${m} хв`, callback_data: `cb:${t}:eta:${m}` }))]),
-  b.go.paid && b.go.paid.sum >= (b.pay2 ?? b.go.paid.sum) ? [{ text: '🤝 Видано (оплачено онлайн)', callback_data: `cb:${t}:done:cash` }] : [{ text: '🤝 Видано 💵', callback_data: `cb:${t}:done:cash` }, { text: '🤝 Видано 💳', callback_data: `cb:${t}:done:card` }], /* 🌐 оплачено — гроші не брати */
+  b.go.paid && b.go.paid.sum + 1 >= pay2(b) ? [{ text: '🤝 Видано (оплачено онлайн)', callback_data: `cb:${t}:done:cash` }] : [{ text: '🤝 Видано 💵', callback_data: `cb:${t}:done:cash` }, { text: '🤝 Видано 💳', callback_data: `cb:${t}:done:card` }], /* 🌐 оплачено — гроші не брати */
   [{ text: '🗺 Маршрут', url: mapsUrl(b.go.addr) }, { text: '⚠️ Проблема', callback_data: `cb:${t}:prob` }],
   [{ text: '💬 Кухні: буду за 5 хв', callback_data: `cb:${t}:km:soon` }, { text: '💬 Я на місці', callback_data: `cb:${t}:km:here` }]] });
 
@@ -147,6 +147,7 @@ export async function courAct(env, t, name, act, arg) {
     await logEvent(env, { k: 'go', t, by: name, s: 'acc', text: `✋ ${tn(t)} → кур'єр ${name}` }); await courNotify(env, t, 'taken'); return { ok: 1, go: g };
   }
   if (act === 'road') { const g = await goSet(env, t, 'road', name, { cour: name }); await courNotify(env, t, 'refresh'); return { ok: 1, go: g }; }
+  if (act === 'done' && !b.go.cour) return { error: 'Спершу візьміть доставку ✋' };
   if (act === 'done') { const r = await goSet(env, t, 'done', name, { pay: arg === 'card' ? 'card' : 'cash' }); return r ? { ok: 1, done: r } : { error: 'Не вдалось' }; }
   if (act === 'eta') { const m = Math.max(1, Math.min(90, +arg || 10)), at = Date.now() + m * 60e3; await mark(env, t, 'etaC', at);
     await L(env, 'ord:' + b.go.oid, async () => { const o = await env.DB.get('ord:' + b.go.oid, 'json'); if (o) await env.DB.put('ord:' + b.go.oid, JSON.stringify({ ...o, etaC: at }), { expirationTtl: 2 * 86400 }); });

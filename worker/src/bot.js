@@ -9,7 +9,7 @@ import { bookList, bookSet, bookGet, bookManual, bookEditFields, bkLabel, bkButt
 import { goSet, goStLabel, goButtons, goList, goText, setGoCfg, goFromPos, goAttach, goEdit, normPhone, fmtPhone } from './delivery.js';
 import { parseWaiterOrder, draftText } from './waiter.js';
 import { tablePick, catsView, obCallback, getOb, putOb } from './orderui.js';
-import { queuePrint, printStatus, printClear } from './print.js';
+import { queuePrint, printStatus, printClear, printList, printMove, getRoute } from './print.js';
 import { loyBotText, loyBotCb, promoFill, promoFillMany } from './promo.js';
 import { payroll, payText, payOp, attConfirm, swapStep, shiftIn, shiftOut, getAtt } from './pay.js';
 import { calcView, stockCmd, invPhoto, invLink, stockCallback, stockCallbackW, stockCallbackX, stockState } from './stockbot.js';
@@ -546,7 +546,7 @@ export async function handleUpdate(u, env) {
     const { seen, q } = await printStatus(env);
     const ok = Date.now() - seen < 60e3;
     const { st } = await (await import('./print.js')).getRoute(env), GE = { kitchen: '🍳', bar: '🍹', hookah: '💨', other: '🧩' };
-    return send({ text: `🖨 <b>Принтер</b>: ${ok ? '✅ на звʼязку' : seen ? `❌ немає звʼязку з ${hhmm(seen)}` : '❌ програма друку ще не запускалась'}\nУ черзі: ${q}${st.length ? '\n\n' + st.map(x => `• <b>${esc(x.name)}</b>: ${x.g.map(g => GE[g]).join('')}${x.r ? '🧾' : ''}${x.n > 1 ? ` ×${x.n}` : ''}`).join('\n') + '\n<i>Розподіл — у касі: Налаштування → 🖨 Принтер</i>' : ''}`, markup: { inline_keyboard: [[{ text: '🖨 Тестовий друк', callback_data: 'ptest' }, { text: '🔳 QR меню', callback_data: 'pqr' }], ...(q && admin ? [[{ text: `🗑 Очистити чергу (${q})`, callback_data: 'pclr' }]] : [])] } });
+    return send({ text: `🖨 <b>Принтер</b>: ${ok ? '✅ на звʼязку' : seen ? `❌ немає звʼязку з ${hhmm(seen)}` : '❌ програма друку ще не запускалась'}\nУ черзі: ${q}${st.length ? '\n\n' + st.map(x => `• <b>${esc(x.name)}</b>: ${x.g.map(g => GE[g]).join('')}${x.r ? '🧾' : ''}${x.n > 1 ? ` ×${x.n}` : ''}`).join('\n') + '\n<i>Розподіл — у касі: Налаштування → 🖨 Принтер</i>' : ''}`, markup: { inline_keyboard: [[{ text: '🖨 Тестовий друк', callback_data: 'ptest' }, { text: '🔳 QR меню', callback_data: 'pqr' }], ...(q && admin ? [[{ text: `📋 Черга (${q})`, callback_data: 'pql' }, { text: `🗑 Очистити все`, callback_data: 'pclr' }]] : [])] } });
   }
   if (text === W.kitchen || low === '/kitchen') return send(await kitchenView(env));
   if (text === W.book || low === '/book' || low === 'броні') return booksSend(env, send);
@@ -618,7 +618,7 @@ export async function handleUpdate(u, env) {
 
   // --- 🧮 розрахунок: склад, списання, заготовки, інвентаризація, техкарти ---
   if (text === A.calc) return send(await calcView(env));
-  if (admin && /^https?:\/\/\S+$/.test(text.trim()) && /check|чек|receipt|cashreg|tax\.gov|checkbox/i.test(text)) { await send({ text: '🔎 Читаю чек за посиланням… 10–30 с' }); return send(await invLink(text.trim(), env, uid)); }
+  if (admin && /^https:\/\/\S+$/.test(text.trim())) { await send({ text: '🔎 Читаю чек за посиланням… 10–30 с' }); return send(await invLink(text.trim(), env, uid)); }
   if (admin) { const r = await stockCmd(text, env, who); if (r) return send(r); }
 
   // --- замовлення від офіціанта текстом: «номер столу» + рядки «страва кількість» ---
@@ -689,6 +689,16 @@ async function handleCallback(q, env) {
       markup: { inline_keyboard: chunk(Object.entries(GO_F).filter(([f]) => g.kind === 'del' || !['addr', 'ent'].includes(f)).map(([f, t]) => ({ text: t, callback_data: `goef:${arg}:${f}` })), 3) } }); return answer(''); }
     if (!GO_F[oid]) return answer('');
     await env.DB.put('st:' + uid, `goe:${arg}:${oid}`, { expirationTtl: 600 }); await send({ text: `${GO_F[oid]}: ${GO_ASK[oid]}` }); return answer('');
+  }
+  // 📋 черга друку по завданнях: 🗑 одне / 🔁 на інший принтер (як у касі)
+  if (act === 'pql' || act === 'pdel' || act === 'pmt') {
+    if (!admin) return answer('🔐 Лише для адміністратора');
+    if (act === 'pdel') { await printClear(env, arg); await notify(env, `🗑 Завдання друку видалено — ${esc(who)}`).catch(() => {}); }
+    if (act === 'pmt') { const r = await printMove(env, arg, oid); if (r.error) return answer('⚠️ ' + r.error); }
+    const l = (await printList(env)).sort((a, b) => a.at - b.at).slice(0, 8), st = (await getRoute(env)).st;
+    if (!l.length) { await edit('🖨 Черга друку порожня'); return answer('✅'); }
+    await edit(`📋 <b>Черга друку</b>\n\n${l.map((j, i) => `${i + 1}. ${j.at ? hhmm(j.at) : ''} · ${esc(j.kind)}${j.sn ? ` → <b>${esc(j.sn)}</b>` : ''}\n   <i>${esc(j.txt || '')}</i>`).join('\n')}`, { inline_keyboard: l.map((j, i) => [{ text: `🗑 ${i + 1}`, callback_data: `pdel:${j.id}` }, ...st.filter(x => x.id !== j.st).slice(0, 3).map(x => ({ text: `🔁 ${i + 1} → ${x.name}`.slice(0, 30), callback_data: `pmt:${j.id}:${x.id}` }))]) });
+    return answer(act === 'pdel' ? '🗑 Видалено' : act === 'pmt' ? '🔁 Перенесено' : '📋');
   }
   if (act === 'pclr') { if (!admin) return answer('🔐 Лише для адміністратора'); const r = await printClear(env, ''); await notify(env, `🗑 Черга друку очищена (${r.n}) — ${esc(who)}`).catch(() => {}); await edit(`🖨 Черга друку очищена: видалено ${r.n}`); return answer('🗑 Очищено'); }
   if (act === 'gic') { await (await import('./guestbot.js')).inboxClose(env, arg, who); await edit(esc(q.message.text || '') + '\n\n✔️ Закрито — ' + esc(who)); return answer('✔️'); }

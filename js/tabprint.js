@@ -104,7 +104,7 @@
   // ---------- черга: каса отримує сигнал «tpq змінено» через уже наявний WebSocket — без опитування ----------
   async function check() {
     const c = ld(); if (!c || !H.api) return; if (busy) { again = true; return; } busy = true;
-    try { const { jobs } = await H.api('tabJobs', { dev: c.id }); for (const j of jobs || []) { await out(j.lines, c); await H.api('tabAck', { ids: [j.id] }); } }
+    try { const { jobs } = await H.api('tabJobs', { dev: c.id }); for (const j of jobs || []) { await out(j.lines, c); await H.api('tabAck', { ids: [j.id], dev: c.id }); } }
     catch (e) { if (!/не підключено/.test(e.message)) H.toast?.('🖨 ' + e.message); }
     finally { busy = false; if (again) { again = false; check(); } }
   }
@@ -137,7 +137,7 @@
         let c;
         if (a === 'bt') { const d = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: BT_SV }); link = await btOpen(d); c = { type: 'bt', bid: d.id, name: d.name || 'Bluetooth-принтер' }; }
         if (a === 'usb') { const d = await navigator.usb.requestDevice({ filters: [] }); link = await usbOpen(d); c = { type: 'usb', vid: d.vendorId, pid: d.productId, name: d.productName || 'USB-принтер' }; }
-        if (a === 'epos') { const ip = (await H.ask('📶 IP-адреса принтера Epson', 'напр. 192.168.1.50'))?.trim(); if (!ip) return; if (!/^[\w.-]+(:\d+)?$/.test(ip)) throw new Error('Невірна адреса'); c = { type: 'epos', ip, name: 'Epson ' + ip }; link = eposOpen(ip); }
+        if (a === 'epos') { const ip = (await H.ask('📶 IP-адреса принтера Epson', 'напр. 192.168.1.50'))?.trim(); if (!ip) return; if (!/^((10|127)\.\d+|192\.168|172\.(1[6-9]|2\d|3[01]))\.\d+\.\d+(:\d+)?$|^[\w-]+\.local(:\d+)?$/.test(ip)) throw new Error('Потрібна адреса в мережі закладу, напр. 192.168.1.50'); c = { type: 'epos', ip, name: 'Epson ' + ip }; link = eposOpen(ip); }
         if (!c) return;
         const nm = (await H.ask('🖨 Назва принтера', 'напр. Бар, Кухня'))?.trim(); c.name = (nm || c.name).slice(0, 40);
         c.id = ld()?.id || 'tab:' + Math.random().toString(36).slice(2, 10);
