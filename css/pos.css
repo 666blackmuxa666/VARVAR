@@ -876,3 +876,4 @@ body.noanim .ev.wait{outline:3px solid var(--wc,#ff9f0a)}
 .voice{margin-top:4px}.voice.on{border-color:var(--accent)}
 .evc-ment,.evc-q{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}.evc-ment:empty{display:none}.evc-q .chip,.evc-ment .chip{white-space:nowrap;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:14px;padding:5px 10px;font:inherit;font-size:13px}
 .evc-in{display:flex;gap:6px;align-items:center}.evc-in input{flex:1;min-width:0;font-size:16px}
+#evcBox ~ .modal-bg,body:has(#evcBox) .modal-bg{z-index:70}
