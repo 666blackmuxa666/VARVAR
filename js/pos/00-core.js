@@ -142,6 +142,7 @@
     const my = ++stateSeq, r = await api('state');
     if (my < stateDone) return; // повільна стара відповідь не затирає новішу (стіл «повертався» після закриття)
     stateDone = my;
+    if (!S.tpInit && window.TABP) { S.tpInit = 1; TABP.init({ api, toast, ask, base: API }); } // 📱 принтер планшета (js/tabprint.js)
     S.me = { ...S.me, ...r.me }; S.myTip = r.myTip; S.myAtt = r.myAtt || null; S.books = r.books || []; S.bkNew = r.bkNew || 0; if (r.brand && JSON.stringify(r.brand) !== JSON.stringify(S.brand)) { S.brand = r.brand; store.set('brand', r.brand); applyBrand(); } S.gInN = r.gInN || 0; S.cfg = r.cfg || S.cfg; S.n = r.n; S.printer = r.printer; S.shift = r.shift;
     S.tables = Object.fromEntries(r.tables.map(b => [b.t, b]));
     const fresh = r.events.filter(e => !S.seen.has(e.id));
@@ -172,6 +173,7 @@
         loadState().catch(() => {});
         if (m.keys.includes('menu') || m.keys.includes('fav')) loadMenu().catch(() => {});
         if (m.keys.includes('kq') && (isCook() || S.view === 'kq')) loadKq().catch(() => {});
+        if (m.keys.includes('tpq')) window.TABP?.check();
         if (m.keys.includes('lookv')) loadLookV();
         if (m.keys.includes('task')) { loadMyTasks(); if (S.view === 'team' && S.zpTab === 'plan' && !$('#modal')) tkLoad(); } // 📋 план на день
         if (S.view === 'team' && m.keys.some(k => ['att', 'plan', 'pay', 'swaps', 'staff'].includes(k)) && !$('#modal')) loadView(true);

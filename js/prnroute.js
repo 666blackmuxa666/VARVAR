@@ -2,7 +2,7 @@
 // route = { st: [{ id, name, dev, g: ['kitchen','bar','hookah','other'], r: чеки 0/1, n: копій }] }
 (() => {
   const G = [['kitchen', '🍳', 'Кухня'], ['bar', '🍹', 'Бар'], ['hookah', '💨', 'Кальян'], ['other', '🧩', 'Інше']];
-  const TY = { win: 'Windows', winusb: 'USB', winnet: 'мережа', winbt: 'Bluetooth', raw: 'USB', net: 'мережа', com: 'Bluetooth' };
+  const TY = { win: 'Windows', winusb: 'USB', winnet: 'мережа', winbt: 'Bluetooth', raw: 'USB', net: 'мережа', com: 'Bluetooth', bt: 'Bluetooth планшета', usb: 'USB планшета', epos: 'Epson Wi-Fi планшета' };
   const E = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   if (!document.getElementById('prn-css')) document.head.insertAdjacentHTML('beforeend', `<style id="prn-css">
     .prn{display:grid;gap:8px}.prn-r{display:grid;grid-template-columns:minmax(90px,1fr) minmax(120px,1.4fr) auto auto auto;gap:6px;align-items:center;padding:8px;border-radius:12px;background:var(--card2,rgba(127,127,127,.08))}

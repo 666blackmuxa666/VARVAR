@@ -21,8 +21,9 @@
   function prnCard() {
     if (!isAdmin() || !window.PRN) return '';
     if (!S.prnR) { if (!S.prnL) { S.prnL = 1; api('rcptGet', {}).then(r => { S.prnR = { route: r.route || { st: [] }, dev: r.dev }; renderMain(); }).catch(() => { S.prnL = 0; }); } return '<div class="card" style="margin-top:12px"><h3>🖨 Що на який принтер</h3><div class="muted">Завантаження…</div></div>'; }
-    return `<div class="card" style="margin-top:12px"><h3>🖨 Що на який принтер</h3>${PRN.html(S.prnR.route, S.prnR.dev, S.prnR.dirty)}</div>`;
+    return `<div class="card" style="margin-top:12px"><h3>🖨 Що на який принтер</h3>${PRN.html(S.prnR.route, S.prnR.dev, S.prnR.dirty)}</div>${window.TABP ? `<div class="card" style="margin-top:12px"><h3>📱 Принтер цього планшета</h3>${TABP.html()}</div>` : ''}`;
   }
+  document.addEventListener('click', async e => { const el = e.target.closest('[data-tp]'); if (!el || !window.TABP) return; el.disabled = true; await TABP.click(el.dataset.tp); el.disabled = false; S.prnR = null; S.prnL = 0; renderMain(); });
   const prnDo = async el => { const P = S.prnR; if (!P) return; P.route = { st: (P.route.st || []).map(x => ({ ...x })) }; const r = PRN.apply(el, P.route);
     if (r === 'save') { const x = await act('printRoute', P.route, '🖨 Збережено — програма друку підхопить за кілька хвилин'); if (x) { P.route = x.route; P.dirty = 0; } } else if (r) P.dirty = 1; renderMain(); };
   document.addEventListener('click', e => { const el = e.target.closest('button[data-prn]'); if (el) prnDo(el); });

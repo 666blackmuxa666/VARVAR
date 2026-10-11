@@ -119,7 +119,7 @@ export async function handle(req, env) {
       if (pf) {
         const r = await fetch('https://666blackmuxa666.github.io/VARVAR/printer/' + (pf[1] === 'agent.ps1' ? 'varvar-print.ps1' : pf[1]), { cf: { cacheTtl: 30 } });
         if (!r.ok) return new Response('not found', { status: 404 });
-        return new Response(r.body, { headers: { 'content-type': url.pathname.endsWith('.png') ? 'image/png' : 'application/octet-stream' } });
+        return new Response(r.body, { headers: { 'content-type': url.pathname.endsWith('.png') ? 'image/png' : 'application/octet-stream', 'access-control-allow-origin': '*' } }); // * — друк з планшета малює картинку на canvas
       }
       if (url.pathname === '/api/orders') { // статуси замовлень гостя: ?ids=a,b
         const ids = (url.searchParams.get('ids') || '').split(',').filter(x => /^[a-z0-9]{6,12}$/.test(x)).slice(0, 20);

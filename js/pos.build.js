@@ -391,6 +391,10 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const my = ++stateSeq, r = await api("state");
     if (my < stateDone) return;
     stateDone = my;
+    if (!S.tpInit && window.TABP) {
+      S.tpInit = 1;
+      TABP.init({ api, toast, ask, base: API });
+    }
     S.me = __spreadValues(__spreadValues({}, S.me), r.me);
     S.myTip = r.myTip;
     S.myAtt = r.myAtt || null;
@@ -482,6 +486,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       m.keys.forEach((k) => pendKeys.add(k));
       clearTimeout(reloadT);
       reloadT = setTimeout(() => {
+        var _a2;
         m = { keys: [...pendKeys] };
         pendKeys.clear();
         loadState().catch(() => {
@@ -490,6 +495,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         });
         if (m.keys.includes("kq") && (isCook() || S.view === "kq")) loadKq().catch(() => {
         });
+        if (m.keys.includes("tpq")) (_a2 = window.TABP) == null ? void 0 : _a2.check();
         if (m.keys.includes("lookv")) loadLookV();
         if (m.keys.includes("task")) {
           loadMyTasks();
@@ -3846,8 +3852,18 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       }
       return '<div class="card" style="margin-top:12px"><h3>\u{1F5A8} \u0429\u043E \u043D\u0430 \u044F\u043A\u0438\u0439 \u043F\u0440\u0438\u043D\u0442\u0435\u0440</h3><div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div></div>';
     }
-    return `<div class="card" style="margin-top:12px"><h3>\u{1F5A8} \u0429\u043E \u043D\u0430 \u044F\u043A\u0438\u0439 \u043F\u0440\u0438\u043D\u0442\u0435\u0440</h3>${PRN.html(S.prnR.route, S.prnR.dev, S.prnR.dirty)}</div>`;
+    return `<div class="card" style="margin-top:12px"><h3>\u{1F5A8} \u0429\u043E \u043D\u0430 \u044F\u043A\u0438\u0439 \u043F\u0440\u0438\u043D\u0442\u0435\u0440</h3>${PRN.html(S.prnR.route, S.prnR.dev, S.prnR.dirty)}</div>${window.TABP ? `<div class="card" style="margin-top:12px"><h3>\u{1F4F1} \u041F\u0440\u0438\u043D\u0442\u0435\u0440 \u0446\u044C\u043E\u0433\u043E \u043F\u043B\u0430\u043D\u0448\u0435\u0442\u0430</h3>${TABP.html()}</div>` : ""}`;
   }
+  document.addEventListener("click", async (e) => {
+    const el = e.target.closest("[data-tp]");
+    if (!el || !window.TABP) return;
+    el.disabled = true;
+    await TABP.click(el.dataset.tp);
+    el.disabled = false;
+    S.prnR = null;
+    S.prnL = 0;
+    renderMain();
+  });
   const prnDo = async (el) => {
     const P = S.prnR;
     if (!P) return;

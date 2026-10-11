@@ -117,6 +117,19 @@ async function apiTests() {
     } finally { await posOk(A, 'printRoute', back); }
     return 'кухня ×1, бар ×2';
   });
+  await step('📱 принтер планшета: реєстрація, своя черга, друк і підтвердження', async () => {
+    const back = (await posOk(A, 'rcptGet')).route, dev = 'tab:qa' + Date.now().toString(36).slice(-6), s0 = await posOk(A, 'state'), busy = new Set(s0.tables.map(x => x.t)); let t = s0.n; while (busy.has(t)) t--;
+    try {
+      must((await pos(W, 'tabReg', { id: dev, name: 'QA' })).status === 403, 'офіціант зареєстрував принтер');
+      await posOk(A, 'tabReg', { id: dev, name: 'QA планшет', type: 'bt' }); must((await posOk(A, 'rcptGet')).dev.list.some(x => x.id === dev), 'немає в списку');
+      await posOk(A, 'printRoute', { st: [{ id: 'qt', name: 'QA Планшет', dev, g: ['kitchen', 'bar', 'hookah', 'other'] }] });
+      await posOk(A, 'order', { t, items: [{ id: dish.id, q: 1 }] });
+      const j = (await posOk(K || A, 'tabJobs', { dev })).jobs; must(j.length === 1 && j[0].lines.some(l => l[0] === 'k'), 'завдань: ' + j.length);
+      must((await posOk(A, 'printQ')).list.some(x => x.id === j[0].id), 'не видно в черзі');
+      await posOk(K || A, 'tabAck', { ids: [j[0].id] }); must(!(await posOk(A, 'tabJobs', { dev })).jobs.length, 'не підтверджено');
+      await posOk(A, 'close', { t, pay: 'cash', print: false });
+    } finally { await posOk(A, 'printRoute', back); await posOk(A, 'tabReg', { id: dev, off: 1 }); }
+  });
   await step('📋 план на день: адмін додає, кухар бачить своє й відмічає', async () => {
     const st = (await posOk(A, 'taskList')).staff, ck = K && st.find(s => s.r === 'cook'); 
     const t = (await posOk(A, 'taskAdd', { n: 'QA протерти вітрину', who: { k: 'r', r: 'cook' }, imp: 1 })).t; must(t?.id, 'не додано');

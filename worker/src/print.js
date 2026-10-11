@@ -37,8 +37,21 @@ const legacy = r => ({ receipt: (r.st.find(x => x.r) || {}).dev || '', kitchen: 
 async function push(env, kind, lines, rc, extra = {}) {
   const id = `${Date.now()}-${crypto.randomUUID().slice(0, 6)}`;
   lines = [['cfg', rc.w, rc.scale, rc.logoW], ...lines, ...Array.from({ length: rc.feed }, () => ['gap'])]; /* ширина паперу й масштаб — для програми друку */
-  await qcall(env, '/push', { id, kind, lines, ...extra });
+  if (/^tab:/.test(extra.dev || '')) await tabPut(env, l => [...l, { id, kind, lines, ...extra }].slice(-40)); // 📱 принтер планшета — своя черга в базі закладу: запис сам будить касу через WebSocket (ключ tpq)
+  else await qcall(env, '/push', { id, kind, lines, ...extra });
   return id;
+}
+// 📱 черга принтерів, підключених до планшета (Bluetooth / USB / Epson Wi-Fi) — друкує сама каса
+const tabPut = async (env, fn) => { const { L } = await import('./ops.js'); return L(env, ['tpq'], async () => { const l = (await env.DB.get('tpq', 'json')) || [], n = fn(l); if (JSON.stringify(n) !== JSON.stringify(l)) await env.DB.put('tpq', JSON.stringify(n), { expirationTtl: 86400 }); return n; }); };
+// принтери для вибору: знайдені програмою на компʼютері + підключені до планшетів (📱)
+export async function allDev(env) { const d = (await env.DB.get('print_dev', 'json')) || null, t = (await env.DB.get('print_tab', 'json')) || []; if (!d && !t.length) return null; return { ...(d || {}), list: [...(d?.list || []), ...t.map(x => ({ id: x.id, name: '📱 ' + x.name, type: x.type }))] }; }
+export const tabJobs = async (env, dev) => ((await env.DB.get('tpq', 'json')) || []).filter(j => j.dev === dev);
+export const tabAck = (env, ids) => tabPut(env, l => l.filter(j => !ids.includes(j.id)));
+export async function tabReg(env, d) { // планшет повідомляє свій принтер → зʼявляється у списку «що на який принтер»
+  const id = /^tab:[a-z0-9]{4,16}$/.test(d.id || '') ? d.id : null; if (!id) return { error: 'id' };
+  const l = ((await env.DB.get('print_tab', 'json')) || []).filter(x => x.id !== id);
+  if (!d.off) l.push({ id, name: S(d.name, 60) || 'Принтер планшета', type: ['bt', 'usb', 'epos'].includes(d.type) ? d.type : 'bt', at: Date.now() });
+  await env.DB.put('print_tab', JSON.stringify(l.slice(-10))); return { ok: 1 };
 }
 export async function queuePrint(env, kind, lines) {
   const rc = await getRcpt(env);
@@ -61,12 +74,22 @@ export async function queueKitchen(env, t) {
 // 🔁 завдання з черги — на інший принтер (якщо той зламався)
 export async function printMove(env, id, sid) {
   const s = (await getRoute(env)).st.find(x => x.id === sid); if (!s) return { error: 'Принтер не знайдено' };
-  return (await qcall(env, '/move', { id, st: s.id, sn: s.name, dev: s.dev })).json();
+  const tj = ((await env.DB.get('tpq', 'json')) || []).find(j => j.id === id), toTab = /^tab:/.test(s.dev || '');
+  if (!tj && !toTab) return (await qcall(env, '/move', { id, st: s.id, sn: s.name, dev: s.dev })).json();
+  const j = tj || (await (await qcall(env, '/get', { id })).json()).j; if (!j) return { error: 'Завдання вже надруковано' }; // між компʼютером і планшетом — забрати й поставити заново
+  if (tj) await tabAck(env, [id]); else await qcall(env, '/clear', { id });
+  const n = { ...j, st: s.id, sn: s.name, dev: s.dev };
+  if (toTab) await tabPut(env, l => [...l, n].slice(-40)); else await qcall(env, '/push', n);
+  return { ok: 1 };
 }
 export const printStatus = async env => (await qcall(env, '/status')).json();
 // 🗑 черга: список завдань (для каси) і очищення — уся або одне (id)
-export const printList = async env => (await qcall(env, '/list')).json();
-export const printClear = async (env, id) => (await qcall(env, '/clear', { id: id || '' })).json();
+const tabTxt = j => ({ id: j.id, kind: j.kind, st: j.st || '', sn: j.sn || '', at: +String(j.id).split('-')[0] || 0, txt: (j.lines || []).filter(x => ['big', 'b', 'c', 'l', 'inv', 'invb'].includes(x[0]) && x[1]).slice(0, 2).map(x => x[1]).join(' · ').slice(0, 80) });
+export const printList = async env => [...(await (await qcall(env, '/list')).json()), ...((await env.DB.get('tpq', 'json')) || []).map(tabTxt)];
+export async function printClear(env, id) {
+  const t = ((await env.DB.get('tpq', 'json')) || []).filter(j => !id || j.id === id).map(j => j.id); if (t.length) await tabAck(env, t);
+  const r = await (await qcall(env, '/clear', { id: id || '' })).json(); return { n: r.n + t.length };
+}
 
 export class PrintQ {
   constructor(state) { this.st = state.storage; this.wait = []; }
@@ -76,6 +99,7 @@ export class PrintQ {
     const u = new URL(req.url);
     if (u.pathname === '/push') { const j = await req.json(); await this.st.put('j:' + j.id, j); this.wake(); return new Response('ok'); }
     if (u.pathname === '/status') return Response.json({ seen: (await this.st.get('seen')) || 0, q: (await this.st.list({ prefix: 'j:' })).size });
+    if (u.pathname === '/get') { const { id } = await req.json(); return Response.json({ j: /^[\w-]+$/.test(id) ? (await this.st.get('j:' + id)) || null : null }); }
     if (u.pathname === '/move') { const b = await req.json(), j = /^[\w-]+$/.test(b.id) && await this.st.get('j:' + b.id); if (!j) return Response.json({ error: 'Завдання вже надруковано' }); await this.st.put('j:' + j.id, { ...j, st: b.st, sn: b.sn, dev: b.dev }); this.wake(); return Response.json({ ok: 1 }); }
     if (u.pathname === '/list') { const l = [...(await this.st.list({ prefix: 'j:', limit: 100 })).values()]; return Response.json(l.map(j => ({ id: j.id, kind: j.kind, st: j.st || '', sn: j.sn || '', at: +String(j.id).split('-')[0] || 0, txt: (j.lines || []).filter(x => ['big', 'b', 'c', 'l'].includes(x[0]) && x[1]).slice(0, 2).map(x => x[1]).join(' · ').slice(0, 80) }))); }
     if (u.pathname === '/clear') { const { id } = await req.json(); const keys = id ? (/^[\w-]+$/.test(id) ? ['j:' + id] : []) : [...(await this.st.list({ prefix: 'j:' })).keys()]; if (keys.length) await this.st.delete(keys); return Response.json({ n: keys.length }); }
