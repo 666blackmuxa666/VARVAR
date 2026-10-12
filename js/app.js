@@ -96,14 +96,23 @@
     observeCats();
     renderFab();
   }
+  // ❤️ лайки страв: лічильник приходить разом з меню, свої — у localStorage
+  let likes = {}, myLikes = new Set(store.get('likes', []));
+  const likeBtn = id => `<button class="like ${myLikes.has(id) ? 'on' : ''}" data-like="${esc(id)}" aria-label="like">${myLikes.has(id) ? '❤️' : '🤍'}${likes[id] ? `<b>${likes[id]}</b>` : ''}</button>`;
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-like]'); if (!b) return; const id = b.dataset.like, on = !myLikes.has(id);
+    on ? myLikes.add(id) : myLikes.delete(id); likes[id] = Math.max(0, (likes[id] || 0) + (on ? 1 : -1)); store.set('likes', [...myLikes]);
+    b.outerHTML = likeBtn(id);
+    try { const r = await (await fetch(C.api + '/api/like', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, device, on }) })).json(); if (r.ok) { likes[id] = r.n; const x = document.querySelector(`[data-like="${CSS.escape(id)}"]`); if (x) x.outerHTML = likeBtn(id); } } catch {}
+  });
   function card(it) {
     const btns = it.variants
       ? `<div class="vars">${it.variants.map(v => addBtn(it.id + '|' + v.v, unit(`${v.v} л`) + ` · ${v.p}`)).join('')}</div>`
       : `<div class="row"><span class="price">${it.price} <small>${t('cur')}</small></span>${addBtn(it.id, '+')}</div>`;
     return `<article class="item">
-      ${it.img ? `<div class="ph"><img src="${it.img}${it.img.includes('?') ? '' : '?v=' + IMG_VER}" alt="" loading="lazy" decoding="async"></div>` : ''}
+      ${it.img ? `<div class="ph"><img src="${it.img}${it.img.includes('?') ? '' : '?v=' + IMG_VER}" alt="" loading="lazy" decoding="async">${likeBtn(it.id)}</div>` : ''}
       <div class="info">
-        <h3>${esc(itemName(it))}${it.size && !it.variants ? `<span class="size">${esc(unit(it.size))}</span>` : ''}</h3>
+        <h3>${it.img ? '' : likeBtn(it.id)}${esc(itemName(it))}${it.size && !it.variants ? `<span class="size">${esc(unit(it.size))}</span>` : ''}</h3>
         ${it.desc ? `<p>${esc(itemDesc(it))}</p>` : ''}
         ${btns}
       </div></article>`;
@@ -530,7 +539,7 @@
   load(C.api + '/api/menu').catch(() => load('data/menu.json')).then(m => {
     m.categories.forEach(c => c.items = c.items.filter(it => !it.hidden));
     m.categories = m.categories.filter(c => c.items.length);
-    menu = m;
+    menu = m; likes = m.likes || {};
     if (window.VVM && (window.__vvM || m.brand?.theme)) VVM.apply(window.__vvM ? window.__vvM.vvMenu : m.brand.theme, window.__vvM?.brand || m.brand); /* 🎨 дизайн меню з кабінету (js/menu-design.js) */
     if (m.brand?.name) { document.title = m.brand.name + ' — меню'; const h = $('.logo'); if (h) h.textContent = m.brand.name; document.querySelectorAll('a.lang[href*="about.html"]').forEach(a => { a.textContent = a.textContent.replace('VARVAR', m.brand.name); }); }
     m.categories.forEach(c => c.items.forEach(it => { byId[it.id] = it; catOf[it.id] = c.id; }));

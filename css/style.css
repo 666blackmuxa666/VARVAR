@@ -342,3 +342,10 @@ details, .hist, .tw, .go-ord { border-radius: 16px; }
 /* 🎨 конструктор меню: кнопка «Офіціант» і логотип читаються на будь-якій темі */
 html[data-mt="1"] .call-btn { background: color-mix(in srgb, var(--accent) 16%, var(--bg)); border-color: color-mix(in srgb, var(--accent) 55%, transparent); color: var(--text); }
 html[data-mt="1"] .top .logo { font-size: clamp(16px, 5.2vw, 26px); letter-spacing: 0; }
+/* ❤️ лайки страв */
+.ph { position: relative; }
+.like { border: 0; background: rgba(0,0,0,.45); color: #fff; border-radius: 99px; padding: 4px 8px; font: 600 12px/1 system-ui, sans-serif; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; text-transform: none; }
+.like b { font-weight: 700; }
+.ph .like { position: absolute; top: 8px; right: 8px; }
+h3 .like { float: right; margin-left: 6px; background: var(--line); color: inherit; }
+.like.on { background: rgba(220,40,70,.85); color: #fff; }

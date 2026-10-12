@@ -100,8 +100,20 @@ export async function handle(req, env) {
         const ms = (await getCfg(env)).scanMin * 60e3, until = Date.now() + ms; await env.DB.put('scan:' + dev, JSON.stringify({ until, t: t || 0 }), { expirationTtl: ms / 1000 + 60 });
         return json({ ok: true, until, t: t || 0 });
       }
+      if (url.pathname === '/api/like' && req.method === 'POST') { // ❤️ лайк страви: один на пристрій, повторний — знімає
+        const b = await req.json().catch(() => ({})), dev = String(b.device || '').slice(0, 64), id = String(b.id || '').slice(0, 60);
+        if (!dev || !id) return json({ error: 'bad' }, 400);
+        const m = await getMenu(env); if (!m.categories.some(c => c.items.some(it => it.id === id))) return json({ error: 'bad' }, 400);
+        return json(await env.DB.locked('likes', async () => {
+          const L = (await env.DB.get('likes', 'json')) || {}, mine = (await env.DB.get('lk:' + dev, 'json')) || [], has = mine.includes(id), on = b.on === undefined ? !has : !!b.on;
+          if (on === has) return { ok: true, n: L[id] || 0, on };
+          L[id] = Math.max(0, (L[id] || 0) + (on ? 1 : -1)); if (!L[id]) delete L[id];
+          await env.DB.put('likes', JSON.stringify(L)); await env.DB.put('lk:' + dev, JSON.stringify(on ? [...mine, id].slice(-300) : mine.filter(x => x !== id)), { expirationTtl: 365 * 864e2 });
+          return { ok: true, n: L[id] || 0, on };
+        }));
+      }
       if (url.pathname === '/api/ai' && req.method === 'POST') return json(...await aiHelp(await req.json(), env));
-      if (url.pathname === '/api/menu') return new Response(JSON.stringify(await (async () => { const m = await getMenu(env), s = await (await import('./site.js')).getSite(env), th = s.menuTheme || (s.theme?.menu ? s.theme : null); /* 🎨 стиль візитки й для меню */ return env.VENUE && env.VENUE !== MAIN ? { ...m, brand: { name: s.name, logo: s.logo || '', ...(th ? { theme: th } : {}) } } : th ? { ...m, brand: { theme: th } } : m; })()), /* 🏪 назва закладу — разом з меню, без окремого запиту */ { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'no-cache' } });
+      if (url.pathname === '/api/menu') return new Response(JSON.stringify(await (async () => { const m = { ...(await getMenu(env)), likes: (await env.DB.get('likes', 'json')) || {} }, s = await (await import('./site.js')).getSite(env), th = s.menuTheme || (s.theme?.menu ? s.theme : null); /* 🎨 стиль візитки й для меню */ return env.VENUE && env.VENUE !== MAIN ? { ...m, brand: { name: s.name, logo: s.logo || '', ...(th ? { theme: th } : {}) } } : th ? { ...m, brand: { theme: th } } : m; })()), /* 🏪 назва закладу — разом з меню, без окремого запиту */ { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'no-cache' } });
       if (url.pathname.startsWith('/img/')) {
         const b = await env.DB.get('img:' + url.pathname.slice(5), 'arrayBuffer');
         if (b) return new Response(b, { headers: { 'content-type': new Uint8Array(b.slice(0, 4))[0] === 0x89 ? 'image/png' : 'image/jpeg', 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=31536000' } });
