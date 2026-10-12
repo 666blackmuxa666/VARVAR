@@ -4,7 +4,7 @@
 import { getMenu, saveMenu, menuLock } from './menu.js';
 import { dayKey } from './ops.js';
 
-export const FREE = 20, PRICE = 5, DAY_CAP = 30;
+export const FREE = 20, PRICE = 2, DAY_CAP = 30;
 // 🤖 баланс ШІ закладу (₴): поповнення з кабінету через LiqPay платформи (billing.js), списання — тут
 export const aiBal = async env => (await env.DB.get('aibal', 'json')) || { bal: 0, h: [] };
 export async function aiCharge(env, sum, what, who) { return env.DB.locked('aibal', async () => { const a = await aiBal(env); a.bal = Math.round((a.bal - sum) * 100) / 100; a.h = [{ ts: Date.now(), sum: -sum, what: String(what || '').slice(0, 60), by: String(who || '').slice(0, 40) }, ...a.h].slice(0, 200); await env.DB.put('aibal', JSON.stringify(a)); return a; }); }
@@ -58,7 +58,7 @@ async function photoMake(b, env, who) {
   if ((q.d[today] || 0) >= DAY_CAP) return [{ error: `Сьогодні вже ${DAY_CAP} фото — продовжимо завтра` }, 429];
   const paid = q.n >= FREE && (env.VENUE || 'varvar') !== 'varvar'; /* 🤖 понад ліміт — з балансу ШІ закладу (VARVAR — без оплати) */
   if (paid && (await aiBal(env)).bal < PRICE) return [{ error: `Безкоштовні ${FREE} фото цього місяця використано. Поповніть баланс ШІ в кабінеті власника (💳 Оплата) — ${PRICE} ₴ за фото`, bal: 1 }, 402];
-  if (q.n >= FREE && !b.pay) return [{ error: 'pay', n: q.n, free: FREE, price: PRICE }, 402]; // каса питає «понад ліміт — 5 ₴, продовжити?»
+  if (q.n >= FREE && !b.pay) return [{ error: 'pay', n: q.n, free: FREE, price: PRICE }, 402]; // каса питає «понад ліміт — 2 ₴, продовжити?»
   if (await env.DB.get('phbusy')) return [{ error: 'Інше фото ще генерується — зачекайте кілька секунд' }, 429];
   await env.DB.put('phbusy', '1', { expirationTtl: 60 });
   try {

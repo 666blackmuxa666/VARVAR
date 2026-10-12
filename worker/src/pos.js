@@ -65,6 +65,9 @@ export async function posApi(b, req, env) {
   }
   if (b.op === 'aiBench') { if (!admin) return needAdmin(); const imgs = (Array.isArray(b.images) ? b.images : []).slice(0, 3).map(x => String(x).replace(/^data:image\/\w+;base64,/, '')).filter(x => x.length > 1000 && x.length < 6e6); if (!imgs.length) return [{ error: 'Додайте фото' }, 400]; return [{ ok: true, list: await (await import('./ai.js')).aiBench(env, imgs) }, 200]; } // 🧪 порівняння ШІ на накладній
   if (b.op === 'lookV') return [{ ok: true, look: await env.DB.get('lookv', 'json') }, 200]; // 🎨 стиль закладу (конструктор)
+  if (b.op === 'onlList') { if (!admin) return needAdmin(); // 🌐 кабінет власника → 💳 Оплата: рахунки, оплачені онлайн, за N днів (один getMany)
+    const n = Math.min(62, Math.max(1, +b.days || 30)), days = [...Array(n)].map((_, i) => dayKey(Date.now() - i * 864e5)), cl = await env.DB.getMany(days.map(d => 'closed:' + d), 'json');
+    return [{ ok: true, list: days.flatMap((d, i) => (cl[i] || []).filter(x => x.lpo?.length).map(x => ({ d, id: x.id, at: x.at, t: x.t, sum: x.sum, onl: x.onl, go: x.go || '', tip: x.tip || 0, test: x.lpo.some(p => /sandbox/.test(p.o)) ? 1 : 0, ref: x.lref || 0, refBy: x.lrefBy || '', rm: x.rm || x.del ? 1 : 0 })).reverse()) }, 200]; }
   if (b.op === 'dzGet' || b.op === 'dzSet') { if (!admin) return needAdmin(); // 🎨 друк і дизайн: вибраний стиль, тексти й свої стилі (кабінет власника)
     if (b.op === 'dzGet') return [{ ok: true, dz: await env.DB.get('dz', 'json') }, 200];
     const v = b.dz && typeof b.dz === 'object' ? JSON.stringify(b.dz) : ''; if (v.length > 20000) return [{ error: 'too_big' }, 400]; if (v) await env.DB.put('dz', v); else await env.DB.delete('dz'); return [{ ok: true }, 200]; }
@@ -227,7 +230,7 @@ export async function posApi(b, req, env) {
       if (!x?.lpo?.length) return [{ error: 'Цей чек не оплачувався онлайн' }, 400]; if (x.del || x.rm) return [{ error: 'Чек уже знято з виручки' }, 400];
       const LP = await import('./liqpay.js'), k = LP.lpKeys(env); if (!k) return [{ error: 'LiqPay не підключено' }, 400];
       for (const p of x.lpo) { const r = await LP.lpRefund(k, p.o, p.a); if (r.error) return [{ error: 'LiqPay не повернув: ' + r.error }, 400]; }
-      await delClosed(env, String(b.ref), day); await notify(env, `🖥 ↩️ Повернуто гостю онлайн ${money(x.onl)} — стіл ${tn(x.t)} (${x.at}), чек знято з виручки — ${esc(who)}`); return ok({ sum: x.onl }); }
+      await delClosed(env, String(b.ref), day); await env.DB.locked('closed:' + day, async () => { const l = await getClosed(env, day), y = l.find(c => c.id === x.id); if (y) { y.lref = Date.now(); y.lrefBy = who; await env.DB.put('closed:' + day, JSON.stringify(l)); } }).catch(() => {}); await notify(env, `🖥 ↩️ Повернуто гостю онлайн ${money(x.onl)} — стіл ${tn(x.t)} (${x.at}), чек знято з виручки — ${esc(who)}`); return ok({ sum: x.onl }); }
     case 'closedDel': { if (!admin) return needAdmin(); const x = await delClosed(env, String(b.ref), b.day); if (x) await notify(env, `🖥 🧹 Закритий рахунок стола ${tn(x.t)} (${money(x.sum)}, ${x.at}) видалено з виручки — ${esc(who)}`); return ok({ x }); }
   }
 
