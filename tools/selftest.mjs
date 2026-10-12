@@ -697,6 +697,27 @@ async function cdpOpen(bin) {
 }
 
 // що вилазить за .card / .kv / .kpi (і горизонтальний скрол сторінки)
+// 🎨 --design: діагностика кнопок (замалі / завеликі / обрізаний текст / різна висота в ряду / «сирота» в останньому ряду) → _team/design-report.md
+const DESIGN = ARGS.includes('--design'), designLog = new Map();
+const DESIGN_JS = `(() => {
+  const out = [], vis = el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
+  const txt = el => (el.innerText || el.title || el.getAttribute('aria-label') || '').trim().replace(/\\s+/g, ' ').slice(0, 30);
+  const btns = [...document.querySelectorAll('#main button, #main .btn, #modal button, #sheet button, #phw button, nav button')].filter(vis);
+  const mob = innerWidth < 600;
+  for (const b of btns) { const r0 = b.getBoundingClientRect(), t = txt(b), ex = getComputedStyle(b, '::before').position === 'absolute' ? 16 : 0, r = { width: r0.width, height: r0.height + ex };
+    if (mob && (r.height < 34 || r.width < 34) && !b.closest('.ph-refs,.kpi')) out.push('замала ' + Math.round(r.width) + '×' + Math.round(r.height) + ': «' + t + '»');
+    if (r.height > 72 && !b.querySelector('img') && !b.matches('.tbl,.tbl *,.kpi,.card,.big1') && !/grid|tile|tables/.test(b.parentElement.className)) out.push('зависока ' + Math.round(r.height) + 'px: «' + t + '»');
+    if (b.scrollWidth > b.clientWidth + 2 && getComputedStyle(b).overflow !== 'visible') out.push('обрізаний текст: «' + t + '»'); }
+  for (const p of new Set(btns.map(b => b.parentElement))) {
+    if (p.matches('.st-g,.grid2,.sup-l,.nav,.grid,.ph-pick')) continue; const kids = [...p.children].filter(x => x.matches('button,.btn') && vis(x)); if (kids.length < 2) continue;
+    const rows = new Map(); for (const k of kids) { const y = Math.round(k.getBoundingClientRect().top / 6); rows.set(y, [...(rows.get(y) || []), k]); }
+    const rs = [...rows.values()], name = (p.className || p.tagName).toString().slice(0, 30);
+    for (const row of rs) { const hs = row.map(k => k.getBoundingClientRect().height); if (Math.max(...hs) - Math.min(...hs) > 4) out.push('різна висота в ряду [' + name + ']: ' + row.map(txt).join(' / ')); }
+    if (rs.length > 1 && rs.at(-1).length === 1 && rs[0].length > 2 && rs.at(-1)[0].getBoundingClientRect().width < p.clientWidth * .8) out.push('кнопка-сирота в останньому ряду [' + name + ']: «' + txt(rs.at(-1)[0]) + '»');
+  }
+  return [...new Set(out)];
+})()`;
+const designNote = async (b, where) => { if (!DESIGN) return; for (const x of await b.ev(DESIGN_JS)) { const l = designLog.get(x) || []; if (l.length < 3) l.push(where); designLog.set(x, l); } };
 const OVERFLOW_JS = `(() => {
   const bad = [], seen = new Set();
   const vis = el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
@@ -743,11 +764,11 @@ async function uiTests() {
     await sleep(1800);
     const tabs = await b.ev(`[...document.querySelectorAll('#main [data-a]')].filter(x => ${JSON.stringify(TABS)}.includes(x.dataset.a)).map(x => [x.dataset.a, x.dataset.t ?? x.dataset.s ?? ''])`);
     const uniq = [...new Map(tabs.map(t => [t.join(':'), t])).values()];
-    const over = [...await b.ev(OVERFLOW_JS)];
+    const over = [...await b.ev(OVERFLOW_JS)]; await designNote(b, `${who} ${w}px ${v}`);
     for (const [a, t] of uniq) {
       await b.ev(`(() => { const x = [...document.querySelectorAll('#main [data-a="${a}"]')].find(x => (x.dataset.t ?? x.dataset.s ?? '') === ${JSON.stringify(t)}); x && x.click(); return 1; })()`);
       await sleep(1300);
-      for (const o of await b.ev(OVERFLOW_JS)) over.push(`[${a}=${t}] ${o}`);
+      for (const o of await b.ev(OVERFLOW_JS)) over.push(`[${a}=${t}] ${o}`); await designNote(b, `${who} ${w}px ${v}/${t}`);
       for (const s2 of await b.ev(`[...document.querySelectorAll('#main [data-a="loyTab"]')].map(x => x.dataset.s)`)) { // 🎁 підвкладки лояльності
         await b.ev(`(() => { const x = document.querySelector('#main [data-a="loyTab"][data-s="${s2}"]'); x && x.click(); return 1; })()`); await sleep(1300);
         for (const o of await b.ev(OVERFLOW_JS)) over.push(`[${a}=${t}/loy=${s2}] ${o}`);
@@ -770,7 +791,8 @@ async function uiTests() {
         for (const v of views) if (!ONLY_VIEWS || ONLY_VIEWS.includes(v)) await checkView(label, w, v);
       }
     }
-  } finally { b.close(); }
+  } finally { b.close();
+    if (DESIGN) { const { writeFileSync } = await import('node:fs'); writeFileSync(new URL('../_team/design-report.md', import.meta.url), `# 🎨 Діагностика кнопок · ${new Date().toISOString().slice(0, 16)}\n\nЗнайдено: ${designLog.size}\n\n` + [...designLog].map(([k, v]) => `- ${k}  \n  _${v.join(' · ')}_`).join('\n') + '\n'); console.log('🎨 design-report: ' + designLog.size); } }
 }
 
 // ---------- запуск ----------

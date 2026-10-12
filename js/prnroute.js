@@ -7,7 +7,7 @@
   if (!document.getElementById('prn-css')) document.head.insertAdjacentHTML('beforeend', `<style id="prn-css">
     .prn{display:grid;gap:8px}.prn-r{display:grid;grid-template-columns:minmax(90px,1fr) minmax(120px,1.4fr) auto auto auto;gap:6px;align-items:center;padding:8px;border-radius:12px;background:var(--card2,rgba(127,127,127,.08))}
     .prn-r input,.prn-r select{min-height:34px;padding:4px 8px;font:inherit;font-size:14px;min-width:0;width:100%}
-    .prn-c{display:flex;gap:4px;flex-wrap:wrap}.prn-c button,.prn-n{min-height:32px;min-width:34px;padding:0 6px;border-radius:9px;border:1px solid var(--line,rgba(127,127,127,.3));background:none;color:inherit;font:inherit;font-size:15px;opacity:.45;cursor:pointer}
+    .prn-c{display:flex;gap:4px;flex-wrap:wrap}.prn-c button,.prn-n{min-height:40px;min-width:40px;padding:0 6px;border-radius:9px;border:1px solid var(--line,rgba(127,127,127,.3));background:none;color:inherit;font:inherit;font-size:15px;opacity:.45;cursor:pointer}
     .prn-c button.on{opacity:1;background:var(--accent);border-color:var(--accent);color:var(--accent-ink,#000)}.prn-n{opacity:1;font-size:13px;font-weight:700}
     .prn-x{background:none;border:0;color:inherit;opacity:.5;font-size:16px;cursor:pointer;padding:0 4px}.prn-w{font-size:12px;color:#ff9f0a}
     @media(max-width:640px){.prn-r{grid-template-columns:1fr auto auto}.prn-r select{grid-column:1/-1;grid-row:2}.prn-c{grid-column:1/-1;grid-row:3}}</style>`);
