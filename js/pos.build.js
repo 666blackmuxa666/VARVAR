@@ -3996,7 +3996,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       const data = await shrink(file);
       const inf = await api("photoInfo").catch(() => null);
       if ((inf == null ? void 0 : inf.on) && (inf.prompt || inf.refs.length) && await choose("\u{1F4F8} \u041E\u0431\u0440\u043E\u0431\u0438\u0442\u0438 \u0444\u043E\u0442\u043E \u0432 \u0441\u0442\u0438\u043B\u0456 \u0437\u0430\u043A\u043B\u0430\u0434\u0443?", "\u0428\u0406 \u043F\u0440\u0438\u0431\u0435\u0440\u0435 \u0444\u043E\u043D \u0456 \u0437\u0440\u043E\u0431\u0438\u0442\u044C \u0444\u043E\u0442\u043E \u044F\u043A \u0456\u043D\u0448\u0456 \u0432 \u043C\u0435\u043D\u044E. \u041E\u0440\u0438\u0433\u0456\u043D\u0430\u043B \u043D\u0435 \u0437\u043D\u0438\u043A\u043D\u0435, \u043F\u043E\u043A\u0438 \u043D\u0435 \u043D\u0430\u0442\u0438\u0441\u043D\u0435\u0442\u0435 \xAB\u2705 \u0412\u0437\u044F\u0442\u0438\xBB.", [{ label: "\u{1FA84} \u041E\u0431\u0440\u043E\u0431\u0438\u0442\u0438", val: 1, cls: "primary" }, { label: "\u041D\u0456, \u044F\u043A \u0454", val: 0 }])) {
-        await phRun({ id: r.id, name: item.name, img: it == null ? void 0 : it.img }, { data });
+        await phDish(itemsAll().find((i) => i.id === r.id) || { id: r.id, name: { uk: item.name }, img: it == null ? void 0 : it.img }, { data });
       } else await act("menuPhoto", { id: r.id, data }, "\u{1F4F7} \u0424\u043E\u0442\u043E \u043E\u043D\u043E\u0432\u043B\u0435\u043D\u043E");
     }
     loadMenu().catch(() => {
@@ -4073,116 +4073,28 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     i.onchange = () => res(i.files[0] || null);
     i.click();
   });
-  let phPaid = false;
-  async function phCall(b) {
-    var _a2;
-    try {
-      return await api("photoMake", __spreadValues(__spreadValues({}, b), phPaid ? { pay: 1 } : {}), 1e5);
-    } catch (e) {
-      if (((_a2 = e.data) == null ? void 0 : _a2.error) !== "pay") {
-        toast("\u26A0\uFE0F " + errText(e.message));
-        return null;
+  const phCtx = () => ({
+    menu: S.menu,
+    toast,
+    vapi: async (op, data) => {
+      var _a2;
+      try {
+        return await api(op, data, op === "photoMake" ? 1e5 : 12e3);
+      } catch (e) {
+        const x = new Error(((_a2 = e.data) == null ? void 0 : _a2.error) === "pay" ? "pay" : errText(e.message));
+        x.data = e.data;
+        throw x;
       }
-      if (!await confirmBox(`\u{1F4F8} ${e.data.free} \u0431\u0435\u0437\u043A\u043E\u0448\u0442\u043E\u0432\u043D\u0438\u0445 \u0444\u043E\u0442\u043E \u0446\u044C\u043E\u0433\u043E \u043C\u0456\u0441\u044F\u0446\u044F \u0432\u0438\u043A\u043E\u0440\u0438\u0441\u0442\u0430\u043D\u043E`, `\u0414\u0430\u043B\u0456 \u2014 ${e.data.price} \u20B4 \u0437\u0430 \u043A\u043E\u0436\u043D\u0435 \u0444\u043E\u0442\u043E (\u0434\u043E\u0434\u0430\u0441\u0442\u044C\u0441\u044F \u0434\u043E \u0440\u0430\u0445\u0443\u043D\u043A\u0443 \u0437\u0430 \u0441\u0438\u0441\u0442\u0435\u043C\u0443). \u041F\u0440\u043E\u0434\u043E\u0432\u0436\u0438\u0442\u0438?`)) return null;
-      phPaid = true;
-      return phCall(b);
-    }
-  }
-  async function phRun(it, o = {}) {
-    var _a2;
-    toast("\u23F3 \u0428\u0406 \u043C\u0430\u043B\u044E\u0454 \u0444\u043E\u0442\u043E\u2026 \u0434\u043E \u0445\u0432\u0438\u043B\u0438\u043D\u0438");
-    const r = await phCall(__spreadValues({ id: it.id }, o));
-    if (!r) return;
-    const v = await modal({
-      title: "\u{1F4F8} " + (((_a2 = it.name) == null ? void 0 : _a2.uk) || it.name || ""),
-      body: `<div class="ph-ab">${it.img && !o.data ? `<figure><img src="${esc(it.img)}" alt=""><figcaption>\u0431\u0443\u043B\u043E</figcaption></figure>` : o.data ? `<figure><img src="${o.data}" alt=""><figcaption>\u0432\u0430\u0448\u0435 \u0444\u043E\u0442\u043E</figcaption></figure>` : ""}<figure><img src="${esc(r.draft)}" alt=""><figcaption>\u0428\u0406</figcaption></figure></div><div class="muted" style="font-size:12px;margin-top:8px">\u0426\u044C\u043E\u0433\u043E \u043C\u0456\u0441\u044F\u0446\u044F: ${r.n} \u0444\u043E\u0442\u043E${r.over ? ` \xB7 \u043F\u043E\u043D\u0430\u0434 \u043B\u0456\u043C\u0456\u0442 ${r.over} \xD7 ${r.price} \u20B4` : ` \u0437 ${r.free} \u0431\u0435\u0437\u043A\u043E\u0448\u0442\u043E\u0432\u043D\u0438\u0445`}</div>`,
-      buttons: [{ label: "\u2705 \u0412\u0437\u044F\u0442\u0438 \u0432 \u043C\u0435\u043D\u044E", val: "ok", cls: "primary" }, { label: "\u{1F501} \u0429\u0435 \u0440\u0430\u0437", val: "again" }, { label: "\u2715 \u041D\u0435 \u0442\u0440\u0435\u0431\u0430", val: "no" }]
-    });
-    if (v === "ok") {
-      if (await act("photoApply", { id: it.id }, "\u{1F4F8} \u0424\u043E\u0442\u043E \u0432 \u043C\u0435\u043D\u044E")) loadMenu().catch(() => {
-      });
-    } else if (v === "again") return phRun(it, o);
-    else await api("photoDrop", { id: it.id }).catch(() => {
-    });
-  }
-  async function phDish(it) {
-    const v = await choose("\u{1F4F8} \u0428\u0406-\u0444\u043E\u0442\u043E: " + it.name.uk, "\u0424\u043E\u0442\u043E \u0431\u0443\u0434\u0435 \u0432 \u0441\u0442\u0438\u043B\u0456 \u0437\u0430\u043A\u043B\u0430\u0434\u0443 (\u{1F4F8} \u0428\u0406-\u0444\u043E\u0442\u043E \u2192 \u0441\u0442\u0438\u043B\u044C).", [...it.img ? [{ label: "\u{1FA84} \u041E\u0431\u0440\u043E\u0431\u0438\u0442\u0438 \u043D\u0430\u044F\u0432\u043D\u0435 \u0444\u043E\u0442\u043E", val: "edit", cls: "primary" }] : [], { label: "\u{1F4F7} \u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0438\u0442\u0438 \u0441\u0432\u043E\u0454 \u0439 \u043E\u0431\u0440\u043E\u0431\u0438\u0442\u0438", val: "up" }, { label: "\u2728 \u0417\u0433\u0435\u043D\u0435\u0440\u0443\u0432\u0430\u0442\u0438 \u0437 \u043D\u0443\u043B\u044F", val: "gen" }]);
-    if (v === "edit") return phRun(it, { mode: "edit" });
-    if (v === "gen") return phRun(it, {});
-    if (v === "up") {
+    },
+    img: async () => {
       const f = await pickFile();
-      if (f) return phRun(it, { data: await shrink(f) });
-    }
-  }
-  async function phPanel() {
-    var _a2;
-    let inf;
-    try {
-      inf = await api("photoInfo");
-    } catch (e) {
-      return toast("\u26A0\uFE0F " + errText(e.message));
-    }
-    if (!inf.on) return toast("\u26A0\uFE0F \u0428\u0406-\u0444\u043E\u0442\u043E \u0449\u0435 \u043D\u0435 \u043F\u0456\u0434\u043A\u043B\u044E\u0447\u0435\u043D\u043E");
-    const all = S.menu.categories.flatMap((c) => c.items), noImg = all.filter((i) => !i.img), withImg = all.filter((i) => i.img);
-    const v = await modal({
-      title: "\u{1F4F8} \u0428\u0406-\u0444\u043E\u0442\u043E \u0441\u0442\u0440\u0430\u0432",
-      body: `<div class="muted" style="font-size:13px">\u041E\u043F\u0438\u0448\u0456\u0442\u044C \u0441\u0442\u0438\u043B\u044C \u2014 \u0456 \u0432\u0441\u0456 \u0444\u043E\u0442\u043E \u0431\u0443\u0434\u0443\u0442\u044C \u043E\u0434\u043D\u0430\u043A\u043E\u0432\u0456: \u0428\u0406 \u0433\u0435\u043D\u0435\u0440\u0443\u0454 \u0444\u043E\u0442\u043E \u0441\u0442\u0440\u0430\u0432 \u0431\u0435\u0437 \u0444\u043E\u0442\u043E \u0430\u0431\u043E \u043F\u0440\u0438\u0431\u0438\u0440\u0430\u0454 \u0444\u043E\u043D \u0437 \u0432\u0430\u0448\u0438\u0445 \u0456 \u0441\u0442\u0430\u0432\u0438\u0442\u044C \u0443 \u0446\u0435\u0439 \u0441\u0442\u0438\u043B\u044C.</div>
-      <label style="display:block;margin-top:10px">\u{1F3A8} \u0421\u0442\u0438\u043B\u044C \u0437\u0430\u043A\u043B\u0430\u0434\u0443<textarea id="phP" rows="5" style="width:100%">${esc(inf.prompt || inf.def)}</textarea></label>
-      <div class="muted" style="font-size:13px;margin-top:8px">\u0417\u0440\u0430\u0437\u043A\u0438 \u0441\u0442\u0438\u043B\u044E (\u0434\u043E 2) \u2014 \u043D\u0430\u0439\u043A\u0440\u0430\u0449\u0456 \u0432\u0430\u0448\u0456 \u0444\u043E\u0442\u043E:</div><div class="ph-refs">${inf.refs.map((u, i) => `<div style="background-image:url('${esc(u)}')"><button data-mi-v="ref:${i}">\u2715</button></div>`).join("")}${inf.refs.length < 2 ? '<button class="add" data-mi-v="addref">\uFF0B</button>' : ""}</div>
-      <div class="kv" style="margin-top:10px"><span>\u0426\u044C\u043E\u0433\u043E \u043C\u0456\u0441\u044F\u0446\u044F</span><b>${inf.n} / ${inf.free} \u0431\u0435\u0437\u043A\u043E\u0448\u0442\u043E\u0432\u043D\u0438\u0445${inf.over ? ` \xB7 \u043F\u043E\u043D\u0430\u0434 \u043B\u0456\u043C\u0456\u0442 ${inf.over} \xD7 ${inf.price} \u20B4` : ""}</b></div>`,
-      buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438 \u0441\u0442\u0438\u043B\u044C", val: "save", cls: "primary" }, ...noImg.length ? [{ label: `\u2728 \u0424\u043E\u0442\u043E \u0434\u043B\u044F \u0432\u0441\u0456\u0445 \u0431\u0435\u0437 \u0444\u043E\u0442\u043E (${noImg.length})`, val: "gen" }] : [], ...withImg.length ? [{ label: `\u{1FA84} \u0423\u0441\u0456 \u0444\u043E\u0442\u043E \u0432 \u043E\u0434\u043D\u043E\u043C\u0443 \u0441\u0442\u0438\u043B\u0456 (${withImg.length})`, val: "edit" }] : [], { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }],
-      keep: true
-    });
-    if (v === "save" || v === "gen" || v === "edit" || v === "addref" || String(v).startsWith("ref:")) {
-      const p = (_a2 = $("#phP")) == null ? void 0 : _a2.value.trim();
-      if (p !== (inf.prompt || inf.def)) await api("photoStyleSet", { prompt: p }).catch(() => {
-      });
-    }
-    closeModal();
-    if (v === "save") toast("\u{1F4BE} \u0421\u0442\u0438\u043B\u044C \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
-    if (v === "addref") return phRef(0, true);
-    if (String(v).startsWith("ref:")) return phRef(+v.slice(4));
-    if (v === "gen" || v === "edit") phBatch(v === "gen" ? noImg : withImg, v, inf);
-  }
-  async function phRef(i, add) {
-    if (!add) {
-      await act("photoStyleSet", { refDel: i }, "\u{1F5D1} \u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
-      return phPanel();
-    }
-    const withImg = S.menu.categories.flatMap((c) => c.items).filter((x) => x.img);
-    const v = await modal({ title: "\uFF0B \u0417\u0440\u0430\u0437\u043E\u043A \u0441\u0442\u0438\u043B\u044E", body: `<div class="ph-pick">${withImg.map((x) => `<button data-mi-v="${x.id}"><img src="${esc(x.img)}" alt=""><span>${esc(x.name.uk)}</span></button>`).join("")}</div>`, buttons: [{ label: "\u{1F4F7} \u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0438\u0442\u0438 \u0441\u0432\u043E\u0454", val: "up" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }] });
-    if (v === "up") {
-      const f = await pickFile();
-      if (f) await act("photoStyleSet", { refData: await shrink(f) }, "\uFF0B \u0417\u0440\u0430\u0437\u043E\u043A \u0434\u043E\u0434\u0430\u043D\u043E");
-    } else if (v && v !== "up") await act("photoStyleSet", { refFrom: v }, "\uFF0B \u0417\u0440\u0430\u0437\u043E\u043A \u0434\u043E\u0434\u0430\u043D\u043E");
-    return phPanel();
-  }
-  async function phBatch(list, mode, inf) {
-    const left = Math.max(0, inf.free - inf.n), paid = Math.max(0, list.length - left);
-    if (!await confirmBox(`${mode === "gen" ? "\u2728 \u0417\u0433\u0435\u043D\u0435\u0440\u0443\u0432\u0430\u0442\u0438" : "\u{1FA84} \u041E\u0431\u0440\u043E\u0431\u0438\u0442\u0438"} ${list.length} \u0444\u043E\u0442\u043E?`, `\u0411\u0435\u0437\u043A\u043E\u0448\u0442\u043E\u0432\u043D\u043E \u0449\u0435 ${left}.${paid ? ` \u041F\u043E\u043D\u0430\u0434 \u043B\u0456\u043C\u0456\u0442 \u2014 ${paid} \xD7 ${inf.price} \u20B4 = ${paid * inf.price} \u20B4.` : ""} \u0417\u0430\u0439\u043C\u0435 ~${Math.ceil(list.length * 0.3)} \u0445\u0432; \u043D\u0435 \u0437\u0430\u043A\u0440\u0438\u0432\u0430\u0439\u0442\u0435 \u043A\u0430\u0441\u0443.`)) return;
-    if (paid) phPaid = true;
-    const done = [];
-    for (const [k, it] of list.entries()) {
-      toast(`\u23F3 ${k + 1} / ${list.length}: ${it.name.uk}`);
-      const r = await phCall(__spreadValues({ id: it.id }, mode === "edit" ? { mode: "edit" } : {}));
-      if (r) done.push({ it, u: r.draft });
-      else if (!phPaid) break;
-    }
-    if (!done.length) return;
-    const v = await modal({ title: `\u{1F4F8} \u0413\u043E\u0442\u043E\u0432\u043E: ${done.length}`, body: `<div class="muted" style="font-size:13px">\u0422\u043E\u0440\u043A\u043D\u0456\u0442\u044C\u0441\u044F \u0444\u043E\u0442\u043E, \u044F\u043A\u0435 \u041D\u0415 \u043F\u043E\u0434\u043E\u0431\u0430\u0454\u0442\u044C\u0441\u044F, \u2014 \u0432\u043E\u043D\u043E \u043D\u0435 \u043F\u0456\u0434\u0435 \u0432 \u043C\u0435\u043D\u044E.</div><div class="ph-pick">${done.map((d, i) => `<button class="on" onclick="this.classList.toggle('on')" data-ph="${i}"><img src="${esc(d.u)}" alt=""><span>${esc(d.it.name.uk)}</span></button>`).join("")}</div>`, buttons: [{ label: "\u2705 \u0412\u0437\u044F\u0442\u0438 \u043F\u043E\u0437\u043D\u0430\u0447\u0435\u043D\u0456", val: "ok", cls: "primary" }, { label: "\u2715 \u041D\u0456\u0447\u043E\u0433\u043E", val: "no" }], keep: true });
-    const keep = new Set([...document.querySelectorAll("[data-ph].on")].map((b) => +b.dataset.ph));
-    closeModal();
-    let n = 0;
-    for (const [i, d] of done.entries()) {
-      if (v === "ok" && keep.has(i)) {
-        if (await api("photoApply", { id: d.it.id }).catch(() => null)) n++;
-      } else await api("photoDrop", { id: d.it.id }).catch(() => {
-      });
-    }
-    toast(`\u{1F4F8} \u0423 \u043C\u0435\u043D\u044E: ${n} \u0444\u043E\u0442\u043E`);
-    loadMenu().catch(() => {
-    });
-  }
+      return f ? shrink(f) : null;
+    },
+    onDone: () => loadMenu().catch(() => {
+    })
+  });
+  const phDish = (it, o) => window.PHOTOAI.dish(phCtx(), it, o);
+  const phPanel = () => window.PHOTOAI.open(phCtx());
   function shrink(file, max = 1200, qq = 0.85) {
     return new Promise((res) => {
       const img = new Image();

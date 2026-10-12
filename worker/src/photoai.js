@@ -15,7 +15,7 @@ const month = () => dayKey().slice(0, 7);
 async function quota(env) { const k = 'phq:' + month(), q = (await env.DB.get(k, 'json')) || { n: 0, over: 0, d: {} }; return { k, q }; }
 export async function photoInfo(env) {
   const st = (await env.DB.get('cfg:photoStyle', 'json')) || {}, { q } = await quota(env);
-  return { prompt: st.prompt || '', def: STYLE0, refs: (st.refs || []).map(k => `${env.SELF_URL}/img/${k}?v=${st.v || 0}`), n: q.n, over: q.over, free: FREE, price: PRICE, on: !!env.GEMINI_IMG_KEY, bal: (env.VENUE || 'varvar') === 'varvar' ? null : (await aiBal(env)).bal };
+  return { prompt: st.prompt || '', def: STYLE0, refs: (st.refs || []).map(k => `${env.SELF_URL}/img/${k}?v=${st.v || 0}`), dish: st.dish || {}, n: q.n, over: q.over, free: FREE, price: PRICE, on: !!env.GEMINI_IMG_KEY, bal: (env.VENUE || 'varvar') === 'varvar' ? null : (await aiBal(env)).bal };
 }
 const b64 = buf => { let s = ''; const u = new Uint8Array(buf); for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
 const unData = d => { const m = String(d || '').match(/^data:image\/(jpeg|png|webp);base64,(.+)$/); return m ? { mime: 'image/' + m[1], data: m[2] } : null; };
@@ -28,6 +28,7 @@ export async function photoApi(b, env, who) {
       const st = (await env.DB.get('cfg:photoStyle', 'json')) || { refs: [] }; st.refs ||= [];
       if (b.prompt != null) st.prompt = String(b.prompt).trim().slice(0, 1500);
       if (b.refDel != null) st.refs.splice(+b.refDel, 1);
+      if (b.dish?.id) { st.dish ||= {}; const n = String(b.dish.note || '').trim().slice(0, 600), di = String(b.dish.id).replace(/[^\w-]/g, ''); if (n) st.dish[di] = n; else delete st.dish[di]; }
       if (b.refFrom || b.refData) {
         if (st.refs.length >= 2) return bad('Не більше 2 зразків — спершу приберіть один');
         let buf; if (b.refFrom) buf = await env.DB.get('img:' + String(b.refFrom).replace(/[^\w-]/g, ''), 'arrayBuffer'); else { const x = unData(b.refData); if (x) buf = Uint8Array.from(atob(x.data), c => c.charCodeAt(0)).buffer; }
@@ -63,13 +64,21 @@ async function photoMake(b, env, who) {
   await env.DB.put('phbusy', '1', { expirationTtl: 60 });
   try {
     const st = (await env.DB.get('cfg:photoStyle', 'json')) || {}, style = st.prompt || STYLE0;
-    const refs = (await Promise.all((st.refs || []).map(r => env.DB.get('img:' + r, 'arrayBuffer')))).filter(Boolean);
+    st.dish ||= {}; const note = b.note != null ? String(b.note).trim().slice(0, 600) : (st.dish[id] || '');
+    if (b.note != null && note !== (st.dish[id] || '')) { if (note) st.dish[id] = note; else delete st.dish[id]; await env.DB.put('cfg:photoStyle', JSON.stringify(st)); } // промт страви — спільний для каси, кабінету й бота
     let src = unData(b.data); if (!src && b.mode === 'edit') { const buf = await env.DB.get('img:' + id, 'arrayBuffer'); if (buf) src = { mime: 'image/jpeg', data: b64(buf) }; }
+    const strict = b.strict !== 0 && b.strict !== false, useRefs = b.refs != null ? !!+b.refs : !src; // зі своїм фото зразки за замовчуванням не шлемо — модель копіює з них страву
+    const refs = useRefs && !(src && strict) ? (await Promise.all((st.refs || []).map(r => env.DB.get('img:' + r, 'arrayBuffer')))).filter(Boolean) : [];
     const dish = `«${it.name.uk}»${it.desc?.uk ? ' — склад: ' + it.desc.uk : ''}${it.size ? ', ' + it.size : ''}`;
-    const text = `${style}\n\n${refs.length ? `Перші ${refs.length} фото — ЗРАЗКИ СТИЛЮ закладу: повтори їхній фон, світло, кут, кольори й подачу, але страва інша.\n` : ''}`
-      + (src ? `Останнє фото — наша справжня страва ${dish}. Збережи саму страву точно такою, як на фото (інгредієнти, форма, порція, посуд), прибери фон і перестав світло та фон у стиль закладу. Нічого не вигадуй і не додавай.`
-             : `Створи реалістичне фото страви ${dish}, як її подають у ресторані.`);
-    const parts = [{ text }, ...refs.map(x => ({ inline_data: { mime_type: 'image/jpeg', data: b64(x) } })), ...(src ? [{ inline_data: { mime_type: src.mime, data: src.data } }] : [])];
+    const look = note ? `\nЯК ВИГЛЯДАЄ СТРАВА (обовʼязково): ${note}` : '';
+    const parts = [];
+    if (src) {
+      parts.push({ text: `ЗОБРАЖЕННЯ 1 — НАША СПРАВЖНЯ СТРАВА ${dish}. Це головне фото.` }, { inline_data: { mime_type: src.mime, data: src.data } });
+      parts.push({ text: (strict ? `Збережи страву з ЗОБРАЖЕННЯ 1 один в один: ту саму форму, кількість шматків, розташування, кольори, посуд і порцію. Нічого не додавай, не прибирай і не замінюй. Змінюй ЛИШЕ фон, поверхню під посудом і світло.`
+        : `Збережи саму страву впізнаваною (інгредієнти, форма, посуд), можна покращити подачу й світло.`) + look });
+    } else parts.push({ text: `Створи реалістичне фото страви ${dish}, як її подають у ресторані.${look}\nНе підміняй страву іншою: форма, інгредієнти й посуд мають відповідати опису.` });
+    refs.forEach((x, i) => parts.push({ text: `ЗРАЗОК СТИЛЮ ${i + 1} — лише для фону, світла, кута й кольорів. НЕ копіюй з нього страву, посуд чи форму.` }, { inline_data: { mime_type: 'image/jpeg', data: b64(x) } }));
+    parts.push({ text: `СТИЛЬ ЗАКЛАДУ: ${style}` });
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_IMG_KEY }, signal: AbortSignal.timeout(90000),
       body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '1:1' } } }) });
     if (!r.ok) { console.log('photoMake', r.status, (await r.text()).slice(0, 300)); return [{ error: r.status === 429 ? 'ШІ перевантажений — спробуйте за хвилину' : 'Не вдалось згенерувати — спробуйте ще раз' }, 502]; }
