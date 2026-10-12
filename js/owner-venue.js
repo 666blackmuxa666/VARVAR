@@ -12,7 +12,7 @@ window.OWNV = ctx => {
     if (!r.ok || j.error) throw new Error(errText(j.error) || 'Помилка ' + r.status); return j;
   }
   const errText = e => ({ admin: 'Потрібні права адміна', image: 'Невірний формат картинки', too_big: 'Завеликий файл', not_found: 'Не знайдено' }[e] || e);
-  const SEC0 = [['start', '🚀 Запуск'], ['venue', '🏪 Заклад і каса'], ['site', '🌐 Сайт'], ['menu', '🍽 Меню'], ['go', '🛵 Доставка'], ['staff', '👥 Персонал'], ['bots', '🤖 Боти'], ['printer', '🖨 Принтер'], ['pay', '💳 Оплата'], ['log', '🛡 Журнал і копії']];
+  const SEC0 = [['start', '🚀 Запуск'], ['venue', '🏪 Заклад і каса'], ['site', '🌐 Сайт'], ['menu', '🍽 Меню'], ['go', '🛵 Доставка'], ['staff', '👥 Персонал'], ['bots', '🤖 Боти'], ['printer', '🖨 Принтер'], ['dz', '🎨 Друк і дизайн'], ['pay', '💳 Оплата'], ['log', '🛡 Журнал і копії']];
   /* 🚀 Запуск — лише поки заклад не налаштований (VARVAR — ніколи) */
   const doneKey = id => 'own_ready_' + id, isDone = id => { if (id === 'varvar') return true; try { return localStorage.getItem(doneKey(id)) === '1'; } catch { return false; } };
   const secs = () => SEC0.filter(([k]) => k !== 'start' || !isDone(S.cfgV?.id));
@@ -29,6 +29,7 @@ window.OWNV = ctx => {
       if (sec === 'bots') v.d.live = await api('bots', { venue: id }).catch(e => ({ err: e.message }));
       if (sec === 'printer') { const [q, rc] = await Promise.all([vapi(id, 'printQ').catch(() => ({ list: [] })), vapi(id, 'rcptGet').catch(() => ({}))]); Object.assign(v.d, { q: q.list, rc: rc.rcpt, dev: rc.dev, route: rc.route || {} }); }
       if (sec === 'menu') v.d = { menu: (await vapi(id, 'menu')).menu };
+      if (sec === 'dz') { const [si, m] = await Promise.all([vapi(id, 'siteGet'), vapi(id, 'menu')]); v.d = { site: si.site, menu: m.menu }; }
       if (sec === 'pay') { const [bl, g] = await Promise.all([api('bill', { venue: id }), vapi(id, 'goCfg').catch(() => ({}))]); v.d = { ...bl, go: g.cfg || {}, glp: g.lp, main: g.main }; }
       if (sec === 'go') { const r = await vapi(id, 'goCfg'); v.d = { go: r.cfg, lp: r.lp, main: r.main }; }
       if (sec === 'staff') v.d = await vapi(id, 'staff');
@@ -147,6 +148,11 @@ window.OWNV = ctx => {
         <div class="btnrow" style="margin-bottom:8px"><button class="btn sm primary" data-a="bakNow">💾 Зробити копію зараз</button></div>
         ${l.length ? l.map(b => `<div class="kv"><span>${/^\d{4}-\d\d-\d\d$/.test(b.tag) ? '🌙 ' + b.tag.split('-').reverse().join('.') : esc(b.tag)}<br><small class="muted">${b.at ? new Date(b.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''} · ${b.n || '?'} записів · ${b.kb || '?'} КБ</small></span><span style="display:flex;gap:6px"><button class="btn sm" data-a="bakGet" data-t="${esc(b.tag)}">⬇️</button>${plat ? `<button class="btn sm red" data-a="bakRestore" data-t="${esc(b.tag)}">♻️ Відновити</button>` : ''}</span></div>`).join('') : '<div class="muted">Копій ще немає — перша буде вночі (або натисніть «Зробити копію зараз»).</div>'}</div>`;
     },
+    dz(v) { // 🎨 студія друку: js/owner-design.js
+      const P = window.OWNDZ.PROD;
+      return `<div class="card"><h3>🎨 Усе для друку — без дизайнера</h3><div class="muted" style="font-size:14px;margin-bottom:10px">Візитки, таблички з QR на кожен стіл, меню з цінами, флаєри, банери, сертифікати, наклейки й бейджі — з вашої назви, лого, контактів і меню. ${window.OWNDZ.STY.length} готових стилів, 🎲 випадкові поєднання й свої стилі. Завантажуйте PDF для друкарні (з полями під обріз) або друкуйте самі.</div><button class="btn primary" data-a="vdz">🎨 Відкрити студію</button></div>
+        <div class="dz-prods" style="margin-top:12px">${Object.entries(P).map(([k, p]) => `<button data-a="vdz" data-k="${k}"><b>${p.n}</b><small>${p.d}</small></button>`).join('')}</div>`;
+    },
     log(v) { return SECV.bak(v) + '<h3 style="margin:18px 4px 8px">📜 Журнал змін</h3>' + SECV.log0(v); },
     log0(v) {
       const m = S.logM || new Date().toLocaleDateString('sv-SE').slice(0, 7), q = (S.logQ || '').toLowerCase(), l = v.d.list.filter(x => !q || x.t.toLowerCase().includes(q));
@@ -251,6 +257,7 @@ window.OWNV = ctx => {
     if (a === 'vbotTest') { el.disabled = true; try { const r = await api('bots', { venue: id, test: 1 }); toast(r.sent ? '📨 Надіслано — перевірте групу' : '⚠️ ' + (r.err || 'не вдалося')); } catch (x) { toast('⚠️ ' + x.message); } el.disabled = false; return; }
     // 🖨 принтер — як у касі
     if (a === 'vrc') { const lu = base(id) + '/print/logo.png'; return window.OWNPRINT.open({ rcpt: v.d.rc, logoUrl: lu, toast, vapi: (op, data) => vapi(id, op, data), onSave: r => { v.d.rc = r; render(); } }); }
+    if (a === 'vdz') return window.OWNDZ.open({ site: v.d.site, menu: v.d.menu, name: (S.venues.find(x => x.id === id) || {}).name, pub: window.VVPUB(id, ''), toast, vapi: (op, data) => vapi(id, op, data) }, d.k);
     if (a === 'vrcTest') return act(() => vapi(id, 'rcptTest'), '🧾 Пробний пречек — у черзі друку');
     if (a === 'vprintSetup') { const key = v.d.ready?.printKey; if (!key) return toast('⚠️ Ключ принтера ще не створено — відкрийте 🚀 Запуск'); return window.OWNPRINT.installer(base(id), key); }
     if (a === 'vpqMove') return modal('🔁 Надрукувати на іншому', `<label>Принтер<select name="st">${(v.d.route?.st || []).map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select></label>`, async f => { await vapi(id, 'printMove', { id: d.id, st: f.st.value }); toast('🔁 Перенесено'); load(); });
