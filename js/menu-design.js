@@ -8,7 +8,7 @@ window.VVM = (() => {
   const mix = (a, b, k) => '#' + hex(a).map((v, i) => Math.round(v + (hex(b)[i] - v) * k).toString(16).padStart(2, '0')).join('');
   const rgba = (h, a) => `rgba(${hex(h).join(',')},${a})`;
   const VARS = ['--bg', '--card', '--card2', '--line', '--text', '--muted', '--accent', '--accent-ink', '--r', '--fh', '--fb', '--fz', '--pagebg', '--catbg', '--phbg', '--cols', '--ratio', '--fit', '--ttlsz'];
-  const DS = ['mt', 'mode', 'lay', 'phbg', 'cats', 'ttl', 'ttlline', 'desc', 'size', 'add', 'price', 'btn', 'cards', 'caps', 'sticky'];
+  const DS = ['mt', 'mode', 'lay', 'phbg', 'cats', 'ttl', 'ttlline', 'desc', 'size', 'add', 'price', 'btn', 'cards', 'caps', 'sticky', 'shp'];
   let fk = '';
   function apply(t, brand) {
     for (const k of VARS) st.removeProperty(k); for (const k of DS) delete R.dataset[k];
@@ -26,7 +26,7 @@ window.VVM = (() => {
       '--fh': `'${t.fh}', '${t.fb}', system-ui, sans-serif`, '--fb': `'${t.fb}', system-ui, sans-serif`, '--fz': { s: '14px', m: '15px', l: '17px' }[t.fs] || '15px', '--pagebg': bg, '--catbg': rgba(t.bg, .92),
       '--cols': t.cols || 2, '--ratio': t.ratio || '1', '--fit': t.fit || 'contain', '--ttlsz': (t.ttlSz || 30) + 'px', ...(ph ? { '--phbg': ph } : {}) };
     for (const [k, x] of Object.entries(v)) st.setProperty(k, x);
-    Object.assign(R.dataset, { mt: '1', mode: t.mode, lay: t.lay || 'grid', phbg: t.phbg || 'tex', cats: t.cats || 'pill', ttl: t.ttl || 'l', ttlline: t.ttlLine ? '1' : '0', desc: t.desc === 0 ? '0' : '1', size: t.size === 0 ? '0' : '1', add: t.add || 'round', price: t.price || 'accent', btn: t.btn || 'fill', cards: t.cards || 'line', caps: t.caps === 0 ? '0' : '1', sticky: t.catsSticky === 0 ? '0' : '1' });
+    Object.assign(R.dataset, { mt: '1', mode: t.mode, lay: t.lay || 'grid', phbg: t.phbg || 'tex', cats: t.cats || 'pill', ttl: t.ttl || 'l', ttlline: t.ttlLine ? '1' : '0', desc: t.desc === 0 ? '0' : '1', size: t.size === 0 ? '0' : '1', add: t.add || 'round', price: t.price || 'accent', btn: t.btn || 'fill', cards: t.cards || 'line', caps: t.caps === 0 ? '0' : '1', sticky: t.catsSticky === 0 ? '0' : '1', ...(t.shp ? { shp: t.shp } : {}) });
     fonts([...new Set([t.fh, t.fb])].filter(f => f && f !== 'Rubik' && f !== 'Rubik Dirt').map(fam).join('&family='));
     $('meta[name="theme-color"]')?.setAttribute('content', t.bg); $('meta[name="color-scheme"]')?.setAttribute('content', t.mode === 'light' ? 'light only' : 'dark only');
     // 🏷 логотип у шапці

@@ -23,7 +23,7 @@ export function cleanTheme(t) {
     bgfx: one(t.bgfx, ['solid', 'grad', 'img', 'photo', 'aurora', 'vign', 'dots', 'grid', 'noise'], 'solid'), bg2: col(t.bg2, '#2a1f0a'), ang: num(t.ang, 0, 360, 160), bgImg: safeImg(t.bgImg),
     fh: one(t.fh, FONTS, 'Rubik Dirt'), fb: one(t.fb, FONTS, 'Rubik'), fs: one(t.fs, ['s', 'm', 'l'], 'm'), caps: bit(t.caps),
     r: num(t.r, 0, 28, 18), btn: one(t.btn, ['fill', 'line', 'pill'], 'fill'), cards: one(t.cards, ['line', 'shadow', 'flat'], 'line'), nav: one(t.nav, ['glass', 'solid', 'none'], 'glass'),
-    anim: one(t.anim, ['none', 'fade', 'up'], 'none'), par: bit(t.par), menu: bit(t.menu),
+    anim: one(t.anim, ['none', 'fade', 'up'], 'none'), par: bit(t.par), menu: bit(t.menu), shp: one(t.shp, ['', 'arch', 'ticket', 'cut', 'notch', 'slant', 'leaf', 'bubble', 'pill', 'sketch', 'brutal', 'deco', 'neon', 'glass', 'scallop', 'frame', 'folder', 'line', 'brackets', 'polaroid'], ''),
   };
 }
 const HB = ['order', 'book', 'call', 'route', 'own'];

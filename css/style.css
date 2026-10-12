@@ -349,3 +349,25 @@ html[data-mt="1"] .top .logo { font-size: clamp(16px, 5.2vw, 26px); letter-spaci
 .ph .like { position: absolute; top: 8px; right: 8px; }
 h3 .like { float: right; margin-left: 6px; background: var(--line); color: inherit; }
 .like.on { background: rgba(220,40,70,.85); color: #fff; }
+/* 🔷 shapes:start (tools/shapes.mjs) */
+html[data-mt][data-shp="arch"] .cat:not(.compact) .item { border-radius: 50% 50% 12px 12px / 64px 64px 12px 12px; }
+html[data-mt][data-shp="ticket"] .cat:not(.compact) .item { --n: 11px; border-radius: 10px; -webkit-mask: radial-gradient(circle var(--n) at 0 50%, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle var(--n) at 100% 50%, #0000 98%, #000) right / 51% 100% no-repeat; mask: radial-gradient(circle var(--n) at 0 50%, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle var(--n) at 100% 50%, #0000 98%, #000) right / 51% 100% no-repeat; }
+html[data-mt][data-shp="cut"] .cat:not(.compact) .item { border-radius: 0; clip-path: polygon(16px 0, calc(100% - 16px) 0, 100% 16px, 100% calc(100% - 16px), calc(100% - 16px) 100%, 16px 100%, 0 calc(100% - 16px), 0 16px); }
+html[data-mt][data-shp="notch"] .cat:not(.compact) .item { border-radius: 6px; clip-path: polygon(0 0, calc(100% - 30px) 0, 100% 30px, 100% 100%, 0 100%); background-image: linear-gradient(225deg, transparent 21px, var(--accent) 21px 22px, transparent 22px); }
+html[data-mt][data-shp="slant"] .cat:not(.compact) .item { border-radius: 0; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), 0 100%); padding-bottom: 18px; }
+html[data-mt][data-shp="leaf"] .cat:not(.compact) .item { border-radius: 34px 4px 34px 4px; }
+html[data-mt][data-shp="bubble"] .cat:not(.compact) .item { border-radius: 26px 26px 26px 4px; }
+html[data-mt][data-shp="pill"] .cat:not(.compact) .item { border-radius: 36px; }
+html[data-mt][data-shp="sketch"] .cat:not(.compact) .item { border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px; border: 2px solid var(--text); box-shadow: none; }
+html[data-mt][data-shp="brutal"] .cat:not(.compact) .item { border-radius: 0; border: 2px solid var(--text); box-shadow: 6px 6px 0 var(--accent); }
+html[data-mt][data-shp="deco"] .cat:not(.compact) .item { border-radius: 0; border: 0; box-shadow: inset 0 0 0 1px var(--accent), inset 0 0 0 5px var(--card), inset 0 0 0 6px var(--accent); }
+html[data-mt][data-shp="neon"] .cat:not(.compact) .item { border: 1px solid var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 22px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 0 16px color-mix(in srgb, var(--accent) 18%, transparent); }
+html[data-mt][data-shp="glass"] .cat:not(.compact) .item { background-color: color-mix(in srgb, var(--card) 52%, transparent); -webkit-backdrop-filter: blur(14px) saturate(150%); backdrop-filter: blur(14px) saturate(150%); border: 1px solid color-mix(in srgb, var(--text) 16%, transparent); box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+html[data-mt][data-shp="scallop"] .cat:not(.compact) .item { --w: 9px; border-radius: 12px 12px 0 0; -webkit-mask: radial-gradient(var(--w) at 50% 100%, #0000 98%, #000) 50% 100% / calc(2 * var(--w)) calc(2 * var(--w)) repeat-x, linear-gradient(#000 0 0) top / 100% calc(100% - var(--w) * 2 + 1px) no-repeat; mask: radial-gradient(var(--w) at 50% 100%, #0000 98%, #000) 50% 100% / calc(2 * var(--w)) calc(2 * var(--w)) repeat-x, linear-gradient(#000 0 0) top / 100% calc(100% - var(--w) * 2 + 1px) no-repeat; padding-bottom: 14px; }
+html[data-mt][data-shp="frame"] .cat:not(.compact) .item { border-radius: 2px; outline: 1px solid var(--accent); outline-offset: 4px; }
+html[data-mt][data-shp="folder"] .cat:not(.compact) .item { border-radius: 0 20px 20px 20px; border-top: 4px solid var(--accent); }
+html[data-mt][data-shp="line"] .cat:not(.compact) .item { background: transparent; border: 0; border-bottom: 2px solid var(--accent); border-radius: 0; box-shadow: none; }
+html[data-mt][data-shp="brackets"] .cat:not(.compact) .item { border-radius: 0; border: 0; box-shadow: none; background-image: linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)); background-repeat: no-repeat; background-size: 20px 2px, 2px 20px, 20px 2px, 2px 20px, 20px 2px, 2px 20px, 20px 2px, 2px 20px; background-position: 0 0, 0 0, 100% 0, 100% 0, 0 100%, 0 100%, 100% 100%, 100% 100%; }
+html[data-mt][data-shp="polaroid"] .cat:not(.compact) .item { border-radius: 3px; border: 0; padding: 8px 8px 18px; background: #fbfaf6; color: #1d1d1d; box-shadow: 0 10px 26px rgba(0,0,0,.28); rotate: -1.2deg; }
+html[data-mt][data-shp="polaroid"] .cat:not(.compact) .item:nth-child(2n) { rotate: 1.1deg; } html[data-mt][data-shp="polaroid"] .item :is(h3, p, .price) { color: #1d1d1d; }
+/* 🔷 shapes:end */

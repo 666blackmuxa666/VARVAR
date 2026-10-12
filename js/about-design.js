@@ -18,7 +18,7 @@ window.VVD = (() => {
 
   function theme(t) {
     const st = R.style;
-    if (!t) { delete R.dataset.site; for (const k of ['--bg', '--card', '--card2', '--line', '--text', '--muted', '--soft', '--accent', '--ink', '--r', '--fh', '--fb', '--fz', '--navbg', '--pagebg']) st.removeProperty(k); for (const k of ['btn', 'cards', 'nav', 'caps', 'mode', 'anim']) delete R.dataset[k]; return; }
+    if (!t) { delete R.dataset.site; for (const k of ['--bg', '--card', '--card2', '--line', '--text', '--muted', '--soft', '--accent', '--ink', '--r', '--fh', '--fb', '--fz', '--navbg', '--pagebg']) st.removeProperty(k); for (const k of ['btn', 'cards', 'nav', 'caps', 'mode', 'anim', 'shp']) delete R.dataset[k]; return; }
     R.dataset.site = '1';
     const v = { '--bg': t.bg, '--card': t.card, '--card2': mix(t.card, t.text, .06), '--line': mix(t.card, t.text, .12), '--text': t.text, '--muted': mix(t.text, t.bg, .42), '--soft': mix(t.text, t.bg, .12), '--accent': t.accent, '--ink': t.ink, '--r': t.r + 'px', '--fh': `'${t.fh}', ${t.fb === t.fh ? '' : `'${t.fb}', `}system-ui, sans-serif`, '--fb': `'${t.fb}', system-ui, sans-serif`, '--fz': { s: '15px', m: '16px', l: '18px' }[t.fs] || '16px', '--navbg': rgba(t.bg, .88) };
     const bgfx = { solid: t.bg, grad: `linear-gradient(${t.ang}deg, ${t.bg}, ${t.bg2}) fixed`, img: t.bgImg ? `linear-gradient(${rgba(t.bg, .78)}, ${rgba(t.bg, .9)}), url("${new URL(t.bgImg, document.baseURI).href}") center/cover fixed` : t.bg,
@@ -29,7 +29,7 @@ window.VVD = (() => {
       noise: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.09'/%3E%3C/svg%3E"), ${t.bg}` };
     v['--pagebg'] = bgfx[t.bgfx] || t.bg;
     for (const [k, x] of Object.entries(v)) st.setProperty(k, x);
-    Object.assign(R.dataset, { btn: t.btn, cards: t.cards, nav: t.nav, caps: t.caps ? '1' : '0', mode: t.mode, anim: t.anim });
+    Object.assign(R.dataset, { btn: t.btn, cards: t.cards, nav: t.nav, caps: t.caps ? '1' : '0', mode: t.mode, anim: t.anim }); if (t.shp) R.dataset.shp = t.shp; else delete R.dataset.shp;
     const fk = [...new Set([t.fh, t.fb])].filter(f => f !== 'Rubik' && f !== 'Rubik Dirt').map(f => FW[f]).filter(Boolean).join('&family=');
     if (fk !== fontsKey) { fontsKey = fk; $('#vvFonts')?.remove(); if (fk) { const l = document.createElement('link'); l.id = 'vvFonts'; l.rel = 'stylesheet'; l.href = `https://fonts.googleapis.com/css2?family=${fk}&display=swap`; document.head.append(l); } }
     $('meta[name="theme-color"]')?.setAttribute('content', t.bg); $('meta[name="color-scheme"]')?.setAttribute('content', t.mode === 'light' ? 'light only' : 'dark only');
