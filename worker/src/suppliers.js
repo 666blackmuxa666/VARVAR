@@ -15,6 +15,10 @@ function clean(b, cur = {}) {
   for (const [k, n] of Object.entries(FIELDS)) if (b[k] != null) x[k] = S(b[k], n);
   if (x.code) x.code = x.code.replace(/\D/g, '').slice(0, 10);
   if (x.iban) x.iban = x.iban.replace(/\s/g, '').toUpperCase(); if (x.iban && !/^UA\d{27}$/.test(x.iban)) x.iban = cur.iban && /^UA\d{27}$/.test(cur.iban) ? cur.iban : '';
+  // 🏦 кілька рахунків: новий IBAN не затирає старий — додається в список і стає основним (старий можна видалити)
+  x.ibans = [...(cur.ibans || (cur.iban ? [{ v: cur.iban, at: cur.at || 0 }] : []))];
+  if (x.iban && !x.ibans.some(i => i.v === x.iban)) x.ibans.push({ v: x.iban, at: Date.now() });
+  x.ibans = x.ibans.slice(-8); if (!x.ibans.length) delete x.ibans;
   if (b.term != null) x.term = Math.max(0, Math.min(120, Math.round(+b.term || 0)));
   return x;
 }
@@ -26,7 +30,7 @@ export async function supEnsure(env, name, req = {}) {
     let e = (code && l.find(x => x.code && x.code === code)) || l.find(x => nrmSup(x.n) === nn || (x.al || []).includes(nn));
     let p = e ? await supGetOne(env, e.id) : null;
     if (!p) { p = clean({ n: name, ...req }, { id: uidS(), at: Date.now(), term: 0, al: [] }); l.push({ id: p.id, n: p.n, code: p.code || '', al: [] }); }
-    else { const add = {}; for (const k of ['code', 'iban', 'phone', 'addr', 'legal']) if (req[k] && !p[k]) add[k] = req[k]; Object.assign(p, clean(add, p)); if (nn !== nrmSup(p.n) && !(p.al || []).includes(nn)) { p.al = [...(p.al || []), nn].slice(-10); const ie = l.find(x => x.id === p.id); if (ie) ie.al = p.al; } }
+    else { const add = {}; for (const k of ['code', 'iban', 'phone', 'addr', 'legal']) if (req[k] && (!p[k] || k === 'iban')) add[k] = req[k]; /* новий IBAN з накладної — додається й стає основним */ Object.assign(p, clean(add, p)); if (nn !== nrmSup(p.n) && !(p.al || []).includes(nn)) { p.al = [...(p.al || []), nn].slice(-10); const ie = l.find(x => x.id === p.id); if (ie) ie.al = p.al; } }
     const ie = l.find(x => x.id === p.id); if (ie) { ie.n = p.n; ie.code = p.code || ''; }
     await env.DB.put('sup:' + p.id, JSON.stringify(p)); await env.DB.put('supl', JSON.stringify(l)); return p;
   });
@@ -57,7 +61,11 @@ export async function supCard(env, id) {
 export async function supSave(env, b) {
   if (!b.id) { const p = await supEnsure(env, b.n, b); return p ? { p } : { error: 'Назва?' }; }
   return L(env, ['supl', 'sup:' + b.id], async () => {
-    const cur = await supGetOne(env, b.id); if (!cur) return { error: 'Не знайдено' }; const p = clean(b, cur);
+    const cur = await supGetOne(env, b.id); if (!cur) return { error: 'Не знайдено' };
+    if (b.iban != null && String(b.iban).trim() && !/^UA\d{27}$/.test(String(b.iban).replace(/\s/g, '').toUpperCase())) return { error: 'IBAN має бути UA і 27 цифр (29 знаків)' };
+    if (b.ibanDel) { cur.ibans = (cur.ibans || []).filter(i => i.v !== b.ibanDel); if (cur.iban === b.ibanDel) cur.iban = cur.ibans.at(-1)?.v || ''; delete b.iban; }
+    if (b.ibanAct && (cur.ibans || []).some(i => i.v === b.ibanAct)) { cur.iban = b.ibanAct; delete b.iban; }
+    const p = clean(b, cur);
     const l = await getL(env), e = l.find(x => x.id === p.id); if (e) { e.n = p.n; e.code = p.code || ''; }
     await env.DB.put('sup:' + p.id, JSON.stringify(p)); await env.DB.put('supl', JSON.stringify(l)); return { p };
   });

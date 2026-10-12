@@ -5851,7 +5851,7 @@ ${g.sup}:
     if (S.view === "calc" && S.sk.tab === "sup") renderMain();
   }
   async function supOpen(id) {
-    var _a2, _b, _c;
+    var _a2, _b, _c, _d;
     let c;
     try {
       c = await api("skSupCard", { id });
@@ -5864,8 +5864,11 @@ ${g.sup}:
       title: `\u{1F3ED} ${esc(p.n)}`,
       body: `<div class="sup-card">
       ${adm ? `<div class="kpis"><div class="kpi ${c.debt ? "red" : ""}"><span>\u{1F4B8} \u0412\u0438\u043D\u043D\u0456</span><b>${money(c.debt)}</b><small class="muted">${un.length} \u043D\u0435\u043E\u043F\u043B\u0430\u0447.</small></div><div class="kpi"><span>\u0417\u0430 \u0440\u0456\u043A</span><b>${money(c.year)}</b><small class="muted">${c.inv.length} \u043D\u0430\u043A\u043B. \xB7 \u0441\u0435\u0440. ${money(c.avg)}</small></div></div>` : ""}
-      <h4>\u{1F4C7} \u0420\u0435\u043A\u0432\u0456\u0437\u0438\u0442\u0438 \u0439 \u043A\u043E\u043D\u0442\u0430\u043A\u0442\u0438</h4>${row("\u042E\u0440. \u043D\u0430\u0437\u0432\u0430", p.legal)}${row("\u0404\u0414\u0420\u041F\u041E\u0423 / \u0406\u041F\u041D", p.code, 1)}${row("IBAN", p.iban, 1)}${row("\u0422\u0435\u043B\u0435\u0444\u043E\u043D", p.phone, 1)}${row("\u041C\u0435\u043D\u0435\u0434\u0436\u0435\u0440", p.mgr)}${row("Viber / Telegram", p.msg)}${row("\u0410\u0434\u0440\u0435\u0441\u0430", p.addr)}${row("\u0414\u043D\u0456 \u043F\u043E\u0441\u0442\u0430\u0432\u043A\u0438", p.days)}${row("\u0412\u0456\u0434\u0441\u0442\u0440\u043E\u0447\u043A\u0430", p.term ? p.term + " \u0434\u043D." : "")}${row("\u041F\u0440\u0438\u043C\u0456\u0442\u043A\u0438", p.note)}
-      ${!p.code && !p.iban && !p.phone ? '<div class="muted set-note">\u0420\u0435\u043A\u0432\u0456\u0437\u0438\u0442\u0438 \u043F\u0456\u0434\u0442\u044F\u0433\u043D\u0443\u0442\u044C\u0441\u044F \u0437 \u043D\u0430\u0441\u0442\u0443\u043F\u043D\u043E\u0457 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u043E\u0457 \u2014 \u0430\u0431\u043E \u0437\u0430\u043F\u043E\u0432\u043D\u0456\u0442\u044C \u270F\uFE0F</div>' : ""}
+      <h4>\u{1F4C7} \u0420\u0435\u043A\u0432\u0456\u0437\u0438\u0442\u0438 \u0439 \u043A\u043E\u043D\u0442\u0430\u043A\u0442\u0438</h4>${row("\u042E\u0440. \u043D\u0430\u0437\u0432\u0430", p.legal)}${row("\u0404\u0414\u0420\u041F\u041E\u0423 / \u0406\u041F\u041D", p.code, 1)}${(((_a2 = p.ibans) == null ? void 0 : _a2.length) ? p.ibans : p.iban ? [{ v: p.iban }] : []).map((i) => {
+        var _a3, _b2, _c2;
+        return `<div class="kv" style="${i.v === p.iban && (((_a3 = p.ibans) == null ? void 0 : _a3.length) || 0) > 1 ? "background:color-mix(in srgb,var(--accent) 14%,transparent);border-radius:8px;padding-inline:6px" : ""}"><span>IBAN${i.v === p.iban ? (((_b2 = p.ibans) == null ? void 0 : _b2.length) || 0) > 1 ? " \u2B50 \u043E\u0441\u043D\u043E\u0432\u043D\u0438\u0439" : "" : '<br><small class="muted">\u0441\u0442\u0430\u0440\u0438\u0439</small>'}</span><span class="kv-r" style="flex-wrap:wrap;justify-content:flex-end"><b style="overflow-wrap:anywhere">${esc(i.v)}</b><button class="btn sm" data-mi-v="cp:${esc(i.v)}" title="\u041A\u043E\u043F\u0456\u044E\u0432\u0430\u0442\u0438">\u{1F4CB}</button>${adm && i.v !== p.iban ? `<button class="btn sm" data-mi-v="ib:act:${esc(i.v)}" title="\u0417\u0440\u043E\u0431\u0438\u0442\u0438 \u043E\u0441\u043D\u043E\u0432\u043D\u0438\u043C">\u2B50</button>` : ""}${adm && (((_c2 = p.ibans) == null ? void 0 : _c2.length) || 0) > 1 ? `<button class="btn sm red" data-mi-v="ib:del:${esc(i.v)}" title="\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438">\u{1F5D1}</button>` : ""}</span></div>`;
+      }).join("")}${row("\u0422\u0435\u043B\u0435\u0444\u043E\u043D", p.phone, 1)}${row("\u041C\u0435\u043D\u0435\u0434\u0436\u0435\u0440", p.mgr)}${row("Viber / Telegram", p.msg)}${row("\u0410\u0434\u0440\u0435\u0441\u0430", p.addr)}${row("\u0414\u043D\u0456 \u043F\u043E\u0441\u0442\u0430\u0432\u043A\u0438", p.days)}${row("\u0412\u0456\u0434\u0441\u0442\u0440\u043E\u0447\u043A\u0430", p.term ? p.term + " \u0434\u043D." : "")}${row("\u041F\u0440\u0438\u043C\u0456\u0442\u043A\u0438", p.note)}
+      ${!p.code && !p.iban && !p.phone ? '<div class="muted set-note">\u0420\u0435\u043A\u0432\u0456\u0437\u0438\u0442\u0438 \u043F\u0456\u0434\u0442\u044F\u0433\u043D\u0443\u0442\u044C\u0441\u044F \u0437 \u043D\u0430\u0441\u0442\u0443\u043F\u043D\u043E\u0457 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u043E\u0457 \u2014 \u0430\u0431\u043E \u0432\u043D\u0435\u0441\u0456\u0442\u044C \u0432\u0440\u0443\u0447\u043D\u0443</div>' : ""}${adm ? `<div class="btnrow" style="margin:6px 0"><button class="btn sm${!p.iban ? " primary" : ""}" data-mi-v="edit">\u270F\uFE0F ${p.iban || p.code ? "\u0417\u043C\u0456\u043D\u0438\u0442\u0438 \u0440\u0435\u043A\u0432\u0456\u0437\u0438\u0442\u0438" : "\u0412\u043D\u0435\u0441\u0442\u0438 \u0440\u0435\u043A\u0432\u0456\u0437\u0438\u0442\u0438"}</button>${p.iban ? '<button class="btn sm" data-mi-v="ib:new">\u2795 \u0429\u0435 \u0440\u0430\u0445\u0443\u043D\u043E\u043A</button>' : ""}</div>` : ""}
       ${adm && un.length ? `<h4>\u{1F4B8} \u041D\u0435\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u0456</h4>${un.map((x) => `<label class="kv" style="cursor:pointer"><span>${dm(x.day)}${x.no ? " \xB7 \u2116" + esc(x.no) : ""}<br><small class="${x.due != null && x.due < 0 ? "neg" : "muted"}">${x.due == null ? x.age + " \u0434\u043D. \u0442\u043E\u043C\u0443" : x.due < 0 ? `\u23F0 \u043F\u0440\u043E\u0441\u0442\u0440\u043E\u0447\u0435\u043D\u043E ${-x.due} \u0434\u043D.` : x.due === 0 ? "\u23F0 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : `\u0449\u0435 ${x.due} \u0434\u043D.`}</small></span><span class="kv-r"><b class="money">${money(x.total)}</b><input type="checkbox" class="supPk" value="${x.id}" checked style="width:22px;height:22px"></span></label>`).join("")}` : ""}
       <h4>\u{1F9FE} \u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0456</h4>${c.inv.slice(0, 30).map((x) => `<div class="kv press" data-mi-v="inv:${x.id}"><span>${dm(x.day)}${x.no ? " \xB7 \u2116" + esc(x.no) : ""} <small class="muted">\xB7 ${x.n} \u043F\u043E\u0437.</small></span><span class="kv-r">${x.total != null ? `<b class="money">${money(x.total)}</b>` : ""}<small class="${x.pay === "debt" && !x.paid ? "neg" : "good"}">${x.pay === "debt" && !x.paid ? "\u23F3" : "\u2705"}</small></span></div>`).join("") || '<div class="muted">\u041D\u0435\u043C\u0430\u0454</div>'}
       ${c.prod.length ? `<h4>\u{1F4E6} \u0429\u043E \u0432\u043E\u0437\u0438\u0442\u044C</h4>${c.prod.slice(0, 40).map((x) => `<div class="kv"><span>${esc(x.n)}<br><small class="muted">${fq(x.q, x.u)} \u0437\u0430 \u0440\u0456\u043A${x.day ? " \xB7 " + dm(x.day) : ""}</small></span>${x.last != null ? `<span class="kv-r"><b>${money(x.last)}/${x.u}</b>${x.prev && x.last > x.prev * 1.01 ? `<small class="warn">\u2191${Math.round((x.last / x.prev - 1) * 100)}%</small>` : x.prev && x.last < x.prev * 0.99 ? `<small class="good">\u2193${Math.round((1 - x.last / x.prev) * 100)}%</small>` : ""}</span>` : ""}</div>`).join("")}` : ""}</div>`,
@@ -5875,6 +5878,18 @@ ${g.sup}:
     if (v == null) return closeModal();
     if (String(v).startsWith("cp:")) {
       await supShare(v.slice(3));
+      return supOpen(id);
+    }
+    if (String(v).startsWith("ib:")) {
+      closeModal();
+      const [, k, val] = v.split(":");
+      if (k === "new") {
+        const n = await ask("\u{1F3E6} \u041D\u043E\u0432\u0438\u0439 IBAN", "UA \u0456 27 \u0446\u0438\u0444\u0440 \u2014 \u0441\u0442\u0430\u043D\u0435 \u043E\u0441\u043D\u043E\u0432\u043D\u0438\u043C, \u0441\u0442\u0430\u0440\u0438\u0439 \u043B\u0438\u0448\u0438\u0442\u044C\u0441\u044F", "text");
+        if (n == null ? void 0 : n.trim()) await act("skSupSave", { p: { id, iban: n } }, "\u{1F3E6} \u0420\u0430\u0445\u0443\u043D\u043E\u043A \u0434\u043E\u0434\u0430\u043D\u043E");
+        return supOpen(id);
+      }
+      if (k === "del" && !await confirmBox("\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0440\u0430\u0445\u0443\u043D\u043E\u043A?", val)) return supOpen(id);
+      await act("skSupSave", { p: { id, [k === "del" ? "ibanDel" : "ibanAct"]: val } }, k === "del" ? "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E" : "\u2B50 \u041E\u0441\u043D\u043E\u0432\u043D\u0438\u0439");
       return supOpen(id);
     }
     if (String(v).startsWith("inv:")) {
@@ -5901,7 +5916,7 @@ ${g.sup}:
         return supOpen(id);
       }
       const w = await modal({ title: "\u{1F6D2} \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", body: `<textarea id="supOt" rows="10" style="width:100%">${esc(r.text)}</textarea><div class="muted set-note">\u041C\u043E\u0436\u043D\u0430 \u0432\u0438\u043F\u0440\u0430\u0432\u0438\u0442\u0438 \u043A\u0456\u043B\u044C\u043A\u043E\u0441\u0442\u0456. \u0421\u043F\u0438\u0441\u043E\u043A \u2014 \u0437 \u0442\u043E\u0432\u0430\u0440\u0456\u0432 \u043D\u0438\u0436\u0447\u0435 \u043C\u0456\u043D\u0456\u043C\u0443\u043C\u0443 (\u0421\u043A\u043B\u0430\u0434 \u2192 \u043C\u0456\u043D\u0456\u043C\u0430\u043B\u044C\u043D\u0456 \u0437\u0430\u043B\u0438\u0448\u043A\u0438).</div>`, buttons: [{ label: "\u{1F4E4} \u041D\u0430\u0434\u0456\u0441\u043B\u0430\u0442\u0438 / \u0441\u043A\u043E\u043F\u0456\u044E\u0432\u0430\u0442\u0438", val: "go", cls: "primary" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }], keep: true });
-      const t = (_a2 = $("#supOt")) == null ? void 0 : _a2.value;
+      const t = (_b = $("#supOt")) == null ? void 0 : _b.value;
       closeModal();
       if (w === "go" && t) await supShare(t, p.n);
       return;
@@ -5911,7 +5926,7 @@ ${g.sup}:
       if (!from) return;
       const r = await act("skSupAct", { id, from: from.trim(), to: todayK() });
       if (!r) return;
-      const txt = `\u0410\u043A\u0442 \u0437\u0432\u0456\u0440\u043A\u0438: ${((_b = S.brand) == null ? void 0 : _b.name) || ""} \u2014 ${p.legal || p.n}
+      const txt = `\u0410\u043A\u0442 \u0437\u0432\u0456\u0440\u043A\u0438: ${((_c = S.brand) == null ? void 0 : _c.name) || ""} \u2014 ${p.legal || p.n}
 \u041F\u0435\u0440\u0456\u043E\u0434: ${r.from} \u2014 ${r.to}
 
 ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minus}`).join("\n")}
@@ -5923,7 +5938,7 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     }
     if (v === "edit") return supEdit(p);
     if (v === "merge") {
-      const l = ((_c = S.data.skSup) == null ? void 0 : _c.list.filter((x) => x.id !== id)) || [];
+      const l = ((_d = S.data.skSup) == null ? void 0 : _d.list.filter((x) => x.id !== id)) || [];
       if (!l.length) return toast("\u041D\u0435\u043C\u0430\u0454 \u0437 \u043A\u0438\u043C \u043E\u0431\u02BC\u0454\u0434\u043D\u0430\u0442\u0438");
       const o = await choose(`\u{1F517} ${p.n} \u2014 \u0446\u0435 \u0442\u043E\u0439 \u0441\u0430\u043C\u0438\u0439, \u0449\u043E\u2026`, "\u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0456 \u0439 \u043D\u0430\u0437\u0432\u0438 \u043F\u0435\u0440\u0435\u0439\u0434\u0443\u0442\u044C \u0443 \u0446\u0435\u0439 \u043F\u0440\u043E\u0444\u0456\u043B\u044C, \u0434\u0443\u0431\u043B\u0456\u043A\u0430\u0442 \u0437\u043D\u0438\u043A\u043D\u0435", l.map((x) => ({ label: x.n, val: x.id })));
       if (!o) return supOpen(id);
@@ -5934,7 +5949,7 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     }
   }
   async function supEdit(p = {}) {
-    const F = [["n", "\u041D\u0430\u0437\u0432\u0430 (\u044F\u043A \u0443 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0438\u0445)"], ["legal", "\u042E\u0440\u0438\u0434\u0438\u0447\u043D\u0430 \u043D\u0430\u0437\u0432\u0430 (\u0424\u041E\u041F / \u0422\u041E\u0412)"], ["code", "\u0404\u0414\u0420\u041F\u041E\u0423 / \u0406\u041F\u041D"], ["iban", "IBAN (UA\u2026)"], ["phone", "\u0422\u0435\u043B\u0435\u0444\u043E\u043D"], ["mgr", "\u041C\u0435\u043D\u0435\u0434\u0436\u0435\u0440"], ["msg", "Viber / Telegram (\u043F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F \u0430\u0431\u043E \u043D\u043E\u043C\u0435\u0440)"], ["addr", "\u0410\u0434\u0440\u0435\u0441\u0430"], ["days", "\u0414\u043D\u0456 \u043F\u043E\u0441\u0442\u0430\u0432\u043A\u0438 (\u043D\u0430\u043F\u0440. \u043F\u043D, \u0447\u0442)"], ["term", "\u0412\u0456\u0434\u0441\u0442\u0440\u043E\u0447\u043A\u0430 \u043E\u043F\u043B\u0430\u0442\u0438, \u0434\u043D\u0456\u0432 (0 \u2014 \u043E\u0434\u0440\u0430\u0437\u0443)"], ["note", "\u041F\u0440\u0438\u043C\u0456\u0442\u043A\u0438"]];
+    const F = [["n", "\u041D\u0430\u0437\u0432\u0430 (\u044F\u043A \u0443 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0438\u0445)"], ["legal", "\u042E\u0440\u0438\u0434\u0438\u0447\u043D\u0430 \u043D\u0430\u0437\u0432\u0430 (\u0424\u041E\u041F / \u0422\u041E\u0412)"], ["code", "\u0404\u0414\u0420\u041F\u041E\u0423 / \u0406\u041F\u041D"], ["iban", p.iban ? "IBAN \u2014 \u043D\u043E\u0432\u0438\u0439 \u0434\u043E\u0434\u0430\u0441\u0442\u044C\u0441\u044F, \u0441\u0442\u0430\u0440\u0438\u0439 \u043B\u0438\u0448\u0438\u0442\u044C\u0441\u044F \u0432 \u0441\u043F\u0438\u0441\u043A\u0443" : "IBAN (UA + 27 \u0446\u0438\u0444\u0440)"], ["phone", "\u0422\u0435\u043B\u0435\u0444\u043E\u043D"], ["mgr", "\u041C\u0435\u043D\u0435\u0434\u0436\u0435\u0440"], ["msg", "Viber / Telegram (\u043F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F \u0430\u0431\u043E \u043D\u043E\u043C\u0435\u0440)"], ["addr", "\u0410\u0434\u0440\u0435\u0441\u0430"], ["days", "\u0414\u043D\u0456 \u043F\u043E\u0441\u0442\u0430\u0432\u043A\u0438 (\u043D\u0430\u043F\u0440. \u043F\u043D, \u0447\u0442)"], ["term", "\u0412\u0456\u0434\u0441\u0442\u0440\u043E\u0447\u043A\u0430 \u043E\u043F\u043B\u0430\u0442\u0438, \u0434\u043D\u0456\u0432 (0 \u2014 \u043E\u0434\u0440\u0430\u0437\u0443)"], ["note", "\u041F\u0440\u0438\u043C\u0456\u0442\u043A\u0438"]];
     const v = await modal({ title: p.id ? "\u270F\uFE0F " + esc(p.n) : "\u2795 \u041F\u043E\u0441\u0442\u0430\u0447\u0430\u043B\u044C\u043D\u0438\u043A", body: `<div class="form">${F.map(([k, l]) => {
       var _a2;
       return `<label class="muted" style="font-size:12px">${l}<input id="sp_${k}" value="${esc((_a2 = p[k]) != null ? _a2 : "")}" ${k === "term" ? 'inputmode="numeric"' : ""}></label>`;
@@ -5951,7 +5966,7 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     if (r) {
       await supLoad();
       supOpen(r.p.id);
-    }
+    } else return supEdit(__spreadValues(__spreadValues({}, p), b));
   }
   async function supPrices() {
     const r = await act("skSupPrices");
