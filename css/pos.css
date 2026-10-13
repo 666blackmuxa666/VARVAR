@@ -905,3 +905,16 @@ body.noanim .ev.wait{outline:3px solid var(--wc,#ff9f0a)}
   .modal::before { content: ''; position: absolute; top: 9px; left: 50%; width: 40px; height: 5px; margin-left: -20px; border-radius: 3px; background: var(--line2, #ffffff33); }
 }
 @keyframes sheetUp { from { transform: translateY(100%); } to { transform: none; } }
+
+/* 🎨 аудит дизайну 2026-10-13: компактніші плитки, більші мінікнопки на телефоні */
+.xb { width: 30px; height: 30px; }
+.zp-x { width: 30px; height: 30px; }
+.bk-d { padding: 6px 4px; gap: 0; line-height: 1.25; }
+.lk-th { gap: 4px; padding: 6px 8px; }
+.lk-th i { height: 28px; }
+@media (max-width: 700px) {
+  .bal-c { padding: 10px 14px; gap: 1px; }
+  .bal-c b { font-size: 20px; }
+  .zbtn { min-height: 64px; }
+  .xb, .zp-x { width: 34px; height: 34px; }
+}
