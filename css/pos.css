@@ -905,3 +905,12 @@ body.noanim .ev.wait{outline:3px solid var(--wc,#ff9f0a)}
   .modal::before { content: ''; position: absolute; top: 9px; left: 50%; width: 40px; height: 5px; margin-left: -20px; border-radius: 3px; background: var(--line2, #ffffff33); }
 }
 @keyframes sheetUp { from { transform: translateY(100%); } to { transform: none; } }
+
+/* 🧊 об'ємні столи: блиск зверху (окремий шар — працює в усіх темах), рельєф краю, тінь під плиткою */
+.tables .tbl { border-color: #ffffff14; box-shadow: inset 0 1.5px 0 #ffffff40, inset 0 -5px 0 #00000059, 0 14px 26px -10px #000000e6, 0 4px 0 -1px #0000008c, 0 2px 6px #00000080 !important; transition: transform .14s, box-shadow .2s, border-color .2s; }
+.tables .tbl::before { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: radial-gradient(120% 70% at 30% 0%, #ffffff2e 0%, #ffffff0d 40%, transparent 65%), linear-gradient(180deg, transparent 55%, #00000047 100%); }
+.tables .tbl > * { position: relative; z-index: 1; } .tables .tbl > .tag, .tables .tbl > .pay { position: absolute; }
+.tables .tbl.busy { border-color: color-mix(in srgb, var(--accent) 45%, transparent); box-shadow: inset 0 1.5px 0 #ffffff59, inset 0 -5px 0 #00000059, 0 4px 0 -1px #0000008c, 0 16px 30px -10px color-mix(in srgb, var(--accent) 45%, transparent), 0 8px 18px -6px #0000009e !important; }
+.tables .tbl .n { text-shadow: 0 2px 6px #00000059; }
+@media (hover: hover) { .tables .tbl:hover { transform: translateY(-3px); } }
+.tables .tbl:active { transform: translateY(1px) scale(.97); box-shadow: inset 0 1px 0 #ffffff1f, 0 3px 8px -2px #0000009e !important; }
