@@ -128,6 +128,7 @@ export async function posApi(b, req, env) {
     case 'remove': { const r = await removeOne(env, t, String(b.name), who, b.reason); if (r?.error) return [{ error: r.error }, 400]; if (r) await notify(env, `🖥 ✏️ Стіл ${tn(t)}: скасовано 1× ${esc(r.name)} (−${r.unit} грн)\n❓ Причина: <i>${esc(r.reason)}</i> — ${esc(who)}`); return ok({ r }); }
     case 'precheck': return ok({ done: await precheck(env, t, who) });
     case 'close': {
+      if (b.pay && !['card', 'cash'].includes(b.pay)) return [{ error: 'Невідомий спосіб оплати' }, 400];
       const r = await closeTable(env, t, who, b.pay === 'card' ? 'card' : 'cash', b.print !== false);
       if (r) await notify(env, `🖥 ✅ <b>Стіл ${tn(t)} закрито</b> — ${money(r.sum)}${r.disc ? ` (знижка ${money(r.disc)})` : ''} · ${payLabel(r.cash, r.card)}${b.print === false ? ' · без чека' : ''} — ${esc(who)}`);
       return ok({ r });

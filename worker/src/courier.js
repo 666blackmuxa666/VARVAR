@@ -150,6 +150,8 @@ export async function courAct(env, t, name, act, arg) {
   }
   if (act === 'road') { const g = await goSet(env, t, 'road', name, { cour: name }); await courNotify(env, t, 'refresh'); return { ok: 1, go: g }; }
   if (act === 'done' && !b.go.cour) return { error: 'Спершу візьміть доставку ✋' };
+  if (act === 'done' && b.go.st !== 'road') return { error: 'Спершу натисніть «🚗 Поїхав»' };
+  if (act === 'done' && arg && !['card', 'cash'].includes(arg)) return { error: 'Невідомий спосіб оплати' };
   if (act === 'done') { const r = await goSet(env, t, 'done', name, { pay: arg === 'card' ? 'card' : 'cash' }); return r ? { ok: 1, done: r } : { error: 'Не вдалось' }; }
   if (act === 'eta') { const m = Math.max(1, Math.min(90, +arg || 10)), at = Date.now() + m * 60e3; await mark(env, t, 'etaC', at);
     await L(env, 'ord:' + b.go.oid, async () => { const o = await env.DB.get('ord:' + b.go.oid, 'json'); if (o) await env.DB.put('ord:' + b.go.oid, JSON.stringify({ ...o, etaC: at }), { expirationTtl: 2 * 86400 }); });
