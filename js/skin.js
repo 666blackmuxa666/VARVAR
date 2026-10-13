@@ -95,5 +95,93 @@ window.VVSkin = (() => {
   const saveCol = c => { try { localStorage.setItem('vv_col_cur', JSON.stringify(c)); } catch {} };
   const lastCol = () => { try { return JSON.parse(localStorage.getItem('vv_col_cur') || 'null'); } catch { return null; } };
   const skinPart = v => { if (!v) return null; const { ct, ca, ...k } = v; return Object.keys(k).length ? k : null; }; /* у стилі закладу: ct/ca — кольори, решта — форма */
-  return { BASE, PRE, BG, THEMES, colors, saveCol, lastCol, skinPart, apply, diff, full, parse, last, editorHTML, bind };
+  /* 🎨 Студія вигляду — одне вікно для каси й кабінету.
+     Заклад (сервер lookv): { ...форма, ct, ca }; пристрій: { own, sk, ct, ca } (sk: undefined — форма закладу, null — класика). Кольори завжди поверх форми. */
+  function resolve(venue, dev) {
+    const V = venue || {}, D = dev || {};
+    const sk = D.own && D.sk !== undefined ? D.sk : skinPart(V);
+    const c = D.own ? (D.ct || D.ca ? { t: D.ct, a: D.ca } : null) : (V.ct || V.ca ? { t: V.ct, a: V.ca } : null);
+    return { K: full(sk), c };
+  }
+  function paint(venue, dev, save = true) {
+    const { K, c } = resolve(venue, dev), r = document.documentElement.style;
+    if (!c?.t) colors('night');
+    apply(K, save);
+    if (c?.t) colors(c.t, c.a); else if (c?.a) r.setProperty('--accent', c.a);
+    if (save) saveCol(c && c.t ? c : null);
+    return K;
+  }
+  const pack = T => { const l = { ...(T.sk || {}) }; if (T.ct || T.ca) { l.ct = T.ct || ''; l.ca = T.ca || ''; } return Object.keys(l).length ? l : null; };
+  const ACC = ['#f2c14e', '#ffb340', '#ff7a45', '#ff453a', '#e0457b', '#bf5af2', '#a98bff', '#0a84ff', '#3fb6ff', '#4fe3c1', '#30d158', '#ffffff'];
+  let CX = null, EK = null, svT = 0, OPEN = false;
+  const scope = () => (CX?.canVenue ? (CX.scope || 'venue') : 'dev');
+  function target() {
+    const V = CX.venue || {}, D = CX.dev || {};
+    if (scope() === 'venue') return { sk: skinPart(V), ct: V.ct || '', ca: V.ca || '' };
+    return D.own ? { sk: D.sk !== undefined ? D.sk : skinPart(V), ct: D.ct || '', ca: D.ca || '' } : { sk: skinPart(V), ct: V.ct || '', ca: V.ca || '' };
+  }
+  const same = (a, b) => JSON.stringify(a || null) === JSON.stringify(b || null);
+  const skName = sk => !sk ? '↩️ Класика' : (Object.values(PRE).find(p => same(p[2], sk))?.[0] || '✏️ Свій');
+  function commit(T, quiet) {
+    if (scope() === 'venue') { const l = pack(T); CX.setVenue(l); clearTimeout(svT); svT = setTimeout(() => CX.saveVenue(l).then(() => CX.toast('🏪 Збережено для всіх кас і кабінету')).catch(e => CX.toast('⚠️ ' + (e.message || 'Не збереглось'))), quiet ? 900 : 300); }
+    else CX.setDev({ own: 1, sk: T.sk || null, ct: T.ct, ca: T.ca });
+    if (!quiet) CX.rerender();
+  }
+  const css = () => { if (document.getElementById('vst-css')) return; const s = document.createElement('style'); s.id = 'vst-css'; s.textContent = `
+.vst{display:grid;gap:14px}.vst h4{margin:4px 0 0;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.vst-top{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:16px;align-items:start}@media(max-width:640px){.vst-top{grid-template-columns:1fr}}
+.vst-pv{width:100%;max-width:330px;justify-self:center;background:var(--bg);border-radius:20px;padding:12px;display:grid;gap:10px;font-family:var(--font);color:var(--text);box-shadow:0 0 0 1px color-mix(in srgb,var(--text) 10%,transparent);transition:background .3s}
+.vst-pv .h{display:flex;justify-content:space-between;align-items:center;font-family:var(--sk-fh,var(--font));font-weight:var(--sk-hw,800)}.vst-pv .h span{color:var(--muted);font-size:12px;font-weight:500}
+.vst-pv .t{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.vst-pv .t i{font-style:normal;aspect-ratio:1;display:grid;place-content:center;text-align:center;font-weight:800;border-radius:var(--sk-rb,14px);background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 22%,var(--card)),color-mix(in srgb,var(--accent) 4%,var(--card)))}
+.vst-pv .t i.on{background:linear-gradient(160deg,var(--accent),color-mix(in srgb,var(--accent) 45%,#000));color:var(--accent-ink)}.vst-pv .t small{display:block;font-size:9px;font-weight:600;opacity:.8}
+.vst-pv .c{background:var(--card);border-radius:var(--sk-r,18px);padding:10px;display:grid;gap:6px;border:var(--sk-border,0);box-shadow:var(--sk-shadow,none)}.vst-pv .kv{display:flex;justify-content:space-between;font-size:13px}.vst-pv .kv span{color:var(--muted)}
+.vst-pv .b{border:0;border-radius:var(--sk-rb,14px);background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:800;padding:9px;margin-top:2px}
+.vst-pv .n{display:flex;justify-content:space-around;background:var(--card2);border-radius:var(--sk-r,18px);padding:6px}.vst-pv .n i{font-style:normal;padding:4px 12px;border-radius:12px}.vst-pv .n i.on{background:var(--accent)}
+.vst-who{display:grid;gap:10px;align-content:start}.vst-now{font-size:15px}.vst-now b{color:var(--accent)}
+.vst-seg{display:flex;gap:4px;background:var(--card2);padding:4px;border-radius:14px;flex-wrap:wrap}.vst-seg button{flex:1;min-width:120px;border:0;background:none;color:var(--text);font:inherit;font-weight:700;padding:9px 10px;border-radius:11px;cursor:pointer}.vst-seg button.on{background:var(--accent);color:var(--accent-ink)}
+.vst-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.vst-s{border:2px solid transparent;background:var(--card2);color:var(--text);border-radius:16px;padding:7px;display:grid;gap:6px;text-align:left;font:inherit;cursor:pointer;transition:transform .15s}.vst-s:active{transform:scale(.96)}.vst-s.on{border-color:var(--accent)}
+.vst-s u{display:block;height:36px;border-radius:10px;padding:6px;text-decoration:none}.vst-s u i{display:flow-root;height:100%;width:72%}.vst-s u i:after{content:"";display:block;width:45%;height:8px;margin:5px 0 0 6px;border-radius:4px;background:var(--x)}
+.vst-s b{font-size:12.5px;line-height:1.2}.vst-s small{color:var(--muted);font-size:10.5px;line-height:1.2}@media(max-width:640px){.vst-g{grid-template-columns:repeat(3,minmax(0,1fr))}.vst-s small{display:none}}
+.vst-th{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.vst-th button{border:2px solid transparent;border-radius:14px;padding:10px 8px;font:inherit;font-weight:700;font-size:12px;cursor:pointer;display:grid;gap:6px;justify-items:start}.vst-th button.on{border-color:var(--accent)}.vst-th i{display:block;width:100%;height:8px;border-radius:4px}
+.vst-acc{display:flex;flex-wrap:wrap;gap:8px}.vst-acc button{width:34px;height:34px;border-radius:50%;border:2px solid color-mix(in srgb,var(--text) 15%,transparent);cursor:pointer}.vst-acc button.on{outline:3px solid var(--text);outline-offset:2px}.vst-acc .no{width:auto;border-radius:17px;padding:0 12px;background:var(--card2);color:var(--text);font:inherit;font-size:12px;font-weight:700}
+.vst details{background:var(--card2);border-radius:16px;padding:10px 12px}.vst summary{cursor:pointer;font-weight:800}.vst .skc{margin-top:10px}
+.vst-row{display:flex;flex-wrap:wrap;gap:8px}.vst-row button{border:0;border-radius:12px;padding:9px 12px;background:var(--card);color:var(--text);font:inherit;font-weight:700;cursor:pointer}`; document.head.appendChild(s); };
+  function studio(ctx) {
+    CX = ctx; css(); const T = target(), sc = scope(), V = CX.venue || {}, D = CX.dev || {};
+    EK = { ...BASE, ...(T.sk || {}) };
+    const thumb = (k, p) => { const B = BG[p?.bg] || [THEMES.night[1].bg, '', THEMES.night[1].card], acc = p?.acc || THEMES.night[1].accent, r = p ? Math.min(p.r, 14) : 12;
+      return `<button class="vst-s${same(T.sk, p) ? ' on' : ''}" data-st="sk" data-v="${k}"><u style="background:${B[0]}"><i style="background:${B[2]};border-radius:${r}px;--x:${acc}"></i></u><b>${k ? PRE[k][0] : '↩️ Класика'}</b><small>${k ? PRE[k][1] : 'як було раніше'}</small></button>`; };
+    const own = T.sk && !Object.values(PRE).some(p => same(p[2], T.sk));
+    const thName = T.ct ? THEMES[T.ct]?.[0] : T.ca ? 'свій акцент' : 'кольори стилю';
+    return `<div class="vst">
+      <div class="vst-top"><div class="vst-pv" aria-hidden="true"><div class="h">🪑 Зал <span>12:40 · Олена</span></div><div class="t"><i>1</i><i class="on">2<small>840 ₴</small></i><i>3</i><i class="on">4<small>1 260 ₴</small></i></div>
+          <div class="c"><div class="kv"><span>Борщ × 2</span><b>360 ₴</b></div><div class="kv"><span>Деруни</span><b>210 ₴</b></div><button class="b" tabindex="-1">💳 Закрити · 570 ₴</button></div><div class="n"><i class="on">🪑</i><i>💰</i><i>📊</i><i>⚙️</i></div></div>
+        <div class="vst-who"><div class="vst-now">Зараз: <b>${skName(T.sk)}</b> · <b>${thName}</b></div>
+          ${CX.canVenue ? `<div class="vst-seg"><button class="${sc === 'venue' ? 'on' : ''}" data-st="scope" data-v="venue">🏪 Весь заклад</button><button class="${sc === 'dev' ? 'on' : ''}" data-st="scope" data-v="dev">📱 Цей пристрій</button></div>` : ''}
+          <div class="muted" style="font-size:13px">${sc === 'venue' ? 'Змінюєте вигляд усіх кас і кабінету власника. Пристрої зі своїм виглядом лишаться при своєму.' : D.own ? 'Свій вигляд лише на цьому пристрої.' : 'Цей пристрій показує вигляд закладу. Будь-яка зміна тут — лише для нього.'}</div>
+          ${sc === 'dev' && D.own ? '<div class="vst-row"><button data-st="follow">↩️ Як у закладу</button></div>' : ''}${CX.extra || ''}</div></div>
+      <h4>① Стиль — форма кнопок, карток і меню</h4><div class="vst-g">${thumb('', null)}${Object.keys(PRE).map(k => thumb(k, PRE[k][2])).join('')}${own ? `<button class="vst-s on" data-st="none"><u style="background:var(--bg)"><i style="background:var(--card);border-radius:10px;--x:var(--accent)"></i></u><b>✏️ Свій</b><small>з конструктора</small></button>` : ''}</div>
+      <h4>② Кольори — діють поверх будь-якого стилю</h4>
+      <div class="vst-th"><button class="${!T.ct ? 'on' : ''}" data-st="ct" data-v="" style="background:var(--card2);color:var(--text)">🎨 Як у стилі<i style="background:linear-gradient(90deg,#f2c14e,#e0457b,#3fb6ff)"></i></button>${Object.entries(THEMES).map(([k, [l, c]]) => `<button class="${T.ct === k ? 'on' : ''}" data-st="ct" data-v="${k}" style="background:${c.bg};color:${c.text};box-shadow:inset 0 0 0 1px ${c.card2}">${l}<i style="background:linear-gradient(90deg,${c.card},${c.accent})"></i></button>`).join('')}</div>
+      <div class="vst-acc"><button class="no${!T.ca ? ' on' : ''}" data-st="ca" data-v="">Акцент теми</button>${ACC.map(c => `<button class="${T.ca === c ? 'on' : ''}" data-st="ca" data-v="${c}" style="background:${c}" aria-label="${c}"></button>`).join('')}</div>
+      <details${OPEN ? ' open' : ''}><summary>③ Деталі — шрифт, кути, кнопки, меню (конструктор)</summary>${editorHTML(EK)}
+        <div class="vst-row" style="margin-top:12px"><button data-st="copy">📤 Скопіювати код</button><button data-st="paste">📥 Вставити код</button></div></details></div>`;
+  }
+  function onClick(e) {
+    if (!CX) return; const box = e.target.closest('.vst'); if (!box) return;
+    const ch = e.target.closest('.skc .ch button'); if (ch) { e.preventDefault(); const g = ch.parentElement; EK[g.dataset.k] = ch.dataset.v; g.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === ch)); return commit({ ...target(), sk: diff(EK) }, 1); }
+    const b = e.target.closest('[data-st]'); if (!b) return; e.preventDefault(); const k = b.dataset.st, v = b.dataset.v, T = target();
+    if (k === 'scope') { CX.scope = v; CX.onScope?.(v); return CX.rerender(); }
+    if (k === 'follow') { CX.setDev({ own: 0 }); return CX.rerender(); }
+    if (k === 'sk') return commit({ ...T, sk: v ? { ...PRE[v][2] } : null });
+    if (k === 'ct') return commit({ ...T, ct: v, ca: v ? '' : T.ca });
+    if (k === 'ca') return commit({ ...T, ca: v });
+    if (k === 'copy') { const t = 'VARVAR-STYLE ' + JSON.stringify(diff(EK)); navigator.clipboard?.writeText(t).then(() => CX.toast('📤 Код скопійовано'), () => CX.ask?.('📤 Код стилю', t)); return; }
+    if (k === 'paste') return Promise.resolve(CX.ask('📥 Код стилю', 'VARVAR-STYLE {…}')).then(t => { if (!t) return; let K = null; try { K = parse(t); } catch {} if (!K) return CX.toast('⚠️ Не вдалося прочитати код'); commit({ ...T, sk: diff({ ...BASE, ...K }) }); });
+  }
+  function onInput(e) { const i = e.target; if (!CX || !i.dataset.k || !i.closest('.vst .skc')) return; EK[i.dataset.k] = i.type === 'checkbox' ? i.checked : +i.value; if (i.nextElementSibling) i.nextElementSibling.textContent = i.value; commit({ ...target(), sk: diff(EK) }, 1); }
+  document.addEventListener('click', onClick); document.addEventListener('input', onInput);
+  document.addEventListener('toggle', e => { if (CX && e.target.matches?.('.vst details')) OPEN = e.target.open; }, true);
+  return { resolve, paint, studio, pack, BASE, PRE, BG, THEMES, colors, saveCol, lastCol, skinPart, apply, diff, full, parse, last, editorHTML, bind };
 })();

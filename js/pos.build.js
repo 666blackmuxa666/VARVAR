@@ -17,6 +17,18 @@ var __spreadValues = (a, b) => {
   return a;
 };
 var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
+var __objRest = (source, exclude) => {
+  var target = {};
+  for (var prop in source)
+    if (__hasOwnProp.call(source, prop) && exclude.indexOf(prop) < 0)
+      target[prop] = source[prop];
+  if (source != null && __getOwnPropSymbols)
+    for (var prop of __getOwnPropSymbols(source)) {
+      if (exclude.indexOf(prop) < 0 && __propIsEnum.call(source, prop))
+        target[prop] = source[prop];
+    }
+  return target;
+};
 (() => {
   var _a;
   const okV = (x) => /^(?=.*[a-z])[a-z0-9][a-z0-9-]{1,30}$/.test(x || "") && x !== "varvar";
@@ -567,42 +579,24 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   const FONTS = { system: ["\u0421\u0438\u0441\u0442\u0435\u043C\u043D\u0438\u0439 (iOS)", ""], inter: ["Inter", "Inter"], manrope: ["Manrope", "Manrope"], rubik: ["Rubik", "Rubik"], nunito: ["Nunito", "Nunito"], montserrat: ["Montserrat", "Montserrat"], roboto: ["Roboto", "Roboto"], comfortaa: ["Comfortaa", "Comfortaa"], mono: ["JetBrains Mono", "JetBrains Mono"], pt: ["PT Sans", "PT Sans"] };
   const look = () => __spreadValues({ theme: "night", font: "system", nfont: "same", size: 100, radius: "round", sound: "classic", vol: 70, anim: 1, accent: "" }, store.get("look", {}));
   function applyLook() {
-    const L = look(), T = (THEMES[L.theme] || THEMES.night)[1], r = document.documentElement.style;
-    for (const [k, v] of Object.entries(T)) r.setProperty("--" + k, v);
-    if (L.accent) r.setProperty("--accent", L.accent);
-    const fam = (k) => {
-      var _a2;
-      return (_a2 = FONTS[k]) == null ? void 0 : _a2[1];
-    }, need = [fam(L.font), L.nfont !== "same" && fam(L.nfont)].filter(Boolean);
-    for (const f of need) {
-      const id = "gf-" + f.replace(/ /g, "");
-      if (!document.getElementById(id)) {
-        const l = document.createElement("link");
-        l.id = id;
-        l.rel = "stylesheet";
-        l.href = `https://fonts.googleapis.com/css2?family=${f.replace(/ /g, "+")}:wght@400;600;700;800&display=swap`;
-        document.head.append(l);
-      }
-    }
+    const L = look(), r = document.documentElement.style;
     const base = '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif';
-    r.setProperty("--font", fam(L.font) ? `"${fam(L.font)}", ${base}` : base);
-    r.setProperty("--nfont", L.nfont === "same" ? "var(--font)" : fam(L.nfont) ? `"${fam(L.nfont)}", ${base}` : base);
+    r.setProperty("--font", base);
+    r.setProperty("--nfont", "var(--font)");
+    r.setProperty("--r", "18px");
+    r.setProperty("--r2", "24px");
     document.body.style.zoom = L.size === 100 ? "" : L.size / 100;
-    const R = { round: [18, 24], soft: [12, 16], square: [6, 8] }[L.radius] || [18, 24];
-    r.setProperty("--r", R[0] + "px");
-    r.setProperty("--r2", R[1] + "px");
-    document.body.classList.toggle("noanim", !L.anim);
     applySkin();
   }
   const { BASE: SK_BASE, PRE: SK_PRE } = VVSkin;
-  const skinOf = () => VVSkin.skinPart(S.lookV) ? __spreadValues(__spreadValues({}, SK_BASE), VVSkin.skinPart(S.lookV)) : null;
+  const lookDev = () => {
+    const L = look();
+    return { own: L.own ? 1 : 0, sk: "sk" in L ? L.sk : void 0, ct: L.theme, ca: L.accent };
+  };
+  const skinOf = () => VVSkin.resolve(S.lookV, lookDev()).K;
   function applySkin(over) {
-    const K = over || skinOf();
-    VVSkin.apply(K);
-    if (K) document.body.classList.toggle("noanim", !K.anim || !look().anim);
-    const L = look(), V = S.lookV || {}, c = L.own ? { t: L.theme, a: L.accent } : V.ct ? { t: V.ct, a: V.ca || "" } : null;
-    if (c) VVSkin.colors(c.t, c.a);
-    VVSkin.saveCol(c || (K && (K.acc || K.bg !== "theme") ? null : { t: L.theme, a: L.accent }));
+    const K = over ? (VVSkin.apply(over), over) : VVSkin.paint(S.lookV, lookDev());
+    document.body.classList.toggle("noanim", K && !K.anim || !look().anim);
   }
   async function loadLookV() {
     try {
@@ -613,18 +607,9 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     }
   }
   const setLook = (k, v) => {
-    const col = k === "theme" || k === "accent";
-    store.set("look", __spreadValues(__spreadProps(__spreadValues({}, look()), { [k]: v }), col ? { own: 1 } : {}));
+    store.set("look", __spreadProps(__spreadValues({}, look()), { [k]: v }));
     applyLook();
     renderMain();
-    if (col && isAdmin()) {
-      const L = look(), nv = __spreadProps(__spreadValues({}, S.lookV || {}), { ct: L.theme, ca: L.accent || "" });
-      api("lookVSet", { look: nv }).then(() => {
-        S.lookV = nv;
-        toast("\u{1F3A8} \u041A\u043E\u043B\u044C\u043E\u0440\u0438 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E \u0434\u043B\u044F \u0432\u0441\u0456\u0445 \u043A\u0430\u0441 \u0456 \u043A\u0430\u0431\u0456\u043D\u0435\u0442\u0443");
-      }).catch(() => {
-      });
-    }
   };
   applyLook();
   const NAV_COOK = [["kq", "\u{1F468}\u200D\u{1F373}", "\u0427\u0435\u0440\u0433\u0430"], ["calc", "\u{1F4E6}", "\u0421\u043A\u043B\u0430\u0434"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["hall", "\u{1FA91}", "\u0417\u0430\u043B"]];
@@ -905,7 +890,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     renderMain();
   });
   document.addEventListener("click", async (e) => {
-    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z;
+    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A;
     const el = e.target.closest("[data-a]");
     if (!el) return;
     const a = el.dataset.a, t = S.open;
@@ -1399,10 +1384,13 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         break;
       }
       case "lookReset":
-        store.set("look", {});
-        applyLook();
-        renderMain();
-        toast("\u21BA \u0421\u0442\u0430\u043D\u0434\u0430\u0440\u0442\u043D\u0438\u0439 \u0432\u0438\u0433\u043B\u044F\u0434");
+        {
+          const _n = look(), { own, sk, theme, accent, skin } = _n, rest = __objRest(_n, ["own", "sk", "theme", "accent", "skin"]);
+          store.set("look", rest);
+          applyLook();
+          renderMain();
+          toast("\u21BA \u042F\u043A \u0443 \u0437\u0430\u043A\u043B\u0430\u0434\u0443");
+        }
         break;
       case "cashTab":
         S.cashTab = el.dataset.t;
@@ -1425,7 +1413,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         closeFlow();
         break;
       case "delTable": {
-        const pb = S.tables[t], pp = ((_n = pb == null ? void 0 : pb.paid) == null ? void 0 : _n.sum) || (((_o = pb == null ? void 0 : pb.go) == null ? void 0 : _o.paid) && !pb.go.paid.ref ? pb.go.paid.sum : 0);
+        const pb = S.tables[t], pp = ((_o = pb == null ? void 0 : pb.paid) == null ? void 0 : _o.sum) || (((_p = pb == null ? void 0 : pb.go) == null ? void 0 : _p.paid) && !pb.go.paid.ref ? pb.go.paid.sum : 0);
         if (pp) {
           if (!isAdmin()) {
             toast("\u{1F4B3} \u041E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u043E\u043D\u043B\u0430\u0439\u043D \u2014 \u0432\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u043C\u043E\u0436\u0435 \u043B\u0438\u0448\u0435 \u0430\u0434\u043C\u0456\u043D (\u0437 \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F\u043C \u0433\u0440\u043E\u0448\u0435\u0439)");
@@ -1458,7 +1446,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       }
       case "tpayRefund": {
         const tt = +el.dataset.t, b = S.tables[tt];
-        if (await confirmBox(`\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438 \u0433\u043E\u0441\u0442\u044E ${money(((_p = b == null ? void 0 : b.paid) == null ? void 0 : _p.sum) || 0)} \u043D\u0430 \u043A\u0430\u0440\u0442\u043A\u0443?`, `\u0421\u0442\u0456\u043B ${tn(tt)} \u043B\u0438\u0448\u0438\u0442\u044C\u0441\u044F \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u0438\u043C. \u041F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F \u0447\u0435\u0440\u0435\u0437 LiqPay \u2014 \u0433\u0440\u043E\u0448\u0456 \u043F\u0440\u0438\u0439\u0434\u0443\u0442\u044C \u0433\u043E\u0441\u0442\u044E \u0437\u0430 1\u20137 \u0434\u043D\u0456\u0432.`)) await act("tpayRefund", { t: tt }, "\u21A9\uFE0F \u0413\u0440\u043E\u0448\u0456 \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E \u0433\u043E\u0441\u0442\u044E");
+        if (await confirmBox(`\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438 \u0433\u043E\u0441\u0442\u044E ${money(((_q = b == null ? void 0 : b.paid) == null ? void 0 : _q.sum) || 0)} \u043D\u0430 \u043A\u0430\u0440\u0442\u043A\u0443?`, `\u0421\u0442\u0456\u043B ${tn(tt)} \u043B\u0438\u0448\u0438\u0442\u044C\u0441\u044F \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u0438\u043C. \u041F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F \u0447\u0435\u0440\u0435\u0437 LiqPay \u2014 \u0433\u0440\u043E\u0448\u0456 \u043F\u0440\u0438\u0439\u0434\u0443\u0442\u044C \u0433\u043E\u0441\u0442\u044E \u0437\u0430 1\u20137 \u0434\u043D\u0456\u0432.`)) await act("tpayRefund", { t: tt }, "\u21A9\uFE0F \u0413\u0440\u043E\u0448\u0456 \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E \u0433\u043E\u0441\u0442\u044E");
         break;
       }
       case "accept":
@@ -1560,7 +1548,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         break;
       }
       case "pQMove": {
-        const r = await api("rcptGet", {}).catch(() => null), st = ((_q = r == null ? void 0 : r.route) == null ? void 0 : _q.st) || [];
+        const r = await api("rcptGet", {}).catch(() => null), st = ((_r = r == null ? void 0 : r.route) == null ? void 0 : _r.st) || [];
         if (!st.length) {
           toast("\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440\u0438 \u0449\u0435 \u043D\u0435 \u0440\u043E\u0437\u043F\u043E\u0434\u0456\u043B\u0435\u043D\u0456 \u2014 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F \u2192 \u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440");
           break;
@@ -1568,7 +1556,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         closeModal();
         const sid = await choose("\u{1F501} \u041D\u0430\u0434\u0440\u0443\u043A\u0443\u0432\u0430\u0442\u0438 \u043D\u0430 \u0456\u043D\u0448\u043E\u043C\u0443", "\u0417\u0430\u0432\u0434\u0430\u043D\u043D\u044F \u043F\u0435\u0440\u0435\u0439\u0434\u0435 \u043D\u0430 \u0432\u0438\u0431\u0440\u0430\u043D\u0438\u0439 \u043F\u0440\u0438\u043D\u0442\u0435\u0440", st.map((x) => ({ label: "\u{1F5A8} " + x.name, val: x.id })));
         if (sid && await act("printMove", { id: el.dataset.id, st: sid }, "\u{1F501} \u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0435\u043D\u043E")) {
-          const sm = (_r = el.closest("[data-pq]")) == null ? void 0 : _r.querySelector("small");
+          const sm = (_s = el.closest("[data-pq]")) == null ? void 0 : _s.querySelector("small");
           if (sm) sm.textContent = sm.textContent.replace(/ · 🖨 .*$/, "") + " \xB7 \u{1F5A8} " + st.find((x) => x.id === sid).name;
         }
         break;
@@ -1585,7 +1573,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
           }, 3e3);
           break;
         }
-        if (await act("printClear", { id: el.dataset.id }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) (_s = el.closest("[data-pq]")) == null ? void 0 : _s.remove();
+        if (await act("printClear", { id: el.dataset.id }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) (_t = el.closest("[data-pq]")) == null ? void 0 : _t.remove();
         break;
       }
       case "pQr": {
@@ -1603,7 +1591,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       }
       case "expense": {
         const v = await modal({ title: "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0430", body: '<div class="form"><input id="eSum" inputmode="decimal" placeholder="\u0421\u0443\u043C\u0430, \u20B4"><input id="eNote" placeholder="\u041D\u0430 \u0449\u043E (\u043D\u0430\u043F\u0440. \u043E\u0432\u043E\u0447\u0456 \u043D\u0430 \u0440\u0438\u043D\u043A\u0443)">' + (isAdmin() ? `<label class="muted" style="font-size:13px">\u{1F4C5} \u0417\u0430 \u0434\u0435\u043D\u044C<input id="eDay" type="date" value="${todayK()}" max="${todayK()}"></label>` : "") + "</div>", buttons: [{ label: "\u{1F4B5} \u0417 \u043A\u0430\u0441\u0438", val: "cash", cls: "primary" }, { label: "\u{1F4B3} \u0417 \u043A\u0430\u0440\u0442\u0438", val: "card" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
-        const sum = v && +$("#eSum").value.replace(",", "."), note = v && $("#eNote").value, day = v && ((_t = $("#eDay")) == null ? void 0 : _t.value) !== todayK() ? ((_u = $("#eDay")) == null ? void 0 : _u.value) || "" : "";
+        const sum = v && +$("#eSum").value.replace(",", "."), note = v && $("#eNote").value, day = v && ((_u = $("#eDay")) == null ? void 0 : _u.value) !== todayK() ? ((_v = $("#eDay")) == null ? void 0 : _v.value) || "" : "";
         closeModal();
         if (v && sum) {
           await act("expense", __spreadValues({ sum, note, src: v }, day ? { day } : {}), day ? `\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0443 \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u043E \u0437\u0430 ${day.split("-").reverse().join(".")}` : "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0443 \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u043E");
@@ -1668,7 +1656,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
         break;
       }
       case "cfgTgl": {
-        const k = el.dataset.k, cur = (_z = (_y = (_w = (_v = S.data.staff) == null ? void 0 : _v.cfg) == null ? void 0 : _w[k]) != null ? _y : (_x = S.cfg) == null ? void 0 : _x[k]) != null ? _z : +(el.dataset.def || 0);
+        const k = el.dataset.k, cur = (_A = (_z = (_x = (_w = S.data.staff) == null ? void 0 : _w.cfg) == null ? void 0 : _x[k]) != null ? _z : (_y = S.cfg) == null ? void 0 : _y[k]) != null ? _A : +(el.dataset.def || 0);
         if (await act("cfgSet", { k, v: cur ? 0 : 1 }, "\u2699\uFE0F \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
           loadView();
           loadState().catch(() => {
@@ -3912,20 +3900,37 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       ${S.menu.categories.map((c) => `<h3 class="muted" style="margin:18px 4px 8px">${esc(c.name.uk)}</h3><div class="grid2">${c.items.map((i) => `<button class="list-row press" data-a="menuEdit" data-id="${i.id}" style="text-align:left"><div class="grow"><b>${esc(i.name.uk)}</b>${i.hidden ? " \u26D4" : ""}<div class="muted" style="font-size:13px">${i.variants ? i.variants.map((v) => `${v.v} \u2014 ${v.p}`).join(" / ") : i.price + " \u20B4"}${i.size && !i.variants ? " \xB7 " + esc(i.size) : ""}</div></div>\u203A</button>`).join("")}</div>`).join("")}`;
   }
   function lookHTML() {
-    const L = look(), opt = (k, v, l, extra = "") => `<button class="lk-o${L[k] == v ? " on" : ""}" data-a="look" data-k="${k}" data-v="${v}"${extra}>${l}</button>`;
-    const ACC2 = ["", "#f2c14e", "#ff453a", "#ff9f0a", "#30d158", "#0a84ff", "#bf5af2", "#e0457b", "#4fe3c1", "#ffffff"];
-    return `<div class="grid2 set">
-      <div class="card"><h3>\u{1F3A8} \u0422\u0435\u043C\u0430</h3><div class="lk-themes">${Object.entries(THEMES).map(([k, [l, T]]) => `<button class="lk-th${L.theme === k ? " on" : ""}" data-a="look" data-k="theme" data-v="${k}" style="background:${T.bg};color:${T.text}"><i style="background:${T.card}"><b style="background:${T.accent}"></b></i>${l}</button>`).join("")}</div>
-        <div class="set-note muted" style="margin-top:12px">\u041A\u043E\u043B\u0456\u0440 \u0430\u043A\u0446\u0435\u043D\u0442\u0443 (\u043A\u043D\u043E\u043F\u043A\u0438, \u0432\u0438\u0434\u0456\u043B\u0435\u043D\u043D\u044F)</div><div class="lk-acc">${ACC2.map((c) => `<button class="lk-dot${L.accent === c ? " on" : ""}" data-a="look" data-k="accent" data-v="${c}" style="background:${c || "conic-gradient(#f2c14e,#e0457b,#3fb6ff,#5ed68a,#f2c14e)"}" title="${c || "\u044F\u043A \u0443 \u0442\u0435\u043C\u0456"}"></button>`).join("")}</div></div>
-      <div class="card"><h3>\u{1F524} \u0428\u0440\u0438\u0444\u0442\u0438</h3><div class="set-note muted">\u041E\u0441\u043D\u043E\u0432\u043D\u0438\u0439 \u0448\u0440\u0438\u0444\u0442</div><div class="lk-row">${Object.entries(FONTS).map(([k, [l, f]]) => opt("font", k, l, f ? ` style="font-family:'${f}',sans-serif"` : "")).join("")}</div>
-        <div class="set-note muted" style="margin-top:10px">\u0428\u0440\u0438\u0444\u0442 \u0441\u0443\u043C \u0456 \u0446\u0438\u0444\u0440</div><div class="lk-row">${opt("nfont", "same", "\u042F\u043A \u043E\u0441\u043D\u043E\u0432\u043D\u0438\u0439")}${Object.entries(FONTS).map(([k, [l, f]]) => opt("nfont", k, l, f ? ` style="font-family:'${f}',sans-serif"` : "")).join("")}</div>
-        <div class="set-note muted" style="margin-top:10px">\u0420\u043E\u0437\u043C\u0456\u0440</div><div class="lk-row">${[85, 92, 100, 110, 120].map((z) => opt("size", z, z === 100 ? "\u0417\u0432\u0438\u0447\u0430\u0439\u043D\u0438\u0439" : z + "%")).join("")}</div></div>
-      <div class="card"><h3>\u{1FA9F} \u0412\u0456\u043A\u043E\u043D\u0446\u044F</h3><div class="set-note muted">\u041A\u0443\u0442\u0438</div><div class="lk-row">${opt("radius", "round", "\u25EF \u041A\u0440\u0443\u0433\u043B\u0456")}${opt("radius", "soft", "\u25A2 \u041C'\u044F\u043A\u0456")}${opt("radius", "square", "\u25A1 \u041F\u0440\u044F\u043C\u0456")}</div>
-        <div class="set-note muted" style="margin-top:10px">\u0410\u043D\u0456\u043C\u0430\u0446\u0456\u0457</div><div class="lk-row">${opt("anim", 1, "\u2728 \u0423\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u0456")}${opt("anim", 0, "\u26A1 \u0412\u0438\u043C\u043A\u043D\u0435\u043D\u0456 (\u0448\u0432\u0438\u0434\u0448\u0435 \u043D\u0430 \u0441\u043B\u0430\u0431\u043A\u0438\u0445)")}</div></div>
+    const L = look(), opt = (k, v, l) => `<button class="lk-o${L[k] == v ? " on" : ""}" data-a="look" data-k="${k}" data-v="${v}">${l}</button>`;
+    const st = VVSkin.studio({
+      venue: S.lookV,
+      dev: lookDev(),
+      canVenue: isAdmin(),
+      scope: S.lookScope,
+      open: S.lookOpen,
+      toast,
+      ask: (t, ph) => ask(t, ph),
+      onScope: (v) => {
+        S.lookScope = v;
+      },
+      rerender: renderMain,
+      setVenue: (l) => {
+        S.lookV = l;
+        S.lookScope = "venue";
+        applyLook();
+      },
+      saveVenue: (l) => api("lookVSet", { look: l }),
+      setDev: (d) => {
+        const { own, sk, ct, ca } = d;
+        store.set("look", __spreadValues(__spreadProps(__spreadValues({}, look()), { own }), own ? { sk, theme: ct || "", accent: ca || "" } : { sk: void 0, theme: "night", accent: "" }));
+        applyLook();
+      }
+    });
+    return `<div class="grid2 set"><div class="card" style="grid-column:1/-1"><h3>\u{1F3A8} \u0421\u0442\u0443\u0434\u0456\u044F \u0432\u0438\u0433\u043B\u044F\u0434\u0443</h3>${st}</div>
+      <div class="card"><h3>\u{1F4F1} \u0426\u0435\u0439 \u043F\u0440\u0438\u0441\u0442\u0440\u0456\u0439</h3><div class="set-note muted">\u0420\u043E\u0437\u043C\u0456\u0440</div><div class="lk-row">${[85, 92, 100, 110, 120].map((z) => opt("size", z, z === 100 ? "\u0417\u0432\u0438\u0447\u0430\u0439\u043D\u0438\u0439" : z + "%")).join("")}</div>
+        <div class="set-note muted" style="margin-top:10px">\u0410\u043D\u0456\u043C\u0430\u0446\u0456\u0457</div><div class="lk-row">${opt("anim", 1, "\u2728 \u0423\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u0456")}${opt("anim", 0, "\u26A1 \u0412\u0438\u043C\u043A\u043D\u0435\u043D\u0456 (\u0448\u0432\u0438\u0434\u0448\u0435 \u043D\u0430 \u0441\u043B\u0430\u0431\u043A\u0438\u0445)")}</div>
+        <div class="btnrow" style="margin-top:12px"><button class="btn sm" data-a="lookReset">\u21BA \u0421\u043A\u0438\u043D\u0443\u0442\u0438 \u043F\u0440\u0438\u0441\u0442\u0440\u0456\u0439 \u0434\u043E \u0432\u0438\u0433\u043B\u044F\u0434\u0443 \u0437\u0430\u043A\u043B\u0430\u0434\u0443</button></div></div>
       <div class="card"><h3>\u{1F50A} \u0417\u0432\u0443\u043A \u0441\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u044C</h3><div class="lk-row">${Object.entries(SOUNDS).map(([k, [l]]) => opt("sound", k, (k === "off" ? "\u{1F507} " : "\u25B6 ") + l)).join("")}</div>
-        <div class="set-note muted" style="margin-top:10px">\u0413\u0443\u0447\u043D\u0456\u0441\u0442\u044C</div><div class="lk-row">${[30, 50, 70, 100].map((v) => opt("vol", v, v + "%")).join("")}</div>
-        <div class="btnrow" style="margin-top:12px"><button class="btn sm" data-a="lookReset">\u21BA \u0421\u043A\u0438\u043D\u0443\u0442\u0438 \u0432\u0441\u0435 \u0434\u043E \u0441\u0442\u0430\u043D\u0434\u0430\u0440\u0442\u0443</button></div></div>
-      <div class="muted set-note" style="grid-column:1/-1">\u0412\u0438\u0433\u043B\u044F\u0434 \u0437\u0431\u0435\u0440\u0456\u0433\u0430\u0454\u0442\u044C\u0441\u044F \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457 \u2014 \u043A\u043E\u0436\u0435\u043D \u0442\u0435\u043B\u0435\u0444\u043E\u043D \u0456 \u043F\u043B\u0430\u043D\u0448\u0435\u0442 \u043C\u043E\u0436\u043D\u0430 \u043D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u0442\u0438 \u043F\u043E-\u0441\u0432\u043E\u0454\u043C\u0443.</div></div>`;
+        <div class="set-note muted" style="margin-top:10px">\u0413\u0443\u0447\u043D\u0456\u0441\u0442\u044C</div><div class="lk-row">${[30, 50, 70, 100].map((v) => opt("vol", v, v + "%")).join("")}</div></div></div>`;
   }
   function settingsHTML(only) {
     var _a2, _b, _c, _d, _e, _f, _g, _h, _i;
@@ -4128,74 +4133,6 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       img.src = URL.createObjectURL(file);
     });
   }
-  const skMode = () => look().skin || (VVSkin.skinPart(S.lookV) ? "venue" : "old");
-  function skinCard() {
-    const m = skMode(), L = look(), own = L.sk && JSON.stringify(L.sk), pre = (k) => own === JSON.stringify(SK_PRE[k][2]);
-    const b = (on, a, extra, t, sub) => `<button class="${on ? "on" : ""}" data-a="${a}" ${extra}>${t}<small>${sub}</small></button>`;
-    return `<div class="card" style="grid-column:1/-1"><h3>\u{1F58C} \u0421\u0442\u0438\u043B\u044C</h3><div class="set-note muted">\u0412\u0438\u0433\u043B\u044F\u0434 \u043A\u043D\u043E\u043F\u043E\u043A, \u043A\u0430\u0440\u0442\u043E\u043A, \u043C\u0435\u043D\u044E \u0439 \u0432\u0456\u043A\u043E\u043D. \xAB\u0421\u0442\u0430\u0440\u0430 \u043A\u0430\u0441\u0430\xBB \u2014 \u0442\u043E\u0447\u043D\u043E \u044F\u043A \u0431\u0443\u043B\u043E. \u0421\u0442\u0438\u043B\u044C \u0437\u0430\u043A\u043B\u0430\u0434\u0443 \u0437\u0430\u0434\u0430\u0454 \u0430\u0434\u043C\u0456\u043D \u0434\u043B\u044F \u0432\u0441\u0456\u0445 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457\u0432; \xAB\u0441\u0432\u0456\u0439\xBB \u2014 \u043B\u0438\u0448\u0435 \u043D\u0430 \u0446\u044C\u043E\u043C\u0443.</div>
-      <div class="sk-pre" style="margin-top:10px">${b(m === "old", "skSet", 'data-v="old"', "\u21A9\uFE0F \u0421\u0442\u0430\u0440\u0430 \u043A\u0430\u0441\u0430", "\u044F\u043A \u0431\u0443\u043B\u043E \u0440\u0430\u043D\u0456\u0448\u0435")}${S.lookV ? b(m === "venue", "skSet", 'data-v="venue"', "\u{1F3EA} \u0421\u0442\u0438\u043B\u044C \u0437\u0430\u043A\u043B\u0430\u0434\u0443", "\u0434\u043B\u044F \u0432\u0441\u0456\u0445 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457\u0432") : ""}
-        ${Object.entries(SK_PRE).map(([k, [t, sub]]) => b(m === "own" && pre(k), "skSet", `data-v="pre" data-p="${k}"`, t, sub)).join("")}${m === "own" && !Object.keys(SK_PRE).some(pre) ? b(true, "skSet", 'data-v="own"', "\u270F\uFE0F \u0421\u0432\u0456\u0439", "\u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457") : ""}</div>
-      <div class="btnrow" style="margin-top:12px"><button class="btn sm primary" data-a="skEdit">\u{1F3A8} \u041A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440</button><button class="btn sm" data-a="skCode">\u{1F4E5} \u0412\u0441\u0442\u0430\u0432\u0438\u0442\u0438 \u043A\u043E\u0434</button>${isAdmin() ? `<button class="btn sm" data-a="skVenue">\u{1F3EA} \u0417\u0440\u043E\u0431\u0438\u0442\u0438 \u0441\u0442\u0438\u043B\u0435\u043C \u0437\u0430\u043A\u043B\u0430\u0434\u0443</button>${S.lookV ? '<button class="btn sm ghost" data-a="skVenueOff">\u2715 \u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0441\u0442\u0438\u043B\u044C \u0437\u0430\u043A\u043B\u0430\u0434\u0443</button>' : ""}` : ""}</div></div>`;
-  }
-  const skSave = (skin, sk) => {
-    store.set("look", __spreadValues(__spreadProps(__spreadValues({}, look()), { skin }), sk ? { sk } : {}));
-    applyLook();
-    renderMain();
-  };
-  const skCur = () => skinOf() || __spreadValues({}, SK_BASE);
-  const skDiff = (K) => Object.fromEntries(Object.entries(K).filter(([k, v]) => SK_BASE[k] !== v));
-  async function skEditor() {
-    var _a2, _b;
-    const K = __spreadValues({}, skCur()), body = VVSkin.editorHTML(K);
-    const pm = modal({ title: "\u{1F3A8} \u041A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440 \u0441\u0442\u0438\u043B\u044E", body, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438 \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457", val: "own", cls: "primary" }, ...isAdmin() ? [{ label: "\u{1F3EA} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438 \u0434\u043B\u044F \u0432\u0441\u044C\u043E\u0433\u043E \u0437\u0430\u043A\u043B\u0430\u0434\u0443", val: "venue" }] : [], { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
-    const box = $("#modal .skc"), upd = () => applySkin(K);
-    VVSkin.bind(box, K, upd);
-    upd();
-    const v = await pm;
-    closeModal();
-    if (v === "own") skSave("own", skDiff(K));
-    else if (v === "venue" && await act("lookVSet", { look: __spreadValues(__spreadValues({}, skDiff(K)), ((_a2 = S.lookV) == null ? void 0 : _a2.ct) ? { ct: S.lookV.ct, ca: S.lookV.ca } : {}) }, "\u{1F3EA} \u0421\u0442\u0438\u043B\u044C \u0437\u0430\u043A\u043B\u0430\u0434\u0443 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
-      S.lookV = __spreadValues(__spreadValues({}, skDiff(K)), ((_b = S.lookV) == null ? void 0 : _b.ct) ? { ct: S.lookV.ct, ca: S.lookV.ca } : {});
-      skSave("venue");
-    } else applyLook();
-  }
-  document.addEventListener("click", async (e) => {
-    const el = e.target.closest("[data-a]");
-    if (!el || !/^sk(Set|Edit|Code|Venue|VenueOff)$/.test(el.dataset.a)) return;
-    const a = el.dataset.a, d = el.dataset;
-    if (a === "skSet") return d.v === "pre" ? skSave("own", SK_PRE[d.p][2]) : skSave(d.v);
-    if (a === "skEdit") return skEditor();
-    if (a === "skCode") {
-      const t = await ask("\u{1F4E5} \u041A\u043E\u0434 \u0441\u0442\u0438\u043B\u044E", "\u0412\u0441\u0442\u0430\u0432\u0442\u0435 \u0440\u044F\u0434\u043E\u043A VARVAR-STYLE {\u2026} \u0437 \u043A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440\u0430");
-      if (!t) return;
-      try {
-        const j = JSON.parse(t.slice(t.indexOf("{")));
-        const K = Object.fromEntries(Object.entries(j).filter(([k]) => k in SK_BASE));
-        if (K.r != null || K.font) {
-          skSave("own", K);
-          toast("\u{1F3A8} \u0421\u0442\u0438\u043B\u044C \u0437\u0430\u0441\u0442\u043E\u0441\u043E\u0432\u0430\u043D\u043E \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457");
-        } else toast("\u26A0\uFE0F \u0423 \u043A\u043E\u0434\u0456 \u043D\u0435\u043C\u0430\u0454 \u043D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u044C \u0441\u0442\u0438\u043B\u044E");
-      } catch (e2) {
-        toast("\u26A0\uFE0F \u041D\u0435 \u0432\u0434\u0430\u043B\u043E\u0441\u044F \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u0442\u0438 \u043A\u043E\u0434");
-      }
-      return;
-    }
-    if (a === "skVenue") {
-      const K = skDiff(skCur());
-      if (!await confirmBox("\u{1F3EA} \u0417\u0440\u043E\u0431\u0438\u0442\u0438 \u043F\u043E\u0442\u043E\u0447\u043D\u0438\u0439 \u0441\u0442\u0438\u043B\u044C \u0441\u0442\u0438\u043B\u0435\u043C \u0437\u0430\u043A\u043B\u0430\u0434\u0443?", "\u0412\u0456\u043D \u0437\u02BC\u044F\u0432\u0438\u0442\u044C\u0441\u044F \u043D\u0430 \u0432\u0441\u0456\u0445 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u044F\u0445, \u0434\u0435 \u0432\u0438\u0431\u0440\u0430\u043D\u043E \xAB\u0421\u0442\u0438\u043B\u044C \u0437\u0430\u043A\u043B\u0430\u0434\u0443\xBB (\u0437\u0430 \u0437\u0430\u043C\u043E\u0432\u0447\u0443\u0432\u0430\u043D\u043D\u044F\u043C). \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438 \u0441\u0442\u0430\u0440\u0443 \u043A\u0430\u0441\u0443 \u043C\u043E\u0436\u043D\u0430 \u0431\u0443\u0434\u044C-\u043A\u043E\u043B\u0438.")) return;
-      if (await act("lookVSet", { look: K }, "\u{1F3EA} \u0421\u0442\u0438\u043B\u044C \u0437\u0430\u043A\u043B\u0430\u0434\u0443 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
-        S.lookV = K;
-        skSave("venue");
-      }
-      return;
-    }
-    if (a === "skVenueOff") {
-      if (await confirmBox("\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0441\u0442\u0438\u043B\u044C \u0437\u0430\u043A\u043B\u0430\u0434\u0443?", "\u041F\u0440\u0438\u0441\u0442\u0440\u043E\u0457 \u0431\u0435\u0437 \u0441\u0432\u043E\u0433\u043E \u0441\u0442\u0438\u043B\u044E \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u0434\u043E \u0441\u0442\u0430\u0440\u043E\u0457 \u043A\u0430\u0441\u0438") && await act("lookVSet", { look: null }, "\u21A9\uFE0F \u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E")) {
-        S.lookV = null;
-        skSave("old");
-      }
-    }
-  });
   const LOY_W = { hall: "\u{1FA91} \u0437\u0430\u043B", pick: "\u{1F961} \u0437 \u0441\u043E\u0431\u043E\u044E", del: "\u{1F6F5} \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430" }, LOY_D = ["", "\u041F\u043D", "\u0412\u0442", "\u0421\u0440", "\u0427\u0442", "\u041F\u0442", "\u0421\u0431", "\u041D\u0434"];
   const bdTxt = (bd) => bd ? `${bd.slice(3)}.${bd.slice(0, 2)}` : "";
   const ruleName = (r) => r.name || ({ cat: `\u2212${r.pct}%`, happy: `\u0429\u0430\u0441\u043B\u0438\u0432\u0456 \u0433\u043E\u0434\u0438\u043D\u0438 \u2212${r.pct}%`, nth: `\u041A\u043E\u0436\u043D\u0430 ${r.n}-\u0442\u0430 \u0432 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A`, sum: r.gift ? `\u0412\u0456\u0434 ${r.min} \u20B4 \u2014 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A` : `\u0412\u0456\u0434 ${r.min} \u20B4 \u2212${r.pct}%`, bday: `\u0414\u0435\u043D\u044C \u043D\u0430\u0440\u043E\u0434\u0436\u0435\u043D\u043D\u044F \u2212${r.pct}%` }[r.type] || "\u0410\u043A\u0446\u0456\u044F");

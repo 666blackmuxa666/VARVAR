@@ -209,29 +209,19 @@
   const FONTS = { system: ['Системний (iOS)', ''], inter: ['Inter', 'Inter'], manrope: ['Manrope', 'Manrope'], rubik: ['Rubik', 'Rubik'], nunito: ['Nunito', 'Nunito'], montserrat: ['Montserrat', 'Montserrat'], roboto: ['Roboto', 'Roboto'], comfortaa: ['Comfortaa', 'Comfortaa'], mono: ['JetBrains Mono', 'JetBrains Mono'], pt: ['PT Sans', 'PT Sans'] };
   const look = () => ({ theme: 'night', font: 'system', nfont: 'same', size: 100, radius: 'round', sound: 'classic', vol: 70, anim: 1, accent: '', ...store.get('look', {}) });
   function applyLook() {
-    const L = look(), T = (THEMES[L.theme] || THEMES.night)[1], r = document.documentElement.style;
-    for (const [k, v] of Object.entries(T)) r.setProperty('--' + k, v);
-    if (L.accent) r.setProperty('--accent', L.accent);
-    const fam = k => FONTS[k]?.[1], need = [fam(L.font), L.nfont !== 'same' && fam(L.nfont)].filter(Boolean);
-    for (const f of need) { const id = 'gf-' + f.replace(/ /g, ''); if (!document.getElementById(id)) { const l = document.createElement('link'); l.id = id; l.rel = 'stylesheet'; l.href = `https://fonts.googleapis.com/css2?family=${f.replace(/ /g, '+')}:wght@400;600;700;800&display=swap`; document.head.append(l); } }
+    const L = look(), r = document.documentElement.style;
     const base = '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif';
-    r.setProperty('--font', fam(L.font) ? `"${fam(L.font)}", ${base}` : base);
-    r.setProperty('--nfont', L.nfont === 'same' ? 'var(--font)' : fam(L.nfont) ? `"${fam(L.nfont)}", ${base}` : base);
+    r.setProperty('--font', base); r.setProperty('--nfont', 'var(--font)'); r.setProperty('--r', '18px'); r.setProperty('--r2', '24px');
     document.body.style.zoom = L.size === 100 ? '' : L.size / 100;
-    const R = { round: [18, 24], soft: [12, 16], square: [6, 8] }[L.radius] || [18, 24]; r.setProperty('--r', R[0] + 'px'); r.setProperty('--r2', R[1] + 'px');
-    document.body.classList.toggle('noanim', !L.anim);
     applySkin();
   }
-  // 🎨 стиль (конструктор): «Стара каса» — без шару skin.css; «Стиль закладу» — від адміна (сервер); «Свій» — лише на цьому пристрої
+  // 🎨 вигляд = стиль (форма) + кольори; заклад — на сервері (lookv), свій — лише на пристрої. Одна студія з кабінетом (VVSkin.studio)
   const { BASE: SK_BASE, PRE: SK_PRE } = VVSkin;
-  const skinOf = () => (VVSkin.skinPart(S.lookV) ? { ...SK_BASE, ...VVSkin.skinPart(S.lookV) } : null); /* 🖌 стиль каси задає власник у кабінеті (Заклад і каса → Стиль каси) — однаковий на всіх пристроях */
-  function applySkin(over) { const K = over || skinOf(); VVSkin.apply(K); if (K) document.body.classList.toggle('noanim', !K.anim || !look().anim);
-    /* 🎨 кольори: свій вибір на пристрої → кольори закладу (адмін) → кольори стилю → тема за замовчуванням */
-    const L = look(), V = S.lookV || {}, c = L.own ? { t: L.theme, a: L.accent } : V.ct ? { t: V.ct, a: V.ca || '' } : null;
-    if (c) VVSkin.colors(c.t, c.a); VVSkin.saveCol(c || (K && (K.acc || K.bg !== 'theme') ? null : { t: L.theme, a: L.accent })); }
+  const lookDev = () => { const L = look(); return { own: L.own ? 1 : 0, sk: 'sk' in L ? L.sk : undefined, ct: L.theme, ca: L.accent }; };
+  const skinOf = () => VVSkin.resolve(S.lookV, lookDev()).K;
+  function applySkin(over) { const K = over ? (VVSkin.apply(over), over) : VVSkin.paint(S.lookV, lookDev()); document.body.classList.toggle('noanim', (K && !K.anim) || !look().anim); }
   async function loadLookV() { try { const r = await api('lookV'); S.lookV = r.look || null; applyLook(); } catch {} }
-  const setLook = (k, v) => { const col = k === 'theme' || k === 'accent'; store.set('look', { ...look(), [k]: v, ...(col ? { own: 1 } : {}) }); applyLook(); renderMain();
-    if (col && isAdmin()) { const L = look(), nv = { ...(S.lookV || {}), ct: L.theme, ca: L.accent || '' }; api('lookVSet', { look: nv }).then(() => { S.lookV = nv; toast('🎨 Кольори збережено для всіх кас і кабінету'); }).catch(() => {}); } };
+  const setLook = (k, v) => { store.set('look', { ...look(), [k]: v }); applyLook(); renderMain(); };
   applyLook();
 
   // ---------- каркас ----------
@@ -469,7 +459,7 @@
       case 'vBack': if (await confirmBox('Повернути страву на стіл? Вона знову буде в рахунку.')) { if (await act('voidBack', { ts: +el.dataset.ts }, '↩️ Повернуто на стіл')) loadView(); } break;
       case 'setTab': S.setTab = el.dataset.s; renderMain(); break;
       case 'look': { const k = el.dataset.k, v = ['size', 'vol', 'anim'].includes(k) ? +el.dataset.v : el.dataset.v; setLook(k, v); if (k === 'sound' || k === 'vol') ding(); break; }
-      case 'lookReset': store.set('look', {}); applyLook(); renderMain(); toast('↺ Стандартний вигляд'); break;
+      case 'lookReset': { const { own, sk, theme, accent, skin, ...rest } = look(); store.set('look', rest); applyLook(); renderMain(); toast('↺ Як у закладу'); } break;
       case 'cashTab': S.cashTab = el.dataset.t; renderMain(); loadView(); break;
       case 'move': moveFlow(); break;
       case 'split': splitFlow(); break;

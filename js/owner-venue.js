@@ -18,6 +18,10 @@ window.OWNV = ctx => {
   const secs = () => SEC0.filter(([k]) => k !== 'start' || !isDone(S.cfgV?.id));
   const V = () => S.cfgV; // { id, sec, d: {…дані розділу} }
 
+  // 🎨 Студія вигляду — та сама, що в касі (Налаштування → Вигляд)
+  const lookHTML = v => window.VVSkin ? window.VVSkin.studio({ venue: v.d.lookV, dev: window.OWNLOOK.dev(), canVenue: true, scope: S.lookScope, toast, rerender: render,
+    ask: (t, ph) => prompt(t, ph === 'VARVAR-STYLE {…}' ? '' : ph), onScope: s => { S.lookScope = s; },
+    setVenue: l => { v.d.lookV = l; S.lookScope = 'venue'; window.OWNLOOK.setVenue(v.id, l); }, saveVenue: l => vapi(v.id, 'lookVSet', { look: l }), setDev: d => window.OWNLOOK.setDev(d) }) : '';
   async function load() {
     const v = V(); if (!secs().some(x => x[0] === v.sec)) v.sec = 'venue'; v.d = null; render();
     try {
@@ -64,8 +68,7 @@ window.OWNV = ctx => {
       return `<div class="grid"><div class="card"><h3>🏪 Заклад</h3>${row('Назва закладу', s.name, 'vsite', 'name')}${row('🕐 Відкриваємось', s.from, 'vsite', 'from')}${row('🕙 Зачиняємось', s.to, 'vsite', 'to')}
           <div style="display:flex;gap:14px;align-items:center;margin-top:10px"><button data-a="vimg" data-k="logo" style="width:84px;height:84px;flex:none;border-radius:18px;background:var(--card2);border:1px dashed var(--line2);overflow:hidden;font-size:28px">${s.logo ? `<img src="${esc(s.logo)}" style="width:100%;height:100%;object-fit:contain" alt="">` : '➕'}</button><div class="muted" style="font-size:13px">🖼 Логотип — квадратний PNG, найкраще з прозорим фоном. Видно в касі, на сайті, в меню й ботах.${s.logo ? '<br><button class="btn sm" data-a="vsiteDel" data-k="logo" style="margin-top:8px">✕ Прибрати</button>' : ''}</div></div></div>
         <div class="card"><h3>🪑 Каса й зал</h3>${R.map(([k, l, val]) => row(l, val, 'vcfg', k)).join('')}</div>
-        <div class="card"><h3>🖌 Стиль каси</h3><div class="muted" style="font-size:13px;margin-bottom:8px">Вигляд кнопок, карток, меню й вікон — однаковий на всіх телефонах і планшетах закладу. Зараз: <b>${v.d.lookV ? (Object.entries(window.VVSkin?.PRE || {}).find(([, p]) => JSON.stringify(p[2]) === JSON.stringify(v.d.lookV))?.[1][0] || '✏️ свій') : '↩️ стара каса'}</b></div>
-          <div class="btnrow"><button class="btn sm ${window.VVSkin?.skinPart(v.d.lookV) ? '' : 'primary'}" data-a="vsk" data-v="old">↩️ Стара каса</button>${Object.entries(window.VVSkin?.PRE || {}).map(([k, [t]]) => `<button class="btn sm ${JSON.stringify(window.VVSkin.PRE[k][2]) === JSON.stringify(v.d.lookV) ? 'primary' : ''}" data-a="vsk" data-v="pre" data-p="${k}">${t}</button>`).join('')}<button class="btn sm" data-a="vskEdit">🎨 Конструктор</button><button class="btn sm ghost" data-a="vskCode">📥 Код</button></div></div>
+        <div class="card" style="grid-column:1/-1"><h3>🎨 Вигляд каси й кабінету</h3>${lookHTML(v)}</div>
         <div class="card"><h3>🌙 Закриття дня</h3>${tgl('Автоматичний Z-звіт', c.autoZ, 'vcfgTgl', 'autoZ')}${tgl('Друкувати Z', c.zPrint, 'vcfgTgl', 'zPrint')}${tgl('Z у Telegram', c.zTg, 'vcfgTgl', 'zTg')}${tgl('Нагадати, якщо Z не закрито', c.zRemind, 'vcfgTgl', 'zRemind')}</div></div>`;
     },
     site(v) {
@@ -240,12 +243,6 @@ window.OWNV = ctx => {
     if (a === 'vstfAdd') return modal('➕ Новий працівник', `<label>Імʼя<input name="n" required maxlength="30"></label><label>PIN (4 цифри)<input name="p" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4"></label><label>Роль<select name="r"><option value="waiter">🧑‍🍳 Офіціант</option><option value="cook">👨‍🍳 Кухар</option><option value="courier">🛵 Курʼєр</option><option value="admin">👑 Адмін</option></select></label>`, async f => { await vapi(id, 'staffAdd', { name: f.n.value.trim(), pin: f.p.value, role: f.r.value }); toast('👥 Додано'); load(); });
     // 🤖 боти
     // 🖌 стиль каси закладу (lookv) — лише тут, у касі вибору більше немає
-    if (a === 'vsk') { const cc = v.d.lookV?.ct ? { ct: v.d.lookV.ct, ca: v.d.lookV.ca } : null, look = d.v === 'old' ? cc : { ...window.VVSkin.PRE[d.p][2], ...cc }; return act(() => vapi(id, 'lookVSet', { look }), '🖌 Стиль каси збережено — каси оновляться самі'); }
-    if (a === 'vskCode') { const t = prompt('Вставте код стилю (VARVAR-STYLE {…})'); if (!t) return; let K; try { K = window.VVSkin.parse(t); } catch { K = null; } if (!K) return toast('⚠️ Невірний код'); return act(() => vapi(id, 'lookVSet', { look: K }), '🖌 Стиль каси збережено'); }
-    if (a === 'vskEdit') { const VS = window.VVSkin, K = { ...VS.BASE, ...(v.d.lookV || {}) };
-      const bg = modal('🎨 Конструктор стилю каси', `<div class="muted" style="font-size:13px;margin-bottom:8px">Кабінет одразу показує, як виглядатиме каса. Збереження — для всіх пристроїв закладу.</div>${VS.editorHTML(K)}`, async () => { const look = VS.diff(K); await vapi(id, 'lookVSet', { look: Object.keys(look).length ? look : null }); toast('🖌 Стиль каси збережено'); load(); });
-      VS.bind(bg.querySelector('.skc'), K, k => VS.apply(k, false)); VS.apply(K, false);
-      new MutationObserver((m, o) => { if (!bg.isConnected) { o.disconnect(); window.OWNSKIN?.(); } }).observe(document.body, { childList: true }); return; }
     if (a === 'vbotNew') { /* 🤖 майстер: Telegram дозволяє створити бота лише через @BotFather — ведемо по кроках і підставляємо готові назви */
       const nm = S.venues.find(x => x.id === id)?.name || id, W = { BOT_TOKEN: ['🧑‍🍳 бот персоналу', ' · персонал', 'staff'], GUEST_BOT_TOKEN: ['🍔 бот гостей', '', ''], COURIER_BOT_TOKEN: ['🛵 бот курʼєрів', ' · курʼєри', 'courier'] }[d.k];
       const TR = { а: 'a', б: 'b', в: 'v', г: 'h', ґ: 'g', д: 'd', е: 'e', є: 'ie', ж: 'zh', з: 'z', и: 'y', і: 'i', ї: 'i', й: 'i', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'shch', ь: '', ю: 'iu', я: 'ia', 'ʼ': '', "'": '' };
