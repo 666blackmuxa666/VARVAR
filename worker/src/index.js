@@ -17,7 +17,7 @@ export { PrintQ } from './print.js';
 export { Store } from './store.js';
 export { Hub } from './hub.js';
 import { hubVenues, hub } from './hub.js';
-import { ownerApi, intApi } from './owner.js';
+import { ownerApi, intApi, intSecret } from './owner.js';
 import { storeDB } from './store.js';
 import { qrKey, tableKey, qrRoute } from './qr.js';
 import { ALS, MAIN, doName, splitVenue, stripVenue, venueEnv, siteLink } from './venue.js';
@@ -71,7 +71,8 @@ export default {
       if (kh >= '04:00' && kh < '04:05') await (await import('./owner.js')).demoSnap(env, 'atom-demo', 'reset');
     })());
     const list = [MAIN, ...(await hubVenues(env).catch(() => []))];
-    ctx.waitUntil(Promise.all(list.map(v => env.STORE.get(env.STORE.idFromName(doName(v))).fetch(new Request('https://in/__cron', { headers: { 'x-cron': '1', ...(v === MAIN ? {} : { 'x-venue': v }) } })).catch(() => {}))));
+    const cronKey = env.MASTER_KEY ? await intSecret(env) : '1';
+    ctx.waitUntil(Promise.all(list.map(v => env.STORE.get(env.STORE.idFromName(doName(v))).fetch(new Request('https://in/__cron', { headers: { 'x-cron': cronKey, ...(v === MAIN ? {} : { 'x-venue': v }) } })).catch(() => {}))));
   },
 };
 export async function handle(req, env) {
@@ -150,7 +151,7 @@ export async function handle(req, env) {
       if (url.pathname === '/api/build') return json({ build: BUILD });
       if (url.pathname === '/api/owner' && req.method === 'POST') return env.VENUE === MAIN ? json(...await ownerApi(req, env)) : json({ error: 'not_found' }, 404); // 👑 кабінет власника
       if (url.pathname.startsWith('/__int/')) return json(...await intApi(req, env, url.pathname)); // заклад ← кабінет (лише зсередини воркера)
-      if (url.pathname === '/__cron') return env.INSTORE && req.headers.get('x-cron') ? json(await cron(env)) : json({ error: 'no' }, 403);
+      if (url.pathname === '/__cron') return env.INSTORE && req.headers.get('x-cron') && req.headers.get('x-cron') === (env.MASTER_KEY ? await intSecret(env) : '1') ? json(await cron(env)) : json({ error: 'no' }, 403);
       // 🌐 візитка
       if (url.pathname === '/api/site') return new Response(JSON.stringify(await sitePublic(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
       if (url.pathname === '/site') return Response.redirect(siteLink('about.html'), 302);

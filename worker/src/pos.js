@@ -33,7 +33,7 @@ export async function posLive(req, env, url) {
 export async function posApi(b, req, env) {
   const ip = req.headers.get('CF-Connecting-IP') || '';
   if (b.op === 'login') return login(b, env, ip);
-  if (b.op === 'register') return register(b, env);
+  if (b.op === 'register') return register(b, env, ip);
   const token = tokenOf(req), me = await session(env, token);
   if (!me) return [{ error: 'auth' }, 401];
   // видаленого працівника одразу викидає з каси (сесія більше не діє)
@@ -327,8 +327,14 @@ async function adminRest(b, env, who, ip, ok) {
 
 // реєстрація працівника: код (1119 адмін / 1112 офіціант) + імʼя + свій PIN → одразу вхід
 const ROLE_UA = { admin: 'адміністратор', cook: 'кухар', courier: 'кур\'єр', waiter: 'офіціант' };
-async function register(b, env) {
-  const role = await regRole(env, b.code); if (!role) return [{ error: 'Невірний код реєстрації' }, 401];
+// 🔒 ліміт невдалих спроб входу / реєстрації з однієї адреси (10 за 10 хв); успішний вхід лічильник не скидає
+const lrlKey = ip => 'lrl:' + ipKey(ip || 'none');
+const lrlBlocked = async (env, ip) => (+(await env.DB.get(lrlKey(ip))) || 0) >= 10;
+const lrlFail = async (env, ip) => { const k = lrlKey(ip); await env.DB.put(k, String((+(await env.DB.get(k)) || 0) + 1), { expirationTtl: 600 }); };
+const TOO_MANY = [{ error: 'Забагато спроб — зачекайте 10 хвилин' }, 429];
+async function register(b, env, ip) {
+  if (await lrlBlocked(env, ip)) return TOO_MANY;
+  const role = await regRole(env, b.code); if (!role) { await lrlFail(env, ip); return [{ error: 'Невірний код реєстрації' }, 401]; }
   const r = await addStaff(env, b.name, b.pin, role); if (r.error) return [{ error: r.error }, 400];
   await notify(env, `👥 Новий працівник: <b>${esc(r.s.name)}</b> (${ROLE_UA[role]}) — зареєструвався в касі`);
   const me = { name: r.s.name, role, sid: r.s.id };
@@ -337,12 +343,13 @@ async function register(b, env) {
   return [{ ok: true, token, me }, 200];
 }
 async function login(b, env, ip) {
+  if (await lrlBlocked(env, ip)) return TOO_MANY;
   let me = null;
   if (b.pin) {
     const h = await pinHash(String(b.pin)); const s = (await getStaff(env)).find(x => x.pin === h); if (s) me = { name: s.name, role: s.role, sid: s.id, ver: s.ver || 0 }; // спершу PIN працівника — код реєстрації не має його перекривати
     else { const role = await regRole(env, b.pin); if (role) return [{ ok: true, register: role }, 200]; } // код реєстрації → форма «імʼя + свій PIN»
   }
-  if (!me) return [{ error: 'Невірний PIN' }, 401];
+  if (!me) { await lrlFail(env, ip); return [{ error: 'Невірний PIN' }, 401]; }
   const token = [...crypto.getRandomValues(new Uint8Array(16))].map(x => x.toString(16).padStart(2, '0')).join('');
   await env.DB.put('pos:' + token, JSON.stringify({ ...me, at: Date.now() }), { expirationTtl: SESSION_TTL[me.role] });
   return [{ ok: true, token, me }, 200];
