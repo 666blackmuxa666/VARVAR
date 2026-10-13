@@ -259,6 +259,14 @@ async function apiTests() {
     const r = await http('/api/go', { kind: 'del', name: 'QA Гість', phone: '0670000' + String(Math.floor(Math.random() * 900) + 100), addr: 'вул. Тестова 1', when: '12:00', pay: 'cash', items: [{ id: dish.id, q: 1 }], device: 'qa-' + RUN });
     must(r.status === 200 && r.j.ok, `${r.status} ${JSON.stringify(r.j)}`); G = r.j.t; oid = r.j.id; must(G > 1000 && G < 2000, 'номер ' + G); return r.j.no;
   });
+  await step('🔐 /api/go: службові _paid/_oid від гостя ігноруються (не «оплачено онлайн», ліміт діє)', async () => {
+    const body = { kind: 'pick', name: 'QA Хакер', phone: '0670001' + String(Math.floor(Math.random() * 900) + 100), when: '12:00', pay: 'cash', items: [{ id: dish.id, q: 1 }], device: 'qa-hk-' + RUN, _paid: { sum: 1 }, _oid: 'abcdef0123' };
+    const rs = []; for (let i = 0; i < 4; i++) rs.push(await http('/api/go', body));
+    must(rs.slice(0, 3).every(r => r.status === 200) && rs[3].status === 429, 'ліміт 3/10хв обійдено: ' + rs.map(r => r.status));
+    must(rs[0].j.id !== 'abcdef0123', '_oid прийнято');
+    const b = (await posOk(A, 'state')).tables.find(x => x.t === rs[0].j.t); must(b && !b.go?.paid && b.pay === 'cash', 'позначено оплаченим: ' + JSON.stringify({ pay: b?.pay, paid: b?.go?.paid }));
+    for (const r of rs.slice(0, 3)) await pos(A, 'reject', { oid: r.j.id });
+  });
   await step('адмін приймає', async () => {
     const r = await posOk(A, 'accept', { oid }); must(r.done, 'accept=false');
     const s = await posOk(A, 'state'); const b = s.tables.find(x => x.t === G); must(b?.go?.st === 'acc', 'go.st=' + b?.go?.st);
