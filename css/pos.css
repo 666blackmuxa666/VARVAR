@@ -979,21 +979,21 @@ body.noanim .ev.wait{outline:3px solid var(--wc,#ff9f0a)}
 @media (max-width: 400px) { .c-card summary { grid-template-columns: auto 1fr auto; } .c-pay { grid-column: 1 / -1; grid-row: 2; margin-top: -6px; } }
 
 /* 🌈 Столи: повільне переливання кольорів замість сірого світіння */
-.tables .tbl { background: linear-gradient(125deg, #1b2a4a, #2a1f4d, #13383f, #3a2147, #1b2a4a) 0 0 / 400% 400% !important; animation: tblFlow 14s ease-in-out infinite; }
+.tables .tbl { --g1: color-mix(in srgb, var(--accent) 14%, var(--card2, #1c1d24)); --g2: color-mix(in srgb, var(--accent) 4%, var(--card, #15161d)); background: linear-gradient(125deg, var(--g1), var(--g2), color-mix(in srgb, var(--accent) 24%, var(--card, #15161d)), var(--g2), var(--g1)) 0 0 / 400% 400% !important; animation: tblFlow 14s ease-in-out infinite; }
 .tables .tbl:nth-child(3n+2) { animation-delay: -4s; } .tables .tbl:nth-child(3n) { animation-delay: -9s; }
-.tables .tbl.busy { background: linear-gradient(125deg, #8a4b12, #a3304a, #6b2f8f, #b5701a, #8a4b12) 0 0 / 400% 400% !important; animation-duration: 9s; box-shadow: inset 0 1.5px 0 #ffffff59, inset 0 -5px 0 #00000059, 0 4px 0 -1px #0000008c, 0 8px 18px -6px #0000009e !important; border-color: #ffffff26; }
+.tables .tbl.busy { background: linear-gradient(125deg, color-mix(in srgb, var(--accent) 55%, #000), color-mix(in srgb, var(--accent) 30%, var(--card, #15161d)), color-mix(in srgb, var(--accent) 75%, #000), color-mix(in srgb, var(--accent) 35%, var(--card, #15161d)), color-mix(in srgb, var(--accent) 55%, #000)) 0 0 / 400% 400% !important; animation-duration: 9s; box-shadow: inset 0 1.5px 0 #ffffff59, inset 0 -5px 0 #00000059, 0 4px 0 -1px #0000008c, 0 8px 18px -6px #0000009e !important; border-color: #ffffff26; }
 @keyframes tblFlow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
 @media (prefers-reduced-motion: reduce) { .tables .tbl { animation: none; } }
 
 /* ✨ Нижнє меню: скло, живі значки при натисканні */
 @media (max-width: 1100px) {
-  .nav { background: linear-gradient(180deg, #14161ccc, #0b0c10f2) !important; backdrop-filter: blur(18px) saturate(1.6); -webkit-backdrop-filter: blur(18px) saturate(1.6); border-top: 1px solid #ffffff14; box-shadow: 0 -10px 30px -12px #000000cc; }
+  .nav { background: linear-gradient(180deg, #14161ccc, #0b0c10f2) !important; backdrop-filter: blur(18px) saturate(1.6); -webkit-backdrop-filter: blur(18px) saturate(1.6); border-top: 1px solid #ffffff14; box-shadow: none; }
   .nav button { transition: color .25s, background .3s, transform .2s cubic-bezier(.3, 1.6, .5, 1); }
   .nav button .ic { transition: transform .35s cubic-bezier(.3, 1.8, .45, 1), filter .3s; will-change: transform; }
   .nav button:active { transform: scale(.9); }
   .nav button:active .ic { transform: scale(.75) rotate(-8deg); }
-  .nav button.on { background: radial-gradient(80% 90% at 50% 100%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 70%), linear-gradient(160deg, #ffffff14, #ffffff05) !important; }
-  .nav button.on .ic { animation: navPop .55s cubic-bezier(.3, 1.8, .45, 1); filter: drop-shadow(0 3px 8px color-mix(in srgb, var(--accent) 70%, transparent)) !important; transform: translateY(-2px) scale(1.12); }
+  .nav button.on { background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent) 6%, transparent)) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent) !important; }
+  .nav button.on .ic { animation: navPop .55s cubic-bezier(.3, 1.8, .45, 1); filter: none !important; transform: translateY(-2px) scale(1.12); }
   .nav button.on::before { animation: navBar .45s cubic-bezier(.2, .9, .3, 1); }
 }
 @keyframes navPop { 0% { transform: scale(.6) rotate(-12deg); } 45% { transform: translateY(-6px) scale(1.3) rotate(6deg); } 70% { transform: translateY(0) scale(.95); } 100% { transform: translateY(-2px) scale(1.12); } }
