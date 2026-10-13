@@ -118,7 +118,7 @@ export async function courCashGive(env, name, sum, by) { // адмін: «отр
 export async function courShiftEnd(env, name) {
   const d = await courDay(env, name); if (!d.n) return d;
   await logEvent(env, { k: 'ccash', n: name, sum: d.left, s: d.left > 0 ? 'new' : 'acc', text: `🛵 ${name} закінчив зміну: ${d.n} доставок · здає готівку ${d.left} ₴ · заробіток ${d.earn} ₴` });
-  if (d.left > 0) await notify(env, `🛵 <b>${esc(name)}</b> закінчив зміну\n${d.n} доставок · 💵 здає <b>${d.left} ₴</b>`, { inline_keyboard: [[{ text: `✅ Отримав ${d.left} ₴`, callback_data: `cc:${encodeURIComponent(name).slice(0, 40)}:${d.left}` }]] });
+  if (d.left > 0) await notify(env, `🛵 <b>${esc(name)}</b> закінчив зміну\n${d.n} доставок · 💵 здає <b>${d.left} ₴</b>`, { inline_keyboard: [[{ text: `✅ Отримав ${d.left} ₴`, callback_data: `cc:${(await getStaff(env)).find(z => z.name === name)?.id || ''}:${d.left}` }]] });
   const ch = (await getLinks(env))[name]; if (ch) await ctg(env, 'sendMessage', { chat_id: ch, text: `🔴 Зміну закінчено\n🛵 Доставок: <b>${d.n}</b>\n💵 Здати в касу: <b>${d.left} ₴</b>\n💰 Заробіток: <b>${d.earn} ₴</b>`, parse_mode: 'HTML' }).catch(() => {});
   return d;
 }

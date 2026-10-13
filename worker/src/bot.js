@@ -6,7 +6,7 @@ import { getMenu, handleMenuText, handleMenuPhoto, HELP as MENU_HELP } from './m
 import { tn, isGo } from './tn.js';
 import { courCashGive } from './courier.js';
 import { bookList, bookSet, bookGet, bookManual, bookEditFields, bkLabel, bkButtons, certPay, getSite, setSite } from './site.js';
-import { goSet, goStLabel, goButtons, goList, goText, setGoCfg, goFromPos, goAttach, goEdit, normPhone, fmtPhone } from './delivery.js';
+import { goSet, goStLabel, goButtons, goList, goText, setGoCfg, goFromPos, goAttach, goEdit, goApi, normPhone, fmtPhone } from './delivery.js';
 import { parseWaiterOrder, draftText } from './waiter.js';
 import { tablePick, catsView, obCallback, getOb, putOb } from './orderui.js';
 import { queuePrint, printStatus, printClear, printList, printMove, getRoute } from './print.js';
@@ -46,6 +46,7 @@ ${W.tables} — відкриті столи і суми (у столі: преч
 ${W.close} — закрити рахунок (гість розрахувався)
 ${W.stop} — чого немає / повернути в меню
 ${W.loy} — рівні й акції; <code>клієнт 0501234567</code> — картка гостя
+<code>гість 5 0501234567</code> — телефон гостя на рахунок (кешбек); <code>бонус 5 50</code> — списати бонуси
 ${W.admin} — режим адміністратора (для ролі «адмін»)
 <code>принтер</code> — стан принтера, тестовий друк, QR
 
@@ -572,6 +573,11 @@ export async function handleUpdate(u, env) {
   if (/^(вхідні|✉️|\/inbox)$/i.test(text.trim())) { if (!waiter) return send({ text: '🔐 Спершу увійдіть своїм PIN' }); await (await import('./guestbot.js')).inboxBot(env, chat); return; } // ✉️ невідписані повідомлення гостей
   if (text === W.plan || /^(\/plan|план)$/i.test(text)) { const s0 = await meStaff(env, uid); if (!s0) return send({ text: '🔐 Спершу увійдіть своїм PIN' }); const v = await (await import('./tasks.js')).taskBotView(env, s0); return send(v); } // 📋 план на день
   if (/^(побажання|\/idea)/i.test(text)) { const r = await (await import('./ideas.js')).ideaBot(env, text, await meStaff(env, uid), admin); if (r) return send(r); } // 💡 побажання розробнику
+  { const m = text.match(/^(гість|бонус)\s+(\d+)\s+(\S+)\s*$/i); if (m && waiter) { // 🎁 паритет з касою: телефон гостя на рахунок (кешбек) / списати бонуси
+    const t = +m[2], bill = await getBill(env, t); if (!bill.total) return send({ text: `⚠️ Стіл ${tn(t)} порожній` });
+    const me = { name: who, role: admin ? 'admin' : 'waiter' };
+    if (/^гість$/i.test(m[1])) { const ph = /^(0|-|—|скинути)$/i.test(m[3]) ? '' : m[3]; const [r] = await goApi({ op: 'cliSet', phone: ph }, env, me, t); return send({ text: r.error ? '⚠️ ' + r.error : ph ? `✅ ${tn(t)}: гість ${fmtPhone(normPhone(ph))} — кешбек нарахується при закритті` : `✅ ${tn(t)}: гостя знято` }); }
+    const [r] = await goApi({ op: 'cliBonus', sum: m[3] }, env, me, t); return send({ text: r.error ? '⚠️ ' + r.error : `✅ ${tn(t)}: списано бонусами ${r.bonus} грн` }); } }
   { const r = await loyBotText(env, text === W.loy ? 'акції' : text, admin); if (r) return send(r); } // 🎁 клієнт 050… / клієнт Іван / акції (promo.js)
   if (text === W.go || low === '/go' || low === 'доставка') { const l = await goList(env, await openTables(env)); await send({ text: goText(l) }); for (const g of l) await send({ text: `<b>${tn(g.t)}</b> · ${esc(g.name)} · ${goStLabel(g.st)}`, markup: { inline_keyboard: [...goButtons(g), ...(admin ? [[{ text: '✏️ Змінити', callback_data: 'goe:' + g.t }]] : [])] } }); return; }
   { const m = text.match(/^доставка\s+(\S+)\s+(.+)$/i); if (m && admin) { // ⚙️ доставка мін 300 · доставка з 10:00 · доставка вимк
@@ -665,8 +671,8 @@ async function handleCallback(q, env) {
   if (act === 'atk' || act === 'swk' || act === 'zpb' || act === 'zpbs') { // 👷 зміни й зарплата
     if (!admin) return answer('🔐 Лише для адміністратора');
     if (act === 'atk') { const n = (await getStaff(env)).find(z => z.id === oid)?.name; const x = n && await attConfirm(env, arg, n, opt, who); if (!x) return answer('Не знайдено');
-      await edit(`${q.message?.text || ''}\n\n${opt === 'n' ? '❌ Відхилив' : '✅ Підтвердив'}${opt === 'f' ? ' + штраф' : ''}: <b>${esc(who)}</b>`); return answer('Готово'); }
-    if (act === 'swk') { const sw = await swapStep(env, arg, oid === 'ok' ? 'ok' : 'no', who); await edit(`${q.message?.text || ''}\n\n${sw ? (sw.st === 'done' ? '✅ Обмін підтверджено' : '❌ Відхилено') : 'Вже оброблено'}`); return answer(''); }
+      await edit(`${esc(q.message?.text || '')}\n\n${opt === 'n' ? '❌ Відхилив' : '✅ Підтвердив'}${opt === 'f' ? ' + штраф' : ''}: <b>${esc(who)}</b>`); return answer('Готово'); }
+    if (act === 'swk') { const sw = await swapStep(env, arg, oid === 'ok' ? 'ok' : 'no', who); await edit(`${esc(q.message?.text || '')}\n\n${sw ? (sw.st === 'done' ? '✅ Обмін підтверджено' : '❌ Відхилено') : 'Вже оброблено'}`); return answer(''); }
     const n = (await getStaff(env)).find(z => z.id === arg)?.name; if (!n) return answer('Не знайдено');
     if (act === 'zpb') { const r = (await payroll(env)).rows.find(z => z.n === n); await send({ text: `💸 Видати <b>${esc(n)}</b> ${money(r?.due || 0)} — звідки?`, markup: { inline_keyboard: [[{ text: '💵 З каси', callback_data: `zpbs:${arg}:cash` }, { text: '💳 З картки', callback_data: `zpbs:${arg}:card` }]] } }); return answer(''); }
     // «видати все»: сума до виплати рахується й записується під одним замком + запобіжник від повторного натискання (10 с)
@@ -732,7 +738,7 @@ async function handleCallback(q, env) {
   if (act === 'tgu') { await env.DB.delete('tgs:' + uid); await edit('🔓 Відвʼязано. «зміна» — привʼязати знову.'); return answer(''); }
   if (act === 'cc') { // 🛵 адмін отримав готівку від кур'єра
     if (!admin) return answer('🔐 Лише для адміністратора');
-    const n = decodeURIComponent(arg), r = await courCashGive(env, n, +oid, who); await edit(`${q.message?.text ? esc(q.message.text) : ''}\n\n✅ Отримав ${oid} ₴ — <b>${esc(who)}</b>`); return answer(r ? 'Записано' : '');
+    const n = (await getStaff(env)).find(z => z.id === arg)?.name; if (!n) return answer('Не знайдено працівника'); const r = await courCashGive(env, n, +oid, who); await edit(`${q.message?.text ? esc(q.message.text) : ''}\n\n✅ Отримав ${oid} ₴ — <b>${esc(who)}</b>`); return answer(r ? 'Записано' : '');
   }
   if (act === 'ct') { // 🎁 сертифікат оплачено / скасовано
     if (!admin) return answer('🔐 Лише для адміністратора');
