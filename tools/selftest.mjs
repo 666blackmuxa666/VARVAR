@@ -699,14 +699,14 @@ async function cdpOpen(bin) {
 // що вилазить за .card / .kv / .kpi (і горизонтальний скрол сторінки)
 // 🎨 --design: діагностика кнопок (замалі / завеликі / обрізаний текст / різна висота в ряду / «сирота» в останньому ряду) → _team/design-report.md
 const DESIGN = ARGS.includes('--design'), designLog = new Map();
-const DESIGN_JS = `(() => {
+const designJs = (SEL = '#main button, #main .btn, #modal button, #sheet button, #phw button, nav button') => `(() => {
   const out = [], vis = el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
   const txt = el => (el.innerText || el.title || el.getAttribute('aria-label') || '').trim().replace(/\\s+/g, ' ').slice(0, 30);
-  const btns = [...document.querySelectorAll('#main button, #main .btn, #modal button, #sheet button, #phw button, nav button')].filter(vis);
+  const btns = [...document.querySelectorAll(${JSON.stringify(SEL)})].filter(vis);
   const mob = innerWidth < 600;
-  for (const b of btns) { const r0 = b.getBoundingClientRect(), t = txt(b), ex = getComputedStyle(b, '::before').position === 'absolute' ? 16 : 0, r = { width: r0.width, height: r0.height + ex };
+  for (const b of btns) { const r0 = b.getBoundingClientRect(), t = txt(b), ex = getComputedStyle(b, '::before').position === 'absolute' ? 16 : 0, exw = ex && getComputedStyle(b, '::before').left.startsWith('-') ? 12 : 0, r = { width: r0.width + exw, height: r0.height + ex };
     if (mob && (r.height < 34 || r.width < 34) && !b.closest('.ph-refs,.kpi')) out.push('замала ' + Math.round(r.width) + '×' + Math.round(r.height) + ': «' + t + '»');
-    if (r.height > 72 && !b.querySelector('img') && !b.matches('.tbl,.tbl *,.kpi,.card,.big1') && !/grid|tile|tables/.test(b.parentElement.className)) out.push('зависока ' + Math.round(r.height) + 'px: «' + t + '»');
+    if (r.height > 72 && !b.querySelector('img') && !b.matches('.tbl,.tbl *,.kpi,.card,.big1,.ai-card') && !/grid|tile|tables/.test(b.parentElement.className)) out.push('зависока ' + Math.round(r.height) + 'px: «' + t + '»');
     if (b.scrollWidth > b.clientWidth + 2 && getComputedStyle(b).overflow !== 'visible') out.push('обрізаний текст: «' + t + '»'); }
   for (const p of new Set(btns.map(b => b.parentElement))) {
     if (p.matches('.st-g,.grid2,.sup-l,.nav,.grid,.ph-pick')) continue; const kids = [...p.children].filter(x => x.matches('button,.btn') && vis(x)); if (kids.length < 2) continue;
@@ -717,7 +717,8 @@ const DESIGN_JS = `(() => {
   }
   return [...new Set(out)];
 })()`;
-const designNote = async (b, where) => { if (!DESIGN) return; for (const x of await b.ev(DESIGN_JS)) { const l = designLog.get(x) || []; if (l.length < 3) l.push(where); designLog.set(x, l); } };
+const DESIGN_JS = designJs();
+const designNote = async (b, where, js = DESIGN_JS) => { if (!DESIGN) return; for (const x of await b.ev(js)) { const l = designLog.get(x) || []; if (l.length < 3) l.push(where); designLog.set(x, l); } };
 const OVERFLOW_JS = `(() => {
   const bad = [], seen = new Set();
   const vis = el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
@@ -791,8 +792,31 @@ async function uiTests() {
         for (const v of views) if (!ONLY_VIEWS || ONLY_VIEWS.includes(v)) await checkView(label, w, v);
       }
     }
+    if (DESIGN) await designPages(b);
   } finally { b.close();
     if (DESIGN) { const { writeFileSync } = await import('node:fs'); writeFileSync(new URL('../_team/design-report.md', import.meta.url), `# 🎨 Діагностика кнопок · ${new Date().toISOString().slice(0, 16)}\n\nЗнайдено: ${designLog.size}\n\n` + [...designLog].map(([k, v]) => `- ${k}  \n  _${v.join(' · ')}_`).join('\n') + '\n'); console.log('🎨 design-report: ' + designLog.size); } }
+}
+
+// 🎨 кабінет власника, меню гостя, доставка, візитка — та сама діагностика кнопок
+async function designPages(b) {
+  const ALL = designJs('body button:not(#main *), body .btn, body a.btn, body [role=button]');
+  const go = async (u, ms = 2500) => { await b.send('Page.navigate', { url: u }); await sleep(ms); };
+  const own = await http('/api/owner', { op: 'login', email: 'qa-platform@test.local', pass: 'qa-platform-pass-1' }).catch(() => ({}));
+  for (const w of [375, 1280]) {
+    await b.send('Emulation.setDeviceMetricsOverride', { width: w, height: w < 600 ? 812 : 900, deviceScaleFactor: 1, mobile: w < 600 });
+    for (const [name, path] of [['меню гостя', '/index.html?t=1'], ['доставка', '/index.html?go'], ['візитка', '/about.html']]) {
+      await go(`${SITE}${path}${path.includes('?') ? '&' : '?'}api=${encodeURIComponent(API)}`, 3000); await designNote(b, `${name} ${w}px`, ALL);
+      if (name !== 'візитка') { await b.ev(`(() => { const x = document.querySelector('[data-add], .add, .plus, .dish button'); x && x.click(); return 1; })()`); await sleep(800); await designNote(b, `${name} ${w}px (після «додати»)`, ALL); }
+    }
+    if (own.j?.token) {
+      await go(`${SITE}/owner.html?api=${encodeURIComponent(API)}`, 800);
+      await b.ev(`localStorage.setItem('own_token', JSON.stringify(${JSON.stringify(own.j.token)})); 1`); await go(`${SITE}/owner.html?api=${encodeURIComponent(API)}`, 3000);
+      await designNote(b, `кабінет ${w}px`, ALL);
+      for (const t of await b.ev(`[...document.querySelectorAll('[data-a="tab"]')].map(x => x.dataset.t)`)) {
+        await b.ev(`(() => { document.querySelector('[data-a="tab"][data-t="${t}"]')?.click(); return 1; })()`); await sleep(2000); await designNote(b, `кабінет ${w}px ${t}`, ALL);
+      }
+    }
+  }
 }
 
 // ---------- запуск ----------

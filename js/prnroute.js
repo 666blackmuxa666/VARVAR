@@ -9,7 +9,7 @@
     .prn-r input,.prn-r select{min-height:34px;padding:4px 8px;font:inherit;font-size:14px;min-width:0;width:100%}
     .prn-c{display:flex;gap:4px;flex-wrap:wrap}.prn-c button,.prn-n{min-height:40px;min-width:40px;padding:0 6px;border-radius:9px;border:1px solid var(--line,rgba(127,127,127,.3));background:none;color:inherit;font:inherit;font-size:15px;opacity:.45;cursor:pointer}
     .prn-c button.on{opacity:1;background:var(--accent);border-color:var(--accent);color:var(--accent-ink,#000)}.prn-n{opacity:1;font-size:13px;font-weight:700}
-    .prn-x{background:none;border:0;color:inherit;opacity:.5;font-size:16px;cursor:pointer;padding:0 4px}.prn-w{font-size:12px;color:#ff9f0a}
+    .prn-x{background:none;border:0;color:inherit;opacity:.5;font-size:16px;cursor:pointer;padding:0 4px;min-width:36px;min-height:40px}.prn-w{font-size:12px;color:#ff9f0a}
     @media(max-width:640px){.prn-r{grid-template-columns:1fr auto auto}.prn-r select{grid-column:1/-1;grid-row:2}.prn-c{grid-column:1/-1;grid-row:3}}</style>`);
   const blank = i => ({ id: 'p' + Date.now().toString(36).slice(-5), name: `Принтер ${i + 1}`, dev: '', g: [], r: 0, n: 1 });
   window.PRN = {

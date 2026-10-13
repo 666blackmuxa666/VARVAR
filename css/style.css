@@ -371,3 +371,10 @@ html[data-mt][data-shp="brackets"] .cat:not(.compact) .item { border-radius: 0; 
 html[data-mt][data-shp="polaroid"] .cat:not(.compact) .item { border-radius: 3px; border: 0; padding: 8px 8px 18px; background: #fbfaf6; color: #1d1d1d; box-shadow: 0 10px 26px rgba(0,0,0,.28); rotate: -1.2deg; }
 html[data-mt][data-shp="polaroid"] .cat:not(.compact) .item:nth-child(2n) { rotate: 1.1deg; } html[data-mt][data-shp="polaroid"] .item :is(h3, p, .price) { color: #1d1d1d; }
 /* 🔷 shapes:end */
+
+/* 📐 автоадаптація кнопок (діагностика: tools/selftest.mjs --design) */
+.like { position: relative; } .like::before { content: ''; position: absolute; inset: -10px -6px; }
+@media (max-width: 600px) {
+  .drinks .add { height: 38px; min-width: 40px; }
+  .qty button { width: 36px; height: 36px; }
+}

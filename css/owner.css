@@ -281,3 +281,11 @@ tr.sum td { font-weight: 700; border-bottom: 0; }
 .dz-bx { display: flex; flex: 1; min-width: 0; min-height: 0; overflow: hidden; position: relative; z-index: 1; } .dz-bx > * { flex: 1; min-width: 0; }
 .h11 { font-size: 11em; } .l40 { width: 40em; height: 40em; } .n18 { font-size: 18em; }
 #sb.dz.pv .sb-dev { display: flex; }
+
+/* 📐 автоадаптація кнопок (діагностика: tools/selftest.mjs --design) */
+@media (max-width: 600px) {
+  .chips button, .seg2 button, .btn.sm { min-height: 40px; }
+  .chips button, .seg2 button { flex: 1 1 auto; }
+  .crm-st button { min-height: 36px; }
+}
+.btnrow > .btn { flex: 1 1 auto; }
