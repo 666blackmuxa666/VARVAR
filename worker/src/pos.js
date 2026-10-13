@@ -329,7 +329,7 @@ async function adminRest(b, env, who, ip, ok) {
 const ROLE_UA = { admin: 'адміністратор', cook: 'кухар', courier: 'кур\'єр', waiter: 'офіціант' };
 // 🔒 ліміт невдалих спроб входу / реєстрації з однієї адреси (10 за 10 хв); успішний вхід лічильник не скидає
 const lrlKey = ip => 'lrl:' + ipKey(ip || 'none');
-const lrlBlocked = async (env, ip) => (+(await env.DB.get(lrlKey(ip))) || 0) >= 10;
+const lrlBlocked = async (env, ip) => (+(await env.DB.get(lrlKey(ip))) || 0) >= 30; // 30 помилок за 10 хв з однієї мережі: увесь персонал часто за одним Wi-Fi
 const lrlFail = async (env, ip) => { const k = lrlKey(ip); await env.DB.put(k, String((+(await env.DB.get(k)) || 0) + 1), { expirationTtl: 600 }); };
 const TOO_MANY = [{ error: 'Забагато спроб — зачекайте 10 хвилин' }, 429];
 async function register(b, env, ip) {
