@@ -950,16 +950,33 @@ body.noanim .ev.wait{outline:3px solid var(--wc,#ff9f0a)}
   .xb, .zp-x { width: 34px; height: 34px; }
 }
 
-/* 🧾 Каса → Чеки: дата по центру під підсумками (тиснеш — календар); чек: час · стіл · сума в рядок, кнопки нижче */
-.c-head { flex-wrap: wrap; }
-.c-day { flex: 1 0 100%; display: flex; justify-content: center; align-items: center; gap: 8px; }
-.c-date { position: relative; overflow: hidden; white-space: nowrap; }
+/* 🧾 Каса → Чеки: підсумок дня + компактні чеки, що розгортаються */
+.c-top { display: grid; gap: 10px; margin-bottom: 12px; padding: 12px; border-radius: 18px; background: linear-gradient(150deg, #1d2236, #15161d); border: 1px solid #ffffff12; box-shadow: inset 0 1px 0 #ffffff1a, 0 10px 24px -14px #000; }
+.c-day { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.c-arr { width: 38px; height: 38px; border-radius: 12px; background: #ffffff0d; color: var(--text); font-size: 22px; line-height: 1; transition: background .2s, transform .15s; }
+.c-arr:active { transform: scale(.9); } .c-arr:disabled { opacity: .25; }
+.c-date { position: relative; overflow: hidden; height: 38px; padding: 0 16px; display: grid; place-items: center; border-radius: 12px; background: #ffffff14; font-weight: 700; white-space: nowrap; cursor: pointer; }
 .c-date input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
-.c-row { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; font-size: 16px; }
-.c-row > b.money { margin-left: auto; }
-.c-sub { margin-top: 3px; font-size: 13px; }
-.c-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.c-btns:empty { display: none; }
+.c-tot { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.c-big small { display: block; color: var(--muted); font-size: 12px; } .c-big b { font-size: 26px; letter-spacing: -.5px; }
+.c-split { display: flex; gap: 6px; flex-wrap: wrap; } .c-split span { padding: 5px 9px; border-radius: 10px; background: #ffffff0d; font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.c-list { display: grid; gap: 6px; }
+.c-card { border-radius: 14px; background: var(--card); border: 1px solid #ffffff0f; border-left: 3px solid var(--c, #ffffff30); overflow: hidden; transition: background .2s; }
+.c-card.k-cash { --c: #4cc38a; } .c-card.k-card { --c: #5b8def; } .c-card.k-onl { --c: #a77bf3; } .c-card.k-re { --c: #f2c14e; } .c-card.k-del, .c-card.k-rm { --c: #e5484d; } .c-card.gone { opacity: .5; }
+.c-card[open] { background: var(--card2, #1c1d24); }
+.c-card summary { list-style: none; display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 10px; padding: 11px 12px; cursor: pointer; white-space: nowrap; }
+.c-card summary::-webkit-details-marker { display: none; }
+.c-tm { font-weight: 800; font-variant-numeric: tabular-nums; } .c-t { color: var(--muted); }
+.c-pay { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.c-sum { font-size: 16px; }
+.c-body { padding: 0 12px 12px; display: grid; gap: 8px; animation: in .25s var(--ease-out, ease-out); }
+.c-items { display: grid; gap: 3px; padding: 8px 10px; border-radius: 10px; background: #0000002e; font-size: 13px; } .c-items div { display: flex; justify-content: space-between; gap: 10px; }
+.c-note { font-size: 12px; color: var(--muted); }
+.c-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.c-b { padding: 8px 12px; min-height: 36px; border-radius: 10px; background: #ffffff12; color: var(--text); font-size: 13px; font-weight: 600; transition: transform .15s, background .2s; }
+.c-b:active { transform: scale(.94); } .c-b.ok { background: #4cc38a33; color: #7ee0ad; } .c-b.bad { background: #e5484d26; color: #ff8a8d; margin-left: auto; }
+.c-empty { text-align: center; padding: 30px 10px; color: var(--muted); }
+@media (max-width: 400px) { .c-card summary { grid-template-columns: auto 1fr auto; } .c-pay { grid-column: 1 / -1; grid-row: 2; margin-top: -6px; } }
 
 /* 🌈 Столи: повільне переливання кольорів замість сірого світіння */
 .tables .tbl { background: linear-gradient(125deg, #1b2a4a, #2a1f4d, #13383f, #3a2147, #1b2a4a) 0 0 / 400% 400% !important; animation: tblFlow 14s ease-in-out infinite; }
