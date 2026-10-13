@@ -47,7 +47,7 @@ export function promoCalc(cfg, { items, kind, cli, ph, now = Date.now(), manual 
   const k = kyiv(now), lines = [], nth = {};
   const lv = cliLevel(cfg, cli);
   // рівень і ручна знижка не складаються: діє більша (офіціантова — у bill.disc, тоді рівень мовчить)
-  if (lv?.pct && !(manual >= lv.pct)) lines.push({ k: 'lvl:' + lv.id, n: `${lv.e} ${lv.name} −${lv.pct}%`, amt: Math.round(base * lv.pct / 100) });
+  if (lv?.pct && !(manual >= lv.pct)) lines.push({ k: 'lvl:' + lv.id, n: `${lv.e} ${lv.name} −${lv.pct}%`, amt: Math.max(0, Math.round(base * lv.pct / 100) - Math.round(base * (+manual || 0) / 100)) }); /* ручна знижка < рівня: доплачується лише різниця — разом рівно pct%, а не manual+pct */
   for (const r of cfg.rules) {
     if (!r.on || (r.where?.length && !r.where.includes(kind)) || (r.d1 && k.iso < r.d1) || (r.d2 && k.iso > r.d2)) continue;
     const any = !(r.cats?.length || r.dishes?.length), hit = items.filter(i => any || r.cats?.includes(catOf[i.name]) || r.dishes?.includes(i.name)), hs = hit.reduce((s, i) => s + i.sum, 0);
