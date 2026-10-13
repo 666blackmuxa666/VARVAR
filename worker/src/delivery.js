@@ -238,6 +238,7 @@ export async function goApi(b, env, me, t) {
     case 'goSt': {
       if (!isGo(t)) return bad('Не доставка');
       const bl = await getBill(env, t); if (!bl.go) return bad('Немає замовлення');
+      if (me.role === 'courier' && bl.go.st === 'new') return bad('Замовлення ще не прийняте закладом', 403);
       if (me.role === 'courier' && (!['road', 'done'].includes(b.st) || (bl.go.cour && bl.go.cour !== who))) return bad('Це доставка іншого кур\'єра', 403);
       const r = await goSet(env, t, String(b.st), who, { pay: b.pay === 'card' ? 'card' : b.pay === 'cash' ? 'cash' : undefined, ...(me.role === 'courier' && !bl.go.cour ? { cour: who } : {}) });
       if (!r) return bad('Не вдалось');
