@@ -960,3 +960,10 @@ body.noanim .ev.wait{outline:3px solid var(--wc,#ff9f0a)}
 .c-sub { margin-top: 3px; font-size: 13px; }
 .c-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .c-btns:empty { display: none; }
+
+/* 🌈 Столи: повільне переливання кольорів замість сірого світіння */
+.tables .tbl { background: linear-gradient(125deg, #1b2a4a, #2a1f4d, #13383f, #3a2147, #1b2a4a) 0 0 / 400% 400% !important; animation: tblFlow 14s ease-in-out infinite; }
+.tables .tbl:nth-child(3n+2) { animation-delay: -4s; } .tables .tbl:nth-child(3n) { animation-delay: -9s; }
+.tables .tbl.busy { background: linear-gradient(125deg, #8a4b12, #a3304a, #6b2f8f, #b5701a, #8a4b12) 0 0 / 400% 400% !important; animation-duration: 9s; box-shadow: inset 0 1.5px 0 #ffffff59, inset 0 -5px 0 #00000059, 0 4px 0 -1px #0000008c, 0 8px 18px -6px #0000009e !important; border-color: #ffffff26; }
+@keyframes tblFlow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@media (prefers-reduced-motion: reduce) { .tables .tbl { animation: none; } }
