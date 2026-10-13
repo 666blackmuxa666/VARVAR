@@ -945,3 +945,15 @@ body.noanim .ev.wait{outline:3px solid var(--wc,#ff9f0a)}
 /* зміна стану стола (вільний → зайнятий → рахунок) — плавний перехід кольору */
 .tbl, .ev, .kc, .btn, .nav button, .seg button, .chip { transition: background-color .35s var(--ease-soft), border-color .35s var(--ease-soft), color .3s, box-shadow .35s var(--ease-soft), transform .14s; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+/* 🎨 аудит дизайну 2026-10-13: компактніші плитки, більші мінікнопки на телефоні */
+.xb { width: 30px; height: 30px; }
+.zp-x { width: 30px; height: 30px; }
+.bk-d { padding: 6px 4px; gap: 0; line-height: 1.25; }
+.lk-th { gap: 4px; padding: 6px 8px; }
+.lk-th i { height: 28px; }
+@media (max-width: 700px) {
+  .bal-c { padding: 10px 14px; gap: 1px; }
+  .bal-c b { font-size: 20px; }
+  .zbtn { min-height: 64px; }
+  .xb, .zp-x { width: 34px; height: 34px; }
+}
