@@ -1003,7 +1003,7 @@ body.noanim .ev.wait{outline:3px solid var(--wc,#ff9f0a)}
 /* 🎨 Стіл: просто кнопка в колір теми — від світлішого до темнішого, без тіней і світіння */
 .tables .tbl, .tables .tbl.busy, .tables .tbl:active { box-shadow: none !important; animation: none; }
 .tables .tbl::before { content: none; }
-.tables .tbl { background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 22%, var(--card, #15161d)), color-mix(in srgb, var(--accent) 4%, var(--card, #15161d))) !important; border-color: color-mix(in srgb, var(--accent) 18%, transparent); }
-.tables .tbl.busy { background: linear-gradient(160deg, var(--accent), color-mix(in srgb, var(--accent) 45%, #000)) !important; border-color: transparent; }
+.tables .tbl { background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 22%, var(--card, #15161d)), color-mix(in srgb, var(--accent) 4%, var(--card, #15161d))) !important; border: 0 !important; }
+.tables .tbl.busy { background: linear-gradient(160deg, var(--accent), color-mix(in srgb, var(--accent) 45%, #000)) !important; border: 0 !important; }
 .tables .tbl.busy, .tables .tbl.busy * { color: var(--accent-ink, #1a1205); }
 .tables .tbl .n { text-shadow: none; }
