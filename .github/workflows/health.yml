@@ -1,0 +1,28 @@
+# 🩺 Автоперевірка робочої системи кожні 6 год (лише читання: нічого не створює на проді)
+# Якщо щось впало — GitHub надсилає лист власнику репозиторію.
+name: health
+on:
+  schedule: [{ cron: '0 */6 * * *' }]
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: 🔗 Кнопки → дії → запити (статично)
+        run: node tools/audit-static.mjs
+      - name: 🌐 Сайт, каса, кабінет
+        run: |
+          S=https://666blackmuxa666.github.io/VARVAR
+          for p in / /about.html /pos.html /owner.html /css/pos.css /js/pos.build.js /js/app.js; do
+            c=$(curl -s -o /dev/null -w '%{http_code}' "$S$p"); echo "$c $p"; [ "$c" = 200 ] || exit 1
+          done
+      - name: ⚙️ Сервер (3 запити)
+        run: |
+          A=https://varvar-menu.varvar.workers.dev
+          curl -sf "$A/api/menu" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const m=JSON.parse(s);if(s.length<1000)throw new Error("меню порожнє");console.log("меню ✅",s.length,"байт")})'
+          curl -sf "$A/api/status" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{JSON.parse(s);console.log("статус ✅")})'
+          c=$(curl -s -o /dev/null -w '%{http_code}' "$A/k"); echo "кухня $c"; [ "$c" = 200 ]
