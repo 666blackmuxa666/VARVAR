@@ -205,18 +205,7 @@
   }
 
   // 🎨 теми (на цьому пристрої)
-  const THEMES = {
-    night: ['🌑 Ніч (стандарт)', { bg: '#0b0b0d', bg2: '#151518', card: '#1c1c1f', card2: '#26262a', text: '#f5f5f7', muted: '#8e8e93', accent: '#f2c14e', 'accent-ink': '#1a1400' }],
-    beet: ['🍷 Буряк', { bg: '#120609', bg2: '#1c0a10', card: '#261019', card2: '#341824', text: '#fbeff3', muted: '#a8848f', accent: '#e0457b', 'accent-ink': '#fff' }],
-    ocean: ['🌊 Океан', { bg: '#06101a', bg2: '#0b1a29', card: '#102236', card2: '#173049', text: '#eef6ff', muted: '#7f98b3', accent: '#3fb6ff', 'accent-ink': '#00121f' }],
-    forest: ['🌲 Ліс', { bg: '#07110b', bg2: '#0d1a12', card: '#13241a', card2: '#1b3224', text: '#eefaf2', muted: '#83a08e', accent: '#5ed68a', 'accent-ink': '#04210f' }],
-    violet: ['🔮 Фіалка', { bg: '#0d0916', bg2: '#151024', card: '#1d1631', card2: '#291f44', text: '#f4f0ff', muted: '#9a8fb8', accent: '#a98bff', 'accent-ink': '#14082e' }],
-    coffee: ['☕ Кава', { bg: '#120d09', bg2: '#1b140f', card: '#251c15', card2: '#32261d', text: '#f8efe6', muted: '#a8958a', accent: '#d9a066', 'accent-ink': '#2a1806' }],
-    graphite: ['⚫ Графіт', { bg: '#161618', bg2: '#1e1e21', card: '#28282c', card2: '#333338', text: '#ffffff', muted: '#9b9ba1', accent: '#ffffff', 'accent-ink': '#000' }],
-    amoled: ['🖤 Чорний AMOLED', { bg: '#000', bg2: '#050505', card: '#0e0e0e', card2: '#1a1a1a', text: '#fff', muted: '#888', accent: '#ffd60a', 'accent-ink': '#000' }],
-    sunset: ['🌅 Захід', { bg: '#140a06', bg2: '#1f100a', card: '#2a160e', card2: '#3a2014', text: '#fff3ea', muted: '#b39282', accent: '#ff7a45', 'accent-ink': '#2a0c00' }],
-    mint: ['🍃 М\'ята', { bg: '#071312', bg2: '#0c1d1b', card: '#112826', card2: '#183633', text: '#ecfffb', muted: '#80a7a1', accent: '#4fe3c1', 'accent-ink': '#00241c' }],
-  };
+  const THEMES = VVSkin.THEMES; /* 🎨 палітри — спільні з кабінетом (js/skin.js) */
   const FONTS = { system: ['Системний (iOS)', ''], inter: ['Inter', 'Inter'], manrope: ['Manrope', 'Manrope'], rubik: ['Rubik', 'Rubik'], nunito: ['Nunito', 'Nunito'], montserrat: ['Montserrat', 'Montserrat'], roboto: ['Roboto', 'Roboto'], comfortaa: ['Comfortaa', 'Comfortaa'], mono: ['JetBrains Mono', 'JetBrains Mono'], pt: ['PT Sans', 'PT Sans'] };
   const look = () => ({ theme: 'night', font: 'system', nfont: 'same', size: 100, radius: 'round', sound: 'classic', vol: 70, anim: 1, accent: '', ...store.get('look', {}) });
   function applyLook() {
@@ -235,10 +224,14 @@
   }
   // 🎨 стиль (конструктор): «Стара каса» — без шару skin.css; «Стиль закладу» — від адміна (сервер); «Свій» — лише на цьому пристрої
   const { BASE: SK_BASE, PRE: SK_PRE } = VVSkin;
-  const skinOf = () => (S.lookV ? { ...SK_BASE, ...S.lookV } : null); /* 🖌 стиль каси задає власник у кабінеті (Заклад і каса → Стиль каси) — однаковий на всіх пристроях */
-  function applySkin(over) { const K = over || skinOf(); VVSkin.apply(K); if (K) document.body.classList.toggle('noanim', !K.anim || !look().anim); }
+  const skinOf = () => (VVSkin.skinPart(S.lookV) ? { ...SK_BASE, ...VVSkin.skinPart(S.lookV) } : null); /* 🖌 стиль каси задає власник у кабінеті (Заклад і каса → Стиль каси) — однаковий на всіх пристроях */
+  function applySkin(over) { const K = over || skinOf(); VVSkin.apply(K); if (K) document.body.classList.toggle('noanim', !K.anim || !look().anim);
+    /* 🎨 кольори: свій вибір на пристрої → кольори закладу (адмін) → кольори стилю → тема за замовчуванням */
+    const L = look(), V = S.lookV || {}, c = L.own ? { t: L.theme, a: L.accent } : V.ct ? { t: V.ct, a: V.ca || '' } : null;
+    if (c) VVSkin.colors(c.t, c.a); VVSkin.saveCol(c || (K && (K.acc || K.bg !== 'theme') ? null : { t: L.theme, a: L.accent })); }
   async function loadLookV() { try { const r = await api('lookV'); S.lookV = r.look || null; applyLook(); } catch {} }
-  const setLook = (k, v) => { store.set('look', { ...look(), [k]: v }); applyLook(); renderMain(); };
+  const setLook = (k, v) => { const col = k === 'theme' || k === 'accent'; store.set('look', { ...look(), [k]: v, ...(col ? { own: 1 } : {}) }); applyLook(); renderMain();
+    if (col && isAdmin()) { const L = look(), nv = { ...(S.lookV || {}), ct: L.theme, ca: L.accent || '' }; api('lookVSet', { look: nv }).then(() => { S.lookV = nv; toast('🎨 Кольори збережено для всіх кас і кабінету'); }).catch(() => {}); } };
   applyLook();
 
   // ---------- каркас ----------

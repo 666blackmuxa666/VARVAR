@@ -159,7 +159,7 @@
 
 
   // 🖌 стиль (конструктор) — Налаштування → Вигляд
-  const skMode = () => look().skin || (S.lookV ? 'venue' : 'old');
+  const skMode = () => look().skin || (VVSkin.skinPart(S.lookV) ? 'venue' : 'old');
   function skinCard() {
     const m = skMode(), L = look(), own = L.sk && JSON.stringify(L.sk), pre = k => own === JSON.stringify(SK_PRE[k][2]);
     const b = (on, a, extra, t, sub) => `<button class="${on ? 'on' : ''}" data-a="${a}" ${extra}>${t}<small>${sub}</small></button>`;
@@ -177,7 +177,7 @@
     const box = $('#modal .skc'), upd = () => applySkin(K); VVSkin.bind(box, K, upd);
     upd(); const v = await pm; closeModal();
     if (v === 'own') skSave('own', skDiff(K));
-    else if (v === 'venue' && await act('lookVSet', { look: skDiff(K) }, '🏪 Стиль закладу збережено')) { S.lookV = skDiff(K); skSave('venue'); }
+    else if (v === 'venue' && await act('lookVSet', { look: { ...skDiff(K), ...(S.lookV?.ct ? { ct: S.lookV.ct, ca: S.lookV.ca } : {}) } }, '🏪 Стиль закладу збережено')) { S.lookV = { ...skDiff(K), ...(S.lookV?.ct ? { ct: S.lookV.ct, ca: S.lookV.ca } : {}) }; skSave('venue'); }
     else applyLook();
   }
   document.addEventListener('click', async e => {

@@ -19,7 +19,13 @@
   function skApply() {
     const r = document.documentElement.style; for (const v of ['--accent', '--bg', '--bg2', '--card', '--card2', '--muted', '--font', '--r', '--r2']) r.removeProperty(v);
     const m = skMode(), V = window.VVSkin; if (!V) return;
-    V.apply(m === 'old' ? null : m === 'follow' ? V.full(V.last()) : V.full(m.startsWith?.('pre:') ? V.PRE[m.slice(4)]?.[2] : store.get('sk', null)), false);
+    const vk = store.get('vlook', null); /* стиль закладу з сервера (кешовано) */
+    V.apply(m === 'old' ? null : m === 'follow' ? V.full(V.skinPart(vk) || V.last()) : V.full(m.startsWith?.('pre:') ? V.PRE[m.slice(4)]?.[2] : store.get('sk', null)), false);
+    if (m === 'follow') { const c = vk?.ct ? { t: vk.ct, a: vk.ca } : V.lastCol(); if (c) V.colors(c.t, c.a); }
+  }
+  async function syncLook() { /* 🔗 кольори й стиль — як у касі закладу (1 запит на відкриття) */
+    const v = S.venues?.find(x => x.id === 'varvar') || S.venues?.[0]; if (!v || skMode() !== 'follow') return;
+    try { const r = await VC.vapi(v.id, 'lookV'); const n = r.look || null; if (JSON.stringify(n) !== JSON.stringify(store.get('vlook', null))) { store.set('vlook', n); skApply(); } } catch {}
   }
   skApply(); window.OWNSKIN = skApply; /* повернути стиль кабінету після перегляду стилю каси */
   function skinCard() {
@@ -82,6 +88,7 @@
       const v = S.venues.find(x => x.id === id) || S.venues.find(x => x.id !== 'varvar') || S.venues[0]; toast('💳 Дякуємо! Оплата зарахується за хвилину — оновіть сторінку'); return VC.open(v.id, 'pay'); }
     if (S.tab === 'cfg' && !S.cfgV && S.venues.length === 1) return VC.open(S.venues[0].id);
     render(); if (S.tab !== 'cfg') load();
+    syncLook();
   }
   async function load() {
     const [f, t] = S.tab === 'home' ? [today(), today()] : range(S.per);

@@ -563,18 +563,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     } catch (e) {
     }
   }
-  const THEMES = {
-    night: ["\u{1F311} \u041D\u0456\u0447 (\u0441\u0442\u0430\u043D\u0434\u0430\u0440\u0442)", { bg: "#0b0b0d", bg2: "#151518", card: "#1c1c1f", card2: "#26262a", text: "#f5f5f7", muted: "#8e8e93", accent: "#f2c14e", "accent-ink": "#1a1400" }],
-    beet: ["\u{1F377} \u0411\u0443\u0440\u044F\u043A", { bg: "#120609", bg2: "#1c0a10", card: "#261019", card2: "#341824", text: "#fbeff3", muted: "#a8848f", accent: "#e0457b", "accent-ink": "#fff" }],
-    ocean: ["\u{1F30A} \u041E\u043A\u0435\u0430\u043D", { bg: "#06101a", bg2: "#0b1a29", card: "#102236", card2: "#173049", text: "#eef6ff", muted: "#7f98b3", accent: "#3fb6ff", "accent-ink": "#00121f" }],
-    forest: ["\u{1F332} \u041B\u0456\u0441", { bg: "#07110b", bg2: "#0d1a12", card: "#13241a", card2: "#1b3224", text: "#eefaf2", muted: "#83a08e", accent: "#5ed68a", "accent-ink": "#04210f" }],
-    violet: ["\u{1F52E} \u0424\u0456\u0430\u043B\u043A\u0430", { bg: "#0d0916", bg2: "#151024", card: "#1d1631", card2: "#291f44", text: "#f4f0ff", muted: "#9a8fb8", accent: "#a98bff", "accent-ink": "#14082e" }],
-    coffee: ["\u2615 \u041A\u0430\u0432\u0430", { bg: "#120d09", bg2: "#1b140f", card: "#251c15", card2: "#32261d", text: "#f8efe6", muted: "#a8958a", accent: "#d9a066", "accent-ink": "#2a1806" }],
-    graphite: ["\u26AB \u0413\u0440\u0430\u0444\u0456\u0442", { bg: "#161618", bg2: "#1e1e21", card: "#28282c", card2: "#333338", text: "#ffffff", muted: "#9b9ba1", accent: "#ffffff", "accent-ink": "#000" }],
-    amoled: ["\u{1F5A4} \u0427\u043E\u0440\u043D\u0438\u0439 AMOLED", { bg: "#000", bg2: "#050505", card: "#0e0e0e", card2: "#1a1a1a", text: "#fff", muted: "#888", accent: "#ffd60a", "accent-ink": "#000" }],
-    sunset: ["\u{1F305} \u0417\u0430\u0445\u0456\u0434", { bg: "#140a06", bg2: "#1f100a", card: "#2a160e", card2: "#3a2014", text: "#fff3ea", muted: "#b39282", accent: "#ff7a45", "accent-ink": "#2a0c00" }],
-    mint: ["\u{1F343} \u041C'\u044F\u0442\u0430", { bg: "#071312", bg2: "#0c1d1b", card: "#112826", card2: "#183633", text: "#ecfffb", muted: "#80a7a1", accent: "#4fe3c1", "accent-ink": "#00241c" }]
-  };
+  const THEMES = VVSkin.THEMES;
   const FONTS = { system: ["\u0421\u0438\u0441\u0442\u0435\u043C\u043D\u0438\u0439 (iOS)", ""], inter: ["Inter", "Inter"], manrope: ["Manrope", "Manrope"], rubik: ["Rubik", "Rubik"], nunito: ["Nunito", "Nunito"], montserrat: ["Montserrat", "Montserrat"], roboto: ["Roboto", "Roboto"], comfortaa: ["Comfortaa", "Comfortaa"], mono: ["JetBrains Mono", "JetBrains Mono"], pt: ["PT Sans", "PT Sans"] };
   const look = () => __spreadValues({ theme: "night", font: "system", nfont: "same", size: 100, radius: "round", sound: "classic", vol: 70, anim: 1, accent: "" }, store.get("look", {}));
   function applyLook() {
@@ -606,11 +595,14 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     applySkin();
   }
   const { BASE: SK_BASE, PRE: SK_PRE } = VVSkin;
-  const skinOf = () => S.lookV ? __spreadValues(__spreadValues({}, SK_BASE), S.lookV) : null;
+  const skinOf = () => VVSkin.skinPart(S.lookV) ? __spreadValues(__spreadValues({}, SK_BASE), VVSkin.skinPart(S.lookV)) : null;
   function applySkin(over) {
     const K = over || skinOf();
     VVSkin.apply(K);
     if (K) document.body.classList.toggle("noanim", !K.anim || !look().anim);
+    const L = look(), V = S.lookV || {}, c = L.own ? { t: L.theme, a: L.accent } : V.ct ? { t: V.ct, a: V.ca || "" } : null;
+    if (c) VVSkin.colors(c.t, c.a);
+    VVSkin.saveCol(c || (K && (K.acc || K.bg !== "theme") ? null : { t: L.theme, a: L.accent }));
   }
   async function loadLookV() {
     try {
@@ -621,9 +613,18 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     }
   }
   const setLook = (k, v) => {
-    store.set("look", __spreadProps(__spreadValues({}, look()), { [k]: v }));
+    const col = k === "theme" || k === "accent";
+    store.set("look", __spreadValues(__spreadProps(__spreadValues({}, look()), { [k]: v }), col ? { own: 1 } : {}));
     applyLook();
     renderMain();
+    if (col && isAdmin()) {
+      const L = look(), nv = __spreadProps(__spreadValues({}, S.lookV || {}), { ct: L.theme, ca: L.accent || "" });
+      api("lookVSet", { look: nv }).then(() => {
+        S.lookV = nv;
+        toast("\u{1F3A8} \u041A\u043E\u043B\u044C\u043E\u0440\u0438 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E \u0434\u043B\u044F \u0432\u0441\u0456\u0445 \u043A\u0430\u0441 \u0456 \u043A\u0430\u0431\u0456\u043D\u0435\u0442\u0443");
+      }).catch(() => {
+      });
+    }
   };
   applyLook();
   const NAV_COOK = [["kq", "\u{1F468}\u200D\u{1F373}", "\u0427\u0435\u0440\u0433\u0430"], ["calc", "\u{1F4E6}", "\u0421\u043A\u043B\u0430\u0434"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["hall", "\u{1FA91}", "\u0417\u0430\u043B"]];
@@ -4127,7 +4128,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
       img.src = URL.createObjectURL(file);
     });
   }
-  const skMode = () => look().skin || (S.lookV ? "venue" : "old");
+  const skMode = () => look().skin || (VVSkin.skinPart(S.lookV) ? "venue" : "old");
   function skinCard() {
     const m = skMode(), L = look(), own = L.sk && JSON.stringify(L.sk), pre = (k) => own === JSON.stringify(SK_PRE[k][2]);
     const b = (on, a, extra, t, sub) => `<button class="${on ? "on" : ""}" data-a="${a}" ${extra}>${t}<small>${sub}</small></button>`;
@@ -4144,6 +4145,7 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   const skCur = () => skinOf() || __spreadValues({}, SK_BASE);
   const skDiff = (K) => Object.fromEntries(Object.entries(K).filter(([k, v]) => SK_BASE[k] !== v));
   async function skEditor() {
+    var _a2, _b;
     const K = __spreadValues({}, skCur()), body = VVSkin.editorHTML(K);
     const pm = modal({ title: "\u{1F3A8} \u041A\u043E\u043D\u0441\u0442\u0440\u0443\u043A\u0442\u043E\u0440 \u0441\u0442\u0438\u043B\u044E", body, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438 \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457", val: "own", cls: "primary" }, ...isAdmin() ? [{ label: "\u{1F3EA} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438 \u0434\u043B\u044F \u0432\u0441\u044C\u043E\u0433\u043E \u0437\u0430\u043A\u043B\u0430\u0434\u0443", val: "venue" }] : [], { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
     const box = $("#modal .skc"), upd = () => applySkin(K);
@@ -4152,8 +4154,8 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const v = await pm;
     closeModal();
     if (v === "own") skSave("own", skDiff(K));
-    else if (v === "venue" && await act("lookVSet", { look: skDiff(K) }, "\u{1F3EA} \u0421\u0442\u0438\u043B\u044C \u0437\u0430\u043A\u043B\u0430\u0434\u0443 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
-      S.lookV = skDiff(K);
+    else if (v === "venue" && await act("lookVSet", { look: __spreadValues(__spreadValues({}, skDiff(K)), ((_a2 = S.lookV) == null ? void 0 : _a2.ct) ? { ct: S.lookV.ct, ca: S.lookV.ca } : {}) }, "\u{1F3EA} \u0421\u0442\u0438\u043B\u044C \u0437\u0430\u043A\u043B\u0430\u0434\u0443 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
+      S.lookV = __spreadValues(__spreadValues({}, skDiff(K)), ((_b = S.lookV) == null ? void 0 : _b.ct) ? { ct: S.lookV.ct, ca: S.lookV.ca } : {});
       skSave("venue");
     } else applyLook();
   }
