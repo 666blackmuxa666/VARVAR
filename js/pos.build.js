@@ -883,6 +883,15 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     clearTimeout(toastT);
     toastT = setTimeout(() => d.remove(), 2600);
   }
+  document.addEventListener("change", (e) => {
+    var _a2;
+    const el = e.target;
+    if (((_a2 = el.dataset) == null ? void 0 : _a2.a) !== "cDate" || !el.value) return;
+    S.cday = el.value >= S.data.ctoday ? "" : el.value;
+    S.data.closed = null;
+    renderMain();
+    loadView();
+  });
   document.addEventListener("change", async (e) => {
     var _a2, _b;
     const el = e.target;
@@ -2408,19 +2417,19 @@ var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
     const l = S.data.closed;
     if (!l) return '<div class="head"><h1>\u0417\u0430\u043A\u0440\u0438\u0442\u0456</h1></div><div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
     const isToday = !S.data.cday || S.data.cday === S.data.ctoday, dTitle = isToday ? "\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : S.data.cday.split("-").reverse().join(".");
-    const nav = `<button class="btn sm" data-a="cDay" data-v="-1">\u25C0</button>${isToday ? "" : '<button class="btn sm" data-a="cDay" data-v="1">\u25B6</button><button class="btn sm" data-a="cDay" data-v="0">\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456</button>'}`;
+    const nav = `<div class="c-day"><button class="btn sm" data-a="cDay" data-v="-1">\u25C0</button><label class="btn sm c-date">\u{1F4C5} ${isToday ? "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : dTitle}<input type="date" data-a="cDate" value="${S.data.cday || S.data.ctoday || ""}" max="${S.data.ctoday || ""}"></label>${isToday ? "" : '<button class="btn sm" data-a="cDay" data-v="1">\u25B6</button>'}</div>`;
     const gone = (x) => x.del || x.rm, ok = l.filter((x) => !gone(x));
-    return `<div class="head"><h1>\u0417\u0430\u043A\u0440\u0438\u0442\u0456 ${dTitle}</h1>${nav}<div class="stat">\u0420\u0430\u0445\u0443\u043D\u043A\u0456\u0432<b>${ok.length}</b></div><div class="stat">\u0420\u0430\u0437\u043E\u043C<b class="money">${money(ok.reduce((s, x) => s + x.sum, 0))}</b></div>
+    return `<div class="head c-head"><div class="stat">\u0420\u0430\u0445\u0443\u043D\u043A\u0456\u0432<b>${ok.length}</b></div><div class="stat">\u0420\u0430\u0437\u043E\u043C<b class="money">${money(ok.reduce((s, x) => s + x.sum, 0))}</b></div>
       <div class="stat">\u{1F4B5}<b class="money">${money(ok.reduce((s, x) => {
       var _a2;
       return s + ((_a2 = x.cash) != null ? _a2 : x.sum);
-    }, 0))}</b></div><div class="stat">\u{1F4B3}<b class="money">${money(ok.reduce((s, x) => s + (x.card || 0) - (x.onl || 0), 0))}</b></div>${ok.some((x) => x.onl) ? `<div class="stat">\u{1F310}<b class="money">${money(ok.reduce((s, x) => s + (x.onl || 0), 0))}</b></div>` : ""}</div>
+    }, 0))}</b></div><div class="stat">\u{1F4B3}<b class="money">${money(ok.reduce((s, x) => s + (x.card || 0) - (x.onl || 0), 0))}</b></div>${ok.some((x) => x.onl) ? `<div class="stat">\u{1F310}<b class="money">${money(ok.reduce((s, x) => s + (x.onl || 0), 0))}</b></div>` : ""}</div>${nav}
       <div class="cards">${[...l].reverse().map((x, i) => {
       var _a2, _b, _c, _d, _e, _f, _g, _h;
       const ref = x.id || l.length - 1 - i;
-      return `<div class="card" style="${gone(x) ? "opacity:.45" : ""}"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-        <h3 style="margin:0;flex:1">${x.at} \xB7 \u0421\u0442\u0456\u043B ${tn(x.t)} \xB7 <span class="money">${money(x.sum)}</span> ${x.reopen ? "\u21A9\uFE0F \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u043E \u0437\u043D\u043E\u0432\u0443" : x.restored ? "\u21A9\uFE0F \u0441\u0442\u0456\u043B \u0432\u0456\u0434\u043D\u043E\u0432\u043B\u0435\u043D\u043E" : x.del ? "\u{1F5D1} \u0441\u0442\u0456\u043B \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E" : x.rm ? "\u{1F9F9} \u0437\u043D\u044F\u0442\u043E \u0437 \u0432\u0438\u0440\u0443\u0447\u043A\u0438" : payL(x)}${x.disc ? ` \xB7 \u0437\u043D\u0438\u0436\u043A\u0430 ${x.disc}%` : ""}</h3><span class="muted">${esc(x.by || "")}</span>
-        ${!gone(x) && ((_a2 = x.dishes) == null ? void 0 : _a2.length) ? `<button class="btn sm" data-a="cPrint" data-ref="${ref}">\u{1F5A8} \u0427\u0435\u043A</button>` : ""}${!gone(x) && isAdmin() ? `<button class="btn sm" data-a="cEdit" data-ref="${ref}" data-d="${S.data.cday || ""}">\u270F\uFE0F \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438</button>` : ""}${!gone(x) && isAdmin() ? `<button class="btn sm red" data-a="cDel" data-ref="${ref}">\u{1F5D1} \u0417 \u0432\u0438\u0440\u0443\u0447\u043A\u0438</button>` : ""}${!gone(x) && isAdmin() && ((_b = x.lpo) == null ? void 0 : _b.length) ? `<button class="btn sm" data-a="cRefund" data-ref="${ref}" data-s="${x.onl}">\u21A9\uFE0F \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438 ${money(x.onl)} \u043D\u0430 \u043A\u0430\u0440\u0442\u043A\u0443</button>` : ""}
+      return `<div class="card" style="${gone(x) ? "opacity:.45" : ""}"><div class="c-row"><b>${x.at}</b><span>\u0421\u0442\u0456\u043B ${tn(x.t)}</span><b class="money">${money(x.sum)}</b></div>
+        <div class="muted c-sub">${x.reopen ? "\u21A9\uFE0F \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u043E \u0437\u043D\u043E\u0432\u0443" : x.restored ? "\u21A9\uFE0F \u0441\u0442\u0456\u043B \u0432\u0456\u0434\u043D\u043E\u0432\u043B\u0435\u043D\u043E" : x.del ? "\u{1F5D1} \u0441\u0442\u0456\u043B \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E" : x.rm ? "\u{1F9F9} \u0437\u043D\u044F\u0442\u043E \u0437 \u0432\u0438\u0440\u0443\u0447\u043A\u0438" : payL(x)}${x.disc ? ` \xB7 \u0437\u043D\u0438\u0436\u043A\u0430 ${x.disc}%` : ""}${x.by ? ` \xB7 ${esc(x.by)}` : ""}</div>
+        <div class="c-btns">${!gone(x) && ((_a2 = x.dishes) == null ? void 0 : _a2.length) ? `<button class="btn sm" data-a="cPrint" data-ref="${ref}">\u{1F5A8} \u0427\u0435\u043A</button>` : ""}${!gone(x) && isAdmin() ? `<button class="btn sm" data-a="cEdit" data-ref="${ref}" data-d="${S.data.cday || ""}">\u270F\uFE0F \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438</button>` : ""}${!gone(x) && isAdmin() ? `<button class="btn sm red" data-a="cDel" data-ref="${ref}">\u{1F5D1} \u0417 \u0432\u0438\u0440\u0443\u0447\u043A\u0438</button>` : ""}${!gone(x) && isAdmin() && ((_b = x.lpo) == null ? void 0 : _b.length) ? `<button class="btn sm" data-a="cRefund" data-ref="${ref}" data-s="${x.onl}">\u21A9\uFE0F \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438 ${money(x.onl)} \u043D\u0430 \u043A\u0430\u0440\u0442\u043A\u0443</button>` : ""}
         ${isAdmin() && !x.del && !x.reopen && ((_c = x.dishes) == null ? void 0 : _c.length) ? `<button class="btn sm" data-a="cReopen" data-ref="${ref}">\u21A9\uFE0F \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u0437\u043D\u043E\u0432\u0443</button>` : ""}
         ${isAdmin() && x.rm && !x.reopen && !x.del ? `<button class="btn sm green" data-a="cBack" data-ref="${ref}">\u21A9\uFE0F \u0423 \u0432\u0438\u0440\u0443\u0447\u043A\u0443</button>` : ""}
         ${isAdmin() && x.del && !x.restored && (((_d = x.dishes) == null ? void 0 : _d.length) || ((_e = x.voids) == null ? void 0 : _e.length)) ? `<button class="btn sm green" data-a="tBack" data-ref="${ref}">\u21A9\uFE0F \u0412\u0456\u0434\u043D\u043E\u0432\u0438\u0442\u0438 \u0441\u0442\u0456\u043B</button>` : ""}</div>

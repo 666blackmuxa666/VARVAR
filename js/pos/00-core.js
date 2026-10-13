@@ -373,6 +373,7 @@
   let toastT;
   function toast(msg) { $('.toast')?.remove(); const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg; document.body.append(d); clearTimeout(toastT); toastT = setTimeout(() => d.remove(), 2600); }
 
+  document.addEventListener('change', e => { const el = e.target; if (el.dataset?.a !== 'cDate' || !el.value) return; S.cday = el.value >= S.data.ctoday ? '' : el.value; S.data.closed = null; renderMain(); loadView(); });
   document.addEventListener('change', async e => { const el = e.target; if (el.dataset?.a !== 'bkDate' || !el.value) return; S.bkDay = el.value; if (!S.data.bk?.some(b => b.date === el.value) && (el.value < addD(todayK(), -7) || el.value > addD(todayK(), 60))) { const r = await api('bkList', { from: el.value, to: el.value, all: true }).catch(() => null); if (r) S.data.bk = [...S.data.bk.filter(b => b.date !== el.value), ...r.list]; } renderMain(); });
   // ---------- кліки ----------
   document.addEventListener('click', async e => {

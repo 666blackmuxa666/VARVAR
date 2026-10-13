@@ -44,7 +44,7 @@ const views = { hall: [], books: [], kq: [], cash: ['seg:checks'], reports: [], 
 for (const [v, tabs] of Object.entries(views)) {
   if (!want(v)) continue;
   await ev(`window.scrollTo(0,0)`); await click(`[data-a="view"][data-v="${v}"]`, 2500); await shot(`pos-${v}`);
-  for (const t of tabs) { const sel = v === 'team' ? `[data-a="zpTab"][data-t="${t}"]` : v === 'settings' ? `[data-a="setTab"][data-s="${t}"]` : null; if (!sel) continue; await click(sel, 2200); await shot(`pos-${v}-${t}`); }
+  for (const t of tabs) { const sel = v === 'cash' ? `[data-a="cashTab"][data-t="${t.slice(4)}"]` : v === 'team' ? `[data-a="zpTab"][data-t="${t}"]` : v === 'settings' ? `[data-a="setTab"][data-s="${t}"]` : null; if (!sel) continue; await click(sel, 2200); await shot(`pos-${v}-${t}`); }
 }
 // розділи звітів і складу
 if (want('reports')) { await click('[data-a="view"][data-v="reports"]', 2500); const secs = await ev(`return [...document.querySelectorAll('[data-a="rSec"]')].map(b=>b.dataset.s)`) || []; for (const s of secs) { await click(`[data-a="rSec"][data-s="${s}"]`, 2500); await shot(`pos-reports-${s}`); } }

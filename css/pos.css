@@ -949,3 +949,14 @@ body.noanim .ev.wait{outline:3px solid var(--wc,#ff9f0a)}
   .zbtn { min-height: 64px; }
   .xb, .zp-x { width: 34px; height: 34px; }
 }
+
+/* 🧾 Каса → Чеки: дата по центру під підсумками (тиснеш — календар); чек: час · стіл · сума в рядок, кнопки нижче */
+.c-head { flex-wrap: wrap; }
+.c-day { flex: 1 0 100%; display: flex; justify-content: center; align-items: center; gap: 8px; }
+.c-date { position: relative; overflow: hidden; white-space: nowrap; }
+.c-date input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+.c-row { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; font-size: 16px; }
+.c-row > b.money { margin-left: auto; }
+.c-sub { margin-top: 3px; font-size: 13px; }
+.c-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.c-btns:empty { display: none; }
