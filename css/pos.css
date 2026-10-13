@@ -914,3 +914,34 @@ body.noanim .ev.wait{outline:3px solid var(--wc,#ff9f0a)}
 .tables .tbl .n { text-shadow: 0 2px 6px #00000059; }
 @media (hover: hover) { .tables .tbl:hover { transform: translateY(-3px); } }
 .tables .tbl:active { transform: translateY(1px) scale(.97); box-shadow: inset 0 1px 0 #ffffff1f, 0 3px 8px -2px #0000009e !important; }
+
+/* 🌊 плавні анімації: замість різкого блимання — м'яке «дихання» світлом; поява — плавна */
+:root { --ease-soft: cubic-bezier(.45, 0, .55, 1); --ease-out: cubic-bezier(.22, 1, .36, 1); }
+@keyframes redglow { 0%, 100% { box-shadow: 0 0 0 0 #ff453a00, 0 0 0 #ff453a00; } 50% { box-shadow: 0 0 0 4px #ff453a33, 0 0 22px #ff453a4d; } }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 #ff9f0a00; } 50% { box-shadow: 0 0 0 5px #ff9f0a2e, 0 0 18px #ff9f0a33; } }
+@keyframes beetglow { 0%, 100% { box-shadow: 0 0 0 0 #c2185b00, 0 0 0 #c2185b00; } 50% { box-shadow: 0 0 0 4px #c2185b38, 0 0 22px #c2185b59; } }
+@keyframes callbl { from { box-shadow: 0 0 0 0 #ffd60a00, 0 0 4px #ffd60a22; } to { box-shadow: 0 0 0 4px #ffd60a40, 0 0 22px #ffd60a66; } }
+@keyframes callred { from { box-shadow: 0 0 0 0 #ff453a00; } to { box-shadow: 0 0 0 4px #ff453a4d, 0 0 24px #ff453a80; background: #ff453a1a; } }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@keyframes bellblink { 0%, 100% { opacity: 1; transform: rotate(0); } 25% { transform: rotate(-12deg); } 50% { opacity: .55; transform: rotate(0); } 75% { transform: rotate(12deg); } }
+@keyframes in { from { opacity: 0; transform: translateY(10px) scale(.98); } }
+@keyframes pop { from { transform: scale(.94) translateY(6px); opacity: 0; } }
+.tbl.new { animation: redglow 2.4s var(--ease-soft) infinite; }
+.tbl.check { animation: beetglow 2.6s var(--ease-soft) infinite; }
+.sk-busy { animation: pulse 2.6s var(--ease-soft) infinite; }
+.tbl.calling, .bk-blink, .cr-tabs .blink { animation: callbl 1.8s var(--ease-soft) infinite alternate; }
+.cr-ready { animation: callbl 1.6s var(--ease-soft) infinite alternate; }
+.ev.call.late { animation: callred 1.4s var(--ease-soft) infinite alternate; }
+.ev.call:not(.acc), .ev[data-ec] { animation-duration: 2s; animation-timing-function: var(--ease-soft); }
+.go-t.st-new, .ev.wait, .ev.noscan.blink { animation-duration: 1.8s; animation-timing-function: var(--ease-soft); }
+.kc.new { animation: knew 1.6s var(--ease-soft) 6 alternate; }
+.kh .tm.red { animation: blink 2s var(--ease-soft) infinite; }
+.callbell { animation: bellblink 1.8s var(--ease-soft) infinite; transform-origin: 50% 10%; display: inline-block; }
+.ev.fresh { animation: in .5s var(--ease-out); }
+.evc-sh { animation: in .35s var(--ease-out); }
+.modal { animation-duration: .32s; animation-timing-function: var(--ease-out); }
+.sheet { animation-duration: .38s; animation-timing-function: var(--ease-out); }
+.modal-bg, .sheet-bg { animation-duration: .3s; }
+/* зміна стану стола (вільний → зайнятий → рахунок) — плавний перехід кольору */
+.tbl, .ev, .kc, .btn, .nav button, .seg button, .chip { transition: background-color .35s var(--ease-soft), border-color .35s var(--ease-soft), color .3s, box-shadow .35s var(--ease-soft), transform .14s; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
