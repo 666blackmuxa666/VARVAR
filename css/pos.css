@@ -892,19 +892,6 @@ body.noanim .ev.wait{outline:3px solid var(--wc,#ff9f0a)}
 
 /* 📱 телефон: усі розділи вміщаються в нижню панель без гортання; вікна — нижній лист біля великого пальця */
 @media (max-width: 600px) {
-  .nav { justify-content: space-between; gap: 0; padding-left: 2px; padding-right: 2px; }
-  .nav button { flex: 1 1 0; min-width: 0; padding: 6px 0 5px; font-size: 10px; border-radius: 12px; line-height: 1.15; overflow: visible; word-break: break-word; }
-  .nav button .ic { font-size: 21px; }
-  .nav .badge { top: 1px; right: 2px; }
-  /* усі розділи в один ряд: що більше кнопок, то вужчі (без «⋯ Ще») */
-  .nav .more-i, .nav [data-a="switch"] { display: grid !important; }
-  .more-btn, .nav .fs-btn { display: none !important; }
-  .nav:has(.more-i) button { font-size: 0; padding: 8px 0 6px; gap: 0; }                 /* багато розділів: лише значки… */
-  .nav:has(.more-i) button.on { font-size: 9px; gap: 2px; white-space: nowrap; }        /* …і підпис під відкритим */
-  .nav:has(.more-i) button .ic { font-size: 20px; }
-  .nav:has(.more-i) .me::after { content: none; }
-  .nav:has(.more-i) .me small, .nav:has(.more-i) [data-a="switch"] > :not(.ic) { display: none; }
-  .nav .me { flex: 1 1 0; min-width: 0 !important; } .nav .me b { display: none; } .nav .me::after { content: 'Кабінет'; font-size: 10px; font-weight: 600; }
   .modal-bg { place-items: end stretch; padding: 0; padding-top: calc(40px + env(safe-area-inset-top)); }
   .modal { width: 100%; max-height: calc(100dvh - 40px - env(safe-area-inset-top)); border-radius: 22px 22px 0 0; border-bottom: 0; padding: 26px 16px calc(18px + env(safe-area-inset-bottom)); animation: sheetUp .26s cubic-bezier(.2, .9, .3, 1); position: relative; }
   .modal::before { content: ''; position: absolute; top: 9px; left: 50%; width: 40px; height: 5px; margin-left: -20px; border-radius: 3px; background: var(--line2, #ffffff33); }
