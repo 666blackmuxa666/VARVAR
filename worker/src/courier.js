@@ -141,6 +141,7 @@ const PROB = { noans: '📵 Гість не відповідає', addr: '📍 �
 const KM = { soon: 'Буду за 5 хв — тримайте гарячим', here: 'Я на місці, віддавайте', where: 'Де замовлення?' };
 export async function courAct(env, t, name, act, arg) {
   const b = await getBill(env, t); if (!b.go) return { error: 'Доставку вже закрито' };
+  if (b.go.st === 'new' && ['take', 'road', 'done'].includes(act)) return { error: 'Замовлення ще не прийняте закладом' }; // гість замовив, заклад не підтвердив — кур'єр не рухає
   if (b.go.cour && b.go.cour !== name && act !== 'take') return { error: 'Це доставка ' + b.go.cour };
   if (act === 'take') {
     const g = await L(env, 'bills', async () => { const x = await getBill(env, t); if (!x.go) return { error: 'Закрито' }; if (x.go.cour && x.go.cour !== name) return { error: 'Вже взяв ' + x.go.cour }; x.go.cour = name; x.go.takeAt = Date.now(); await putBill(env, t, x); return x.go; });
