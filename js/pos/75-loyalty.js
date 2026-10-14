@@ -1,7 +1,7 @@
   // ---------- 🎁 Лояльність: рівні, акції, клієнти, звіт (сервер — worker/src/promo.js, op loy*) ----------
   const LOY_W = { hall: '🪑 зал', pick: '🥡 з собою', del: '🛵 доставка' }, LOY_D = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
   const bdTxt = bd => bd ? `${bd.slice(3)}.${bd.slice(0, 2)}` : '';
-  const ruleName = r => r.name || ({ cat: `−${r.pct}%`, happy: `Щасливі години −${r.pct}%`, nth: `Кожна ${r.n}-та в подарунок`, sum: r.gift ? `Від ${r.min} ₴ — подарунок` : `Від ${r.min} ₴ −${r.pct}%`, bday: `День народження −${r.pct}%` }[r.type] || 'Акція');
+  const ruleName = r => r.name || ({ cat: `−${r.pct}%`, happy: `Щасливі години −${r.pct}%`, nth: `Кожна ${r.n}-та в подарунок`, sum: r.gift ? `Від ${r.min} ₴ — подарунок` : `Від ${r.min} ₴ −${r.pct}%`, bday: `День народження −${r.pct}%`, pair: `Кожна ${r.n}-та −${r.pct}%`, combo: `Подарунок: ${(r.gifts || []).join(' / ')}`, week: `Страва тижня −${r.pct}%` }[r.type] || 'Акція');
   const lvCond = l => l.man ? 'лише вручну' : [l.n ? `від ${l.n} візитів` : '', l.sum ? `від ${money(l.sum)}` : ''].filter(Boolean).join(' або ') || 'усі клієнти';
   // ---------- ✉️ Вхідні від гостей (бот гостей: повідомлення, відгуки, низькі оцінки) ----------
   const inboxBtn = () => S.gInN ? `<button class="btn red bk-blink" data-a="gbInbox" title="Гості написали — відпишіть">✉️ ${S.gInN}</button>` : `<button class="btn ghost" data-a="gbInbox" title="Повідомлення гостей">✉️</button>`;
@@ -51,11 +51,13 @@
       <div class="card"><h3>🤖 Що бот робить сам</h3>${sw('stat', '🛵 Статус замовлення', 'Прийнято · готується · готово · кур\'єр виїхав')}${sw('bon', '🎁 Нараховані бонуси', '«+35 бонусів, на рахунку 210» після закриття чека')}${sw('chat', '💬 Чат з адміністратором', 'Повідомлення гостя — у стрічку й групу, відповідь — кнопкою «↩️ Відповісти»')}</div>
       <div class="card"><h3>🎂 День народження</h3>${sw('bd', '🎂 Вітати в день народження', 'Гість вказує дату в боті. Знижка — акцією «🎂 День народження»')}<div class="kv"><span>🎁 Подарунок (сертифікат у бот)<br><small class="muted">раз на рік, офіціант вводить код у «🎟 Сертифікат»</small></span><span class="kv-r"><b>${esc(G.gifts.find(x => x.id === g.bdGift)?.n || 'без подарунка')}</b><button class="btn sm" data-a="gbGift">✏️</button></span></div>${kv('bdGiftDays', '📆 Сертифікат діє, днів', g.bdGiftDays)}${tx('bdText', g.bdText)}</div>
       <div class="card"><h3>👋 «Сплячі» гості</h3>${sw('sleep', '👋 Нагадувати тим, хто давно не був', 'Раз на день, о 11:00–20:00; одному гостю — не частіше ніж раз на 2 періоди')}${kv('sleepDays', '📆 Не був днів', g.sleepDays)}${kv('sleepBon', '🎁 Подарувати бонусів', g.sleepBon)}${tx('sleepText', g.sleepText)}</div></div>`; })(); }
-    if (tab === 'rules') body = `<div class="grid2 set">${c.rules.map(r => `<div class="card"><h3>${r.on ? '' : '⛔ '}${esc(ruleName(r))}</h3>
+    if (tab === 'rules') body = `${c.on ? '' : '<div class="card"><b>⛔ Лояльність вимкнена — акції не діють.</b></div>'}<div class="card"><h3>⚡ Заготовки — увімкни галочкою</h3><div class="muted set-note">Діють у касі самі: знижка з'являється в рахунку й чеку без ручного вводу. Увімкнені — показуються гостям на сайті як «⚡ акція». Змінити %, години чи страви — ✏️.</div>
+      <div class="loy-pre">${(D.P || []).map(p => { const r = c.rules.find(x => x.pre === p.pre); return `<div class="kv"><span>${esc(r ? ruleName(r) : p.name)}<br><small class="muted">${esc(r ? ruleWhat(r, D) : p.d)}</small></span><span class="kv-r">${r && adm ? `<button class="btn sm" data-a="loyRule" data-id="${r.id}">✏️</button>` : ''}${adm ? `<span class="switch ${r?.on ? 'on' : ''}" data-a="loyPre" data-id="${p.pre}" role="switch"></span>` : `<b>${r?.on ? '✅' : '—'}</b>`}</span></div>`; }).join('')}</div></div>
+      <div class="grid2 set">${c.rules.filter(r => !r.pre).map(r => `<div class="card"><h3>${r.on ? '' : '⛔ '}${esc(ruleName(r))}</h3>
         <div class="kv"><span>${D.T[r.type] || r.type}</span>${adm ? `<span class="switch ${r.on ? 'on' : ''}" data-a="loyRuleOn" data-id="${r.id}" role="switch"></span>` : `<b>${r.on ? '✅' : '⛔'}</b>`}</div>
         <div class="muted set-note">${esc(ruleWhat(r, D))}</div>
         ${adm ? `<div class="btnrow"><button class="btn sm" data-a="loyRule" data-id="${r.id}">✏️ Змінити</button><button class="btn sm red" data-a="loyRuleDel" data-id="${r.id}">🗑</button></div>` : ''}</div>`).join('')}
-      <div class="card"><h3>➕ Нова акція</h3><div class="muted set-note">% на категорію/страву · щасливі години · N-та кава в подарунок · від суми — знижка або подарунок · день народження ±N днів. Умови: зал / з собою / доставка, період дії. Знижки рахує сервер і показує в чеку назвою акції.</div>
+      <div class="card"><h3>➕ Своя акція</h3><div class="muted set-note">% на категорію/страву · щасливі години · N-та кава в подарунок · від суми — знижка або подарунок · день народження ±N днів · 2-га −% · до страви подарунок · страва тижня. Умови: зал / з собою / доставка, період дії. Знижки рахує сервер і показує в чеку назвою акції.</div>
         ${adm ? '<button class="btn sm primary" data-a="loyRule" data-id="">➕ Створити</button>' : '<div class="muted">Створює адміністратор</div>'}</div></div>`;
     if (tab === 'cli') { const L = S.data.loyCli, f = S.loyF || 'tg';
       const F = [['tg', '📱 У програмі'], ['all', 'Усі номери'], ...c.levels.map(l => [l.id, `${l.e} ${l.name}`]), ['bd', '🎂 ДН ±7 днів'], ['sleep', '😴 Не були 30+ днів'], ['bal', '🎁 Є бонуси']];
@@ -74,7 +76,7 @@
   }
   function ruleWhat(r, D) {
     const cn = id => D.cats.find(c => c.id === id)?.n || id, what = [...(r.cats || []).map(cn), ...(r.dishes || [])].join(', ');
-    return [r.type === 'happy' ? `${r.days?.length ? r.days.map(d => LOY_D[d]).join(', ') : 'щодня'} ${r.from}–${r.to}` : '', r.type === 'nth' ? `кожна ${r.n}-та` : '', r.type === 'sum' ? `від ${money(r.min)} → ${r.gift ? '🎁 ' + r.gift : '−' + r.pct + '%'}` : '', r.type === 'bday' ? `±${r.bdays ?? 3} дн. від ДН (дата в картці клієнта)` : '',
+    return [r.type === 'happy' || r.from || r.days?.length ? `${r.days?.length ? r.days.map(d => LOY_D[d]).join(', ') : 'щодня'}${r.from ? ` ${r.from}–${r.to}` : ''}` : '', r.type === 'pair' ? `кожна ${r.n}-та −${r.pct}%` : '', r.type === 'combo' ? `🎁 ${(r.gifts || []).join(' / ')}` : '', r.show ? '📢 гостям' : '', r.type === 'nth' ? `кожна ${r.n}-та` : '', r.type === 'sum' ? `від ${money(r.min)} → ${r.gift ? '🎁 ' + r.gift : '−' + r.pct + '%'}` : '', r.type === 'bday' ? `±${r.bdays ?? 3} дн. від ДН (дата в картці клієнта)` : '',
       what ? '🍽 ' + what : r.type === 'sum' || r.type === 'bday' ? '' : '🍽 усе меню', r.where?.length ? r.where.map(w => LOY_W[w]).join(' ') : '🪑🥡🛵 скрізь', r.d1 || r.d2 ? `📅 ${r.d1 || '…'} — ${r.d2 || '…'}` : ''].filter(Boolean).join(' · ');
   }
   async function loyLvEdit(id) {
@@ -89,16 +91,17 @@
     if (lv) { const r = await act('loyLevel', { lv }, '💾 Збережено'); if (r) S.data.loy.cfg = r.cfg; }
     renderMain();
   }
-  async function loyRuleEdit(id) {
-    const D = S.data.loy, r = D.cfg.rules.find(x => x.id === id) || { type: 'happy', on: 1, pct: 10, where: [], cats: [], dishes: [], days: [], from: '15:00', to: '18:00', n: 5, min: 1000, bdays: 3 };
+  async function loyRuleEdit(id, draft) {
+    const D = S.data.loy, r = draft || D.cfg.rules.find(x => x.id === id) || { type: 'happy', on: 1, pct: 10, where: [], cats: [], dishes: [], days: [], from: '15:00', to: '18:00', n: 5, min: 1000, bdays: 3 };
     const chk = (name, val, on, l) => `<label class="chip sm ${on ? 'on' : ''}" style="display:inline-flex;gap:6px;align-items:center;margin:0 6px 6px 0"><input type="checkbox" name="${name}" value="${val}" ${on ? 'checked' : ''} style="width:auto;margin:0">${l}</label>`;
     const body = `<div class="form">
       <label>Тип<select id="rT">${Object.entries(D.T).map(([k, l]) => `<option value="${k}" ${r.type === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       <label>Назва в чеку (необовʼязково)<input id="rN" value="${esc(r.name || '')}" placeholder="напр. ☕ Кожна 5-та кава"></label>
       <label data-f="pct">Знижка, %<input id="rP" inputmode="numeric" value="${r.pct || 0}"></label>
-      <label data-f="n">Кожна N-та в подарунок, N<input id="rNth" inputmode="numeric" value="${r.n || 5}"></label>
+      <label data-f="n"><span id="rNl">Кожна N-та в подарунок</span>, N<input id="rNth" inputmode="numeric" value="${r.n || 5}"></label>
       <label data-f="min">Від суми, ₴<input id="rMin" inputmode="numeric" value="${r.min || 1000}"></label>
       <label data-f="gift">Подарунок — страва (замість %; порожньо — знижка %)<input id="rGift" list="rDl" value="${esc(r.gift || '')}"></label>
+      <label data-f="gifts">🎁 Подарунок — одна з страв (через кому)<input id="rGifts" list="rDl" value="${esc((r.gifts || []).join(', '))}" placeholder="Пепсі, Лимонад"></label>
       <label data-f="bdays">Днів до/після ДН<input id="rBd" inputmode="numeric" value="${r.bdays ?? 3}"></label>
       <div data-f="days"><div class="muted set-note">Дні тижня (нічого — щодня)</div>${[1, 2, 3, 4, 5, 6, 7].map(d => chk('rDay', d, r.days?.includes(d), LOY_D[d])).join('')}
         <div class="srow"><label>З<input id="rF" value="${esc(r.from || '')}" placeholder="15:00"></label><label>До<input id="rTo" value="${esc(r.to || '')}" placeholder="18:00"></label></div></div>
@@ -106,14 +109,17 @@
         <label>Або страви через кому<input id="rDish" list="rDl" value="${esc((r.dishes || []).join(', '))}"></label></div>
       <datalist id="rDl">${D.cats.flatMap(c => c.items).map(n => `<option value="${esc(n)}">`).join('')}</datalist>
       <div class="muted set-note">Де діє (нічого — скрізь)</div><div>${Object.entries(LOY_W).map(([k, l]) => chk('rW', k, r.where?.includes(k), l)).join('')}</div>
+      <label><input type="checkbox" id="rShow" ${r.show ? 'checked' : ''} style="width:auto"> 📢 Показувати гостям (сайт, замовлення)</label>
+      <label>Текст для гостей<input id="rDsc" value="${esc(r.d || '')}" placeholder="Замовляєш 2 коктейлі — на другий −20%"></label>
       <div class="srow"><label>Діє з<input id="rD1" type="date" value="${r.d1 || ''}"></label><label>по<input id="rD2" type="date" value="${r.d2 || ''}"></label></div></div>`;
-    const show = () => { const t = $('#rT').value, F = { pct: t !== 'nth', n: t === 'nth', min: t === 'sum', gift: t === 'sum', bdays: t === 'bday', days: t === 'happy', what: ['cat', 'happy', 'nth'].includes(t) }; document.querySelectorAll('#modal [data-f]').forEach(el => { el.hidden = !F[el.dataset.f]; }); };
+    const show = () => { const t = $('#rT').value, F = { pct: !['nth', 'combo'].includes(t), n: ['nth', 'pair'].includes(t), min: t === 'sum', gift: t === 'sum', gifts: t === 'combo', bdays: t === 'bday', days: ['happy', 'pair', 'combo', 'week'].includes(t), what: ['cat', 'happy', 'nth', 'pair', 'combo', 'week'].includes(t) }; $('#rNl').textContent = t === 'pair' ? 'Знижка на кожну N-ту' : 'Кожна N-та в подарунок'; document.querySelectorAll('#modal [data-f]').forEach(el => { el.hidden = !F[el.dataset.f]; }); };
     const p = modal({ title: id ? '🎯 Акція' : '➕ Нова акція', body, buttons: [{ label: '💾 Зберегти', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
     $('#rT').onchange = show; show(); document.querySelectorAll('#modal input[type=checkbox]').forEach(i => { i.onchange = () => i.parentElement.classList.toggle('on', i.checked); });
     const v = await p; if (v !== 'ok') return;
     const all = n => [...document.querySelectorAll(`#modal input[name=${n}]:checked`)].map(i => i.value);
     const rule = { id: r.id, on: r.on ?? 1, type: $('#rT').value, name: $('#rN').value, pct: +$('#rP').value || 0, n: +$('#rNth').value || 0, min: +$('#rMin').value || 0, gift: $('#rGift').value.trim(), bdays: +$('#rBd').value || 0,
-      days: all('rDay').map(Number), from: $('#rF').value.trim(), to: $('#rTo').value.trim(), cats: all('rCat'), dishes: $('#rDish').value.split(',').map(s => s.trim()).filter(Boolean), where: all('rW'), d1: $('#rD1').value, d2: $('#rD2').value };
+      days: all('rDay').map(Number), from: $('#rF').value.trim(), to: $('#rTo').value.trim(), cats: all('rCat'), dishes: $('#rDish').value.split(',').map(s => s.trim()).filter(Boolean), where: all('rW'), d1: $('#rD1').value, d2: $('#rD2').value,
+      gifts: $('#rGifts').value.split(',').map(s => s.trim()).filter(Boolean), show: $('#rShow').checked ? 1 : 0, d: $('#rDsc').value.trim(), pre: r.pre || '' };
     if (rule.type === 'sum' && rule.gift) rule.pct = 0;
     const res = await act('loyRule', { rule }, '💾 Акцію збережено'); if (!res) return; closeModal(); S.data.loy.cfg = res.cfg; renderMain();
   }
@@ -149,6 +155,9 @@
     if (a === 'loyLv') return loyLvEdit(d.id);
     if (a === 'loyRule') return loyRuleEdit(d.id);
     if (a === 'loyRuleDel') { if (await confirmBox('Видалити акцію?')) { const r = await act('loyRule', { del: d.id }, '🗑 Видалено'); if (r) { S.data.loy.cfg = r.cfg; renderMain(); } } return; }
+    if (a === 'loyPre') { const r0 = S.data.loy.cfg.rules.find(x => x.pre === d.id), r = await act('loyPreset', { pre: d.id, on: r0?.on ? 0 : 1 }); if (!r) return;
+      if (r.draft) { toast('✏️ ' + (r.error || 'Уточніть') + ' — налаштуйте'); return loyRuleEdit('', r.draft); }
+      if (r0) Object.assign(r0, r.rule); else S.data.loy.cfg.rules.push(r.rule); toast(r.rule.on ? '✅ Акція діє' : '⛔ Вимкнено'); renderMain(); return; }
     if (a === 'loyRuleOn') { const r0 = S.data.loy.cfg.rules.find(x => x.id === d.id); const r = await act('loyRuleOn', { id: d.id, on: !r0.on }, r0.on ? '⛔ Вимкнено' : '✅ Увімкнено'); if (r) { Object.assign(r0, r.rule); renderMain(); } return; }
     if (a === 'loyOn') { const r = await act('loySet', { on: !S.data.loy.cfg.on }); if (r) { S.data.loy.cfg = r.cfg; renderMain(); } return; }
     if (a === 'loyMax') { const v = await askVal('🧢 Стеля всіх знижок, %', S.data.loy.cfg.max, 'number'); if (v == null) return; const r = await act('loySet', { max: v }, '💾 Збережено'); if (r) { S.data.loy.cfg = r.cfg; renderMain(); } return; }

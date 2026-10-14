@@ -723,7 +723,7 @@ async function handleCallback(q, env) {
   if (act === 'idx' || act === 'idd') { const I = await import('./ideas.js'), me = await meStaff(env, uid); if (!me) return answer('🔐 Увійдіть PIN');
     const r = act === 'idx' ? await I.ideaDel(env, arg, me.name, admin) : await I.ideaDone(env, arg, admin); if (r.error) return answer(r.error);
     const v = await I.ideaBotList(env, me, admin); await edit(v.text, v.markup); return answer(act === 'idx' ? '🗑 Видалено' : '✅'); }
-  if (['lcl', 'llv', 'lro', 'lcs'].includes(act)) { // 🎁 лояльність: картка клієнта, рівень, увімк/вимк акції
+  if (['lcl', 'llv', 'lro', 'lcs', 'lpr'].includes(act)) { // 🎁 лояльність: картка клієнта, рівень, увімк/вимк акції
     const r = await loyBotCb(env, act, arg, oid, admin, who); if (!r) return answer('');
     if (r.send) await send(r.send); if (r.edit) await edit(r.edit.text, r.edit.markup); return answer(r.answer || '');
   }

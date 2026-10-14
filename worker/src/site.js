@@ -70,7 +70,8 @@ export async function sitePublic(env) {
   if (s.events) s.events = s.events.filter(e => e.d >= td).sort((a, b) => (a.d + a.tm).localeCompare(b.d + b.tm));
   if (s.ann?.till && s.ann.till < td) s.ann = { ...s.ann, on: 0 }; if (s.season?.till && s.season.till < td) s.season = { k: '' };
   const onl = !!((await (await import('./delivery.js')).getGoCfg(env)).onl && (await import('./liqpay.js')).lpKeys(env)); /* 💳 сертифікат онлайн — той самий перемикач, що й замовлення */
-  return { ...s, certOnl: s.certOn && onl ? 1 : 0, open: openNow(s), hits: hits.map(i => ({ id: i.id, n: i.name, d: i.desc, p: i.price ?? i.variants?.[0]?.p, img: i.img, size: i.size })) };
+  const auto = await (await import('./promo.js')).promoShow(env).catch(() => []); /* ⚡ акції каси з «показувати гостям» */
+  return { ...s, promos: [...auto, ...(s.promos || [])], certOnl: s.certOn && onl ? 1 : 0, open: openNow(s), hits: hits.map(i => ({ id: i.id, n: i.name, d: i.desc, p: i.price ?? i.variants?.[0]?.p, img: i.img, size: i.size })) };
 }
 
 // ---------- 📅 бронювання ----------

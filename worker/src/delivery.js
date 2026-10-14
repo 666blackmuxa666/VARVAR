@@ -218,7 +218,7 @@ export async function reco(env) {
 // публічні дані для сайту: налаштування (без зайвого) і баланс бонусів
 export async function goInfo(env, ph) {
   const c = await getGoCfg(env), cli = ph ? await getCli(env, normPhone(ph)) : null;
-  return { on: c.on, del: c.del, pick: c.pick, from: c.from, to: c.to, open: isOpen(c), min: c.min, fee: c.fee, free: c.free, prep: c.prep, phone: c.phone, zone: c.zone, cash: c.cash, bmax: c.bmax, onl: c.onl && lpKeys(env) ? 1 : 0, ...(isMem(cli) ? { bal: cli.bal || 0 } : {}) }; // адреси — лише в касі (не світимо за номером)
+  return { on: c.on, del: c.del, pick: c.pick, from: c.from, to: c.to, open: isOpen(c), min: c.min, fee: c.fee, free: c.free, prep: c.prep, phone: c.phone, zone: c.zone, cash: c.cash, bmax: c.bmax, onl: c.onl && lpKeys(env) ? 1 : 0, ...(isMem(cli) ? { bal: cli.bal || 0 } : {}), ...(ph ? {} : { pr: (await (await import('./promo.js')).promoShow(env).catch(() => [])).filter(r => !r.w || r.w.some(w => w !== 'hall')) }) }; // адреси — лише в касі (не світимо за номером)
 }
 
 // ---------- 🖥 API каси: go* / cli* ----------

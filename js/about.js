@@ -49,7 +49,7 @@
     $('#socials').innerHTML = [s.insta && `<a href="${esc(s.insta)}" target="_blank" rel="noopener">Instagram</a>`, s.tg && `<a href="${esc(s.tg)}" target="_blank" rel="noopener">Telegram</a>`].filter(Boolean).join('');
     if (Array.isArray(s.geo) && s.geo.length === 2) $('#map').src = `https://www.google.com/maps?q=${s.geo[0]},${s.geo[1]}&z=16&output=embed`; else if (s.addr) $('#map').src = `https://www.google.com/maps?q=${encodeURIComponent(s.addr)}&z=16&output=embed`; else $('#map').hidden = true;
     $('#sHook').textContent = s.hookah; $('#sBanq').textContent = s.banquet;
-    $('#promos').hidden = !s.promos.length; $('#promoList').innerHTML = s.promos.map(p => `<div class="promo"><b>${esc(p.t)}</b>${esc(p.d)}</div>`).join('');
+    $('#promos').hidden = !s.promos.length; $('#promoList').innerHTML = s.promos.map(p => `<div class="promo"><b>${p.auto ? '⚡ ' : ''}${esc(p.t)}</b>${esc(p.d)}</div>`).join('');
     const mt = s.menuTheme, phBg = !mt || !mt.phbg || mt.phbg === 'tex' ? '' : ` style="background:${esc(mt.phbg === 'color' ? mt.phC : mt.phbg === 'img' && mt.phImg ? `${mt.card} url('${mt.phImg}') center/cover` : mt.phbg === 'none' ? 'transparent' : mt.card)}"`; /* фон під фото — як у меню */
     $('#hits').innerHTML = s.hits.slice(0, 4).map(h => `<a class="hit" href="index.html?go#i-${h.id}"><span class="ph"${phBg}>${h.img ? `<img src="${esc(h.img)}" alt="" loading="lazy">` : ''}</span><div><b>${esc(h.n?.[lang] || h.n?.uk || '')}</b>${h.d ? `<small>${esc(h.d[lang] || h.d.uk || '')}</small>` : ''}${h.p ? `<span>${money(h.p)}</span>` : ''}</div></a>`).join('');
     $('#gallery').hidden = !s.photos.length; $('#gal').innerHTML = s.photos.map(u => `<img src="${esc(u)}" alt="" loading="lazy">`).join('');

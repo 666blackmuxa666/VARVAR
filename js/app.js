@@ -408,6 +408,7 @@
   function goForm() {
     const c = goCfg || {}, sum = goFood(), min = c.min && sum < c.min, w = goWhenOpts();
     $('#goBody').innerHTML = `<div class="seg2">${c.pick ? `<button class="${gf.kind === 'pick' ? 'on' : ''}" data-go-k="pick">🥡 ${t('goPick')}</button>` : ''}${c.del ? `<button class="${gf.kind === 'del' ? 'on' : ''}" data-go-k="del">🛵 ${t('goDel')}${c.fee ? `<small>${c.free ? `${money(c.fee)} · ${t('goFreeFrom')} ${money(c.free)}` : money(c.fee)}</small>` : ''}</button>` : ''}</div>
+      ${(c.pr || []).filter(r => !r.w || r.w.includes(gf.kind)).map(r => `<div class="go-note">⚡ <b>${esc(r.t)}</b>${r.d ? ' — ' + esc(r.d) : ''}</div>`).join('')}
       <input id="gName" placeholder="${t('goName')}" value="${esc(gf.name)}" autocomplete="name">
       <input id="gPhone" type="tel" placeholder="${t('goPhone')}" value="${esc(gf.phone)}" autocomplete="tel" inputmode="tel">
       ${gf.kind === 'del' ? `<input id="gAddr" placeholder="${t('goAddr')}" value="${esc(gf.addr)}" autocomplete="street-address"><input id="gEnt" placeholder="${t('goEnt')}" value="${esc(gf.ent)}">${c.zone ? `<div class="go-note">📍 ${esc(c.zone)}</div>` : ''}` : ''}

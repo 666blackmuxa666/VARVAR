@@ -4135,7 +4135,7 @@ var __objRest = (source, exclude) => {
   }
   const LOY_W = { hall: "\u{1FA91} \u0437\u0430\u043B", pick: "\u{1F961} \u0437 \u0441\u043E\u0431\u043E\u044E", del: "\u{1F6F5} \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430" }, LOY_D = ["", "\u041F\u043D", "\u0412\u0442", "\u0421\u0440", "\u0427\u0442", "\u041F\u0442", "\u0421\u0431", "\u041D\u0434"];
   const bdTxt = (bd) => bd ? `${bd.slice(3)}.${bd.slice(0, 2)}` : "";
-  const ruleName = (r) => r.name || ({ cat: `\u2212${r.pct}%`, happy: `\u0429\u0430\u0441\u043B\u0438\u0432\u0456 \u0433\u043E\u0434\u0438\u043D\u0438 \u2212${r.pct}%`, nth: `\u041A\u043E\u0436\u043D\u0430 ${r.n}-\u0442\u0430 \u0432 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A`, sum: r.gift ? `\u0412\u0456\u0434 ${r.min} \u20B4 \u2014 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A` : `\u0412\u0456\u0434 ${r.min} \u20B4 \u2212${r.pct}%`, bday: `\u0414\u0435\u043D\u044C \u043D\u0430\u0440\u043E\u0434\u0436\u0435\u043D\u043D\u044F \u2212${r.pct}%` }[r.type] || "\u0410\u043A\u0446\u0456\u044F");
+  const ruleName = (r) => r.name || ({ cat: `\u2212${r.pct}%`, happy: `\u0429\u0430\u0441\u043B\u0438\u0432\u0456 \u0433\u043E\u0434\u0438\u043D\u0438 \u2212${r.pct}%`, nth: `\u041A\u043E\u0436\u043D\u0430 ${r.n}-\u0442\u0430 \u0432 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A`, sum: r.gift ? `\u0412\u0456\u0434 ${r.min} \u20B4 \u2014 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A` : `\u0412\u0456\u0434 ${r.min} \u20B4 \u2212${r.pct}%`, bday: `\u0414\u0435\u043D\u044C \u043D\u0430\u0440\u043E\u0434\u0436\u0435\u043D\u043D\u044F \u2212${r.pct}%`, pair: `\u041A\u043E\u0436\u043D\u0430 ${r.n}-\u0442\u0430 \u2212${r.pct}%`, combo: `\u041F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A: ${(r.gifts || []).join(" / ")}`, week: `\u0421\u0442\u0440\u0430\u0432\u0430 \u0442\u0438\u0436\u043D\u044F \u2212${r.pct}%` }[r.type] || "\u0410\u043A\u0446\u0456\u044F");
   const lvCond = (l) => l.man ? "\u043B\u0438\u0448\u0435 \u0432\u0440\u0443\u0447\u043D\u0443" : [l.n ? `\u0432\u0456\u0434 ${l.n} \u0432\u0456\u0437\u0438\u0442\u0456\u0432` : "", l.sum ? `\u0432\u0456\u0434 ${money(l.sum)}` : ""].filter(Boolean).join(" \u0430\u0431\u043E ") || "\u0443\u0441\u0456 \u043A\u043B\u0456\u0454\u043D\u0442\u0438";
   const inboxBtn = () => S.gInN ? `<button class="btn red bk-blink" data-a="gbInbox" title="\u0413\u043E\u0441\u0442\u0456 \u043D\u0430\u043F\u0438\u0441\u0430\u043B\u0438 \u2014 \u0432\u0456\u0434\u043F\u0438\u0448\u0456\u0442\u044C">\u2709\uFE0F ${S.gInN}</button>` : `<button class="btn ghost" data-a="gbInbox" title="\u041F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u043D\u044F \u0433\u043E\u0441\u0442\u0435\u0439">\u2709\uFE0F</button>`;
   const agoT = (at) => {
@@ -4226,11 +4226,16 @@ var __objRest = (source, exclude) => {
       <div class="card"><h3>\u{1F44B} \xAB\u0421\u043F\u043B\u044F\u0447\u0456\xBB \u0433\u043E\u0441\u0442\u0456</h3>${sw2("sleep", "\u{1F44B} \u041D\u0430\u0433\u0430\u0434\u0443\u0432\u0430\u0442\u0438 \u0442\u0438\u043C, \u0445\u0442\u043E \u0434\u0430\u0432\u043D\u043E \u043D\u0435 \u0431\u0443\u0432", "\u0420\u0430\u0437 \u043D\u0430 \u0434\u0435\u043D\u044C, \u043E 11:00\u201320:00; \u043E\u0434\u043D\u043E\u043C\u0443 \u0433\u043E\u0441\u0442\u044E \u2014 \u043D\u0435 \u0447\u0430\u0441\u0442\u0456\u0448\u0435 \u043D\u0456\u0436 \u0440\u0430\u0437 \u043D\u0430 2 \u043F\u0435\u0440\u0456\u043E\u0434\u0438")}${kv("sleepDays", "\u{1F4C6} \u041D\u0435 \u0431\u0443\u0432 \u0434\u043D\u0456\u0432", g.sleepDays)}${kv("sleepBon", "\u{1F381} \u041F\u043E\u0434\u0430\u0440\u0443\u0432\u0430\u0442\u0438 \u0431\u043E\u043D\u0443\u0441\u0456\u0432", g.sleepBon)}${tx("sleepText", g.sleepText)}</div></div>`;
       })();
     }
-    if (tab === "rules") body = `<div class="grid2 set">${c.rules.map((r) => `<div class="card"><h3>${r.on ? "" : "\u26D4 "}${esc(ruleName(r))}</h3>
+    if (tab === "rules") body = `${c.on ? "" : '<div class="card"><b>\u26D4 \u041B\u043E\u044F\u043B\u044C\u043D\u0456\u0441\u0442\u044C \u0432\u0438\u043C\u043A\u043D\u0435\u043D\u0430 \u2014 \u0430\u043A\u0446\u0456\u0457 \u043D\u0435 \u0434\u0456\u044E\u0442\u044C.</b></div>'}<div class="card"><h3>\u26A1 \u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438 \u2014 \u0443\u0432\u0456\u043C\u043A\u043D\u0438 \u0433\u0430\u043B\u043E\u0447\u043A\u043E\u044E</h3><div class="muted set-note">\u0414\u0456\u044E\u0442\u044C \u0443 \u043A\u0430\u0441\u0456 \u0441\u0430\u043C\u0456: \u0437\u043D\u0438\u0436\u043A\u0430 \u0437'\u044F\u0432\u043B\u044F\u0454\u0442\u044C\u0441\u044F \u0432 \u0440\u0430\u0445\u0443\u043D\u043A\u0443 \u0439 \u0447\u0435\u043A\u0443 \u0431\u0435\u0437 \u0440\u0443\u0447\u043D\u043E\u0433\u043E \u0432\u0432\u043E\u0434\u0443. \u0423\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u0456 \u2014 \u043F\u043E\u043A\u0430\u0437\u0443\u044E\u0442\u044C\u0441\u044F \u0433\u043E\u0441\u0442\u044F\u043C \u043D\u0430 \u0441\u0430\u0439\u0442\u0456 \u044F\u043A \xAB\u26A1 \u0430\u043A\u0446\u0456\u044F\xBB. \u0417\u043C\u0456\u043D\u0438\u0442\u0438 %, \u0433\u043E\u0434\u0438\u043D\u0438 \u0447\u0438 \u0441\u0442\u0440\u0430\u0432\u0438 \u2014 \u270F\uFE0F.</div>
+      <div class="loy-pre">${(D.P || []).map((p) => {
+      const r = c.rules.find((x) => x.pre === p.pre);
+      return `<div class="kv"><span>${esc(r ? ruleName(r) : p.name)}<br><small class="muted">${esc(r ? ruleWhat(r, D) : p.d)}</small></span><span class="kv-r">${r && adm ? `<button class="btn sm" data-a="loyRule" data-id="${r.id}">\u270F\uFE0F</button>` : ""}${adm ? `<span class="switch ${(r == null ? void 0 : r.on) ? "on" : ""}" data-a="loyPre" data-id="${p.pre}" role="switch"></span>` : `<b>${(r == null ? void 0 : r.on) ? "\u2705" : "\u2014"}</b>`}</span></div>`;
+    }).join("")}</div></div>
+      <div class="grid2 set">${c.rules.filter((r) => !r.pre).map((r) => `<div class="card"><h3>${r.on ? "" : "\u26D4 "}${esc(ruleName(r))}</h3>
         <div class="kv"><span>${D.T[r.type] || r.type}</span>${adm ? `<span class="switch ${r.on ? "on" : ""}" data-a="loyRuleOn" data-id="${r.id}" role="switch"></span>` : `<b>${r.on ? "\u2705" : "\u26D4"}</b>`}</div>
         <div class="muted set-note">${esc(ruleWhat(r, D))}</div>
         ${adm ? `<div class="btnrow"><button class="btn sm" data-a="loyRule" data-id="${r.id}">\u270F\uFE0F \u0417\u043C\u0456\u043D\u0438\u0442\u0438</button><button class="btn sm red" data-a="loyRuleDel" data-id="${r.id}">\u{1F5D1}</button></div>` : ""}</div>`).join("")}
-      <div class="card"><h3>\u2795 \u041D\u043E\u0432\u0430 \u0430\u043A\u0446\u0456\u044F</h3><div class="muted set-note">% \u043D\u0430 \u043A\u0430\u0442\u0435\u0433\u043E\u0440\u0456\u044E/\u0441\u0442\u0440\u0430\u0432\u0443 \xB7 \u0449\u0430\u0441\u043B\u0438\u0432\u0456 \u0433\u043E\u0434\u0438\u043D\u0438 \xB7 N-\u0442\u0430 \u043A\u0430\u0432\u0430 \u0432 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A \xB7 \u0432\u0456\u0434 \u0441\u0443\u043C\u0438 \u2014 \u0437\u043D\u0438\u0436\u043A\u0430 \u0430\u0431\u043E \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A \xB7 \u0434\u0435\u043D\u044C \u043D\u0430\u0440\u043E\u0434\u0436\u0435\u043D\u043D\u044F \xB1N \u0434\u043D\u0456\u0432. \u0423\u043C\u043E\u0432\u0438: \u0437\u0430\u043B / \u0437 \u0441\u043E\u0431\u043E\u044E / \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430, \u043F\u0435\u0440\u0456\u043E\u0434 \u0434\u0456\u0457. \u0417\u043D\u0438\u0436\u043A\u0438 \u0440\u0430\u0445\u0443\u0454 \u0441\u0435\u0440\u0432\u0435\u0440 \u0456 \u043F\u043E\u043A\u0430\u0437\u0443\u0454 \u0432 \u0447\u0435\u043A\u0443 \u043D\u0430\u0437\u0432\u043E\u044E \u0430\u043A\u0446\u0456\u0457.</div>
+      <div class="card"><h3>\u2795 \u0421\u0432\u043E\u044F \u0430\u043A\u0446\u0456\u044F</h3><div class="muted set-note">% \u043D\u0430 \u043A\u0430\u0442\u0435\u0433\u043E\u0440\u0456\u044E/\u0441\u0442\u0440\u0430\u0432\u0443 \xB7 \u0449\u0430\u0441\u043B\u0438\u0432\u0456 \u0433\u043E\u0434\u0438\u043D\u0438 \xB7 N-\u0442\u0430 \u043A\u0430\u0432\u0430 \u0432 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A \xB7 \u0432\u0456\u0434 \u0441\u0443\u043C\u0438 \u2014 \u0437\u043D\u0438\u0436\u043A\u0430 \u0430\u0431\u043E \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A \xB7 \u0434\u0435\u043D\u044C \u043D\u0430\u0440\u043E\u0434\u0436\u0435\u043D\u043D\u044F \xB1N \u0434\u043D\u0456\u0432 \xB7 2-\u0433\u0430 \u2212% \xB7 \u0434\u043E \u0441\u0442\u0440\u0430\u0432\u0438 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A \xB7 \u0441\u0442\u0440\u0430\u0432\u0430 \u0442\u0438\u0436\u043D\u044F. \u0423\u043C\u043E\u0432\u0438: \u0437\u0430\u043B / \u0437 \u0441\u043E\u0431\u043E\u044E / \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430, \u043F\u0435\u0440\u0456\u043E\u0434 \u0434\u0456\u0457. \u0417\u043D\u0438\u0436\u043A\u0438 \u0440\u0430\u0445\u0443\u0454 \u0441\u0435\u0440\u0432\u0435\u0440 \u0456 \u043F\u043E\u043A\u0430\u0437\u0443\u0454 \u0432 \u0447\u0435\u043A\u0443 \u043D\u0430\u0437\u0432\u043E\u044E \u0430\u043A\u0446\u0456\u0457.</div>
         ${adm ? '<button class="btn sm primary" data-a="loyRule" data-id="">\u2795 \u0421\u0442\u0432\u043E\u0440\u0438\u0442\u0438</button>' : '<div class="muted">\u0421\u0442\u0432\u043E\u0440\u044E\u0454 \u0430\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440</div>'}</div></div>`;
     if (tab === "cli") {
       const L = S.data.loyCli, f = S.loyF || "tg";
@@ -4252,18 +4257,21 @@ var __objRest = (source, exclude) => {
     return seg + body;
   }
   function ruleWhat(r, D) {
-    var _a2, _b, _c;
+    var _a2, _b, _c, _d;
     const cn = (id) => {
       var _a3;
       return ((_a3 = D.cats.find((c) => c.id === id)) == null ? void 0 : _a3.n) || id;
     }, what = [...(r.cats || []).map(cn), ...r.dishes || []].join(", ");
     return [
-      r.type === "happy" ? `${((_a2 = r.days) == null ? void 0 : _a2.length) ? r.days.map((d) => LOY_D[d]).join(", ") : "\u0449\u043E\u0434\u043D\u044F"} ${r.from}\u2013${r.to}` : "",
+      r.type === "happy" || r.from || ((_a2 = r.days) == null ? void 0 : _a2.length) ? `${((_b = r.days) == null ? void 0 : _b.length) ? r.days.map((d) => LOY_D[d]).join(", ") : "\u0449\u043E\u0434\u043D\u044F"}${r.from ? ` ${r.from}\u2013${r.to}` : ""}` : "",
+      r.type === "pair" ? `\u043A\u043E\u0436\u043D\u0430 ${r.n}-\u0442\u0430 \u2212${r.pct}%` : "",
+      r.type === "combo" ? `\u{1F381} ${(r.gifts || []).join(" / ")}` : "",
+      r.show ? "\u{1F4E2} \u0433\u043E\u0441\u0442\u044F\u043C" : "",
       r.type === "nth" ? `\u043A\u043E\u0436\u043D\u0430 ${r.n}-\u0442\u0430` : "",
       r.type === "sum" ? `\u0432\u0456\u0434 ${money(r.min)} \u2192 ${r.gift ? "\u{1F381} " + r.gift : "\u2212" + r.pct + "%"}` : "",
-      r.type === "bday" ? `\xB1${(_b = r.bdays) != null ? _b : 3} \u0434\u043D. \u0432\u0456\u0434 \u0414\u041D (\u0434\u0430\u0442\u0430 \u0432 \u043A\u0430\u0440\u0442\u0446\u0456 \u043A\u043B\u0456\u0454\u043D\u0442\u0430)` : "",
+      r.type === "bday" ? `\xB1${(_c = r.bdays) != null ? _c : 3} \u0434\u043D. \u0432\u0456\u0434 \u0414\u041D (\u0434\u0430\u0442\u0430 \u0432 \u043A\u0430\u0440\u0442\u0446\u0456 \u043A\u043B\u0456\u0454\u043D\u0442\u0430)` : "",
       what ? "\u{1F37D} " + what : r.type === "sum" || r.type === "bday" ? "" : "\u{1F37D} \u0443\u0441\u0435 \u043C\u0435\u043D\u044E",
-      ((_c = r.where) == null ? void 0 : _c.length) ? r.where.map((w) => LOY_W[w]).join(" ") : "\u{1FA91}\u{1F961}\u{1F6F5} \u0441\u043A\u0440\u0456\u0437\u044C",
+      ((_d = r.where) == null ? void 0 : _d.length) ? r.where.map((w) => LOY_W[w]).join(" ") : "\u{1FA91}\u{1F961}\u{1F6F5} \u0441\u043A\u0440\u0456\u0437\u044C",
       r.d1 || r.d2 ? `\u{1F4C5} ${r.d1 || "\u2026"} \u2014 ${r.d2 || "\u2026"}` : ""
     ].filter(Boolean).join(" \xB7 ");
   }
@@ -4286,17 +4294,18 @@ var __objRest = (source, exclude) => {
     }
     renderMain();
   }
-  async function loyRuleEdit(id) {
+  async function loyRuleEdit(id, draft) {
     var _a2, _b;
-    const D = S.data.loy, r = D.cfg.rules.find((x) => x.id === id) || { type: "happy", on: 1, pct: 10, where: [], cats: [], dishes: [], days: [], from: "15:00", to: "18:00", n: 5, min: 1e3, bdays: 3 };
+    const D = S.data.loy, r = draft || D.cfg.rules.find((x) => x.id === id) || { type: "happy", on: 1, pct: 10, where: [], cats: [], dishes: [], days: [], from: "15:00", to: "18:00", n: 5, min: 1e3, bdays: 3 };
     const chk = (name, val, on, l) => `<label class="chip sm ${on ? "on" : ""}" style="display:inline-flex;gap:6px;align-items:center;margin:0 6px 6px 0"><input type="checkbox" name="${name}" value="${val}" ${on ? "checked" : ""} style="width:auto;margin:0">${l}</label>`;
     const body = `<div class="form">
       <label>\u0422\u0438\u043F<select id="rT">${Object.entries(D.T).map(([k, l]) => `<option value="${k}" ${r.type === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>
       <label>\u041D\u0430\u0437\u0432\u0430 \u0432 \u0447\u0435\u043A\u0443 (\u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)<input id="rN" value="${esc(r.name || "")}" placeholder="\u043D\u0430\u043F\u0440. \u2615 \u041A\u043E\u0436\u043D\u0430 5-\u0442\u0430 \u043A\u0430\u0432\u0430"></label>
       <label data-f="pct">\u0417\u043D\u0438\u0436\u043A\u0430, %<input id="rP" inputmode="numeric" value="${r.pct || 0}"></label>
-      <label data-f="n">\u041A\u043E\u0436\u043D\u0430 N-\u0442\u0430 \u0432 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A, N<input id="rNth" inputmode="numeric" value="${r.n || 5}"></label>
+      <label data-f="n"><span id="rNl">\u041A\u043E\u0436\u043D\u0430 N-\u0442\u0430 \u0432 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A</span>, N<input id="rNth" inputmode="numeric" value="${r.n || 5}"></label>
       <label data-f="min">\u0412\u0456\u0434 \u0441\u0443\u043C\u0438, \u20B4<input id="rMin" inputmode="numeric" value="${r.min || 1e3}"></label>
       <label data-f="gift">\u041F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A \u2014 \u0441\u0442\u0440\u0430\u0432\u0430 (\u0437\u0430\u043C\u0456\u0441\u0442\u044C %; \u043F\u043E\u0440\u043E\u0436\u043D\u044C\u043E \u2014 \u0437\u043D\u0438\u0436\u043A\u0430 %)<input id="rGift" list="rDl" value="${esc(r.gift || "")}"></label>
+      <label data-f="gifts">\u{1F381} \u041F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A \u2014 \u043E\u0434\u043D\u0430 \u0437 \u0441\u0442\u0440\u0430\u0432 (\u0447\u0435\u0440\u0435\u0437 \u043A\u043E\u043C\u0443)<input id="rGifts" list="rDl" value="${esc((r.gifts || []).join(", "))}" placeholder="\u041F\u0435\u043F\u0441\u0456, \u041B\u0438\u043C\u043E\u043D\u0430\u0434"></label>
       <label data-f="bdays">\u0414\u043D\u0456\u0432 \u0434\u043E/\u043F\u0456\u0441\u043B\u044F \u0414\u041D<input id="rBd" inputmode="numeric" value="${(_a2 = r.bdays) != null ? _a2 : 3}"></label>
       <div data-f="days"><div class="muted set-note">\u0414\u043D\u0456 \u0442\u0438\u0436\u043D\u044F (\u043D\u0456\u0447\u043E\u0433\u043E \u2014 \u0449\u043E\u0434\u043D\u044F)</div>${[1, 2, 3, 4, 5, 6, 7].map((d) => {
       var _a3;
@@ -4313,9 +4322,12 @@ var __objRest = (source, exclude) => {
       var _a3;
       return chk("rW", k, (_a3 = r.where) == null ? void 0 : _a3.includes(k), l);
     }).join("")}</div>
+      <label><input type="checkbox" id="rShow" ${r.show ? "checked" : ""} style="width:auto"> \u{1F4E2} \u041F\u043E\u043A\u0430\u0437\u0443\u0432\u0430\u0442\u0438 \u0433\u043E\u0441\u0442\u044F\u043C (\u0441\u0430\u0439\u0442, \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F)</label>
+      <label>\u0422\u0435\u043A\u0441\u0442 \u0434\u043B\u044F \u0433\u043E\u0441\u0442\u0435\u0439<input id="rDsc" value="${esc(r.d || "")}" placeholder="\u0417\u0430\u043C\u043E\u0432\u043B\u044F\u0454\u0448 2 \u043A\u043E\u043A\u0442\u0435\u0439\u043B\u0456 \u2014 \u043D\u0430 \u0434\u0440\u0443\u0433\u0438\u0439 \u221220%"></label>
       <div class="srow"><label>\u0414\u0456\u0454 \u0437<input id="rD1" type="date" value="${r.d1 || ""}"></label><label>\u043F\u043E<input id="rD2" type="date" value="${r.d2 || ""}"></label></div></div>`;
     const show = () => {
-      const t = $("#rT").value, F = { pct: t !== "nth", n: t === "nth", min: t === "sum", gift: t === "sum", bdays: t === "bday", days: t === "happy", what: ["cat", "happy", "nth"].includes(t) };
+      const t = $("#rT").value, F = { pct: !["nth", "combo"].includes(t), n: ["nth", "pair"].includes(t), min: t === "sum", gift: t === "sum", gifts: t === "combo", bdays: t === "bday", days: ["happy", "pair", "combo", "week"].includes(t), what: ["cat", "happy", "nth", "pair", "combo", "week"].includes(t) };
+      $("#rNl").textContent = t === "pair" ? "\u0417\u043D\u0438\u0436\u043A\u0430 \u043D\u0430 \u043A\u043E\u0436\u043D\u0443 N-\u0442\u0443" : "\u041A\u043E\u0436\u043D\u0430 N-\u0442\u0430 \u0432 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A";
       document.querySelectorAll("#modal [data-f]").forEach((el) => {
         el.hidden = !F[el.dataset.f];
       });
@@ -4346,7 +4358,11 @@ var __objRest = (source, exclude) => {
       dishes: $("#rDish").value.split(",").map((s) => s.trim()).filter(Boolean),
       where: all("rW"),
       d1: $("#rD1").value,
-      d2: $("#rD2").value
+      d2: $("#rD2").value,
+      gifts: $("#rGifts").value.split(",").map((s) => s.trim()).filter(Boolean),
+      show: $("#rShow").checked ? 1 : 0,
+      d: $("#rDsc").value.trim(),
+      pre: r.pre || ""
     };
     if (rule.type === "sum" && rule.gift) rule.pct = 0;
     const res = await act("loyRule", { rule }, "\u{1F4BE} \u0410\u043A\u0446\u0456\u044E \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
@@ -4424,6 +4440,19 @@ var __objRest = (source, exclude) => {
           renderMain();
         }
       }
+      return;
+    }
+    if (a === "loyPre") {
+      const r0 = S.data.loy.cfg.rules.find((x) => x.pre === d.id), r = await act("loyPreset", { pre: d.id, on: (r0 == null ? void 0 : r0.on) ? 0 : 1 });
+      if (!r) return;
+      if (r.draft) {
+        toast("\u270F\uFE0F " + (r.error || "\u0423\u0442\u043E\u0447\u043D\u0456\u0442\u044C") + " \u2014 \u043D\u0430\u043B\u0430\u0448\u0442\u0443\u0439\u0442\u0435");
+        return loyRuleEdit("", r.draft);
+      }
+      if (r0) Object.assign(r0, r.rule);
+      else S.data.loy.cfg.rules.push(r.rule);
+      toast(r.rule.on ? "\u2705 \u0410\u043A\u0446\u0456\u044F \u0434\u0456\u0454" : "\u26D4 \u0412\u0438\u043C\u043A\u043D\u0435\u043D\u043E");
+      renderMain();
       return;
     }
     if (a === "loyRuleOn") {
