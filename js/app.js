@@ -485,12 +485,13 @@
     if (!gtok()) { try { const pn = JSON.parse(localStorage.getItem(gk + 'n') || 'null'); if (pn && Date.now() - pn.t < 300e3) { const r = await meApi('/api/me/poll?n=' + pn.n).catch(() => null); if (r?.data?.token) { gtok(r.data.token); localStorage.removeItem(gk + 'n'); } } } catch {} } // 📱 iOS міг вивантажити сторінку, поки гість був у Telegram — забираємо вхід тут
     if (gtok()) { const { status, data: d } = await meApi('/api/me').catch(() => ({})); if (status === 200) {
       const dd = x => `${x.slice(8)}.${x.slice(5, 7)}`;
-      b.innerHTML = `<p><b>${esc(d.name || '')}</b> <span class="muted">${esc(d.phone.replace(/^380(\d{2})(\d{3})(\d{2})(\d{2})$/, '+380 $1 $2 $3 $4'))}</span></p>
+      b.innerHTML = `<div class="me-h"><button class="me-av" id="meAv" title="Змінити фото">${VVAV.html(d.av, d.name)}<em>📷</em></button><p><b>${esc(d.name || '')}</b> <span class="muted">${esc(d.phone.replace(/^380(\d{2})(\d{3})(\d{2})(\d{2})$/, '+380 $1 $2 $3 $4'))}</span></p></div>
         <div class="me-k"><div><b>${uah(d.bal)}</b><span>🎁 бонуси</span></div><div><b>${d.n}</b><span>візитів</span></div><div><b>${uah(d.sum)}</b><span>витрачено</span></div></div>
         ${d.certs.length ? `<h3>🎟 Сертифікати</h3><div class="me-l">${d.certs.map(c => `<div><b>${esc(c.code)}</b> · ${uah(c.left)} / ${uah(c.sum)}</div>`).join('')}</div>` : ''}
         ${d.books.length ? `<h3>📅 Броні</h3><div class="me-l">${d.books.map(x => `<div><b>${dd(x.date)} ${esc(x.time)}</b> · ${x.people} 👤</div>`).join('')}</div>` : ''}
         <h3>🧾 Історія</h3><div class="me-l">${d.hist.slice(0, 10).map(h => `<div><b>${dd(h.d)} ${esc(h.at)}</b> · ${uah(h.sum)}<br><small class="muted">${h.dishes.map(([n, q]) => `${q}× ${esc(n)}`).join(', ')}</small></div>`).join('') || '<div class="muted">Поки порожньо</div>'}</div>
-        <button class="btn ghost" id="meOut" style="margin-top:12px;width:100%">Вийти</button>`; return; }
+        <button class="btn ghost" id="meOut" style="margin-top:12px;width:100%">Вийти</button>`;
+      $('#meAv').onclick = async () => { const x = await VVAV.pick(); /* галерея — одразу в кліку */ if (!x) return; const r = await meApi('/api/me/avatar', { data: x }).catch(() => ({})); if (r.data?.ok) meOpen(); else alert('⚠️ Фото не збереглось — спробуйте інше'); }; return; }
       if (status === 401) gtok(''); else if (status !== 200) { b.innerHTML = '<p class="muted">⚠️ Немає звʼязку — спробуйте ще раз</p>'; return; } } // вихід лише якщо сесія справді завершилась, а не через зникнення мережі
     b.innerHTML = `<p class="muted">Бонуси, сертифікати й історія замовлень — у вашому кабінеті. Вхід і реєстрація — через Telegram, за номером телефону.</p><button class="btn" id="meTg" style="width:100%">✈️ Увійти через Telegram</button><p class="muted" id="meMsg"></p>`;
   }

@@ -16,7 +16,7 @@ async function passHash(pass, salt) {
 const normEmail = e => String(e || '').trim().toLowerCase();
 const okEmail = e => /^[^\s@]{1,64}@[^\s@]{1,100}\.[a-z]{2,}$/.test(e);
 const SESS_MS = 30 * 864e5;
-const pub = a => a && { email: a.email, name: a.name, role: a.role, venues: a.venues || [], ...(a.verified === false ? { unverified: true } : {}) };
+const pub = a => a && { email: a.email, name: a.name, role: a.role, venues: a.venues || [], ...(a.verified === false ? { unverified: true } : {}), ...(a.av ? { av: a.av } : {}) }; // av — аватарка (data:, ~30 КБ)
 
 export class Hub extends DurableObject {
   get st() { return this.ctx.storage; }
@@ -36,7 +36,13 @@ export class Hub extends DurableObject {
     const s = await this.st.list({ prefix: 'sess:' }); for (const [k, v] of s) if (v.email === a.email) await this.st.delete(k); // вийти скрізь
     return { ok: true };
   }
-  async acctList() { return [...(await this.st.list({ prefix: 'acct:' })).values()].map(pub); }
+  async acctList() { return [...(await this.st.list({ prefix: 'acct:' })).values()].map(x => { const { av, ...r } = pub(x); return r; }); } // без аватарок — список легкий
+  // 👤 аватарка власника: квадрат 256 JPEG як data: у самому акаунті ('' — прибрати)
+  async acctAv(email, data) {
+    const a = await this.st.get('acct:' + normEmail(email)); if (!a) return { error: 'Немає акаунта' };
+    if (!data) delete a.av; else if (/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(data) && data.length <= 120000) a.av = data; else return { error: 'Фото завелике — оберіть інше' };
+    await this.st.put('acct:' + a.email, a); return { ok: true, av: a.av || '' };
+  }
   // ---- вхід ----
   async login(email, pass) {
     email = normEmail(email);

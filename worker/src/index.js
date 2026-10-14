@@ -165,6 +165,7 @@ export async function handle(req, env) {
       if (url.pathname === '/api/me/start') return json(await meStart(env));
       if (url.pathname === '/api/me/poll') return json(await mePoll(env, url.searchParams.get('n')) || { error: 'bad' });
       if (url.pathname === '/api/me/logout' && req.method === 'POST') { await meLogout(env, (req.headers.get('authorization') || '').slice(7)); return json({ ok: true }); }
+      if (url.pathname === '/api/me/avatar' && req.method === 'POST') { const d = await (await import('./site.js')).meAvatar(env, (req.headers.get('authorization') || '').slice(7), (await req.json().catch(() => ({}))).data); return d ? json(d, d.error ? 400 : 200) : json({ error: 'auth' }, 401); }
       if (url.pathname === '/api/me') { const d = await meData(env, (req.headers.get('authorization') || '').slice(7)); return d ? json(d) : json({ error: 'auth' }, 401); }
       // 🛵 замовлення за посиланням (самовивіз / доставка)
       if (url.pathname.startsWith('/api/lp/') && req.method === 'POST') { // 💳 callback LiqPay (data + signature); ключі — закладу (go, table, cert) або платформи (sub, ai)

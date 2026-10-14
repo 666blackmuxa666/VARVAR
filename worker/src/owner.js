@@ -235,6 +235,7 @@ ${JSON.stringify(data.filter(Boolean))}
       const r = await (await import('./billing.js')).billLink(env, v, b.kind === 'ai' ? 'ai' : 'sub', { auto: !!b.auto, sum: b.sum }); return r.error ? bad(r.error) : ok({ url: r.url }); }
     case 'billUnsub': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const v = await H.venueGet(b.venue); const r = await (await import('./billing.js')).billUnsub(env, v); return r.error ? bad(r.error) : ok(); }
     case 'pass': { const r = await H.acctPass(me.email, b.pass); return r.error ? bad(r.error) : ok(); }
+    case 'av': { const r = await H.acctAv(me.email, String(b.data || '')); return r.error ? bad(r.error) : ok({ av: r.av }); }
   }
   // ---- консоль платформи ----
   if (!plat) return bad('Лише для платформи', 403);

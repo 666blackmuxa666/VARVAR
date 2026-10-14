@@ -38,7 +38,7 @@ export async function posApi(b, req, env) {
   if (!me) return [{ error: 'auth' }, 401];
   // видаленого працівника одразу викидає з каси (сесія більше не діє)
   // ✏️ змінили PIN / імʼя / роль (ver) — теж вхід заново
-  if (me.sid) { const s = (await getStaff(env)).find(x => x.id === me.sid); if (!s || (s.ver || 0) !== (me.ver || 0)) { await env.DB.delete('pos:' + token); return [{ error: 'auth' }, 401]; } }
+  if (me.sid) { const s = (await getStaff(env)).find(x => x.id === me.sid); if (!s || (s.ver || 0) !== (me.ver || 0)) { await env.DB.delete('pos:' + token); return [{ error: 'auth' }, 401]; } me.av = s.av || ''; } // 👤 аватарка — свіжа з профілю
   const admin = me.role === 'admin', who = me.name;
   const t = +b.t || 0;
   const needAdmin = () => [{ error: 'admin' }, 403];
@@ -92,6 +92,11 @@ export async function posApi(b, req, env) {
   if (['move', 'split'].includes(b.op) && !(+b.to >= 1 && +b.to <= tablesCount(env))) return [{ error: 'Переносити можна лише на стіл залу' }, 400]; // не на 1005 / 99999
   switch (b.op) {
     case 'logout': await env.DB.delete('pos:' + token); return ok();
+    case 'avatar': { // 👤 своя аватарка в кабінеті (будь-яка роль); data:'' — прибрати
+      if (!me.sid) return [{ error: 'Спершу увійдіть своїм PIN' }, 400];
+      const O = await import('./ops.js'), url = await O.avPut(env, 'av-s-' + me.sid, b.data); if (url === null) return [{ error: 'Фото не підходить — оберіть інше' }, 400];
+      await O.staffAv(env, me.sid, url); return ok({ av: url });
+    }
     case 'state': {
       if (me.role === 'cook') await markCook(env, me.name); // кухар на зміні — отримує частку чайових кухні
       await closeStale(env).catch(() => {});

@@ -513,7 +513,7 @@ async function loyTests(A, W, dish) {
       must(r.status === 200 && r.j.ok, `${r.status} ${JSON.stringify(r.j)}`); const exp = Math.round(dish.price * 0.2) + Math.round(dish.price * 0.1);
       must(r.j.promo === exp && r.j.sum === dish.price - exp, `promo ${r.j.promo} sum ${r.j.sum}, очікували −${exp}`); await pos(A, 'delete', { t: r.j.t, reason: 'QA лояльність' }); return `${r.j.no} −${r.j.promo}`;
     });
-    await step('звіт loyRep за сьогодні', async () => { const r = await posOk(A, 'loyRep', { from: day(), to: day() }); must(r.sum > 0 && r.list.some(x => x.k === 'lvl:' + lvId), JSON.stringify(r).slice(0, 200)); return `${r.sum} грн знижок`; });
+    await step('звіт loyRep за сьогодні', async () => { const r = await posOk(A, 'loyRep', { from: day(-1), to: day() }) /* після півночі робочий день — ще вчорашній */; must(r.sum > 0 && r.list.some(x => x.k === 'lvl:' + lvId), JSON.stringify(r).slice(0, 200)); return `${r.sum} грн знижок`; });
     await step('клієнти: пошук і фільтр за рівнем', async () => { const r = await posOk(W, 'loyCli', { f: lvId }); must(r.list.some(x => x.phone.endsWith(ph.slice(1))), 'не знайдено'); });
     for (const [op, b] of [['loyRule', { rule: happy }], ['loyRep', {}], ['loyLevel', { del: lvId }], ['loyOff', { t: 1, off: 1 }]]) await step(`waiter ✗ ${op}`, async () => { const r = await pos(W, op, b); must(r.status === 403, 'статус ' + r.status); });
   } finally {

@@ -620,10 +620,10 @@ var __objRest = (source, exclude) => {
   const navList = () => isCour() ? NAV_COUR : isCook() ? NAV_COOK : isAdmin() ? NAV_A : NAV_W;
   const NAV = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["closed", "\u{1F4DC}", "\u0417\u0430\u043A\u0440\u0438\u0442\u0456"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["cash", "\u{1F4B0}", "\u041A\u0430\u0441\u0430", 1], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438", 1], ["kq", "\u{1F468}\u200D\u{1F373}", "\u041A\u0443\u0445\u043D\u044F", 1], ["calc", "\u{1F9EE}", "\u0420\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043E\u043A", 1], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442.", 1]];
   function renderNav() {
-    var _a2, _b;
+    var _a2, _b, _c;
     const newCnt = S.events.filter((e) => e.k === "guest" && e.s === "new").length;
     const attNew = isAdmin() ? S.events.filter((e) => e.k === "att" && e.s === "new").length : 0;
-    setHTML($("#nav"), `<div class="brand">${brandImg()}</div>` + navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? "on" : ""}${isAdmin() && !NAV_MAIN.includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === "team" && attNew ? `<span class="badge">${attNew}</span>` : ""}${v === "books" && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ""}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : S.events.some(evMention) ? '<span class="badge">@</span>' : ""}</button><button class="more-btn ${isAdmin() && !NAV_MAIN.includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><button class="me" data-a="zpMy" title="\u041C\u0456\u0439 \u043A\u0430\u0431\u0456\u043D\u0435\u0442"><i>${esc((((_a2 = S.me) == null ? void 0 : _a2.name) || "?").slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ""}</i>${S.taskN ? `<span class="badge" title="\u0417\u0430\u0432\u0434\u0430\u043D\u044C \u043D\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456">${S.taskN}</span>` : ""}<b>${esc((_b = S.me) == null ? void 0 : _b.name)}</b><small>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : isCour() ? "\u043A\u0443\u0440'\u0454\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"} \xB7 \u043A\u0430\u0431\u0456\u043D\u0435\u0442</small></button><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
+    setHTML($("#nav"), `<div class="brand">${brandImg()}</div>` + navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? "on" : ""}${isAdmin() && !NAV_MAIN.includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === "team" && attNew ? `<span class="badge">${attNew}</span>` : ""}${v === "books" && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ""}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : S.events.some(evMention) ? '<span class="badge">@</span>' : ""}</button><button class="more-btn ${isAdmin() && !NAV_MAIN.includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><button class="me" data-a="zpMy" title="\u041C\u0456\u0439 \u043A\u0430\u0431\u0456\u043D\u0435\u0442"><i>${((_a2 = S.me) == null ? void 0 : _a2.av) ? `<img src="${esc(S.me.av)}" alt="">` : esc((((_b = S.me) == null ? void 0 : _b.name) || "?").slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ""}</i>${S.taskN ? `<span class="badge" title="\u0417\u0430\u0432\u0434\u0430\u043D\u044C \u043D\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456">${S.taskN}</span>` : ""}<b>${esc((_c = S.me) == null ? void 0 : _c.name)}</b><small>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : isCour() ? "\u043A\u0443\u0440'\u0454\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"} \xB7 \u043A\u0430\u0431\u0456\u043D\u0435\u0442</small></button><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
   }
   function render() {
     renderNav();
@@ -6092,7 +6092,7 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     }
   }
   async function zpMy() {
-    var _a2, _b, _c;
+    var _a2, _b, _c, _d, _e;
     const r = await act("zpMy", {});
     if (!r) return;
     const w = r.row, me = (_a2 = S.me) == null ? void 0 : _a2.name;
@@ -6100,7 +6100,8 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     const asks = r.swaps.filter((s) => s.to === me && s.st === "ask");
     const shiftH = `<div class="zp-shift">${onShift() ? `<button class="btn red" data-a="zpOut">\u{1F534} \u0417\u0430\u043A\u0456\u043D\u0447\u0438\u0442\u0438 \u0437\u043C\u0456\u043D\u0443</button><span class="muted">\u043D\u0430 \u0437\u043C\u0456\u043D\u0456 \u0437 ${hhK(S.myAtt.in)}${S.myAtt.ok === 0 ? " \xB7 \u{1F553} \u0447\u0435\u043A\u0430\u0454 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F" : " \xB7 \u2705"}</span>` : `<button class="btn green" data-a="zpIn">\u{1F7E2} \u041F\u043E\u0447\u0430\u0442\u0438 \u0437\u043C\u0456\u043D\u0443</button>${((_b = S.myAtt) == null ? void 0 : _b.out) ? `<span class="muted">\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 ${hhK(S.myAtt.in)}\u2013${hhK(S.myAtt.out)}</span>` : ""}`}</div>`;
     await loadMyTasks();
-    const body = shiftH + `<div id="myTasks">${myTasksHTML()}</div>${w ? `<div class="pills zp-my"><div class="pill"><span>\u0417\u043C\u0456\u043D</span><b>${w.shifts}</b><small>${w.hours ? w.hours + " \u0433\u043E\u0434" : ""}</small></div><div class="pill"><span>\u0417\u0430\u0440\u043E\u0431\u043B\u0435\u043D\u043E</span><b class="money">${money(w.earned)}</b></div><div class="pill"><span>\u0414\u043E \u0432\u0438\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(w.due)}</b></div><div class="pill"><span>\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456</span><b class="money">${money(((_c = S.myTip) == null ? void 0 : _c.sum) || 0)}</b><small>${w.tips ? `\u0437\u0430 \u043C\u0456\u0441\u044F\u0446\u044C ${money(w.tips)}` : "\u0449\u0435 \u043D\u0435 \u0432\u0438\u0434\u0430\u043D\u043E"}</small></div></div>
+    const avH = `<div class="my-av"><button class="my-av-b" data-a="zpAv" title="\u0417\u043C\u0456\u043D\u0438\u0442\u0438 \u0444\u043E\u0442\u043E">${VVAV.html((_c = S.me) == null ? void 0 : _c.av, me)}<em>\u{1F4F7}</em></button><div><b>${esc(me)}</b><div class="muted" style="font-size:12px">\u041D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \u043D\u0430 \u0444\u043E\u0442\u043E, \u0449\u043E\u0431 \u0437\u043C\u0456\u043D\u0438\u0442\u0438${((_d = S.me) == null ? void 0 : _d.av) ? ' \xB7 <button class="linkb" data-a="zpAvDel">\u043F\u0440\u0438\u0431\u0440\u0430\u0442\u0438</button>' : ""}</div></div></div>`;
+    const body = avH + shiftH + `<div id="myTasks">${myTasksHTML()}</div>${w ? `<div class="pills zp-my"><div class="pill"><span>\u0417\u043C\u0456\u043D</span><b>${w.shifts}</b><small>${w.hours ? w.hours + " \u0433\u043E\u0434" : ""}</small></div><div class="pill"><span>\u0417\u0430\u0440\u043E\u0431\u043B\u0435\u043D\u043E</span><b class="money">${money(w.earned)}</b></div><div class="pill"><span>\u0414\u043E \u0432\u0438\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(w.due)}</b></div><div class="pill"><span>\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456</span><b class="money">${money(((_e = S.myTip) == null ? void 0 : _e.sum) || 0)}</b><small>${w.tips ? `\u0437\u0430 \u043C\u0456\u0441\u044F\u0446\u044C ${money(w.tips)}` : "\u0449\u0435 \u043D\u0435 \u0432\u0438\u0434\u0430\u043D\u043E"}</small></div></div>
       ${lnx(`\u0421\u0442\u0430\u0432\u043A\u0430 \xD7 ${w.shifts}`, money(w.rate))}${w.pct ? lnx("% \u0432\u0456\u0434 \u0432\u0438\u0440\u0443\u0447\u043A\u0438", money(w.pct)) : ""}${w.dayB || w.monB ? lnx("\u{1F3AF} \u0411\u043E\u043D\u0443\u0441 \u0437\u0430 \u043F\u043B\u0430\u043D", money(w.dayB + w.monB)) : ""}${w.bonus ? lnx("\u2795 \u041F\u0440\u0435\u043C\u0456\u0457", money(w.bonus)) : ""}${w.fine ? lnx("\u2796 \u0428\u0442\u0440\u0430\u0444\u0438", "\u2212" + money(w.fine)) : ""}${w.adv ? lnx("\u{1F4B5} \u0410\u0432\u0430\u043D\u0441\u0438", "\u2212" + money(w.adv)) : ""}${w.paid ? lnx("\u{1F4B8} \u0412\u0438\u043F\u043B\u0430\u0447\u0435\u043D\u043E", "\u2212" + money(w.paid)) : ""}
       ${w.toMon ? `<div class="muted" style="font-size:13px;margin-top:6px">\u{1F3AF} \u0414\u043E \u043C\u0456\u0441\u044F\u0447\u043D\u043E\u0433\u043E \u0431\u043E\u043D\u0443\u0441\u0443 \u0449\u0435 ${money(w.toMon)}</div>` : ""}` : '<div class="muted">\u0421\u0442\u0430\u0432\u043A\u0443 \u0449\u0435 \u043D\u0435 \u0437\u0430\u0434\u0430\u043D\u043E</div>'}
       ${asks.map((s) => `<div class="card zp-ask">\u{1F501} <b>${esc(s.from)}</b> \u043F\u0440\u043E\u0441\u0438\u0442\u044C \u0432\u0438\u0439\u0442\u0438 \u0437\u0430 \u043D\u044C\u043E\u0433\u043E ${s.day.slice(8)}.${s.day.slice(5, 7)} \u043E ${s.time}<div class="btnrow"><button class="btn sm green" data-a="zpSw" data-id="${s.id}" data-s="agree">\u041F\u043E\u0433\u043E\u0434\u0436\u0443\u044E\u0441\u044C</button><button class="btn sm red" data-a="zpSw" data-id="${s.id}" data-s="no">\u041D\u0456</button></div></div>`).join("")}
@@ -6147,6 +6148,35 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
       case "zpMy":
         zpMy();
         break;
+      case "zpAv": {
+        const p = VVAV.pick();
+        (async () => {
+          const d = await p;
+          if (!d) return;
+          const r = await act("avatar", { data: d }, "\u{1F4F7} \u0424\u043E\u0442\u043E \u043E\u043D\u043E\u0432\u043B\u0435\u043D\u043E");
+          if (r) {
+            S.me = __spreadProps(__spreadValues({}, S.me), { av: r.av });
+            store.set("me", S.me);
+            closeModal();
+            renderNav();
+            zpMy();
+          }
+        })();
+        break;
+      }
+      case "zpAvDel": {
+        (async () => {
+          const r = await act("avatar", { data: "" }, "\u{1F5D1} \u0424\u043E\u0442\u043E \u043F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
+          if (r) {
+            S.me = __spreadProps(__spreadValues({}, S.me), { av: "" });
+            store.set("me", S.me);
+            closeModal();
+            renderNav();
+            zpMy();
+          }
+        })();
+        break;
+      }
       case "zpHelp":
         helpAsk();
         break;

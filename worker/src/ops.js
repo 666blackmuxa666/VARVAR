@@ -947,7 +947,7 @@ async function _addStaff(env, name, pin, role = 'waiter') {
 }
 async function _delStaff(env, id) {
   const list = await getStaff(env); const n = list.filter(s => s.id !== id);
-  await env.DB.put('staff', JSON.stringify(n)); return n.length !== list.length;
+  await env.DB.put('staff', JSON.stringify(n)); if (n.length !== list.length) await env.DB.delete('img:av-s-' + id); return n.length !== list.length;
 }
 // ✏️ зміна працівника: імʼя / PIN / роль. ver++ → чинні сесії каси закриваються (pos.js порівнює ver), привʼязки «зміна» в боті (tgs:) — теж
 async function _editStaff(env, id, f) {
@@ -1073,3 +1073,13 @@ async function kitchenCancel(env, t, ...a) { const r = await L(env, 'kq:' + dayK
 export async function toggleFav(env, ...a) { return L(env, 'fav', () => _toggleFav(env, ...a)); }
 export async function addStaff(env, ...a) { return L(env, 'staff', () => _addStaff(env, ...a)); }
 export async function delStaff(env, ...a) { return L(env, 'staff', () => _delStaff(env, ...a)); }
+// 👤 аватарки (працівник, гість, власник): data:image/… → байти (до 600 КБ; клієнт стискає до ~30 КБ)
+export const avBytes = d => { const m = String(d || '').match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/); if (!m) return null; try { const b = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0)); return b.length > 6e5 ? null : b; } catch { return null; } };
+// зберегти/прибрати аватарку: img:<key> + адреса з ?v= (кеш картинок — рік)
+export async function avPut(env, key, data) {
+  if (!data) { await env.DB.delete('img:' + key); return ''; }
+  const b = avBytes(data); if (!b) return null;
+  await env.DB.put('img:' + key, b.buffer); return `${env.SELF_URL}/img/${key}?v=${Date.now().toString(36)}`;
+}
+// аватарка працівника — без зміни ver (інакше викине з каси)
+export const staffAv = (env, sid, url) => L(env, 'staff', async () => { const l = await getStaff(env), s = l.find(x => x.id === sid); if (!s) return 0; if (url) s.av = url; else delete s.av; await env.DB.put('staff', JSON.stringify(l)); return 1; });

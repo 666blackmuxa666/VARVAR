@@ -126,12 +126,13 @@
   }
   function meShow(d, tok) {
     const dd = x => `${x.slice(8)}.${x.slice(5, 7)}`;
-    modal(`<h2>👤 ${esc(d.name || t('meT'))}</h2><div class="muted">${d.phone.replace(/^380(\d{2})(\d{3})(\d{2})(\d{2})$/, '+380 $1 $2 $3 $4')}</div>
+    modal(`<div class="me-h"><button class="me-av" id="meAv" title="📷">${VVAV.html(d.av, d.name)}<em>📷</em></button><div><h2>${esc(d.name || t('meT'))}</h2><div class="muted">${d.phone.replace(/^380(\d{2})(\d{3})(\d{2})(\d{2})$/, '+380 $1 $2 $3 $4')}</div></div></div>
       <div class="me-k"><div><b>${money(d.bal)}</b><span>${t('bal')}</span></div><div><b>${d.n}</b><span>${t('vis')}</span></div><div><b>${money(d.sum)}</b><span>${t('spent')}</span></div></div>
       <h3>📅 ${t('myBook')}</h3><div class="me-l">${d.books.map(b => `<div><b>${dd(b.date)} ${b.time}</b> · ${b.people} 👤 · ${t('st')[b.st] || b.st}${b.pre.length ? `<br><small class="muted">🍽 ${b.pre.map(esc).join(', ')}</small>` : ''}</div>`).join('') || `<div class="muted">${t('none')}</div>`}</div>
       ${d.certs.length ? `<h3>🎟 ${t('myCert')}</h3><div class="me-l">${d.certs.map(c => `<div><a href="about.html#cert=${c.code}"><b>${c.code}</b></a> · ${money(c.left)} / ${money(c.sum)}${c.to ? ' · ' + esc(c.to) : ''}</div>`).join('')}</div>` : ''}
       <h3>🧾 ${t('myHist')}</h3><div class="me-l">${d.hist.map(h => `<div><b>${dd(h.d)} ${h.at}</b> · ${money(h.sum)} ${h.go === 'del' ? '🛵' : h.go === 'pick' ? '🥡' : '🪑'}<br><small class="muted">${h.dishes.map(([n, q]) => `${q}× ${esc(n)}`).join(', ')}</small></div>`).join('') || `<div class="muted">${t('none')}</div>`}</div>
       <a class="btn" href="index.html?go">🛵 ${t('order')}</a><button class="btn ghost" id="meOut">${t('out')}</button>`);
+    $('#meAv').onclick = async () => { const x = await VVAV.pick(); /* галерея — одразу в кліку */ if (!x) return; const r = await api('/api/me/avatar', { data: x }, tok).catch(() => ({})); if (r.data?.ok) meShow({ ...d, av: r.data.av }, tok); else alert('⚠️ ' + t('err')); };
     $('#meOut').onclick = async () => { await api('/api/me/logout', {}, tok).catch(() => {}); store.set('gtok', ''); $('#modal').hidden = true; };
   }
 
