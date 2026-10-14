@@ -32,6 +32,7 @@ async function targets(env) {
   return (on.length ? on : cours).map(n => [n, links[n]]);
 }
 const items = b => (b.log || []).flatMap(o => o.lines).filter(l => !l.includes('🛵 Доставка')).map(l => l.replace(/ — \d+$/, ''));
+const fillPromo = async (env, b) => (await import('./promo.js')).promoFill(env, b).catch(() => {});
 const pay2 = b => Math.max(0, (b.total || 0) - (b.discSum ?? Math.round((b.total || 0) * (b.disc || 0) / 100)) - (b.bonus || 0) - (b.promo?.sum || 0));
 function card(t, b) {
   const g = b.go;
@@ -51,7 +52,7 @@ const kbMine = (t, b) => ({ inline_keyboard: [
 // головна точка: подія доставки → кур'єрам
 export async function courNotify(env, t, kind, extra = '', pre = null) { // pre — рахунок до видалення (для 'gone')
   if (!isGo(t) || +t > 2000 || !env.COURIER_BOT_TOKEN) return; // лише доставки
-  const b = pre || await getBill(env, t); if (!b.go) return;
+  const b = pre || await getBill(env, t); if (!b.go) return; await fillPromo(env, b); // 🎁 «до сплати» — за актуальними акціями
   const mk = 'cmsg:' + t, msgs = (await env.DB.get(mk, 'json')) || {};
   const save = () => env.DB.put(mk, JSON.stringify(msgs), { expirationTtl: 2 * 86400 });
   if (kind === 'new' || kind === 'remind') {
@@ -140,7 +141,7 @@ const mark = (env, t, k, v = 1) => L(env, 'bills', async () => { const b = await
 const PROB = { noans: '📵 Гість не відповідає', addr: '📍 Невірна адреса', refuse: '🙅 Гість відмовився' };
 const KM = { soon: 'Буду за 5 хв — тримайте гарячим', here: 'Я на місці, віддавайте', where: 'Де замовлення?' };
 export async function courAct(env, t, name, act, arg) {
-  const b = await getBill(env, t); if (!b.go) return { error: 'Доставку вже закрито' };
+  const b = await getBill(env, t); if (!b.go) return { error: 'Доставку вже закрито' }; await fillPromo(env, b);
   if (b.go.st === 'new' && ['take', 'road', 'done'].includes(act)) return { error: 'Замовлення ще не прийняте закладом' }; // гість замовив, заклад не підтвердив — кур'єр не рухає
   if (b.go.cour && b.go.cour !== name && act !== 'take') return { error: 'Це доставка ' + b.go.cour };
   if (act === 'take') {
@@ -199,7 +200,7 @@ export async function courUpdate(u, env) {
     await env.DB.delete('cph:' + chat); return ctg(env, 'sendMessage', { chat_id: chat, text: '📷 Дякую, фото передано' });
   }
   if (text === '💵 Моя готівка') { const d = await courDay(env, name); return ctg(env, 'sendMessage', { chat_id: chat, text: `💵 Готівка на руках: <b>${d.left} ₴</b>\n🛵 Доставок сьогодні: ${d.n}\n💰 Заробіток: ${d.earn} ₴`, parse_mode: 'HTML' }); }
-  if (text === '🛵 Мої доставки') { const mine = (await openTables(env)).filter(r => r.b.go?.cour === name);
+  if (text === '🛵 Мої доставки') { const mine = (await openTables(env)).filter(r => r.b.go?.cour === name); for (const r of mine) await fillPromo(env, r.b);
     if (!mine.length) return ctg(env, 'sendMessage', { chat_id: chat, text: 'Зараз у вас немає доставок.' });
     for (const r of mine) await ctg(env, 'sendMessage', { chat_id: chat, text: card(r.t, r.b), parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: kbMine(r.t, r.b) }); return; }
 }

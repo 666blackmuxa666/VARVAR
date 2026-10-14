@@ -4226,7 +4226,7 @@ var __objRest = (source, exclude) => {
       <div class="card"><h3>\u{1F44B} \xAB\u0421\u043F\u043B\u044F\u0447\u0456\xBB \u0433\u043E\u0441\u0442\u0456</h3>${sw2("sleep", "\u{1F44B} \u041D\u0430\u0433\u0430\u0434\u0443\u0432\u0430\u0442\u0438 \u0442\u0438\u043C, \u0445\u0442\u043E \u0434\u0430\u0432\u043D\u043E \u043D\u0435 \u0431\u0443\u0432", "\u0420\u0430\u0437 \u043D\u0430 \u0434\u0435\u043D\u044C, \u043E 11:00\u201320:00; \u043E\u0434\u043D\u043E\u043C\u0443 \u0433\u043E\u0441\u0442\u044E \u2014 \u043D\u0435 \u0447\u0430\u0441\u0442\u0456\u0448\u0435 \u043D\u0456\u0436 \u0440\u0430\u0437 \u043D\u0430 2 \u043F\u0435\u0440\u0456\u043E\u0434\u0438")}${kv("sleepDays", "\u{1F4C6} \u041D\u0435 \u0431\u0443\u0432 \u0434\u043D\u0456\u0432", g.sleepDays)}${kv("sleepBon", "\u{1F381} \u041F\u043E\u0434\u0430\u0440\u0443\u0432\u0430\u0442\u0438 \u0431\u043E\u043D\u0443\u0441\u0456\u0432", g.sleepBon)}${tx("sleepText", g.sleepText)}</div></div>`;
       })();
     }
-    if (tab === "rules") body = `${c.on ? "" : '<div class="card"><b>\u26D4 \u041B\u043E\u044F\u043B\u044C\u043D\u0456\u0441\u0442\u044C \u0432\u0438\u043C\u043A\u043D\u0435\u043D\u0430 \u2014 \u0430\u043A\u0446\u0456\u0457 \u043D\u0435 \u0434\u0456\u044E\u0442\u044C.</b></div>'}<div class="card"><h3>\u26A1 \u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438 \u2014 \u0443\u0432\u0456\u043C\u043A\u043D\u0438 \u0433\u0430\u043B\u043E\u0447\u043A\u043E\u044E</h3><div class="muted set-note">\u0414\u0456\u044E\u0442\u044C \u0443 \u043A\u0430\u0441\u0456 \u0441\u0430\u043C\u0456: \u0437\u043D\u0438\u0436\u043A\u0430 \u0437'\u044F\u0432\u043B\u044F\u0454\u0442\u044C\u0441\u044F \u0432 \u0440\u0430\u0445\u0443\u043D\u043A\u0443 \u0439 \u0447\u0435\u043A\u0443 \u0431\u0435\u0437 \u0440\u0443\u0447\u043D\u043E\u0433\u043E \u0432\u0432\u043E\u0434\u0443. \u0423\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u0456 \u2014 \u043F\u043E\u043A\u0430\u0437\u0443\u044E\u0442\u044C\u0441\u044F \u0433\u043E\u0441\u0442\u044F\u043C \u043D\u0430 \u0441\u0430\u0439\u0442\u0456 \u044F\u043A \xAB\u26A1 \u0430\u043A\u0446\u0456\u044F\xBB. \u0417\u043C\u0456\u043D\u0438\u0442\u0438 %, \u0433\u043E\u0434\u0438\u043D\u0438 \u0447\u0438 \u0441\u0442\u0440\u0430\u0432\u0438 \u2014 \u270F\uFE0F.</div>
+    if (tab === "rules") body = `${c.on ? "" : '<div class="card"><b>\u26D4 \u041B\u043E\u044F\u043B\u044C\u043D\u0456\u0441\u0442\u044C \u0432\u0438\u043C\u043A\u043D\u0435\u043D\u0430 \u2014 \u0430\u043A\u0446\u0456\u0457 \u043D\u0435 \u0434\u0456\u044E\u0442\u044C.</b></div>'}<div class="card"><h3>\u26A1 \u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438 \u2014 \u0443\u0432\u0456\u043C\u043A\u043D\u0438 \u0433\u0430\u043B\u043E\u0447\u043A\u043E\u044E</h3><div class="muted set-note">\u0421\u0430\u043C\u0456 \u0431'\u044E\u0442\u044C\u0441\u044F \u0432 \u0440\u0430\u0445\u0443\u043D\u043A\u0443 \u0439 \u0447\u0435\u043A\u0443 \u0442\u0430 \u043F\u043E\u043A\u0430\u0437\u0443\u044E\u0442\u044C\u0441\u044F \u043D\u0430 \u0441\u0430\u0439\u0442\u0456 \u0437 \u26A1. \u270F\uFE0F \u2014 \u0437\u043C\u0456\u043D\u0438\u0442\u0438.</div>
       <div class="loy-pre">${(D.P || []).map((p) => {
       const r = c.rules.find((x) => x.pre === p.pre);
       return `<div class="kv"><span>${esc(r ? ruleName(r) : p.name)}<br><small class="muted">${esc(r ? ruleWhat(r, D) : p.d)}</small></span><span class="kv-r">${r && adm ? `<button class="btn sm" data-a="loyRule" data-id="${r.id}">\u270F\uFE0F</button>` : ""}${adm ? `<span class="switch ${(r == null ? void 0 : r.on) ? "on" : ""}" data-a="loyPre" data-id="${p.pre}" role="switch"></span>` : `<b>${(r == null ? void 0 : r.on) ? "\u2705" : "\u2014"}</b>`}</span></div>`;
@@ -4257,21 +4257,21 @@ var __objRest = (source, exclude) => {
     return seg + body;
   }
   function ruleWhat(r, D) {
-    var _a2, _b, _c, _d;
+    var _a2, _b, _c, _d, _e, _f;
     const cn = (id) => {
       var _a3;
       return ((_a3 = D.cats.find((c) => c.id === id)) == null ? void 0 : _a3.n) || id;
-    }, what = [...(r.cats || []).map(cn), ...r.dishes || []].join(", ");
+    }, all = ((_a2 = r.cats) == null ? void 0 : _a2.length) && r.cats.length >= D.cats.length && !((_b = r.dishes) == null ? void 0 : _b.length), what = all ? "" : [...(r.cats || []).map(cn), ...r.dishes || []].join(", ");
     return [
-      r.type === "happy" || r.from || ((_a2 = r.days) == null ? void 0 : _a2.length) ? `${((_b = r.days) == null ? void 0 : _b.length) ? r.days.map((d) => LOY_D[d]).join(", ") : "\u0449\u043E\u0434\u043D\u044F"}${r.from ? ` ${r.from}\u2013${r.to}` : ""}` : "",
+      r.type === "happy" || r.from || ((_c = r.days) == null ? void 0 : _c.length) ? `${((_d = r.days) == null ? void 0 : _d.length) ? r.days.map((d) => LOY_D[d]).join(", ") : "\u0449\u043E\u0434\u043D\u044F"}${r.from ? ` ${r.from}\u2013${r.to}` : ""}` : "",
       r.type === "pair" ? `\u043A\u043E\u0436\u043D\u0430 ${r.n}-\u0442\u0430 \u2212${r.pct}%` : "",
       r.type === "combo" ? `\u{1F381} ${(r.gifts || []).join(" / ")}` : "",
-      r.show ? "\u{1F4E2} \u0433\u043E\u0441\u0442\u044F\u043C" : "",
+      r.show ? "\u26A1 \u043D\u0430 \u0441\u0430\u0439\u0442\u0456" : "",
       r.type === "nth" ? `\u043A\u043E\u0436\u043D\u0430 ${r.n}-\u0442\u0430` : "",
       r.type === "sum" ? `\u0432\u0456\u0434 ${money(r.min)} \u2192 ${r.gift ? "\u{1F381} " + r.gift : "\u2212" + r.pct + "%"}` : "",
-      r.type === "bday" ? `\xB1${(_c = r.bdays) != null ? _c : 3} \u0434\u043D. \u0432\u0456\u0434 \u0414\u041D (\u0434\u0430\u0442\u0430 \u0432 \u043A\u0430\u0440\u0442\u0446\u0456 \u043A\u043B\u0456\u0454\u043D\u0442\u0430)` : "",
+      r.type === "bday" ? `\xB1${(_e = r.bdays) != null ? _e : 3} \u0434\u043D. \u0432\u0456\u0434 \u0414\u041D (\u0434\u0430\u0442\u0430 \u0432 \u043A\u0430\u0440\u0442\u0446\u0456 \u043A\u043B\u0456\u0454\u043D\u0442\u0430)` : "",
       what ? "\u{1F37D} " + what : r.type === "sum" || r.type === "bday" ? "" : "\u{1F37D} \u0443\u0441\u0435 \u043C\u0435\u043D\u044E",
-      ((_d = r.where) == null ? void 0 : _d.length) ? r.where.map((w) => LOY_W[w]).join(" ") : "\u{1FA91}\u{1F961}\u{1F6F5} \u0441\u043A\u0440\u0456\u0437\u044C",
+      ((_f = r.where) == null ? void 0 : _f.length) && r.where.length < 3 ? "\u043B\u0438\u0448\u0435 " + r.where.map((w) => LOY_W[w]).join(" ") : "",
       r.d1 || r.d2 ? `\u{1F4C5} ${r.d1 || "\u2026"} \u2014 ${r.d2 || "\u2026"}` : ""
     ].filter(Boolean).join(" \xB7 ");
   }
@@ -4296,7 +4296,7 @@ var __objRest = (source, exclude) => {
   }
   async function loyRuleEdit(id, draft) {
     var _a2, _b;
-    const D = S.data.loy, r = draft || D.cfg.rules.find((x) => x.id === id) || { type: "happy", on: 1, pct: 10, where: [], cats: [], dishes: [], days: [], from: "15:00", to: "18:00", n: 5, min: 1e3, bdays: 3 };
+    const D = S.data.loy, r = draft || D.cfg.rules.find((x) => x.id === id) || { type: "happy", on: 1, pct: 10, where: [], cats: [], dishes: [], days: [], from: "", to: "", n: 5, min: 1e3, bdays: 3 };
     const chk = (name, val, on, l) => `<label class="chip sm ${on ? "on" : ""}" style="display:inline-flex;gap:6px;align-items:center;margin:0 6px 6px 0"><input type="checkbox" name="${name}" value="${val}" ${on ? "checked" : ""} style="width:auto;margin:0">${l}</label>`;
     const body = `<div class="form">
       <label>\u0422\u0438\u043F<select id="rT">${Object.entries(D.T).map(([k, l]) => `<option value="${k}" ${r.type === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>
@@ -4311,7 +4311,7 @@ var __objRest = (source, exclude) => {
       var _a3;
       return chk("rDay", d, (_a3 = r.days) == null ? void 0 : _a3.includes(d), LOY_D[d]);
     }).join("")}
-        <div class="srow"><label>\u0417<input id="rF" value="${esc(r.from || "")}" placeholder="15:00"></label><label>\u0414\u043E<input id="rTo" value="${esc(r.to || "")}" placeholder="18:00"></label></div></div>
+        <div class="srow" data-f="time"><label>\u0417<input id="rF" value="${esc(r.from || "")}" placeholder="15:00"></label><label>\u0414\u043E<input id="rTo" value="${esc(r.to || "")}" placeholder="18:00"></label></div></div>
       <div data-f="what"><div class="muted set-note">\u041D\u0430 \u0449\u043E (\u043D\u0456\u0447\u043E\u0433\u043E \u2014 \u0443\u0441\u0435 \u043C\u0435\u043D\u044E)</div><div class="scrollbox sm">${D.cats.map((c) => {
       var _a3;
       return chk("rCat", c.id, (_a3 = r.cats) == null ? void 0 : _a3.includes(c.id), esc(c.n));
@@ -4326,7 +4326,7 @@ var __objRest = (source, exclude) => {
       <label>\u0422\u0435\u043A\u0441\u0442 \u0434\u043B\u044F \u0433\u043E\u0441\u0442\u0435\u0439<input id="rDsc" value="${esc(r.d || "")}" placeholder="\u0417\u0430\u043C\u043E\u0432\u043B\u044F\u0454\u0448 2 \u043A\u043E\u043A\u0442\u0435\u0439\u043B\u0456 \u2014 \u043D\u0430 \u0434\u0440\u0443\u0433\u0438\u0439 \u221220%"></label>
       <div class="srow"><label>\u0414\u0456\u0454 \u0437<input id="rD1" type="date" value="${r.d1 || ""}"></label><label>\u043F\u043E<input id="rD2" type="date" value="${r.d2 || ""}"></label></div></div>`;
     const show = () => {
-      const t = $("#rT").value, F = { pct: !["nth", "combo"].includes(t), n: ["nth", "pair"].includes(t), min: t === "sum", gift: t === "sum", gifts: t === "combo", bdays: t === "bday", days: ["happy", "pair", "combo", "week"].includes(t), what: ["cat", "happy", "nth", "pair", "combo", "week"].includes(t) };
+      const t = $("#rT").value, F = { pct: !["nth", "combo"].includes(t), n: ["nth", "pair"].includes(t), min: t === "sum", gift: t === "sum", gifts: t === "combo", bdays: t === "bday", days: ["happy", "pair", "combo", "week"].includes(t), time: ["happy", "pair", "combo"].includes(t), what: ["cat", "happy", "nth", "pair", "combo", "week"].includes(t) };
       $("#rNl").textContent = t === "pair" ? "\u0417\u043D\u0438\u0436\u043A\u0430 \u043D\u0430 \u043A\u043E\u0436\u043D\u0443 N-\u0442\u0443" : "\u041A\u043E\u0436\u043D\u0430 N-\u0442\u0430 \u0432 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A";
       document.querySelectorAll("#modal [data-f]").forEach((el) => {
         el.hidden = !F[el.dataset.f];
@@ -4338,38 +4338,57 @@ var __objRest = (source, exclude) => {
     document.querySelectorAll("#modal input[type=checkbox]").forEach((i) => {
       i.onchange = () => i.parentElement.classList.toggle("on", i.checked);
     });
-    const v = await p;
-    if (v !== "ok") return;
-    const all = (n) => [...document.querySelectorAll(`#modal input[name=${n}]:checked`)].map((i) => i.value);
-    const rule = {
-      id: r.id,
-      on: (_b = r.on) != null ? _b : 1,
-      type: $("#rT").value,
-      name: $("#rN").value,
-      pct: +$("#rP").value || 0,
-      n: +$("#rNth").value || 0,
-      min: +$("#rMin").value || 0,
-      gift: $("#rGift").value.trim(),
-      bdays: +$("#rBd").value || 0,
-      days: all("rDay").map(Number),
-      from: $("#rF").value.trim(),
-      to: $("#rTo").value.trim(),
-      cats: all("rCat"),
-      dishes: $("#rDish").value.split(",").map((s) => s.trim()).filter(Boolean),
-      where: all("rW"),
-      d1: $("#rD1").value,
-      d2: $("#rD2").value,
-      gifts: $("#rGifts").value.split(",").map((s) => s.trim()).filter(Boolean),
-      show: $("#rShow").checked ? 1 : 0,
-      d: $("#rDsc").value.trim(),
-      pre: r.pre || ""
-    };
-    if (rule.type === "sum" && rule.gift) rule.pct = 0;
-    const res = await act("loyRule", { rule }, "\u{1F4BE} \u0410\u043A\u0446\u0456\u044E \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
-    if (!res) return;
-    closeModal();
-    S.data.loy.cfg = res.cfg;
-    renderMain();
+    let v = await p;
+    for (; v === "ok"; v = await new Promise((ok) => {
+      modalResolve = (x) => {
+        if (x == null) closeModal();
+        ok(x);
+      };
+    })) {
+      const all = (n) => [...document.querySelectorAll(`#modal input[name=${n}]:checked`)].map((i) => i.value);
+      const rule = {
+        id: r.id,
+        on: (_b = r.on) != null ? _b : 1,
+        type: $("#rT").value,
+        name: $("#rN").value,
+        pct: +$("#rP").value || 0,
+        n: +$("#rNth").value || 0,
+        min: +$("#rMin").value || 0,
+        gift: $("#rGift").value.trim(),
+        bdays: +$("#rBd").value || 0,
+        days: all("rDay").map(Number),
+        from: $("#rF").value.trim(),
+        to: $("#rTo").value.trim(),
+        cats: all("rCat"),
+        dishes: $("#rDish").value.split(",").map((s) => s.trim()).filter(Boolean),
+        where: all("rW"),
+        d1: $("#rD1").value,
+        d2: $("#rD2").value,
+        gifts: $("#rGifts").value.split(",").map((s) => s.trim()).filter(Boolean),
+        show: $("#rShow").checked ? 1 : 0,
+        d: $("#rDsc").value.trim(),
+        pre: r.pre || ""
+      };
+      if (rule.type === "sum" && rule.gift) rule.pct = 0;
+      if ($("#rP").closest("[data-f]").hidden) rule.pct = 0;
+      if ($("#rF").closest("[data-f]").hidden) rule.from = rule.to = "";
+      if (r.pre) {
+        const fx = (t) => {
+          if (r.pct && rule.pct !== r.pct) t = t.split(r.pct + "%").join(rule.pct + "%");
+          if (r.min && rule.min !== r.min) t = t.split(String(r.min)).join(String(rule.min));
+          for (const k of ["from", "to"]) if (r[k] && rule[k] && rule[k] !== r[k]) t = t.split(r[k]).join(rule[k]).replace(new RegExp(`(${k === "from" ? "\u0437" : "\u0434\u043E"} )${+r[k].slice(0, 2)}(?!\\d|:)`), `$1${+rule[k].slice(0, 2)}`);
+          return t;
+        };
+        if (rule.name === (r.name || "")) rule.name = fx(rule.name);
+        if (rule.d === (r.d || "")) rule.d = fx(rule.d);
+      }
+      const res = await act("loyRule", { rule }, "\u{1F4BE} \u0410\u043A\u0446\u0456\u044E \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
+      if (!res) continue;
+      closeModal();
+      S.data.loy.cfg = res.cfg;
+      renderMain();
+      return;
+    }
   }
   async function loyCliCard(ph) {
     var _a2;

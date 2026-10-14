@@ -148,7 +148,7 @@ export async function receipt(env, { table, bill, final, pay, by }) {
   const no = final ? await nextReceiptNo(env) : null;
   const fmt = t => new Date(t).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '');
   const count = [...agg.values()].reduce((s, a) => s + a.q, 0);
-  const pr = (bill.promo?.lines || []).filter(l => l.amt || !l.info); // 🎁 «подарунок: додайте» без суми теж друкуємо
+  const pr = (bill.promo?.lines || []).filter(l => l.amt || (!final && / \(додайте в рахунок\)$/.test(l.n))).map(l => final ? { ...l, n: l.n.replace(/ \(додайте в рахунок\)$/, '') } : l); // 🎁 підказка «додайте» — лише на пречеку
   const rc = await getRcpt(env), qrn = rc.qr ? await (await import('./qr.js')).qrImg(env, 0) : '';
   return [
     ...(rc.logo ? [['logo']] : []),

@@ -20,7 +20,7 @@ export const RULE_T = { cat: '🏷 % на категорію / страву', ha
 export const PRESETS = [
   { pre: 'hookah', type: 'happy', name: '💨 Кальян −20% з 14 до 18', pct: 20, from: '14:00', to: '18:00', cq: 'кальян', d: 'Щодня з 14:00 до 18:00 кальян зі знижкою 20%' },
   { pre: 'cock2', type: 'pair', name: '🍸 Другий коктейль −20%', pct: 20, n: 2, cq: '^коктейл', d: 'Замовляєш 2 коктейлі — на другий знижка 20%' },
-  { pre: 'combo', type: 'combo', name: '🍔 Мінімакс + напій у подарунок', dq: 'мінімакс', gq: ['пепсі', 'лимонад'], d: 'Замовляєш фірмовий Мінімакс — Пепсі або лимонад безкоштовно' },
+  { pre: 'combo', type: 'combo', name: '🍔 Мінімакс + напій у подарунок', dq: 'мінімакс', gq: ['пепсі|pepsi', 'лимонад'], d: 'Замовляєш фірмовий Мінімакс — Пепсі або лимонад безкоштовно' },
   { pre: 'cweek', type: 'week', name: '⭐ Коктейль тижня −15%', pct: 15, cq: '^коктейл', pick: 1, d: 'Коктейль тижня зі знижкою 15%' },
   { pre: 'bweek', type: 'week', name: '⭐ Бургер тижня −15%', pct: 15, cq: 'бургер', pick: 1, d: 'Бургер тижня зі знижкою 15%' },
   { pre: 'happy', type: 'happy', name: '🕐 Щасливі години −15%', pct: 15, from: '16:00', to: '18:00', days: [1, 2, 3, 4], cq: 'бар|коктейл|пиво', d: 'Пн–Чт з 16 до 18 — бар −15%' },
@@ -32,7 +32,7 @@ export const PRESETS = [
 // 📢 акції, що діють автоматично й показуються гостям (сайт, сторінка замовлення) — без окремого запиту
 export async function promoShow(env, kind) {
   const c = await getLoy(env); if (!c.on) return []; const k = kyiv(Date.now());
-  return c.rules.filter(r => r.on && r.show && (!r.d1 || k.iso >= r.d1) && (!r.d2 || k.iso <= r.d2) && (!r.days?.length || r.days.includes(k.dow)) && (!kind || !r.where?.length || r.where.includes(kind)))
+  return c.rules.filter(r => r.on && r.show && (!r.d1 || k.iso >= r.d1) && (!r.d2 || k.iso <= r.d2) && dayOk(r, k) && (!kind || !r.where?.length || r.where.includes(kind)))
     .map(r => ({ id: r.id, t: ruleLabel(r), d: r.d || '', auto: 1, ...(r.where?.length ? { w: r.where } : {}) }));
 }
 // заготовка → правило під меню закладу (категорії / страви — за словами)
@@ -65,12 +65,14 @@ function kyiv(now) {
 }
 const mins = s => { const [h, m] = String(s || '').split(':').map(Number); return h * 60 + (m || 0); };
 const inTime = (r, n) => { if (!r.from || !r.to) return true; const a = mins(r.from), b = mins(r.to); return a <= b ? n >= a && n < b : n >= a || n < b; };
+// день тижня й години: нічний проміжок (22:00–02:00) після півночі належить ще вчорашньому дню
+const dayOk = (r, k) => { if (!inTime(r, k.min)) return false; if (!r.days?.length) return true; const night = r.from && r.to && mins(r.from) > mins(r.to) && k.min < mins(r.to); return r.days.includes(night ? (k.dow + 5) % 7 + 1 : k.dow); };
 // днів між сьогодні і днем народження (через Новий рік теж)
 function bdDiff(bd, k) { const m = String(bd || '').match(/(\d{2})-(\d{2})$/); if (!m) return 99; const d = y => Date.UTC(y, +m[1] - 1, +m[2]), t = Date.parse(k.iso + 'T00:00:00Z'); return Math.min(...[k.y - 1, k.y, k.y + 1].map(y => Math.abs(d(y) - t) / 864e5)); }
 export const ruleLabel = r => r.name || ({ cat: `−${r.pct}%`, happy: `Щасливі години −${r.pct}%`, nth: `Кожна ${r.n}-та в подарунок`, sum: r.gift ? `Від ${r.min} ₴ — подарунок` : `Від ${r.min} ₴ −${r.pct}%`, bday: `День народження −${r.pct}%`, pair: `Кожна ${r.n}-та −${r.pct}%`, combo: `Подарунок: ${(r.gifts || []).join(' / ')}`, week: `Страва тижня −${r.pct}%` }[r.type] || 'Акція');
 
 // страва з меню — або точна назва, або її варіант («Мохіто 0.5 л»)
-const isDish = (l, n) => !!l?.some(d => n === d || n.startsWith(d + ' '));
+const isDish = (l, n, b) => !!l?.some(d => n === d || (b ? b[n] === d : n.startsWith(d + ' ')));
 // поштучно: ціни одиниць [{name, p}] (дешевші першими)
 const units = l => l.flatMap(i => Array.from({ length: Math.min(i.q, 50) }, () => ({ name: i.name, p: i.sum / i.q }))).sort((a, b) => a.p - b.p);
 // 🧮 чиста функція: items [{name,q,sum}] (без доставки), kind hall|pick|del, cli (може бути null), manual — ручна знижка офіціанта %
@@ -83,10 +85,10 @@ export function promoCalc(cfg, { items, kind, cli, ph, now = Date.now(), manual 
   if (lv?.pct && !(manual >= lv.pct)) lines.push({ k: 'lvl:' + lv.id, n: `${lv.e} ${lv.name} −${lv.pct}%`, amt: Math.max(0, Math.round(base * lv.pct / 100) - Math.round(base * (+manual || 0) / 100)) }); /* ручна знижка < рівня: доплачується лише різниця — разом рівно pct%, а не manual+pct */
   for (const r of cfg.rules) {
     if (!r.on || (r.where?.length && !r.where.includes(kind)) || (r.d1 && k.iso < r.d1) || (r.d2 && k.iso > r.d2)) continue;
-    const any = !(r.cats?.length || r.dishes?.length), hit = items.filter(i => any || r.cats?.includes(catOf[i.name]) || isDish(r.dishes, i.name)), hs = hit.reduce((s, i) => s + i.sum, 0);
-    let amt = 0, n = ruleLabel(r);
+    const any = !(r.cats?.length || r.dishes?.length), hit = items.filter(i => any || r.cats?.includes(catOf[i.name]) || isDish(r.dishes, i.name, catOf._b)), hs = hit.reduce((s, i) => s + i.sum, 0);
+    let amt = 0, n = ruleLabel(r), info = 0;
     if (r.type === 'cat') amt = Math.round(hs * r.pct / 100);
-    else if (r.type === 'happy') { if ((r.days?.length && !r.days.includes(k.dow)) || !inTime(r, k.min)) continue; amt = Math.round(hs * r.pct / 100); }
+    else if (r.type === 'happy') { if (!dayOk(r, k)) continue; amt = Math.round(hs * r.pct / 100); }
     else if (r.type === 'nth') { // з телефоном — накопичувальна «картка» через візити; без — у межах чека
       const u = hit.reduce((s, i) => s + i.q, 0); if (!u || !(r.n >= 2)) continue; const prev = ph ? cli?.nth?.[r.id] || 0 : 0;
       const free = Math.floor((prev + u) / r.n) - Math.floor(prev / r.n); nth[r.id] = u;
@@ -94,30 +96,31 @@ export function promoCalc(cfg, { items, kind, cli, ph, now = Date.now(), manual 
       amt = free * Math.min(...hit.map(i => i.sum / i.q)); amt = Math.round(amt);
     }
     else if (r.type === 'sum') { if (base < (r.min || 0)) continue;
-      if (r.gift) { const g = items.find(i => i.name === r.gift); amt = g ? Math.round(g.sum / g.q) : 0; n = `🎁 ${r.name || 'Подарунок'}: ${r.gift}${g ? '' : ' (додайте в рахунок)'}`; }
+      if (r.gift) { const g = items.find(i => i.name === r.gift); amt = g ? Math.round(g.sum / g.q) : 0; n = `🎁 ${r.name || 'Подарунок'}: ${r.gift}${g ? '' : ' (додайте в рахунок)'}`; if (!g) info = 1; }
       else amt = Math.round(base * r.pct / 100); }
     else if (r.type === 'pair') { // у межах чека: кожна N-та одиниця (найдешевші) −pct%
-      if ((r.days?.length && !r.days.includes(k.dow)) || !inTime(r, k.min)) continue; const u = units(hit), f = Math.floor(u.length / (r.n || 2)); if (!f) continue;
+      if (!dayOk(r, k)) continue; const u = units(hit), f = Math.floor(u.length / (r.n || 2)); if (!f) continue;
       amt = Math.round(u.slice(0, f).reduce((s, x) => s + x.p, 0) * r.pct / 100); }
     else if (r.type === 'combo') { // на кожну страву X — одна з подарунків Y безкоштовно (найдешевша)
-      if ((r.days?.length && !r.days.includes(k.dow)) || !inTime(r, k.min)) continue; const q = hit.reduce((s, i) => s + i.q, 0); if (!q) continue;
-      const g = units(items.filter(i => isDish(r.gifts, i.name))).slice(0, q); amt = Math.round(g.reduce((s, x) => s + x.p, 0));
-      if (g.length < q) n = `🎁 ${r.name || 'Подарунок'}: ${(r.gifts || []).join(' / ')} (додайте в рахунок)`; }
-    else if (r.type === 'week') { if (r.days?.length && !r.days.includes(k.dow)) continue; amt = Math.round(hs * r.pct / 100); }
+      if (!dayOk(r, k)) continue; const q = hit.reduce((s, i) => s + i.q, 0); if (!q) continue;
+      const g = units(items.filter(i => isDish(r.gifts, i.name, catOf._b))).slice(0, q); amt = Math.round(g.reduce((s, x) => s + x.p, 0));
+      if (!amt) info = 1; if (g.length < q) n = `🎁 ${r.name || 'Подарунок'}: ${(r.gifts || []).join(' / ')} (додайте в рахунок)`; }
+    else if (r.type === 'week') { if (!dayOk(r, k)) continue; amt = Math.round(hs * r.pct / 100); }
     else if (r.type === 'bday') { if (!cli?.bd || bdDiff(cli.bd, k) > (r.bdays ?? 3)) continue; amt = Math.round(base * r.pct / 100); }
     else continue;
-    if (amt > 0 || (r.type === 'sum' && r.gift) || r.type === 'combo') lines.push({ k: r.id, n, amt: Math.max(0, amt) });
+    if (amt > 0 || (r.type === 'sum' && r.gift) || r.type === 'combo') lines.push({ k: r.id, n, amt: Math.max(0, amt), ...(info ? { info: 1 } : {}) });
   }
   // стеля: усі акції разом — не більше max% від суми страв
   const cap = Math.max(0, Math.floor(base * (cfg.max ?? 50) / 100) - Math.round(base * (+manual || 0) / 100)); let left = cap; /* ручна знижка офіціанта теж у стелі — разом не більше max% */
-  for (const l of lines) { l.amt = Math.min(l.amt, left); left -= l.amt; }
+  for (const l of lines) { const a = l.amt; l.amt = Math.min(l.amt, left); left -= l.amt; if (a > 0 && !l.amt) l.cut = 1; }
+  for (let i = lines.length; i--;) if (lines[i].cut) lines.splice(i, 1); /* стеля «з'їла» акцію повністю — рядок без суми не показуємо */
   const sum = lines.reduce((s, l) => s + l.amt, 0);
   if (!lines.length && !lv) return null;
   return { lines, sum, lvl: lv?.id || '', lvn: lv ? `${lv.e} ${lv.name}` : '', cash: lv?.cash || 0, nth };
 }
 
 // назва страви (як у рахунку) → id категорії
-export function catMap(menu) { const m = {}; for (const c of menu.categories) for (const it of c.items) { m[it.name.uk] = c.id; for (const v of it.variants || []) m[`${it.name.uk} ${v.v} ${it.size || 'л'}`.trimEnd()] = c.id; } return m; }
+export function catMap(menu) { const m = {}, b = {}; for (const c of menu.categories) for (const it of c.items) { m[it.name.uk] = c.id; for (const v of it.variants || []) for (const nm of new Set([`${it.name.uk} ${v.v} ${it.size || 'л'}`.trimEnd(), `${it.name.uk} ${v.v}`.trimEnd()])) { m[nm] = c.id; b[nm] = it.name.uk; } } Object.defineProperty(m, '_b', { value: b }); return m; } /* _b: назва варіанта → страва (і без «л» — як пише бот/каса з порожнім size) */
 const kindOf = b => b.go ? (b.go.kind === 'del' ? 'del' : 'pick') : 'hall';
 // підставити bill.promo (у пам'яті; зберігає той, хто викликав). ctx — спільний кеш cfg/menu на кілька рахунків
 export async function promoFill(env, bill, ctx = {}) {
@@ -146,7 +149,7 @@ export async function promoQuote(b, env) {
     const price = typeof p.p === 'number' ? p.p : Object.hasOwn(p.p, String(it.v)) ? p.p[it.v] : 0; if (!(price > 0)) continue;
     items.push({ name: p.n + (typeof p.p === 'number' ? '' : ` ${it.v} ${p.s || 'л'}`), q, sum: price * q });
   }
-  const ph = normPhone(b.phone), cli = ph ? await getCli(env, ph) : null;
+  const ph = normPhone(b.phone), c0 = ph ? await getCli(env, ph) : null, cli = c0 && (c0.chat || c0.lvl) ? c0 : null; // як promoFill: рівень / ДН / N-та — лише учасникам
   const r = promoCalc(await getLoy(env), { items, kind: b.kind === 'del' ? 'del' : 'pick', cli, ph, catOf: catMap(menu) });
   return { lines: (r?.lines || []).map(l => ({ n: l.n, amt: l.amt })), sum: r?.sum || 0, lvl: r?.lvn || '' };
 }
@@ -184,14 +187,15 @@ function cleanLevel(x) {
 function cleanRule(x, cfg) {
   if (!RULE_T[x.type]) return { error: 'Тип акції?' };
   const r = { id: /^r[a-z0-9]{3,10}$/.test(x.id || '') ? x.id : 'r' + Math.random().toString(36).slice(2, 8), type: x.type, name: String(x.name || '').trim().slice(0, 40), on: x.on === 0 || x.on === false ? 0 : 1,
-    pct: num(x.pct || 0, 0, 100), where: (Array.isArray(x.where) ? x.where : []).filter(w => WHERE[w]), cats: (Array.isArray(x.cats) ? x.cats : []).map(String).slice(0, 30), dishes: (Array.isArray(x.dishes) ? x.dishes : []).map(s => String(s).slice(0, 80)).slice(0, 30),
+    pct: num(x.pct || 0, 0, 100), where: (Array.isArray(x.where) ? x.where : []).filter(w => WHERE[w]), cats: (Array.isArray(x.cats) ? x.cats : []).map(s => String(s).slice(0, 40)).slice(0, 30), dishes: (Array.isArray(x.dishes) ? x.dishes : []).map(s => String(s).slice(0, 80)).slice(0, 30),
     d1: isDay(x.d1) ? x.d1 : '', d2: isDay(x.d2) ? x.d2 : '' };
   if (r.pct === null) return { error: '% від 0 до 100' };
-  if (r.type === 'happy') { r.days = (Array.isArray(x.days) ? x.days : []).map(Number).filter(d => d >= 1 && d <= 7); r.from = /^\d{1,2}:\d{2}$/.test(x.from || '') ? x.from.padStart(5, '0') : ''; r.to = /^\d{1,2}:\d{2}$/.test(x.to || '') ? x.to.padStart(5, '0') : ''; if (!r.from || !r.to) return { error: 'Час: 15:00 – 18:00' }; }
+  const hm = v => { const m = /^(\d{1,2}):(\d{2})$/.exec(v || ''); return m && +m[1] < 24 && +m[2] < 60 ? m[1].padStart(2, '0') + ':' + m[2] : ''; };
+  if (r.type === 'happy') { r.days = (Array.isArray(x.days) ? x.days : []).map(Number).filter(d => d >= 1 && d <= 7); r.from = hm(x.from); r.to = hm(x.to); if (!r.from || !r.to || r.from === r.to) return { error: 'Час: 15:00 – 18:00' }; }
   if (r.type === 'nth') { r.n = num(x.n, 2, 50); if (!r.n) return { error: 'N від 2 до 50' }; if (!r.cats.length && !r.dishes.length) return { error: 'Оберіть категорію або страву (напр. кава)' }; }
   if (r.type === 'sum') { r.min = num(x.min, 1, 1000000); r.gift = String(x.gift || '').trim().slice(0, 80); if (!r.min) return { error: 'Сума «від»?' }; if (!r.gift && !r.pct) return { error: 'Знижка % або подарунок' }; }
   if (['pair', 'combo', 'week'].includes(r.type)) { r.days = (Array.isArray(x.days) ? x.days : []).map(Number).filter(d => d >= 1 && d <= 7); }
-  if (['pair', 'combo'].includes(r.type)) { const t = d => /^\d{1,2}:\d{2}$/.test(d || '') ? d.padStart(5, '0') : ''; r.from = t(x.from); r.to = t(x.to); if (!r.from !== !r.to) return { error: 'Час: обидва поля або жодного' }; }
+  if (['pair', 'combo'].includes(r.type)) { r.from = hm(x.from); r.to = hm(x.to); if (!r.from !== !r.to || (r.from && r.from === r.to)) return { error: 'Час: обидва поля або жодного' }; }
   if (r.type === 'pair') { r.n = num(x.n || 2, 2, 10); if (!r.n) return { error: 'N від 2 до 10' }; }
   if (r.type === 'combo') { r.gifts = (Array.isArray(x.gifts) ? x.gifts : []).map(s => String(s).trim().slice(0, 80)).filter(Boolean).slice(0, 10); if (!r.gifts.length) return { error: 'Що в подарунок?' }; if (!r.dishes.length && !r.cats.length) return { error: 'До якої страви?' }; }
   r.show = x.show ? 1 : 0; r.d = String(x.d || '').trim().slice(0, 200); r.pre = /^[a-z0-9]{2,16}$/.test(x.pre || '') ? x.pre : '';
@@ -206,8 +210,9 @@ export async function presetOn(env, pre, on) {
   const ex = (await getLoy(env)).rules.find(x => x.pre === pre); if (ex) return loyRuleOn(env, ex.id, on);
   if (!on) return { error: 'Ще не додана' };
   const d = presetRule(p, await getMenu(env)), r = cleanRule(d, {}); if (r.error) return { draft: d, error: r.error };
-  if (p.type === 'combo' && !d.dishes?.length && !d.cats?.length) return { draft: d, error: 'Оберіть страву' };
-  await putLoy(env, c => { c.rules.push(r); }); return r;
+  if ((p.cq || p.dq) && !d.cats?.length && !d.dishes?.length) return { draft: d, error: 'У меню не знайшлось — оберіть категорію або страву' }; /* інакше «−20% на кальян» стало б −20% на весь чек */
+  if (p.type === 'combo' && !d.gifts?.length) return { draft: d, error: 'Оберіть подарунок' };
+  let out = r; const c = await putLoy(env, c => { const e = c.rules.find(x => x.pre === pre); if (e) { e.on = 1; out = e; return; } c.rules.push(r); }); /* під замком: подвійний клік не дасть дубля */ return c.error ? c : out;
 }
 export async function loyRuleOn(env, id, on) { let r = null; const c = await putLoy(env, c => { r = c.rules.find(x => x.id === id); if (!r) return { error: 'Немає акції' }; r.on = on ? 1 : 0; }); return c.error ? c : r; }
 
@@ -235,10 +240,10 @@ export async function loyApi(b, env, me, t) {
         c.levels.sort((a, z) => (a.man || 0) - (z.man || 0) || (a.n || 0) - (z.n || 0) || (a.sum || 0) - (z.sum || 0)); });
       if (c.error) return bad(c.error); await notify(env, `🖥 🎁 Лояльність: рівні змінено — ${esc(who)}`).catch(() => {}); return ok({ cfg: c }); }
     case 'loyRule': { if (!admin) return needA();
-      let r; const c = await putLoy(env, c => { if (b.del) { c.rules = c.rules.filter(x => x.id !== b.del); return; } r = cleanRule(b.rule || {}, c); if (r.error) return r; const i = c.rules.findIndex(x => x.id === r.id); if (i >= 0) c.rules[i] = r; else c.rules.push(r); });
+      let r; const c = await putLoy(env, c => { if (b.del) { c.rules = c.rules.filter(x => x.id !== b.del); return; } r = cleanRule(b.rule || {}, c); if (r.error) return r; if (c.rules.length >= 60 && !c.rules.some(x => x.id === r.id)) return { error: 'Забагато акцій (60)' }; const i = c.rules.findIndex(x => x.id === r.id); if (i >= 0) c.rules[i] = r; else c.rules.push(r); });
       if (c.error) return bad(c.error); await notify(env, `🖥 🎁 Акція ${b.del ? 'видалена' : `«${esc(ruleLabel(r))}» збережена`} — ${esc(who)}`).catch(() => {}); return ok({ cfg: c }); }
     case 'loyRuleOn': { if (!admin) return needA(); const r = await loyRuleOn(env, String(b.id), !!b.on); if (r.error) return bad(r.error); await notify(env, `🖥 🎁 Акція «${esc(ruleLabel(r))}» ${r.on ? '✅ увімкнена' : '⛔ вимкнена'} — ${esc(who)}`).catch(() => {}); return ok({ rule: r }); }
-    case 'loyPreset': { if (!admin) return needA(); const r = await presetOn(env, String(b.pre || ''), b.on !== 0); if (r.draft) return ok({ draft: r.draft, error: r.error }); if (r.error) return bad(r.error);
+    case 'loyPreset': { if (!admin) return needA(); const r = await presetOn(env, String(b.pre || ''), !(b.on === 0 || b.on === false || b.on === '0')); if (r.draft) return ok({ draft: r.draft, error: r.error }); if (r.error) return bad(r.error);
       await notify(env, `🖥 🎁 Акція «${esc(ruleLabel(r))}» ${r.on ? '✅ увімкнена' : '⛔ вимкнена'} — ${esc(who)}`).catch(() => {}); return ok({ rule: r }); }
     case 'loyCli': return ok({ list: await cliList(env, b.q || '', String(b.f || 'all')) });
     case 'loyCliGet': { const ph = normPhone(b.phone); if (!ph) return bad('Невірний номер'); const c = await cliCard(env, ph); return c ? ok({ cli: c }) : bad('Клієнта ще немає'); }
@@ -278,10 +283,13 @@ async function cliBotCard(env, ph, admin) {
     c.bd ? `🎂 ${bdText(c.bd)}` : '', c.note ? `📌 ${esc(c.note)}` : '', c.h.length ? '\n<b>Останні:</b>\n' + c.h.slice(0, 8).map(h => `${new Date(h.ts).toLocaleDateString('uk-UA', { timeZone: TZ, day: '2-digit', month: '2-digit' })} · ${h.t === 'hall' ? '🪑' : h.t === 'del' ? '🛵' : '🥡'} ${money(h.sum)}${h.pr ? ` (акції −${h.pr})` : ''}`).join('\n') : ''].filter(Boolean).join('\n'),
     markup: admin ? kbOf([...cfg.levels.reduce((a, l, i) => { if (i % 3 === 0) a.push([]); a[a.length - 1].push({ text: `${c.lvl === l.id ? '✅ ' : ''}${l.e} ${l.name}`.slice(0, 30), callback_data: `llv:${ph}:${l.id}` }); return a; }, []), [{ text: '↺ Рівень авто', callback_data: `llv:${ph}:-` }]]) : undefined };
 }
+// умови акції одним рядком (бот): дні, години, на що, подарунки
+const ruleCond = r => [r.days?.length ? r.days.map(d => DAYS[d]).join(',') : '', r.from ? `${r.from}–${r.to}` : '', r.type === 'pair' ? `кожна ${r.n}-та` : '', r.type === 'nth' ? `кожна ${r.n}-та` : '', r.type === 'sum' ? `від ${r.min} ₴` : '',
+  r.dishes?.length ? r.dishes.slice(0, 3).join(', ') + (r.dishes.length > 3 ? '…' : '') : r.cats?.length ? `${r.cats.length} кат.` : '', r.type === 'combo' ? '🎁 ' + (r.gifts || []).slice(0, 3).join(' / ') : '', r.where?.length ? r.where.map(w => WHERE[w]).join(' ') : ''].filter(Boolean).map(x => ' · ' + esc(x)).join('');
 async function rulesBot(env, admin) {
   const c = await getLoy(env);
   return { text: [`🎁 <b>Лояльність</b> ${c.on ? '✅' : '⛔ вимкнено'} · стеля ${c.max}%`, '', '<b>Рівні:</b>', ...c.levels.map(l => `${l.e} ${esc(l.name)} — ${l.man ? 'вручну' : [l.n ? `від ${l.n} візитів` : '', l.sum ? `від ${money(l.sum)}` : ''].filter(Boolean).join(' або ') || 'усі'}${l.pct ? ` · −${l.pct}%` : ''}${l.cash ? ` · кешбек ${l.cash}%` : ''}`),
-    '', '<b>Акції:</b>', ...(c.rules.length ? c.rules.map(r => `${r.on ? '✅' : '⛔'} ${esc(ruleLabel(r))} <i>${RULE_T[r.type]}${r.type === 'happy' ? ` · ${(r.days?.length ? r.days.map(d => DAYS[d]).join(',') : 'щодня')} ${r.from}–${r.to}` : ''}</i>`) : ['— ще немає (додати — у касі «⚙️ Налаштування → 🎁 Лояльність»)']),
+    '', '<b>Акції:</b>', ...(c.rules.length ? c.rules.map(r => `${r.on ? '✅' : '⛔'} ${esc(ruleLabel(r))} <i>${RULE_T[r.type]}${ruleCond(r)}</i>`) : ['— ще немає']), admin ? '<i>➕ — увімкнути заготовку; змінити % / години / страви — у касі «⚙️ → 🎁 Лояльність → 🎯 Акції» (✏️)</i>' : '',
     '', '🔎 Клієнт: <code>клієнт 0501234567</code> або <code>клієнт Іван</code>', admin ? '📣 Розсилка гостям у бот: <code>розсилка Сьогодні −20% на бургери!</code>' : ''].join('\n'),
     markup: admin ? kbOf([...c.rules.map(r => [{ text: `${r.on ? '⛔ Вимкнути' : '✅ Увімкнути'}: ${ruleLabel(r)}`.slice(0, 60), callback_data: `lro:${r.id}:${r.on ? 0 : 1}` }]),
       ...PRESETS.filter(p => !c.rules.some(r => r.pre === p.pre)).map(p => [{ text: `➕ ${p.name}`.slice(0, 60), callback_data: `lpr:${p.pre}` }])]) : undefined };
@@ -293,6 +301,6 @@ export async function loyBotCb(env, act, arg, opt, admin, who) {
   if (act === 'llv') { const r = await cliEdit(env, arg, { lvl: opt === '-' ? '' : opt }, true); if (r.error) return { answer: r.error }; return { edit: await cliBotCard(env, arg, admin), answer: `🏅 ${r.lvn || 'авто'}` }; }
   if (act === 'lcs') { const tx = await env.DB.get('lcs:' + arg); if (!tx) return { answer: '⌛ Застаріло' }; await env.DB.delete('lcs:' + arg); const r = await (await import('./guestbot.js')).cast(env, 'all', tx, who); return r.error ? { answer: r.error.slice(0, 190) } : { edit: { text: `📣 Надіслано ${r.n} з ${r.of}\n\n${esc(tx)}` }, answer: '📣 Надіслано' }; }
   if (act === 'lpr') { const r = await presetOn(env, arg, true); if (r.draft || r.error) return { answer: `${r.error || ''} — налаштуйте в касі`.slice(0, 190) }; return { edit: await rulesBot(env, admin), answer: '✅ Увімкнено' }; }
-  if (act === 'lro') { const r = await loyRuleOn(env, arg, opt === '1'); if (r.error) return { answer: r.error }; return { edit: await rulesBot(env, admin), answer: r.on ? '✅ Увімкнено' : '⛔ Вимкнено' }; }
+  if (act === 'lro') { const r = await loyRuleOn(env, arg, opt === '1'); if (r.error) return { edit: await rulesBot(env, admin), answer: r.error }; /* застаріла кнопка — оновити список */ return { edit: await rulesBot(env, admin), answer: r.on ? '✅ Увімкнено' : '⛔ Вимкнено' }; }
   return null;
 }
