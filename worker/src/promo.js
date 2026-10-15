@@ -31,8 +31,8 @@ export const PRESETS = [
 ];
 // 📢 акції, що діють автоматично й показуються гостям (сайт, сторінка замовлення) — без окремого запиту
 export async function promoShow(env, kind) {
-  const c = await getLoy(env); if (!c.on) return []; const k = kyiv(Date.now());
-  return c.rules.filter(r => r.on && r.show && (!r.d1 || k.iso >= r.d1) && (!r.d2 || k.iso <= r.d2) && dayOk(r, k) && (!kind || !r.where?.length || r.where.includes(kind)))
+  const c = await getLoy(env), k = kyiv(Date.now()); // акції не залежать від вимикача програми лояльності (він — лише рівні й кешбек)
+  return c.rules.filter(r => r.on && r.show !== 0 && (!r.d1 || k.iso >= r.d1) && (!r.d2 || k.iso <= r.d2) && dayOk(r, k) && (!kind || !r.where?.length || r.where.includes(kind)))
     .map(r => ({ id: r.id, t: ruleLabel(r), d: r.d || '', auto: 1, ...(r.where?.length ? { w: r.where } : {}) }));
 }
 // заготовка → правило під меню закладу (категорії / страви — за словами)
@@ -77,10 +77,9 @@ const isDish = (l, n, b) => !!l?.some(d => n === d || (b ? b[n] === d : n.starts
 const units = l => l.flatMap(i => Array.from({ length: Math.min(i.q, 50) }, () => ({ name: i.name, p: i.sum / i.q }))).sort((a, b) => a.p - b.p);
 // 🧮 чиста функція: items [{name,q,sum}] (без доставки), kind hall|pick|del, cli (може бути null), manual — ручна знижка офіціанта %
 export function promoCalc(cfg, { items, kind, cli, ph, now = Date.now(), manual = 0, catOf = {} }) {
-  if (!cfg.on) return null;
   items = items.filter(i => i.q > 0 && i.sum > 0 && !/Доставка/.test(i.name)); const base = items.reduce((s, i) => s + i.sum, 0); if (!base) return null;
   const k = kyiv(now), lines = [], nth = {};
-  const lv = cliLevel(cfg, cli);
+  const lv = cfg.on ? cliLevel(cfg, cli) : null; // ⛔ програма вимкнена — без рівнів; акції діють завжди
   // рівень і ручна знижка не складаються: діє більша (офіціантова — у bill.disc, тоді рівень мовчить)
   if (lv?.pct && !(manual >= lv.pct)) lines.push({ k: 'lvl:' + lv.id, n: `${lv.e} ${lv.name} −${lv.pct}%`, amt: Math.max(0, Math.round(base * lv.pct / 100) - Math.round(base * (+manual || 0) / 100)) }); /* ручна знижка < рівня: доплачується лише різниця — разом рівно pct%, а не manual+pct */
   for (const r of cfg.rules) {

@@ -384,3 +384,9 @@ html[data-mt][data-shp="polaroid"] .cat:not(.compact) .item:nth-child(2n) { rota
 .me-av { position: relative; flex: none; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 50%; }
 .me-av .vvav { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; font-weight: 800; font-size: 26px; color: #1a1408; background: linear-gradient(135deg, #f2c14e, #d99a2b); }
 .me-av em { position: absolute; right: -2px; bottom: -2px; font-style: normal; font-size: 13px; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: var(--card2, #1c1c1f); }
+
+/* ⚡ акції, що діють зараз — над меню */
+.promo-bar { display: flex; gap: 8px; overflow-x: auto; padding: 8px 16px 4px; scrollbar-width: none; }
+.promo-bar::-webkit-scrollbar { display: none; }
+.promo-chip { flex: 0 0 auto; max-width: 78vw; display: grid; gap: 2px; padding: 9px 12px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 16%, var(--card2, #1c1c1f)); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); font-size: 13px; }
+.promo-chip b { color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .promo-chip span { color: var(--muted); font-size: 12px; white-space: normal; }

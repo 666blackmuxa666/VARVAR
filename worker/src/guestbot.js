@@ -189,7 +189,7 @@ async function giftInfo(env) {
   return null;
 }
 async function bdGreet(env, c, gb, bdRule) {
-  gb ||= await getGb(env); if (!bdRule) { const loy = await getLoy(env); bdRule = loy.on && loy.rules.find(r => r.type === 'bday' && r.on); }
+  gb ||= await getGb(env); if (!bdRule) { const loy = await getLoy(env); bdRule = loy.rules.find(r => r.type === 'bday' && r.on); }
   const y = dayKey().slice(0, 4); if (c.bdY === y) return; await cliTouch(env, c.phone, x => { x.bdY = y; }); // раз на рік
   const g = await giftInfo(env); let gift = '';
   if (g && g.p > 0) { const { certGift } = await import('./site.js'), x = await certGift(env, { phone: c.phone, name: c.name, gift: g.n, items: g.items, sum: g.p, days: g.days });
@@ -220,7 +220,7 @@ export async function gbDaily(env) {
   const h = +new Date().toLocaleString('en-GB', { timeZone: TZ, hour: '2-digit', hour12: false });
   if (h < 11 || h >= 20) return; const flag = 'gbday:' + dayKey(); if (await env.DB.get(flag)) return; await env.DB.put(flag, '1', { expirationTtl: 3 * 86400 });
   const gb = await getGb(env); if (!gb.bd && !gb.sleep) return;
-  const md = dayKey().slice(5), now = Date.now(), loy = await getLoy(env), bdRule = loy.on && loy.rules.find(r => r.type === 'bday' && r.on);
+  const md = dayKey().slice(5), now = Date.now(), loy = await getLoy(env), bdRule = loy.rules.find(r => r.type === 'bday' && r.on);
   let nb = 0, ns = 0;
   for (const c of await allCli(env)) {
     if (!c.chat) continue;
