@@ -1063,8 +1063,10 @@ export async function restoreExpense(env, i, day) { day = cDay(day); return L(en
 export async function delZ(env, i, day) { day = cDay(day); return L(env, 'z:' + day, () => _flagRec(env, 'z:', day, i, true)); }
 export async function restoreZ(env, i, day) { day = cDay(day); return L(env, 'z:' + day, () => _flagRec(env, 'z:', day, i, false)); }
 export async function addMove(env, ...a) { return L(env, 'mov:' + dayKey(), () => _addMove(env, ...a)); }
-export async function delMove(env, i, day) { day = cDay(day); return L(env, 'mov:' + day, () => _flagRec(env, 'mov:', day, i, true)); }
-export async function restoreMove(env, i, day) { day = cDay(day); return L(env, 'mov:' + day, () => _flagRec(env, 'mov:', day, i, false)); }
+export async function delMove(env, i, day, pay = true) { day = cDay(day); const r = await L(env, 'mov:' + day, () => _flagRec(env, 'mov:', day, i, true)); if (r && pay) await movPay(env, day, +i, true); return r; }
+export async function restoreMove(env, i, day, pay = true) { day = cDay(day); const r = await L(env, 'mov:' + day, () => _flagRec(env, 'mov:', day, i, false)); if (r && pay) await movPay(env, day, +i, false); return r; }
+// 💵 аванс / виплату видалили в «Русі грошей» (каса чи бот) — та сама операція ЗП теж видаляється (і повертається), інакше лишається в профілі людини
+async function movPay(env, day, i, del) { const k = 'pay:' + day.slice(0, 7); await L(env, k, async () => { const l = (await env.DB.get(k, 'json')) || [], x = l.find(o => o.mov && o.mov.d === day && o.mov.i === i); if (!x || !!x.del === del) return; if (del) x.del = 1; else delete x.del; await env.DB.put(k, JSON.stringify(l)); }); }
 export async function reconcile(env, ...a) { return L(env, 'mov:' + dayKey(), () => _reconcile(env, ...a)); }
 export async function addKitchen(env, ...a) { const e = await L(env, 'kq:' + dayKey(), () => _addKitchen(env, ...a)); if (e) await (await import('./kitbot.js')).kitNotify(env, e).catch(() => {}); return e; } // 👨‍🍳 → бот кухні
 async function kqEdit(env, ...a) { const e = await L(env, 'kq:' + dayKey(), () => _kqEdit(env, ...a)); if (e) await (await import('./kitbot.js')).kitSync(env, e).catch(() => {}); return e; }

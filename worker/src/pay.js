@@ -118,7 +118,7 @@ export async function payOp(env, { n, t, sum, src, note, day }, by) {
 }
 export async function payOpDel(env, month, id, back) {
   const op = await L(env, 'pay:' + month, async () => { const l = await getOps(env, month), x = l.find(o => o.id === id); if (!x || !!x.del === !back) return null; if (back) delete x.del; else x.del = 1; await env.DB.put('pay:' + month, JSON.stringify(l)); return x; });
-  if (op?.mov) await (back ? restoreMove : delMove)(env, op.mov.i, op.mov.d);
+  if (op?.mov) await (back ? restoreMove : delMove)(env, op.mov.i, op.mov.d, false); // операцію ЗП вже змінено вище
   return op;
 }
 export async function setStaffPay(env, id, p) {
@@ -133,6 +133,8 @@ export async function setStaffPay(env, id, p) {
 // ---------- 🧮 відомість за місяць ----------
 export async function payroll(env, m = mon()) {
   const days = daysOf(m), [st, att, plan, ops, menu, tb] = await Promise.all([getStaff(env), getAtt(env, m), getPlan(env, m), getOps(env, m), getMenu(env), tipBalances(env)]);
+  { const md = [...new Set(ops.filter(o => o.mov && !o.del).map(o => o.mov.d))], mv = md.length ? await env.DB.getMany(md.map(d => 'mov:' + d), 'json') : []; // 💵 рух грошей видалено раніше (до синхронізації) — аванс теж не рахуємо
+    for (const o of ops) if (o.mov && !o.del && mv[md.indexOf(o.mov.d)]?.[o.mov.i]?.del) o.del = 1; }
   const r = await reportRange(env, days[0], days[days.length - 1]), res = dishResolver(menu), gc = await getGoCfg(env);
   const rev = {}; // rev[day] = { all, own: {name}, kitchen }
   for (const c of r.checks) { const x = rev[c.d] ||= { all: 0, own: {}, kitchen: 0 }, v = c.sum - (c.tip || 0); x.all += v; const w = c.w || c.by || ''; x.own[w] = (x.own[w] || 0) + v;
@@ -164,7 +166,7 @@ export async function myPay(env, name, m = mon()) {
   // спільний графік (без грошей): хто коли запланований і був
   const names = (await getStaff(env)).filter(s => s.role !== 'courier' && !p.hide.includes(s.name) && (s.pay?.rate || s.pay?.pct || p.seen.includes(s.name) || p.days.some(d => p.att[d]?.[s.name] || p.plan[d]?.[s.name]))).map(s => s.name);
   const att = {}; for (const d of p.days) for (const [n, x] of Object.entries(p.att[d] || {})) (att[d] ||= {})[n] = { ok: x.ok, late: x.late ? 1 : 0, auto: x.auto ? 1 : 0, in: x.in, out: x.out };
-  return { m, row, days, ops: p.ops.filter(o => o.n === name), swaps, grid: { days: p.days, att, plan: p.plan, people: names } };
+  return { m, row, days, ops: p.ops.filter(o => o.n === name && !o.del), swaps, grid: { days: p.days, att, plan: p.plan, people: names } };
 }
 
 // ---------- 🔁 обмін змінами: попросив → колега погодився → адмін підтвердив → план змінився ----------
