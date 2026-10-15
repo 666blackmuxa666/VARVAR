@@ -36,7 +36,7 @@
     const v = await pr; if (v !== 'ok') return closeModal();
     if ($('#gW').hidden === false) when = $('#gW').value.trim();
     const d = { kind, phone: $('#gP').value, name: $('#gN').value.trim(), addr: $('#gA').value.trim(), ent: $('#gE').value.trim(), when, pay, change: pay === 'cash' ? +$('#gCh').value || 0 : 0 }; closeModal();
-    if (kind === 'del' && !d.name) return toast('⚠️ Вкажіть імʼя'); if (kind === 'del' && !d.addr) return toast('⚠️ Вкажіть адресу'); /* 🥡 самовивіз — усе необовʼязково */
+    if (kind === 'del' && !d.addr) return toast('⚠️ Вкажіть адресу'); /* імʼя й телефон необовʼязкові (як на самовивіз); доставці потрібна лише адреса */
     if (d.when && !/^\d{1,2}:\d{2}$/.test(d.when)) return toast('⚠️ Час у форматі 19:30');
     S.goDraft = d; S.tw[-1] = true;
     if (fromT) { S.carts[-1] = S.carts[fromT] || {}; S.coms[-1] = S.coms[fromT] || ''; S.packAdj[-1] = S.packAdj[fromT] || 0; S.ur[-1] = S.ur[fromT]; S.carts[fromT] = {}; S.coms[fromT] = ''; S.tw[fromT] = false; S.packAdj[fromT] = 0; saveCarts(); }
@@ -81,7 +81,7 @@
       return `<div class="cr-c st-${g.st}${g.prob ? ' prob' : ''}"><div class="cr-h"><b>${tn(b.t)}</b><span class="chip">${g.when ? '🕐 на ' + g.when : '⚡ якнайшвидше'}</span><span class="chip">${GOST[g.st]}</span><small>${minsAgo(g.accAt || g.at)} хв</small></div>
         ${g.st === 'ready' && my ? '<div class="cr-ready">🍽 ГОТОВО — ЗАБИРАЙ!</div>' : ''}${g.prob ? `<div class="cr-prob">⚠️ ${esc(g.prob.text)}</div>` : ''}
         <a class="cr-addr" href="${map}" target="_blank" rel="noopener">📍 ${esc(g.addr)}${g.ent ? ` · ${esc(g.ent)}` : ''}</a>
-        <div class="cr-row"><span>👤 ${esc(g.name)}</span><a class="btn sm" href="tel:+${g.phone}">📞 ${fmtPh(g.phone)}</a></div>
+        <div class="cr-row"><span>👤 ${esc(g.name || '—')}</span>${g.phone ? `<a class="btn sm" href="tel:+${g.phone}">📞 ${fmtPh(g.phone)}</a>` : ''}</div>
         <div class="muted">🍽 ${items(b)}${g.cut ? ` · 🍴 ${g.cut}` : ''}</div>
         <div class="cr-pay">${g.paid ? '💳 оплачено онлайн' : `<b class="money">${money(b.pay2)}</b><span>${g.pay === 'card' ? '💳 термінал' : '💵 готівка'}${g.change ? ` · решта з <b>${g.change}</b>` : ''}</span>`}</div>
         ${my ? `<div class="cr-act">${g.st !== 'road' ? `<button class="btn green" data-a="crAct" data-t="${b.t}" data-x="road">🛵 Поїхав</button>` : `<div class="cr-eta">${g.etaC ? `<div class="cr-etac">⏱ гостю сказано: буду о <b>${hhmm(g.etaC)}</b></div>` : '<div class="cr-etac muted">⏱ Коли будете в гостя? Гість побачить час</div>'}${[5, 10, 15, 20].map(m => `<button class="btn sm" data-a="crAct" data-t="${b.t}" data-x="eta" data-v="${m}">⏱ ${m} хв</button>`).join('')}</div>`}

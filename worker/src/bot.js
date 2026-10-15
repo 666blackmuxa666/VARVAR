@@ -443,8 +443,10 @@ export async function handleUpdate(u, env) {
     if (state.startsWith('sk') && admin) { const r = await stockState(state, text, env, uid, who); if (r) return send(r); }
     if (state === 'gocon' && waiter) { // контакти для С‑/Д‑ з бота
       const p = await env.DB.get('gopend:' + uid, 'json'); await env.DB.delete('st:' + uid); if (!p) return send({ text: '⌛ Замовлення застаріло.' });
-      const [name, phone, ...ad] = text.split(',').map(x => x.trim()), addr = ad.join(', ');
-      if (!name || !normPhone(phone) || (p.gk === 'del' && !addr)) { await env.DB.put('st:' + uid, 'gocon', { expirationTtl: 900 }); return send({ text: `⚠️ Формат: <code>Імʼя, телефон${p.gk === 'del' ? ', адреса' : ''}</code>` }); }
+      // імʼя й телефон необовʼязкові («-» — пропустити); доставці потрібна лише адреса. Одне поле без ком: доставка — адреса, самовивіз — імʼя
+      const pr = text.split(',').map(x => x.trim()), one = pr.length === 1, dash = x => x === '-' ? '' : x || '';
+      const name = one ? (p.gk === 'del' ? '' : dash(pr[0])) : dash(pr[0]), phone = one ? '' : dash(pr[1]), addr = one ? (p.gk === 'del' ? dash(pr[0]) : '') : pr.slice(2).join(', ');
+      if ((phone && !normPhone(phone)) || (p.gk === 'del' && !addr)) { await env.DB.put('st:' + uid, 'gocon', { expirationTtl: 900 }); return send({ text: `⚠️ Формат: <code>Імʼя, телефон${p.gk === 'del' ? ', адреса' : ''}</code> (<code>-</code> — пропустити)${p.gk === 'del' ? ' або лише адреса' : ''}` }); }
       const { t: T, go } = await goFromPos(env, { kind: p.gk, name, phone, addr }, who);
       const res = await addWaiterOrder(env, { table: T, items: p.items }, who, ['З СОБОЮ', p.com || ''].filter(Boolean).join(' · '), 'бот', !!p.ur);
       if (!res) return send({ text: 'Нічого додати.' });
@@ -779,7 +781,7 @@ async function handleCallback(q, env) {
     if (r.send?.gk) { // 🥡/🛵 з собою — спершу контакти клієнта, потім окремий чек С‑/Д‑
       await env.DB.put('gopend:' + uid, JSON.stringify({ ...r.send, mid: q.message?.message_id }), { expirationTtl: 900 });
       await env.DB.put('st:' + uid, 'gocon', { expirationTtl: 900 });
-      await edit(`${r.send.gk === 'del' ? '🛵 <b>Доставка</b>' : '🥡 <b>Самовивіз</b>'} — напишіть одним повідомленням:\n<code>Імʼя, телефон${r.send.gk === 'del' ? ', адреса' : ''}</code>\nнапр. <code>Олег, 0671234567${r.send.gk === 'del' ? ', Карпатська 12' : ''}</code>`);
+      await edit(`${r.send.gk === 'del' ? '🛵 <b>Доставка</b>' : '🥡 <b>Самовивіз</b>'} — напишіть одним повідомленням:\n<code>Імʼя, телефон${r.send.gk === 'del' ? ', адреса' : ''}</code>\nнапр. <code>Олег, 0671234567${r.send.gk === 'del' ? ', Карпатська 12' : ''}</code>\nІмʼя й телефон необовʼязкові: <code>-</code> — пропустити${r.send.gk === 'del' ? ', або надішліть лише адресу' : ''}.`);
       return answer('Вкажіть клієнта');
     }
     if (r.send) {

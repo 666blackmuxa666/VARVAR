@@ -2768,7 +2768,6 @@ var __objRest = (source, exclude) => {
     if ($("#gW").hidden === false) when = $("#gW").value.trim();
     const d = { kind, phone: $("#gP").value, name: $("#gN").value.trim(), addr: $("#gA").value.trim(), ent: $("#gE").value.trim(), when, pay, change: pay === "cash" ? +$("#gCh").value || 0 : 0 };
     closeModal();
-    if (kind === "del" && !d.name) return toast("\u26A0\uFE0F \u0412\u043A\u0430\u0436\u0456\u0442\u044C \u0456\u043C\u02BC\u044F");
     if (kind === "del" && !d.addr) return toast("\u26A0\uFE0F \u0412\u043A\u0430\u0436\u0456\u0442\u044C \u0430\u0434\u0440\u0435\u0441\u0443");
     if (d.when && !/^\d{1,2}:\d{2}$/.test(d.when)) return toast("\u26A0\uFE0F \u0427\u0430\u0441 \u0443 \u0444\u043E\u0440\u043C\u0430\u0442\u0456 19:30");
     S.goDraft = d;
@@ -2866,7 +2865,7 @@ var __objRest = (source, exclude) => {
       return `<div class="cr-c st-${g.st}${g.prob ? " prob" : ""}"><div class="cr-h"><b>${tn(b.t)}</b><span class="chip">${g.when ? "\u{1F550} \u043D\u0430 " + g.when : "\u26A1 \u044F\u043A\u043D\u0430\u0439\u0448\u0432\u0438\u0434\u0448\u0435"}</span><span class="chip">${GOST[g.st]}</span><small>${minsAgo(g.accAt || g.at)} \u0445\u0432</small></div>
         ${g.st === "ready" && my ? '<div class="cr-ready">\u{1F37D} \u0413\u041E\u0422\u041E\u0412\u041E \u2014 \u0417\u0410\u0411\u0418\u0420\u0410\u0419!</div>' : ""}${g.prob ? `<div class="cr-prob">\u26A0\uFE0F ${esc(g.prob.text)}</div>` : ""}
         <a class="cr-addr" href="${map}" target="_blank" rel="noopener">\u{1F4CD} ${esc(g.addr)}${g.ent ? ` \xB7 ${esc(g.ent)}` : ""}</a>
-        <div class="cr-row"><span>\u{1F464} ${esc(g.name)}</span><a class="btn sm" href="tel:+${g.phone}">\u{1F4DE} ${fmtPh(g.phone)}</a></div>
+        <div class="cr-row"><span>\u{1F464} ${esc(g.name || "\u2014")}</span>${g.phone ? `<a class="btn sm" href="tel:+${g.phone}">\u{1F4DE} ${fmtPh(g.phone)}</a>` : ""}</div>
         <div class="muted">\u{1F37D} ${items(b)}${g.cut ? ` \xB7 \u{1F374} ${g.cut}` : ""}</div>
         <div class="cr-pay">${g.paid ? "\u{1F4B3} \u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u043E\u043D\u043B\u0430\u0439\u043D" : `<b class="money">${money(b.pay2)}</b><span>${g.pay === "card" ? "\u{1F4B3} \u0442\u0435\u0440\u043C\u0456\u043D\u0430\u043B" : "\u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u0430"}${g.change ? ` \xB7 \u0440\u0435\u0448\u0442\u0430 \u0437 <b>${g.change}</b>` : ""}</span>`}</div>
         ${my ? `<div class="cr-act">${g.st !== "road" ? `<button class="btn green" data-a="crAct" data-t="${b.t}" data-x="road">\u{1F6F5} \u041F\u043E\u0457\u0445\u0430\u0432</button>` : `<div class="cr-eta">${g.etaC ? `<div class="cr-etac">\u23F1 \u0433\u043E\u0441\u0442\u044E \u0441\u043A\u0430\u0437\u0430\u043D\u043E: \u0431\u0443\u0434\u0443 \u043E <b>${hhmm(g.etaC)}</b></div>` : '<div class="cr-etac muted">\u23F1 \u041A\u043E\u043B\u0438 \u0431\u0443\u0434\u0435\u0442\u0435 \u0432 \u0433\u043E\u0441\u0442\u044F? \u0413\u0456\u0441\u0442\u044C \u043F\u043E\u0431\u0430\u0447\u0438\u0442\u044C \u0447\u0430\u0441</div>'}${[5, 10, 15, 20].map((m) => `<button class="btn sm" data-a="crAct" data-t="${b.t}" data-x="eta" data-v="${m}">\u23F1 ${m} \u0445\u0432</button>`).join("")}</div>`}
