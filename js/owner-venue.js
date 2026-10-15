@@ -19,7 +19,7 @@ window.OWNV = ctx => {
   const V = () => S.cfgV; // { id, sec, d: {…дані розділу} }
 
   // 🎨 Студія вигляду — та сама, що в касі (Налаштування → Вигляд)
-  const lookHTML = v => window.VVSkin ? window.VVSkin.studio({ venue: v.d.lookV, dev: window.OWNLOOK.dev(), canVenue: true, scope: S.lookScope, toast, rerender: render,
+  const lookHTML = v => window.VVSkin ? window.VVSkin.studio({ venue: v.d.lookV, dev: {}, canVenue: true, only: 'venue', note: 'Вигляд усіх кас цього закладу (працівники можуть мати свій — у своєму кабінеті). Вигляд самого кабінету власника — кнопка 🎨 угорі.', toast, rerender: render,
     ask: (t, ph) => prompt(t, ph === 'VARVAR-STYLE {…}' ? '' : ph), onScope: s => { S.lookScope = s; },
     setVenue: l => { v.d.lookV = l; S.lookScope = 'venue'; window.OWNLOOK.setVenue(v.id, l); }, saveVenue: l => vapi(v.id, 'lookVSet', { look: l }), setDev: d => window.OWNLOOK.setDev(d) }) : '';
   async function load() {

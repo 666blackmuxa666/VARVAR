@@ -294,3 +294,8 @@ tr.sum td { font-weight: 700; border-bottom: 0; }
 .top .who-av { flex: none; margin-left: auto; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 50%; }
 .top .who-av + .who { margin-left: 8px; }
 .top .who-av .vvav { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; font-weight: 800; font-size: 15px; color: #1a1408; background: linear-gradient(135deg, #f2c14e, #d99a2b); }
+
+/* 🎨 вигляд кабінету — вікно поверх */
+.olook { position: fixed; inset: 0; z-index: 90; background: #000a; display: grid; place-items: start center; overflow: auto; padding: 16px; }
+.olook-in { width: min(900px, 100%); background: var(--bg2, var(--bg)); color: var(--text); border-radius: 20px; padding: 16px; margin-block: 16px; min-width: 0; }
+.olook-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 18px; }

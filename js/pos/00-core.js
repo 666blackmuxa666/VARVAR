@@ -272,7 +272,7 @@
     const v = S.view, m = $('#main');
     m.classList.toggle('hall', v === 'hall');
     if (v === 'hall') { const [c, r] = hallGrid(m); m.style.setProperty('--cols', c); m.style.setProperty('--rows', r); }
-    const html = { books: booksHTML, go: goHTML, kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, team: teamHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML }[v]?.();
+    const html = { books: booksHTML, go: goHTML, kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, team: teamHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML, mylook: () => `<div class="rhead"><div><h1>🎨 Мій вигляд</h1><span class="muted">${isAdmin() ? 'заклад або лише цей пристрій' : 'колір і стиль лише на цьому пристрої'}</span></div></div>` + lookHTML() }[v]?.();
     const fid = document.activeElement?.id, keep = ['stopSearch', 'rQ', 'skQ', 'skQ2', 'skCq'].includes(fid);
     const sx = [...m.querySelectorAll('.zp-grid, .sk-tbl, .chips.scroll, .seg')].map(e => e.scrollLeft); // таблиці, що гортаються вбік, — лишаються на місці
     setHTML(m, html || '');

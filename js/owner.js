@@ -25,6 +25,14 @@
     try { const r = await VC.vapi(id, 'lookV'); const n = r.look || null; if (JSON.stringify(n) !== JSON.stringify(store.get('vlook', null))) { store.set('vlook', n); skApply(); } } catch {}
   }
   skApply(); window.OWNSKIN = skApply;
+  // 🎨 свій вигляд кабінету (лише цей пристрій); без нього — як у головного закладу
+  function myLook() {
+    let box = document.getElementById('olook'); if (!box) { box = document.createElement('div'); box.id = 'olook'; box.className = 'olook'; document.body.appendChild(box); box.addEventListener('click', e => { if (e.target === box || e.target.closest('[data-olx]')) box.remove(); }); }
+    const draw = () => { box.innerHTML = `<div class="olook-in"><div class="olook-h"><b>🎨 Вигляд кабінету</b><button class="icobtn" data-olx title="Закрити">✕</button></div>${window.VVSkin.studio({ venue: store.get('vlook', null), dev: store.get('odev', {}), canVenue: false, only: 'dev', toast, rerender: draw,
+      note: store.get('odev', {}).own ? 'Свій вигляд кабінету на цьому пристрої.' : 'Зараз кабінет — як головний заклад. Будь-яка зміна — лише для кабінету на цьому пристрої.', followL: '↩️ Як у закладу',
+      setDev: d => { store.set('odev', d); skApply(); } })}</div>`; };
+    draw();
+  }
   window.OWNLOOK = { dev: () => store.get('odev', {}), setDev: d => { store.set('odev', d); skApply(); }, setVenue: (id, l) => { if (id === lookId()) { store.set('vlook', l); skApply(); } } };
 
   function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 3000); }
@@ -203,7 +211,7 @@
     if (!S.me) return;
     const plat = S.me.role === 'platform', TABS = [['home', '🏠 Мережа'], ['an', '📊 Аналітика'], ['ven', '🏪 Заклади'], ['cfg', '⚙️ Налаштування'], ['inbox', `📨 Вхідні${S.inboxN ? ` <i class="bdg">${S.inboxN}</i>` : ''}`], ...(plat ? [['crm', '🚀 Продажі'], ['plat', '🌐 Платформа']] : [])];
     if (!TABS.some(x => x[0] === S.tab)) S.tab = 'home';
-    app.innerHTML = `<header class="top"><div class="in"><img src="img/icon.png" alt=""><b>Кабінет власника</b><button class="who-av" data-a="myAv" title="Змінити фото">${VVAV.html(S.me.av, S.me.name)}</button><div class="who"><b>${esc(S.me.name)}</b><span class="muted">${plat ? '👑 платформа' : 'власник'}</span></div><div class="icogrp"><button class="icobtn" data-a="help" title="Допомога">🆘</button><button class="icobtn" data-a="out" title="Вийти">🚪</button></div></div>
+    app.innerHTML = `<header class="top"><div class="in"><img src="img/icon.png" alt=""><b>Кабінет власника</b><button class="who-av" data-a="myAv" title="Змінити фото">${VVAV.html(S.me.av, S.me.name)}</button><div class="who"><b>${esc(S.me.name)}</b><span class="muted">${plat ? '👑 платформа' : 'власник'}</span></div><div class="icogrp"><button class="icobtn" data-a="myLook" title="Вигляд кабінету">🎨</button><button class="icobtn" data-a="help" title="Допомога">🆘</button><button class="icobtn" data-a="out" title="Вийти">🚪</button></div></div>
       <nav class="tabs">${TABS.map(([k, l]) => `<button class="${S.tab === k ? 'on' : ''}" data-a="tab" data-t="${k}">${l}</button>`).join('')}<button data-a="reload">🔄</button></nav></header>
       <main>${S.tab === 'cfg' ? (S.cfgV ? VC.view() : pickVenue()) : S.tab === 'home' ? home() : S.tab === 'an' ? analytics() : S.tab === 'ven' ? venues() : S.tab === 'inbox' ? inbox() : S.tab === 'crm' && plat ? OWNCRM.view({ api, toast, render, modal, kpi, VC, enter: goPos }) : platform()}</main>`;
   }
@@ -248,6 +256,7 @@
     if (a === 'vdemo') { el.disabled = true; toast('🎬 Створюю демо…'); try { const r = await VC.demo('cafe'); await start(); VC.open(r.venue.id, 'start'); toast('🎬 Демо готове — покажіть клієнту касу й сайт'); } catch (x) { toast('⚠️ ' + x.message); } el.disabled = false; return; }
     if (a === 'vcfgOpen') { window.scrollTo(0, 0); return VC.open(d.v); }
     if (a === 'copy') { try { await navigator.clipboard.writeText(d.u); toast('🔗 Скопійовано — надішліть персоналу'); } catch { prompt('Скопіюйте посилання:', d.u); } return; }
+    if (a === 'myLook') return myLook();
     if (a === 'myAv') { const x = await VVAV.pick(); /* галерея — одразу в кліку */ if (!x) return; try { const r = await api('av', { data: x }); S.me.av = r.av; render(); toast('📷 Фото оновлено'); } catch (y) { toast('⚠️ ' + y.message); } return; }
     if (a === 'pass') return modal('🔐 Новий пароль', '<input name="p" type="password" placeholder="Від 8 символів" minlength="8" required autocomplete="new-password">', async f => { await api('pass', { pass: f.p.value }); toast('✅ Пароль змінено — увійдіть знову'); logout(true); });
     if (a === 'anew') return modal('👤 Новий власник', '<label>Ім\'я<input name="n" required></label><label>Email<input name="e" type="email" required></label><label>Тимчасовий пароль (необов\'язково)<input name="p" minlength="8" autocomplete="off"></label><div class="muted" style="font-size:13px">Власнику прийде лист: підтвердити пошту й задати свій пароль. Без пошти — передайте email і пароль самі.</div>', async f => { const r = await api('acctNew', { name: f.n.value, email: f.e.value, pass: f.p.value }); toast(r.warn ? '⚠️ Створено, але ' + r.warn : r.mailed ? '✉️ Створено — лист надіслано' : '✅ Власника створено'); await reload(); });

@@ -113,7 +113,8 @@
       ${asks.map(s => `<div class="card zp-ask">🔁 <b>${esc(s.from)}</b> просить вийти за нього ${s.day.slice(8)}.${s.day.slice(5, 7)} о ${s.time}<div class="btnrow"><button class="btn sm green" data-a="zpSw" data-id="${s.id}" data-s="agree">Погоджуюсь</button><button class="btn sm red" data-a="zpSw" data-id="${s.id}" data-s="no">Ні</button></div></div>`).join('')}
       <h3 style="margin:14px 0 6px">Графік · ${monName(r.m)}</h3>${gridHTML(r.grid, r.grid.people, false, me)}<div class="muted" style="font-size:11px;margin-top:4px">✅ був · ● заплановано · 🕓 чекає · ⏰ запізнення · 🚫 прогул</div>
       ${r.swaps.filter(s => s.from === me).map(s => `<div class="muted" style="font-size:12px">🔁 ${s.day.slice(8)}.${s.day.slice(5, 7)} → ${esc(s.to)}: ${s.st === 'ask' ? 'чекає згоди' : 'чекає адміна'}</div>`).join('')}`;
-    const v = await modal({ title: `👤 ${me}`, body, buttons: [{ label: '🔁 Попросити обмін', val: 'swap' }, { label: '💡 Побажання', val: 'idea' }, { label: '🆘 Допомога', val: 'help' }, { label: 'Закрити', val: null }] });
+    const v = await modal({ title: `👤 ${me}`, body, buttons: [{ label: '🎨 Мій вигляд', val: 'look' }, { label: '🔁 Попросити обмін', val: 'swap' }, { label: '💡 Побажання', val: 'idea' }, { label: '🆘 Допомога', val: 'help' }, { label: 'Закрити', val: null }] });
+    if (v === 'look') { S.view = 'mylook'; renderNav(); renderMain(); return; } // 🎨 свій колір і стиль — для будь-якої ролі, лише на цьому пристрої
     if (v === 'idea') return ideasMy();
     if (v === 'help') return helpAsk();
     if (v === 'swap') {

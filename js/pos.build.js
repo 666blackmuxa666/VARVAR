@@ -691,7 +691,7 @@ var __objRest = (source, exclude) => {
       m.style.setProperty("--cols", c);
       m.style.setProperty("--rows", r);
     }
-    const html = (_b = (_a2 = { books: booksHTML, go: goHTML, kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, team: teamHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML })[v]) == null ? void 0 : _b.call(_a2);
+    const html = (_b = (_a2 = { books: booksHTML, go: goHTML, kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, team: teamHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML, mylook: () => `<div class="rhead"><div><h1>\u{1F3A8} \u041C\u0456\u0439 \u0432\u0438\u0433\u043B\u044F\u0434</h1><span class="muted">${isAdmin() ? "\u0437\u0430\u043A\u043B\u0430\u0434 \u0430\u0431\u043E \u043B\u0438\u0448\u0435 \u0446\u0435\u0439 \u043F\u0440\u0438\u0441\u0442\u0440\u0456\u0439" : "\u043A\u043E\u043B\u0456\u0440 \u0456 \u0441\u0442\u0438\u043B\u044C \u043B\u0438\u0448\u0435 \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457"}</span></div></div>` + lookHTML() })[v]) == null ? void 0 : _b.call(_a2);
     const fid = (_c = document.activeElement) == null ? void 0 : _c.id, keep = ["stopSearch", "rQ", "skQ", "skQ2", "skCq"].includes(fid);
     const sx = [...m.querySelectorAll(".zp-grid, .sk-tbl, .chips.scroll, .seg")].map((e) => e.scrollLeft);
     setHTML(m, html || "");
@@ -3900,11 +3900,12 @@ var __objRest = (source, exclude) => {
   }
   function lookHTML() {
     const L = look(), opt = (k, v, l) => `<button class="lk-o${L[k] == v ? " on" : ""}" data-a="look" data-k="${k}" data-v="${v}">${l}</button>`;
-    const st = VVSkin.studio({
+    const st = VVSkin.studio(__spreadProps(__spreadValues({
       venue: S.lookV,
       dev: lookDev(),
       canVenue: isAdmin(),
-      scope: S.lookScope,
+      scope: S.lookScope
+    }, isAdmin() ? {} : { note: "\u0412\u0430\u0448 \u043A\u043E\u043B\u0456\u0440 \u0456 \u0441\u0442\u0438\u043B\u044C \u2014 \u043B\u0438\u0448\u0435 \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457. \u0406\u043D\u0448\u0456 \u0431\u0430\u0447\u0430\u0442\u044C \u0432\u0438\u0433\u043B\u044F\u0434 \u0437\u0430\u043A\u043B\u0430\u0434\u0443." }), {
       open: S.lookOpen,
       toast,
       ask: (t, ph) => ask(t, ph),
@@ -3923,7 +3924,7 @@ var __objRest = (source, exclude) => {
         store.set("look", __spreadValues(__spreadProps(__spreadValues({}, look()), { own }), own ? { sk, theme: ct || "", accent: ca || "" } : { sk: void 0, theme: "night", accent: "" }));
         applyLook();
       }
-    });
+    }));
     return `<div class="grid2 set"><div class="card" style="grid-column:1/-1"><h3>\u{1F3A8} \u0421\u0442\u0443\u0434\u0456\u044F \u0432\u0438\u0433\u043B\u044F\u0434\u0443</h3>${st}</div>
       <div class="card"><h3>\u{1F4F1} \u0426\u0435\u0439 \u043F\u0440\u0438\u0441\u0442\u0440\u0456\u0439</h3><div class="set-note muted">\u0420\u043E\u0437\u043C\u0456\u0440</div><div class="lk-row">${[85, 92, 100, 110, 120].map((z) => opt("size", z, z === 100 ? "\u0417\u0432\u0438\u0447\u0430\u0439\u043D\u0438\u0439" : z + "%")).join("")}</div>
         <div class="set-note muted" style="margin-top:10px">\u0410\u043D\u0456\u043C\u0430\u0446\u0456\u0457</div><div class="lk-row">${opt("anim", 1, "\u2728 \u0423\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u0456")}${opt("anim", 0, "\u26A1 \u0412\u0438\u043C\u043A\u043D\u0435\u043D\u0456 (\u0448\u0432\u0438\u0434\u0448\u0435 \u043D\u0430 \u0441\u043B\u0430\u0431\u043A\u0438\u0445)")}</div>
@@ -6106,7 +6107,13 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
       ${asks.map((s) => `<div class="card zp-ask">\u{1F501} <b>${esc(s.from)}</b> \u043F\u0440\u043E\u0441\u0438\u0442\u044C \u0432\u0438\u0439\u0442\u0438 \u0437\u0430 \u043D\u044C\u043E\u0433\u043E ${s.day.slice(8)}.${s.day.slice(5, 7)} \u043E ${s.time}<div class="btnrow"><button class="btn sm green" data-a="zpSw" data-id="${s.id}" data-s="agree">\u041F\u043E\u0433\u043E\u0434\u0436\u0443\u044E\u0441\u044C</button><button class="btn sm red" data-a="zpSw" data-id="${s.id}" data-s="no">\u041D\u0456</button></div></div>`).join("")}
       <h3 style="margin:14px 0 6px">\u0413\u0440\u0430\u0444\u0456\u043A \xB7 ${monName(r.m)}</h3>${gridHTML(r.grid, r.grid.people, false, me)}<div class="muted" style="font-size:11px;margin-top:4px">\u2705 \u0431\u0443\u0432 \xB7 \u25CF \u0437\u0430\u043F\u043B\u0430\u043D\u043E\u0432\u0430\u043D\u043E \xB7 \u{1F553} \u0447\u0435\u043A\u0430\u0454 \xB7 \u23F0 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F \xB7 \u{1F6AB} \u043F\u0440\u043E\u0433\u0443\u043B</div>
       ${r.swaps.filter((s) => s.from === me).map((s) => `<div class="muted" style="font-size:12px">\u{1F501} ${s.day.slice(8)}.${s.day.slice(5, 7)} \u2192 ${esc(s.to)}: ${s.st === "ask" ? "\u0447\u0435\u043A\u0430\u0454 \u0437\u0433\u043E\u0434\u0438" : "\u0447\u0435\u043A\u0430\u0454 \u0430\u0434\u043C\u0456\u043D\u0430"}</div>`).join("")}`;
-    const v = await modal({ title: `\u{1F464} ${me}`, body, buttons: [{ label: "\u{1F501} \u041F\u043E\u043F\u0440\u043E\u0441\u0438\u0442\u0438 \u043E\u0431\u043C\u0456\u043D", val: "swap" }, { label: "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F", val: "idea" }, { label: "\u{1F198} \u0414\u043E\u043F\u043E\u043C\u043E\u0433\u0430", val: "help" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+    const v = await modal({ title: `\u{1F464} ${me}`, body, buttons: [{ label: "\u{1F3A8} \u041C\u0456\u0439 \u0432\u0438\u0433\u043B\u044F\u0434", val: "look" }, { label: "\u{1F501} \u041F\u043E\u043F\u0440\u043E\u0441\u0438\u0442\u0438 \u043E\u0431\u043C\u0456\u043D", val: "swap" }, { label: "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F", val: "idea" }, { label: "\u{1F198} \u0414\u043E\u043F\u043E\u043C\u043E\u0433\u0430", val: "help" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+    if (v === "look") {
+      S.view = "mylook";
+      renderNav();
+      renderMain();
+      return;
+    }
     if (v === "idea") return ideasMy();
     if (v === "help") return helpAsk();
     if (v === "swap") {

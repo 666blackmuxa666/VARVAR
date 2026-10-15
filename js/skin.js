@@ -53,9 +53,7 @@ window.VVSkin = (() => {
     r.setProperty('--r', K.r + 'px'); r.setProperty('--r2', (K.r + 4) + 'px');
     r.setProperty('--sk-shadow', { none: 'none', soft: '0 1px 0 #ffffff08 inset, 0 8px 22px #00000055', deep: '0 14px 34px #000000a0', glow: '0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent), 0 10px 30px color-mix(in srgb, var(--accent) 18%, transparent)' }[K.shadow] || 'none');
     r.setProperty('--sk-border', { none: '0', hair: '1px solid var(--line)', accent: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }[K.border] || '0');
-    if (K.acc) r.setProperty('--accent', K.acc);
-    const B = BG[K.bg]; if (B) { r.setProperty('--bg', B[0]); r.setProperty('--bg2', B[1]); r.setProperty('--card', B[2]); r.setProperty('--card2', B[3]); }
-    if (K.contrast !== 5) { const c = (K.contrast - 5) * 2, base = B ? B[2] : getComputedStyle(h).getPropertyValue('--card').trim() || '#1c1c1f'; r.setProperty('--card', `color-mix(in srgb, ${base} ${100 - Math.abs(c)}%, ${c > 0 ? '#ffffff' : '#000000'} ${Math.abs(c)}%)`); }
+    if (K.contrast !== 5) { const c = (K.contrast - 5) * 2, base = getComputedStyle(h).getPropertyValue('--card').trim() || '#1c1c1f'; r.setProperty('--card', `color-mix(in srgb, ${base} ${100 - Math.abs(c)}%, ${c > 0 ? '#ffffff' : '#000000'} ${Math.abs(c)}%)`); }
     if (K.muted !== 5) r.setProperty('--muted', `hsl(240 4% ${40 + K.muted * 4}%)`);
     for (const f of [FONT[K.font], FONT[K.fonth]].filter(Boolean)) { const id = 'gf-' + f.replace(/ /g, ''); if (!document.getElementById(id)) { const l = document.createElement('link'); l.id = id; l.rel = 'stylesheet'; l.href = `https://fonts.googleapis.com/css2?family=${f.replace(/ /g, '+')}:wght@400;500;600;700;800;900&display=swap`; document.head.appendChild(l); } }
     if (FONT[K.font]) r.setProperty('--font', `"${FONT[K.font]}", ${SYS}`); else if (K.font === 'system') r.setProperty('--font', SYS);
@@ -73,9 +71,7 @@ window.VVSkin = (() => {
     const tg = (k, l) => `<label class="kv" style="cursor:pointer"><span>${l}</span><input type="checkbox" data-k="${k}" ${K[k] ? 'checked' : ''} style="width:auto"></label>`;
     const FN = [['', 'Як у темі'], ['system', 'Системний'], ['rubik', 'Rubik'], ['manrope', 'Manrope'], ['montserrat', 'Montserrat'], ['nunito', 'Nunito'], ['inter', 'Inter'], ['jost', 'Jost'], ['onest', 'Onest'], ['golos', 'Golos'], ['exo', 'Exo 2'], ['tektur', 'Tektur'], ['oswald', 'Oswald'], ['unbounded', 'Unbounded'], ['prata', 'Prata'], ['comfortaa', 'Comfortaa']];
     const body = `<div class="skc">
-      <h4>🎨 Кольори</h4>${ch('bg', 'Фон', [['theme', 'Як у темі'], ['black', 'Чорний'], ['amoled', 'AMOLED'], ['graphite', 'Графіт'], ['blue', 'Синюватий'], ['warm', 'Теплий'], ['green', 'Зеленуватий'], ['wine', 'Бордо'], ['navy', 'Нічний синій'], ['plum', 'Сливовий'], ['espresso', 'Еспресо'], ['slate', 'Сланець'], ['petrol', 'Петроль'], ['cherry', 'Вишневий']])}
-      <div class="o"><span>Акцент</span><div class="ch" data-k="acc">${['', '#f2c14e', '#ffb340', '#ff8a3d', '#ff5a5f', '#e879a6', '#a78bfa', '#7aa7ff', '#3ddc97'].map(c => `<button data-v="${c}" class="${K.acc === c ? 'on' : ''}" style="${c ? `background:${c};` : ''}min-width:30px">${c ? '&nbsp;' : 'Як у темі'}</button>`).join('')}</div></div>
-      ${rg('contrast', 'Контраст карток', 0, 10)}${rg('muted', 'Яскравість сірого тексту', 0, 10)}${ch('bgfx', 'Ефект фону', [['none', 'Немає'], ['glow', 'Світіння'], ['vignette', 'Віньєтка']])}
+      <h4>🎨 Тонке налаштування кольору</h4>${rg('contrast', 'Контраст карток', 0, 10)}${rg('muted', 'Яскравість сірого тексту', 0, 10)}${ch('bgfx', 'Ефект фону', [['none', 'Немає'], ['glow', 'Світіння'], ['vignette', 'Віньєтка']])}
       <h4>🔷 Форма</h4>${ch('win', 'Форма вікон', [['none', 'Звичайні'], ['arch', 'Арка'], ['ticket', 'Квиток'], ['cut', 'Зрізані кути'], ['notch', 'Загнутий кут'], ['leaf', 'Листок'], ['bubble', 'Бульбашка'], ['pill', 'Капсула'], ['sketch', 'Від руки'], ['brutal', 'Брутал'], ['deco', 'Ар-деко'], ['neon', 'Неон'], ['glass', 'Скло'], ['frame', 'Рамка'], ['folder', 'Папка'], ['brackets', 'Кутики']])}${rg('r', 'Заокруглення карток', 0, 30)}${rg('rb', 'Заокруглення кнопок', 0, 26)}${ch('shape', 'Форма кнопок', [['auto', 'За повзунком'], ['pill', 'Пілюля'], ['square', 'Квадратні']])}
       ${rg('h', 'Висота кнопок', 36, 56)}${rg('pad', 'Відступи в картках', 8, 22)}${rg('gap', 'Проміжки між блоками', 4, 18)}
       <h4>🗂 Картки</h4>${ch('card', 'Заливка', [['solid', 'Суцільна'], ['grad', 'Градієнт'], ['glass', 'Скло'], ['outline', 'Контур']])}${ch('shadow', 'Тінь', [['none', 'Немає'], ['soft', 'Мʼяка'], ['deep', 'Глибока'], ['glow', 'Світіння']])}${ch('border', 'Рамка', [['none', 'Немає'], ['hair', 'Тонка'], ['accent', 'Акцент']])}${tg('caps', 'Заголовки карток великими літерами')}
@@ -91,7 +87,15 @@ window.VVSkin = (() => {
     box.addEventListener('click', e => { const b = e.target.closest('.ch button'); if (!b) return; e.preventDefault(); const g = b.parentElement, k = g.dataset.k; K[k] = b.dataset.v; g.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); upd(K); });
     box.addEventListener('input', e => { const i = e.target; if (!i.dataset.k) return; K[i.dataset.k] = i.type === 'checkbox' ? i.checked : +i.value; if (i.nextElementSibling) i.nextElementSibling.textContent = i.value; upd(K); });
   }
-  function colors(t, a) { const T = (THEMES[t] || THEMES.night)[1], r = document.documentElement.style; for (const [k, v] of Object.entries(T)) r.setProperty('--' + k, v); if (a) r.setProperty('--accent', a); }
+  /* 🎨 палітри фонів стилів (раніше були «зашиті» в стиль) — тепер звичайні палітри поряд з THEMES */
+  const BGN = { wine: '🍷 Бордо', navy: '🌌 Нічний синій', plum: '🍇 Слива', espresso: '☕ Еспресо', slate: '🪨 Сланець', petrol: '🛢 Петроль', cherry: '🍒 Вишня', black: '⬛ Чорний', amoled: '🖤 AMOLED', graphite: '🌫 Графіт темний', blue: '🌀 Синюватий', warm: '🔥 Теплий', green: '🌿 Зеленуватий' };
+  for (const [k, B] of Object.entries(BG)) if (!THEMES['bg-' + k]) THEMES['bg-' + k] = [BGN[k] || k, { bg: B[0], bg2: B[1], card: B[2], card2: B[3], text: '#f5f5f7', muted: '#8e8e93', accent: '#f2c14e', 'accent-ink': '#1a1400' }];
+  const ink = c => { const m = String(c).match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i); if (!m) return '#000'; let h = m[1]; if (h.length === 3) h = [...h].map(x => x + x).join(''); const [r, g, b] = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); return (r * 299 + g * 587 + b * 114) / 1000 > 150 ? '#141008' : '#ffffff'; };
+  /* стиль = лише форма; bg/acc у старих збережених стилях → палітра й акцент */
+  const FORM = sk => { if (!sk) return sk; const { bg, acc, ...f } = sk; return f; };
+  const palOf = sk => ({ t: sk?.bg && sk.bg !== 'theme' && BG[sk.bg] ? 'bg-' + sk.bg : '', a: sk?.acc || '' });
+  for (const p of Object.values(PRE)) { p[3] = palOf(p[2]); if (!p[3].t) p[3].t = 'night'; p[2] = FORM(p[2]); } // p[3] — рідна палітра стилю
+  function colors(t, a) { const T = (THEMES[t] || THEMES.night)[1], r = document.documentElement.style; for (const [k, v] of Object.entries(T)) r.setProperty('--' + k, v); if (a) { r.setProperty('--accent', a); r.setProperty('--accent-ink', ink(a)); } }
   const saveCol = c => { try { localStorage.setItem('vv_col_cur', JSON.stringify(c)); } catch {} };
   const lastCol = () => { try { return JSON.parse(localStorage.getItem('vv_col_cur') || 'null'); } catch { return null; } };
   const skinPart = v => { if (!v) return null; const { ct, ca, ...k } = v; return Object.keys(k).length ? k : null; }; /* у стилі закладу: ct/ca — кольори, решта — форма */
@@ -99,29 +103,30 @@ window.VVSkin = (() => {
      Заклад (сервер lookv): { ...форма, ct, ca }; пристрій: { own, sk, ct, ca } (sk: undefined — форма закладу, null — класика). Кольори завжди поверх форми. */
   function resolve(venue, dev) {
     const V = venue || {}, D = dev || {};
-    const sk = D.own && D.sk !== undefined ? D.sk : skinPart(V);
-    const c = D.own ? (D.ct || D.ca ? { t: D.ct, a: D.ca } : null) : (V.ct || V.ca ? { t: V.ct, a: V.ca } : null);
-    return { K: full(sk), c };
+    const sk = D.own && D.sk !== undefined ? D.sk : skinPart(V), old = palOf(sk);
+    let c = D.own ? (D.ct || D.ca ? { t: D.ct, a: D.ca } : null) : (V.ct || V.ca ? { t: V.ct, a: V.ca } : null);
+    if (old.t || old.a) c = { t: c?.t || old.t, a: c?.a || (c?.t ? '' : old.a) }; // старий стиль з власним фоном/акцентом
+    return { K: full(FORM(sk)), c };
   }
   function paint(venue, dev, save = true) {
     const { K, c } = resolve(venue, dev), r = document.documentElement.style;
-    if (!c?.t) colors('night');
+    colors(c?.t || 'night', c?.a); // спершу палітра, потім форма (контраст рахується від палітри)
     apply(K, save);
-    if (c?.t) colors(c.t, c.a); else if (c?.a) r.setProperty('--accent', c.a);
     if (save) saveCol(c && c.t ? c : null);
     return K;
   }
   const pack = T => { const l = { ...(T.sk || {}) }; if (T.ct || T.ca) { l.ct = T.ct || ''; l.ca = T.ca || ''; } return Object.keys(l).length ? l : null; };
   const ACC = ['#f2c14e', '#ffb340', '#ff7a45', '#ff453a', '#e0457b', '#bf5af2', '#a98bff', '#0a84ff', '#3fb6ff', '#4fe3c1', '#30d158', '#ffffff'];
   let CX = null, EK = null, svT = 0, OPEN = false;
-  const scope = () => (CX?.canVenue ? (CX.scope || 'venue') : 'dev');
+  const scope = () => (CX?.only ? CX.only : CX?.canVenue ? (CX.scope || 'venue') : 'dev'); // only: 'venue' | 'dev' — без перемикача
   function target() {
     const V = CX.venue || {}, D = CX.dev || {};
-    if (scope() === 'venue') return { sk: skinPart(V), ct: V.ct || '', ca: V.ca || '' };
-    return D.own ? { sk: D.sk !== undefined ? D.sk : skinPart(V), ct: D.ct || '', ca: D.ca || '' } : { sk: skinPart(V), ct: V.ct || '', ca: V.ca || '' };
+    const R = scope() === 'venue' || !D.own ? resolve(V, {}) : resolve(V, D);
+    return { sk: R.K ? diff(R.K) : null, ct: R.c?.t || '', ca: R.c?.a || '' };
   }
   const same = (a, b) => JSON.stringify(a || null) === JSON.stringify(b || null);
-  const skName = sk => !sk ? '↩️ Класика' : (Object.values(PRE).find(p => same(p[2], sk))?.[0] || '✏️ Свій');
+  const norm = x => x ? diff(full(x)) : null; // порівнюємо стилі однаково: лише відмінності від BASE
+  const skName = sk => !sk ? '↩️ Класика' : (Object.values(PRE).find(p => same(norm(p[2]), sk))?.[0] || '✏️ Свій');
   function commit(T, quiet) {
     if (scope() === 'venue') { const l = pack(T); CX.setVenue(l); clearTimeout(svT); svT = setTimeout(() => CX.saveVenue(l).then(() => CX.toast('🏪 Збережено для всіх кас і кабінету')).catch(e => CX.toast('⚠️ ' + (e.message || 'Не збереглось'))), quiet ? 900 : 300); }
     else CX.setDev({ own: 1, sk: T.sk || null, ct: T.ct, ca: T.ca });
@@ -150,21 +155,22 @@ window.VVSkin = (() => {
   function studio(ctx) {
     CX = ctx; css(); const T = target(), sc = scope(), V = CX.venue || {}, D = CX.dev || {};
     EK = { ...BASE, ...(T.sk || {}) };
-    const thumb = (k, p) => { const B = BG[p?.bg] || [THEMES.night[1].bg, '', THEMES.night[1].card], acc = p?.acc || THEMES.night[1].accent, r = p ? Math.min(p.r, 14) : 12;
-      return `<button class="vst-s${same(T.sk, p) ? ' on' : ''}" data-st="sk" data-v="${k}"><u style="background:${B[0]}"><i style="background:${B[2]};border-radius:${r}px;--x:${acc}"></i></u><b>${k ? PRE[k][0] : '↩️ Класика'}</b><small>${k ? PRE[k][1] : 'як було раніше'}</small></button>`; };
-    const own = T.sk && !Object.values(PRE).some(p => same(p[2], T.sk));
-    const thName = T.ct ? THEMES[T.ct]?.[0] : T.ca ? 'свій акцент' : 'кольори стилю';
+    const thumb = (k, p) => { const P = k ? PRE[k][3] : { t: 'night' }, C = (THEMES[P.t] || THEMES.night)[1], B = [C.bg, '', C.card], acc = P.a || C.accent, r = p ? Math.min(p.r ?? BASE.r, 14) : 12;
+      return `<button class="vst-s${same(T.sk, norm(p)) ? ' on' : ''}" data-st="sk" data-v="${k}"><u style="background:${B[0]}"><i style="background:${B[2]};border-radius:${r}px;--x:${acc}"></i></u><b>${k ? PRE[k][0] : '↩️ Класика'}</b><small>${k ? PRE[k][1] : 'як було раніше'}</small></button>`; };
+    const own = T.sk && !Object.values(PRE).some(p => same(norm(p[2]), T.sk));
+    const thName = (THEMES[T.ct || 'night']?.[0] || '🎨') + (T.ca ? ' + свій акцент' : ''), nat = Object.values(PRE).find(p => same(norm(p[2]), T.sk))?.[3];
     return `<div class="vst">
       <div class="vst-top"><div class="vst-pv" aria-hidden="true"><div class="h">🪑 Зал <span>12:40 · Олена</span></div><div class="t"><i>1</i><i class="on">2<small>840 ₴</small></i><i>3</i><i class="on">4<small>1 260 ₴</small></i></div>
           <div class="c"><div class="kv"><span>Борщ × 2</span><b>360 ₴</b></div><div class="kv"><span>Деруни</span><b>210 ₴</b></div><button class="b" tabindex="-1">💳 Закрити · 570 ₴</button></div><div class="n"><i class="on">🪑</i><i>💰</i><i>📊</i><i>⚙️</i></div></div>
         <div class="vst-who"><div class="vst-now">Зараз: <b>${skName(T.sk)}</b> · <b>${thName}</b></div>
-          ${CX.canVenue ? `<div class="vst-seg"><button class="${sc === 'venue' ? 'on' : ''}" data-st="scope" data-v="venue">🏪 Весь заклад</button><button class="${sc === 'dev' ? 'on' : ''}" data-st="scope" data-v="dev">📱 Цей пристрій</button></div>` : ''}
-          <div class="muted" style="font-size:13px">${sc === 'venue' ? 'Змінюєте вигляд усіх кас і кабінету власника. Пристрої зі своїм виглядом лишаться при своєму.' : D.own ? 'Свій вигляд лише на цьому пристрої.' : 'Цей пристрій показує вигляд закладу. Будь-яка зміна тут — лише для нього.'}</div>
-          ${sc === 'dev' && D.own ? '<div class="vst-row"><button data-st="follow">↩️ Як у закладу</button></div>' : ''}${CX.extra || ''}</div></div>
+          ${CX.canVenue && !CX.only ? `<div class="vst-seg"><button class="${sc === 'venue' ? 'on' : ''}" data-st="scope" data-v="venue">🏪 Весь заклад</button><button class="${sc === 'dev' ? 'on' : ''}" data-st="scope" data-v="dev">📱 Цей пристрій</button></div>` : ''}
+          <div class="muted" style="font-size:13px">${CX.note || (sc === 'venue' ? 'Змінюєте вигляд усіх кас закладу. Пристрої зі своїм виглядом лишаться при своєму.' : D.own ? 'Свій вигляд лише на цьому пристрої.' : 'Зараз — вигляд закладу. Будь-яка зміна тут — лише для цього пристрою.')}</div>
+          ${sc === 'dev' && D.own ? `<div class="vst-row"><button data-st="follow">${CX.followL || '↩️ Як у закладу'}</button></div>` : ''}${CX.extra || ''}</div></div>
       <h4>① Стиль — форма кнопок, карток і меню</h4><div class="vst-g">${thumb('', null)}${Object.keys(PRE).map(k => thumb(k, PRE[k][2])).join('')}${own ? `<button class="vst-s on" data-st="none"><u style="background:var(--bg)"><i style="background:var(--card);border-radius:10px;--x:var(--accent)"></i></u><b>✏️ Свій</b><small>з конструктора</small></button>` : ''}</div>
-      <h4>② Кольори — діють поверх будь-якого стилю</h4>
-      <div class="vst-th"><button class="${!T.ct ? 'on' : ''}" data-st="ct" data-v="" style="background:var(--card2);color:var(--text)">🎨 Як у стилі<i style="background:linear-gradient(90deg,#f2c14e,#e0457b,#3fb6ff)"></i></button>${Object.entries(THEMES).map(([k, [l, c]]) => `<button class="${T.ct === k ? 'on' : ''}" data-st="ct" data-v="${k}" style="background:${c.bg};color:${c.text};box-shadow:inset 0 0 0 1px ${c.card2}">${l}<i style="background:linear-gradient(90deg,${c.card},${c.accent})"></i></button>`).join('')}</div>
-      <div class="vst-acc"><button class="no${!T.ca ? ' on' : ''}" data-st="ca" data-v="">Акцент теми</button>${ACC.map(c => `<button class="${T.ca === c ? 'on' : ''}" data-st="ca" data-v="${c}" style="background:${c}" aria-label="${c}"></button>`).join('')}</div>
+      <h4>② Палітра — фон і картки (стиль приходить зі своєю, можна змінити)</h4>
+      ${nat && (nat.t !== (T.ct || 'night') || nat.a !== T.ca) ? '<div class="vst-row"><button data-st="nat">⭐ Повернути рідну палітру стилю</button></div>' : ''}
+      <div class="vst-th">${Object.entries(THEMES).map(([k, [l, c]]) => `<button class="${T.ct === k ? 'on' : ''}" data-st="ct" data-v="${k}" style="background:${c.bg};color:${c.text};box-shadow:inset 0 0 0 1px ${c.card2}">${l}<i style="background:linear-gradient(90deg,${c.card},${c.accent})"></i></button>`).join('')}</div>
+      <div class="vst-acc"><button class="no${!T.ca ? ' on' : ''}" data-st="ca" data-v="">Акцент палітри</button>${(T.ca && !ACC.includes(T.ca) ? [T.ca, ...ACC] : ACC).map(c => `<button class="${T.ca === c ? 'on' : ''}" data-st="ca" data-v="${c}" style="background:${c}" aria-label="${c}"></button>`).join('')}</div>
       <details${OPEN ? ' open' : ''}><summary>③ Деталі — шрифт, кути, кнопки, меню (конструктор)</summary>${editorHTML(EK)}
         <div class="vst-row" style="margin-top:12px"><button data-st="copy">📤 Скопіювати код</button><button data-st="paste">📥 Вставити код</button></div></details></div>`;
   }
@@ -174,11 +180,12 @@ window.VVSkin = (() => {
     const b = e.target.closest('[data-st]'); if (!b) return; e.preventDefault(); const k = b.dataset.st, v = b.dataset.v, T = target();
     if (k === 'scope') { CX.scope = v; CX.onScope?.(v); return CX.rerender(); }
     if (k === 'follow') { CX.setDev({ own: 0 }); return CX.rerender(); }
-    if (k === 'sk') return commit({ ...T, sk: v ? { ...PRE[v][2] } : null });
-    if (k === 'ct') return commit({ ...T, ct: v, ca: v ? '' : T.ca });
+    if (k === 'sk') return commit({ ...T, sk: v ? { ...PRE[v][2] } : null, ct: v ? PRE[v][3].t : 'night', ca: v ? PRE[v][3].a : '' }); // стиль приходить зі своєю палітрою — далі її можна змінити
+    if (k === 'ct') return commit({ ...T, ct: v || 'night', ca: '' });
     if (k === 'ca') return commit({ ...T, ca: v });
-    if (k === 'copy') { const t = 'VARVAR-STYLE ' + JSON.stringify(diff(EK)); navigator.clipboard?.writeText(t).then(() => CX.toast('📤 Код скопійовано'), () => CX.ask?.('📤 Код стилю', t)); return; }
-    if (k === 'paste') return Promise.resolve(CX.ask('📥 Код стилю', 'VARVAR-STYLE {…}')).then(t => { if (!t) return; let K = null; try { K = parse(t); } catch {} if (!K) return CX.toast('⚠️ Не вдалося прочитати код'); commit({ ...T, sk: diff({ ...BASE, ...K }) }); });
+    if (k === 'nat') { const P = Object.values(PRE).find(p => same(norm(p[2]), T.sk))?.[3]; if (P) return commit({ ...T, ct: P.t, ca: P.a }); return; }
+    if (k === 'copy') { const t = 'VARVAR-STYLE ' + JSON.stringify({ ...diff(EK), ...(T.ct?.startsWith('bg-') ? { bg: T.ct.slice(3) } : {}), ...(T.ca ? { acc: T.ca } : {}) }); navigator.clipboard?.writeText(t).then(() => CX.toast('📤 Код скопійовано'), () => CX.ask?.('📤 Код стилю', t)); return; }
+    if (k === 'paste') return Promise.resolve(CX.ask('📥 Код стилю', 'VARVAR-STYLE {…}')).then(t => { if (!t) return; let K = null; try { K = parse(t); } catch {} if (!K) return CX.toast('⚠️ Не вдалося прочитати код'); const P = palOf(K); commit({ ...T, sk: diff({ ...BASE, ...FORM(K) }), ...(P.t || P.a ? { ct: P.t || T.ct, ca: P.a } : {}) }); });
   }
   function onInput(e) { const i = e.target; if (!CX || !i.dataset.k || !i.closest('.vst .skc')) return; EK[i.dataset.k] = i.type === 'checkbox' ? i.checked : +i.value; if (i.nextElementSibling) i.nextElementSibling.textContent = i.value; commit({ ...target(), sk: diff(EK) }, 1); }
   document.addEventListener('click', onClick); document.addEventListener('input', onInput);
