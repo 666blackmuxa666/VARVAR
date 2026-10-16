@@ -286,7 +286,9 @@ ${JSON.stringify(data.filter(Boolean))}
       let till = B.tillOf(v); if (b.till) till = Date.parse(b.till + 'T23:59:59+03:00'); else { const d = new Date(Math.max(Date.now(), till)); d.setMonth(d.getMonth() + Math.max(1, Math.min(12, +b.months || 1))); till = d.getTime(); }
       if (!(till > 0)) return bad('Невірна дата');
       await H.venueBill(v.id, { paidTill: till, locked: 0, ...(b.till ? {} : { pay: { ts: Date.now(), sum: 0, lp: 'вручну · ' + me.name } }) }); await callVenue(env, v.id, '/__int/lock', { on: 0 }).catch(() => {}); return ok({ till }); }
-    case 'venueSet': { const v = await H.venueSet(String(b.id), b.f || {}); return v.error ? bad(v.error) : ok({ venue: v }); }
+    case 'venueSet': { const v = await H.venueSet(String(b.id), b.f || {}); if (v.error) return bad(v.error);
+      if (b.f?.status) { const on = v.status === 'off' ? 1 : v.locked ? 1 : 0; await callVenue(env, v.id, '/__int/lock', { on, why: v.status === 'off' ? 'off' : 'sub' }).catch(() => {}); } // ⛔ «вимкнено» = каса лише перегляд, сайт не приймає замовлень; увімкнули — знімаємо, якщо не борг
+      return ok({ venue: v }); }
   }
   return bad('unknown');
 }

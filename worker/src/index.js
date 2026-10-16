@@ -149,6 +149,10 @@ export async function handle(req, env) {
       if (url.pathname === '/api/owner' && req.method === 'POST') return env.VENUE === MAIN ? json(...await ownerApi(req, env)) : json({ error: 'not_found' }, 404); // 👑 кабінет власника
       if (url.pathname.startsWith('/__int/')) return json(...await intApi(req, env, url.pathname)); // заклад ← кабінет (лише зсередини воркера)
       if (url.pathname === '/__cron') return env.INSTORE && req.headers.get('x-cron') && req.headers.get('x-cron') === (env.MASTER_KEY ? await intSecret(env) : '1') ? json(await cron(env)) : json({ error: 'no' }, 403);
+      if (req.method === 'POST' && ip && ['/api/book', '/api/cert', '/api/go', '/api/tpay'].includes(url.pathname)) { // 🛡 загальна стеля з IP (ліміти по device обходяться зміною device; Wi‑Fi закладу ділить IP — стеля вільна)
+        const tk = 'iprl:' + ip.slice(0, 64), tn_ = +(await env.DB.get(tk)) || 0; if (tn_ >= 60) return json({ error: 'rate' }, 429);
+        await env.DB.put(tk, String(tn_ + 1), { expirationTtl: 600 });
+      }
       // 🌐 візитка
       if (url.pathname === '/api/site') return new Response(JSON.stringify(await sitePublic(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
       if (url.pathname === '/site') return Response.redirect(siteLink('about.html'), 302);
@@ -240,8 +244,8 @@ async function callWaiter(b, ip, env) {
   const sc = await scanInfo(env, b.device);
   if (sc?.t && sc.until > Date.now() && sc.t !== table) return [{ error: 'wrong_table', t: sc.t }, 403];
   if (!(sc?.until > Date.now()) && !(await inVenue(env, ip))) return [{ error: 'not_in_venue' }, 403];
-  const rk = 'callrl:' + String(b.device || ip).slice(0, 64); if (await env.DB.get(rk)) return [{ error: 'wait' }, 429];
-  await env.DB.put(rk, '1', { expirationTtl: 60 });
+  const rk = 'callrl:' + String(b.device || ip).slice(0, 64); // 🔒 під замком: два миттєві запити не дають двох повідомлень у Telegram
+  if (await env.DB.locked(rk, async () => { if (await env.DB.get(rk)) return true; await env.DB.put(rk, '1', { expirationTtl: 60 }); return false; })) return [{ error: 'wait' }, 429];
   const oid = crypto.randomUUID().replace(/-/g, '').slice(0, 10), html = `🔔🔔 <b>Стіл ${tn(table)} кличе офіціанта</b>`;
   const r = await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: html, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '✅ Іду', callback_data: `acc:${table}:${oid}` }]] } });
   const mid = (await r.json().catch(() => ({})))?.result?.message_id;
@@ -408,6 +412,9 @@ async function atomApi(req, env, url) {
       return J({ ok: true });
     }
     if (url.pathname === '/api/demo') { // 📱 демо-каса: адмін-сесія демо-закладу (щоночі скидається)
+      const drk = 'demorl:' + (ip || 'none').slice(0, 64); // ліміт: одна сесія демо з IP на 20 с (кожен виклик створює сесію на 12 год)
+      if (await env.DB.get(drk)) return J({ error: 'Зачекайте хвилину' }, 429);
+      await env.DB.put(drk, '1', { expirationTtl: 60 });
       if (!(await H.venueGet(DEMO))) return J({ error: 'Демо ще готується' }, 404);
       const r = await (await import('./owner.js')).demoLogin(env, DEMO); return r.token ? J({ ok: true, token: r.token, venue: DEMO }) : J({ error: r.error || 'Не вдалося' }, 500);
     }
