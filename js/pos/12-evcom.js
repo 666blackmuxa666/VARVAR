@@ -4,7 +4,7 @@
   const QUICK = ['🏃 Іду', '⏱ 5 хв', '⛔ Нема в наявності', '✅ Прийняв', '🍽 Готово', '👌 Ок'];
   S.evRead = store.get('evRead', {}); S.evDisc = store.get('evDisc', 0); S.evc = null; S.evNames = null;
   const evRx = (o, c) => o.rx ? `<div class="rxs">${Object.entries(o.rx).map(([r, a]) => `<button class="rx${a.includes(S.me?.name) ? ' on' : ''}" data-ec="rx" data-rx="${r}"${c ? ` data-c="${c}"` : ''} title="${esc(a.join(', '))}">${r} ${a.length}</button>`).join('')}</div>` : '';
-  const evUnread = e => { const n = e.cm?.length || 0; return n > (S.evRead[e.id] || 0) && e.cm[n - 1].by !== S.me?.name; };
+  const evUnread = e => { if (e.k === 'chat' && !S.evRead[e.id] && !e.cm && e.by !== S.me?.name) return !(e.seen || []).includes(S.me?.name); const n = e.cm?.length || 0; return n > (S.evRead[e.id] || 0) && e.cm[n - 1].by !== S.me?.name; };
   const evMention = e => evUnread(e) && e.cm.slice(S.evRead[e.id] || 0).some(c => c.by !== S.me?.name && c.m?.some(isMe));
   const isMe = x => x.replace(/_/g, ' ').toLowerCase() === (S.me?.name || '').toLowerCase();
   const cmText = c => esc(c.text).replace(/@([^\s@,.!?]{2,24})/g, '<b class="ment">@$1</b>');
@@ -17,10 +17,12 @@
   // порядок стрічки: 📌 закріплені зверху; режим «💬 Обговорення» — лише з коментарями, непрочитані першими
   function evList() {
     let l = [...S.events].reverse();
-    if (S.evDisc) l = l.filter(e => e.cm?.length || e.pin).sort((a, b) => evUnread(b) - evUnread(a) || (b.cm ? b.cm[b.cm.length - 1].ts : 0) - (a.cm ? a.cm[a.cm.length - 1].ts : 0));
+    if (S.evDisc) l = l.filter(e => e.k === 'chat' || e.cm?.length || e.pin).sort((a, b) => lastTs(b) - lastTs(a));
     return [...l.filter(e => e.pin), ...l.filter(e => !e.pin)];
   }
-  const evHead = () => `<div class="evtabs"><button class="${S.evDisc ? '' : 'on'}" data-ec="disc" data-v="0">Усі</button><button class="${S.evDisc ? 'on' : ''}" data-ec="disc" data-v="1">💬 Обговорення${(() => { const n = S.events.filter(evUnread).length; return n ? ` <span class="badge">${n}</span>` : ''; })()}</button></div>`;
+  const lastTs = e => e.cm ? e.cm[e.cm.length - 1].ts : e.ts;
+  const evHead = () => `<div class="evtabs"><button class="${S.evDisc ? '' : 'on'}" data-ec="disc" data-v="0">Усі</button><button class="${S.evDisc ? 'on' : ''}" data-ec="disc" data-v="1">💬 Чат${(() => { const n = S.events.filter(evUnread).length; return n ? ` <span class="badge">${n}</span>` : ''; })()}</button></div>${S.evDisc ? `<div class="chat-in"><input id="chatIn" placeholder="Написати всім… (@ім'я — згадати)" maxlength="500" autocomplete="off"><button class="btn sm primary" data-ec="say">➤</button></div>` : ''}`;
+  async function chatSay() { const i = $('#chatIn'), text = i?.value.trim(); if (!text) return; i.value = ''; const r = await act('chatSay', { text }); if (r?.e) { S.events.push(r.e); S.evRead[r.e.id] = 0; renderFeed(); } }
   // нові чужі коментарі → звук (згадка — двічі)
   function evNotify(prev) {
     if (!prev?.length) return; const old = Object.fromEntries(prev.map(e => [e.id, e.cm?.length || 0]));
@@ -89,6 +91,7 @@
     if (a === 'open') return evcOpen(el.dataset.id);
     if (a === 'disc') { S.evDisc = +el.dataset.v; store.set('evDisc', S.evDisc); return renderFeed(); }
     if (a === 'rx' && !S.evc) return; // реакції на картці — лише показ, ставити — у листі
+    if (a === 'say') return chatSay();
     if (a === 'close') return evcClose();
     if (a === 'send') return evcSend();
     if (a === 'q') return evcSend(el.textContent);
@@ -102,4 +105,4 @@
   });
   document.addEventListener('click', ev => { if (ev.target.id === 'evcBox') evcClose(); });
   document.addEventListener('input', ev => { if (ev.target.id === 'evcIn') evcMent(); });
-  document.addEventListener('keydown', ev => { if (ev.target.id === 'evcIn' && ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); evcSend(); } if (ev.key === 'Escape' && S.evc) evcClose(); });
+  document.addEventListener('keydown', ev => { if (ev.target.id === 'evcIn' && ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); evcSend(); } if (ev.target.id === 'chatIn' && ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); chatSay(); } if (ev.key === 'Escape' && S.evc) evcClose(); });

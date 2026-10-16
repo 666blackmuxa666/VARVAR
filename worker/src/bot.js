@@ -548,6 +548,7 @@ export async function handleUpdate(u, env) {
   let x;
   // --- офіціант ---
   const LEARN = { inline_keyboard: [[{ text: '🎓 Навчання: уроки з підказками', url: POS_URL(env) + '#course' }]] }; // 🎓 курс — у касі (уроки візуальні)
+  if (/^\/chat(@\w+)?(\s|$)/i.test(text)) { const t = text.replace(/^\/chat(@\w+)?/i, '').trim().slice(0, 500); if (!t) return send({ text: '💬 Чат закладу: <code>/chat текст</code> — повідомлення з\'явиться в касі (стрічка → 💬 Чат)' }); await logEvent(env, { k: 'chat', by: who, text: t, seen: [who] }); return send({ text: '💬 Надіслано в чат каси' }); }
   if (low === '/learn' || low === 'навчання') return send({ text: '🎓 <b>Навчання</b>\nУроки для вашої ролі: що натискати й де — з підсвіткою справжніх кнопок у касі.', markup: LEARN });
   if (low === '/start' || low === '/help' || text === W.help || low === 'допомога' || low === 'help') return send({ text: (admin ? ADMIN_HELP(env) : HELP(env)) + '\n\n🎓 Навчання з підказками в касі — /learn' });
   if (text === W.order || low === '/order' || low === 'замовлення') return send(await tablePick(env, (await openTables(env)).map(r => r.t), tablesCount(env)));

@@ -51,7 +51,7 @@ export async function posApi(b, req, env) {
   // 🧮 Розрахунок: склад, техкарти, накладні, інвентаризація — свої права (адмін / кухар)
   if (/^sk[A-Z]/.test(b.op || '')) return stockApi(b, env, me, { invoice: aiInvoice, card: aiCard, dups: aiDups });
   if (/^zp[A-Z]/.test(b.op || '')) return payApi(b, env, me); // 👷 зміни й зарплата
-  if (me.role === 'cook' && !['logout', 'state', 'menu', 'fav', 'order', 'accept', 'reject', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'evCom', 'evComDel', 'evRx', 'evSeen', 'evVoice', 'evVoiceGet', 'evNames', 'printTest', 'tabJobs', 'tabAck', 'ideaAdd', 'ideaList', 'ideaDel', 'help', 'taskList', 'taskMark', 'taskPh', 'lookV'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
+  if (me.role === 'cook' && !['logout', 'state', 'menu', 'fav', 'order', 'accept', 'reject', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'evCom', 'chatSay', 'evComDel', 'evRx', 'evSeen', 'evVoice', 'evVoiceGet', 'evNames', 'printTest', 'tabJobs', 'tabAck', 'ideaAdd', 'ideaList', 'ideaDel', 'help', 'taskList', 'taskMark', 'taskPh', 'lookV'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
 
   // 🛵 кур'єр: лише свої доставки
   if (me.role === 'courier' && !['logout', 'state', 'goSt', 'goCour', 'zpIn', 'zpOut', 'zpMy', 'ideaAdd', 'ideaList', 'ideaDel', 'help', 'courMe', 'courTg', 'courAct', 'taskList', 'taskMark', 'taskPh', 'lookV'].includes(b.op)) return [{ error: 'Кур\'єр — лише доставки' }, 403];
@@ -210,6 +210,8 @@ export async function posApi(b, req, env) {
       if (err) { if (vid) await env.DB.delete('vc:' + vid); return [{ error: err }, 400]; }
       return ok({ e: res });
     }
+    // 💬 чат закладу: повідомлення = подія k:'chat' у стрічці (коментарі/реакції — як під будь-якою подією)
+    case 'chatSay': { const text = String(b.text || '').trim().slice(0, 500); if (!text) return [{ error: 'Порожнє повідомлення' }, 400]; const m = [...new Set((text.match(/@[^\s@,.!?]{2,24}/g) || []).map(x => x.slice(1)))].slice(0, 5); return ok({ e: await logEvent(env, { k: 'chat', by: who, text, seen: [who], ...(m.length ? { m } : {}) }) }); }
     case 'evVoiceGet': { const v = /^[a-f0-9-]{12}$/.test(String(b.v)) && await env.DB.get('vc:' + b.v, 'json'); return v ? ok(v) : [{ error: 'Голосове вже видалено (зберігаються 3 дні)' }, 404]; }
     case 'evNames': return ok({ list: (await getStaff(env)).map(s => s.name).concat('Кухня') });
     case 'printClear': { if (!admin) return needAdmin(); const r = await printClear(env, b.id ? String(b.id) : ''); if (r.n) await notify(env, `🖥 🗑 Черга друку: ${b.id ? 'видалено 1 завдання' : `очищено (${r.n})`} — ${esc(who)}`).catch(() => {}); return ok(r); }
