@@ -177,8 +177,14 @@
     const t = S.open, b = S.tables[t]; if (!b) return;
     const v = await choose(`Закрити стіл ${tn(t)}`, `До сплати ${money(b.pay2)}${b.tip ? ` + 💝 чайові ${money(b.tip)} = ${money(b.pay2 + b.tip)}` : ''}${b.pay ? ` · гість хоче ${b.pay === 'card' ? '💳 карткою' : '💵 готівкою'}` : ''}`, [
       { label: '💵 Готівка + 🖨 чек', val: 'cash:1', cls: 'green' }, { label: '💳 Карта + 🖨 чек', val: 'card:1', cls: 'blue' },
-      { label: '💵 Готівка, без чека', val: 'cash:0' }, { label: '💳 Карта, без чека', val: 'card:0' }]);
+      { label: '💵 Готівка, без чека', val: 'cash:0' }, { label: '💳 Карта, без чека', val: 'card:0' }, { label: '➗ Порівну на гостей', val: 'eq' }]);
     if (!v) return;
+    if (v === 'eq') { // підказка: скільки з кожного (оплата — окремо, одним рахунком)
+      const n = Math.round(+await ask('Порівну на скількох?', `Сума ${money(b.pay2 + (b.tip || 0))}`, 'number')); if (!(n >= 2 && n <= 30)) return;
+      const tot = b.pay2 + (b.tip || 0), one = Math.floor(tot / n), rest = tot - one * n;
+      await choose(`➗ Порівну на ${n}`, `З кожного ${money(one)}${rest ? ` (один доплачує ${money(one + rest)})` : ''} · разом ${money(tot)}`, [{ label: 'Гаразд', val: 'ok' }]);
+      return closeFlow();
+    }
     const [pay, pr] = v.split(':');
     const r = await act('close', { t, pay, print: pr === '1' });
     if (r?.queued) { toast(`📴 Стіл ${tn(t)}: немає зв'язку — закриття в черзі, відправимо самі`); closeSheet(); return; }
