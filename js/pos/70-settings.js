@@ -178,6 +178,6 @@
     if (a === 'ed') { const h = await hallEdit(H[i]); if (h) { H[i] = h; hallsSave(H); } return; }
     if (a === 'up') { [H[i - 1], H[i]] = [H[i], H[i - 1]]; return hallsSave(H); }
     if (a === 'del') { if (!await confirmBox(`Видалити «${H[i].n}»? Столи далі перенумеруються.`)) return; H.splice(i, 1); return hallsSave(H); }
-    if (a === 'map') { S.hm = 'map'; store.set('hm', 'map'); S.mapEd = 1; S.mapDraft = {}; S.view = 'hall'; renderNav(); renderMain(); return; }
+    if (a === 'map') { S.hm = 'map'; store.set('hm', 'map'); S.view = 'hall'; mapStart(); renderNav(); renderMain(); return; }
     if (a === 'go') { const g = await choose('🛵 З собою і доставка', 'Де показувати в касі', [['0', 'У залі — стрічкою'], ['1', 'Одна вкладка'], ['2', 'Дві вкладки']].map(([v, l]) => ({ label: l, val: v }))); if (g != null) hallsSave(H, +g); }
   });

@@ -2155,8 +2155,8 @@ var __objRest = (source, exclude) => {
       return pending.has(t) || calls[t] || ((_a3 = S.tables[t]) == null ? void 0 : _a3.check) || ((_b2 = S.tables[t]) == null ? void 0 : _b2.pwait);
     };
     const rng = go ? [] : hallRng(cur, calls);
-    const map = !go && S.hm === "map", all = map ? Array.from({ length: Math.max(0, cur.to - cur.from + 1) }, (_, i) => cur.from + i) : rng, inF = new Set(rng), mp = map ? mapPos(cur) : {};
-    const tiles = all.map((t) => {
+    const map = !go && S.hm === "map", all = map ? Array.from({ length: Math.max(0, cur.to - cur.from + 1) }, (_, i) => cur.from + i) : rng, inF = new Set(rng);
+    const tiles = map ? "" : all.map((t) => {
       const b = S.tables[t], at = map ? ` style="left:${mp[t][0]}%;top:${mp[t][1]}%"${S.mapEd ? ` data-mt="${t}"` : ""}` : "", dim = map && !inF.has(t) ? " dim" : "";
       const bk = (S.books || []).find((x) => x.t === t && x.st === "ok");
       if (!b) return `<button${at} class="tbl${dim}${calls[t] ? " calling" : ""}${bk ? " booked" : ""}" data-a="table" data-t="${t}">${bell(t)}<div class="n">${t}</div><div class="st">${bk ? `\u{1F4C5} ${bk.time} \xB7 ${esc(bk.name)}` : "\u0432\u0456\u043B\u044C\u043D\u0438\u0439"}</div></button>`;
@@ -2177,7 +2177,6 @@ var __objRest = (source, exclude) => {
     };
     const tabs = V2.map(tab), bar = V2.length > 1 ? `<div class="hall-tabs">${tabs.join("")}</div>` : "", othHot = tabs.some((x, i) => V2[i].id !== cur.id && x.includes(' hot"'));
     const tools = go ? "" : `<div class="seg hall-f">${[["mine", "\u{1F464}", "\u041C\u043E\u0457 \u0441\u0442\u043E\u043B\u0438"], ["busy", "\u{1F525}", "\u0417\u0430\u0439\u043D\u044F\u0442\u0456"], ["all", "\u0423\u0441\u0456", "\u0423\u0441\u0456 \u0441\u0442\u043E\u043B\u0438"]].map(([k, l, t]) => `<button class="${S.hf === k ? "on" : ""}" data-hl="hf" data-h="${k}" title="${t}">${l}</button>`).join("")}<button class="${map ? "on" : ""}" data-hl="hm" title="${map ? "\u041F\u043B\u0438\u0442\u043A\u0438" : "\u0421\u0445\u0435\u043C\u0430 \u0437\u0430\u043B\u0443"}">${map ? "\u{1F4CB}" : "\u{1F5FA}"}</button></div>`;
-    const ed = map && isAdmin() ? S.mapEd ? `<div class="map-ed"><span>\u270B \u041F\u0435\u0440\u0435\u0442\u044F\u0433\u043D\u0456\u0442\u044C \u0441\u0442\u043E\u043B\u0438</span><button class="btn sm" data-hl="mreset">\u21BA \u0420\u044F\u0434\u0430\u043C\u0438</button><button class="btn sm" data-hl="mno">\u2716</button><button class="btn sm primary" data-hl="msave">\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438</button></div>` : `<button class="map-pen" data-hl="med" title="\u0420\u043E\u0437\u0441\u0442\u0430\u0432\u0438\u0442\u0438 \u0441\u0442\u043E\u043B\u0438">\u270F\uFE0F</button>` : "";
     const why = (t) => {
       var _a3, _b2;
       return calls[t] ? "\u{1F514} \u043A\u043B\u0438\u0447\u0435" : pending.has(t) ? "\u{1F6CE} \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F" : ((_a3 = S.tables[t]) == null ? void 0 : _a3.pwait) ? "\u{1F310} \u043E\u043F\u043B\u0430\u0442\u0438\u0432" : ((_b2 = S.tables[t]) == null ? void 0 : _b2.check) ? "\u{1F9FE} \u0440\u0430\u0445\u0443\u043D\u043E\u043A" : "";
@@ -2185,7 +2184,7 @@ var __objRest = (source, exclude) => {
     const away = go ? [] : V2.filter((v) => !v.go && v.id !== cur.id).flatMap((v) => Array.from({ length: v.to - v.from + 1 }, (_, i) => v.from + i).filter(hot).map((t) => ({ v, t })));
     const alerts = away.length ? `<div class="hall-alert">${away.slice(0, 6).map(({ v, t }) => `<button data-hl="go" data-h="${v.id}" data-t="${t}"><b>${v.ic} ${esc(v.n)} \xB7 ${t}</b> ${why(t)}</button>`).join("")}</div>` : "";
     const goTile = !go && ((_a2 = S.cfg) == null ? void 0 : _a2.goTabs) && gos.length ? `<button class="go-sum${goNew2 ? " new" : ""}" data-hl="set" data-h="${(_b = V2.find((v) => v.go)) == null ? void 0 : _b.id}">\u{1F6F5} ${gos.length} ${goNew2 ? `\xB7 <b>${goNew2} \u043D\u043E\u0432.</b>` : "\u0432 \u0440\u043E\u0431\u043E\u0442\u0456"} \u2192</button>` : "";
-    const body0 = go ? goL.length ? `<div class="go-strip go-grid">${goL.map(goTileHTML).join("")}</div>` : '<div class="muted" style="padding:14px">\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u044C \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454</div>' : `${((_c = S.cfg) == null ? void 0 : _c.goTabs) ? goTile : strip}${map ? `<div class="tables map${S.mapEd ? " edit" : ""}${all.length > 16 ? " compact" : ""}">${ed}${tiles}</div>` : ""}${map ? "" : `<div class="tables${rng.length > 24 ? " compact" : ""}">${tiles || `<div class="muted" style="padding:14px">${S.hf === "mine" ? "\u0423 \u0432\u0430\u0441 \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454 \u0441\u0442\u043E\u043B\u0456\u0432" : "\u0417\u0430\u0439\u043D\u044F\u0442\u0438\u0445 \u0441\u0442\u043E\u043B\u0456\u0432 \u043D\u0435\u043C\u0430\u0454"}</div>`}</div>`}`;
+    const body0 = go ? goL.length ? `<div class="go-strip go-grid">${goL.map(goTileHTML).join("")}</div>` : '<div class="muted" style="padding:14px">\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u044C \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454</div>' : `${((_c = S.cfg) == null ? void 0 : _c.goTabs) ? goTile : strip}${map ? floorUI(cur, all, inF, calls, pending) : ""}${map ? "" : `<div class="tables${rng.length > 24 ? " compact" : ""}">${tiles || `<div class="muted" style="padding:14px">${S.hf === "mine" ? "\u0423 \u0432\u0430\u0441 \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454 \u0441\u0442\u043E\u043B\u0456\u0432" : "\u0417\u0430\u0439\u043D\u044F\u0442\u0438\u0445 \u0441\u0442\u043E\u043B\u0456\u0432 \u043D\u0435\u043C\u0430\u0454"}</div>`}</div>`}`;
     const body = alerts + body0;
     return `<div class="head"><h1>${V2.length > 1 ? `<button class="hall-pick${othHot ? " hot" : ""}" data-hl="pick">${cur.ic} ${esc(cur.n)} \u25BE</button>` : "\u0417\u0430\u043B"}</h1>${tools}
       ${isCook() || isCour() ? "" : inboxBtn()}${isCook() || isCour() ? "" : S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="\u041D\u043E\u0432\u0456 \u0431\u0440\u043E\u043D\u0456 \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C">\u{1F4C5} ${S.bkNew} \u043D\u043E\u0432.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">\u{1F4C5} ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="\u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F">\u{1F4C5}</button>`}</div>${bar}${body}`;
@@ -2603,12 +2602,15 @@ var __objRest = (source, exclude) => {
     return S.hf === "busy" ? S.tables[t] || calls[t] : S.hf === "mine" ? ((_a2 = S.tables[t]) == null ? void 0 : _a2.waiter) === ((_b = S.me) == null ? void 0 : _b.name) : true;
   });
   S.hm = store.get("hm", "tiles");
+  S.f3m = store.get("f3m", "3d");
+  S.mapSel = null;
+  const hk = (cur) => String(cur.from);
   function mapPos(cur) {
-    var _a2, _b, _c, _d;
-    const n = cur.to - cur.from + 1, cols = Math.max(1, Math.ceil(Math.sqrt(n * 1.5))), rows = Math.ceil(n / cols), m = {};
+    var _a2, _b, _c;
+    const n = cur.to - cur.from + 1, cols = Math.max(1, Math.ceil(Math.sqrt(n * 1.5))), rows = Math.ceil(n / cols), m = {}, d = S.mapDraft;
     for (let t = cur.from; t <= cur.to; t++) {
-      const i = t - cur.from;
-      m[t] = ((_a2 = S.mapDraft) == null ? void 0 : _a2[t]) || !((_b = S.mapDraft) == null ? void 0 : _b.r) && ((_d = (_c = S.cfg) == null ? void 0 : _c.map) == null ? void 0 : _d[t]) || [Math.round((i % cols + 0.5) / cols * 1e3) / 10, Math.round((Math.floor(i / cols) + 0.5) / rows * 1e3) / 10];
+      const i = t - cur.from, p = ((_a2 = d == null ? void 0 : d.pos) == null ? void 0 : _a2[t]) || !(d == null ? void 0 : d.r) && ((_c = (_b = S.cfg) == null ? void 0 : _b.map) == null ? void 0 : _c[t]) || [Math.round((i % cols + 0.5) / cols * 1e3) / 10, Math.round((Math.floor(i / cols) + 0.5) / rows * 1e3) / 10];
+      m[t] = [p[0], p[1], p[2] || "s", p[3] || 0];
     }
     return m;
   }
@@ -2616,37 +2618,100 @@ var __objRest = (source, exclude) => {
     const V2 = hallViews();
     return V2.find((v) => v.id === S.hall) || V2[0];
   };
+  function mapStart() {
+    var _a2, _b, _c, _d;
+    const c = curHall();
+    S.mapEd = 1;
+    S.mapSel = null;
+    S.mapDraft = null;
+    S.mapDraft = { pos: mapPos(c), deco: JSON.parse(JSON.stringify(((_b = (_a2 = S.cfg) == null ? void 0 : _a2.deco) == null ? void 0 : _b[hk(c)]) || [])), floor: ((_d = (_c = S.cfg) == null ? void 0 : _c.floor) == null ? void 0 : _d[hk(c)]) || "wood" };
+  }
+  const mapStop = () => {
+    S.mapEd = 0;
+    S.mapDraft = null;
+    S.mapSel = null;
+  };
   async function mapSave() {
-    const c = curHall(), r = await act("mapSet", { pos: mapPos(c), from: c.from, to: c.to }, "\u2705 \u0421\u0445\u0435\u043C\u0443 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
+    const c = curHall(), d = S.mapDraft, r = await act("mapSet", { pos: mapPos(c), from: c.from, to: c.to, deco: d.deco, floor: d.floor }, "\u2705 \u0421\u0445\u0435\u043C\u0443 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
     if (r == null ? void 0 : r.cfg) {
       S.cfg = r.cfg;
       if (S.data.staff) S.data.staff.cfg = r.cfg;
-      S.mapEd = 0;
-      S.mapDraft = null;
+      mapStop();
       renderMain();
     }
+  }
+  function floorUI(cur, all, inF, calls, pending) {
+    var _a2, _b, _c, _d, _e, _f;
+    const F = window.Floor3D;
+    if (!F) return '<div class="muted" style="padding:14px">\u041E\u043D\u043E\u0432\u0456\u0442\u044C \u0441\u0442\u043E\u0440\u0456\u043D\u043A\u0443</div>';
+    const mp2 = mapPos(cur), ed = S.mapEd, d = S.mapDraft, key = hk(cur);
+    let busy = 0, sum = 0;
+    const tables = all.map((t) => {
+      const b = S.tables[t], bk = !b && (S.books || []).find((x2) => x2.t === t && x2.st === "ok"), [x, y, sh, r] = mp2[t];
+      const st2 = b ? pending.has(t) || b.pwait ? "s-new" : b.check ? "s-check" : "s-busy" : bk ? "s-book" : "";
+      if (b) {
+        busy++;
+        sum += b.pay2;
+      }
+      const sub = b ? `<small>${b.pwait ? "\u{1F310} " : b.check ? "\u{1F9FE} " : pending.has(t) ? "\u{1F6CE} " : ""}${money(b.pay2)}</small>` : bk ? `<small>\u{1F4C5} ${bk.time}</small>` : "";
+      return { t, x, y, sh, r, cls: `${st2}${calls[t] ? " call" : ""}${inF.has(t) ? "" : " dim"}`, attrs: ed ? "" : `data-a="table" data-t="${t}"`, pin: `<b>${calls[t] ? "\u{1F514}" : ""}${t}</b>${sub}` };
+    });
+    requestAnimationFrame(() => {
+      const el = $(".f3");
+      if (el) {
+        F.fit();
+        F.watch(el);
+      }
+    });
+    const plan = F.html({ tables, deco: ed ? d.deco : ((_b = (_a2 = S.cfg) == null ? void 0 : _a2.deco) == null ? void 0 : _b[key]) || [], floor: ed ? d.floor : (_d = (_c = S.cfg) == null ? void 0 : _c.floor) == null ? void 0 : _d[key], mode: ed ? "2d" : S.f3m, edit: ed, sel: S.mapSel });
+    const view = `<div class="seg f3-mode"><button class="${S.f3m === "3d" ? "on" : ""}" data-hl="f3m" data-h="3d">\u{1F9CA} 3D</button><button class="${S.f3m === "2d" ? "on" : ""}" data-hl="f3m" data-h="2d">\u25A6 \u041F\u043B\u0430\u043D</button></div>`;
+    const legend = `<div class="f3-leg"><span><i class="lg-f"></i>\u0432\u0456\u043B\u044C\u043D\u0438\u0439</span><span><i class="lg-b"></i>\u0433\u043E\u0441\u0442\u0456</span><span><i class="lg-c"></i>\u0440\u0430\u0445\u0443\u043D\u043E\u043A</span><span><i class="lg-n"></i>\u043D\u043E\u0432\u0435 / \u043E\u043F\u043B\u0430\u0442\u0430</span><span><i class="lg-k"></i>\u0431\u0440\u043E\u043D\u044C</span></div>`;
+    if (!ed) return `<div class="f3w"><div class="f3-bar">${view}<span class="f3-zm"><button class="btn sm" data-hl="f3z" data-h="-1" title="\u0412\u0456\u0434\u0434\u0430\u043B\u0438\u0442\u0438">\u2212</button><button class="btn sm" data-hl="f3z" data-h="1" title="\u041D\u0430\u0431\u043B\u0438\u0437\u0438\u0442\u0438">\uFF0B</button></span><span class="f3-sum"><b>${busy}</b>/${all.length} \u0437\u0430\u0439\u043D\u044F\u0442\u043E \xB7 <b class="money">${money(sum)}</b></span>${isAdmin() ? '<button class="btn sm" data-hl="med">\u270F\uFE0F \u041E\u0431\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u0442\u0438</button>' : ""}</div>${plan}${legend}</div>`;
+    const sel = S.mapSel, st = (sel == null ? void 0 : sel[0]) === "t" ? +sel.slice(1) : null, sd = (sel == null ? void 0 : sel[0]) === "d" ? +sel.slice(1) : null, dx = sd != null ? d.deco[sd] : null;
+    const tools = st != null ? `<div class="f3-tools"><b>\u{1FA91} \u0421\u0442\u0456\u043B ${st}</b>${Object.entries(F.SH).map(([k, v]) => `<button class="chip${mp2[st][2] === k ? " on" : ""}" data-hl="msh" data-h="${k}">${v.n}</button>`).join("")}<button class="btn sm" data-hl="mrot">\u21BB \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438</button></div>` : dx ? `<div class="f3-tools"><b>${((_e = F.K[dx[0]]) == null ? void 0 : _e.n) || ""}</b><button class="btn sm" data-hl="mrot">\u21BB \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438</button>${((_f = F.K[dx[0]]) == null ? void 0 : _f.len) ? '<button class="btn sm" data-hl="mlen" data-h="-40">\u27F7 \u2212</button><button class="btn sm" data-hl="mlen" data-h="40">\u27F7 +</button>' : ""}<button class="btn sm" data-hl="mdup">\u29C9 \u041A\u043E\u043F\u0456\u044F</button><button class="btn sm red" data-hl="mdel">\u{1F5D1}</button></div>` : '<div class="f3-tools muted">\u270B \u041F\u0435\u0440\u0435\u0442\u044F\u0433\u0443\u0439\u0442\u0435 \u0441\u0442\u043E\u043B\u0438 \u0439 \u043F\u0440\u0435\u0434\u043C\u0435\u0442\u0438. \u0422\u043E\u0440\u043A\u043D\u0456\u0442\u044C\u0441\u044F \u2014 \u0437\u2019\u044F\u0432\u043B\u044F\u0442\u044C\u0441\u044F \u0434\u0456\u0457.</div>';
+    return `<div class="f3w"><div class="f3-bar"><b class="f3-title">\u270F\uFE0F ${esc(cur.n)}</b><button class="btn sm" data-hl="mreset">\u21BA \u0420\u044F\u0434\u0430\u043C\u0438</button><button class="btn sm" data-hl="mno">\u2716 \u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438</button><button class="btn sm primary" data-hl="msave">\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438</button></div>${plan}${tools}
+      <div class="f3-pal">${Object.entries(F.K).map(([k, v]) => `<button data-hl="madd" data-h="${k}">${v.n}</button>`).join("")}</div>
+      <div class="f3-pal fl">${Object.entries(F.FLOORS).map(([k, v]) => `<button class="${d.floor === k ? "on" : ""}" data-hl="mfl" data-h="${k}">${v}</button>`).join("")}</div></div>`;
   }
   let drag = null;
   document.addEventListener("pointerdown", (ev) => {
     var _a2;
-    const el = S.mapEd && ev.target.closest("[data-mt]");
+    const el = S.mapEd && ev.target.closest(".f3.edit [data-mt], .f3.edit [data-md]");
     if (!el) return;
     ev.preventDefault();
-    drag = { el, box: el.parentElement.getBoundingClientRect() };
-    el.classList.add("drag");
+    drag = { el, box: el.closest(".f3-st").getBoundingClientRect(), id: el.dataset.mt ? "t" + el.dataset.mt : "d" + el.dataset.md, x0: ev.clientX, y0: ev.clientY, mv: 0 };
     (_a2 = el.setPointerCapture) == null ? void 0 : _a2.call(el, ev.pointerId);
   });
   document.addEventListener("pointermove", (ev) => {
+    var _a2, _b;
     if (!drag) return;
-    const { el, box } = drag, x = Math.min(97, Math.max(3, (ev.clientX - box.left) / box.width * 100)), y = Math.min(96, Math.max(4, (ev.clientY - box.top) / box.height * 100));
+    const { el, box } = drag;
+    if (!drag.mv && Math.hypot(ev.clientX - drag.x0, ev.clientY - drag.y0) < 4) return;
+    drag.mv = 1;
+    const x = Math.round(Math.min(98, Math.max(2, (ev.clientX - box.left) / box.width * 100)) * 2) / 2, y = Math.round(Math.min(98, Math.max(2, (ev.clientY - box.top) / box.height * 100)) * 2) / 2;
     el.style.left = x + "%";
     el.style.top = y + "%";
-    (S.mapDraft || (S.mapDraft = {}))[el.dataset.mt] = [Math.round(x * 2) / 2, Math.round(y * 2) / 2];
+    const d = S.mapDraft;
+    if (!d) return;
+    if (el.dataset.mt) {
+      const p = (_a2 = d.pos)[_b = el.dataset.mt] || (_a2[_b] = [x, y, "s", 0]);
+      p[0] = x;
+      p[1] = y;
+    } else {
+      const p = d.deco[+el.dataset.md];
+      if (p) {
+        p[1] = x;
+        p[2] = y;
+      }
+    }
   });
   document.addEventListener("pointerup", () => {
-    if (drag) {
-      drag.el.classList.remove("drag");
-      drag = null;
+    if (!drag) return;
+    const id = drag.id;
+    drag = null;
+    if (S.mapSel !== id) {
+      S.mapSel = id;
+      renderMain();
     }
   });
   document.addEventListener("click", (ev) => {
@@ -2655,9 +2720,43 @@ var __objRest = (source, exclude) => {
       ev.preventDefault();
     }
   }, true);
+  function mapEdit(a, h) {
+    var _a2;
+    const d = S.mapDraft, F = window.Floor3D;
+    if (!d) return;
+    const sel = S.mapSel || "", i = +sel.slice(1);
+    if (a === "madd") {
+      if (d.deco.length >= 150) return toast("\u041C\u0430\u043A\u0441\u0438\u043C\u0443\u043C 150 \u043F\u0440\u0435\u0434\u043C\u0435\u0442\u0456\u0432");
+      d.deco.push([h, 50, 50, 0, ((_a2 = F.K[h]) == null ? void 0 : _a2.len) || 0]);
+      S.mapSel = "d" + (d.deco.length - 1);
+    }
+    if (a === "mfl") d.floor = h;
+    if (a === "msh" && sel[0] === "t") d.pos[i][2] = h;
+    if (a === "mrot") {
+      if (sel[0] === "t") d.pos[i][3] = ((d.pos[i][3] || 0) + 45) % 360;
+      else if (d.deco[i]) d.deco[i][3] = ((+d.deco[i][3] || 0) + 45) % 360;
+    }
+    if (a === "mlen" && d.deco[i]) d.deco[i][4] = Math.max(40, Math.min(700, (+d.deco[i][4] || F.K[d.deco[i][0]].len) + +h));
+    if (a === "mdup" && d.deco[i] && d.deco.length < 150) {
+      const c = [...d.deco[i]];
+      c[1] = Math.min(98, c[1] + 4);
+      c[2] = Math.min(98, c[2] + 4);
+      d.deco.push(c);
+      S.mapSel = "d" + (d.deco.length - 1);
+    }
+    if (a === "mdel" && d.deco[i]) {
+      d.deco.splice(i, 1);
+      S.mapSel = null;
+    }
+    if (a === "mreset") {
+      d.pos = {};
+      d.r = 1;
+      d.pos = mapPos(curHall());
+    }
+    renderMain();
+  }
   const hallSet = (h) => {
-    S.mapEd = 0;
-    S.mapDraft = null;
+    mapStop();
     S.hall = h;
     store.set("hall", h);
     renderMain();
@@ -2696,25 +2795,29 @@ var __objRest = (source, exclude) => {
     if (a === "hm") {
       S.hm = S.hm === "map" ? "tiles" : "map";
       store.set("hm", S.hm);
-      S.mapEd = 0;
-      S.mapDraft = null;
+      mapStop();
       return renderMain();
     }
+    if (a === "f3m") {
+      S.f3m = el.dataset.h;
+      store.set("f3m", S.f3m);
+      const f = $(".f3");
+      if (!f) return renderMain();
+      f.classList.toggle("m2", S.f3m === "2d");
+      document.querySelectorAll(".f3-mode button").forEach((b) => b.classList.toggle("on", b.dataset.h === S.f3m));
+      return window.Floor3D.fit();
+    }
+    if (a === "f3z") return window.Floor3D.zoom(+el.dataset.h);
     if (a === "med") {
-      S.mapEd = 1;
-      S.mapDraft = {};
+      mapStart();
       return renderMain();
     }
     if (a === "mno") {
-      S.mapEd = 0;
-      S.mapDraft = null;
+      mapStop();
       return renderMain();
     }
     if (a === "msave") return mapSave();
-    if (a === "mreset") {
-      S.mapDraft = { r: 1 };
-      return renderMain();
-    }
+    if (["madd", "mfl", "msh", "mrot", "mlen", "mdup", "mdel", "mreset"].includes(a)) return mapEdit(a, el.dataset.h);
     if (a === "hf") {
       S.hf = el.dataset.h;
       store.set("hf", S.hf);
@@ -3325,7 +3428,7 @@ var __objRest = (source, exclude) => {
       var _a2, _b;
       return `<div class="bk-c st-${b.st}">
       <div class="bk-t"><b>${b.time}</b><small>${b.people} \u{1F464}</small></div>
-      <div class="bk-m"><div class="bk-n"><b>${esc(b.name)}</b>${b.kind === "banquet" ? '<span class="chip">\u{1F389} \u0431\u0430\u043D\u043A\u0435\u0442</span>' : ""}<span class="chip bk-s">${BKS[b.st]}</span>${b.t ? `<span class="chip">\u{1FA91} ${b.t}</span>` : ""}${b.src === "\u043A\u0430\u0441\u0430" ? '<span class="chip">\u260E\uFE0F \u043A\u0430\u0441\u0430</span>' : ""}</div>
+      <div class="bk-m"><div class="bk-n"><b>${esc(b.name)}</b>${b.kind === "banquet" ? '<span class="chip">\u{1F389} \u0431\u0430\u043D\u043A\u0435\u0442</span>' : ""}<span class="chip bk-s">${BKS[b.st]}</span>${b.t ? `<span class="chip">\u{1FA91} ${b.t}</span>` : b.tw ? `<span class="chip" title="\u0413\u0456\u0441\u0442\u044C \u043E\u0431\u0440\u0430\u0432 \u043D\u0430 \u0441\u0445\u0435\u043C\u0456">\u{1F5FA} \u0431\u0430\u0436\u0430\u0454 ${b.tw}</span>` : ""}${b.src === "\u043A\u0430\u0441\u0430" ? '<span class="chip">\u260E\uFE0F \u043A\u0430\u0441\u0430</span>' : ""}</div>
         <a href="tel:+${b.phone}">\u{1F4DE} ${fmtPh(b.phone)}</a>${b.comment ? `<div class="muted">\u{1F4AC} ${esc(b.comment)}</div>` : ""}${b.note ? `<div class="bk-note">\u{1F4CC} ${esc(b.note)}</div>` : ""}${((_a2 = b.pre) == null ? void 0 : _a2.length) ? `<div class="bk-pre">\u{1F37D} ${b.pre.map(esc).join(" \xB7 ")}${b.preSent ? ' <span class="muted">\xB7 \u043D\u0430 \u043A\u0443\u0445\u043D\u0456</span>' : ""}</div>` : ""}
         <div class="btnrow">${b.st === "new" ? `<button class="btn sm green" data-a="bkSet" data-id="${b.id}" data-s="ok">\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438</button><button class="btn sm red" data-a="bkSet" data-id="${b.id}" data-s="no">\u274C \u0412\u0456\u0434\u0445\u0438\u043B\u0438\u0442\u0438</button>` : ""}
           ${b.st === "ok" ? `<button class="btn sm green" data-a="bkCame" data-id="${b.id}">\u{1FA91} \u041F\u0440\u0438\u0439\u0448\u043B\u0438</button><button class="btn sm" data-a="bkTbl" data-id="${b.id}">${b.t ? "\u{1F504} \u0421\u0442\u0456\u043B" : "\u{1FA91} \u0421\u0442\u0456\u043B"}</button>${((_b = b.pre) == null ? void 0 : _b.length) && !b.preSent ? `<button class="btn sm" data-a="bkSet" data-id="${b.id}" data-s="kit">\u{1F525} \u041D\u0430 \u043A\u0443\u0445\u043D\u044E</button>` : ""}<button class="btn sm" data-a="bkSet" data-id="${b.id}" data-s="noshow">\u{1F6AB} \u041D\u0435 \u043F\u0440\u0438\u0439\u0448\u043B\u0438</button>` : ""}
@@ -4497,9 +4600,8 @@ var __objRest = (source, exclude) => {
     if (a === "map") {
       S.hm = "map";
       store.set("hm", "map");
-      S.mapEd = 1;
-      S.mapDraft = {};
       S.view = "hall";
+      mapStart();
       renderNav();
       renderMain();
       return;

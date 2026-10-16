@@ -57,6 +57,7 @@
     $('#rate').textContent = s.rating ? `⭐ ${s.rating}${s.ratingN ? ` · ${s.ratingN}` : ''}` : '';
     $('#quotes').innerHTML = s.quotes.map(q => `<div class="quote">«${esc(q.t)}»<small>— ${esc(q.a)}</small></div>`).join('');
     $('#revA').href = s.gmaps; $('#revW').href = s.reviewsUrl || s.gmaps;
+    { const b = $('#bkPlan'); if (b) { b.hidden = !(s.plan && window.Floor3D); twLbl(); b.onclick = planOpen; } }
     $('#book').hidden = !s.bookOn; $('#cert').hidden = !s.certOn; if (s.certOn && s.certOnl) { const cb = $('#certF button[type=submit]'); cb.removeAttribute('data-t'); cb.textContent = lang === 'en' ? '💳 Pay online' : '💳 Оплатити онлайн'; }
     // 🏪 назва й логотип закладу
     $('.nav .brand').innerHTML = s.logo ? `<img src="${esc(s.logo)}" alt="" style="height:30px;width:30px;object-fit:contain;border-radius:8px;vertical-align:middle;margin-right:8px">${esc(s.name)}` : esc(s.name); $('#fName').textContent = s.name; { const L = s.legal || {}; const f = $('#fLegal'); if (f) f.textContent = [L.name, L.code ? 'ІПН/ЄДРПОУ ' + L.code : '', L.addr].filter(Boolean).join(' · '); } /* 🏛 реквізити (LiqPay) */ document.title = s.name;
@@ -68,6 +69,28 @@
   // ---------- 📅 бронювання ----------
   let bkKind = 'table';
   const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' });
+  // 🗺 вибір бажаного столу на 3D-схемі (S.plan з /api/site; js/floor3d.js)
+  let bkTw = 0, plH = 0;
+  const twLbl = () => { const b = $('#bkPlan'); if (b) b.textContent = bkTw ? (lang === 'en' ? `🗺 Table ${bkTw} · change` : `🗺 Стіл ${bkTw} · змінити`) : (lang === 'en' ? '🗺 Choose a table on the floor plan' : '🗺 Обрати стіл на схемі залу'); };
+  function planOpen() {
+    const P = S.plan, F = window.Floor3D; if (!P || !F) return; let pick = bkTw;
+    const box = document.createElement('div'); box.className = 'pl-m'; document.body.append(box); document.documentElement.style.overflow = 'hidden';
+    const close = () => { box.remove(); document.documentElement.style.overflow = ''; };
+    const draw = () => { const h = P.h[plH] || P.h[0], tb = [];
+      for (let t = h.a; t <= h.b; t++) { const p = P.m[t]; if (p) tb.push({ t, x: p[0], y: p[1], sh: p[2], r: p[3], cls: t === pick ? 's-pick' : '', attrs: `data-pk="${t}"` }); }
+      box.innerHTML = `<div class="pl-in"><div class="pl-hd"><b>${lang === 'en' ? 'Choose a table' : 'Оберіть стіл'}</b><button class="pl-x" data-px>✕</button></div>
+        ${P.h.length > 1 ? `<div class="seg pl-tabs">${P.h.map((x, i) => `<button type="button" class="${i === plH ? 'on' : ''}" data-ph="${i}">${x.ic} ${esc(x.n)}</button>`).join('')}</div>` : ''}
+        ${F.html({ tables: tb, deco: h.d, floor: h.fl, mode: '3d' })}
+        <p class="muted pl-note">${lang === 'en' ? 'We will try to seat you at this table — the administrator confirms.' : 'Постараємось посадити саме сюди — адміністратор підтвердить.'}</p>
+        <button class="btn" data-pok ${pick ? '' : 'disabled'}>${pick ? (lang === 'en' ? `✅ Table ${pick}` : `✅ Обрати стіл ${pick}`) : (lang === 'en' ? 'Tap a table' : 'Торкніться столу')}</button></div>`;
+      requestAnimationFrame(() => F.fit(box)); };
+    box.onclick = e => { const el = e.target;
+      if (el === box || el.closest('[data-px]')) return close();
+      const tab = el.closest('[data-ph]'); if (tab) { plH = +tab.dataset.ph; return draw(); }
+      const tt = el.closest('[data-pk]'); if (tt) { pick = +tt.dataset.pk; return draw(); }
+      if (el.closest('[data-pok]') && pick) { bkTw = pick; twLbl(); close(); } };
+    draw();
+  }
   function bookInit() {
     const f = $('#bookF'); f.date.min = today(); f.date.max = new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10); f.date.value = today();
     f.name.value = store.get('goName', ''); f.phone.value = store.get('goPhone', '');
@@ -75,7 +98,7 @@
     $$('[data-book]').forEach(b => b.onclick = () => { $(`[data-kind="${b.dataset.book}"]`).click(); location.hash = 'book'; });
     f.onsubmit = async e => {
       e.preventDefault(); const m = $('#bookMsg'); m.textContent = '…';
-      const d = { kind: bkKind, name: f.name.value.trim(), phone: f.phone.value.trim(), date: f.date.value, time: f.time.value, people: +f.people.value, comment: f.comment.value.trim(), device };
+      const d = { kind: bkKind, name: f.name.value.trim(), phone: f.phone.value.trim(), date: f.date.value, time: f.time.value, people: +f.people.value, comment: f.comment.value.trim(), device , tw: bkTw || undefined };
       const { status, data } = await api('/api/book', d).catch(() => ({ status: 0, data: {} }));
       if (status !== 200) { m.textContent = { contact: t('errC'), date: t('errD'), rate: t('rate') }[data.error] || t('err'); return; }
       store.set('goName', d.name); store.set('goPhone', d.phone); store.set('bkPhone', d.phone);

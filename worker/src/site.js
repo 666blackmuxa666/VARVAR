@@ -73,9 +73,17 @@ export async function sitePublic(env) {
   if (s.ann?.till && s.ann.till < td) s.ann = { ...s.ann, on: 0 }; if (s.season?.till && s.season.till < td) s.season = { k: '' };
   const onl = !!((await (await import('./delivery.js')).getGoCfg(env)).onl && (await import('./liqpay.js')).lpKeys(env)); /* 💳 сертифікат онлайн — той самий перемикач, що й замовлення */
   const auto = await (await import('./promo.js')).promoShow(env).catch(() => []); /* ⚡ акції каси з «показувати гостям» */
-  return { ...s, promos: [...auto, ...(s.promos || [])], certOnl: s.certOn && onl ? 1 : 0, open: openNow(s), hits: hits.map(i => ({ id: i.id, n: i.name, d: i.desc, p: i.price ?? i.variants?.[0]?.p, img: i.img, size: i.size })) };
+  const plan = s.bookOn ? await (await import('./ops.js')).getCfg(env).then(planPublic).catch(() => null) : null; /* 🗺 схема залу — гість обирає бажаний стіл у броні */
+  return { ...s, ...(plan ? { plan } : {}), promos: [...auto, ...(s.promos || [])], certOnl: s.certOn && onl ? 1 : 0, open: openNow(s), hits: hits.map(i => ({ id: i.id, n: i.name, d: i.desc, p: i.price ?? i.variants?.[0]?.p, img: i.img, size: i.size })) };
 }
 
+// 🗺 публічна схема: зали з розставленими столами (без сум і стану — лише розташування)
+function planPublic(c) {
+  if (!c.map || !Object.keys(c.map).length || c.planPub === 0) return null;
+  const H = c.halls?.length ? c.halls : [{ n: 'Зал', ic: '🪑', c: c.tables || 20 }]; let a = 1; const h = [];
+  for (const x of H) { const from = a, to = Math.min(c.tables || 200, a + x.c - 1); a += x.c; if (!Object.keys(c.map).some(t => +t >= from && +t <= to)) continue; h.push({ n: x.n, ic: x.ic || '🪑', a: from, b: to, fl: c.floor?.[from], d: c.deco?.[from] || [] }); }
+  return h.length ? { h, m: c.map } : null;
+}
 // ---------- 📅 бронювання ----------
 const bkMon = id => `${id.slice(0, 4)}-${id.slice(4, 6)}`;
 const getBk = async (env, m) => (await env.DB.get('book:' + m, 'json')) || [];
@@ -100,7 +108,7 @@ async function bkEdit(env, id, fn, nm) {
 }
 const BST = { new: '🆕 нова', ok: '✅ підтверджено', no: '❌ відхилено', came: '🪑 прийшли', noshow: '🚫 не прийшли', cancel: '↩️ скасовано гостем' };
 export const bkLabel = s => BST[s] || s;
-const bkText = b => `${b.kind === 'banquet' ? '🎉 <b>БАНКЕТ</b>' : '📅 <b>БРОНЬ</b>'} · <b>${b.date.slice(8)}.${b.date.slice(5, 7)} о ${b.time}</b> · ${b.people} гост.\n👤 ${esc(b.name)} · <a href="tel:+${b.phone}">${fmtPhone(b.phone)}</a>${b.comment ? `\n💬 ${esc(b.comment)}` : ''}${b.pre?.length ? `\n🍽 Передзамовлення:\n${b.pre.map(esc).join('\n')}` : ''}${b.t ? `\n🪑 Стіл ${b.t}` : ''}`;
+const bkText = b => `${b.kind === 'banquet' ? '🎉 <b>БАНКЕТ</b>' : '📅 <b>БРОНЬ</b>'} · <b>${b.date.slice(8)}.${b.date.slice(5, 7)} о ${b.time}</b> · ${b.people} гост.\n👤 ${esc(b.name)} · <a href="tel:+${b.phone}">${fmtPhone(b.phone)}</a>${b.comment ? `\n💬 ${esc(b.comment)}` : ''}${b.pre?.length ? `\n🍽 Передзамовлення:\n${b.pre.map(esc).join('\n')}` : ''}${b.t ? `\n🪑 Стіл ${b.t}` : b.tw ? `\n🗺 Гість обрав стіл ${b.tw}` : ''}`;
 export const bkButtons = b => b.st === 'new' ? [[{ text: '✅ Підтвердити', callback_data: `bk:${b.id}:ok` }, { text: '❌ Відхилити', callback_data: `bk:${b.id}:no` }]]
   : b.st === 'ok' ? [[{ text: '🪑 Прийшли', callback_data: `bk:${b.id}:came` }, { text: '🚫 Не прийшли', callback_data: `bk:${b.id}:noshow` }], ...(b.pre?.length && !b.preSent ? [[{ text: '🔥 Передзамовлення на кухню', callback_data: `bk:${b.id}:kit` }]] : [])] : [];
 export async function bookCreate(b, ip, env) {
@@ -113,6 +121,7 @@ export async function bookCreate(b, ip, env) {
   if (date < today || date > max || (date === today && time < hhmm())) return [{ error: 'date' }, 400];
   const rk = 'bkrl:' + String(b.device || ip).slice(0, 64), rn = +(await env.DB.get(rk)) || 0; if (rn >= 3) return [{ error: 'rate' }, 429];
   const x = { id: date.replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 6), kind: b.kind === 'banquet' ? 'banquet' : 'table', name, phone, date, time, people, comment: String(b.comment || '').trim().slice(0, 300), st: 'new', at: Date.now() };
+  { const tw = parseInt(b.tw, 10); if (tw > 0 && tw <= 999) x.tw = tw; } /* 🗺 бажаний стіл зі схеми — адмін підтверджує і садить */
   await L(env, 'book:' + date.slice(0, 7), async () => { const l = await getBk(env, date.slice(0, 7)); l.push(x); await env.DB.put('book:' + date.slice(0, 7), JSON.stringify(l)); });
   await env.DB.put(rk, String(rn + 1), { expirationTtl: 3600 });
   await cliTouch(env, phone, c => { c.name = name; });
@@ -155,7 +164,7 @@ export async function bookSet(env, id, st, who, { t } = {}) {
     return bkEdit(env, id, y => { y.preSent = Date.now(); });
   }
   if (!BST[st]) return { error: 'Невідомий статус' };
-  let same = false; const x = await bkEdit(env, id, y => { same = y.st === st; y.st = st; y.by = who; if (t) y.t = +t; });
+  let same = false; const x = await bkEdit(env, id, y => { same = y.st === st; y.st = st; y.by = who; if (t) y.t = +t; else if (st === 'ok' && !y.t && y.tw) y.t = y.tw; }); /* 🗺 підтвердили — гість сидить за обраним столом */
   if (!x) return null; if (same) return x; /* повторне натискання (каса + Telegram) — без дубля гостю */
   await editEv(env, l => { for (const e of l) if (e.bid === id) { e.s = st === 'no' || st === 'noshow' ? 'rej' : 'acc'; e.accBy = who; } }).catch(() => {});
   if (x.mid) await tg(env, 'editMessageText', { chat_id: env.CHAT_ID, message_id: x.mid, text: `${bkText(x)}\n\n${bkLabel(st)} — <b>${esc(who)}</b>`, parse_mode: 'HTML', reply_markup: { inline_keyboard: bkButtons(x) } }).catch(() => {});

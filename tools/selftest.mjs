@@ -389,14 +389,21 @@ async function apiTests() {
     await pos(A, 'delete', { t: r.j.t, reason: 'QA прибирання' }); return r.j.no;
   });
 
+  sect('🗺 Схема залу');
+  await step('mapSet: форма, поворот, декор, підлога (невідоме — відкидається)', async () => {
+    const r = await posOk(A, 'mapSet', { pos: { 1: [10, 12, 'r', 45] }, from: 1, to: 1, deco: [['plant', 5, 5, 0, 0], ['bomb', 1, 1], ['wall', 50, 2, 90, 9999]], floor: 'tile' });
+    must(JSON.stringify(r.cfg.map[1]) === '[10,12,"r",45]', 'map ' + JSON.stringify(r.cfg.map[1])); must(r.cfg.deco['1'].length === 2 && r.cfg.deco['1'][1][4] === 700, 'deco ' + JSON.stringify(r.cfg.deco['1'])); must(r.cfg.floor['1'] === 'tile', 'floor');
+  });
+  await step('/api/site віддає схему без сум', async () => { const r = await http('/api/site?qa=' + RUN); if (!r.j.bookOn) return 'броні вимкнено'; must(r.j.plan?.m?.[1], 'немає plan'); must(!JSON.stringify(r.j.plan).includes('pay'), 'зайве'); });
+
   sect('Броні');
   let bid = '';
   const d0 = day(3), d1 = day(103);
   await step(`POST /api/book на ${d0}`, async () => {
-    const r = await http('/api/book', { name: 'QA Бронь', phone: '0670001' + String(Math.floor(Math.random() * 900) + 100), date: d0, time: '19:00', people: 2, device: 'qa-bk-' + RUN });
+    const r = await http('/api/book', { name: 'QA Бронь', phone: '0670001' + String(Math.floor(Math.random() * 900) + 100), date: d0, time: '19:00', people: 2, tw: 3, device: 'qa-bk-' + RUN });
     must(r.status === 200 && r.j.ok, `${r.status} ${JSON.stringify(r.j)}`); bid = r.j.id; return bid;
   });
-  await step('bkSet ok', async () => { const r = await posOk(A, 'bkSet', { id: bid, st: 'ok' }); must(r.b?.st === 'ok', 'st=' + r.b?.st); });
+  await step('bkSet ok → стіл, який гість обрав на схемі', async () => { const r = await posOk(A, 'bkSet', { id: bid, st: 'ok' }); must(r.b?.st === 'ok', 'st=' + r.b?.st); must(r.b?.t === 3, 't=' + r.b?.t); });
   await step(`bkEdit дата → ${d1} (+100 днів)`, async () => { const r = await posOk(A, 'bkEdit', { id: bid, f: { date: d1 } }); must(r.b?.date === d1, 'date=' + r.b?.date); });
   await step('bkList знаходить на новій даті', async () => {
     const r = await posOk(A, 'bkList', { from: d1, to: d1 }); const x = r.list.find(b => b.id === bid); must(x, 'не знайдено'); must(x.date === d1 && x.st === 'ok', JSON.stringify(x).slice(0, 120));
