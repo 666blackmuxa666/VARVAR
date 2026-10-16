@@ -257,11 +257,13 @@
   function renderNav() {
     const newCnt = S.events.filter(e => e.k === 'guest' && e.s === 'new').length;
     const attNew = isAdmin() ? S.events.filter(e => e.k === 'att' && e.s === 'new').length : 0;
-    setHTML($('#nav'), `<div class="brand">${brandImg()}</div>` +
+    const nv = $('#nav'), nx = nv?.scrollLeft || 0; // 📱 меню гортається вбік — після перемальовки лишається на місці
+    setHTML(nv, `<div class="brand">${brandImg()}</div>` +
       navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? 'on' : ''}${isAdmin() && !NAV_MAIN.includes(v) ? ' more-i' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === 'team' && attNew ? `<span class="badge">${attNew}</span>` : ''}${v === 'books' && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ''}</button>`).join('') +
       `<button class="feed-btn" data-a="feed"><span class="ic">🔔</span>Стрічка${newCnt ? `<span class="badge">${newCnt}</span>` : S.events.some(evMention) ? '<span class="badge">@</span>' : ''}</button>` +
       `<button class="more-btn ${isAdmin() && !NAV_MAIN.includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><button class="me" data-a="zpMy" title="Мій кабінет"><i>${S.me?.av ? `<img src="${esc(S.me.av)}" alt="">` : esc((S.me?.name || '?').slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ''}</i>${S.taskN ? `<span class="badge" title="Завдань на сьогодні">${S.taskN}</span>` : ''}<b>${esc(S.me?.name)}</b><small>${isAdmin() ? 'адмін' : isCook() ? 'кухар' : isCour() ? 'кур\'єр' : 'офіціант'} · кабінет</small></button>` +
       `<button data-a="switch"><span class="ic">🔒</span>Вийти</button>`);
+    if (nv && nv.scrollWidth > nv.clientWidth) { nv.scrollLeft = nx; const on = nv.querySelector('button.on'); if (on && (on.offsetLeft < nv.scrollLeft || on.offsetLeft + on.offsetWidth > nv.scrollLeft + nv.clientWidth)) nv.scrollLeft = on.offsetLeft - 8; }
   }
   function render() { renderNav(); renderFeed(); if (['hall', 'printer', 'kq'].includes(S.view) || (S.view === 'settings' && S.setTab === 'printer')) renderMain(); if (S.open) renderSheet(); }
 

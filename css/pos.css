@@ -316,9 +316,9 @@ main { overflow: auto; padding: 22px 24px 40px; }
 .more-btn { display: none !important; }
 /* телефон: усі розділи в нижній панелі, гортаються пальцем вбік (без «Ще») */
 @media (max-width: 980px) {
-  .nav { overflow-x: auto; overflow-y: hidden; justify-content: flex-start; gap: 2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+  .nav { overflow-x: auto; overflow-y: hidden; justify-content: flex-start; gap: 2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
   .nav::-webkit-scrollbar { display: none; }
-  .nav button { flex: 0 0 auto; min-width: 64px; scroll-snap-align: start; }
+  .nav button { flex: 0 0 auto; min-width: 64px; }
   .nav .more-i, .nav [data-a="switch"] { display: grid; }
   .more-btn, .nav .fs-btn { display: none !important; }
 }
