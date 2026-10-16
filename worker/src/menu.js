@@ -155,6 +155,7 @@ async function _importMenu(env, rows, replace) {
     it.price = price; delete it.variants;
     const d = String(r.desc || '').trim().slice(0, 300); if (d) it.desc = { uk: d, en: d };
     const sz = String(r.size || '').trim().slice(0, 30); if (sz) it.size = sz;
+    const im = String(r.img || '').trim(); if (/^https:\/\/[^\s"'<>()]+$/.test(im) && im.length <= 300) it.img = im; // 🖼 фото за адресою (демо, імпорт)
   }
   if (add || upd || replace) await saveMenu(env, menu);
   return { add, upd, cats };
