@@ -60,13 +60,14 @@
   function fit(root) {
     var all = (root || document).querySelectorAll('.f3'), i;
     for (i = 0; i < all.length; i++) {
-      var f = all[i], W = f.clientWidth - 8, two = f.classList.contains('m2'), bw, bh, k, lift = 0;
+      var f = all[i], W = f.clientWidth - 8, two = f.classList.contains('m2'), ed = f.classList.contains('edit'), bw, bh, k, lift = 0;
       if (!W) continue;
-      if (two) { bw = FW; bh = FH; } else {
-        var a = Math.abs(AZ) * Math.PI / 180, x = AX * Math.PI / 180;
-        bw = Math.cos(a) * FW + Math.sin(a) * FH; lift = 130 * Math.sin(x); bh = (Math.sin(a) * FW + Math.cos(a) * FH) * Math.cos(x) + lift;
-      }
-      k = Math.max(f.classList.contains('edit') ? .5 : W < 600 ? .42 : .26, Math.min(1.3, W * .94 / bw)) * (f.classList.contains('edit') ? 1 : ZM);
+      // 📱 вузький екран: зал «стоїть» уздовж телефона (довга сторона — вертикально), камера трохи пологіша
+      var pt = !ed && W < 600, ax = two ? 0 : pt ? 46 : AX, az = two ? (pt ? -90 : 0) : pt ? -82 : AZ;
+      f.style.setProperty('--ax', ax + 'deg'); f.style.setProperty('--az', az + 'deg'); f.classList.toggle('pt', pt);
+      var a = Math.abs(az) * Math.PI / 180, x = ax * Math.PI / 180;
+      lift = 130 * Math.sin(x); bw = Math.abs(Math.cos(a)) * FW + Math.abs(Math.sin(a)) * FH; bh = (Math.abs(Math.sin(a)) * FW + Math.abs(Math.cos(a)) * FH) * Math.cos(x) + lift;
+      k = Math.max(ed ? .5 : .26, Math.min(1.3, W * .94 / bw)) * (f.classList.contains('edit') ? 1 : ZM);
       var st = f.querySelector('.f3-st'), bx = f.querySelector('.f3-box');
       bx.style.width = Math.max(W, bw * k / .94) + 'px'; bx.style.height = bh * k + 'px';
       f.style.setProperty('--k', k); f.style.setProperty('--ty', (lift / 2 * k) + 'px'); f.style.setProperty('--pk', Math.min(3.2, .9 / k));
