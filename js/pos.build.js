@@ -2117,6 +2117,10 @@ var __objRest = (source, exclude) => {
       await loadState();
     } catch (e) {
       console.error("start", e);
+      if (e.message === "auth") return;
+      $("#main").innerHTML = `<div class="card"><h3>\u26A0\uFE0F \u041A\u0430\u0441\u0430 \u043D\u0435 \u0437\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0438\u043B\u0430\u0441\u044C</h3><div class="muted" style="word-break:break-word">${esc(String(e.message || e))}</div><button class="btn" onclick="location.reload()">\u{1F504} \u0429\u0435 \u0440\u0430\u0437</button></div>`;
+      api("jsErr", { m: String(e.message || e).slice(0, 300), st: String(e.stack || "").slice(0, 1500) }).catch(() => {
+      });
       return;
     }
     if (!isCour()) loadMenu().catch(() => {

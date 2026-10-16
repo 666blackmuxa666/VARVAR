@@ -654,7 +654,9 @@
     offBanner(); setTimeout(offFlush, 1500);
     $('#login').hidden = true; $('#app').hidden = false;
     renderNav(); $('#main').innerHTML = '<div class="muted">Завантаження…</div>';
-    try { await loadState(); } catch (e) { console.error('start', e); return; }
+    try { await loadState(); } catch (e) { console.error('start', e); if (e.message === 'auth') return; // 🩺 не «вічне завантаження»: показати помилку й надіслати на сервер (видно в логах)
+      $('#main').innerHTML = `<div class="card"><h3>⚠️ Каса не завантажилась</h3><div class="muted" style="word-break:break-word">${esc(String(e.message || e))}</div><button class="btn" onclick="location.reload()">🔄 Ще раз</button></div>`;
+      api('jsErr', { m: String(e.message || e).slice(0, 300), st: String(e.stack || '').slice(0, 1500) }).catch(() => {}); return; }
     if (!isCour()) loadMenu().catch(() => {});
     connect();
     document.body.classList.toggle('cook', isCook()); document.body.classList.toggle('adm', isAdmin()); document.body.classList.toggle('cour', isCour());
