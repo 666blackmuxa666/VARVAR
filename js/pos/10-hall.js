@@ -161,6 +161,13 @@
       const c = S.menu?.categories.find(x => x.items.some(i => i.id === it.id)), gr = c && S.groups?.find(x => x.cats?.includes(c.id)); /* і відкривається розділ цієї страви, а не перша вкладка групи (була «Кава» замість «Пиво») */
       if (c && gr && curGrp() !== 'fav') { S.grp = gr.id; S.cat = c.id; } }
     renderSheet(); if (keepKb && !searching()) $('#search')?.focus();
+    upsHint(it.name.uk, cart);
+  }
+  // 💡 допродаж: правила власника + «часто беруть разом» → підказка після додавання страви (карта вантажиться раз)
+  async function upsHint(name, cart) {
+    if (!S.ups) { S.ups = {}; try { S.ups = (await api('upsMap')).m || {}; } catch {} }
+    const have = new Set(Object.values(cart).map(x => x.name)), l = (S.ups[name] || []).filter(n => !have.has(n)).slice(0, 3);
+    if (l.length) toast('💡 До «' + name + '» пропонуємо: ' + l.join(', '));
   }
   for (const ev of ['change', 'compositionend']) document.addEventListener(ev, e => { if (e.target.id === 'cartCom') S.coms[S.open] = e.target.value; }); // 📝 iPad: підказки клавіатури
   async function sendCart() {

@@ -1400,6 +1400,17 @@ var __objRest = (source, exclude) => {
         });
         break;
       }
+      case "upsEdit": {
+        const r = await api("upsGet");
+        const v = await askLong("\u{1F4A1} \u0414\u043E\u043F\u0440\u043E\u0434\u0430\u0436 \u2014 \u043A\u043E\u0436\u0435\u043D \u0440\u044F\u0434\u043E\u043A: \u0421\u0442\u0440\u0430\u0432\u0430 \u2192 \u0449\u043E \u0437\u0430\u043F\u0440\u043E\u043F\u043E\u043D\u0443\u0432\u0430\u0442\u0438, \u0447\u0435\u0440\u0435\u0437 \u043A\u043E\u043C\u0443", r.text || "\u041F\u0456\u0446\u0430 \u041C\u0430\u0440\u0433\u0430\u0440\u0438\u0442\u0430 \u2192 \u041B\u0438\u043C\u043E\u043D\u0430\u0434, \u0421\u043E\u0443\u0441");
+        if (v == null) break;
+        const x = await act("upsSet", { text: v }, "");
+        if (x) {
+          S.ups = null;
+          toast(`\u{1F4BE} \u041F\u0440\u0430\u0432\u0438\u043B: ${x.n}`);
+        }
+        break;
+      }
       case "goCfg": {
         const k = el.dataset.k, cur = (_m = S.data.gocfg) == null ? void 0 : _m[k];
         const v = ["on", "del", "pick"].includes(k) ? cur ? 0 : 1 : await ask(el.dataset.l || k, String(cur != null ? cur : ""), ["phone", "zone", "from", "to"].includes(k) ? "text" : "number");
@@ -2400,6 +2411,18 @@ var __objRest = (source, exclude) => {
     }
     renderSheet();
     if (keepKb && !searching()) (_e = $("#search")) == null ? void 0 : _e.focus();
+    upsHint(it.name.uk, cart);
+  }
+  async function upsHint(name, cart) {
+    if (!S.ups) {
+      S.ups = {};
+      try {
+        S.ups = (await api("upsMap")).m || {};
+      } catch (e) {
+      }
+    }
+    const have = new Set(Object.values(cart).map((x) => x.name)), l = (S.ups[name] || []).filter((n) => !have.has(n)).slice(0, 3);
+    if (l.length) toast("\u{1F4A1} \u0414\u043E \xAB" + name + "\xBB \u043F\u0440\u043E\u043F\u043E\u043D\u0443\u0454\u043C\u043E: " + l.join(", "));
   }
   for (const ev of ["change", "compositionend"]) document.addEventListener(ev, (e) => {
     if (e.target.id === "cartCom") S.coms[S.open] = e.target.value;
@@ -4382,6 +4405,7 @@ var __objRest = (source, exclude) => {
       <div class="card"><h3>\u{1F477} \u0417\u043C\u0456\u043D\u0438</h3>
         ${row("\u23F0 \u0417\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F \u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F \u043F\u0456\u0441\u043B\u044F", ((_e = c.lateMin) != null ? _e : 10) + " \u0445\u0432", ch("cfg", ' data-k="lateMin"'), "\u0412\u0456\u0434 \u0437\u0430\u043F\u043B\u0430\u043D\u043E\u0432\u0430\u043D\u043E\u0433\u043E \u0447\u0430\u0441\u0443 \u043F\u043E\u0447\u0430\u0442\u043A\u0443 \u0437\u043C\u0456\u043D\u0438")}
         ${row("\u2796 \u0428\u0442\u0440\u0430\u0444 \u0437\u0430 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F", ((_f = c.lateFine) != null ? _f : 0) + " \u20B4", ch("cfg", ' data-k="lateFine"'), "0 \u2014 \u0431\u0435\u0437 \u0448\u0442\u0440\u0430\u0444\u0443; \u0430\u0434\u043C\u0456\u043D \u0432\u0438\u0440\u0456\u0448\u0443\u0454 \u043A\u043D\u043E\u043F\u043A\u043E\u044E \xAB\u2705 + \u0448\u0442\u0440\u0430\u0444\xBB")}</div>
+      <div class="card"><h3>\u{1F4A1} \u0414\u043E\u043F\u0440\u043E\u0434\u0430\u0436</h3><div class="muted set-note">\u0414\u043E \u0441\u0442\u0440\u0430\u0432\u0438 \u2014 \u0449\u043E \u0437\u0430\u043F\u0440\u043E\u043F\u043E\u043D\u0443\u0432\u0430\u0442\u0438 \u0433\u043E\u0441\u0442\u044E (\u043A\u0430\u0441\u0430, \u0431\u043E\u0442, \u0441\u0430\u0439\u0442). \u0414\u043E \u043F\u0440\u0430\u0432\u0438\u043B \u0434\u043E\u0434\u0430\u044E\u0442\u044C\u0441\u044F \u043F\u0430\u0440\u0438, \u044F\u043A\u0456 \u0433\u043E\u0441\u0442\u0456 \u0439 \u0442\u0430\u043A \u0431\u0435\u0440\u0443\u0442\u044C \u0440\u0430\u0437\u043E\u043C.</div><button class="btn sm" data-a="upsEdit">\u270F\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0434\u043E\u043F\u0440\u043E\u0434\u0430\u0436\u0443</button></div>
       <div class="card"><h3>\u{1F9EE} \u0420\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043E\u043A</h3>
         ${tg("semiCalc", "\u{1F4D0} \u0421\u043E\u0443\u0441\u0438 \u0439 \u0442\u0456\u0441\u0442\u043E \u2014 \u0440\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043A\u043E\u043C", "\u0423\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u043E: \u043F\u0440\u043E\u0434\u0430\u043B\u0438 \u0441\u0442\u0440\u0430\u0432\u0443 \u2014 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0438 \u0437 \u0440\u0435\u0446\u0435\u043F\u0442\u0443 \u0441\u043E\u0443\u0441\u0443 \u0441\u043F\u0438\u0441\u0443\u044E\u0442\u044C\u0441\u044F \u0441\u0430\u043C\u0456, \u0432\u0430\u0440\u0438\u0442\u0438 \xAB\u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0443\xBB \u043D\u0435 \u0442\u0440\u0435\u0431\u0430. \u0412\u0438\u043C\u043A\u043D\u0435\u043D\u043E: \u043E\u0431\u043B\u0456\u043A \u043F\u0430\u0440\u0442\u0456\u044F\u043C\u0438 \u0447\u0435\u0440\u0435\u0437 \xAB\u{1F373} \u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430\xBB", 1)}
         ${row("\u{1F3AF} \u0426\u0456\u043B\u044C\u043E\u0432\u0438\u0439 \u0444\u0443\u0434\u043A\u043E\u0441\u0442", ((_g = c.foodCost) != null ? _g : 30) + "%", ch("cfg", ' data-k="foodCost"'), "\u0421\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C \xF7 \u0446\u0456\u043D\u0430. \u0417\u0430 \u043D\u0438\u043C \u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F \u0440\u0435\u043A\u043E\u043C\u0435\u043D\u0434\u043E\u0432\u0430\u043D\u0430 \u0446\u0456\u043D\u0430 \u0441\u0442\u0440\u0430\u0432")}
