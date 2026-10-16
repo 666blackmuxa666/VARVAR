@@ -561,7 +561,7 @@ var __objRest = (source, exclude) => {
       sx = t.clientX;
       sy = t.clientY;
       if (f.classList.contains("open")) mode = f.contains(e.target) ? "close" : "";
-      else if (S.view === "hall" && !S.open && !document.querySelector(".modal-bg,.modal") && sx > innerWidth * 0.6 && !e.target.closest('input,textarea,[style*="overflow"],.zones,.tabs')) mode = "open";
+      else if (S.view === "hall" && !S.open && !document.querySelector(".modal-bg,.modal") && sx > innerWidth - 24 && !e.target.closest('input,textarea,[style*="overflow"],.zones,.tabs,.nav,.f3w')) mode = "open";
     }, { passive: true });
     document.addEventListener("touchend", (e) => {
       if (!mode) return;
