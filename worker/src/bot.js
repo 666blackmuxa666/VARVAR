@@ -132,7 +132,7 @@ async function editView(env, t, note = '') {
   };
 }
 const payButtons = t => ({ inline_keyboard: [[{ text: '💵 Готівка + 🖨 чек', callback_data: `clsok:${t}:cash` }, { text: '💳 Карта + 🖨 чек', callback_data: `clsok:${t}:card` }],
-  [{ text: '💵 Готівка, без чека', callback_data: `clsok:${t}:cash:np` }, { text: '💳 Карта, без чека', callback_data: `clsok:${t}:card:np` }], [{ text: '🖨 Пречек', callback_data: 'pre:' + t }, { text: 'Скасувати', callback_data: 'no' }]] });
+  [{ text: '💵 Готівка, без чека', callback_data: `clsok:${t}:cash:np` }, { text: '💳 Карта, без чека', callback_data: `clsok:${t}:card:np` }], [{ text: '🖨 Пречек', callback_data: 'pre:' + t }, { text: '➗ Порівну', callback_data: 'eq:' + t }, { text: 'Скасувати', callback_data: 'no' }]] });
 const PAY_PICK = { cash: '💵 готівка', card: '💳 карта' };
 async function closeAsk(env, t) {
   const b = await getBill(env, t);
@@ -805,6 +805,16 @@ async function handleCallback(q, env) {
   if (act === 'kv') { const v = await kitchenView(env); await edit(v.text, v.markup); return answer(''); }
   if (act === 'kst') { const e = await kitchenStart(env, arg, who); const v = await kitchenView(env); await edit(v.text, v.markup); return answer(e ? '🔥 Готується' : ''); }
   if (act === 'kdn') { const e = await kitchenDone(env, arg, null, who); const v = await kitchenView(env, e ? `🍽 Стіл ${tn(e.t)} — готово` : ''); await edit(v.text, v.markup); return answer(e ? 'Готово' : ''); }
+  if (act === 'eq') { // ➗ порівну: скільки з кожного (підказка, оплата — одним рахунком)
+    await send({ text: `➗ Стіл ${tn(arg)} — на скількох гостей?`, markup: { inline_keyboard: [[2, 3, 4, 5, 6, 8].map(n => ({ text: String(n), callback_data: `eqn:${arg}:${n}` })), [{ text: 'Скасувати', callback_data: 'no' }]] } });
+    return answer('');
+  }
+  if (act === 'eqn') {
+    const b = await getBill(env, arg), n = +oid; if (!b.total || !(n >= 2)) return answer('Стіл закритий');
+    const tot = payable(b) + (b.tip || 0), one = Math.floor(tot / n), rest = tot - one * n;
+    await send({ text: `➗ Стіл ${tn(arg)}: ${money(tot)} на ${n} → з кожного <b>${money(one)}</b>${rest ? ` (один доплачує ${money(one + rest)})` : ''}`, markup: payButtons(arg) });
+    return answer('');
+  }
   if (act === 'cls') { await send(await closeAsk(env, arg)); return answer(''); }
   if (act === 'wok') { // підтвердження замовлення офіціанта (текстом)
     const d = await env.DB.get('draft:' + arg, 'json');

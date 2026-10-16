@@ -2453,9 +2453,17 @@ var __objRest = (source, exclude) => {
       { label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 + \u{1F5A8} \u0447\u0435\u043A", val: "cash:1", cls: "green" },
       { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u0430 + \u{1F5A8} \u0447\u0435\u043A", val: "card:1", cls: "blue" },
       { label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430, \u0431\u0435\u0437 \u0447\u0435\u043A\u0430", val: "cash:0" },
-      { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u0430, \u0431\u0435\u0437 \u0447\u0435\u043A\u0430", val: "card:0" }
+      { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u0430, \u0431\u0435\u0437 \u0447\u0435\u043A\u0430", val: "card:0" },
+      { label: "\u2797 \u041F\u043E\u0440\u0456\u0432\u043D\u0443 \u043D\u0430 \u0433\u043E\u0441\u0442\u0435\u0439", val: "eq" }
     ]);
     if (!v) return;
+    if (v === "eq") {
+      const n = Math.round(+await ask("\u041F\u043E\u0440\u0456\u0432\u043D\u0443 \u043D\u0430 \u0441\u043A\u0456\u043B\u044C\u043A\u043E\u0445?", `\u0421\u0443\u043C\u0430 ${money(b.pay2 + (b.tip || 0))}`, "number"));
+      if (!(n >= 2 && n <= 30)) return;
+      const tot = b.pay2 + (b.tip || 0), one = Math.floor(tot / n), rest = tot - one * n;
+      await choose(`\u2797 \u041F\u043E\u0440\u0456\u0432\u043D\u0443 \u043D\u0430 ${n}`, `\u0417 \u043A\u043E\u0436\u043D\u043E\u0433\u043E ${money(one)}${rest ? ` (\u043E\u0434\u0438\u043D \u0434\u043E\u043F\u043B\u0430\u0447\u0443\u0454 ${money(one + rest)})` : ""} \xB7 \u0440\u0430\u0437\u043E\u043C ${money(tot)}`, [{ label: "\u0413\u0430\u0440\u0430\u0437\u0434", val: "ok" }]);
+      return closeFlow();
+    }
     const [pay, pr] = v.split(":");
     const r = await act("close", { t, pay, print: pr === "1" });
     if (r == null ? void 0 : r.queued) {
