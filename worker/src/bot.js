@@ -17,7 +17,7 @@ import {
   L, tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
   precheck, setDiscount, splitTable, restoreVoid, getVoids, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
   reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, tipBalances, payTips, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenPct, rejectOrder, kitchenStats, getKq, kitchenDone, kitchenStart, restoreClosed, reopenClosed, restoreTable, restoreExpense, balances, reconcile, WAITER_DISC_MAX, getCfg, setCfg, CFG_LIM, zText, reportBreakdown, regRole, isAdmin, isWaiter, getStaff, addStaff, delStaff, editStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
-  getMov, delMove, restoreMove, delZ, restoreZ, pinHash, isDay,editClosed, dayX, notify,
+  getMov, delMove, restoreMove, delZ, restoreZ, pinHash, isDay,editClosed, dayX, notify, getEvents,
 } from './ops.js';
 export { tg, esc, hhmm, getBill } from './ops.js';
 export { addStat, addDishes } from './ops.js';
@@ -79,10 +79,12 @@ ${A.logout} — вийти з режиму адміністратора
 Вхід діє 12 годин. 🖥 Каса: ${POS_URL(env)}`;
 
 // ---------- адмін-сесія: прибирання переписки ----------
+// Telegram: callback_data до 64 БАЙТІВ (кирилиця — 2 байти на літеру)
+const cb64 = s => { const e = new TextEncoder(); while (e.encode(s).length > 64) s = s.slice(0, -1); return s; };
 async function remember(env, uid, chat, ids) {
-  const k = 'admmsg:' + uid; const d = (await env.DB.get(k, 'json')) || { chat, ids: [] };
+  const k = 'admmsg:' + uid; return L(env, k, async () => { const d = (await env.DB.get(k, 'json')) || { chat, ids: [] };
   d.chat = chat; d.ids = [...d.ids, ...ids.filter(Boolean)].slice(-1000);
-  await env.DB.put(k, JSON.stringify(d), { expirationTtl: 2 * 86400 });
+  await env.DB.put(k, JSON.stringify(d), { expirationTtl: 2 * 86400 }); });
 }
 async function purgeAdminChat(env, uid) {
   const d = await env.DB.get('admmsg:' + uid, 'json'); await env.DB.delete('admmsg:' + uid);
@@ -156,7 +158,7 @@ async function cashView(env) {
       z.mvCash || z.mvCard ? `🔁 Рух коштів: готівка ${money(z.mvCash)}${z.mvCard ? `, картка ${money(z.mvCard)}` : ''}` : '',
       z.openTables ? `⏳ Ще відкрито в залі: ${money(z.openSum)} (${z.openTables} ст.)` : '',
       ...(tb.length ? ['\n💝 <b>Чайові до видачі</b> (не виручка):', ...tb.map(([n, v]) => `👤 ${esc(n)}: ${money(v)}`)] : [])].filter(x => x !== '').join('\n'),
-    markup: { inline_keyboard: [[{ text: '🧾 Z-звіт', callback_data: 'zday' }], [{ text: '🔁 Рух коштів', callback_data: 'mvl' }, { text: '🔒 Закриття каси (Z)', callback_data: 'zl' }], [{ text: '💸 Витрати сьогодні', callback_data: 'exlist' }], [{ text: '➕ Внести', callback_data: 'cmvp' }, { text: '➖ Вилучити', callback_data: 'cmvm' }, { text: '🔁 Обмін', callback_data: 'cmvx' }], [{ text: `👨‍🍳 Частка кухні від чайових: ${await kitchenPct(env)}%`, callback_data: 'kpct' }], ...await (async () => { const c = await getCfg(env); return [[{ text: `🏷 Макс. знижка офіціанта: ${c.discMax}%`, callback_data: 'cfg:discMax' }], [{ text: `⏱ Замовлення після QR: ${c.scanMin} хв`, callback_data: 'cfg:scanMin' }]]; })(), [{ text: '✏️ Звірити готівку', callback_data: 'rcn:cash' }, { text: '✏️ Звірити картку', callback_data: 'rcn:card' }], ...tb.map(([n, v]) => [{ text: `💝 Видано: ${n} · ${v}`, callback_data: ('tpay:' + n).slice(0, 60) }])] },
+    markup: { inline_keyboard: [[{ text: '🧾 Z-звіт', callback_data: 'zday' }], [{ text: '🔁 Рух коштів', callback_data: 'mvl' }, { text: '🔒 Закриття каси (Z)', callback_data: 'zl' }], [{ text: '💸 Витрати сьогодні', callback_data: 'exlist' }], [{ text: '➕ Внести', callback_data: 'cmvp' }, { text: '➖ Вилучити', callback_data: 'cmvm' }, { text: '🔁 Обмін', callback_data: 'cmvx' }], [{ text: `👨‍🍳 Частка кухні від чайових: ${await kitchenPct(env)}%`, callback_data: 'kpct' }], ...await (async () => { const c = await getCfg(env); return [[{ text: `🏷 Макс. знижка офіціанта: ${c.discMax}%`, callback_data: 'cfg:discMax' }], [{ text: `⏱ Замовлення після QR: ${c.scanMin} хв`, callback_data: 'cfg:scanMin' }]]; })(), [{ text: '✏️ Звірити готівку', callback_data: 'rcn:cash' }, { text: '✏️ Звірити картку', callback_data: 'rcn:card' }], ...tb.map(([n, v]) => [{ text: `💝 Видано: ${n} · ${v}`, callback_data: cb64('tpay:' + n) }])] },
   };
 }
 async function expListView(env) {
@@ -422,6 +424,7 @@ export async function handleUpdate(u, env) {
       await notify(env, `👥 Новий працівник: <b>${esc(r.s.name)}</b> (${ROLE_ONE[role]}) — зареєструвався в Telegram-боті`).catch(() => {});
       return send({ text: `👋 Вітаю, ${esc(r.s.name)}! PIN збережено — ним же входите в касу.\n\n` + await helpFor(env, role) }, await tgLogin(env, uid, r.s, chat));
     }
+    if (state?.startsWith('bkc:') && waiter) { const r = await bookSet(env, state.slice(4), 'came', who, { t: +text }); return send({ text: r?.error ? '⚠️ ' + r.error : `🪑 Гості прийшли · стіл ${+text}` }); }
     if (state?.startsWith('bkt:') && waiter) { const r = await bookSet(env, state.slice(4), 'kit', who, { t: +text }); return send({ text: r?.error ? '⚠️ ' + r.error : `🔥 Передзамовлення відправлено на кухню · стіл ${+text}` }); }
     if (state.startsWith('goe:') && admin) { // ✏️ доставка: та сама goEdit, що й у касі
       const [, t, f] = state.split(':'), v = text === '-' && (f === 'when' || f === 'note' || f === 'ent') ? '' : text.replace(/^(\d{1,2})\.(\d{2})$/, '$1:$2');
@@ -548,7 +551,7 @@ export async function handleUpdate(u, env) {
   let x;
   // --- офіціант ---
   const LEARN = { inline_keyboard: [[{ text: '🎓 Навчання: уроки з підказками', url: POS_URL(env) + '#course' }]] }; // 🎓 курс — у касі (уроки візуальні)
-  if (/^\/chat(@\w+)?(\s|$)/i.test(text)) { const t = text.replace(/^\/chat(@\w+)?/i, '').trim().slice(0, 500); if (!t) return send({ text: '💬 Чат закладу: <code>/chat текст</code> — повідомлення з\'явиться в касі (стрічка → 💬 Чат)' }); await logEvent(env, { k: 'chat', by: who, text: t, seen: [who] }); return send({ text: '💬 Надіслано в чат каси' }); }
+  if (/^\/chat(@\w+)?(\s|$)/i.test(text)) { const t = text.replace(/^\/chat(@\w+)?/i, '').trim().slice(0, 500); if (!t) { const l = (await getEvents(env)).filter(e => e.k === 'chat').slice(-15); return send({ text: `💬 <b>Чат закладу</b> (сьогодні)\n${l.map(e => `<b>${esc(e.by || '')}</b> ${e.at || ''}: ${esc(e.text || '')}`).join('\n') || 'Поки тихо'}\n\nНаписати: <code>/chat текст</code>` }); } await logEvent(env, { k: 'chat', by: who, text: t, seen: [who] }); return send({ text: '💬 Надіслано в чат каси' }); }
   if (low === '/learn' || low === 'навчання') return send({ text: '🎓 <b>Навчання</b>\nУроки для вашої ролі: що натискати й де — з підсвіткою справжніх кнопок у касі.', markup: LEARN });
   if (low === '/start' || low === '/help' || text === W.help || low === 'допомога' || low === 'help') return send({ text: (admin ? ADMIN_HELP(env) : HELP(env)) + '\n\n🎓 Навчання з підказками в касі — /learn' });
   if (text === W.order || low === '/order' || low === 'замовлення') return send(await tablePick(env, (await openTables(env)).map(r => r.t), tablesCount(env)));
@@ -572,7 +575,7 @@ export async function handleUpdate(u, env) {
     let r;
     if (k === 'години') { const [a, b2] = v.split(/[-–]/).map(x => x.trim()); r = await setSite(env, 'from', a); if (!r.error) r = await setSite(env, 'to', b2); }
     else if (k === 'рейтинг') { const [a, n] = v.split(/\s+/); r = await setSite(env, 'rating', a); if (!r.error && n) r = await setSite(env, 'ratingN', n); }
-    else if (k === 'акція') { const dm = v.match(/^видалити\s+(\d+)$/i); r = dm ? await setSite(env, 'promoDel', s0.promos[+dm[1] - 1]?.id) : await setSite(env, 'promoAdd', { t: v.split(/\s+[—-]\s+/)[0], d: v.split(/\s+[—-]\s+/).slice(1).join(' — ') }); }
+    else if (k === 'акція') { const dm = v.match(/^видалити\s+(\d+)$/i); r = dm ? (s0.promos?.[+dm[1] - 1] ? await setSite(env, 'promoDel', s0.promos[+dm[1] - 1].id) : { error: 'Акції з таким номером немає' }) : await setSite(env, 'promoAdd', { t: v.split(/\s+[—-]\s+/)[0], d: v.split(/\s+[—-]\s+/).slice(1).join(' — ') }); }
     else { const K = { 'телефон': 'phone', 'адреса': 'addr', 'опис': 'about', 'слоган': 'tagline', 'назва': 'name', 'інстаграм': 'insta', 'телеграм': 'tg', 'банкети': 'banquet', 'кальяни': 'hookah', 'відгуки': 'reviewsUrl' }[k]; if (!K) return send({ text: '⚠️ Невідоме поле. Напишіть «сайт» — список команд.' }); r = await setSite(env, K, v); }
     return send({ text: r.error ? '⚠️ ' + r.error : '✅ Збережено — уже на сайті' }); } }
   if (/^(вхідні|✉️|\/inbox)$/i.test(text.trim())) { if (!waiter) return send({ text: '🔐 Спершу увійдіть своїм PIN' }); await (await import('./guestbot.js')).inboxBot(env, chat); return; } // ✉️ невідписані повідомлення гостей
@@ -697,6 +700,7 @@ async function handleCallback(q, env) {
     return answer('');
   }
   if (act === 'bk') { // 📅 бронь: ok / no / came / noshow / kit
+    if (oid === 'came') { const b0 = await bookGet(env, arg); if (b0 && !b0.t && !b0.tw) { await env.DB.put('st:' + uid, 'bkc:' + arg, { expirationTtl: 600 }); await send({ text: '🪑 За який стіл сіли гості? Номер:' }); return answer(''); } }
     if (oid === 'kit') { const b0 = await bookGet(env, arg); if (b0 && !b0.t) { await env.DB.put('st:' + uid, 'bkt:' + arg, { expirationTtl: 600 }); await send({ text: '🪑 Номер стола для передзамовлення?' }); return answer(''); } }
     const r = await bookSet(env, arg, oid, who); if (!r || r.error) return answer(r?.error || 'Не знайдено');
     return answer(bkLabel(oid === 'kit' ? 'ok' : oid));
@@ -913,7 +917,7 @@ async function handleCallback(q, env) {
   if (act === 'exlist') { await send(await expListView(env)); return answer(''); }
   if (act === 'exdel') { await confirm('🗑 Видалити цю витрату?', 'exdelok:' + arg); return answer(''); }
   if (act === 'exdelok') { await delExpense(env, +arg); await edit('🗑 Витрату видалено.'); return answer(''); }
-  if (act === 'tpay') { const name = q.data.slice(5); const b = await tipBalances(env); if (!b[name]) return answer('Нема що видавати');
+  if (act === 'tpay') { const b = await tipBalances(env), name = Object.keys(b).find(k => cb64('tpay:' + k) === q.data) || q.data.slice(5); if (!b[name]) return answer('Нема що видавати');
     await send({ text: `💝 Видати чайові <b>${esc(name)}</b> — ${money(b[name])}\nЗвідки списати?`, markup: { inline_keyboard: [[{ text: '💵 Готівкою з каси', callback_data: ('tpc:' + name).slice(0, 60) }, { text: '💳 З картки', callback_data: ('tpk:' + name).slice(0, 60) }], [{ text: 'Скасувати', callback_data: 'no' }]] } }); return answer(''); }
   if (act === 'tpc' || act === 'tpk') { const name = q.data.slice(4); const s = await payTips(env, name, who, act === 'tpk' ? 'card' : 'cash'); if (!s) return answer('Нема що видавати'); await edit(`💝 Видано чайові: <b>${esc(name)}</b> — ${money(s)} ${act === 'tpk' ? '💳 з картки' : '💵 готівкою'}`); return answer('Видано'); }
   if (act === 'mvl' || act === 'zl') { const d = isDay(arg) ? arg : dayKey(), v = act === 'mvl' ? await movView(env, d) : await zListView(env, d); if (arg) await edit(v.text, v.markup); else await send(v); return answer(''); }

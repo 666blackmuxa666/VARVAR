@@ -3,7 +3,7 @@
     if (!S.data.sk || ['stock', 'prod', 'inv', 'cards'].includes(t)) S.data.sk = await api('skData');
     if (t === 'buy') S.data.skBuy = await api('skBuy');
     if (t === 'sup') S.data.skSup = await api('skSupList');
-    if (t === 'inv' && !K.draft) S.data.skInv = await api('skInvList');
+    if (t === 'inv' && !K.draft) S.data.skInv = await api('skInvList', { months: 12 });
     if ((t === 'cards' || t === 'prod') && isAdmin()) { if (!S.menu) await loadMenu(); S.data.skCost = await api('skCost'); }
     if (t === 'tech') S.data.skTech = await api('skTech');
     if (t === 'count') { const [c, l] = await Promise.all([api('skCount', { wh: K.cwh }), api('skCountList')]); S.data.skCount = c; S.data.skCnts = l.list; K.cf = Object.fromEntries(Object.entries(c.draft.f || {}).map(([k, v]) => [k, String(v)])); }
@@ -176,9 +176,9 @@
     const top = `<div class="card"><h3>Нова накладна</h3>${K.busy ? '<div class="sk-busy">🔎 Розпізнаю накладну… зазвичай 10–30 секунд</div>' : `<div class="sk-new"><label class="btn primary sk-scan">📷 Сканувати накладну<input type="file" id="skPhoto" accept="image/*" capture="environment" hidden></label><label class="btn">🖼 З галереї<input type="file" id="skPhoto2" accept="image/*" multiple hidden></label><button class="btn" data-a="skLink">🔗 Онлайн-чек</button><button class="btn" data-a="skHand">✏️ Вручну</button>${isAdmin() ? '<label class="btn sm">🧪 Порівняти ШІ<input type="file" id="skBench" accept="image/*" multiple hidden></label>' : ''}</div>`}
       <div class="muted" style="font-size:12px;margin-top:8px">«Сканувати» одразу відкриває камеру — сфотографуйте накладну рівно, при гарному світлі. Кілька сторінок — «З галереї». Онлайн-чек (Checkbox, ДПС…) — вставте посилання або відскануйте його QR. Розпізнає Gemini — ви перевіряєте й підтверджуєте. Фото ніде не зберігається.</div></div>`;
     if (!I) return top + '<div class="muted">Завантаження…</div>';
-    const debts = Object.entries(I.sups || {}).filter(([, s]) => s.debt > 0);
+    const debts = Object.entries(I.list.filter(x => !x.del && x.pay === 'debt' && !x.paid && x.total > 0).reduce((m, x) => { (m[x.sup] ||= { debt: 0 }).debt += x.total; return m; }, {})); /* 💸 борг — з неоплачених накладних, як і кнопки «Оплатити» */
     const dH = adm && debts.length ? `<div class="card"><h3>💸 Борги постачальникам <span class="muted">· ${money(debts.reduce((a, [, s]) => a + s.debt, 0))}</span></h3>${debts.map(([n, s]) => `<div class="kv"><span><b>${esc(n)}</b></span><b class="money" style="color:var(--red)">${money(s.debt)}</b></div>${I.list.filter(x => x.sup === n && !x.del && x.pay === 'debt' && !x.paid).map(x => `<div class="kv" style="padding-left:12px"><span class="press" data-a="skInvView" data-id="${x.id}">${x.day.slice(8)}.${x.day.slice(5, 7)}${x.no ? ' · №' + esc(x.no) : ''}</span><span class="kv-r">${x.total != null ? `<span class="money">${money(x.total)}</span>` : ''}<button class="btn sm red" data-a="skInvPay" data-id="${x.id}">💸 Оплатити</button></span></div>`).join('')}`).join('')}</div>` : ''; // 💸 оплата прямо з картки боргів
-    const rows = I.list.map(x => `<div class="kv rrow${x.del ? ' del' : ''}"><span class="press" data-a="skInvView" data-id="${x.id}">${x.day.slice(8)}.${x.day.slice(5, 7)} · <b>${esc(x.sup)}</b>${x.no ? ' №' + esc(x.no) : ''}<br><small class="muted">${x.n} поз. · ${esc(x.by)}</small></span>
+    const rows = I.list.filter(x => x.ts > Date.now() - 62 * 864e5 || x.pay === 'debt' && !x.paid && !x.del).map(x => `<div class="kv rrow${x.del ? ' del' : ''}"><span class="press" data-a="skInvView" data-id="${x.id}">${x.day.slice(8)}.${x.day.slice(5, 7)} · <b>${esc(x.sup)}</b>${x.no ? ' №' + esc(x.no) : ''}<br><small class="muted">${x.n} поз. · ${esc(x.by)}</small></span>
       <span class="kv-r">${adm && x.total != null ? `<b class="money">${money(x.total)}</b>` : ''}${x.del ? '' : x.pay === 'debt' && !x.paid ? (adm ? `<button class="btn sm red" data-a="skInvPay" data-id="${x.id}">⏳ Оплатити</button>` : '<span class="muted">⏳ не оплачено</span>') : `<span title="оплачено">${x.pay === 'card' ? '💳' : x.pay === 'cash' ? '💵' : '✅'}</span>`}${adm ? `<button class="xb" data-a="skInvDel" data-id="${x.id}" data-b="${x.del ? 1 : ''}" title="${x.del ? 'Повернути' : 'Видалити'}">${x.del ? '↩️' : '🗑'}</button>` : ''}</span></div>`).join('');
     return top + dH + `<div class="card"><h3>🧾 Накладні <span class="muted">· ${I.list.length}</span></h3>${rows || '<div class="muted">Ще немає накладних</div>'}</div>`;
   }
@@ -234,7 +234,7 @@
       const r = await api('skInvParse', { images }, 120000);
       if (!S.data.sk) S.data.sk = await api('skData');
       S.sk.draft = { sup: r.sup, req: r.req, no: r.no, date: r.date, total: r.total, src: 'photo', lines: r.lines.map(l => ({ ...l, q0: l.q, f: l.add || (l.f && l.f !== 1) ? l.f : skAutoF(l) })) };
-      if (!S.data.skInv) S.data.skInv = await api('skInvList').catch(() => null);
+      if (!S.data.skInv) S.data.skInv = await api('skInvList', { months: 12 }).catch(() => null);
     } catch (e) { toast('⚠️ ' + errText(e.message)); }
     S.sk.busy = false; renderMain();
   }
@@ -518,7 +518,7 @@
       case 'skOffPick': { const id = await skPick('🗑 Що списати?'); if (id) skQty('off', id); break; }
       case 'skJr': skJournal(); break;
       case 'skShare': skShare(el.dataset.g); break;
-      case 'skHand': if (!S.data.skInv) S.data.skInv = await api('skInvList').catch(() => null); K.draft = { sup: '', no: '', date: '', total: 0, src: 'hand', lines: [{ id: null, n: '', q: '', f: 1, sum: '' }] }; renderMain(); break;
+      case 'skHand': if (!S.data.skInv) S.data.skInv = await api('skInvList', { months: 12 }).catch(() => null); K.draft = { sup: '', no: '', date: '', total: 0, src: 'hand', lines: [{ id: null, n: '', q: '', f: 1, sum: '' }] }; renderMain(); break;
       case 'skScan': skScan(); break;
       case 'skLink': { const u = await ask('🔗 Онлайн-чек', 'Вставте посилання на чек (з SMS, пошти чи QR)'); if (u && /^https?:\/\//.test(u.trim())) skCode(u.trim()); else if (u) toast('⚠️ Потрібне посилання, що починається з https://'); break; }
       case 'skCam': skCam(); break;

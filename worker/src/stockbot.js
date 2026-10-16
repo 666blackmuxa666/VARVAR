@@ -1,5 +1,5 @@
 // 🧮 Розрахунок у Telegram-боті (паритет з касою): залишки, закупівля, накладні з фото, списання, заготовки, інвентаризація, техкарти, фудкост.
-import { esc, money, tg, dayKey } from './ops.js';
+import { esc, money, tg, dayKey, L } from './ops.js';
 import { getMenu } from './menu.js';
 import { WH, fq, norm, getIng, getCards, purchaseList, purchaseText, adjust, transfer, produce, invoiceSave, invList, invPay, matchLines, countSave, countFinish, countGet, ingSave, cardSave, cardResolver, cardCost, unitCost, costReport, r3 } from './stock.js';
 import { aiInvoice } from './ai.js';
@@ -111,12 +111,12 @@ export async function invPhoto(m, env, uid) {
 export const invLink = async (url, env, uid) => invDraft(env, uid, await aiInvoice(env, { text: url }));
 async function invDraft(env, uid, r) {
   if (r.error) return { text: '⚠️ ' + r.error };
-  const k = 'invd:' + uid, prev = await env.DB.get(k, 'json');
-  const lines = await matchLines(env, r.sup || prev?.sup || '', r.lines);
+  const k = 'invd:' + uid, lines0 = await matchLines(env, r.sup || '', r.lines);
+  return L(env, k, async () => { const prev = await env.DB.get(k, 'json'), lines = lines0; /* 🔒 дві сторінки підряд не затирають одна одну */
   if (prev && prev.lines?.length && Math.abs((r.total || 0) - (prev.total || 0)) < 1 && (r.no || '') === (prev.no || '') && r.lines.length === prev.lines.length) return { text: '⚠️ Цей документ уже в чернетці — не додаю вдруге.\n\n' + draftView(prev).text, markup: draftView(prev).markup }; // той самий чек / фото двічі
   const d = prev ? { ...prev, lines: [...prev.lines, ...lines], total: (prev.total || 0) + (r.total || 0) } : { sup: r.sup, no: r.no, date: r.date, total: r.total, lines };
   await env.DB.put(k, JSON.stringify(d), { expirationTtl: 900 });
-  return draftView(d);
+  return draftView(d); });
 }
 const OK = { bc: '🟢', mem: '🟢', name: '🟢', sure: '🟢', ok: '🟢', guess: '❓', '': '🔵' };
 function draftView(d) {
@@ -133,9 +133,9 @@ export async function stockCallback(act, arg, env, uid, who) {
   if (act === 'skst') return stockText(env);
   if (act === 'skbuy') return { text: '🛒 <b>Закупівля</b>\n\n' + purchaseText(await purchaseList(env)) };
   if (act === 'skinvl') {
-    const { list, sups } = await invList(env, 1), debts = Object.entries(sups).filter(([, s]) => s.debt > 0);
-    return { text: `🧾 <b>Накладні</b> (цей місяць)\n${list.slice(0, 20).map(x => `${x.del ? '🗑' : x.pay === 'debt' && !x.paid ? '⏳' : '✅'} ${x.day.slice(8)}.${x.day.slice(5, 7)} ${esc(x.sup)}${x.no ? ' №' + esc(x.no) : ''} — ${money(x.total)}`).join('\n') || 'Ще немає'}${debts.length ? `\n\n💸 Борги: ${debts.map(([n, s]) => `${esc(n)} ${money(s.debt)}`).join(', ')}` : ''}`,
-      markup: { inline_keyboard: list.filter(x => !x.del && x.pay === 'debt' && !x.paid).slice(0, 8).map(x => [{ text: `💸 Оплатити ${x.sup} · ${Math.round(x.total)}`.slice(0, 60), callback_data: 'skip:' + x.id }]) } };
+    const { list } = await invList(env, 12), un = list.filter(x => !x.del && x.pay === 'debt' && !x.paid && x.total > 0), debts = Object.entries(un.reduce((m, x) => { (m[x.sup] ||= { debt: 0 }).debt += x.total; return m; }, {})); /* 💸 як у касі: борг з неоплачених накладних за рік */
+    return { text: `🧾 <b>Накладні</b> \n${list.slice(0, 20).map(x => `${x.del ? '🗑' : x.pay === 'debt' && !x.paid ? '⏳' : '✅'} ${x.day.slice(8)}.${x.day.slice(5, 7)} ${esc(x.sup)}${x.no ? ' №' + esc(x.no) : ''} — ${money(x.total)}`).join('\n') || 'Ще немає'}${debts.length ? `\n\n💸 Борги: ${debts.map(([n, s]) => `${esc(n)} ${money(s.debt)}`).join(', ')}` : ''}`,
+      markup: { inline_keyboard: un.slice(0, 20).map(x => [{ text: `💸 Оплатити ${x.sup} · ${Math.round(x.total)}`.slice(0, 60), callback_data: 'skip:' + x.id }]) } };
   }
   if (act === 'skip') return { text: '💸 Звідки оплатили?', markup: { inline_keyboard: [[{ text: '💵 З каси', callback_data: `skipp:${arg}:cash` }, { text: '💳 З картки', callback_data: `skipp:${arg}:card` }]] } };
   if (act === 'skrep') {

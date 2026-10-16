@@ -757,6 +757,7 @@ export async function openShift(env, float, who) {
 export async function closeShift(env, counted, who, print = true) {
   if (!(await getShift(env))) return { error: 'Зміна не відкрита' };
   const d = await shiftData(env);
+  if (counted != null && counted !== '' && !Number.isFinite(+counted)) return { error: 'Некоректна сума' };
   const z = { ...d, closed: Date.now(), closedBy: who || '', counted: counted == null || counted === '' ? null : Math.round(+counted) };
   z.diff = z.counted == null ? null : z.counted - z.inBox;
   const k = 'z:' + dayKey(); const l = (await env.DB.get(k, 'json')) || []; l.push(z); await env.DB.put(k, JSON.stringify(l));

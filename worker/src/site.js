@@ -121,7 +121,7 @@ export async function bookCreate(b, ip, env) {
   if (date < today || date > max || (date === today && time < hhmm())) return [{ error: 'date' }, 400];
   const rk = 'bkrl:' + String(b.device || ip).slice(0, 64), rn = +(await env.DB.get(rk)) || 0; if (rn >= 3) return [{ error: 'rate' }, 429];
   const x = { id: date.replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 6), kind: b.kind === 'banquet' ? 'banquet' : 'table', name, phone, date, time, people, comment: String(b.comment || '').trim().slice(0, 300), st: 'new', at: Date.now() };
-  { const tw = parseInt(b.tw, 10); if (tw > 0 && tw <= 999) x.tw = tw; } /* 🗺 бажаний стіл зі схеми — адмін підтверджує і садить */
+  { const tw = parseInt(b.tw, 10); if (tw > 0 && tw <= (+env.TABLES || 999)) x.tw = tw; } /* 🗺 бажаний стіл зі схеми — адмін підтверджує і садить */
   await L(env, 'book:' + date.slice(0, 7), async () => { const l = await getBk(env, date.slice(0, 7)); l.push(x); await env.DB.put('book:' + date.slice(0, 7), JSON.stringify(l)); });
   await env.DB.put(rk, String(rn + 1), { expirationTtl: 3600 });
   await cliTouch(env, phone, c => { c.name = name; });
@@ -151,7 +151,14 @@ export async function bookStatus(env, id) {
   return x && { st: x.st, date: x.date, time: x.time, people: x.people, kind: x.kind, pre: x.pre || [] };
 }
 // зміна статусу (каса / бот). kit — передзамовлення на кухню (потрібен стіл)
+// 🪑 стіл уже дано іншій броні на цей день ±2 год (підтверджена або гості прийшли)
+const mins = s => +s.slice(0, 2) * 60 + +s.slice(3, 5);
+async function tblClash(env, x, t) { if (!t || !x?.date) return null; return (await getBk(env, x.date.slice(0, 7))).find(y => y.id !== x.id && +y.t === +t && y.date === x.date && ['ok', 'came'].includes(y.st) && Math.abs(mins(y.time) - mins(x.time)) < 120) || null; }
 export async function bookSet(env, id, st, who, { t } = {}) {
+  let noTw = false;
+  if (st === 'ok' || st === 'came' || t) { const b0 = await bookGet(env, id);
+    if (t) { const c = await tblClash(env, b0, t); if (c) return { error: `Стіл ${t} уже заброньовано на ${c.time} (${c.name})` }; }
+    else if (b0 && !b0.t && b0.tw && await tblClash(env, b0, b0.tw)) noTw = true; } /* бажаний стіл зайнятий — підтверджуємо без стола */
   if (st === 'kit') {
     // атомарно: під замком перевірити й позначити «відправляється», потім кухня; при збої — зняти позначку
     let err = null;
@@ -164,7 +171,7 @@ export async function bookSet(env, id, st, who, { t } = {}) {
     return bkEdit(env, id, y => { y.preSent = Date.now(); });
   }
   if (!BST[st]) return { error: 'Невідомий статус' };
-  let same = false, dead = false; const x = await bkEdit(env, id, y => { if (['ok', 'came'].includes(st) && ['cancel', 'no', 'noshow'].includes(y.st)) { dead = true; return; } same = y.st === st; y.st = st; y.by = who; if (t) y.t = +t; else if (st === 'ok' && !y.t && y.tw) y.t = y.tw; }); /* 🗺 підтвердили — гість сидить за обраним столом */
+  let same = false, dead = false; const x = await bkEdit(env, id, y => { if (['ok', 'came'].includes(st) && ['cancel', 'no', 'noshow'].includes(y.st)) { dead = true; return; } same = y.st === st; y.st = st; y.by = who; if (t) y.t = +t; else if ((st === 'ok' || st === 'came') && !y.t && y.tw && !noTw) y.t = y.tw; }); /* 🗺 підтвердили — гість сидить за обраним столом */
   if (dead) return { error: 'Бронь уже скасована' }; if (!x) return null; if (same) return x; /* повторне натискання (каса + Telegram) — без дубля гостю */
   await editEv(env, l => { for (const e of l) if (e.bid === id) { e.s = st === 'no' || st === 'noshow' ? 'rej' : 'acc'; e.accBy = who; } }).catch(() => {});
   if (x.mid) await tg(env, 'editMessageText', { chat_id: env.CHAT_ID, message_id: x.mid, text: `${bkText(x)}\n\n${bkLabel(st)} — <b>${esc(who)}</b>`, parse_mode: 'HTML', reply_markup: { inline_keyboard: bkButtons(x) } }).catch(() => {});
@@ -185,6 +192,8 @@ const vDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d || ''), vTime = t => /^\d{1,2}:\
 export async function bookEditFields(env, id, f, who) {
   const ph = f.phone != null ? normPhone(f.phone) : undefined; if (f.phone != null && !ph) return { error: 'Невірний телефон' };
   if (f.date != null && !vDate(f.date)) return { error: 'Невірна дата' }; if (f.time != null && !vTime(f.time)) return { error: 'Невірний час' };
+  if (f.t != null && +f.t && !(+f.t >= 1 && +f.t <= (+env.TABLES || 999))) return { error: 'Немає такого стола' };
+  if (f.t != null || f.date || f.time) { const b0 = await bookGet(env, id); if (b0 && ['ok', 'came'].includes(b0.st) || (b0 && f.t)) { const m = { ...b0, date: f.date || b0.date, time: f.time ? f.time.padStart(5, '0') : b0.time }, t = f.t != null ? +f.t : b0.t, c = await tblClash(env, m, t); if (c) return { error: `Стіл ${t} уже заброньовано на ${c.time} (${c.name})` }; } }
   const x = await bkEdit(env, id, y => {
     if (f.name != null) y.name = String(f.name).trim().slice(0, 40) || y.name; if (ph) y.phone = ph; if (f.date) y.date = f.date; if (f.time) y.time = f.time.padStart(5, '0');
     if (f.people != null) y.people = Math.max(1, Math.min(60, parseInt(f.people, 10) || y.people)); if (f.comment != null) y.comment = String(f.comment).trim().slice(0, 300);
@@ -200,6 +209,7 @@ export async function bookManual(env, f, who) {
   const phone = normPhone(f.phone), name = String(f.name || '').trim().slice(0, 40);
   if (!phone || !name) return { error: "Вкажіть ім'я і телефон" }; if (!vDate(f.date) || !vTime(f.time)) return { error: 'Вкажіть дату й час' };
   const x = { id: f.date.replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 6), kind: f.kind === 'banquet' ? 'banquet' : 'table', name, phone, date: f.date, time: f.time.padStart(5, '0'), people: Math.max(1, Math.min(60, parseInt(f.people, 10) || 2)), comment: String(f.comment || '').trim().slice(0, 300), note: String(f.note || '').trim().slice(0, 300), t: +f.t || 0, st: 'ok', at: Date.now(), src: 'каса', by: who };
+  if (x.t) { if (!(x.t >= 1 && x.t <= (+env.TABLES || 999))) return { error: 'Немає такого стола' }; const c = await tblClash(env, x, x.t); if (c) return { error: `Стіл ${x.t} уже заброньовано на ${c.time} (${c.name})` }; }
   await L(env, 'book:' + f.date.slice(0, 7), async () => { const l = await getBk(env, f.date.slice(0, 7)); l.push(x); await env.DB.put('book:' + f.date.slice(0, 7), JSON.stringify(l)); });
   await cliTouch(env, phone, c => { if (!c.name) c.name = name; });
   await notify(env, `📅 Нова бронь (каса, ${esc(who)}): <b>${x.date.slice(8)}.${x.date.slice(5, 7)} ${x.time}</b> · ${x.people} гост. · ${esc(name)} ${fmtPhone(phone)}${x.t ? ` · стіл ${x.t}` : ''}`);

@@ -175,8 +175,8 @@
     const el = ev.target.closest('[data-hs]'); if (!el || !isAdmin()) return;
     const a = el.dataset.hs, i = +el.dataset.i, C = S.data.staff?.cfg || S.cfg || {}, H = (C.halls || []).map(h => ({ ...h }));
     if (a === 'add') { if (!H.length) H.push({ n: 'Зал', ic: '🪑', c: S.n }); const h = await hallEdit({ n: H.length > 1 ? 'Зал ' + (H.length + 1) : 'Тераса', c: 8, ic: H.length > 1 ? '🪑' : '🌿' }); if (h) { H.push(h); hallsSave(H); } return; }
-    if (a === 'ed') { const h = await hallEdit(H[i]); if (h) { H[i] = h; hallsSave(H); } return; }
-    if (a === 'up') { [H[i - 1], H[i]] = [H[i], H[i - 1]]; return hallsSave(H); }
+    if (a === 'ed') { const h = await hallEdit(H[i]); if (!h) return; if (+h.c !== +H[i].c && i < H.length - 1 && !await confirmBox('Номери столів у наступних залах зсунуться — надруковані QR-коди цих столів доведеться передрукувати. Продовжити?')) return; H[i] = h; hallsSave(H); return; }
+    if (a === 'up') { if (!await confirmBox('Номери столів у цих двох залах зміняться — надруковані QR-коди доведеться передрукувати. Продовжити?')) return; [H[i - 1], H[i]] = [H[i], H[i - 1]]; return hallsSave(H); }
     if (a === 'del') { if (!await confirmBox(`Видалити «${H[i].n}»? Столи далі перенумеруються.`)) return; H.splice(i, 1); return hallsSave(H); }
     if (a === 'map') { S.hm = 'map'; store.set('hm', 'map'); S.view = 'hall'; mapStart(); renderNav(); renderMain(); return; }
     if (a === 'go') { const g = await choose('🛵 З собою і доставка', 'Де показувати в касі', [['0', 'У залі — стрічкою'], ['1', 'Одна вкладка'], ['2', 'Дві вкладки']].map(([v, l]) => ({ label: l, val: v }))); if (g != null) hallsSave(H, +g); }

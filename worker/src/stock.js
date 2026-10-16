@@ -519,7 +519,7 @@ export async function stockApi(b, env, me, ai) {
     case 'skInvSave': { const d = { ...(b.inv || {}) }; if (cook) d.pay = 'debt'; const r = await invoiceSave(env, d, who);
       if (r?.inv) await notify(env, `🧾 <b>Накладна</b> ${esc(r.inv.sup)}${r.inv.no ? ' №' + esc(r.inv.no) : ''} — ${money(r.inv.total)} · ${r.inv.lines.length} поз. · ${{ cash: '💵 оплачено з каси', card: '💳 оплачено з картки', debt: '⏳ не оплачено' }[r.inv.pay]} (${esc(who)})`).catch(() => {});
       return R(r); }
-    case 'skInvList': { const r = await invList(env, +b.months || 2); if (!admin) { r.list = r.list.map(({ total, ...x }) => x); r.sups = {}; } return ok(r); }
+    case 'skInvList': { const r = await invList(env, Math.min(12, Math.max(1, +b.months || 2))); if (!admin) { r.list = r.list.map(({ total, ...x }) => x); r.sups = {}; } return ok(r); }
     case 'skInvGet': { const x = await invGet(env, String(b.id)); if (x && !admin) x.lines = x.lines.map(({ sum, ...l }) => l), delete x.total; return R(x && { inv: x }); }
     case 'skInvDel': { const r = await invoiceDel(env, String(b.id), !!b.back, who); if (r) await notify(env, `🖥 🧾 Накладна ${esc(r.sup)}${r.no ? ' №' + esc(r.no) : ''} (${money(r.total)}) ${b.back ? '↩️ повернуто' : '🗑 видалено'} — ${esc(who)}`).catch(() => {}); return R(r && { inv: r }); }
     case 'skInvPay': { const r = await invPay(env, String(b.id), b.src === 'card' ? 'card' : 'cash', who); if (r) await notify(env, `💸 Оплачено накладну ${esc(r.sup)}${r.no ? ' №' + esc(r.no) : ''}: ${money(r.total)} ${b.src === 'card' ? 'з картки' : 'з каси'} — ${esc(who)}`).catch(() => {}); return R(r && { inv: r }); }

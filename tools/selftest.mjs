@@ -399,11 +399,18 @@ async function apiTests() {
   sect('Броні');
   let bid = '';
   const d0 = day(3), d1 = day(103);
+  { for (const d of [d0, d1]) for (const x of (await pos(A, 'bkList', { from: d, to: d })).j.list || []) if (/^QA Бронь/.test(x.name) && x.st !== 'cancel') await pos(A, 'bkSet', { id: x.id, st: 'cancel' }); } // прибрати броні минулих прогонів
   await step(`POST /api/book на ${d0}`, async () => {
     const r = await http('/api/book', { name: 'QA Бронь', phone: '0670001' + String(Math.floor(Math.random() * 900) + 100), date: d0, time: '19:00', people: 2, tw: 3, device: 'qa-bk-' + RUN });
     must(r.status === 200 && r.j.ok, `${r.status} ${JSON.stringify(r.j)}`); bid = r.j.id; return bid;
   });
   await step('bkSet ok → стіл, який гість обрав на схемі', async () => { const r = await posOk(A, 'bkSet', { id: bid, st: 'ok' }); must(r.b?.st === 'ok', 'st=' + r.b?.st); must(r.b?.t === 3, 't=' + r.b?.t); });
+  await step('стіл зайнятий: друга бронь на той самий стіл і час — без стола; вручну — відмова', async () => {
+    const r = await http('/api/book', { name: 'QA Бронь 2', phone: '0670003' + String(Math.floor(Math.random() * 900) + 100), date: d0, time: '19:30', people: 2, tw: 3, device: 'qa-bk2-' + RUN });
+    must(r.j.ok, JSON.stringify(r.j)); const o = await posOk(A, 'bkSet', { id: r.j.id, st: 'ok' }); must(!o.b?.t, 'посадили на зайнятий стіл ' + o.b?.t);
+    const e = await pos(A, 'bkSet', { id: r.j.id, st: 'ok', t: 3 }); must(e.status === 400, 'вручну на зайнятий: ' + e.status);
+    await posOk(A, 'bkSet', { id: r.j.id, st: 'cancel' }); const z = await pos(A, 'bkSet', { id: r.j.id, st: 'ok' }); must(z.status === 400, 'скасовану підтвердили: ' + z.status);
+  });
   await step(`bkEdit дата → ${d1} (+100 днів)`, async () => { const r = await posOk(A, 'bkEdit', { id: bid, f: { date: d1 } }); must(r.b?.date === d1, 'date=' + r.b?.date); });
   await step('bkList знаходить на новій даті', async () => {
     const r = await posOk(A, 'bkList', { from: d1, to: d1 }); const x = r.list.find(b => b.id === bid); must(x, 'не знайдено'); must(x.date === d1 && x.st === 'ok', JSON.stringify(x).slice(0, 120));
