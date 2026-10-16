@@ -190,5 +190,7 @@ window.VVSkin = (() => {
   function onInput(e) { const i = e.target; if (!CX || !i.dataset.k || !i.closest('.vst .skc')) return; EK[i.dataset.k] = i.type === 'checkbox' ? i.checked : +i.value; if (i.nextElementSibling) i.nextElementSibling.textContent = i.value; commit({ ...target(), sk: diff(EK) }, 1); }
   document.addEventListener('click', onClick); document.addEventListener('input', onInput);
   document.addEventListener('toggle', e => { if (CX && e.target.matches?.('.vst details')) OPEN = e.target.open; }, true);
+  // ⚡ Без «сіпання» при відкритті: одразу малюємо останній вигляд з пам'яті пристрою, ще до відповіді сервера
+  { const c = lastCol(), k = last(); if (c?.t) colors(c.t, c.a); if (k) apply(full(k), false); }
   return { resolve, paint, studio, pack, BASE, PRE, BG, THEMES, colors, saveCol, lastCol, skinPart, apply, diff, full, parse, last, editorHTML, bind };
 })();
