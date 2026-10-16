@@ -154,7 +154,8 @@
       const below = !r || r.bottom + 170 < innerHeight; tip.style.top = r ? (below ? r.bottom + 14 : Math.max(8, r.top - tip.offsetHeight - 14)) + 'px' : '';
       tip.classList.toggle('mid', !r);
       if (s.sel && !el && !TR.miss) { TR.miss = Date.now(); }
-      if (s.opt && !el && Date.now() - TR.miss > 600) { TR.i++; return crStep(); } // крок лише для телефона/планшета — пропускаємо const miss = s.sel && !el && Date.now() - TR.miss > 1500;
+      if (s.opt && !el && Date.now() - TR.miss > 600) { TR.i++; return crStep(); } // крок лише для телефона/планшета — пропускаємо
+      const miss = s.sel && !el && Date.now() - TR.miss > 1500;
       const h = tip.querySelector('.cr-miss'); if (h) h.hidden = !miss;
     };
     TR.miss = 0; TR.sc = 0;

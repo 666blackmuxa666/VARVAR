@@ -49,12 +49,13 @@ export async function billPaid(env, kind, x) {
   const H = hub(env), v = await H.venueGet(vid); if (!v) return { error: 'venue' };
   if (!lpOk(x)) { if (x.status === 'unsubscribed') await H.venueBill(vid, { auto: 0, subOrder: '' }); return { ok: true, fail: x.status }; }
   const pid = String(x.payment_id || x.order_id + ':' + (x.end_date || x.create_date || '')), sum = Math.round(+x.amount || 0), test = x.status === 'sandbox' || /^sandbox_/.test(x.public_key || '');
-  if (!(await H.payOnce(pid))) return { ok: true, dup: 1 };
-  if (kind === 'ai') {
+  if (kind === 'ai') { // aitop сам не зараховує той самий lp двічі — спершу поповнити (збій → LiqPay повторить), потім позначити
     await (await import('./owner.js')).callVenue(env, vid, '/__int/aitop', { sum, lp: pid, test });
+    if (!(await H.payOnce(pid))) return { ok: true, dup: 1 };
     await say(env, `🤖 <b>Баланс ШІ</b> · ${esc(v.name)}: +${sum} грн${test ? ' · 🧪 тест' : ''}`);
     return { ok: true };
   }
+  if (!(await H.payOnce(pid))) return { ok: true, dup: 1 };
   // sub: +1 місяць від пізнішої з дат (зараз / оплачено до)
   const till = addMonth(Math.max(Date.now(), tillOf(v)));
   await H.venueBill(vid, { locked: 0, paidTill: till, pay: { ts: Date.now(), sum, lp: pid, ...(test ? { test: 1 } : {}) }, ...(x.action === 'subscribe' || x.status === 'subscribed' ? { auto: 1, subOrder: String(x.order_id) } : {}), ...(v.status === 'off' || v.status === 'trial' ? { status: 'active' } : {}) });
@@ -77,6 +78,6 @@ export async function billDaily(env) {
       await say(env, `⏰ ${esc(t)} Власник: ${esc(acct?.email || v.owner)}`);
     }
     if (v.unlockErr && !s.lock) { const ok = await callVenue(env, v.id, '/__int/lock', { on: 0 }).then(() => 1, () => 0); if (ok) { await H.venueBill(v.id, { unlockErr: 0, locked: 0 }); await say(env, `🔓 «${esc(v.name)}»: касу розблоковано після оплати`); } else await say(env, `⚠️ «${esc(v.name)}»: оплачено, але касу досі не розблоковано`); continue; }
-    if (s.left === -GRACE - 1 || (s.lock && !v.locked)) { await callVenue(env, v.id, '/__int/lock', { on: 1, why: 'sub' }).catch(() => {}); await H.venueBill(v.id, { locked: 1 }); await say(env, `⛔ «${esc(v.name)}»: підписка не оплачена ${GRACE}+ днів — каса в режимі перегляду`); }
+    if (s.left === -GRACE - 1 || (s.lock && !v.locked)) { if (!(await callVenue(env, v.id, '/__int/lock', { on: 1, why: 'sub' }).then(() => 1, () => 0))) continue; /* не вдалось — повторимо завтра */ await H.venueBill(v.id, { locked: 1 }); await say(env, `⛔ «${esc(v.name)}»: підписка не оплачена ${GRACE}+ днів — каса в режимі перегляду`); }
   }
 }

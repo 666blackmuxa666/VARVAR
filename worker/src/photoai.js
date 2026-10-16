@@ -61,7 +61,7 @@ async function photoMake(b, env, who) {
   if (paid && (await aiBal(env)).bal < PRICE) return [{ error: `Безкоштовні ${FREE} фото цього місяця використано. Поповніть баланс ШІ в кабінеті власника (💳 Оплата) — ${PRICE} ₴ за фото`, bal: 1 }, 402];
   if (q.n >= FREE && !b.pay) return [{ error: 'pay', n: q.n, free: FREE, price: PRICE }, 402]; // каса питає «понад ліміт — 2 ₴, продовжити?»
   if (await env.DB.get('phbusy')) return [{ error: 'Інше фото ще генерується — зачекайте кілька секунд' }, 429];
-  await env.DB.put('phbusy', '1', { expirationTtl: 60 });
+  await env.DB.put('phbusy', '1', { expirationTtl: 120 }); // довше за тайм-аут ШІ (90 с) — другий запит не пройде перевірку балансу
   try {
     const st = (await env.DB.get('cfg:photoStyle', 'json')) || {}, style = st.prompt || STYLE0;
     st.dish ||= {}; const note = b.note != null ? String(b.note).trim().slice(0, 600) : (st.dish[id] || '');

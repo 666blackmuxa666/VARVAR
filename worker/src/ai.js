@@ -134,8 +134,9 @@ export async function aiHelp(b, env) {
   if (!aiOn(env)) return [{ error: 'off' }, 503];
   const dev = String(b.device || '').slice(0, 64) || 'anon';
   const rk = 'ai:' + dev, n = +(await env.DB.get(rk)) || 0;
-  if (n > 40) return [{ error: 'limit' }, 429];
-  await env.DB.put(rk, String(n + 1), { expirationTtl: 3600 });
+  const na = +(await env.DB.get('ai:all')) || 0; // 🛡 і загальний ліміт закладу: device гість шле сам
+  if (n > 40 || na > 400) return [{ error: 'limit' }, 429];
+  await env.DB.put(rk, String(n + 1), { expirationTtl: 3600 }); await env.DB.put('ai:all', String(na + 1), { expirationTtl: 3600 });
 
   const hist = (Array.isArray(b.hist) ? b.hist : []).slice(0, MAX_Q).map(x => ({ q: String(x.q || '').slice(0, 200), a: String(x.a || '').slice(0, 200) }));
   const lang = LANG[b.lang] ? b.lang : 'en';

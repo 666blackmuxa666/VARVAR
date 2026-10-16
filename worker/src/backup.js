@@ -29,5 +29,5 @@ export async function backupRestore(env, tag, who) {
 export async function backupDaily(env) {
   const h = +new Date().toLocaleString('en-GB', { timeZone: 'Europe/Kyiv', hour: '2-digit', hour12: false }); if (h < 4 || h > 10) return;
   const f = 'bakday:' + dayKey(); if (await env.DB.get(f)) return; await env.DB.put(f, '1', { expirationTtl: 3 * 86400 });
-  await backupNow(env).catch(e => console.log('backup', e.message));
+  await backupNow(env).catch(async e => { console.log('backup', e.message); await env.DB.delete(f); }); // збій — наступна година спробує ще
 }

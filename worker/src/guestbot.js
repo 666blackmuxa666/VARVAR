@@ -195,7 +195,7 @@ async function bdGreet(env, c, gb, bdRule) {
   if (g && g.p > 0) { const { certGift } = await import('./site.js'), x = await certGift(env, { phone: c.phone, name: c.name, gift: g.n, items: g.items, sum: g.p, days: g.days });
     gift = `\n\n🎁 <b>Ваш подарунок — ${esc(g.n)}!</b>\nСертифікат: <code>${x.code}</code>\nПокажіть цей код офіціанту. Діє до ${new Date(x.exp).toLocaleDateString('uk-UA', { timeZone: TZ, day: '2-digit', month: '2-digit' })}.`;
     await logEvent(env, { k: 'cert', code: x.code, s: 'ok', text: `🎂 ${c.name || fmtPhone(c.phone)} — день народження: сертифікат ${x.code} на «${g.n}»` }); }
-  await say(env, c.chat, gb.bdText + gift + (bdRule ? `\n\n🎉 А ще <b>−${bdRule.pct}%</b> на замовлення в ці дні.` : ''), url('📅 Забронювати столик', siteLink('about.html#book')));
+  await say(env, c.chat, esc(gb.bdText) + gift + (bdRule ? `\n\n🎉 А ще <b>−${bdRule.pct}%</b> на замовлення в ці дні.` : ''), url('📅 Забронювати столик', siteLink('about.html#book')));
 }
 
 // 🎂 подарунок прямо в рахунку: офіціант обирає, ЩО з чека подарувати (1 шт за ціною в чеку); телефон обовʼязковий — раз на рік на номер
@@ -227,7 +227,7 @@ export async function gbDaily(env) {
     if (gb.bd && c.bd === md) { await bdGreet(env, c, gb, bdRule); nb++; }
     else if (gb.sleep && c.last && now - c.last > gb.sleepDays * 864e5 && !(c.sleepAt && now - c.sleepAt < Math.max(60, gb.sleepDays * 2) * 864e5)) {
       const x = await cliTouch(env, c.phone, y => { y.sleepAt = now; if (gb.sleepBon) y.bal = (y.bal || 0) + gb.sleepBon; });
-      await say(env, c.chat, `${gb.sleepText}${gb.sleepBon ? `\n\n🎁 +${money(gb.sleepBon)} бонусів — на рахунку <b>${money(x.bal)}</b>` : ''}`, url('🍔 Замовити', siteLink('index.html?go'))); ns++;
+      await say(env, c.chat, `${esc(gb.sleepText)}${gb.sleepBon ? `\n\n🎁 +${money(gb.sleepBon)} бонусів — на рахунку <b>${money(x.bal)}</b>` : ''}`, url('🍔 Замовити', siteLink('index.html?go'))); ns++;
     }
     if (nb + ns) await sleep(40);
   }

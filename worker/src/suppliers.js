@@ -13,6 +13,7 @@ const FIELDS = { n: 80, code: 12, iban: 34, phone: 40, addr: 200, mgr: 80, msg: 
 function clean(b, cur = {}) {
   const x = { ...cur };
   for (const [k, n] of Object.entries(FIELDS)) if (b[k] != null) x[k] = S(b[k], n);
+  if (!x.n && cur.n) x.n = cur.n; // назву не можна стерти — по ній звʼязані накладні
   if (x.code) x.code = x.code.replace(/\D/g, '').slice(0, 10);
   if (x.iban) x.iban = x.iban.replace(/\s/g, '').toUpperCase(); if (x.iban && !/^UA\d{27}$/.test(x.iban)) x.iban = cur.iban && /^UA\d{27}$/.test(cur.iban) ? cur.iban : '';
   // 🏦 кілька рахунків: новий IBAN не затирає старий — додається в список і стає основним (старий можна видалити)

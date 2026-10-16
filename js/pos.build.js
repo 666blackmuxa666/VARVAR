@@ -7225,6 +7225,7 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
         TR.i++;
         return crStep();
       }
+      const miss = s.sel && !el && Date.now() - TR.miss > 1500;
       const h = tip.querySelector(".cr-miss");
       if (h) h.hidden = !miss;
     };

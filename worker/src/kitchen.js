@@ -29,11 +29,12 @@ export const KITCHEN_HTML = `<!doctype html><html lang="uk"><head><meta charset=
 <div id="msg" style="display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.85);padding:12% 15%;text-align:center"><h2>Повідомлення в зал</h2><p style="color:#8e8e93">Офіціанти побачать у стрічці</p><div id="msgb"></div><button class="btn" id="msgx" style="margin-top:14px">Скасувати</button></div>
 <div id="gate" style="display:none"><button class="btn g" id="start" style="font-size:28px;padding:24px 34px">🔊 Почати зміну</button><p style="color:#8e8e93">увімкне звук нових замовлень</p></div>
 <script>
-var T=localStorage.getItem('ktok')||'',seen=null,ctx=null,list=[];
+var LS={g:function(k){try{return localStorage.getItem(k)}catch(e){return null}},s:function(k,v){try{localStorage.setItem(k,v)}catch(e){}},r:function(k){try{localStorage.removeItem(k)}catch(e){}}};
+var T=LS.g('ktok')||'',seen=null,ctx=null,list=[];
 function $(i){return document.getElementById(i)}
 var BASE=location.pathname.replace(/\/(k|kitchen)\/?$/,''); // /v/<заклад>/k → запити в свій заклад
 function api(op,b,cb){var x=new XMLHttpRequest();x.open('POST',BASE+'/api/pos',true);x.setRequestHeader('Content-Type','application/json');if(T)x.setRequestHeader('Authorization','Bearer '+T);
- x.onreadystatechange=function(){if(x.readyState!==4)return;var j={};try{j=JSON.parse(x.responseText)}catch(e){}if(x.status===401&&op!=='login'){T='';localStorage.removeItem('ktok');show();return}$('st').textContent=x.status===200?'':'⚠️ немає звʼязку';cb&&cb(j,x.status)};
+ x.onreadystatechange=function(){if(x.readyState!==4)return;var j={};try{j=JSON.parse(x.responseText)}catch(e){}if(x.status===401&&op!=='login'){T='';LS.r('ktok');show();return}$('st').textContent=x.status===200?'':'⚠️ немає звʼязку';cb&&cb(j,x.status)};
  b=b||{};b.op=op;x.send(JSON.stringify(b))}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 // 🎵 мелодії по 4 с: [тип хвилі, [[частота, початок с, тривалість с], …]]
@@ -44,7 +45,7 @@ var SND={siren:['🚨 Сирена',function(){var a=[];for(var i=0;i<16;i++)a.p
  beep:['📟 Біп-біп',function(){var a=[];for(var i=0;i<8;i++)a.push([1760,i*.5,.22]);return['square',a]}],
  duck:['🦆 Качка (Ігор)',null,'/snd/duck.mp3'],
  marimba:['🎵 Мелодія',function(){var m=[659,784,880,784,659,587,523,587,659,784,659,523,587,523],a=[];for(var i=0;i<m.length;i++)a.push([m[i],i*.28,.26]);return['sine',a]}]};
-var snd=localStorage.getItem('ksnd')||'siren';
+var snd=LS.g('ksnd')||'siren';
 var bufs={};
 function play(k){try{if(!ctx)return;var S0=SND[k]||SND.siren;if(S0[2]){if(bufs[k]){var src=ctx.createBufferSource();src.buffer=bufs[k];src.connect(ctx.destination);src.start(0)}else{var x=new XMLHttpRequest();x.open('GET',S0[2]);x.responseType='arraybuffer';x.onload=function(){ctx.decodeAudioData(x.response,function(b){bufs[k]=b;play(k)},function(){})};x.send()}return}var d=(SND[k]||SND.siren)[1](),t0=ctx.currentTime+.05;for(var i=0;i<d[1].length;i++){var x=d[1][i],o=ctx.createOscillator(),g=ctx.createGain();o.type=d[0];o.frequency.value=x[0];g.gain.setValueAtTime(.0001,t0+x[1]);g.gain.linearRampToValueAtTime(.6,t0+x[1]+.01);g.gain.setValueAtTime(.6,t0+x[1]+x[2]*.8);g.gain.linearRampToValueAtTime(.0001,t0+x[1]+x[2]);o.connect(g);g.connect(ctx.destination);o.start(t0+x[1]);o.stop(t0+x[1]+x[2]+.02)}}catch(e){}}
 function beep(n){try{if(!ctx)return;for(var k=0;k<(n||1);k++){var o=ctx.createOscillator(),g=ctx.createGain();o.type='square';o.frequency.value=880+k*220;g.gain.value=.5;o.connect(g);g.connect(ctx.destination);var t=ctx.currentTime+k*.5;o.start(t);o.stop(t+.4)}}catch(e){}}
@@ -62,13 +63,13 @@ document.addEventListener('click',function(ev){var t=ev.target;while(t&&t!==docu
  if(t.getAttribute('data-id'))api('kDone',{id:t.getAttribute('data-id'),i:+t.getAttribute('data-i')},load);
  else if(t.getAttribute('data-st'))api('kStart',{id:t.getAttribute('data-st')},load);
  else if(t.getAttribute('data-all'))api('kDone',{id:t.getAttribute('data-all')},load)});
-$('go').onclick=function(){api('login',{pin:$('pin').value},function(j){if(j.token&&j.me&&(j.me.role==='cook'||j.me.role==='admin')){T=j.token;localStorage.setItem('ktok',T);show();if(!wsOk)live()}else $('err').textContent=j.token?'Цей екран — для кухаря':'Невірний PIN'})};
-$('out').onclick=function(){if(confirm('Вийти?')){api('logout',{});T='';localStorage.removeItem('ktok');show()}};
+$('go').onclick=function(){api('login',{pin:$('pin').value},function(j){if(j.token&&j.me&&(j.me.role==='cook'||j.me.role==='admin')){T=j.token;LS.s('ktok',T);show();if(!wsOk)live()}else $('err').textContent=j.token?'Цей екран — для кухаря':'Невірний PIN'})};
+$('out').onclick=function(){if(confirm('Вийти?')){api('logout',{});T='';LS.r('ktok');show()}};
 $('start').onclick=function(){try{var A=window.AudioContext||window.webkitAudioContext;ctx=new A();play(snd)}catch(e){}$('gate').style.display='none';noSleep()};
 // 🔆 екран не гасне: старий iOS не має Wake Lock — класичний прийом (як NoSleep.js для iOS < 10): раз на 15 с «перехід» на ту саму сторінку і одразу зупинка
 function noSleep(){if(navigator.wakeLock){try{navigator.wakeLock.request('screen')}catch(e){}return}setInterval(function(){if(!document.hidden){window.location.href=window.location.href.split('#')[0];setTimeout(window.stop,0)}},60000)}
 $('snd').onclick=function(){var h='';for(var k in SND)h+='<div class="it"><span>'+SND[k][0]+(k===snd?' ✅':'')+'</span><button data-sp="'+k+'" style="width:auto;padding:0 14px;border-radius:12px">▶</button><button data-ss="'+k+'" style="width:auto;padding:0 14px;border-radius:12px;background:#30d158;color:#032">Обрати</button></div>';$('msgb').innerHTML=h;$('msg').getElementsByTagName('h2')[0].textContent='🔔 Звук нового замовлення';$('msg').style.display='block'};
-document.addEventListener('click',function(ev){var t=ev.target,a;if((a=t.getAttribute('data-sp')))play(a);if((a=t.getAttribute('data-ss'))){snd=a;localStorage.setItem('ksnd',a);$('msg').style.display='none';play(a)}});
+document.addEventListener('click',function(ev){var t=ev.target,a;if((a=t.getAttribute('data-sp')))play(a);if((a=t.getAttribute('data-ss'))){snd=a;LS.s('ksnd',a);$('msg').style.display='none';play(a)}});
 var tab='q',menu=null,ot=0,ocat='',cart={};
 function tabs(t){tab=t;var b=document.querySelectorAll('.tabs button');for(var i=0;i<b.length;i++)b[i].className=b[i].getAttribute('data-tab')===t?'on':'';['q','f','o','s','w'].forEach(function(k){$(k).style.display=k===t?(k==='q'?'':'block'):'none'});$('ttl').textContent={q:'👨‍🍳 Черга',f:'🔔 Стрічка',o:'📝 Замовлення',s:'⛔ Стоп-лист',w:'🗑 Списання'}[t];if(t==='w')wload();if(t==='f')feed();if((t==='o'||t==='s')&&!menu)api('menu',{},function(j){menu=j.menu;draw2()});else draw2()}
 function tnm(t){return t>2000?'🥡 С-'+(t-2000):t>1000?'🛵 Д-'+(t-1000):'Стіл '+t}

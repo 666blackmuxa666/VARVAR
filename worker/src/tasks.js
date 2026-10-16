@@ -70,7 +70,7 @@ export async function taskApi(b, env, me) {
       return R(await edit(env, day, d => { if (d.l.length >= 200) return { error: 'Забагато завдань на день' }; const x = { id: nid(), ...t, st: '' }; d.l.push(x); return { t: x }; }));
     }
     case 'taskDel': { if (!admin) return needAdmin(); return R(await edit(env, day, d => { const i = d.l.findIndex(x => x.id === b.id); if (i < 0) return { error: 'Не знайдено' }; if (d.l[i].tpl) d.dtpl = [...new Set([...(d.dtpl || []), d.l[i].tpl])]; d.l.splice(i, 1); return {}; })); } // видалене з шаблону не повертається
-    case 'taskMark': return R(await taskMark(env, me, day, String(b.id || ''), String(b.st || ''), b.why, typeof b.ph === 'string' && b.ph.length > 1000 && b.ph.length < 2e6 ? b.ph.replace(/^data:image\/\w+;base64,/, '') : ''));
+    case 'taskMark': return R(await taskMark(env, me, day, String(b.id || ''), String(b.st || ''), b.why, typeof b.ph === 'string' && b.ph.length > 1000 && b.ph.length < 2e6 ? b.ph.replace(/^data:image\/\w+;base64,/, '').replace(/[^A-Za-z0-9+/=]/g, '') : ''));
     case 'taskPh': { const d = await taskDay(env, day), t = d.l.find(x => x.id === b.id); if (!t || (!admin && !isMine(t, me))) return R({ error: 'Не знайдено' }); return R({ ph: await env.DB.get(`tph:${day}:${t.id}`) || '' }); }
     case 'taskTpl': { // шаблони, що повторюються: зберегти весь список
       if (!admin) return needAdmin(); const staff = await getStaff(env);

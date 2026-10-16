@@ -104,9 +104,9 @@ export async function kitUpdate(u, env) {
   if (!me) { // 🔑 вхід PIN
     if (!/^\d{4}$/.test(text)) return ktg(env, 'sendMessage', { chat_id: chat, text: '👨‍🍳 Бот кухні.\nВведіть свій PIN з каси (4 цифри) — сюди приходитимуть замовлення кухні.', reply_markup: { remove_keyboard: true } });
     await ktg(env, 'deleteMessage', { chat_id: chat, message_id: m.message_id });
-    const fk = 'kfail:' + chat, n = +(await env.DB.get(fk) || 0); if (n >= 5) return ktg(env, 'sendMessage', { chat_id: chat, text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' });
+    const fk = 'kfail:' + chat, n = +(await env.DB.get(fk) || 0), na = +(await env.DB.get('kfail:all') || 0); if (n >= 5 || na >= 30) return ktg(env, 'sendMessage', { chat_id: chat, text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' });
     const h = await pinHash(text), s = (await getStaff(env)).find(z => z.pin === h);
-    if (!s || !['cook', 'admin'].includes(s.role)) { await env.DB.put(fk, String(n + 1), { expirationTtl: 900 }); return ktg(env, 'sendMessage', { chat_id: chat, text: s ? '⛔ Цей бот — для кухні. Офіціанти — у боті команди.' : '❌ Невірний PIN' }); }
+    if (!s || !['cook', 'admin'].includes(s.role)) { await env.DB.put(fk, String(n + 1), { expirationTtl: 900 }); await env.DB.put('kfail:all', String(na + 1), { expirationTtl: 900 }); return ktg(env, 'sendMessage', { chat_id: chat, text: s ? '⛔ Цей бот — для кухні. Офіціанти — у боті команди.' : '❌ Невірний PIN' }); }
     await L(env, 'kittg', async () => { const l = await getLinks(env); l[chat] = s.id; await env.DB.put('kittg', JSON.stringify(l)); });
     await env.DB.delete(fk);
     return ktg(env, 'sendMessage', { chat_id: chat, text: `✅ ${esc(s.name)}, ви на кухні!\nНові замовлення приходитимуть сюди. Кнопки під карткою — «🔥 Почав» і «✅ Готово».`, parse_mode: 'HTML', reply_markup: KB });
