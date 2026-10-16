@@ -186,7 +186,7 @@ async function nextReceiptNo(env) {
 
 // API для програми друку: GET /api/print/pull?key=… → завдання; POST /api/print/ack {key, ids}
 export async function printApi(req, env, url) {
-  const key = url.searchParams.get('key') || (req.method === 'POST' ? (await req.clone().json().catch(() => ({}))).key : '');
+  const key = req.headers.get('x-print-key') || url.searchParams.get('key') || (req.method === 'POST' ? (await req.clone().json().catch(() => ({}))).key : '');
   if (!env.PRINT_KEY || key !== env.PRINT_KEY) return new Response('forbidden', { status: 403 });
   if (url.pathname === '/api/print/pull') {
     const r = await qcall(env, '/pull?wait=' + (+url.searchParams.get('wait') || 0));
