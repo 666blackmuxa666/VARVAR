@@ -57,6 +57,7 @@ export async function lpCallback(env, kind, x) {
 }
 async function tablePaid(env, x) {
   const id = String(x.order_id || '').split('-').pop();
+  if (x.currency && x.currency !== 'UAH') { await notify(env, `⚠️ Онлайн-оплата столу в ${esc(String(x.currency))} замість гривні (${esc(String(x.order_id))}) — не зараховано, перевірте в LiqPay.`).catch(() => {}); return { ok: true, fail: 1 }; }
   return L(env, 'tpp:' + id, async () => {
     const p = await env.DB.get('tpp:' + id, 'json'); if (!p) { if (lpOk(x)) await notify(env, `⚠️ Онлайн-оплата столу ${Math.round(+x.amount || 0)} грн прийшла пізніше години — не зараховано (${esc(String(x.order_id))}). Зарахуйте вручну або поверніть гроші в LiqPay.`).catch(() => {}); return { error: 'expired' }; }
     if (p.done) return { ok: true, dup: 1 };
