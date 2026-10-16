@@ -1055,10 +1055,11 @@ main.hall .tables.compact{scrollbar-width:none}main.hall .tables.compact::-webki
 /* 🗺 схема залу */
 main.hall .f3w{flex:1;display:flex;flex-direction:column;gap:10px;min-width:0}
 .f3w .f3{flex:1;min-height:300px}
-.f3-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.f3-sum{flex:1;min-width:140px;color:var(--muted);font-size:13px}.f3-sum b{color:var(--text)}.f3-title{flex:1;min-width:120px}
+.f3-bar{display:flex;flex-wrap:nowrap;align-items:center;gap:8px}.f3-sum{flex:1;min-width:140px;color:var(--muted);font-size:13px}.f3-sum b{color:var(--text)}.f3-title{flex:1;min-width:120px}
 .f3-leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);padding:0 4px}.f3-leg span{display:flex;align-items:center;gap:6px}.f3-leg i{width:10px;height:10px;border-radius:50%;background:#d8c3a5}
 .f3-leg .lg-b{background:var(--accent)}.f3-leg .lg-c{background:var(--orange)}.f3-leg .lg-n{background:var(--red)}.f3-leg .lg-k{background:var(--purple)}
 .f3-tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:10px 12px;border-radius:16px;background:var(--card);font-size:13px}.f3-tools>b{margin-right:4px}
 .f3-pal{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}.f3-pal button{flex:none;padding:9px 12px;border-radius:14px;background:var(--card2);font-size:13px;white-space:nowrap}.f3-pal button:active{transform:scale(.96)}.f3-pal.fl button.on{background:var(--accent);color:var(--accent-ink)}
-.f3-bar .f3-mode{margin:0;flex:none}
+.f3-ic{flex:none;width:38px;height:38px;border-radius:12px;background:var(--card2);color:var(--text);font:700 13px/1 system-ui,sans-serif}.f3-ic:active{transform:scale(.94)}
+@media (max-width:700px){.f3w .f3{flex:none;min-height:0;max-height:70vh}}
 .f3-zm{display:flex;gap:4px}.f3-zm .btn{min-width:36px;font-size:17px}

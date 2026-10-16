@@ -295,15 +295,13 @@
     });
     requestAnimationFrame(() => { const el = $('.f3'); if (el) { F.fit(); F.watch(el); } });
     const plan = F.html({ tables, deco: ed ? d.deco : S.cfg?.deco?.[key] || [], floor: ed ? d.floor : S.cfg?.floor?.[key], mode: ed ? '2d' : S.f3m, edit: ed, sel: S.mapSel });
-    const view = `<div class="seg f3-mode"><button class="${S.f3m === '3d' ? 'on' : ''}" data-hl="f3m" data-h="3d">🧊 3D</button><button class="${S.f3m === '2d' ? 'on' : ''}" data-hl="f3m" data-h="2d">▦ План</button></div>`;
-    const legend = `<div class="f3-leg"><span><i class="lg-f"></i>вільний</span><span><i class="lg-b"></i>гості</span><span><i class="lg-c"></i>рахунок</span><span><i class="lg-n"></i>нове / оплата</span><span><i class="lg-k"></i>бронь</span></div>`;
-    if (!ed) return `<div class="f3w"><div class="f3-bar">${view}<span class="f3-zm"><button class="btn sm" data-hl="f3z" data-h="-1" title="Віддалити">−</button><button class="btn sm" data-hl="f3z" data-h="1" title="Наблизити">＋</button></span><span class="f3-sum"><b>${busy}</b>/${all.length} зайнято · <b class="money">${money(sum)}</b></span>${isAdmin() ? '<button class="btn sm" data-hl="med">✏️ Облаштувати</button>' : ''}</div>${plan}${legend}</div>`;
-    // ✏️ редактор
+    const view = `<button class="f3-ic" data-hl="f3m" data-h="${S.f3m === '3d' ? '2d' : '3d'}" title="3D / план">${S.f3m === '3d' ? '2D' : '3D'}</button>`;
+    if (!ed) return `<div class="f3w"><div class="f3-bar"><span class="f3-sum"><b>${busy}</b>/${all.length} зайнято · <b class="money">${money(sum)}</b></span>${view}${isAdmin() ? '<button class="f3-ic" data-hl="med" title="Облаштувати зал">✎</button>' : ''}</div>${plan}</div>`;
     const sel = S.mapSel, st = sel?.[0] === 't' ? +sel.slice(1) : null, sd = sel?.[0] === 'd' ? +sel.slice(1) : null, dx = sd != null ? d.deco[sd] : null;
     const tools = st != null ? `<div class="f3-tools"><b>🪑 Стіл ${st}</b>${Object.entries(F.SH).map(([k, v]) => `<button class="chip${mp[st][2] === k ? ' on' : ''}" data-hl="msh" data-h="${k}">${v.n}</button>`).join('')}<button class="btn sm" data-hl="mrot">↻ Повернути</button></div>`
       : dx ? `<div class="f3-tools"><b>${F.K[dx[0]]?.n || ''}</b><button class="btn sm" data-hl="mrot">↻ Повернути</button>${F.K[dx[0]]?.len ? '<button class="btn sm" data-hl="mlen" data-h="-40">⟷ −</button><button class="btn sm" data-hl="mlen" data-h="40">⟷ +</button>' : ''}<button class="btn sm" data-hl="mdup">⧉ Копія</button><button class="btn sm red" data-hl="mdel">🗑</button></div>`
-      : '<div class="f3-tools muted">✋ Перетягуйте столи й предмети. Торкніться — з’являться дії.</div>';
-    return `<div class="f3w"><div class="f3-bar"><b class="f3-title">✏️ ${esc(cur.n)}</b><button class="btn sm" data-hl="mreset">↺ Рядами</button><button class="btn sm" data-hl="mno">✖ Скасувати</button><button class="btn sm primary" data-hl="msave">💾 Зберегти</button></div>${plan}${tools}
+      : '<div class="f3-tools muted">Перетягуйте столи й предмети · торкніться — з’являться дії<button class="btn sm" data-hl="mreset" style="margin-left:auto">↺ Рядами</button></div>';
+    return `<div class="f3w"><div class="f3-bar"><button class="f3-ic" data-hl="mno" title="Скасувати">✕</button><b class="f3-title">${esc(cur.n)}</b><button class="btn sm primary" data-hl="msave">Готово</button></div>${plan}${tools}
       <div class="f3-pal">${Object.entries(F.K).map(([k, v]) => `<button data-hl="madd" data-h="${k}">${v.n}</button>`).join('')}</div>
       <div class="f3-pal fl">${Object.entries(F.FLOORS).map(([k, v]) => `<button class="${d.floor === k ? 'on' : ''}" data-hl="mfl" data-h="${k}">${v}</button>`).join('')}</div></div>`;
   }
@@ -319,7 +317,7 @@
   document.addEventListener('click', ev => { if (S.mapEd && ev.target.closest('[data-mt]')) { ev.stopPropagation(); ev.preventDefault(); } }, true);
   function mapEdit(a, h) {
     const d = S.mapDraft, F = window.Floor3D; if (!d) return; const sel = S.mapSel || '', i = +sel.slice(1);
-    if (a === 'madd') { if (d.deco.length >= 150) return toast('Максимум 150 предметів'); d.deco.push([h, 50, 50, 0, F.K[h]?.len || 0]); S.mapSel = 'd' + (d.deco.length - 1); }
+    if (a === 'madd') { if (d.deco.length >= 150) return toast('Максимум 150 предметів'); const f = $('.f3'), cx = f ? Math.round(Math.min(90, Math.max(10, (f.scrollLeft + f.clientWidth / 2) / f.scrollWidth * 100))) : 50, cy = f ? Math.round(Math.min(90, Math.max(10, (f.scrollTop + f.clientHeight / 2) / f.scrollHeight * 100))) : 50, j = d.deco.length % 4 * 3; d.deco.push([h, cx + j, cy + j, 0, F.K[h]?.len || 0]); S.mapSel = 'd' + (d.deco.length - 1); }
     if (a === 'mfl') d.floor = h;
     if (a === 'msh' && sel[0] === 't') d.pos[i][2] = h;
     if (a === 'mrot') { if (sel[0] === 't') d.pos[i][3] = ((d.pos[i][3] || 0) + 45) % 360; else if (d.deco[i]) d.deco[i][3] = ((+d.deco[i][3] || 0) + 45) % 360; }
@@ -349,7 +347,7 @@
     if (a === 'pick') return hallPick();
     if (a === 'go') { S.hall = el.dataset.h; store.set('hall', S.hall); renderMain(); return openTable(+el.dataset.t); }
     if (a === 'hm') { S.hm = S.hm === 'map' ? 'tiles' : 'map'; store.set('hm', S.hm); mapStop(); return renderMain(); }
-    if (a === 'f3m') { S.f3m = el.dataset.h; store.set('f3m', S.f3m); const f = $('.f3'); if (!f) return renderMain(); f.classList.toggle('m2', S.f3m === '2d'); document.querySelectorAll('.f3-mode button').forEach(b => b.classList.toggle('on', b.dataset.h === S.f3m)); return window.Floor3D.fit(); }
+    if (a === 'f3m') { S.f3m = el.dataset.h; store.set('f3m', S.f3m); const f = $('.f3'); if (!f) return renderMain(); f.classList.toggle('m2', S.f3m === '2d'); el.dataset.h = S.f3m === '3d' ? '2d' : '3d'; el.textContent = S.f3m === '3d' ? '2D' : '3D'; return window.Floor3D.fit(); }
     if (a === 'f3z') return window.Floor3D.zoom(+el.dataset.h);
     if (a === 'med') { mapStart(); return renderMain(); }
     if (a === 'mno') { mapStop(); return renderMain(); }
