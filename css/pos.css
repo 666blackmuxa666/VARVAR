@@ -1029,3 +1029,21 @@ body.noanim .ev.wait{outline:3px solid var(--wc,#ff9f0a)}
 #crTip { position: fixed; z-index: 9999; left: 50%; transform: translateX(-50%); width: min(360px, calc(100vw - 32px)); background: var(--card); border: 1px solid var(--accent); border-radius: 16px; padding: 12px 14px; box-shadow: 0 10px 40px rgba(0,0,0,.5); display: flex; flex-direction: column; gap: 8px; line-height: 1.4; }
 #crTip.mid { top: 40% !important; } #crTip .btnrow { justify-content: flex-end; }
 .chat-in{display:flex;gap:6px;margin:6px 0 4px}.chat-in input{flex:1;min-width:0}.ev.chat .top b{font-weight:500;white-space:pre-wrap;word-break:break-word}
+
+/* 🏛 зали: вкладки, фільтри, пошук, компактні плитки */
+.hall-tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 0 8px;flex:none}.hall-tabs::-webkit-scrollbar{display:none}
+.hall-tabs button{flex:none;background:var(--card);border:1px solid var(--line);color:var(--muted);border-radius:12px;padding:8px 12px;font:inherit;font-size:14px;cursor:pointer;position:relative;white-space:nowrap}
+.hall-tabs button b{color:var(--text);margin-left:2px}.hall-tabs button.on{color:var(--text);border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--card))}
+.hall-tabs button.hot::after{content:'';position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--red,#ff453a);box-shadow:0 0 0 2px var(--card)}
+.hall-pick{background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:0}
+.hall-tools{display:flex;gap:8px;align-items:center;margin:0 0 10px;flex:none}.hall-tools .seg{display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:3px;min-width:0;overflow-x:auto}
+.hall-tools .seg button{background:none;border:0;color:var(--muted);font:inherit;font-size:13px;padding:6px 10px;border-radius:9px;cursor:pointer;white-space:nowrap}.hall-tools .seg button.on{background:var(--card2,#24252d);color:var(--text)}
+#hallQ{width:92px;flex:none;margin-left:auto}
+.go-sum{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:10px 14px;font:inherit;margin:0 0 10px;cursor:pointer;flex:none}.go-sum.new{border-color:var(--red,#ff453a);animation:pulse 1.6s infinite}
+.go-grid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));overflow:visible!important}
+main.hall .tables.compact{grid-template-columns:repeat(auto-fill,minmax(92px,1fr));grid-template-rows:none;grid-auto-rows:minmax(78px,auto);overflow-y:auto;gap:8px}
+main.hall .tables.compact .tbl{padding:8px}main.hall .tables.compact .tbl .n{font-size:24px}main.hall .tables.compact .tbl .st{font-size:11px}main.hall .tables.compact .tbl .sum{font-size:15px}
+main.hall:has(.go-grid){overflow-y:auto}
+@media (max-width:600px){.hall-tabs{display:none}#hallQ{width:72px}}
+main.hall .tables.compact{scrollbar-width:none}main.hall .tables.compact::-webkit-scrollbar{display:none}
+.hall-pick{position:relative}.hall-pick.hot::after{content:"";position:absolute;top:2px;right:-10px;width:9px;height:9px;border-radius:50%;background:var(--red,#ff453a)}

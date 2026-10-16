@@ -66,7 +66,12 @@
       <div class="card"><h3>🤖 Увійшли в Telegram-бот</h3><div class="scrollbox">${st ? st.waiters.map(w => `<div class="kv"><span>${esc(w.name || w.uid)}</span><button class="btn sm red" data-a="wOut" data-uid="${w.uid}">Вийти</button></div>`).join('') || '<div class="muted">Нікого</div>' : '…'}</div></div></div>`;
     const tg = (k, l, hint, def = 0) => `<div class="kv press" data-a="cfgTgl" data-k="${k}" data-def="${def}"><span>${l}<br><small class="muted">${hint}</small></span><span class="switch ${c[k] ?? def ? 'on' : ''}"></span></div>`;
     part.rules = `<div class="grid2 set">
-      <div class="card"><h3>🪑 Зал</h3>${row('🪑 Столів у залі', S.n, ch('cfg', ' data-k="tables"'), 'Скільки столів показує каса й QR-меню')}</div>
+      <div class="card"><h3>🏛 Зали і столи</h3>${(() => { const H = c.halls || []; let a = 1;
+        return (H.length ? H.map((h, i) => { const f = a; a += h.c; return `<div class="kv"><span>${h.ic} ${esc(h.n)}<br><small class="muted">${h.c} стол. · №${f}–${a - 1}</small></span><span class="kv-r"><button class="btn sm" data-hs="ed" data-i="${i}">✏️</button><button class="btn sm" data-hs="up" data-i="${i}" ${i ? '' : 'disabled'}>⬆️</button><button class="btn sm red" data-hs="del" data-i="${i}">🗑</button></span></div>`; }).join('')
+          : row('🪑 Столів у залі', S.n, ch('cfg', ' data-k="tables"'), 'Один зал. Додайте зали й тераси — каса покаже перемикач'))
+          + `<button class="btn sm primary" data-hs="add">➕ Додати ${H.length ? 'зал / терасу' : 'зали'}</button>`
+          + `<div class="kv press" data-hs="go"><span>🛵 З собою і доставка<br><small class="muted">${['У залі — стрічкою над столами', 'Окрема вкладка «З собою і доставка»', 'Дві вкладки: «З собою» і «Доставка»'][c.goTabs || 0]}</small></span><span class="muted">змінити ›</span></div>`
+          + '<div class="muted set-note">Столи нумеруються підряд через усі зали — номери й QR на столах лишаються. Офіціант обирає «⭐ Мої зали» на своєму пристрої.</div>'; })()}</div>
       <div class="card"><h3>💰 Гроші</h3>
         ${row('🏷 Макс. знижка офіціанта', (c.discMax ?? 20) + '%', ch('cfg', ' data-k="discMax"'), 'Більшу знижку дає лише адміністратор')}
         ${row('👨‍🍳 Частка кухні від чайових', (st?.kpct ?? 20) + '%', ch('kpct'), `Плюс «подяка кухні» від гостя; порівну між кухарями на зміні${st?.cooks?.length ? ` (зараз: ${st.cooks.map(esc).join(', ')})` : ' (сьогодні ще нікого — піде в «👨‍🍳 Кухня»)'}`)}</div>
@@ -156,3 +161,21 @@
   }
 
 
+
+  // 🏛 редактор залів (Правила роботи)
+  async function hallsSave(halls, go = (S.data.staff?.cfg || S.cfg)?.goTabs || 0) { const r = await act('hallsSet', { halls, go }, '✅ Зали збережено'); if (r?.cfg) { S.cfg = r.cfg; S.n = r.cfg.tables || S.n; if (S.data.staff) S.data.staff.cfg = r.cfg; renderMain(); } }
+  async function hallEdit(h) {
+    const n = await askVal('Назва (Зал 1, Тераса, VIP…)', h?.n || ''); if (n == null) return null;
+    const c = await askVal('Скільки столів', String(h?.c || 10), 'number'); if (c == null) return null;
+    const ic = await choose('Значок', '', ['🪑', '🌿', '🍸', '🛋', '🎉', '☀️', '🏠', '🌙'].map(x => ({ label: x, val: x }))) || h?.ic || '🪑';
+    return { n: n.trim() || 'Зал', c: +c, ic };
+  }
+  document.addEventListener('click', async ev => {
+    const el = ev.target.closest('[data-hs]'); if (!el || !isAdmin()) return;
+    const a = el.dataset.hs, i = +el.dataset.i, C = S.data.staff?.cfg || S.cfg || {}, H = (C.halls || []).map(h => ({ ...h }));
+    if (a === 'add') { if (!H.length) H.push({ n: 'Зал', ic: '🪑', c: S.n }); const h = await hallEdit({ n: H.length > 1 ? 'Зал ' + (H.length + 1) : 'Тераса', c: 8, ic: H.length > 1 ? '🪑' : '🌿' }); if (h) { H.push(h); hallsSave(H); } return; }
+    if (a === 'ed') { const h = await hallEdit(H[i]); if (h) { H[i] = h; hallsSave(H); } return; }
+    if (a === 'up') { [H[i - 1], H[i]] = [H[i], H[i - 1]]; return hallsSave(H); }
+    if (a === 'del') { if (!await confirmBox(`Видалити «${H[i].n}»? Столи далі перенумеруються.`)) return; H.splice(i, 1); return hallsSave(H); }
+    if (a === 'go') { const g = await choose('🛵 З собою і доставка', 'Де показувати в касі', [['0', 'У залі — стрічкою'], ['1', 'Одна вкладка'], ['2', 'Дві вкладки']].map(([v, l]) => ({ label: l, val: v }))); if (g != null) hallsSave(H, +g); }
+  });

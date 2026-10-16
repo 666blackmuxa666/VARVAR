@@ -2,7 +2,7 @@
 // Чернетка одна на офіціанта: KV ob:<uid> {table, items:[{name,price,q}], com, mid, chat}; повідомлення редагується на місці.
 import { getMenu } from './menu.js';
 import { tn } from './tn.js';
-import { GROUPS, groupOf, getFav, toggleFav } from './ops.js';
+import { GROUPS, groupOf, getFav, toggleFav, getCfg } from './ops.js';
 
 const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 const TTL = 3 * 3600;
@@ -18,10 +18,13 @@ function head(ob) {
   return `🧾 <b>Стіл ${tn(ob.table)}</b> — нове замовлення${ob.tw ? ' · 🥡 <b>З СОБОЮ</b>' : ''}${ob.ur ? ' · ⚡ <b>ТЕРМІНОВО</b>' : ''}\n\n${list}${ob.com ? `\n💬 ${esc(ob.com)}` : ''}${ob.items.length ? `\n\nСума: <b>${sum(ob)} грн</b>` : ''}`;
 }
 
-export async function tablePick(env, openTables, tables) {
-  const open = new Set(openTables);
-  const btns = Array.from({ length: tables }, (_, i) => b(open.has(i + 1) ? `• ${i + 1}` : String(i + 1), 't:' + (i + 1)));
-  return { text: '🪑 <b>Для якого столу?</b>\n<i>• — стіл уже має рахунок (буде дозамовлення)</i>', markup: { inline_keyboard: [...chunk(btns, 5), [b('✖ Скасувати', 'x')]] } };
+export async function tablePick(env, openTables, tables, hall) {
+  const open = new Set(openTables), H = (await getCfg(env)).halls; // 🏛 кілька залів — спершу зал, потім стіл (як у касі)
+  if (H?.length > 1 && hall == null) { let a = 1; const hb = H.map((h, i) => { const f = a; a += h.c; const busy = [...open].filter(t => t >= f && t < a).length; return b(`${h.ic} ${h.n} · ${f}–${a - 1}${busy ? ` (${busy})` : ''}`, 'th:' + i); });
+    return { text: '🏛 <b>Який зал?</b>\n<i>(N) — зайнятих столів</i>', markup: { inline_keyboard: [...chunk(hb, 2), [b('✖ Скасувати', 'x')]] } }; }
+  let from = 1, to = tables; if (H?.length > 1) { from = 1 + H.slice(0, hall).reduce((s, h) => s + h.c, 0); to = from + H[hall].c - 1; }
+  const btns = Array.from({ length: to - from + 1 }, (_, i) => from + i).map(n => b(open.has(n) ? `• ${n}` : String(n), 't:' + n));
+  return { text: `🪑 <b>${H?.length > 1 ? `${H[hall].ic} ${H[hall].n} — ` : ''}Для якого столу?</b>\n<i>• — стіл уже має рахунок (буде дозамовлення)</i>`, markup: { inline_keyboard: [...chunk(btns, 5), [...(H?.length > 1 ? [b('🏛 Інший зал', 'tp')] : []), b('✖ Скасувати', 'x')]] } };
 }
 
 // перший екран: ⭐ Обрані · 🍳 Кухня · 🍹 Бар · 💨 Кальян (як у касі)
@@ -75,6 +78,7 @@ export async function obCallback(env, uid, p) {
   if (a === 'h') return { toast: 'Немає в наявності' };
   let ob = await getOb(env, uid);
   if (a === 't') { ob = { ...(ob || { items: [] }), table: +x }; await putOb(env, uid, ob); return { view: await catsView(env, ob) }; }
+  if (a === 'th') return { tablePick: true, hall: +x };
   if (!ob) return { expired: true };
   if (a === 'x') { await env.DB.delete('ob:' + uid); return { cancel: true }; }
   if (a === 'tp') return { tablePick: true };

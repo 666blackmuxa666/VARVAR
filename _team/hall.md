@@ -66,3 +66,8 @@
 - Дані в самій події `ev:<день>`: `cm[{i,by,ts,at,text,m?,v?,d?,rx?}]`, `rx{емодзі:[імена]}`, `seen[]`, `pin`. Дії `evCom/evComDel/evRx/evSeen/evPin/evVoice/evVoiceGet/evNames` (`pos.js`). Голосові — `vc:<id>` (3 дні, ≤100 КБ).
 - Каса: `js/pos/12-evcom.js` (лист знизу, @згадки, швидкі відповіді, 🎙, вкладка «💬 Обговорення», 📌). Кухня iPad — перегляд і текстовий коментар.
 - **Виняток паритету:** у Telegram не дублюється (рішення власника 2026-10-11).
+
+## 🏛 Зали (2026-10-16)
+- `cfg.halls` [{n, ic, c}] + `cfg.goTabs` (0 стрічка / 1 вкладка / 2 вкладки) — op `hallsSet` (ops.js `setHalls`). Столи нумеруються підряд через зали; `cfg.tables` = сума.
+- Каса: `hallViews()/hallRng()` у 10-hall.js; вкладки `.hall-tabs`, фільтр `S.hf` (mine/busy/all), пошук `#hallQ`, «⭐ Мої зали» — `store myHalls` на пристрої. Налаштування — 70-settings.js `data-hs`.
+- Бот: `tablePick(env, open, n, hall)` — спершу зал (`o:th:i`).

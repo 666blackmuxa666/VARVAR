@@ -780,7 +780,7 @@ var __objRest = (source, exclude) => {
       m.style.setProperty("--rows", r);
     }
     const html = (_b = (_a2 = { books: booksHTML, go: goHTML, kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, team: teamHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML, course: courseHTML, mylook: () => `<div class="rhead"><div><h1>\u{1F3A8} \u041C\u0456\u0439 \u0432\u0438\u0433\u043B\u044F\u0434</h1><span class="muted">${isAdmin() ? "\u0437\u0430\u043A\u043B\u0430\u0434 \u0430\u0431\u043E \u043B\u0438\u0448\u0435 \u0446\u0435\u0439 \u043F\u0440\u0438\u0441\u0442\u0440\u0456\u0439" : "\u043A\u043E\u043B\u0456\u0440 \u0456 \u0441\u0442\u0438\u043B\u044C \u043B\u0438\u0448\u0435 \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457"}</span></div></div>` + lookHTML() })[v]) == null ? void 0 : _b.call(_a2);
-    const fid = (_c = document.activeElement) == null ? void 0 : _c.id, keep = ["stopSearch", "rQ", "skQ", "skQ2", "skCq"].includes(fid);
+    const fid = (_c = document.activeElement) == null ? void 0 : _c.id, keep = ["stopSearch", "rQ", "skQ", "skQ2", "skCq", "hallQ"].includes(fid);
     const sx = [...m.querySelectorAll(".zp-grid, .sk-tbl, .chips.scroll, .seg")].map((e) => e.scrollLeft);
     setHTML(m, html || "");
     m.querySelectorAll(".zp-grid, .sk-tbl, .chips.scroll, .seg").forEach((e, i) => {
@@ -2144,12 +2144,18 @@ var __objRest = (source, exclude) => {
     }
   }
   function hallHTML() {
+    var _a2, _b, _c;
     const list = Object.values(S.tables), sum = list.reduce((s, b) => s + b.pay2, 0);
     const pending = new Set(S.events.filter((e) => e.k === "guest" && e.s === "new").map((e) => e.t));
     const calls = {};
     for (const e of S.events) if (e.k === "call" && e.s === "new") calls[e.t] = e;
     const bell = (t) => calls[t] ? `<span class="callbell${Date.now() - calls[t].ts > 6e4 ? " late" : ""}" title="\u041A\u043B\u0438\u0447\u0435 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430">\u{1F514}</span>` : "";
-    const tiles = Array.from({ length: S.n }, (_, i) => i + 1).map((t) => {
+    const V2 = hallViews(), cur = V2.find((v) => v.id === S.hall) || V2[0], go = cur.go, hot = (t) => {
+      var _a3, _b2;
+      return pending.has(t) || calls[t] || ((_a3 = S.tables[t]) == null ? void 0 : _a3.check) || ((_b2 = S.tables[t]) == null ? void 0 : _b2.pwait);
+    };
+    const rng = go ? [] : hallRng(cur, calls);
+    const tiles = rng.map((t) => {
       const b = S.tables[t];
       const bk = (S.books || []).find((x) => x.t === t && x.st === "ok");
       if (!b) return `<button class="tbl${calls[t] ? " calling" : ""}${bk ? " booked" : ""}" data-a="table" data-t="${t}">${bell(t)}<div class="n">${t}</div><div class="st">${bk ? `\u{1F4C5} ${bk.time} \xB7 ${esc(bk.name)}` : "\u0432\u0456\u043B\u044C\u043D\u0438\u0439"}</div></button>`;
@@ -2158,12 +2164,22 @@ var __objRest = (source, exclude) => {
       return `<button class="tbl ${cls}${calls[t] ? " calling" : ""}" data-a="table" data-t="${t}">${bell(t)}${tag}<div class="n">${t}</div><div class="st">${b.pwait ? due ? `\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \xB7 \u0434\u043E\u043F\u043B\u0430\u0442\u0430 ${money(due)}` : "\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C" : `${b.orders} \u0437\u0430\u043C\u043E\u0432\u043B.${b.disc ? ` \xB7 \u2212${b.disc}%` : ""}`}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">\u0437 ${b.opened ? hhmm(b.opened) : "\u2014"}</div></button>`;
     }).join("");
     const gos = list.filter((b) => b.t > 1e3 && b.go);
-    const strip = !gos.length ? "" : `<div class="go-strip">${gos.map((b) => {
+    const goTileHTML = (b) => {
       const g = b.go, late = g.st === "new" && Date.now() - g.at > 6e4;
       return `<button class="go-t st-${g.st}${pending.has(b.t) ? " new" : ""}${late ? " late" : ""}" data-a="table" data-t="${b.t}"><b>${g.kind === "del" ? "\u{1F6F5}" : "\u{1F961}"} ${tn(b.t)}</b><span>${esc(g.name || "")}</span><small>${GOST[g.st] || g.st}${g.when ? " \xB7 \u043D\u0430 " + g.when : ""}${goTileInfo(g)}</small><i class="money">${money(b.pay2)}</i></button>`;
-    }).join("")}</div>`;
-    return `<div class="head"><h1>\u0417\u0430\u043B</h1>
-      ${isCook() || isCour() ? "" : inboxBtn()}${isCook() || isCour() ? "" : S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="\u041D\u043E\u0432\u0456 \u0431\u0440\u043E\u043D\u0456 \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C">\u{1F4C5} ${S.bkNew} \u043D\u043E\u0432.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">\u{1F4C5} ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="\u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F">\u{1F4C5}</button>`}</div>${strip}<div class="tables">${tiles}</div>`;
+    };
+    const strip = !gos.length ? "" : `<div class="go-strip">${gos.map(goTileHTML).join("")}</div>`;
+    const goL = gos.filter((b) => go === "all" || (go === "del" ? b.go.kind === "del" : b.go.kind !== "del")), goNew2 = gos.filter((b) => b.go.st === "new").length;
+    const tab = (v) => {
+      const n = v.go ? gos.filter((b) => v.go === "all" || (v.go === "del" ? b.go.kind === "del" : b.go.kind !== "del")).length : Object.keys(S.tables).filter((t) => t >= v.from && t <= v.to).length, h = v.go ? gos.some((b) => b.go.st === "new" && (v.go === "all" || v.go === "del" === (b.go.kind === "del"))) : Array.from({ length: v.to - v.from + 1 }, (_, i) => v.from + i).some(hot);
+      return `<button class="${v.id === cur.id ? "on" : ""}${h ? " hot" : ""}" data-hl="set" data-h="${v.id}">${v.ic} ${esc(v.n)}${n ? ` <b>${n}</b>` : ""}</button>`;
+    };
+    const tabs = V2.map(tab), bar = V2.length > 1 ? `<div class="hall-tabs">${tabs.join("")}</div>` : "", othHot = tabs.some((x, i) => V2[i].id !== cur.id && x.includes(' hot"'));
+    const tools = go ? "" : `<div class="hall-tools"><div class="seg">${[["mine", "\u{1F464} \u041C\u043E\u0457"], ["busy", "\u{1F525} \u0417\u0430\u0439\u043D\u044F\u0442\u0456"], ["all", "\u0423\u0441\u0456"]].map(([k, l]) => `<button class="${S.hf === k ? "on" : ""}" data-hl="hf" data-h="${k}">${l}</button>`).join("")}</div><input id="hallQ" inputmode="numeric" placeholder="\u{1F50E} \u2116" autocomplete="off" maxlength="3"></div>`;
+    const goTile = !go && ((_a2 = S.cfg) == null ? void 0 : _a2.goTabs) && gos.length ? `<button class="go-sum${goNew2 ? " new" : ""}" data-hl="set" data-h="${(_b = V2.find((v) => v.go)) == null ? void 0 : _b.id}">\u{1F6F5} ${gos.length} ${goNew2 ? `\xB7 <b>${goNew2} \u043D\u043E\u0432.</b>` : "\u0432 \u0440\u043E\u0431\u043E\u0442\u0456"} \u2192</button>` : "";
+    const body = go ? goL.length ? `<div class="go-strip go-grid">${goL.map(goTileHTML).join("")}</div>` : '<div class="muted" style="padding:14px">\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u044C \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454</div>' : `${((_c = S.cfg) == null ? void 0 : _c.goTabs) ? goTile : strip}<div class="tables${rng.length > 24 ? " compact" : ""}">${tiles || `<div class="muted" style="padding:14px">${S.hf === "mine" ? "\u0423 \u0432\u0430\u0441 \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454 \u0441\u0442\u043E\u043B\u0456\u0432" : "\u0417\u0430\u0439\u043D\u044F\u0442\u0438\u0445 \u0441\u0442\u043E\u043B\u0456\u0432 \u043D\u0435\u043C\u0430\u0454"}</div>`}</div>`;
+    return `<div class="head"><h1>${V2.length > 1 ? `<button class="hall-pick${othHot ? " hot" : ""}" data-hl="pick">${cur.ic} ${esc(cur.n)} \u25BE</button>` : "\u0417\u0430\u043B"}</h1>
+      ${isCook() || isCour() ? "" : inboxBtn()}${isCook() || isCour() ? "" : S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="\u041D\u043E\u0432\u0456 \u0431\u0440\u043E\u043D\u0456 \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C">\u{1F4C5} ${S.bkNew} \u043D\u043E\u0432.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">\u{1F4C5} ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="\u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F">\u{1F4C5}</button>`}</div>${bar}${tools}${body}`;
   }
   const evTitle = (e) => ({
     guest: `\u{1F6CE} \u0421\u0442\u0456\u043B ${tn(e.t)} \u2014 ${esc((e.kind || "\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F").toLowerCase())}`,
@@ -2504,7 +2520,7 @@ var __objRest = (source, exclude) => {
     }
   }
   function hallGrid(m) {
-    const w = m.clientWidth || innerWidth, h = Math.max(200, (m.clientHeight || innerHeight) - 90 - (Object.keys(S.tables).some((t) => t > 1e3) ? 74 : 0)), n = S.n;
+    const w = m.clientWidth || innerWidth, h = Math.max(200, (m.clientHeight || innerHeight) - 90 - (Object.keys(S.tables).some((t) => t > 1e3) ? 74 : 0) - (hallViews().length > 1 ? 46 : 0) - 44), V2 = hallViews(), cur = V2.find((v) => v.id === S.hall) || V2[0], n = Math.max(1, cur.go ? 1 : hallRng(cur).length);
     let best = [1, n], score = 1e9;
     for (let c = 1; c <= n; c++) {
       const r = Math.ceil(n / c), empty = c * r - n, ratio = w / c / (h / r);
@@ -2553,6 +2569,79 @@ var __objRest = (source, exclude) => {
     const voids = (S.data.cvoids || []).length ? `<details class="c-card k-rm"><summary><span class="c-tm">\u{1F6AB}</span><span class="c-t">\u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u0456 \u0441\u0442\u0440\u0430\u0432\u0438</span><span class="c-pay">${S.data.cvoids.length} \u0448\u0442.</span><b class="money c-sum">${money(S.data.cvoids.reduce((s, v) => s + (v.sum || 0), 0))}</b></summary><div class="c-body">${[...S.data.cvoids].reverse().map((v) => `<div class="kv"><span>${v.at} \xB7 \u0441\u0442\u0456\u043B ${tn(v.t)} \xB7 <b>${esc(v.name)}</b> \u2014 <i>${esc(v.reason || "")}</i> <span class="muted">(${esc(v.by || "")})</span></span><span class="kv-r"><b class="money">${money(v.sum)}</b>${isToday && isAdmin() ? `<button class="c-b ok" data-a="vBack" data-ts="${v.ts}">\u21A9\uFE0F \u041D\u0430 \u0441\u0442\u0456\u043B</button>` : ""}</span></div>`).join("")}</div></details>` : "";
     return `${top}<div class="c-list">${[...l].reverse().map(card).join("") || `<div class="c-empty">\u{1F9FE} ${isToday ? "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0437\u0430\u043A\u0440\u0438\u0442\u0438\u0445 \u0440\u0430\u0445\u0443\u043D\u043A\u0456\u0432 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454" : "\u0426\u044C\u043E\u0433\u043E \u0434\u043D\u044F \u0437\u0430\u043A\u0440\u0438\u0442\u0438\u0445 \u0440\u0430\u0445\u0443\u043D\u043A\u0456\u0432 \u043D\u0435\u043C\u0430\u0454"}</div>`}${voids}</div>`;
   }
+  S.hall = store.get("hall", "");
+  S.hf = store.get("hf", "all");
+  function hallViews() {
+    var _a2, _b, _c;
+    const H = ((_b = (_a2 = S.cfg) == null ? void 0 : _a2.halls) == null ? void 0 : _b.length) ? S.cfg.halls : [{ n: "\u0417\u0430\u043B", ic: "\u{1FA91}", c: S.n }];
+    let a = 1;
+    const V2 = H.map((h, i) => {
+      const v = { id: "h" + i, n: h.n, ic: h.ic || "\u{1FA91}", from: a, to: Math.min(S.n, a + h.c - 1) };
+      a += h.c;
+      return v;
+    });
+    const g = (_c = S.cfg) == null ? void 0 : _c.goTabs;
+    if (g === 1) V2.push({ id: "go", go: "all", n: "\u0417 \u0441\u043E\u0431\u043E\u044E \u0456 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430", ic: "\u{1F6F5}" });
+    if (g === 2) V2.push({ id: "pick", go: "pick", n: "\u0417 \u0441\u043E\u0431\u043E\u044E", ic: "\u{1F961}" }, { id: "del", go: "del", n: "\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430", ic: "\u{1F6F5}" });
+    if (!isAdmin() && H.length > 1) {
+      const mine = store.get("myHalls", null);
+      if (mine == null ? void 0 : mine.length) return V2.filter((v) => v.go || mine.includes(v.id));
+    }
+    return V2;
+  }
+  const hallRng = (cur, calls = {}) => Array.from({ length: Math.max(0, cur.to - cur.from + 1) }, (_, i) => cur.from + i).filter((t) => {
+    var _a2, _b;
+    return S.hf === "busy" ? S.tables[t] || calls[t] : S.hf === "mine" ? ((_a2 = S.tables[t]) == null ? void 0 : _a2.waiter) === ((_b = S.me) == null ? void 0 : _b.name) : true;
+  });
+  const hallSet = (h) => {
+    S.hall = h;
+    store.set("hall", h);
+    renderMain();
+  };
+  async function hallPick() {
+    var _a2, _b;
+    const all = isAdmin() ? null : ((_b = (_a2 = S.cfg) == null ? void 0 : _a2.halls) == null ? void 0 : _b.length) > 1 ? 1 : null, V2 = hallViews();
+    const h = await choose("\u{1F3DB} \u0417\u0430\u043B", "", [...V2.map((v) => ({ label: `${v.ic} ${v.n}${v.go ? "" : ` \xB7 ${v.from}\u2013${v.to}`}`, val: v.id })), ...all ? [{ label: "\u2B50 \u041C\u043E\u0457 \u0437\u0430\u043B\u0438\u2026", val: "*" }] : []]);
+    if (h === "*") return myHalls();
+    if (h) hallSet(h);
+  }
+  async function myHalls() {
+    const H = S.cfg.halls, cur = store.get("myHalls", []) || [], pick = new Set(cur);
+    for (; ; ) {
+      const v = await choose("\u2B50 \u041C\u043E\u0457 \u0437\u0430\u043B\u0438", "\u041F\u043E\u0437\u043D\u0430\u0447\u0442\u0435 \u0437\u0430\u043B\u0438, \u044F\u043A\u0456 \u043F\u043E\u043A\u0430\u0437\u0443\u0432\u0430\u0442\u0438 \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457. \u041F\u043E\u0440\u043E\u0436\u043D\u044C\u043E \u2014 \u0443\u0441\u0456.", [...H.map((h, i) => ({ label: `${pick.has("h" + i) ? "\u2705" : "\u25AB\uFE0F"} ${h.ic} ${h.n}`, val: "h" + i })), { label: "\u{1F4BE} \u0413\u043E\u0442\u043E\u0432\u043E", val: "ok", cls: "primary" }]);
+      if (!v) return;
+      if (v === "ok") break;
+      pick.has(v) ? pick.delete(v) : pick.add(v);
+    }
+    store.set("myHalls", [...pick]);
+    if (pick.size && !pick.has(S.hall)) S.hall = [...pick][0];
+    renderMain();
+  }
+  document.addEventListener("click", (ev) => {
+    const el = ev.target.closest("[data-hl]");
+    if (!el) return;
+    const a = el.dataset.hl;
+    if (a === "set") return hallSet(el.dataset.h);
+    if (a === "pick") return hallPick();
+    if (a === "hf") {
+      S.hf = el.dataset.h;
+      store.set("hf", S.hf);
+      return renderMain();
+    }
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.target.id !== "hallQ" || ev.key !== "Enter") return;
+    const t = +ev.target.value;
+    ev.target.value = "";
+    if (t >= 1 && t <= S.n) {
+      const v = hallViews().find((v2) => !v2.go && t >= v2.from && t <= v2.to);
+      if (v && v.id !== S.hall) {
+        S.hall = v.id;
+        store.set("hall", v.id);
+      }
+      openTable(t);
+    } else toast("\u26A0\uFE0F \u041D\u0435\u043C\u0430\u0454 \u0441\u0442\u043E\u043B\u0443 " + (t || ""));
+  });
   const RXS = ["\u{1F44D}", "\u2705", "\u{1F525}", "\u2764\uFE0F", "\u{1F602}", "\u{1F62E}"];
   const QUICK = ["\u{1F3C3} \u0406\u0434\u0443", "\u23F1 5 \u0445\u0432", "\u26D4 \u041D\u0435\u043C\u0430 \u0432 \u043D\u0430\u044F\u0432\u043D\u043E\u0441\u0442\u0456", "\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432", "\u{1F37D} \u0413\u043E\u0442\u043E\u0432\u043E", "\u{1F44C} \u041E\u043A"];
   S.evRead = store.get("evRead", {});
@@ -4093,7 +4182,15 @@ var __objRest = (source, exclude) => {
       return `<div class="kv press" data-a="cfgTgl" data-k="${k}" data-def="${def}"><span>${l}<br><small class="muted">${hint}</small></span><span class="switch ${((_a3 = c[k]) != null ? _a3 : def) ? "on" : ""}"></span></div>`;
     };
     part.rules = `<div class="grid2 set">
-      <div class="card"><h3>\u{1FA91} \u0417\u0430\u043B</h3>${row("\u{1FA91} \u0421\u0442\u043E\u043B\u0456\u0432 \u0443 \u0437\u0430\u043B\u0456", S.n, ch("cfg", ' data-k="tables"'), "\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u0441\u0442\u043E\u043B\u0456\u0432 \u043F\u043E\u043A\u0430\u0437\u0443\u0454 \u043A\u0430\u0441\u0430 \u0439 QR-\u043C\u0435\u043D\u044E")}</div>
+      <div class="card"><h3>\u{1F3DB} \u0417\u0430\u043B\u0438 \u0456 \u0441\u0442\u043E\u043B\u0438</h3>${(() => {
+      const H = c.halls || [];
+      let a = 1;
+      return (H.length ? H.map((h, i) => {
+        const f = a;
+        a += h.c;
+        return `<div class="kv"><span>${h.ic} ${esc(h.n)}<br><small class="muted">${h.c} \u0441\u0442\u043E\u043B. \xB7 \u2116${f}\u2013${a - 1}</small></span><span class="kv-r"><button class="btn sm" data-hs="ed" data-i="${i}">\u270F\uFE0F</button><button class="btn sm" data-hs="up" data-i="${i}" ${i ? "" : "disabled"}>\u2B06\uFE0F</button><button class="btn sm red" data-hs="del" data-i="${i}">\u{1F5D1}</button></span></div>`;
+      }).join("") : row("\u{1FA91} \u0421\u0442\u043E\u043B\u0456\u0432 \u0443 \u0437\u0430\u043B\u0456", S.n, ch("cfg", ' data-k="tables"'), "\u041E\u0434\u0438\u043D \u0437\u0430\u043B. \u0414\u043E\u0434\u0430\u0439\u0442\u0435 \u0437\u0430\u043B\u0438 \u0439 \u0442\u0435\u0440\u0430\u0441\u0438 \u2014 \u043A\u0430\u0441\u0430 \u043F\u043E\u043A\u0430\u0436\u0435 \u043F\u0435\u0440\u0435\u043C\u0438\u043A\u0430\u0447")) + `<button class="btn sm primary" data-hs="add">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438 ${H.length ? "\u0437\u0430\u043B / \u0442\u0435\u0440\u0430\u0441\u0443" : "\u0437\u0430\u043B\u0438"}</button><div class="kv press" data-hs="go"><span>\u{1F6F5} \u0417 \u0441\u043E\u0431\u043E\u044E \u0456 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430<br><small class="muted">${["\u0423 \u0437\u0430\u043B\u0456 \u2014 \u0441\u0442\u0440\u0456\u0447\u043A\u043E\u044E \u043D\u0430\u0434 \u0441\u0442\u043E\u043B\u0430\u043C\u0438", "\u041E\u043A\u0440\u0435\u043C\u0430 \u0432\u043A\u043B\u0430\u0434\u043A\u0430 \xAB\u0417 \u0441\u043E\u0431\u043E\u044E \u0456 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430\xBB", "\u0414\u0432\u0456 \u0432\u043A\u043B\u0430\u0434\u043A\u0438: \xAB\u0417 \u0441\u043E\u0431\u043E\u044E\xBB \u0456 \xAB\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430\xBB"][c.goTabs || 0]}</small></span><span class="muted">\u0437\u043C\u0456\u043D\u0438\u0442\u0438 \u203A</span></div><div class="muted set-note">\u0421\u0442\u043E\u043B\u0438 \u043D\u0443\u043C\u0435\u0440\u0443\u044E\u0442\u044C\u0441\u044F \u043F\u0456\u0434\u0440\u044F\u0434 \u0447\u0435\u0440\u0435\u0437 \u0443\u0441\u0456 \u0437\u0430\u043B\u0438 \u2014 \u043D\u043E\u043C\u0435\u0440\u0438 \u0439 QR \u043D\u0430 \u0441\u0442\u043E\u043B\u0430\u0445 \u043B\u0438\u0448\u0430\u044E\u0442\u044C\u0441\u044F. \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442 \u043E\u0431\u0438\u0440\u0430\u0454 \xAB\u2B50 \u041C\u043E\u0457 \u0437\u0430\u043B\u0438\xBB \u043D\u0430 \u0441\u0432\u043E\u0454\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457.</div>`;
+    })()}</div>
       <div class="card"><h3>\u{1F4B0} \u0413\u0440\u043E\u0448\u0456</h3>
         ${row("\u{1F3F7} \u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430", ((_a2 = c.discMax) != null ? _a2 : 20) + "%", ch("cfg", ' data-k="discMax"'), "\u0411\u0456\u043B\u044C\u0448\u0443 \u0437\u043D\u0438\u0436\u043A\u0443 \u0434\u0430\u0454 \u043B\u0438\u0448\u0435 \u0430\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440")}
         ${row("\u{1F468}\u200D\u{1F373} \u0427\u0430\u0441\u0442\u043A\u0430 \u043A\u0443\u0445\u043D\u0456 \u0432\u0456\u0434 \u0447\u0430\u0439\u043E\u0432\u0438\u0445", ((_b = st == null ? void 0 : st.kpct) != null ? _b : 20) + "%", ch("kpct"), `\u041F\u043B\u044E\u0441 \xAB\u043F\u043E\u0434\u044F\u043A\u0430 \u043A\u0443\u0445\u043D\u0456\xBB \u0432\u0456\u0434 \u0433\u043E\u0441\u0442\u044F; \u043F\u043E\u0440\u0456\u0432\u043D\u0443 \u043C\u0456\u0436 \u043A\u0443\u0445\u0430\u0440\u044F\u043C\u0438 \u043D\u0430 \u0437\u043C\u0456\u043D\u0456${((_c = st == null ? void 0 : st.cooks) == null ? void 0 : _c.length) ? ` (\u0437\u0430\u0440\u0430\u0437: ${st.cooks.map(esc).join(", ")})` : " (\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0449\u0435 \u043D\u0456\u043A\u043E\u0433\u043E \u2014 \u043F\u0456\u0434\u0435 \u0432 \xAB\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u043D\u044F\xBB)"}`)}</div>
@@ -4269,6 +4366,59 @@ var __objRest = (source, exclude) => {
       img.src = URL.createObjectURL(file);
     });
   }
+  async function hallsSave(halls, go = ((_c) => (_c = ((_b) => (_b = S.data.staff) == null ? void 0 : _b.cfg)() || S.cfg) == null ? void 0 : _c.goTabs)() || 0) {
+    const r = await act("hallsSet", { halls, go }, "\u2705 \u0417\u0430\u043B\u0438 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
+    if (r == null ? void 0 : r.cfg) {
+      S.cfg = r.cfg;
+      S.n = r.cfg.tables || S.n;
+      if (S.data.staff) S.data.staff.cfg = r.cfg;
+      renderMain();
+    }
+  }
+  async function hallEdit(h) {
+    const n = await askVal("\u041D\u0430\u0437\u0432\u0430 (\u0417\u0430\u043B 1, \u0422\u0435\u0440\u0430\u0441\u0430, VIP\u2026)", (h == null ? void 0 : h.n) || "");
+    if (n == null) return null;
+    const c = await askVal("\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u0441\u0442\u043E\u043B\u0456\u0432", String((h == null ? void 0 : h.c) || 10), "number");
+    if (c == null) return null;
+    const ic = await choose("\u0417\u043D\u0430\u0447\u043E\u043A", "", ["\u{1FA91}", "\u{1F33F}", "\u{1F378}", "\u{1F6CB}", "\u{1F389}", "\u2600\uFE0F", "\u{1F3E0}", "\u{1F319}"].map((x) => ({ label: x, val: x }))) || (h == null ? void 0 : h.ic) || "\u{1FA91}";
+    return { n: n.trim() || "\u0417\u0430\u043B", c: +c, ic };
+  }
+  document.addEventListener("click", async (ev) => {
+    var _a2;
+    const el = ev.target.closest("[data-hs]");
+    if (!el || !isAdmin()) return;
+    const a = el.dataset.hs, i = +el.dataset.i, C = ((_a2 = S.data.staff) == null ? void 0 : _a2.cfg) || S.cfg || {}, H = (C.halls || []).map((h) => __spreadValues({}, h));
+    if (a === "add") {
+      if (!H.length) H.push({ n: "\u0417\u0430\u043B", ic: "\u{1FA91}", c: S.n });
+      const h = await hallEdit({ n: H.length > 1 ? "\u0417\u0430\u043B " + (H.length + 1) : "\u0422\u0435\u0440\u0430\u0441\u0430", c: 8, ic: H.length > 1 ? "\u{1FA91}" : "\u{1F33F}" });
+      if (h) {
+        H.push(h);
+        hallsSave(H);
+      }
+      return;
+    }
+    if (a === "ed") {
+      const h = await hallEdit(H[i]);
+      if (h) {
+        H[i] = h;
+        hallsSave(H);
+      }
+      return;
+    }
+    if (a === "up") {
+      [H[i - 1], H[i]] = [H[i], H[i - 1]];
+      return hallsSave(H);
+    }
+    if (a === "del") {
+      if (!await confirmBox(`\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \xAB${H[i].n}\xBB? \u0421\u0442\u043E\u043B\u0438 \u0434\u0430\u043B\u0456 \u043F\u0435\u0440\u0435\u043D\u0443\u043C\u0435\u0440\u0443\u044E\u0442\u044C\u0441\u044F.`)) return;
+      H.splice(i, 1);
+      return hallsSave(H);
+    }
+    if (a === "go") {
+      const g = await choose("\u{1F6F5} \u0417 \u0441\u043E\u0431\u043E\u044E \u0456 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430", "\u0414\u0435 \u043F\u043E\u043A\u0430\u0437\u0443\u0432\u0430\u0442\u0438 \u0432 \u043A\u0430\u0441\u0456", [["0", "\u0423 \u0437\u0430\u043B\u0456 \u2014 \u0441\u0442\u0440\u0456\u0447\u043A\u043E\u044E"], ["1", "\u041E\u0434\u043D\u0430 \u0432\u043A\u043B\u0430\u0434\u043A\u0430"], ["2", "\u0414\u0432\u0456 \u0432\u043A\u043B\u0430\u0434\u043A\u0438"]].map(([v, l]) => ({ label: l, val: v })));
+      if (g != null) hallsSave(H, +g);
+    }
+  });
   const LOY_W = { hall: "\u{1FA91} \u0437\u0430\u043B", pick: "\u{1F961} \u0437 \u0441\u043E\u0431\u043E\u044E", del: "\u{1F6F5} \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430" }, LOY_D = ["", "\u041F\u043D", "\u0412\u0442", "\u0421\u0440", "\u0427\u0442", "\u041F\u0442", "\u0421\u0431", "\u041D\u0434"];
   const bdTxt = (bd) => bd ? `${bd.slice(3)}.${bd.slice(0, 2)}` : "";
   const ruleName = (r) => r.name || ({ cat: `\u2212${r.pct}%`, happy: `\u0429\u0430\u0441\u043B\u0438\u0432\u0456 \u0433\u043E\u0434\u0438\u043D\u0438 \u2212${r.pct}%`, nth: `\u041A\u043E\u0436\u043D\u0430 ${r.n}-\u0442\u0430 \u0432 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A`, sum: r.gift ? `\u0412\u0456\u0434 ${r.min} \u20B4 \u2014 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A` : `\u0412\u0456\u0434 ${r.min} \u20B4 \u2212${r.pct}%`, bday: `\u0414\u0435\u043D\u044C \u043D\u0430\u0440\u043E\u0434\u0436\u0435\u043D\u043D\u044F \u2212${r.pct}%`, pair: `\u041A\u043E\u0436\u043D\u0430 ${r.n}-\u0442\u0430 \u2212${r.pct}%`, combo: `\u041F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A: ${(r.gifts || []).join(" / ")}`, week: `\u0421\u0442\u0440\u0430\u0432\u0430 \u0442\u0438\u0436\u043D\u044F \u2212${r.pct}%` }[r.type] || "\u0410\u043A\u0446\u0456\u044F");

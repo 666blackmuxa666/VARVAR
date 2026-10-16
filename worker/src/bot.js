@@ -775,7 +775,7 @@ async function handleCallback(q, env) {
     const r = await obCallback(env, uid, q.data.split(':').slice(1));
     if (r.expired) { await edit('⌛ Замовлення застаріло. Почніть заново: «➕ Замовлення».'); return answer(''); }
     if (r.cancel) { await edit('✖ Замовлення скасовано.'); return answer(''); }
-    if (r.tablePick) { const v = await tablePick(env, (await openTables(env)).map(x => x.t), tablesCount(env)); await edit(v.text, v.markup); return answer(''); }
+    if (r.tablePick) { const v = await tablePick(env, (await openTables(env)).map(x => x.t), tablesCount(env), r.hall); await edit(v.text, v.markup); return answer(''); }
     if (r.comment) {
       r.ob.mid = mid; r.ob.chat = chat; await putOb(env, uid, r.ob);
       await env.DB.put('st:' + uid, 'ocom', { expirationTtl: 600 });

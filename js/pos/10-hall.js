@@ -3,7 +3,9 @@
     const pending = new Set(S.events.filter(e => e.k === 'guest' && e.s === 'new').map(e => e.t));
     const calls = {}; for (const e of S.events) if (e.k === 'call' && e.s === 'new') calls[e.t] = e;
     const bell = t => calls[t] ? `<span class="callbell${Date.now() - calls[t].ts > 60e3 ? ' late' : ''}" title="Кличе офіціанта">🔔</span>` : '';
-    const tiles = Array.from({ length: S.n }, (_, i) => i + 1).map(t => {
+    const V = hallViews(), cur = V.find(v => v.id === S.hall) || V[0], go = cur.go, hot = t => pending.has(t) || calls[t] || S.tables[t]?.check || S.tables[t]?.pwait;
+    const rng = go ? [] : hallRng(cur, calls);
+    const tiles = rng.map(t => {
       const b = S.tables[t];
       const bk = (S.books || []).find(x => x.t === t && x.st === 'ok');
       if (!b) return `<button class="tbl${calls[t] ? ' calling' : ''}${bk ? ' booked' : ''}" data-a="table" data-t="${t}">${bell(t)}<div class="n">${t}</div><div class="st">${bk ? `📅 ${bk.time} · ${esc(bk.name)}` : 'вільний'}</div></button>`;
@@ -12,10 +14,18 @@
       return `<button class="tbl ${cls}${calls[t] ? ' calling' : ''}" data-a="table" data-t="${t}">${bell(t)}${tag}<div class="n">${t}</div><div class="st">${b.pwait ? (due ? `оплачено · доплата ${money(due)}` : 'оплачено — підтвердіть') : `${b.orders} замовл.${b.disc ? ` · −${b.disc}%` : ''}`}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">з ${b.opened ? hhmm(b.opened) : '—'}</div></button>`;
     }).join('');
     const gos = list.filter(b => b.t > 1000 && b.go);
-    const strip = !gos.length ? '' : `<div class="go-strip">${gos.map(b => { const g = b.go, late = g.st === 'new' && Date.now() - g.at > 60e3;
-      return `<button class="go-t st-${g.st}${pending.has(b.t) ? ' new' : ''}${late ? ' late' : ''}" data-a="table" data-t="${b.t}"><b>${g.kind === 'del' ? '🛵' : '🥡'} ${tn(b.t)}</b><span>${esc(g.name || '')}</span><small>${GOST[g.st] || g.st}${g.when ? ' · на ' + g.when : ''}${goTileInfo(g)}</small><i class="money">${money(b.pay2)}</i></button>`; }).join('')}</div>`;
-    return `<div class="head"><h1>Зал</h1>
-      ${isCook() || isCour() ? '' : inboxBtn()}${isCook() || isCour() ? '' : S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="Нові броні — підтвердіть">📅 ${S.bkNew} нов.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">📅 ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="Бронювання">📅</button>`}</div>${strip}<div class="tables">${tiles}</div>`;
+    const goTileHTML = b => { const g = b.go, late = g.st === 'new' && Date.now() - g.at > 60e3;
+      return `<button class="go-t st-${g.st}${pending.has(b.t) ? ' new' : ''}${late ? ' late' : ''}" data-a="table" data-t="${b.t}"><b>${g.kind === 'del' ? '🛵' : '🥡'} ${tn(b.t)}</b><span>${esc(g.name || '')}</span><small>${GOST[g.st] || g.st}${g.when ? ' · на ' + g.when : ''}${goTileInfo(g)}</small><i class="money">${money(b.pay2)}</i></button>`; };
+    const strip = !gos.length ? '' : `<div class="go-strip">${gos.map(goTileHTML).join('')}</div>`;
+    const goL = gos.filter(b => go === 'all' || (go === 'del' ? b.go.kind === 'del' : b.go.kind !== 'del')), goNew = gos.filter(b => b.go.st === 'new').length;
+    const tab = v => { const n = v.go ? gos.filter(b => v.go === 'all' || (v.go === 'del' ? b.go.kind === 'del' : b.go.kind !== 'del')).length : Object.keys(S.tables).filter(t => t >= v.from && t <= v.to).length, h = v.go ? gos.some(b => b.go.st === 'new' && (v.go === 'all' || (v.go === 'del') === (b.go.kind === 'del'))) : Array.from({ length: v.to - v.from + 1 }, (_, i) => v.from + i).some(hot);
+      return `<button class="${v.id === cur.id ? 'on' : ''}${h ? ' hot' : ''}" data-hl="set" data-h="${v.id}">${v.ic} ${esc(v.n)}${n ? ` <b>${n}</b>` : ''}</button>`; };
+    const tabs = V.map(tab), bar = V.length > 1 ? `<div class="hall-tabs">${tabs.join('')}</div>` : '', othHot = tabs.some((x, i) => V[i].id !== cur.id && x.includes(' hot"')); // 📱 на телефоні вкладок немає — крапка на кнопці залу
+    const tools = go ? '' : `<div class="hall-tools"><div class="seg">${[['mine', '👤 Мої'], ['busy', '🔥 Зайняті'], ['all', 'Усі']].map(([k, l]) => `<button class="${S.hf === k ? 'on' : ''}" data-hl="hf" data-h="${k}">${l}</button>`).join('')}</div><input id="hallQ" inputmode="numeric" placeholder="🔎 №" autocomplete="off" maxlength="3"></div>`;
+    const goTile = !go && S.cfg?.goTabs && gos.length ? `<button class="go-sum${goNew ? ' new' : ''}" data-hl="set" data-h="${V.find(v => v.go)?.id}">🛵 ${gos.length} ${goNew ? `· <b>${goNew} нов.</b>` : 'в роботі'} →</button>` : '';
+    const body = go ? (goL.length ? `<div class="go-strip go-grid">${goL.map(goTileHTML).join('')}</div>` : '<div class="muted" style="padding:14px">Замовлень зараз немає</div>') : `${S.cfg?.goTabs ? goTile : strip}<div class="tables${rng.length > 24 ? ' compact' : ''}">${tiles || `<div class="muted" style="padding:14px">${S.hf === 'mine' ? 'У вас зараз немає столів' : 'Зайнятих столів немає'}</div>`}</div>`;
+    return `<div class="head"><h1>${V.length > 1 ? `<button class="hall-pick${othHot ? ' hot' : ''}" data-hl="pick">${cur.ic} ${esc(cur.n)} ▾</button>` : 'Зал'}</h1>
+      ${isCook() || isCour() ? '' : inboxBtn()}${isCook() || isCour() ? '' : S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="Нові броні — підтвердіть">📅 ${S.bkNew} нов.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">📅 ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="Бронювання">📅</button>`}</div>${bar}${tools}${body}`;
   }
 
   // ---------- стрічка ----------
@@ -213,7 +223,7 @@
   }
 
   function hallGrid(m) {
-    const w = m.clientWidth || innerWidth, h = Math.max(200, (m.clientHeight || innerHeight) - 90 - (Object.keys(S.tables).some(t => t > 1000) ? 74 : 0)), n = S.n; // 74 — ряд доставок
+    const w = m.clientWidth || innerWidth, h = Math.max(200, (m.clientHeight || innerHeight) - 90 - (Object.keys(S.tables).some(t => t > 1000) ? 74 : 0) - (hallViews().length > 1 ? 46 : 0) - 44), V = hallViews(), cur = V.find(v => v.id === S.hall) || V[0], n = Math.max(1, cur.go ? 1 : hallRng(cur).length); // 74 — ряд доставок, 46 — вкладки залів, 44 — фільтри
     let best = [1, n], score = 1e9;
     for (let c = 1; c <= n; c++) {
       const r = Math.ceil(n / c), empty = c * r - n, ratio = (w / c) / (h / r);
@@ -243,3 +253,39 @@
     const voids = (S.data.cvoids || []).length ? `<details class="c-card k-rm"><summary><span class="c-tm">🚫</span><span class="c-t">Скасовані страви</span><span class="c-pay">${S.data.cvoids.length} шт.</span><b class="money c-sum">${money(S.data.cvoids.reduce((s, v) => s + (v.sum || 0), 0))}</b></summary><div class="c-body">${[...S.data.cvoids].reverse().map(v => `<div class="kv"><span>${v.at} · стіл ${tn(v.t)} · <b>${esc(v.name)}</b> — <i>${esc(v.reason || '')}</i> <span class="muted">(${esc(v.by || '')})</span></span><span class="kv-r"><b class="money">${money(v.sum)}</b>${isToday && isAdmin() ? `<button class="c-b ok" data-a="vBack" data-ts="${v.ts}">↩️ На стіл</button>` : ''}</span></div>`).join('')}</div></details>` : '';
     return `${top}<div class="c-list">${[...l].reverse().map(card).join('') || `<div class="c-empty">🧾 ${isToday ? 'Сьогодні закритих рахунків ще немає' : 'Цього дня закритих рахунків немає'}</div>`}${voids}</div>`;
   }
+
+  // ---------- 🏛 зали (Налаштування → Правила роботи → Зали) ----------
+  // столи нумеруються підряд через усі зали; «з собою» й доставка — у залі стрічкою (goTabs 0), однією вкладкою (1) або двома (2)
+  S.hall = store.get('hall', ''); S.hf = store.get('hf', 'all');
+  function hallViews() {
+    const H = S.cfg?.halls?.length ? S.cfg.halls : [{ n: 'Зал', ic: '🪑', c: S.n }]; let a = 1;
+    const V = H.map((h, i) => { const v = { id: 'h' + i, n: h.n, ic: h.ic || '🪑', from: a, to: Math.min(S.n, a + h.c - 1) }; a += h.c; return v; });
+    const g = S.cfg?.goTabs; if (g === 1) V.push({ id: 'go', go: 'all', n: 'З собою і доставка', ic: '🛵' }); if (g === 2) V.push({ id: 'pick', go: 'pick', n: 'З собою', ic: '🥡' }, { id: 'del', go: 'del', n: 'Доставка', ic: '🛵' });
+    if (!isAdmin() && H.length > 1) { const mine = store.get('myHalls', null); if (mine?.length) return V.filter(v => v.go || mine.includes(v.id)); } // 👤 офіціант бачить свої зали (вибір на пристрої)
+    return V;
+  }
+  const hallRng = (cur, calls = {}) => Array.from({ length: Math.max(0, cur.to - cur.from + 1) }, (_, i) => cur.from + i).filter(t => S.hf === 'busy' ? S.tables[t] || calls[t] : S.hf === 'mine' ? S.tables[t]?.waiter === S.me?.name : true);
+  const hallSet = h => { S.hall = h; store.set('hall', h); renderMain(); };
+  async function hallPick() {
+    const all = isAdmin() ? null : (S.cfg?.halls?.length > 1 ? 1 : null), V = hallViews();
+    const h = await choose('🏛 Зал', '', [...V.map(v => ({ label: `${v.ic} ${v.n}${v.go ? '' : ` · ${v.from}–${v.to}`}`, val: v.id })), ...(all ? [{ label: '⭐ Мої зали…', val: '*' }] : [])]);
+    if (h === '*') return myHalls(); if (h) hallSet(h);
+  }
+  async function myHalls() { // офіціант обирає, які зали показувати на цьому пристрої
+    const H = S.cfg.halls, cur = store.get('myHalls', []) || [], pick = new Set(cur);
+    for (;;) {
+      const v = await choose('⭐ Мої зали', 'Позначте зали, які показувати на цьому пристрої. Порожньо — усі.', [...H.map((h, i) => ({ label: `${pick.has('h' + i) ? '✅' : '▫️'} ${h.ic} ${h.n}`, val: 'h' + i })), { label: '💾 Готово', val: 'ok', cls: 'primary' }]);
+      if (!v) return; if (v === 'ok') break; pick.has(v) ? pick.delete(v) : pick.add(v);
+    }
+    store.set('myHalls', [...pick]); if (pick.size && !pick.has(S.hall)) S.hall = [...pick][0]; renderMain();
+  }
+  document.addEventListener('click', ev => {
+    const el = ev.target.closest('[data-hl]'); if (!el) return; const a = el.dataset.hl;
+    if (a === 'set') return hallSet(el.dataset.h);
+    if (a === 'pick') return hallPick();
+    if (a === 'hf') { S.hf = el.dataset.h; store.set('hf', S.hf); return renderMain(); }
+  });
+  document.addEventListener('keydown', ev => { // 🔎 № столу + Enter — відкрити стіл (з будь-якого залу)
+    if (ev.target.id !== 'hallQ' || ev.key !== 'Enter') return; const t = +ev.target.value; ev.target.value = '';
+    if (t >= 1 && t <= S.n) { const v = hallViews().find(v => !v.go && t >= v.from && t <= v.to); if (v && v.id !== S.hall) { S.hall = v.id; store.set('hall', v.id); } openTable(t); } else toast('⚠️ Немає столу ' + (t || ''));
+  });

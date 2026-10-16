@@ -211,7 +211,7 @@ export async function handle(req, env) {
       if (req.method === 'GET' && /^\/(pos\.html|pos-sw\.js|pos\.webmanifest|css\/|js\/|printer\/logo\.png)/.test(url.pathname)) return proxySite(url, env);
       return json({ error: 'not_found' }, 404);
     } catch (e) {
-      return json({ error: 'bad_request' }, 400);
+      console.error('bad_request', e?.stack || e); return json({ error: 'bad_request' }, 400);
     }
   }
 }
