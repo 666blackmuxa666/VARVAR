@@ -2,7 +2,7 @@
 window.VVSkin = (() => {
   const BASE = { acc: '', bg: 'theme', contrast: 5, muted: 5, bgfx: 'none', r: 18, rb: 14, shape: 'auto', h: 48, pad: 16, gap: 10, card: 'solid', shadow: 'none', border: 'none', caps: false, font: '', fonth: 'same', fs: 15, hw: 800, prim: 'fill', sec: 'fill', seg: 'dark', tabs: 'seg', tbl: 'gold', nav: 'bar', navn: '8', navon: 'accent', navlbl: true, modal: 'center', anim: true, win: 'none' };
   const PRE = {
-    varvar: ['⭐ VARVAR', 'ваш стиль: світіння, Rubik, плаваюче меню', { bgfx: 'glow', r: 22, rb: 17, h: 42, pad: 11, gap: 11, shadow: 'soft', caps: true, font: 'rubik', fonth: 'rubik', fs: 14, hw: 700, nav: 'float' }],
+    varvar: ['⭐ Класичний', 'світіння, Rubik, плаваюче меню', { bgfx: 'glow', r: 22, rb: 17, h: 42, pad: 11, gap: 11, shadow: 'soft', caps: true, font: 'rubik', fonth: 'rubik', fs: 14, hw: 700, nav: 'float' }],
     // 💎 готові теми — кожна з власною формою вікон, кольором, шрифтом і меню
     noir: ['🖤 Нуар і золото', 'кутики, Prata, золото', { bg: 'amoled', acc: '#d4af37', win: 'brackets', r: 0, rb: 0, shape: 'square', h: 46, card: 'outline', border: 'accent', caps: true, font: 'jost', fonth: 'prata', hw: 500, prim: 'outline', sec: 'ghost', seg: 'line', tabs: 'line', tbl: 'frame', nav: 'bar', navon: 'text', modal: 'center' }],
     deco: ['🏛 Ар-деко', 'подвійна рамка, Гетсбі', { bg: 'black', acc: '#c9a45c', win: 'deco', r: 0, rb: 2, h: 46, pad: 18, card: 'solid', caps: true, font: 'jost', fonth: 'prata', hw: 600, prim: 'outline', sec: 'outline', seg: 'line', tabs: 'line', tbl: 'frame', navon: 'dark' }],

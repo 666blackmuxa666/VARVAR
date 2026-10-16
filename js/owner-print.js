@@ -83,7 +83,7 @@ window.OWNPRINT = (() => {
     const http = api.replace(/^https:/, 'http:');
     const cmd = `@echo off
 chcp 65001 >nul
-title VARVAR print - install
+title ATOM print - install
 net session >nul 2>&1
 if errorlevel 1 goto elevate
 set D=%ProgramData%\\VARVAR-print
@@ -104,7 +104,7 @@ set S=%ProgramData%\\Microsoft\\Windows\\Start Menu\\Programs\\StartUp\\VARVAR-p
 > "%D%\\uninstall.cmd" echo @echo off
 >> "%D%\\uninstall.cmd" echo del "%S%" 2^>nul
 >> "%D%\\uninstall.cmd" echo powershell -NoProfile -ExecutionPolicy Bypass -File "%D%\\varvar-print.ps1" -Stop
->> "%D%\\uninstall.cmd" echo echo VARVAR print removed.
+>> "%D%\\uninstall.cmd" echo echo ATOM print removed.
 >> "%D%\\uninstall.cmd" echo pause
 wscript "%S%"
 echo  [4/4] Started and added to Windows startup (for all users).

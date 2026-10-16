@@ -11,7 +11,7 @@ window.OWNSITE = (() => {
   const STD = { about: '📝 Про нас', promos: '🎉 Акції', menu: '🍽 Хіти меню', events: '🎵 Афіша', gallery: '📷 Галерея', hookah: '💨 Кальяни', banquet: '🥂 Банкети', book: '📅 Бронювання', cert: '🎟 Сертифікати', reviews: '⭐ Відгуки', contacts: '📍 Контакти й карта' };
   const CT = { text: '📝 Текст', media: '🖼 Текст + фото', feats: '✨ Переваги-плитки', links: '🔗 Кнопки-посилання', quote: '💬 Цитата', sep: '➖ Розділювач', soc: '📲 Соцмережі' };
   const TPL = {
-    varvar: ['🌙 Темний VARVAR', { ...DEF }, { lay: 'full' }],
+    varvar: ['🌙 Темний класичний', { ...DEF }, { lay: 'full' }],
     light: ['☀️ Світлий мінімал', { ...DEF, shp: 'bubble', mode: 'light', bg: '#f6f5f2', card: '#ffffff', text: '#1d1d1f', accent: '#1f6feb', ink: '#ffffff', fh: 'Manrope', fb: 'Manrope', r: 14, cards: 'shadow', nav: 'solid', anim: 'fade' }, { lay: 'split', h: 70 }],
     cafe: ['☕ Кав\'ярня', { ...DEF, shp: 'arch', mode: 'light', bg: '#f3ebe1', card: '#fffaf3', text: '#3b2a1e', accent: '#a0522d', ink: '#ffffff', fh: 'Playfair Display', fb: 'Lora', r: 20, cards: 'shadow', bgfx: 'noise', anim: 'up' }, { lay: 'full', dim: 30, al: 'c' }],
     neon: ['🍸 Бар / неон', { ...DEF, shp: 'neon', bg: '#0b0b14', card: '#151526', text: '#eeeeff', accent: '#ff2fb3', ink: '#ffffff', fh: 'Unbounded', fb: 'Manrope', bgfx: 'grid', btn: 'pill', r: 16, anim: 'up', caps: 1 }, { lay: 'full', dim: 55, al: 'c' }],
@@ -75,7 +75,7 @@ window.OWNSITE = (() => {
   const al = p => (M === 'menu' && /^theme(\.|$)/.test(p) ? 'menuTheme' + p.slice(5) : p); /* у меню «theme.*» = menuTheme */
   const MDEF = { ...DEF, bg: '#141414', card: '#1d1d1d', text: '#eeeeee', r: 14, caps: 1, lay: 'grid', cols: 2, ratio: '1', fit: 'contain', phbg: 'tex', phC: '#222222', phImg: '', cats: 'pill', catsSticky: 1, ttl: 'l', ttlLine: 0, ttlSz: 30, desc: 1, size: 1, add: 'round', price: 'accent', logo: 0, note: { t: '', c: '#f2c14e' } };
   const MTPL = {
-    varvar: ['🌙 Темний VARVAR', {}],
+    varvar: ['🌙 Темний класичний', {}],
     light: ['☀️ Світле', { ...TPL.light[1], lay: 'list', phbg: 'card', cats: 'line', add: 'plus', ttlLine: 1 }],
     cafe: ['☕ Кав\'ярня', { ...TPL.cafe[1], lay: 'grid', phbg: 'color', phC: '#efe3d3', fit: 'contain', cats: 'pill', ttl: 'c', ttlLine: 1, caps: 0 }],
     neon: ['🍸 Бар / неон', { ...TPL.neon[1], lay: 'big', ratio: '16/9', fit: 'cover', phbg: 'none', cats: 'box', add: 'wide' }],
@@ -166,7 +166,7 @@ window.OWNSITE = (() => {
     card: () => preTheme() + card('🗂 Вигляд страв', chips('theme.lay', [['grid', '▦ Сітка'], ['list', '☰ Список з фото'], ['big', '▭ Великі фото'], ['text', '📜 Без фото']]) + (get('theme.lay') === 'grid' ? range('theme.cols', 'Карток у ряд на телефоні', 1, 3) : ''), 'Напої й додатки лишаються компактними, щоб меню не розтягувалось.')
       + card('🔲 Картки', chips('theme.cards', [['line', 'З рамкою'], ['shadow', 'З тінню'], ['flat', 'Плоскі']]) + '<div class="muted" style="font-size:12px;margin:10px 0 4px">🔷 Форма вікон</div>' + chips('theme.shp', [['', 'Звичайні'], ['arch', 'Арка'], ['ticket', 'Квиток'], ['cut', 'Зрізані кути'], ['notch', 'Загнутий кут'], ['slant', 'Скіс'], ['leaf', 'Листок'], ['bubble', 'Бульбашка'], ['pill', 'Капсула'], ['sketch', 'Від руки'], ['brutal', 'Брутал'], ['deco', 'Ар-деко'], ['neon', 'Неон'], ['glass', 'Скло'], ['scallop', 'Хвиля знизу'], ['frame', 'Рамка з відступом'], ['folder', 'Папка'], ['line', 'Лише лінія'], ['brackets', 'Кутики'], ['polaroid', 'Полароїд']]) + range('theme.r', 'Заокруглення', 0, 28, 'px'))
       + card('📝 Що показувати', tgl('theme.desc', 'Опис страви') + tgl('theme.size', 'Вага / обʼєм') + tgl('theme.caps', 'НАЗВИ СТРАВ ВЕЛИКИМИ')),
-    ph: () => preTheme() + card('🖼 Фон під фото страв', chips('theme.phbg', [['tex', 'Текстура VARVAR'], ['card', 'Колір картки'], ['accent', 'Відтінок акценту'], ['color', 'Свій колір'], ['img', 'Фото / текстура'], ['none', 'Прозорий']])
+    ph: () => preTheme() + card('🖼 Фон під фото страв', chips('theme.phbg', [['tex', 'Текстура (класика)'], ['card', 'Колір картки'], ['accent', 'Відтінок акценту'], ['color', 'Свій колір'], ['img', 'Фото / текстура'], ['none', 'Прозорий']])
         + (get('theme.phbg') === 'color' ? `<div class="sb-cols">${color('theme.phC', 'Колір фону')}</div>` : '')
         + (get('theme.phbg') === 'img' ? imgf('theme.phImg', 'Фон під фото') + `<div class="sb-lib">${BGLIB.map(n => `<button type="button" data-sb="libPh" data-u="img/site/${n}.webp" style="background-image:url('img/site/${n}.webp')"></button>`).join('')}</div>` : ''), 'Фото страв з прозорим фоном (PNG) лежать на цьому фоні.')
       + card('📐 Форма фото', chips('theme.ratio', [['1', '◻ Квадрат'], ['4/3', '▭ 4:3'], ['16/9', '▬ 16:9'], ['3/4', '▯ 3:4']]) + chips('theme.fit', [['contain', 'Вписати цілком'], ['cover', 'Заповнити (обрізати)']])),
@@ -266,7 +266,7 @@ window.OWNSITE = (() => {
   function editAddr(i) {
     if (i < 0) { (D.addrs ||= []).push({ n: '', a: '', h: '', p: '', m: '' }); i = D.addrs.length - 1; touch(); }
     const p = `addrs.${i}`;
-    subForm('📍 Адреса', p, () => card('✏️ Точка', text(p + '.n', 'Назва', 'напр. VARVAR Центр', 60) + text(p + '.a', 'Адреса', 'вул. …', 200) + text(p + '.h', 'Години', '10:00–22:00', 60) + text(p + '.p', 'Телефон', '+380…', 30) + text(p + '.m', 'Посилання на Google Maps', 'https://maps.app.goo.gl/…', 300)));
+    subForm('📍 Адреса', p, () => card('✏️ Точка', text(p + '.n', 'Назва', 'напр. Центр', 60) + text(p + '.a', 'Адреса', 'вул. …', 200) + text(p + '.h', 'Години', '10:00–22:00', 60) + text(p + '.p', 'Телефон', '+380…', 30) + text(p + '.m', 'Посилання на Google Maps', 'https://maps.app.goo.gl/…', 300)));
   }
 
   // ---------- дії ----------

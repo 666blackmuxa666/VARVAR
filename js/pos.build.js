@@ -138,6 +138,13 @@ var __objRest = (source, exclude) => {
         li.hidden = false;
       } else if (VENUE) li.hidden = true;
     }
+    const at = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+    if (at) at.content = nm || "\u041A\u0430\u0441\u0430";
+    const mf = document.querySelector('link[rel="manifest"]');
+    if (mf && nm) {
+      const b = new URL(".", location.href).href;
+      mf.href = "data:application/manifest+json," + encodeURIComponent(JSON.stringify({ name: nm + " \u2014 \u043A\u0430\u0441\u0430", short_name: nm, start_url: b + "pos.html", scope: b, id: b + "pos.html", display: "standalone", background_color: "#0b0b0d", theme_color: "#0b0b0d", orientation: "any", icons: [{ src: b + "img/app/pos.png", sizes: "512x512", type: "image/png" }] }));
+    }
     const sub = $("#loginBrand");
     if (sub) sub.textContent = VENUE || ((_c = S.brand) == null ? void 0 : _c.logo) ? nm : "";
   }
@@ -4948,8 +4955,9 @@ var __objRest = (source, exclude) => {
       <div class="btnrow"><button class="btn sm" data-a="skShare" data-g="${gi}">\u{1F4E4} \u041D\u0430\u0434\u0456\u0441\u043B\u0430\u0442\u0438 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F</button></div></div>`).join("");
   }
   async function skShare(gi) {
+    var _a2;
     const B = S.data.skBuy, gs = gi === "" || gi == null ? B.list : [B.list[+gi]];
-    const text = `\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F VARVAR:
+    const text = `\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F ${((_a2 = S.brand) == null ? void 0 : _a2.name) || "VARVAR"}:
 ${gs.map((g) => `${gs.length > 1 ? `
 ${g.sup}:
 ` : ""}${g.items.map((i) => `\u2022 ${i.n} \u2014 ${fq(i.need, i.u)}`).join("\n")}`).join("\n")}`;

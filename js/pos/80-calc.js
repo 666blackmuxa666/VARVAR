@@ -166,7 +166,7 @@
   }
   async function skShare(gi) {
     const B = S.data.skBuy, gs = gi === '' || gi == null ? B.list : [B.list[+gi]];
-    const text = `Замовлення VARVAR:\n${gs.map(g => `${gs.length > 1 ? `\n${g.sup}:\n` : ''}${g.items.map(i => `• ${i.n} — ${fq(i.need, i.u)}`).join('\n')}`).join('\n')}`;
+    const text = `Замовлення ${S.brand?.name || "VARVAR"}:\n${gs.map(g => `${gs.length > 1 ? `\n${g.sup}:\n` : ''}${g.items.map(i => `• ${i.n} — ${fq(i.need, i.u)}`).join('\n')}`).join('\n')}`;
     try { if (navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(text); toast('📋 Скопійовано — вставте в месенджер постачальнику'); } } catch {}
   }
   // 🧾 накладні

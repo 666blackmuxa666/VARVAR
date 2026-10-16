@@ -25,7 +25,9 @@ export const SITE_DEF = {
 };
 const IMG_OK = u => /^(https:\/\/[^\s"'<>()]+|img\/[a-z0-9/_.-]+)$/i.test(u) && u.length <= 300;
 const TXT = ['name', 'tagline', 'about', 'phone', 'addr', 'insta', 'tg', 'gmaps', 'reviewsUrl', 'banquet', 'hookah', 'hero', 'logo'];
-export const getSite = async env => ({ ...SITE_DEF, ...((await env.DB.get('site', 'json')) || {}) });
+// 🏪 інші заклади не успадковують тексти й контакти VARVAR — лише технічні значення
+const SITE_NEW = { ...SITE_DEF, name: 'Новий заклад', tagline: '', about: '', phone: '', addr: '', gmaps: '', geo: null, reviewsUrl: '', banquet: '', hookah: '' };
+export const getSite = async env => ({ ...(env.VENUE && env.VENUE !== MAIN ? SITE_NEW : SITE_DEF), ...((await env.DB.get('site', 'json')) || {}) });
 export async function setSite(env, k, v) {
   return L(env, 'site', async () => {
     const s = await getSite(env);

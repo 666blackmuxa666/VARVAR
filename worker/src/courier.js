@@ -192,7 +192,7 @@ export async function courUpdate(u, env) {
     await env.DB.delete('ctl:' + lk[1]);
     return ctg(env, 'sendMessage', { chat_id: chat, text: `✅ ${esc(name)}, Telegram підключено!\nСюди приходитимуть нові доставки — натискайте «✋ Беру».`, parse_mode: 'HTML', reply_markup: { keyboard: [[{ text: '💵 Моя готівка' }, { text: '🛵 Мої доставки' }]], resize_keyboard: true, is_persistent: true } }); }
   const name = Object.entries(await getLinks(env)).find(([, c]) => c === chat)?.[0];
-  if (!name) return ctg(env, 'sendMessage', { chat_id: chat, text: '🛵 Бот кур\'єрів Varvar.\nЩоб отримувати доставки: увійдіть у касу кур\'єрським PIN і натисніть «✈️ Telegram».' });
+  if (!name) return ctg(env, 'sendMessage', { chat_id: chat, text: '🛵 Бот кур\'єрів.\nЩоб отримувати доставки: увійдіть у касу кур\'єрським PIN і натисніть «✈️ Telegram».' });
   if (m.photo?.length) { // 📷 фото доставки → у чат персоналу (на сервері не зберігаємо)
     const t = await env.DB.get('cph:' + chat); if (!t) return;
     const f = await ctg(env, 'getFile', { file_id: m.photo[m.photo.length - 1].file_id }).then(r => r.json()).catch(() => null); if (!f?.result?.file_path) return;

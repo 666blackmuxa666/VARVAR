@@ -290,7 +290,7 @@ async function staffOne(env, id) {
     [{ text: '⬅️ Усі працівники', callback_data: 'stfbk' }]] } };
 }
 const staffEdited = r => r.error ? { text: '⚠️ ' + r.error } : { text: `✅ <b>${esc(r.s.name)}</b> · ${ROLE_ONE[roleOf(r.s)]}${r.old !== r.s.name ? `\n✏️ Було: ${esc(r.old)} — графік, зарплату й чайові перенесено` : ''}\nВхід у касу — заново.` };
-const TEST_PRINT = () => [['logo'], ['big', 'ТЕСТ ДРУКУ'], ['c', 'VARVAR · ' + hhmm()], ['hr'], ['l', 'Українські літери: Іі Її Єє Ґґ'], ['lr', '2 × Мєско', '760'], ['lr2', 'Всього', '760 грн'], ['hr'], ['gap']];
+const TEST_PRINT = () => [['logo'], ['big', 'ТЕСТ ДРУКУ'], ['c', hhmm()], ['hr'], ['l', 'Українські літери: Іі Її Єє Ґґ'], ['lr', '2 × Мєско', '760'], ['lr2', 'Всього', '760 грн'], ['hr'], ['gap']];
 export const QR_PRINT = (t, img) => [['logo'], ...(t ? [['invb', `СТІЛ ${t}`]] : []), ['inv', 'МЕНЮ ТА ЗАМОВЛЕННЯ'], ['gap'], ['img', img, 220], ['c', 'Скануйте камерою телефона'], ...(t ? [['b', `Замовлення одразу на стіл ${tn(t)}`]] : []), ['s', 'Замовлення доступне 1 годину після сканування'], ['gap']];
 export const TEST_JOB = TEST_PRINT;
 const tablesGrid = (env, act, skip) => chunk(Array.from({ length: tablesCount(env) }, (_, i) => i + 1).filter(n => n !== skip).map(n => ({ text: String(n), callback_data: `${act}:${n}` })), 5);

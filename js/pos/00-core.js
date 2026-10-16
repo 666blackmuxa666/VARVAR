@@ -24,6 +24,8 @@
   function applyBrand() {
     const nm = S.brand?.name || (VENUE ? '' : 'VARVAR'); document.title = (nm ? nm + ' — ' : '') + 'каса';
     const li = $('.logo-img'); if (li) { if (S.brand?.logo) { li.src = S.brand.logo; li.classList.add('own'); li.hidden = false; } else if (VENUE) li.hidden = true; }
+    const at = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if (at) at.content = nm || 'Каса'; // 📱 підпис іконки на головному екрані
+    const mf = document.querySelector('link[rel="manifest"]'); if (mf && nm) { const b = new URL('.', location.href).href; mf.href = 'data:application/manifest+json,' + encodeURIComponent(JSON.stringify({ name: nm + ' — каса', short_name: nm, start_url: b + 'pos.html', scope: b, id: b + 'pos.html', display: 'standalone', background_color: '#0b0b0d', theme_color: '#0b0b0d', orientation: 'any', icons: [{ src: b + 'img/app/pos.png', sizes: '512x512', type: 'image/png' }] })); }
     const sub = $('#loginBrand'); if (sub) sub.textContent = VENUE || S.brand?.logo ? nm : '';
   }
   applyBrand();

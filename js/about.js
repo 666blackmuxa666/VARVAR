@@ -9,7 +9,7 @@
     uk: { nMenu: 'Меню', nBook: 'Бронь', nBanq: 'Банкети', nCont: 'Контакти', nMe: 'Кабінет', order: 'Замовити', book: 'Забронювати', call: 'Подзвонити', route: 'Маршрут',
       hAbout: 'Про нас', f1: 'Власні рецепти й ситні тарілки', f2: 'Кальяни: 50+ смаків', f3: 'Банкети до 20 гостей', f4: 'Доставка й самовивіз', hPromo: 'Акції та події', hHits: 'Хіти меню', allMenu: 'Усе меню →', hGal: 'Атмосфера',
       hHook: 'Кальяни', hBanq: 'Банкети й кейтеринг', banqBtn: 'Залишити заявку', hBook: 'Бронювання столу', kTable: 'Стіл', kBanq: 'Банкет', fName: "Ваше ім'я", fPhone: 'Телефон', fCom: 'Побажання (необовʼязково)',
-      bookSend: 'Забронювати', hCert: 'Подарунковий сертифікат', certTxt: 'Найкращий подарунок після катання — вечеря у Varvar. Залиште заявку, адміністратор зв’яжеться щодо оплати й надішле сертифікат.',
+      bookSend: 'Забронювати', hCert: 'Подарунковий сертифікат', certTxt: 'Найкращий подарунок — вечеря у нас. Залиште заявку, адміністратор зв’яжеться щодо оплати й надішле сертифікат.',
       own: 'Своя', certOwn: 'Сума, ₴', certFrom: 'Від кого', certTo: 'Кому (необовʼязково)', certSend: 'Замовити сертифікат', hRev: 'Відгуки', revAll: 'Усі відгуки на Google', revWrite: 'Залишити відгук', hCont: 'Контакти', daily: 'Щодня',
       openNow: 'Відчинено', closedNow: 'Зачинено', bookOk: 'Заявку прийнято!', bookOkT: 'Підтвердимо найближчим часом. Статус оновлюється тут.', pre: '🍽 Обрати страви заздалегідь', preT: 'Кухня почне готувати до вашого приходу',
       st: { new: '⏳ Чекає підтвердження', ok: '✅ Підтверджено', no: '❌ Відхилено — зателефонуйте нам', came: '🪑 Ви в нас!', noshow: '—', cancel: '↩️ Скасовано' },
@@ -19,7 +19,7 @@
     en: { nMenu: 'Menu', nBook: 'Booking', nBanq: 'Banquets', nCont: 'Contacts', nMe: 'Account', order: 'Order', book: 'Book a table', call: 'Call', route: 'Directions',
       hAbout: 'About us', f1: 'Own recipes & hearty plates', f2: 'Hookahs: 50+ flavours', f3: 'Banquets up to 20 guests', f4: 'Delivery & pickup', hPromo: 'Offers & events', hHits: 'Menu highlights', allMenu: 'Full menu →', hGal: 'Atmosphere',
       hHook: 'Hookahs', hBanq: 'Banquets & catering', banqBtn: 'Send request', hBook: 'Book a table', kTable: 'Table', kBanq: 'Banquet', fName: 'Your name', fPhone: 'Phone', fCom: 'Wishes (optional)',
-      bookSend: 'Book', hCert: 'Gift certificate', certTxt: 'The best gift after skiing — dinner at Varvar. Leave a request and we will contact you about payment.',
+      bookSend: 'Book', hCert: 'Gift certificate', certTxt: 'The best gift — dinner with us. Leave a request and we will contact you about payment.',
       own: 'Custom', certOwn: 'Amount, ₴', certFrom: 'From', certTo: 'To (optional)', certSend: 'Order certificate', hRev: 'Reviews', revAll: 'All reviews on Google', revWrite: 'Write a review', hCont: 'Contacts', daily: 'Daily',
       openNow: 'Open', closedNow: 'Closed', bookOk: 'Request received!', bookOkT: 'We will confirm shortly. Status updates here.', pre: '🍽 Pre-order dishes', preT: 'The kitchen will start before you arrive',
       st: { new: '⏳ Awaiting confirmation', ok: '✅ Confirmed', no: '❌ Declined — please call us', came: '🪑 Welcome!', noshow: '—', cancel: '↩️ Cancelled' },
@@ -41,6 +41,7 @@
   }
   function render() {
     const s = { promos: [], hits: [], photos: [], quotes: [], ...S, phone: S.phone || '' }, tel = 'tel:' + s.phone.replace(/[^\d+]/g, ''), maps = s.gmaps || (Array.isArray(s.geo) ? `https://www.google.com/maps?q=${s.geo[0]},${s.geo[1]}` : `https://www.google.com/maps?q=${encodeURIComponent(s.addr || s.name || '')}`); // новий заклад: полів може ще не бути
+    document.title = s.name + (s.tagline ? ' — ' + s.tagline : ''); { const at = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if (at) at.content = s.name; }
     $('#sName').textContent = s.name; $('#sTag').textContent = s.tagline; $('#sAddr').textContent = s.addr; $('#sAbout').textContent = s.about;
     if (s.hero) { $('#heroBg').style.backgroundImage = `url("${s.hero}")`; $('.hero').classList.add('ph'); }
     const op = isOpen(s), bd = $('#openBadge'); bd.className = 'badge' + (op ? '' : ' off'); const hh = window.VVD ? VVD.hoursToday(s) : s; bd.textContent = `${op ? '🟢 ' + t('openNow') : '🔴 ' + t('closedNow')}${hh ? ` · ${hh.from}–${hh.to}` : ''}`;
@@ -105,9 +106,9 @@
     };
   }
   async function certPage(code) {
-    const { data: c } = await api('/api/cert?code=' + encodeURIComponent(code)).catch(() => ({ data: null })); if (!c || c.error) return;
-    document.body.innerHTML = `<div class="certpage"><div class="certcard"><div class="v">VARVAR</div><div><div class="muted">${t('certP')}${c.to ? ` · ${esc(c.to)}` : ''}</div><div class="s">${money(c.sum)}</div>${c.left !== c.sum ? `<small class="muted">${t('certLeft')} ${money(c.left)}</small>` : ''}</div><div style="display:flex;justify-content:space-between;align-items:end"><span class="c">${esc(c.code)}</span><small class="muted">${c.from ? '♥ ' + esc(c.from) : ''}</small></div></div>
-      <div class="cta noprint" style="margin-top:18px"><button class="btn" onclick="print()">${t('certPrint')}</button><a class="btn alt" href="about.html">VARVAR</a></div></div>`;
+    const { data: c } = await api('/api/cert?code=' + encodeURIComponent(code)).catch(() => ({ data: null })); if (!c || c.error) return; if (!S) S = (await api('/api/site').catch(() => ({ data: null }))).data || null;
+    document.body.innerHTML = `<div class="certpage"><div class="certcard"><div class="v">${esc(S?.name || '')}</div><div><div class="muted">${t('certP')}${c.to ? ` · ${esc(c.to)}` : ''}</div><div class="s">${money(c.sum)}</div>${c.left !== c.sum ? `<small class="muted">${t('certLeft')} ${money(c.left)}</small>` : ''}</div><div style="display:flex;justify-content:space-between;align-items:end"><span class="c">${esc(c.code)}</span><small class="muted">${c.from ? '♥ ' + esc(c.from) : ''}</small></div></div>
+      <div class="cta noprint" style="margin-top:18px"><button class="btn" onclick="print()">${t('certPrint')}</button><a class="btn alt" href="about.html">${esc(S?.name || '←')}</a></div></div>`;
   }
 
   // ---------- 👤 кабінет гостя ----------
