@@ -139,6 +139,10 @@
   // ---------- старт ----------
   $('#lng').onclick = () => { lang = lang === 'uk' ? 'en' : 'uk'; store.set('alang', lang); i18n(); };
   $('#meBtn').onclick = me;
+  // ⬆️ Завжди з початку сторінки: без відновлення старої прокрутки і без «прилипання» до #book з минулого візиту
+  try { history.scrollRestoration = 'manual'; } catch {}
+  if (location.hash && !/^#(me|cert=)/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
+  scrollTo(0, 0);
   const cm = location.hash.match(/^#cert=([A-Z0-9-]+)$/i); if (cm) { certPage(cm[1]); return; }
   i18n(); bookInit(); certInit();
   if (location.hash === '#me') me();
