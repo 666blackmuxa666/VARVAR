@@ -2,7 +2,7 @@
 // Чистий CSS 3D (без бібліотек): підлога-макет, столи з кріслами, декор. Режими 3d / 2d (2d — для редагування).
 // Дані: столи [{t, x, y, sh, r, cls, pin}] (x,y — % підлоги), декор [[kind, x, y, rot, len]], підлога 'wood'|'tile'…
 (function () {
-  var FW = 1000, FH = 640, AX = 56, AZ = -32, ZM = 1, SC = null; // ZM, SC — наближення й прокрутка (переживають перемальовування)
+  var TOUCH = matchMedia('(pointer:coarse)').matches, FW = 1000, FH = 640, AX = 56, AZ = -32, ZM = 1, SC = null; // ZM, SC — наближення й прокрутка (переживають перемальовування)
   // каталог декору: n — підпис, len — довжина за замовчуванням (розтягується), d — глибина
   var K = {
     wall: { n: '🧱 Стіна', len: 200 }, win: { n: '🪟 Вікно', len: 140 }, door: { n: '🚪 Двері' }, col: { n: '◼️ Колона' },
@@ -62,12 +62,18 @@
     for (i = 0; i < all.length; i++) {
       var f = all[i], W = f.clientWidth - 8, two = f.classList.contains('m2'), ed = f.classList.contains('edit'), bw, bh, k, lift = 0;
       if (!W) continue;
-      // 📱 вузький екран: зал «стоїть» уздовж телефона (довга сторона — вертикально), камера трохи пологіша
-      var pt = !ed && W < 600, ax = two ? 0 : pt ? 46 : AX, az = two ? (pt ? -90 : 0) : pt ? -82 : AZ;
-      f.style.setProperty('--ax', ax + 'deg'); f.style.setProperty('--az', az + 'deg'); f.classList.toggle('pt', pt);
-      var a = Math.abs(az) * Math.PI / 180, x = ax * Math.PI / 180;
-      lift = 130 * Math.sin(x); bw = Math.abs(Math.cos(a)) * FW + Math.abs(Math.sin(a)) * FH; bh = (Math.abs(Math.sin(a)) * FW + Math.abs(Math.cos(a)) * FH) * Math.cos(x) + lift;
-      k = Math.max(ed ? .5 : .26, Math.min(1.3, W * .94 / bw)) * (f.classList.contains('edit') ? 1 : ZM);
+      // 📷 камера: з кількох ракурсів беремо той, де зал найбільший і вміщається цілком (на телефоні — зал уздовж екрана)
+      var H = f.parentElement.classList.contains('f3w') ? f.clientHeight - 8 : 0, ax = two ? 0 : AX, cams = ed ? [0] : two ? [0, -90] : [AZ, -58, -88], best = null;
+      if (!two && W < 600 && !ed) ax = 46;
+      for (var c = 0; c < cams.length; c++) {
+        var az0 = ed ? 0 : cams[c], a = Math.abs(az0) * Math.PI / 180, x = ax * Math.PI / 180, lf = 130 * Math.sin(x);
+        var w0 = Math.abs(Math.cos(a)) * FW + Math.abs(Math.sin(a)) * FH, h0 = (Math.abs(Math.sin(a)) * FW + Math.abs(Math.cos(a)) * FH) * Math.cos(x) + lf;
+        var k0 = Math.min(W * .96 / w0, H > 120 && !ed ? H * .96 / h0 : 9);
+        if (!best || k0 > best.k * 1.08) best = { k: k0, az: az0, w: w0, h: h0, lift: lf };
+      }
+      var az = best.az; bw = best.w; bh = best.h; lift = best.lift;
+      f.style.setProperty('--ax', ax + 'deg'); f.style.setProperty('--az', az + 'deg');
+      k = ed ? Math.max(.5, Math.min(1.3, W * .94 / bw)) : Math.max(.2, Math.min(1.3, best.k)) * (TOUCH ? 1 : ZM);
       var st = f.querySelector('.f3-st'), bx = f.querySelector('.f3-box');
       bx.style.width = Math.max(W, bw * k / .94) + 'px'; bx.style.height = bh * k + 'px';
       f.style.setProperty('--k', k); f.style.setProperty('--ty', (lift / 2 * k) + 'px'); f.style.setProperty('--pk', Math.min(3.2, .9 / k));
@@ -130,6 +136,7 @@
     '.f3.edit .f3-fl::after{content:"";position:absolute;inset:0;background:linear-gradient(#ffffff1a 1px,transparent 1px) 0 0/25px 25px,linear-gradient(90deg,#ffffff1a 1px,transparent 1px) 0 0/25px 25px}',
     '.f3.edit .f3-o{cursor:grab;touch-action:none}.f3.edit .f3-o.sel::before{content:"";position:absolute;width:150px;height:150px;left:-75px;top:-75px;border-radius:50%;border:2px solid #f2c14ecc;background:#f2c14e10;box-shadow:0 0 24px #f2c14e33}',
     '.f3.edit .f3-d::after{content:"";position:absolute;width:56px;height:56px;left:-28px;top:-28px}',
+    '@media (pointer:coarse){.f3:not(.edit){overflow:hidden;touch-action:manipulation}.f3.rdy .f3-st,.f3.rdy .f3-pin{transition:none}}',
     '@media (prefers-reduced-motion:reduce){.f3-st,.f3-pin,.f3-box{transition:none}}'
   ].join('\n');
   var tag = document.createElement('style'); tag.textContent = css; document.head.appendChild(tag);
@@ -141,22 +148,8 @@
     var ox = cx - r.left, oy = cy - r.top, px0 = (f.scrollLeft + ox) / f.scrollWidth, py0 = (f.scrollTop + oy) / f.scrollHeight;
     ZM = Math.max(1, Math.min(3.5, z)); if (ZM < 1.03) ZM = 1; f.classList.add('live'); fit();
     f.scrollLeft = px0 * f.scrollWidth - ox; f.scrollTop = py0 * f.scrollHeight - oy;
-    if (!pz) { clearTimeout(f._lv); f._lv = setTimeout(function () { f.classList.remove('live'); }, 150); }
+    { clearTimeout(f._lv); f._lv = setTimeout(function () { f.classList.remove('live'); }, 150); }
   }
-  var P = {}, pz = null, lastTap = 0;
-  function dist() { var k = Object.keys(P); return Math.hypot(P[k[0]].x - P[k[1]].x, P[k[0]].y - P[k[1]].y); }
-  document.addEventListener('pointerdown', function (e) {
-    var f = e.target.closest && e.target.closest('.f3'); if (!f || e.pointerType === 'mouse') return;
-    P[e.pointerId] = { x: e.clientX, y: e.clientY };
-    if (Object.keys(P).length === 2) { pz = { f: f, d: dist(), z: ZM }; f.classList.add('live'); }
-    else if (!f.classList.contains('edit') && !e.target.closest('.f3-pin')) { var n = Date.now(); if (n - lastTap < 300) { zoomAt(f, ZM > 1.4 ? 1 : 2, e.clientX, e.clientY); n = 0; } lastTap = n; }
-  }, true);
-  document.addEventListener('pointermove', function (e) {
-    if (!P[e.pointerId]) return; P[e.pointerId] = { x: e.clientX, y: e.clientY };
-    if (pz && Object.keys(P).length === 2) { var k = Object.keys(P); zoomAt(pz.f, pz.z * dist() / pz.d, (P[k[0]].x + P[k[1]].x) / 2, (P[k[0]].y + P[k[1]].y) / 2); }
-  }, true);
-  function up(e) { delete P[e.pointerId]; if (pz && Object.keys(P).length < 2) { pz.f.classList.remove('live'); pz = null; } }
-  document.addEventListener('pointerup', up, true); document.addEventListener('pointercancel', up, true);
   document.addEventListener('wheel', function (e) {
     var f = e.ctrlKey && e.target.closest && e.target.closest('.f3'); if (!f) return; e.preventDefault();
     zoomAt(f, ZM * Math.exp(-e.deltaY / 120), e.clientX, e.clientY);

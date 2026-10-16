@@ -1061,6 +1061,6 @@ main.hall .f3w{flex:1;display:flex;flex-direction:column;gap:10px;min-width:0}
 .f3-tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:10px 12px;border-radius:16px;background:var(--card);font-size:13px}.f3-tools>b{margin-right:4px}
 .f3-pal{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}.f3-pal button{flex:none;padding:9px 12px;border-radius:14px;background:var(--card2);font-size:13px;white-space:nowrap}.f3-pal button:active{transform:scale(.96)}.f3-pal.fl button.on{background:var(--accent);color:var(--accent-ink)}
 .f3-ic{flex:none;width:38px;height:38px;border-radius:12px;background:var(--card2);color:var(--text);font:700 13px/1 system-ui,sans-serif}.f3-ic:active{transform:scale(.94)}
-@media (max-width:700px){.f3w .f3{flex:none;min-height:0}}
+@media (max-width:700px){.f3w .f3:not(.edit){min-height:0}}
 .f3-zm{display:flex;gap:4px}.f3-zm .btn{min-width:36px;font-size:17px}
 main.hall:has(.f3.edit){overflow-y:auto}main.hall .f3w{min-height:0}.f3w .f3.edit{flex:1 1 0;min-height:260px}
