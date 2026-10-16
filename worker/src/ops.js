@@ -246,6 +246,13 @@ export async function setHalls(env, halls, go) {
   const tot = l.reduce((a, h) => a + h.c, 0); if (tot > 200) return { error: 'Разом до 200 столів' };
   return L(env, 'cfg', async () => { const c = await getCfg(env); if (l.length) { c.halls = l; c.tables = tot; } else delete c.halls; c.goTabs = [0, 1, 2].includes(+go) ? +go : 0; await env.DB.put('cfg', JSON.stringify(c)); return c; });
 }
+// 🗺 схема залу: { стіл: [x, y] } у відсотках площі залу; надсилається вся схема одного залу (from..to)
+export async function setMap(env, pos, from, to) {
+  return L(env, 'cfg', async () => { const c = await getCfg(env), n = c.tables || 200, m = { ...(c.map || {}) }; from = Math.max(1, +from || 1); to = Math.min(n, +to || n);
+    for (const t of Object.keys(m)) if (+t >= from && +t <= to || +t > n) delete m[t];
+    for (const [t, p] of Object.entries(pos || {})) { const k = +t; if (!(k >= from && k <= to) || !Array.isArray(p)) continue; const [x, y] = p.map(v => Math.round(Math.min(100, Math.max(0, +v || 0)) * 2) / 2); m[k] = [x, y]; }
+    c.map = m; await env.DB.put('cfg', JSON.stringify(c)); return c; });
+}
 export async function setCfg(env, k, v) {
   if (!CFG_LIM[k]) return { error: 'Невідоме налаштування' };
   v = Math.round(+v); const [lo, hi] = CFG_LIM[k]; if (!(v >= lo && v <= hi)) return { error: `Від ${lo} до ${hi}` };

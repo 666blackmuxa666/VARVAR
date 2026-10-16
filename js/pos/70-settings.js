@@ -70,6 +70,7 @@
         return (H.length ? H.map((h, i) => { const f = a; a += h.c; return `<div class="kv"><span>${h.ic} ${esc(h.n)}<br><small class="muted">${h.c} стол. · №${f}–${a - 1}</small></span><span class="kv-r"><button class="btn sm" data-hs="ed" data-i="${i}">✏️</button><button class="btn sm" data-hs="up" data-i="${i}" ${i ? '' : 'disabled'}>⬆️</button><button class="btn sm red" data-hs="del" data-i="${i}">🗑</button></span></div>`; }).join('')
           : row('🪑 Столів у залі', S.n, ch('cfg', ' data-k="tables"'), 'Один зал. Додайте зали й тераси — каса покаже перемикач'))
           + `<button class="btn sm primary" data-hs="add">➕ Додати ${H.length ? 'зал / терасу' : 'зали'}</button>`
+          + `<div class="kv press" data-hs="map"><span>🗺 Схема залу<br><small class="muted">Розставте столи так, як вони стоять насправді</small></span><span class="muted">розставити ›</span></div>`
           + `<div class="kv press" data-hs="go"><span>🛵 З собою і доставка<br><small class="muted">${['У залі — стрічкою над столами', 'Окрема вкладка «З собою і доставка»', 'Дві вкладки: «З собою» і «Доставка»'][c.goTabs || 0]}</small></span><span class="muted">змінити ›</span></div>`
           + '<div class="muted set-note">Столи нумеруються підряд через усі зали — номери й QR на столах лишаються. Офіціант обирає «⭐ Мої зали» на своєму пристрої.</div>'; })()}</div>
       <div class="card"><h3>💰 Гроші</h3>
@@ -177,5 +178,6 @@
     if (a === 'ed') { const h = await hallEdit(H[i]); if (h) { H[i] = h; hallsSave(H); } return; }
     if (a === 'up') { [H[i - 1], H[i]] = [H[i], H[i - 1]]; return hallsSave(H); }
     if (a === 'del') { if (!await confirmBox(`Видалити «${H[i].n}»? Столи далі перенумеруються.`)) return; H.splice(i, 1); return hallsSave(H); }
+    if (a === 'map') { S.hm = 'map'; store.set('hm', 'map'); S.mapEd = 1; S.mapDraft = {}; S.view = 'hall'; renderNav(); renderMain(); return; }
     if (a === 'go') { const g = await choose('🛵 З собою і доставка', 'Де показувати в касі', [['0', 'У залі — стрічкою'], ['1', 'Одна вкладка'], ['2', 'Дві вкладки']].map(([v, l]) => ({ label: l, val: v }))); if (g != null) hallsSave(H, +g); }
   });

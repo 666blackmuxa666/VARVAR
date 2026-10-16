@@ -2155,13 +2155,14 @@ var __objRest = (source, exclude) => {
       return pending.has(t) || calls[t] || ((_a3 = S.tables[t]) == null ? void 0 : _a3.check) || ((_b2 = S.tables[t]) == null ? void 0 : _b2.pwait);
     };
     const rng = go ? [] : hallRng(cur, calls);
-    const tiles = rng.map((t) => {
-      const b = S.tables[t];
+    const map = !go && S.hm === "map", all = map ? Array.from({ length: Math.max(0, cur.to - cur.from + 1) }, (_, i) => cur.from + i) : rng, inF = new Set(rng), mp = map ? mapPos(cur) : {};
+    const tiles = all.map((t) => {
+      const b = S.tables[t], at = map ? ` style="left:${mp[t][0]}%;top:${mp[t][1]}%"${S.mapEd ? ` data-mt="${t}"` : ""}` : "", dim = map && !inF.has(t) ? " dim" : "";
       const bk = (S.books || []).find((x) => x.t === t && x.st === "ok");
-      if (!b) return `<button class="tbl${calls[t] ? " calling" : ""}${bk ? " booked" : ""}" data-a="table" data-t="${t}">${bell(t)}<div class="n">${t}</div><div class="st">${bk ? `\u{1F4C5} ${bk.time} \xB7 ${esc(bk.name)}` : "\u0432\u0456\u043B\u044C\u043D\u0438\u0439"}</div></button>`;
+      if (!b) return `<button${at} class="tbl${dim}${calls[t] ? " calling" : ""}${bk ? " booked" : ""}" data-a="table" data-t="${t}">${bell(t)}<div class="n">${t}</div><div class="st">${bk ? `\u{1F4C5} ${bk.time} \xB7 ${esc(bk.name)}` : "\u0432\u0456\u043B\u044C\u043D\u0438\u0439"}</div></button>`;
       const due = b.paid ? Math.max(0, b.pay2 - (b.paid.net || 0)) : 0, cls = ["busy", b.check ? "check" : "", pending.has(t) || b.pwait ? "new" : ""].join(" ");
       const tag = b.pwait ? '<span class="tag c" title="\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u043E\u043D\u043B\u0430\u0439\u043D">\u{1F310}</span>' : b.check ? `<span class="tag c">\u{1F9FE} \u0440\u0430\u0445\u0443\u043D\u043E\u043A</span>${b.pay ? `<i class="pay" title="${b.pay === "online" ? "\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u043E\u043D\u043B\u0430\u0439\u043D" : b.pay === "card" ? "\u043A\u0430\u0440\u0442\u0430" : "\u0433\u043E\u0442\u0456\u0432\u043A\u0430"}">${b.pay === "online" ? "\u{1F310}" : b.pay === "card" ? "\u{1F4B3}" : "\u{1F4B5}"}</i>` : ""}` : pending.has(t) ? '<span class="tag g">\u043D\u043E\u0432\u0435</span>' : "";
-      return `<button class="tbl ${cls}${calls[t] ? " calling" : ""}" data-a="table" data-t="${t}">${bell(t)}${tag}<div class="n">${t}</div><div class="st">${b.pwait ? due ? `\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \xB7 \u0434\u043E\u043F\u043B\u0430\u0442\u0430 ${money(due)}` : "\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C" : `${b.orders} \u0437\u0430\u043C\u043E\u0432\u043B.${b.disc ? ` \xB7 \u2212${b.disc}%` : ""}`}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">\u0437 ${b.opened ? hhmm(b.opened) : "\u2014"}</div></button>`;
+      return `<button${at} class="tbl${dim} ${cls}${calls[t] ? " calling" : ""}" data-a="table" data-t="${t}">${bell(t)}${tag}<div class="n">${t}</div><div class="st">${b.pwait ? due ? `\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \xB7 \u0434\u043E\u043F\u043B\u0430\u0442\u0430 ${money(due)}` : "\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C" : `${b.orders} \u0437\u0430\u043C\u043E\u0432\u043B.${b.disc ? ` \xB7 \u2212${b.disc}%` : ""}`}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">\u0437 ${b.opened ? hhmm(b.opened) : "\u2014"}</div></button>`;
     }).join("");
     const gos = list.filter((b) => b.t > 1e3 && b.go);
     const goTileHTML = (b) => {
@@ -2175,7 +2176,8 @@ var __objRest = (source, exclude) => {
       return `<button class="${v.id === cur.id ? "on" : ""}${h ? " hot" : ""}" data-hl="set" data-h="${v.id}">${v.ic} ${esc(v.n)}${n ? ` <b>${n}</b>` : ""}</button>`;
     };
     const tabs = V2.map(tab), bar = V2.length > 1 ? `<div class="hall-tabs">${tabs.join("")}</div>` : "", othHot = tabs.some((x, i) => V2[i].id !== cur.id && x.includes(' hot"'));
-    const tools = go ? "" : `<div class="seg hall-f">${[["mine", "\u{1F464}", "\u041C\u043E\u0457 \u0441\u0442\u043E\u043B\u0438"], ["busy", "\u{1F525}", "\u0417\u0430\u0439\u043D\u044F\u0442\u0456"], ["all", "\u0423\u0441\u0456", "\u0423\u0441\u0456 \u0441\u0442\u043E\u043B\u0438"]].map(([k, l, t]) => `<button class="${S.hf === k ? "on" : ""}" data-hl="hf" data-h="${k}" title="${t}">${l}</button>`).join("")}</div>`;
+    const tools = go ? "" : `<div class="seg hall-f">${[["mine", "\u{1F464}", "\u041C\u043E\u0457 \u0441\u0442\u043E\u043B\u0438"], ["busy", "\u{1F525}", "\u0417\u0430\u0439\u043D\u044F\u0442\u0456"], ["all", "\u0423\u0441\u0456", "\u0423\u0441\u0456 \u0441\u0442\u043E\u043B\u0438"]].map(([k, l, t]) => `<button class="${S.hf === k ? "on" : ""}" data-hl="hf" data-h="${k}" title="${t}">${l}</button>`).join("")}<button class="${map ? "on" : ""}" data-hl="hm" title="${map ? "\u041F\u043B\u0438\u0442\u043A\u0438" : "\u0421\u0445\u0435\u043C\u0430 \u0437\u0430\u043B\u0443"}">${map ? "\u{1F4CB}" : "\u{1F5FA}"}</button></div>`;
+    const ed = map && isAdmin() ? S.mapEd ? `<div class="map-ed"><span>\u270B \u041F\u0435\u0440\u0435\u0442\u044F\u0433\u043D\u0456\u0442\u044C \u0441\u0442\u043E\u043B\u0438</span><button class="btn sm" data-hl="mreset">\u21BA \u0420\u044F\u0434\u0430\u043C\u0438</button><button class="btn sm" data-hl="mno">\u2716</button><button class="btn sm primary" data-hl="msave">\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438</button></div>` : `<button class="map-pen" data-hl="med" title="\u0420\u043E\u0437\u0441\u0442\u0430\u0432\u0438\u0442\u0438 \u0441\u0442\u043E\u043B\u0438">\u270F\uFE0F</button>` : "";
     const why = (t) => {
       var _a3, _b2;
       return calls[t] ? "\u{1F514} \u043A\u043B\u0438\u0447\u0435" : pending.has(t) ? "\u{1F6CE} \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F" : ((_a3 = S.tables[t]) == null ? void 0 : _a3.pwait) ? "\u{1F310} \u043E\u043F\u043B\u0430\u0442\u0438\u0432" : ((_b2 = S.tables[t]) == null ? void 0 : _b2.check) ? "\u{1F9FE} \u0440\u0430\u0445\u0443\u043D\u043E\u043A" : "";
@@ -2183,7 +2185,7 @@ var __objRest = (source, exclude) => {
     const away = go ? [] : V2.filter((v) => !v.go && v.id !== cur.id).flatMap((v) => Array.from({ length: v.to - v.from + 1 }, (_, i) => v.from + i).filter(hot).map((t) => ({ v, t })));
     const alerts = away.length ? `<div class="hall-alert">${away.slice(0, 6).map(({ v, t }) => `<button data-hl="go" data-h="${v.id}" data-t="${t}"><b>${v.ic} ${esc(v.n)} \xB7 ${t}</b> ${why(t)}</button>`).join("")}</div>` : "";
     const goTile = !go && ((_a2 = S.cfg) == null ? void 0 : _a2.goTabs) && gos.length ? `<button class="go-sum${goNew2 ? " new" : ""}" data-hl="set" data-h="${(_b = V2.find((v) => v.go)) == null ? void 0 : _b.id}">\u{1F6F5} ${gos.length} ${goNew2 ? `\xB7 <b>${goNew2} \u043D\u043E\u0432.</b>` : "\u0432 \u0440\u043E\u0431\u043E\u0442\u0456"} \u2192</button>` : "";
-    const body0 = go ? goL.length ? `<div class="go-strip go-grid">${goL.map(goTileHTML).join("")}</div>` : '<div class="muted" style="padding:14px">\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u044C \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454</div>' : `${((_c = S.cfg) == null ? void 0 : _c.goTabs) ? goTile : strip}<div class="tables${rng.length > 24 ? " compact" : ""}">${tiles || `<div class="muted" style="padding:14px">${S.hf === "mine" ? "\u0423 \u0432\u0430\u0441 \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454 \u0441\u0442\u043E\u043B\u0456\u0432" : "\u0417\u0430\u0439\u043D\u044F\u0442\u0438\u0445 \u0441\u0442\u043E\u043B\u0456\u0432 \u043D\u0435\u043C\u0430\u0454"}</div>`}</div>`;
+    const body0 = go ? goL.length ? `<div class="go-strip go-grid">${goL.map(goTileHTML).join("")}</div>` : '<div class="muted" style="padding:14px">\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u044C \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454</div>' : `${((_c = S.cfg) == null ? void 0 : _c.goTabs) ? goTile : strip}${map ? `<div class="tables map${S.mapEd ? " edit" : ""}${all.length > 16 ? " compact" : ""}">${ed}${tiles}</div>` : ""}${map ? "" : `<div class="tables${rng.length > 24 ? " compact" : ""}">${tiles || `<div class="muted" style="padding:14px">${S.hf === "mine" ? "\u0423 \u0432\u0430\u0441 \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454 \u0441\u0442\u043E\u043B\u0456\u0432" : "\u0417\u0430\u0439\u043D\u044F\u0442\u0438\u0445 \u0441\u0442\u043E\u043B\u0456\u0432 \u043D\u0435\u043C\u0430\u0454"}</div>`}</div>`}`;
     const body = alerts + body0;
     return `<div class="head"><h1>${V2.length > 1 ? `<button class="hall-pick${othHot ? " hot" : ""}" data-hl="pick">${cur.ic} ${esc(cur.n)} \u25BE</button>` : "\u0417\u0430\u043B"}</h1>${tools}
       ${isCook() || isCour() ? "" : inboxBtn()}${isCook() || isCour() ? "" : S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="\u041D\u043E\u0432\u0456 \u0431\u0440\u043E\u043D\u0456 \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C">\u{1F4C5} ${S.bkNew} \u043D\u043E\u0432.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">\u{1F4C5} ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="\u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F">\u{1F4C5}</button>`}</div>${bar}${body}`;
@@ -2600,7 +2602,62 @@ var __objRest = (source, exclude) => {
     var _a2, _b;
     return S.hf === "busy" ? S.tables[t] || calls[t] : S.hf === "mine" ? ((_a2 = S.tables[t]) == null ? void 0 : _a2.waiter) === ((_b = S.me) == null ? void 0 : _b.name) : true;
   });
+  S.hm = store.get("hm", "tiles");
+  function mapPos(cur) {
+    var _a2, _b, _c, _d;
+    const n = cur.to - cur.from + 1, cols = Math.max(1, Math.ceil(Math.sqrt(n * 1.5))), rows = Math.ceil(n / cols), m = {};
+    for (let t = cur.from; t <= cur.to; t++) {
+      const i = t - cur.from;
+      m[t] = ((_a2 = S.mapDraft) == null ? void 0 : _a2[t]) || !((_b = S.mapDraft) == null ? void 0 : _b.r) && ((_d = (_c = S.cfg) == null ? void 0 : _c.map) == null ? void 0 : _d[t]) || [Math.round((i % cols + 0.5) / cols * 1e3) / 10, Math.round((Math.floor(i / cols) + 0.5) / rows * 1e3) / 10];
+    }
+    return m;
+  }
+  const curHall = () => {
+    const V2 = hallViews();
+    return V2.find((v) => v.id === S.hall) || V2[0];
+  };
+  async function mapSave() {
+    const c = curHall(), r = await act("mapSet", { pos: mapPos(c), from: c.from, to: c.to }, "\u2705 \u0421\u0445\u0435\u043C\u0443 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
+    if (r == null ? void 0 : r.cfg) {
+      S.cfg = r.cfg;
+      if (S.data.staff) S.data.staff.cfg = r.cfg;
+      S.mapEd = 0;
+      S.mapDraft = null;
+      renderMain();
+    }
+  }
+  let drag = null;
+  document.addEventListener("pointerdown", (ev) => {
+    var _a2;
+    const el = S.mapEd && ev.target.closest("[data-mt]");
+    if (!el) return;
+    ev.preventDefault();
+    drag = { el, box: el.parentElement.getBoundingClientRect() };
+    el.classList.add("drag");
+    (_a2 = el.setPointerCapture) == null ? void 0 : _a2.call(el, ev.pointerId);
+  });
+  document.addEventListener("pointermove", (ev) => {
+    if (!drag) return;
+    const { el, box } = drag, x = Math.min(97, Math.max(3, (ev.clientX - box.left) / box.width * 100)), y = Math.min(96, Math.max(4, (ev.clientY - box.top) / box.height * 100));
+    el.style.left = x + "%";
+    el.style.top = y + "%";
+    (S.mapDraft || (S.mapDraft = {}))[el.dataset.mt] = [Math.round(x * 2) / 2, Math.round(y * 2) / 2];
+  });
+  document.addEventListener("pointerup", () => {
+    if (drag) {
+      drag.el.classList.remove("drag");
+      drag = null;
+    }
+  });
+  document.addEventListener("click", (ev) => {
+    if (S.mapEd && ev.target.closest("[data-mt]")) {
+      ev.stopPropagation();
+      ev.preventDefault();
+    }
+  }, true);
   const hallSet = (h) => {
+    S.mapEd = 0;
+    S.mapDraft = null;
     S.hall = h;
     store.set("hall", h);
     renderMain();
@@ -2635,6 +2692,28 @@ var __objRest = (source, exclude) => {
       store.set("hall", S.hall);
       renderMain();
       return openTable(+el.dataset.t);
+    }
+    if (a === "hm") {
+      S.hm = S.hm === "map" ? "tiles" : "map";
+      store.set("hm", S.hm);
+      S.mapEd = 0;
+      S.mapDraft = null;
+      return renderMain();
+    }
+    if (a === "med") {
+      S.mapEd = 1;
+      S.mapDraft = {};
+      return renderMain();
+    }
+    if (a === "mno") {
+      S.mapEd = 0;
+      S.mapDraft = null;
+      return renderMain();
+    }
+    if (a === "msave") return mapSave();
+    if (a === "mreset") {
+      S.mapDraft = { r: 1 };
+      return renderMain();
     }
     if (a === "hf") {
       S.hf = el.dataset.h;
@@ -4189,7 +4268,7 @@ var __objRest = (source, exclude) => {
         const f = a;
         a += h.c;
         return `<div class="kv"><span>${h.ic} ${esc(h.n)}<br><small class="muted">${h.c} \u0441\u0442\u043E\u043B. \xB7 \u2116${f}\u2013${a - 1}</small></span><span class="kv-r"><button class="btn sm" data-hs="ed" data-i="${i}">\u270F\uFE0F</button><button class="btn sm" data-hs="up" data-i="${i}" ${i ? "" : "disabled"}>\u2B06\uFE0F</button><button class="btn sm red" data-hs="del" data-i="${i}">\u{1F5D1}</button></span></div>`;
-      }).join("") : row("\u{1FA91} \u0421\u0442\u043E\u043B\u0456\u0432 \u0443 \u0437\u0430\u043B\u0456", S.n, ch("cfg", ' data-k="tables"'), "\u041E\u0434\u0438\u043D \u0437\u0430\u043B. \u0414\u043E\u0434\u0430\u0439\u0442\u0435 \u0437\u0430\u043B\u0438 \u0439 \u0442\u0435\u0440\u0430\u0441\u0438 \u2014 \u043A\u0430\u0441\u0430 \u043F\u043E\u043A\u0430\u0436\u0435 \u043F\u0435\u0440\u0435\u043C\u0438\u043A\u0430\u0447")) + `<button class="btn sm primary" data-hs="add">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438 ${H.length ? "\u0437\u0430\u043B / \u0442\u0435\u0440\u0430\u0441\u0443" : "\u0437\u0430\u043B\u0438"}</button><div class="kv press" data-hs="go"><span>\u{1F6F5} \u0417 \u0441\u043E\u0431\u043E\u044E \u0456 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430<br><small class="muted">${["\u0423 \u0437\u0430\u043B\u0456 \u2014 \u0441\u0442\u0440\u0456\u0447\u043A\u043E\u044E \u043D\u0430\u0434 \u0441\u0442\u043E\u043B\u0430\u043C\u0438", "\u041E\u043A\u0440\u0435\u043C\u0430 \u0432\u043A\u043B\u0430\u0434\u043A\u0430 \xAB\u0417 \u0441\u043E\u0431\u043E\u044E \u0456 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430\xBB", "\u0414\u0432\u0456 \u0432\u043A\u043B\u0430\u0434\u043A\u0438: \xAB\u0417 \u0441\u043E\u0431\u043E\u044E\xBB \u0456 \xAB\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430\xBB"][c.goTabs || 0]}</small></span><span class="muted">\u0437\u043C\u0456\u043D\u0438\u0442\u0438 \u203A</span></div><div class="muted set-note">\u0421\u0442\u043E\u043B\u0438 \u043D\u0443\u043C\u0435\u0440\u0443\u044E\u0442\u044C\u0441\u044F \u043F\u0456\u0434\u0440\u044F\u0434 \u0447\u0435\u0440\u0435\u0437 \u0443\u0441\u0456 \u0437\u0430\u043B\u0438 \u2014 \u043D\u043E\u043C\u0435\u0440\u0438 \u0439 QR \u043D\u0430 \u0441\u0442\u043E\u043B\u0430\u0445 \u043B\u0438\u0448\u0430\u044E\u0442\u044C\u0441\u044F. \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442 \u043E\u0431\u0438\u0440\u0430\u0454 \xAB\u2B50 \u041C\u043E\u0457 \u0437\u0430\u043B\u0438\xBB \u043D\u0430 \u0441\u0432\u043E\u0454\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457.</div>`;
+      }).join("") : row("\u{1FA91} \u0421\u0442\u043E\u043B\u0456\u0432 \u0443 \u0437\u0430\u043B\u0456", S.n, ch("cfg", ' data-k="tables"'), "\u041E\u0434\u0438\u043D \u0437\u0430\u043B. \u0414\u043E\u0434\u0430\u0439\u0442\u0435 \u0437\u0430\u043B\u0438 \u0439 \u0442\u0435\u0440\u0430\u0441\u0438 \u2014 \u043A\u0430\u0441\u0430 \u043F\u043E\u043A\u0430\u0436\u0435 \u043F\u0435\u0440\u0435\u043C\u0438\u043A\u0430\u0447")) + `<button class="btn sm primary" data-hs="add">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438 ${H.length ? "\u0437\u0430\u043B / \u0442\u0435\u0440\u0430\u0441\u0443" : "\u0437\u0430\u043B\u0438"}</button><div class="kv press" data-hs="map"><span>\u{1F5FA} \u0421\u0445\u0435\u043C\u0430 \u0437\u0430\u043B\u0443<br><small class="muted">\u0420\u043E\u0437\u0441\u0442\u0430\u0432\u0442\u0435 \u0441\u0442\u043E\u043B\u0438 \u0442\u0430\u043A, \u044F\u043A \u0432\u043E\u043D\u0438 \u0441\u0442\u043E\u044F\u0442\u044C \u043D\u0430\u0441\u043F\u0440\u0430\u0432\u0434\u0456</small></span><span class="muted">\u0440\u043E\u0437\u0441\u0442\u0430\u0432\u0438\u0442\u0438 \u203A</span></div><div class="kv press" data-hs="go"><span>\u{1F6F5} \u0417 \u0441\u043E\u0431\u043E\u044E \u0456 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430<br><small class="muted">${["\u0423 \u0437\u0430\u043B\u0456 \u2014 \u0441\u0442\u0440\u0456\u0447\u043A\u043E\u044E \u043D\u0430\u0434 \u0441\u0442\u043E\u043B\u0430\u043C\u0438", "\u041E\u043A\u0440\u0435\u043C\u0430 \u0432\u043A\u043B\u0430\u0434\u043A\u0430 \xAB\u0417 \u0441\u043E\u0431\u043E\u044E \u0456 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430\xBB", "\u0414\u0432\u0456 \u0432\u043A\u043B\u0430\u0434\u043A\u0438: \xAB\u0417 \u0441\u043E\u0431\u043E\u044E\xBB \u0456 \xAB\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430\xBB"][c.goTabs || 0]}</small></span><span class="muted">\u0437\u043C\u0456\u043D\u0438\u0442\u0438 \u203A</span></div><div class="muted set-note">\u0421\u0442\u043E\u043B\u0438 \u043D\u0443\u043C\u0435\u0440\u0443\u044E\u0442\u044C\u0441\u044F \u043F\u0456\u0434\u0440\u044F\u0434 \u0447\u0435\u0440\u0435\u0437 \u0443\u0441\u0456 \u0437\u0430\u043B\u0438 \u2014 \u043D\u043E\u043C\u0435\u0440\u0438 \u0439 QR \u043D\u0430 \u0441\u0442\u043E\u043B\u0430\u0445 \u043B\u0438\u0448\u0430\u044E\u0442\u044C\u0441\u044F. \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442 \u043E\u0431\u0438\u0440\u0430\u0454 \xAB\u2B50 \u041C\u043E\u0457 \u0437\u0430\u043B\u0438\xBB \u043D\u0430 \u0441\u0432\u043E\u0454\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457.</div>`;
     })()}</div>
       <div class="card"><h3>\u{1F4B0} \u0413\u0440\u043E\u0448\u0456</h3>
         ${row("\u{1F3F7} \u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430", ((_a2 = c.discMax) != null ? _a2 : 20) + "%", ch("cfg", ' data-k="discMax"'), "\u0411\u0456\u043B\u044C\u0448\u0443 \u0437\u043D\u0438\u0436\u043A\u0443 \u0434\u0430\u0454 \u043B\u0438\u0448\u0435 \u0430\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440")}
@@ -4413,6 +4492,16 @@ var __objRest = (source, exclude) => {
       if (!await confirmBox(`\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \xAB${H[i].n}\xBB? \u0421\u0442\u043E\u043B\u0438 \u0434\u0430\u043B\u0456 \u043F\u0435\u0440\u0435\u043D\u0443\u043C\u0435\u0440\u0443\u044E\u0442\u044C\u0441\u044F.`)) return;
       H.splice(i, 1);
       return hallsSave(H);
+    }
+    if (a === "map") {
+      S.hm = "map";
+      store.set("hm", "map");
+      S.mapEd = 1;
+      S.mapDraft = {};
+      S.view = "hall";
+      renderNav();
+      renderMain();
+      return;
     }
     if (a === "go") {
       const g = await choose("\u{1F6F5} \u0417 \u0441\u043E\u0431\u043E\u044E \u0456 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430", "\u0414\u0435 \u043F\u043E\u043A\u0430\u0437\u0443\u0432\u0430\u0442\u0438 \u0432 \u043A\u0430\u0441\u0456", [["0", "\u0423 \u0437\u0430\u043B\u0456 \u2014 \u0441\u0442\u0440\u0456\u0447\u043A\u043E\u044E"], ["1", "\u041E\u0434\u043D\u0430 \u0432\u043A\u043B\u0430\u0434\u043A\u0430"], ["2", "\u0414\u0432\u0456 \u0432\u043A\u043B\u0430\u0434\u043A\u0438"]].map(([v, l]) => ({ label: l, val: v })));

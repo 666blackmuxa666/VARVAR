@@ -5,13 +5,14 @@
     const bell = t => calls[t] ? `<span class="callbell${Date.now() - calls[t].ts > 60e3 ? ' late' : ''}" title="Кличе офіціанта">🔔</span>` : '';
     const V = hallViews(), cur = V.find(v => v.id === S.hall) || V[0], go = cur.go, hot = t => pending.has(t) || calls[t] || S.tables[t]?.check || S.tables[t]?.pwait;
     const rng = go ? [] : hallRng(cur, calls);
-    const tiles = rng.map(t => {
-      const b = S.tables[t];
+    const map = !go && S.hm === 'map', all = map ? Array.from({ length: Math.max(0, cur.to - cur.from + 1) }, (_, i) => cur.from + i) : rng, inF = new Set(rng), mp = map ? mapPos(cur) : {};
+    const tiles = all.map(t => {
+      const b = S.tables[t], at = map ? ` style="left:${mp[t][0]}%;top:${mp[t][1]}%"${S.mapEd ? ` data-mt="${t}"` : ''}` : '', dim = map && !inF.has(t) ? ' dim' : '';
       const bk = (S.books || []).find(x => x.t === t && x.st === 'ok');
-      if (!b) return `<button class="tbl${calls[t] ? ' calling' : ''}${bk ? ' booked' : ''}" data-a="table" data-t="${t}">${bell(t)}<div class="n">${t}</div><div class="st">${bk ? `📅 ${bk.time} · ${esc(bk.name)}` : 'вільний'}</div></button>`;
+      if (!b) return `<button${at} class="tbl${dim}${calls[t] ? ' calling' : ''}${bk ? ' booked' : ''}" data-a="table" data-t="${t}">${bell(t)}<div class="n">${t}</div><div class="st">${bk ? `📅 ${bk.time} · ${esc(bk.name)}` : 'вільний'}</div></button>`;
       const due = b.paid ? Math.max(0, b.pay2 - (b.paid.net || 0)) : 0, cls = ['busy', b.check ? 'check' : '', pending.has(t) || b.pwait ? 'new' : ''].join(' '); /* 💳 оплачено з QR — червона, доки не підтвердять */
       const tag = b.pwait ? '<span class="tag c" title="оплачено онлайн">🌐</span>' : b.check ? `<span class="tag c">🧾 рахунок</span>${b.pay ? `<i class="pay" title="${b.pay === 'online' ? 'оплачено онлайн' : b.pay === 'card' ? 'карта' : 'готівка'}">${b.pay === 'online' ? '🌐' : b.pay === 'card' ? '💳' : '💵'}</i>` : ''}` : pending.has(t) ? '<span class="tag g">нове</span>' : '';
-      return `<button class="tbl ${cls}${calls[t] ? ' calling' : ''}" data-a="table" data-t="${t}">${bell(t)}${tag}<div class="n">${t}</div><div class="st">${b.pwait ? (due ? `оплачено · доплата ${money(due)}` : 'оплачено — підтвердіть') : `${b.orders} замовл.${b.disc ? ` · −${b.disc}%` : ''}`}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">з ${b.opened ? hhmm(b.opened) : '—'}</div></button>`;
+      return `<button${at} class="tbl${dim} ${cls}${calls[t] ? ' calling' : ''}" data-a="table" data-t="${t}">${bell(t)}${tag}<div class="n">${t}</div><div class="st">${b.pwait ? (due ? `оплачено · доплата ${money(due)}` : 'оплачено — підтвердіть') : `${b.orders} замовл.${b.disc ? ` · −${b.disc}%` : ''}`}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">з ${b.opened ? hhmm(b.opened) : '—'}</div></button>`;
     }).join('');
     const gos = list.filter(b => b.t > 1000 && b.go);
     const goTileHTML = b => { const g = b.go, late = g.st === 'new' && Date.now() - g.at > 60e3;
@@ -21,13 +22,14 @@
     const tab = v => { const n = v.go ? gos.filter(b => v.go === 'all' || (v.go === 'del' ? b.go.kind === 'del' : b.go.kind !== 'del')).length : Object.keys(S.tables).filter(t => t >= v.from && t <= v.to).length, h = v.go ? gos.some(b => b.go.st === 'new' && (v.go === 'all' || (v.go === 'del') === (b.go.kind === 'del'))) : Array.from({ length: v.to - v.from + 1 }, (_, i) => v.from + i).some(hot);
       return `<button class="${v.id === cur.id ? 'on' : ''}${h ? ' hot' : ''}" data-hl="set" data-h="${v.id}">${v.ic} ${esc(v.n)}${n ? ` <b>${n}</b>` : ''}</button>`; };
     const tabs = V.map(tab), bar = V.length > 1 ? `<div class="hall-tabs">${tabs.join('')}</div>` : '', othHot = tabs.some((x, i) => V[i].id !== cur.id && x.includes(' hot"')); // 📱 на телефоні вкладок немає — крапка на кнопці залу
-    const tools = go ? '' : `<div class="seg hall-f">${[['mine', '👤', 'Мої столи'], ['busy', '🔥', 'Зайняті'], ['all', 'Усі', 'Усі столи']].map(([k, l, t]) => `<button class="${S.hf === k ? 'on' : ''}" data-hl="hf" data-h="${k}" title="${t}">${l}</button>`).join('')}</div>`;
+    const tools = go ? '' : `<div class="seg hall-f">${[['mine', '👤', 'Мої столи'], ['busy', '🔥', 'Зайняті'], ['all', 'Усі', 'Усі столи']].map(([k, l, t]) => `<button class="${S.hf === k ? 'on' : ''}" data-hl="hf" data-h="${k}" title="${t}">${l}</button>`).join('')}<button class="${map ? 'on' : ''}" data-hl="hm" title="${map ? 'Плитки' : 'Схема залу'}">${map ? '📋' : '🗺'}</button></div>`;
+    const ed = map && isAdmin() ? (S.mapEd ? `<div class="map-ed"><span>✋ Перетягніть столи</span><button class="btn sm" data-hl="mreset">↺ Рядами</button><button class="btn sm" data-hl="mno">✖</button><button class="btn sm primary" data-hl="msave">💾 Зберегти</button></div>` : `<button class="map-pen" data-hl="med" title="Розставити столи">✏️</button>`) : '';
     // 🔔 що чекає в ІНШИХ залах — одним рядком над столами: тап → той зал і стіл
     const why = t => calls[t] ? '🔔 кличе' : pending.has(t) ? '🛎 замовлення' : S.tables[t]?.pwait ? '🌐 оплатив' : S.tables[t]?.check ? '🧾 рахунок' : '';
     const away = go ? [] : V.filter(v => !v.go && v.id !== cur.id).flatMap(v => Array.from({ length: v.to - v.from + 1 }, (_, i) => v.from + i).filter(hot).map(t => ({ v, t })));
     const alerts = away.length ? `<div class="hall-alert">${away.slice(0, 6).map(({ v, t }) => `<button data-hl="go" data-h="${v.id}" data-t="${t}"><b>${v.ic} ${esc(v.n)} · ${t}</b> ${why(t)}</button>`).join('')}</div>` : '';
     const goTile = !go && S.cfg?.goTabs && gos.length ? `<button class="go-sum${goNew ? ' new' : ''}" data-hl="set" data-h="${V.find(v => v.go)?.id}">🛵 ${gos.length} ${goNew ? `· <b>${goNew} нов.</b>` : 'в роботі'} →</button>` : '';
-    const body0 = go ? (goL.length ? `<div class="go-strip go-grid">${goL.map(goTileHTML).join('')}</div>` : '<div class="muted" style="padding:14px">Замовлень зараз немає</div>') : `${S.cfg?.goTabs ? goTile : strip}<div class="tables${rng.length > 24 ? ' compact' : ''}">${tiles || `<div class="muted" style="padding:14px">${S.hf === 'mine' ? 'У вас зараз немає столів' : 'Зайнятих столів немає'}</div>`}</div>`;
+    const body0 = go ? (goL.length ? `<div class="go-strip go-grid">${goL.map(goTileHTML).join('')}</div>` : '<div class="muted" style="padding:14px">Замовлень зараз немає</div>') : `${S.cfg?.goTabs ? goTile : strip}${map ? `<div class="tables map${S.mapEd ? ' edit' : ''}${all.length > 16 ? ' compact' : ''}">${ed}${tiles}</div>` : ''}${map ? '' : `<div class="tables${rng.length > 24 ? ' compact' : ''}">${tiles || `<div class="muted" style="padding:14px">${S.hf === 'mine' ? 'У вас зараз немає столів' : 'Зайнятих столів немає'}</div>`}</div>`}`;
     const body = alerts + body0;
     return `<div class="head"><h1>${V.length > 1 ? `<button class="hall-pick${othHot ? ' hot' : ''}" data-hl="pick">${cur.ic} ${esc(cur.n)} ▾</button>` : 'Зал'}</h1>${tools}
       ${isCook() || isCour() ? '' : inboxBtn()}${isCook() || isCour() ? '' : S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="Нові броні — підтвердіть">📅 ${S.bkNew} нов.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">📅 ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="Бронювання">📅</button>`}</div>${bar}${body}`;
@@ -270,7 +272,23 @@
     return V;
   }
   const hallRng = (cur, calls = {}) => Array.from({ length: Math.max(0, cur.to - cur.from + 1) }, (_, i) => cur.from + i).filter(t => S.hf === 'busy' ? S.tables[t] || calls[t] : S.hf === 'mine' ? S.tables[t]?.waiter === S.me?.name : true);
-  const hallSet = h => { S.hall = h; store.set('hall', h); renderMain(); };
+  // 🗺 схема: збережені місця (cfg.map) або рівні ряди за замовчуванням; чернетка редагування — S.mapDraft
+  S.hm = store.get('hm', 'tiles');
+  function mapPos(cur) {
+    const n = cur.to - cur.from + 1, cols = Math.max(1, Math.ceil(Math.sqrt(n * 1.5))), rows = Math.ceil(n / cols), m = {};
+    for (let t = cur.from; t <= cur.to; t++) { const i = t - cur.from; m[t] = S.mapDraft?.[t] || (!S.mapDraft?.r && S.cfg?.map?.[t]) || [Math.round((i % cols + .5) / cols * 1000) / 10, Math.round((Math.floor(i / cols) + .5) / rows * 1000) / 10]; }
+    return m;
+  }
+  const curHall = () => { const V = hallViews(); return V.find(v => v.id === S.hall) || V[0]; };
+  async function mapSave() { const c = curHall(), r = await act('mapSet', { pos: mapPos(c), from: c.from, to: c.to }, '✅ Схему збережено'); if (r?.cfg) { S.cfg = r.cfg; if (S.data.staff) S.data.staff.cfg = r.cfg; S.mapEd = 0; S.mapDraft = null; renderMain(); } }
+  // ✋ перетягування (миша і палець); клік по столу під час редагування не відкриває його
+  let drag = null;
+  document.addEventListener('pointerdown', ev => { const el = S.mapEd && ev.target.closest('[data-mt]'); if (!el) return; ev.preventDefault(); drag = { el, box: el.parentElement.getBoundingClientRect() }; el.classList.add('drag'); el.setPointerCapture?.(ev.pointerId); });
+  document.addEventListener('pointermove', ev => { if (!drag) return; const { el, box } = drag, x = Math.min(97, Math.max(3, (ev.clientX - box.left) / box.width * 100)), y = Math.min(96, Math.max(4, (ev.clientY - box.top) / box.height * 100));
+    el.style.left = x + '%'; el.style.top = y + '%'; (S.mapDraft ||= {})[el.dataset.mt] = [Math.round(x * 2) / 2, Math.round(y * 2) / 2]; });
+  document.addEventListener('pointerup', () => { if (drag) { drag.el.classList.remove('drag'); drag = null; } });
+  document.addEventListener('click', ev => { if (S.mapEd && ev.target.closest('[data-mt]')) { ev.stopPropagation(); ev.preventDefault(); } }, true);
+  const hallSet = h => { S.mapEd = 0; S.mapDraft = null; S.hall = h; store.set('hall', h); renderMain(); };
   async function hallPick() {
     const all = isAdmin() ? null : (S.cfg?.halls?.length > 1 ? 1 : null), V = hallViews();
     const h = await choose('🏛 Зал', '', [...V.map(v => ({ label: `${v.ic} ${v.n}${v.go ? '' : ` · ${v.from}–${v.to}`}`, val: v.id })), ...(all ? [{ label: '⭐ Мої зали…', val: '*' }] : [])]);
@@ -289,6 +307,11 @@
     if (a === 'set') return hallSet(el.dataset.h);
     if (a === 'pick') return hallPick();
     if (a === 'go') { S.hall = el.dataset.h; store.set('hall', S.hall); renderMain(); return openTable(+el.dataset.t); }
+    if (a === 'hm') { S.hm = S.hm === 'map' ? 'tiles' : 'map'; store.set('hm', S.hm); S.mapEd = 0; S.mapDraft = null; return renderMain(); }
+    if (a === 'med') { S.mapEd = 1; S.mapDraft = {}; return renderMain(); }
+    if (a === 'mno') { S.mapEd = 0; S.mapDraft = null; return renderMain(); }
+    if (a === 'msave') return mapSave();
+    if (a === 'mreset') { S.mapDraft = { r: 1 }; return renderMain(); }
     if (a === 'hf') { S.hf = el.dataset.h; store.set('hf', S.hf); return renderMain(); }
   });
 
