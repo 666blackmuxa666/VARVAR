@@ -22,7 +22,7 @@
     const tab = v => { const n = v.go ? gos.filter(b => v.go === 'all' || (v.go === 'del' ? b.go.kind === 'del' : b.go.kind !== 'del')).length : Object.keys(S.tables).filter(t => t >= v.from && t <= v.to).length, h = v.go ? gos.some(b => b.go.st === 'new' && (v.go === 'all' || (v.go === 'del') === (b.go.kind === 'del'))) : Array.from({ length: v.to - v.from + 1 }, (_, i) => v.from + i).some(hot);
       return `<button class="${v.id === cur.id ? 'on' : ''}${h ? ' hot' : ''}" data-hl="set" data-h="${v.id}">${v.ic} ${esc(v.n)}${n ? ` <b>${n}</b>` : ''}</button>`; };
     const tabs = V.map(tab), bar = V.length > 1 ? `<div class="hall-tabs">${tabs.join('')}</div>` : '', othHot = tabs.some((x, i) => V[i].id !== cur.id && x.includes(' hot"')); // 📱 на телефоні вкладок немає — крапка на кнопці залу
-    const tools = go ? '' : `<div class="seg hall-f">${[['mine', '👤', 'Мої столи'], ['busy', '🔥', 'Зайняті'], ['all', 'Усі', 'Усі столи']].map(([k, l, t]) => `<button class="${S.hf === k ? 'on' : ''}" data-hl="hf" data-h="${k}" title="${t}">${l}</button>`).join('')}<button class="${map ? 'on' : ''}" data-hl="hm" title="${map ? 'Плитки' : 'Схема залу'}">${map ? '📋' : '🗺'}</button></div>`;
+    const tools = go ? '' : `<div class="seg hall-f">${[['mine', '👤', 'Мої столи'], ['busy', '🔥', 'Зайняті'], ['all', 'Усі', 'Усі столи']].map(([k, l, t]) => `<button class="${S.hf === k ? 'on' : ''}" data-hl="hf" data-h="${k}" title="${t}">${l}</button>`).join('')}<button data-hl="hm" title="Вигляд: плитки → 3D → план">${!map ? '📋' : S.f3m === '3d' ? '🧊' : '▦'}</button></div>`;
     // 🔔 що чекає в ІНШИХ залах — одним рядком над столами: тап → той зал і стіл
     const why = t => calls[t] ? '🔔 кличе' : pending.has(t) ? '🛎 замовлення' : S.tables[t]?.pwait ? '🌐 оплатив' : S.tables[t]?.check ? '🧾 рахунок' : '';
     const away = go ? [] : V.filter(v => !v.go && v.id !== cur.id).flatMap(v => Array.from({ length: v.to - v.from + 1 }, (_, i) => v.from + i).filter(hot).map(t => ({ v, t })));
@@ -286,17 +286,16 @@
   async function mapSave() { const c = curHall(), d = S.mapDraft, r = await act('mapSet', { pos: mapPos(c), from: c.from, to: c.to, deco: d.deco, floor: d.floor }, '✅ Схему збережено'); if (r?.cfg) { S.cfg = r.cfg; if (S.data.staff) S.data.staff.cfg = r.cfg; mapStop(); renderMain(); } }
   function floorUI(cur, all, inF, calls, pending) {
     const F = window.Floor3D; if (!F) return '<div class="muted" style="padding:14px">Оновіть сторінку</div>';
-    const mp = mapPos(cur), ed = S.mapEd, d = S.mapDraft, key = hk(cur); let busy = 0, sum = 0;
+    const mp = mapPos(cur), ed = S.mapEd, d = S.mapDraft, key = hk(cur);
     const tables = all.map(t => {
       const b = S.tables[t], bk = !b && (S.books || []).find(x => x.t === t && x.st === 'ok'), [x, y, sh, r] = mp[t];
-      const st = b ? (pending.has(t) || b.pwait ? 's-new' : b.check ? 's-check' : 's-busy') : bk ? 's-book' : ''; if (b) { busy++; sum += b.pay2; }
+      const st = b ? (pending.has(t) || b.pwait ? 's-new' : b.check ? 's-check' : 's-busy') : bk ? 's-book' : '';
       const sub = b ? `<small>${b.pwait ? '🌐 ' : b.check ? '🧾 ' : pending.has(t) ? '🛎 ' : ''}${money(b.pay2)}</small>` : bk ? `<small>📅 ${bk.time}</small>` : '';
       return { t, x, y, sh, r, cls: `${st}${calls[t] ? ' call' : ''}${inF.has(t) ? '' : ' dim'}`, attrs: ed ? '' : `data-a="table" data-t="${t}"`, pin: `<b>${calls[t] ? '🔔' : ''}${t}</b>${sub}` };
     });
     requestAnimationFrame(() => { const el = $('.f3'); if (el) { F.fit(); F.watch(el); } });
     const plan = F.html({ tables, deco: ed ? d.deco : S.cfg?.deco?.[key] || [], floor: ed ? d.floor : S.cfg?.floor?.[key], mode: ed ? '2d' : S.f3m, edit: ed, sel: S.mapSel });
-    const view = `<button class="f3-ic" data-hl="f3m" data-h="${S.f3m === '3d' ? '2d' : '3d'}" title="3D / план">${S.f3m === '3d' ? '2D' : '3D'}</button>`;
-    if (!ed) return `<div class="f3w"><div class="f3-bar"><span class="f3-sum"><b>${busy}</b>/${all.length} зайнято · <b class="money">${money(sum)}</b></span>${view}${isAdmin() ? '<button class="f3-ic" data-hl="med" title="Облаштувати зал">✎</button>' : ''}</div>${plan}</div>`;
+    if (!ed) return `<div class="f3w">${plan}</div>`;
     const sel = S.mapSel, st = sel?.[0] === 't' ? +sel.slice(1) : null, sd = sel?.[0] === 'd' ? +sel.slice(1) : null, dx = sd != null ? d.deco[sd] : null;
     const tools = st != null ? `<div class="f3-tools"><b>🪑 Стіл ${st}</b>${Object.entries(F.SH).map(([k, v]) => `<button class="chip${mp[st][2] === k ? ' on' : ''}" data-hl="msh" data-h="${k}">${v.n}</button>`).join('')}<button class="btn sm" data-hl="mrot">↻ Повернути</button></div>`
       : dx ? `<div class="f3-tools"><b>${F.K[dx[0]]?.n || ''}</b><button class="btn sm" data-hl="mrot">↻ Повернути</button>${F.K[dx[0]]?.len ? '<button class="btn sm" data-hl="mlen" data-h="-40">⟷ −</button><button class="btn sm" data-hl="mlen" data-h="40">⟷ +</button>' : ''}<button class="btn sm" data-hl="mdup">⧉ Копія</button><button class="btn sm red" data-hl="mdel">🗑</button></div>`
@@ -346,7 +345,7 @@
     if (a === 'set') return hallSet(el.dataset.h);
     if (a === 'pick') return hallPick();
     if (a === 'go') { S.hall = el.dataset.h; store.set('hall', S.hall); renderMain(); return openTable(+el.dataset.t); }
-    if (a === 'hm') { S.hm = S.hm === 'map' ? 'tiles' : 'map'; store.set('hm', S.hm); mapStop(); return renderMain(); }
+    if (a === 'hm') { if (S.hm !== 'map') { S.hm = 'map'; S.f3m = '3d'; } else if (S.f3m === '3d') S.f3m = '2d'; else S.hm = 'tiles'; store.set('hm', S.hm); store.set('f3m', S.f3m); mapStop(); return renderMain(); }
     if (a === 'f3m') { S.f3m = el.dataset.h; store.set('f3m', S.f3m); const f = $('.f3'); if (!f) return renderMain(); f.classList.toggle('m2', S.f3m === '2d'); el.dataset.h = S.f3m === '3d' ? '2d' : '3d'; el.textContent = S.f3m === '3d' ? '2D' : '3D'; return window.Floor3D.fit(); }
     if (a === 'f3z') return window.Floor3D.zoom(+el.dataset.h);
     if (a === 'med') { mapStart(); return renderMain(); }
