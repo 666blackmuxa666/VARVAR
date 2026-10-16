@@ -2148,7 +2148,7 @@ var __objRest = (source, exclude) => {
       return `<button class="tbl ${cls}${calls[t] ? " calling" : ""}" data-a="table" data-t="${t}">${bell(t)}${tag}<div class="n">${t}</div><div class="st">${b.pwait ? due ? `\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \xB7 \u0434\u043E\u043F\u043B\u0430\u0442\u0430 ${money(due)}` : "\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C" : `${b.orders} \u0437\u0430\u043C\u043E\u0432\u043B.${b.disc ? ` \xB7 \u2212${b.disc}%` : ""}`}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">\u0437 ${b.opened ? hhmm(b.opened) : "\u2014"}</div></button>`;
     }).join("");
     const gos = list.filter((b) => b.t > 1e3 && b.go);
-    const strip = !gos.length ? "" : `${goMapBtn(gos)}<div class="go-strip">${gos.map((b) => {
+    const strip = !gos.length ? "" : `<div class="go-strip">${gos.map((b) => {
       const g = b.go, late = g.st === "new" && Date.now() - g.at > 6e4;
       return `<button class="go-t st-${g.st}${pending.has(b.t) ? " new" : ""}${late ? " late" : ""}" data-a="table" data-t="${b.t}"><b>${g.kind === "del" ? "\u{1F6F5}" : "\u{1F961}"} ${tn(b.t)}</b><span>${esc(g.name || "")}</span><small>${GOST[g.st] || g.st}${g.when ? " \xB7 \u043D\u0430 " + g.when : ""}${goTileInfo(g)}</small><i class="money">${money(b.pay2)}</i></button>`;
     }).join("")}</div>`;
@@ -3033,10 +3033,6 @@ var __objRest = (source, exclude) => {
 </div>
       <div class="card"><h3>\u{1F6F5} \u041A\u0443\u0440'\u0454\u0440\u0438</h3><div class="muted set-note">\u0420\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u044F \u0432 \u043A\u0430\u0441\u0456 \u043A\u043E\u0434\u043E\u043C <b>${esc(((_b = (_a2 = S.data.staff) == null ? void 0 : _a2.reg) == null ? void 0 : _b.courier) || "1114")}</b> \u2192 \u0443 \u0441\u0432\u043E\u0454\u043C\u0443 \u0435\u043A\u0440\u0430\u043D\u0456 \u043A\u0443\u0440'\u0454\u0440 \u043D\u0430\u0442\u0438\u0441\u043A\u0430\u0454 \xAB\u2708\uFE0F \u041F\u0456\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u0438 Telegram\xBB. \u0411\u043E\u0442 \u043A\u0443\u0440'\u0454\u0440\u0456\u0432: ${((_c = S.data.cours) == null ? void 0 : _c.bot) ? `<a href="https://t.me/${esc(S.data.cours.bot)}" target="_blank" rel="noopener">@${esc(S.data.cours.bot)}</a>` : "\u2014"}</div>
         ${(((_d = S.data.cours) == null ? void 0 : _d.list) || []).map((c2) => `<div class="kv"><span>${esc(c2.name)}</span><span class="kv-r">${c2.tg ? "\u2708\uFE0F Telegram \u043F\u0456\u0434\u043A\u043B\u044E\u0447\u0435\u043D\u043E" : '<span class="muted">\u0431\u0435\u0437 Telegram</span>'}</span></div>`).join("") || `<div class="muted">\u041A\u0443\u0440'\u0454\u0440\u0456\u0432 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454</div>`}</div></div>`;
-  }
-  function goMapBtn(gos) {
-    const n = gos.filter((b) => b.t < 2e3 && b.go.addr && !["new", "done", "rej"].includes(b.go.st)).length;
-    return n && isAdmin() ? `<div class="btnrow go-map"><button class="btn sm" data-a="goMap">\u{1F5FA} \u041A\u0430\u0440\u0442\u0430 \u0434\u043E\u0441\u0442\u0430\u0432\u043E\u043A \xB7 ${n}</button></div>` : "";
   }
   function goTileInfo(g) {
     if (g.kind !== "del" || !g.cour) return "";

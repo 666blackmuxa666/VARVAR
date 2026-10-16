@@ -136,9 +136,7 @@
       <div class="card"><h3>🛵 Кур'єри</h3><div class="muted set-note">Реєстрація в касі кодом <b>${esc(S.data.staff?.reg?.courier || '1114')}</b> → у своєму екрані кур'єр натискає «✈️ Підключити Telegram». Бот кур'єрів: ${S.data.cours?.bot ? `<a href="https://t.me/${esc(S.data.cours.bot)}" target="_blank" rel="noopener">@${esc(S.data.cours.bot)}</a>` : '—'}</div>
         ${(S.data.cours?.list || []).map(c => `<div class="kv"><span>${esc(c.name)}</span><span class="kv-r">${c.tg ? '✈️ Telegram підключено' : '<span class="muted">без Telegram</span>'}</span></div>`).join('') || '<div class="muted">Кур\'єрів ще немає</div>'}</div></div>`;
   }
-  // 🗺 зал: кнопка «Карта доставок» над рядом Д-/С- і підпис плитки Д- (хто везе, скільки в дорозі)
-  function goMapBtn(gos) { const n = gos.filter(b => b.t < 2000 && b.go.addr && !['new', 'done', 'rej'].includes(b.go.st)).length;
-    return n && isAdmin() ? `<div class="btnrow go-map"><button class="btn sm" data-a="goMap">🗺 Карта доставок · ${n}</button></div>` : ''; }
+  // 🗺 карта доставок — лише у вкладці «Доставки» (не в залі)
   function goTileInfo(g) { if (g.kind !== 'del' || !g.cour) return '';
     return ` · 🛵 ${esc(g.cour)}${g.st === 'road' && g.roadAt ? ` · ${minsAgo(g.roadAt)} хв` : ''}`; }
   async function goEdit(t) {
