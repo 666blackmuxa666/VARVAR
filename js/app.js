@@ -544,6 +544,7 @@
     menu = m; likes = m.likes || {};
     if (window.VVM && (window.__vvM || m.brand?.theme)) VVM.apply(window.__vvM ? window.__vvM.vvMenu : m.brand.theme, window.__vvM?.brand || m.brand); /* 🎨 дизайн меню з кабінету (js/menu-design.js) */
     if (m.brand?.name) { document.title = m.brand.name + ' — меню'; const h = $('.logo'); if (h) { h.textContent = m.brand.name; } document.querySelectorAll('a.lang[href*="about.html"]').forEach(a => { a.textContent = a.textContent.replace('VARVAR', m.brand.name); }); fitLogo(); /* після кнопки «← назва» — вона теж ширшає */ }
+    if (m.brand?.logo) touchIcon(m.brand.logo, m.brand.name);
     { const pl = (m.promos || []).filter(p => !p.w || p.w.some(w => GO ? w !== 'hall' : w === 'hall')); /* ⚡ акції, що діють зараз: у залі — залу, на сайті — з собою / доставці */
       let bar = $('#promoBar'); if (!bar) { bar = document.createElement('div'); bar.id = 'promoBar'; bar.className = 'promo-bar'; $('#menu').before(bar); }
       bar.hidden = !pl.length; bar.innerHTML = pl.map(p => `<div class="promo-chip"><b>⚡ ${esc(p.t)}</b>${p.d ? `<span>${esc(p.d)}</span>` : ''}</div>`).join(''); }
@@ -559,6 +560,14 @@
 })();
 
 // 🔤 Назва закладу в шапці: зменшуємо шрифт, доки влізе; довга — у 2 рядки, без «…»
+// 📱 Іконка «на головний екран» = логотип закладу. iPhone не бере SVG, тож малюємо в PNG 180×180 на білому з полями.
+function touchIcon(src, name) {
+  const set = h => { let l = document.querySelector('link[rel="apple-touch-icon"]'); if (!l) { l = document.createElement('link'); l.rel = 'apple-touch-icon'; document.head.append(l); } l.href = h; };
+  let t = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if (!t) { t = document.createElement('meta'); t.name = 'apple-mobile-web-app-title'; document.head.append(t); } t.content = name || '';
+  const i = new Image(); i.crossOrigin = 'anonymous';
+  i.onload = () => { try { const c = document.createElement('canvas'); c.width = c.height = 180; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 180, 180); const k = 150 / Math.max(i.naturalWidth || 150, i.naturalHeight || 150), w = (i.naturalWidth || 150) * k, h = (i.naturalHeight || 150) * k; x.drawImage(i, (180 - w) / 2, (180 - h) / 2, w, h); set(c.toDataURL('image/png')); } catch { set(src); } };
+  i.onerror = () => {}; i.src = src;
+}
 function fitLogo() {
   const h = document.querySelector('.top .logo'); if (!h) return;
   h.style.fontSize = ''; h.classList.remove('two'); const max = parseFloat(getComputedStyle(h).fontSize);
