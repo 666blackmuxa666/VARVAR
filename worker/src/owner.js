@@ -260,8 +260,8 @@ ${JSON.stringify(data.filter(Boolean))}
     case 'acctSet': { const a = await H.acctSet(b.email, b.f || {}); return a.error ? bad(a.error) : ok({ acct: a }); }
     case 'acctDel': { const r = await H.acctDel(b.email); return r.error ? bad(r.error) : ok(); }
     case 'grant': { const r = await H.grant(String(b.venue), b.email, !!b.on); return r.error ? bad(r.error) : ok({ acct: r }); }
-    case 'venueDel': { // 🗑 назавжди: запис у HUB + усі дані закладу (підтвердження — точна адреса закладу)
-      if (b.confirm !== b.id) return bad('Для підтвердження введіть адресу закладу'); const r = await H.venueDel(String(b.id)); if (r.error) return bad(r.error);
+    case 'venueDel': { // 🗑 назавжди: запис у HUB + усі дані закладу (підтвердження — пароль власника платформи)
+      { const p = await H.login(me.email, b.pass); if (p.error) return bad(p.error === 'Невірний email або пароль' ? 'Невірний пароль' : p.error, 403); if (p.token && H.logout) await H.logout(p.token).catch(() => {}); } const r = await H.venueDel(String(b.id)); if (r.error) return bad(r.error);
       await env.STORE.get(env.STORE.idFromName(doName(String(b.id)))).wipe().catch(() => {});
       if (env.DB.kv) { const l = await env.DB.kv.list({ prefix: 'bak:' + String(b.id) + ':' }); for (const x of l.keys) await env.DB.kv.delete(x.name); } // 💾 бекапи теж — щоб новий заклад з тією ж адресою їх не побачив
       return ok(); }

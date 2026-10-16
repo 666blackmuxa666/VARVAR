@@ -637,9 +637,9 @@ async function loyTests(A, W, dish) {
     const mt = (await own({ op: 'login', email: ME, pass: 'manager-pass-1' })).j.token; must((await ownT(mt, 'me')).j.venues.some(v => v.id === VID), 'керуючий не бачить');
     must((await ownT(PT, 'acctDel', { email: OE })).status === 400, 'видалило власника з закладом');
     must((await ownT(PT, 'venueSet', { id: VID, f: { owner: ME } })).j.ok, 'зміна власника');
-    must((await ownT(PT, 'venueDel', { id: 'varvar', confirm: 'varvar' })).status === 400, 'VARVAR видаляється!');
-    must((await ownT(PT, 'venueDel', { id: VID, confirm: 'wrong' })).status === 400, 'без підтвердження');
-    must((await ownT(PT, 'venueDel', { id: VID, confirm: VID })).j.ok, 'venueDel');
+    must((await ownT(PT, 'venueDel', { id: 'varvar', pass: PP })).status === 400, 'VARVAR видаляється!');
+    must((await ownT(PT, 'venueDel', { id: VID, pass: 'wrong' })).status === 403, 'без пароля');
+    must((await ownT(PT, 'venueDel', { id: VID, pass: PP })).j.ok, 'venueDel');
     must((await http(`/v/${VID}/api/menu?nocache=1`)).status === 404, "дані закладу лишились");
     must((await ownT(mt, 'me')).j.venues.length === 0, 'доступ лишився');
     must((await ownT(PT, 'acctDel', { email: ME })).j.ok && (await ownT(PT, 'acctDel', { email: OE })).j.ok, 'acctDel'); });

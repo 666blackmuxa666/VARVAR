@@ -18,6 +18,7 @@
   function evList() {
     let l = [...S.events].reverse();
     if (S.evDisc) l = l.filter(e => e.k === 'chat' || e.cm?.length || e.pin).sort((a, b) => lastTs(b) - lastTs(a));
+    else l = l.filter(e => e.k !== 'chat'); // 💬 повідомлення чату — лише у вкладці «Чат» (у «Усі» — червона цифра на вкладці)
     return [...l.filter(e => e.pin), ...l.filter(e => !e.pin)];
   }
   const lastTs = e => e.cm ? e.cm[e.cm.length - 1].ts : e.ts;
