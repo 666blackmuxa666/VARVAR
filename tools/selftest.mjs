@@ -636,6 +636,17 @@ async function loyTests(A, W, dish) {
     for (let i = 0; i < 2; i++) must((await vpos(VA, 'order', { t: 6, items: [{ id: it.id, q: 1 }], qid })).status === 200, 'order');
     const t6 = (await vpos(VA, 'state')).j.tables.find(x => x.t === 6); must(t6 && t6.items.reduce((a, x) => a + x.q, 0) === 1, 'дубль: ' + JSON.stringify(t6?.items));
     await vpos(VA, 'delete', { t: 6, reason: 'QA' }); });
+  await step('⛔ заклад «вимкнено» (cfg:lock why=off): каса 402 на запис, перегляд працює; увімкнули — знову можна', async () => {
+    const it = (await http(`/v/${VID}/api/menu`)).j.categories.flatMap(c => c.items).find(i => typeof i.price === 'number'), ord = () => vpos(VA, 'order', { t: 4, items: [{ id: it.id, q: 1 }] });
+    must((await ownT(PT, 'venueSet', { id: VID, f: { status: 'off' } })).j.ok, 'venueSet off');
+    try {
+      const r = await ord(); must(r.status === 402, 'order при off → ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 120)); must(/вимкнено/.test(r.j.error || ''), 'текст: ' + r.j.error);
+      for (const op of ['close', 'cashMove', 'shiftOpen', 'expense']) { const x = await vpos(VA, op, { t: 8 }); must(x.status === 402, `${op} при off → ${x.status}`); }
+      must((await vpos(VA, 'state')).status === 200, 'перегляд (state) заблоковано');
+      must(!(await vpos(VA, 'state')).j.tables.some(x => x.t === 4), 'стіл 4 все ж створився');
+    } finally { must((await ownT(PT, 'venueSet', { id: VID, f: { status: 'active' } })).j.ok, 'venueSet active'); }
+    const r2 = await ord(); must(r2.status === 200, 'order після увімкнення → ' + r2.status + ' ' + JSON.stringify(r2.j).slice(0, 120));
+    await vpos(VA, 'delete', { t: 4, reason: 'QA' }); });
   await step('невідомий заклад → 404', async () => { const r = await http('/v/nope-' + VID.slice(-5) + '/api/menu'); must(r.status === 404, String(r.status)); });
   await step('кабінет власника: свої заклади, аналітика, вхід у касу', async () => {
     const l = await own({ op: 'login', email: OE, pass: 'owner-pass-123' }); OT = l.j.token; must(OT, 'вхід');
