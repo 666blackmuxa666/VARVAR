@@ -657,7 +657,7 @@ const KITCHEN = ['minimax', 'pasta', 'burgers', 'salads', 'snacks', 'soups', 'pa
 // 🧩 Інше — технічні позиції лише для каси/бота (гості їх не бачать): бій посуду, упаковка, позиції поза меню
 export const TECH = ['inshe-food', 'inshe-posud', 'inshe-serv', 'inshe', 'upakuvannia'];
 export const GROUPS = [{ id: 'kitchen', name: '🍳 Кухня' }, { id: 'bar', name: '🍹 Бар' }, { id: 'hookah', name: '💨 Кальян' }, { id: 'other', name: '🧩 Інше' }];
-export const groupOf = cat => TECH.includes(cat) || String(cat).startsWith('inshe') ? 'other' : cat === 'hookah' ? 'hookah' : KITCHEN.includes(cat) ? 'kitchen' : 'bar';
+export const groupOf = cat => cur().cg?.[cat] || (TECH.includes(cat) || String(cat).startsWith('inshe') ? 'other' : cat === 'hookah' ? 'hookah' : KITCHEN.includes(cat) ? 'kitchen' : 'bar');
 // ⭐ обрані страви — спільний список для всіх офіціантів
 export const getFav = async env => (await env.DB.get('fav', 'json')) || [];
 async function _toggleFav(env, id, on) {

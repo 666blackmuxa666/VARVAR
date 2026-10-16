@@ -39,7 +39,7 @@ export const COMMANDS = [
 ].map(([command, description]) => ({ command, description }));
 
 const POS_URL = env => siteLink('pos.html'); /* 🌐 свій заклад: posatom.online/<заклад>/pos.html */
-const HELP = env => `<b>VARVAR — бот закладу</b>
+const HELP = env => `<b>Бот закладу</b>
 
 ${W.order} — записати замовлення кнопками: стіл → категорія → страва → кількість
 ${W.tables} — відкриті столи і суми (у столі: пречек, знижка, перенос, редагування)
@@ -538,7 +538,7 @@ export async function handleUpdate(u, env) {
   // без входу — лише запит пароля офіціанта
   if (!waiter) {
     await env.DB.put('st:' + uid, 'pin', { expirationTtl: 3600 });
-    return send({ text: '🔑 Цей бот — для персоналу VARVAR.\nВведіть свій PIN каси — той самий, що й для входу в касу (повідомлення одразу видалиться).\nНовий працівник — введіть код реєстрації.' }, { remove_keyboard: true });
+    return send({ text: '🔑 Цей бот — для персоналу закладу.\nВведіть свій PIN каси — той самий, що й для входу в касу (повідомлення одразу видалиться).\nНовий працівник — введіть код реєстрації.' }, { remove_keyboard: true });
   }
 
   // 🧮 фото накладної → розпізнати (Gemini) → чернетка з кнопками «Записати»

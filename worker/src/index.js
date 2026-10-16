@@ -83,7 +83,7 @@ export async function handle(req, env) {
     const json = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { ...cors, 'content-type': 'application/json' } });
     const ip = req.headers.get('CF-Connecting-IP') || '';
     try {
-      if (url.pathname === '/kitchen' || url.pathname === '/k') return new Response(KITCHEN_HTML, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' } }); // 👨‍🍳 старий iPad: http, без https
+      if (url.pathname === '/kitchen' || url.pathname === '/k') return new Response(KITCHEN_HTML.replaceAll('VARVAR кухня', ((await (await import('./site.js')).getSite(env).catch(() => ({})))?.name?.replace(/[<>&]/g, '') || 'VARVAR') + ' кухня'), { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' } }); // 👨‍🍳 старий iPad: http, без https
       if (url.pathname === '/api/status') {
         const table = tableNum(url.searchParams.get('table'), env);
         const bill = table ? await getBill(env, table) : null; if (bill?.total) await promoFill(env, bill).catch(() => {}); // 🎁 акції — гостю теж

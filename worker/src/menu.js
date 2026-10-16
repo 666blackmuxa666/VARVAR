@@ -1,5 +1,12 @@
 // Меню в KV + редагування через Telegram звичайними фразами.
 import DEFAULT_MENU from '../../data/menu.json';
+import { cur, venueId, MAIN } from './venue.js';
+
+// 🍳/🍹 куди йде розділ (кухня / бар / кальян): c.g — явно; інакше в інших закладах — за назвою розділу.
+// Кладемо в контекст запиту (cur().cg) — groupOf(cat) з ops.js бере звідти. VARVAR — як і раніше (список у ops.js).
+const BAR_RE = /бар|напо|кав|кофе|чай|коктейл|пив|вин|сік|соки|лимонад|алко|віскі|горіл|сидр|смузі|шейк|drink|bar|coffee/i;
+export const guessGroup = c => /кальян|hookah/i.test(c.name?.uk || '') ? 'hookah' : BAR_RE.test(c.name?.uk || '') ? 'bar' : 'kitchen';
+function catGroups(m) { const s = cur(); if (!s) return; s.cg = Object.fromEntries(m.categories.filter(c => !c.tech).map(c => [c.id, ['kitchen', 'bar', 'hookah'].includes(c.g) ? c.g : venueId() === MAIN ? null : guessGroup(c)]).filter(x => x[1])); }
 
 export async function getMenu(env) {
   const m = (await env.DB.get('menu', 'json')) || DEFAULT_MENU;
@@ -13,7 +20,7 @@ export async function getMenu(env) {
     await env.DB.put('menu', JSON.stringify(m));
   }
   for (const c of m.categories) if (c.id === 'upakuvannia' || c.id.startsWith('inshe')) c.tech = true; // не показується гостям
-  return m;
+  catGroups(m); return m;
 }
 const it = (id, uk, en, price) => ({ id: 'x-' + id, name: { uk, en }, price });
 const INSHE = [

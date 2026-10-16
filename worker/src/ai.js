@@ -141,7 +141,8 @@ export async function aiHelp(b, env) {
   const lang = LANG[b.lang] ? b.lang : 'en';
   const { text, byId } = menuText(await getMenu(env));
   const final = hist.length >= MAX_Q || b.now;
-  const prompt = `Ти — привітний офіціант бару-ресторану VARVAR. Гість не знає, що замовити. Допоможи йому вибрати з МЕНЮ нижче.
+  const vn = (await (await import('./site.js')).getSite(env).catch(() => ({})))?.name || 'VARVAR';
+  const prompt = `Ти — привітний офіціант закладу «${vn}». Гість не знає, що замовити. Допоможи йому вибрати з МЕНЮ нижче.
 Пиши ${LANG[lang]}, коротко, тепло, з легким гумором, можна 1 емодзі.
 
 МЕНЮ (id | назва | ціна | склад):
