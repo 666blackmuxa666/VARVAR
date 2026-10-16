@@ -63,12 +63,11 @@
       var f = all[i], W = f.clientWidth - 8, two = f.classList.contains('m2'), ed = f.classList.contains('edit'), bw, bh, k, lift = 0;
       if (!W) continue;
       // 📷 камера: з кількох ракурсів беремо той, де зал найбільший і вміщається цілком (на телефоні — зал уздовж екрана)
-      var H = f.parentElement.classList.contains('f3w') ? f.clientHeight - 8 : 0, ax = two ? 0 : AX, cams = ed ? [0] : two ? [0, -90] : [AZ, -58, -88], best = null;
-      if (!two && W < 600 && !ed) ax = 46;
+      var H = f.parentElement.classList.contains('f3w') ? f.clientHeight - 8 : 0, ax = two ? 0 : AX, cams = ed ? [0] : two ? [0, -90] : [AZ], best = null, tall = !two && !ed && W < 600 && H > 120; // 📱 3D на телефоні: як на ПК, на всю висоту, вбік — гортати
       for (var c = 0; c < cams.length; c++) {
         var az0 = ed ? 0 : cams[c], a = Math.abs(az0) * Math.PI / 180, x = ax * Math.PI / 180, lf = 130 * Math.sin(x);
         var w0 = Math.abs(Math.cos(a)) * FW + Math.abs(Math.sin(a)) * FH, h0 = (Math.abs(Math.sin(a)) * FW + Math.abs(Math.cos(a)) * FH) * Math.cos(x) + lf;
-        var k0 = Math.min(W * .96 / w0, H > 120 && !ed ? H * .96 / h0 : 9);
+        var k0 = tall ? H * .96 / h0 : Math.min(W * .96 / w0, H > 120 && !ed ? H * .96 / h0 : 9);
         if (!best || k0 > best.k * 1.08) best = { k: k0, az: az0, w: w0, h: h0, lift: lf };
       }
       var az = best.az; bw = best.w; bh = best.h; lift = best.lift;
@@ -136,7 +135,7 @@
     '.f3.edit .f3-fl::after{content:"";position:absolute;inset:0;background:linear-gradient(#ffffff1a 1px,transparent 1px) 0 0/25px 25px,linear-gradient(90deg,#ffffff1a 1px,transparent 1px) 0 0/25px 25px}',
     '.f3.edit .f3-o{cursor:grab;touch-action:none}.f3.edit .f3-o.sel::before{content:"";position:absolute;width:150px;height:150px;left:-75px;top:-75px;border-radius:50%;border:2px solid #f2c14ecc;background:#f2c14e10;box-shadow:0 0 24px #f2c14e33}',
     '.f3.edit .f3-d::after{content:"";position:absolute;width:56px;height:56px;left:-28px;top:-28px}',
-    '@media (pointer:coarse){.f3:not(.edit){overflow:hidden;touch-action:manipulation}.f3.rdy .f3-st,.f3.rdy .f3-pin{transition:none}}',
+    '@media (pointer:coarse){.f3:not(.edit){overflow:auto hidden;touch-action:pan-x}.f3.rdy .f3-st,.f3.rdy .f3-pin{transition:none}}',
     '@media (prefers-reduced-motion:reduce){.f3-st,.f3-pin,.f3-box{transition:none}}'
   ].join('\n');
   var tag = document.createElement('style'); tag.textContent = css; document.head.appendChild(tag);
