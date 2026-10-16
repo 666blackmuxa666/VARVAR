@@ -543,7 +543,7 @@
     m.categories = m.categories.filter(c => c.items.length);
     menu = m; likes = m.likes || {};
     if (window.VVM && (window.__vvM || m.brand?.theme)) VVM.apply(window.__vvM ? window.__vvM.vvMenu : m.brand.theme, window.__vvM?.brand || m.brand); /* 🎨 дизайн меню з кабінету (js/menu-design.js) */
-    if (m.brand?.name) { document.title = m.brand.name + ' — меню'; const h = $('.logo'); if (h) h.textContent = m.brand.name; document.querySelectorAll('a.lang[href*="about.html"]').forEach(a => { a.textContent = a.textContent.replace('VARVAR', m.brand.name); }); }
+    if (m.brand?.name) { document.title = m.brand.name + ' — меню'; const h = $('.logo'); if (h) { h.textContent = m.brand.name; fitLogo(); } document.querySelectorAll('a.lang[href*="about.html"]').forEach(a => { a.textContent = a.textContent.replace('VARVAR', m.brand.name); }); }
     { const pl = (m.promos || []).filter(p => !p.w || p.w.some(w => GO ? w !== 'hall' : w === 'hall')); /* ⚡ акції, що діють зараз: у залі — залу, на сайті — з собою / доставці */
       let bar = $('#promoBar'); if (!bar) { bar = document.createElement('div'); bar.id = 'promoBar'; bar.className = 'promo-bar'; $('#menu').before(bar); }
       bar.hidden = !pl.length; bar.innerHTML = pl.map(p => `<div class="promo-chip"><b>⚡ ${esc(p.t)}</b>${p.d ? `<span>${esc(p.d)}</span>` : ''}</div>`).join(''); }
@@ -556,3 +556,13 @@
     renderMenu(); syncStatus(); renderStatus(); pollOrders(); if (GO) goInit();
   });
 })();
+
+// 🔤 Назва закладу в шапці: зменшуємо шрифт, доки влізе; довга — у 2 рядки, без «…»
+function fitLogo() {
+  const h = document.querySelector('.top .logo'); if (!h) return;
+  h.style.fontSize = ''; h.classList.remove('two'); const max = parseFloat(getComputedStyle(h).fontSize);
+  for (let s = max; s >= 15 && h.scrollWidth > h.clientWidth + 1; s -= 1) h.style.fontSize = s - 1 + 'px';
+  if (h.scrollWidth > h.clientWidth + 1) { h.style.fontSize = ''; h.classList.add('two'); }
+}
+addEventListener('resize', () => fitLogo());
+document.fonts?.ready.then(fitLogo); fitLogo();
