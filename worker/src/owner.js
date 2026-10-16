@@ -42,6 +42,7 @@ export async function intApi(req, env, path) {
     return [{ ok: true, codes }, 200];
   }
   if (path === '/__int/login') { // власник заходить у касу закладу без PIN — сесія адміна «👑 Ім'я»
+    if (env.VENUE === 'atom-demo' && !((await env.DB.get('site', 'json')) || {}).logo) await (await import('./demoseed.js')).demoArt(env).catch(() => {}); // 🎨 демо без картинок → накласти одразу
     const token = rnd(16), me = { name: '👑 ' + String(b.name || 'Власник').slice(0, 40), role: 'admin', owner: String(b.email || '') };
     await env.DB.put('pos:' + token, JSON.stringify({ ...me, at: Date.now() }), { expirationTtl: 12 * 3600 });
     return [{ ok: true, token, me }, 200];
