@@ -208,7 +208,7 @@ export async function handle(req, env) {
         return new Response('ok');
       }
       // запасна адреса каси для старих Windows 7 без нових сертифікатів: http://varvar-menu.varvar.workers.dev/pos.html
-      if (req.method === 'GET' && /^\/(pos\.html|pos\.webmanifest|css\/|js\/|printer\/logo\.png)/.test(url.pathname)) return proxySite(url, env);
+      if (req.method === 'GET' && /^\/(pos\.html|pos-sw\.js|pos\.webmanifest|css\/|js\/|printer\/logo\.png)/.test(url.pathname)) return proxySite(url, env);
       return json({ error: 'not_found' }, 404);
     } catch (e) {
       return json({ error: 'bad_request' }, 400);
@@ -374,12 +374,16 @@ async function atomSite(req, env) {
   if (/\.\.|varvar-print\.config|^\/__src\//.test(rest)) return new Response('Not found', { status: 404 });
   const r = await siteFile(env, rest);
   const ct = r.headers.get('content-type') || 'application/octet-stream';
+  if (m[1] !== 'varvar' && m[1] !== 'owner' && /^\/(about|index)\.html$/.test(rest) && r.ok) { // 🏷 сторінки іншого закладу — без VARVAR у прев'ю посилань і пошуку (назву ставить скрипт сторінки)
+    const html = (await r.text()).replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/, '').replace(/<meta (name="description"|property="og:(title|description|type|image)")[^>]*>\n?/g, '').replace(/posatom\.online\/varvar\//g, `posatom.online/${m[1]}/`).replace(/<title>[^<]*<\/title>/, '<title>Меню</title>').replace(/content="Varvar"/, 'content="Меню"').replace(/Varvar Food Bar|>VARVAR</g, x => x[0] === '>' ? '><' : ''); // без миготіння чужої назви до завантаження даних
+    return new Response(html, { headers: { 'content-type': ct, 'cache-control': 'no-cache' } });
+  }
   if (rest === '/atom.html' && r.ok) { // 🎨 дизайн із конструктора — одразу в сторінку (без миготіння старих кольорів)
     const d = await (env.DB.kv || env.DB).get('atom:design', { cacheTtl: 60 }).catch(() => null);
     const html = (await r.text()).replace('<!--ATOMD-->', d ? `<script>window.ATOMD=${d.replace(/</g, '\\u003c')}</script>` : '');
     return new Response(html, { headers: { 'content-type': ct, 'cache-control': 'no-cache' } });
   }
-  return new Response(r.body, { status: r.status, headers: { 'content-type': ct, 'cache-control': /html/.test(ct) ? 'no-cache' : 'public, max-age=300' } });
+  return new Response(r.body, { status: r.status, headers: { 'content-type': ct, 'cache-control': /html/.test(ct) || /sw\.js$/.test(rest) ? 'no-cache' : 'public, max-age=300' } }); // service worker — без кешу, щоб нова каса доходила одразу
 }
 // 🚀 API сайту ATOM: заявка, перегляд, лічильник акції, вхід у демо-касу
 const ATOM_FREE = 20, DEMO = 'atom-demo';
