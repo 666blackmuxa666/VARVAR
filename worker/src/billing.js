@@ -68,9 +68,9 @@ export async function billPaid(env, kind, x) {
 // ⏰ раз на день (cron 10:00): нагадування за 3 дні й у день оплати; прострочка > пільги → «лише перегляд»
 export async function billDaily(env) {
   const H = hub(env), { callVenue } = await import('./owner.js'), { mailOn, sendMail } = await import('./mail.js');
-  for (const v of await H.venueList()) {
+  for (const { v, acct } of await H.billScan()) { // 🏪 лише заклади, з якими сьогодні є що робити (перебір — усередині реєстру)
     if (FREE_IDS(v.id) || v.status === 'off') continue;
-    const s = billState(v), acct = await H.acctGet(v.owner);
+    const s = billState(v);
     if (!s.auto && [3, 0].includes(s.left)) {
       const t = s.left ? `Через ${s.left} дні закінчується оплачений період ATOM для «${v.name}» (до ${ymd(s.till)}).` : `Сьогодні закінчується оплачений період ATOM для «${v.name}».`;
       if (acct && mailOn(env)) await sendMail(env, acct.email, 'Оплата ATOM', '💳 Оплата ATOM', `${t} Оплатіть 500 ₴ або увімкніть автосписання в кабінеті власника. Після ${GRACE} днів без оплати каса перейде в режим перегляду (дані зберігаються).`, '💳 Оплатити', 'https://posatom.online/owner/#pay').catch(() => {});

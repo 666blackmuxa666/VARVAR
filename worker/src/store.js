@@ -4,6 +4,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { handle } from './index.js';
 import { ALS, MAIN, doName, venueEnv, venueId } from './venue.js';
+import { SCHEMA, migrate } from './migrate.js';
 
 const now = () => Date.now();
 // ключі, зміна яких оновлює екрани POS
@@ -50,6 +51,13 @@ export class Store extends DurableObject {
       const venue = req.headers.get('x-venue') || MAIN, DB = localDB(this, this.env.DB, venue);
       if (venue !== MAIN && !(await DB.get('cfg:venue')) && !req.headers.get('x-venue-init')) return Response.json({ error: 'venue_not_found' }, { status: 404 }); // 🏪 заклад ще не створено в HUB
       const env = { ...(await venueEnv(this.env, venue, DB)), DB, INSTORE: 1 };
+      if (this.venue !== venue) { this.venue = venue; if ((await this.ctx.storage.get('__venue')) !== venue) await this.ctx.storage.put('__venue', venue); } // ⏰ будильнику треба знати, чий він
+      if (this.schema !== SCHEMA) { // 🧬 дані закладу — до поточної версії (один раз на запуск об'єкта; паралельні запити чекають ту саму міграцію)
+        this.mig ||= ALS.run({ venue }, () => migrate(env)).then(v => { this.schema = v; }, () => {}).finally(() => { this.mig = null; });
+        await this.mig;
+      }
+      const cron = new URL(req.url).pathname === '/__cron';
+      if (!cron) await this.wake(req.method === 'GET' ? 3600e3 : 300e3); // дія в закладі → справи будуть перевірені за 5 хв
       return ALS.run({ venue }, () => handle(req, env));
     }
     const [client, server] = Object.values(new WebSocketPair());
@@ -78,6 +86,7 @@ export class Store extends DurableObject {
     const keep = Object.fromEntries([...(await this.ctx.storage.list({ prefix: '__' }))]);
     await this.ctx.storage.deleteAll(); await this.ctx.storage.put(keep);
     for (let i = 0; i < entries.length; i += 128) await this.ctx.storage.put(Object.fromEntries(entries.slice(i, i + 128)));
+    this.schema = undefined; // старий бекап → міграції пройдуть знову
     this.changed(['bill:', 'menu', 'staff', 'closed:', 'day:']); return entries.length;
   }
   async delMany(ks) { for (let i = 0; i < ks.length; i += 128) await this.ctx.storage.delete(ks.slice(i, i + 128)); this.changed(ks); }
@@ -92,11 +101,26 @@ export class Store extends DurableObject {
   }
   unlock(id) { const f = this.rel?.get(id); if (f) { this.rel.delete(id); f(); } }
   async list(prefix) { const m = await this.ctx.storage.list({ prefix }); return [...m].filter(([, r]) => alive(r)).map(([name]) => name); }
-  // раз на годину прибираємо прострочене
+  // ⏰ будильник закладу: кожен заклад прокидається сам, коли в нього є справи (броні, відгуки, доставки),
+  // інакше — раз на годину для щоденних задач (авто-Z, бекап, ДН гостей). Без центрального обходу всіх закладів.
+  async wake(ms) { // підтягнути будильник не пізніше ніж за ms (після дій у закладі)
+    const t = now() + ms; if (this.at === undefined) this.at = await this.ctx.storage.getAlarm();
+    if (!this.at || this.at > t) { await this.ctx.storage.setAlarm(t); this.at = t; }
+  }
   async alarm() {
-    const m = await this.ctx.storage.list(); const dead = [...m].filter(([k, r]) => !k.startsWith('__') && !alive(r)).map(([k]) => k);
-    for (let i = 0; i < dead.length; i += 128) await this.ctx.storage.delete(dead.slice(i, i + 128));
-    await this.ctx.storage.setAlarm(now() + 3600e3);
+    const t = now(), venue = (await this.ctx.storage.get('__venue')) || MAIN; let next = t + 3600e3;
+    const day = new Date(t).toISOString().slice(0, 10);
+    if ((await this.ctx.storage.get('__gc')) !== day) { // 🧹 прострочене — раз на день (повний перегляд бази дорогий)
+      const m = await this.ctx.storage.list(); const dead = [...m].filter(([k, r]) => !k.startsWith('__') && !alive(r)).map(([k]) => k);
+      for (let i = 0; i < dead.length; i += 128) await this.ctx.storage.delete(dead.slice(i, i + 128));
+      await this.ctx.storage.put('__gc', day);
+    }
+    try {
+      const r = await this.fetch(new Request('https://in/__cron', { headers: { 'x-cron': this.env.MASTER_KEY ? await (await import('./owner.js')).intSecret(this.env) : '1', ...(venue === MAIN ? {} : { 'x-venue': venue }) } }));
+      if (r.status === 404) { this.at = null; return; } // заклад видалено — більше не будимо
+      const j = await r.json().catch(() => ({})); if (j.next > 0) next = j.next;
+    } catch (e) { console.log('alarm', venue, e.message); next = t + 300e3; }
+    this.at = Math.min(Math.max(next, t + 60e3), t + 3600e3); await this.ctx.storage.setAlarm(this.at); console.log('⏰', venue, 'наступний через', Math.round((this.at - t) / 60e3), 'хв');
   }
 }
 

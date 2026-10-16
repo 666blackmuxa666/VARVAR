@@ -128,12 +128,14 @@ export async function courShiftEnd(env, name) {
 export async function courWatch(env) {
   await (await import('./kitbot.js')).kitHook(env).catch(() => {}); // 👨‍🍳 вебхук бота кухні — автоматично
   if (env.COURIER_BOT_TOKEN && (await env.DB.get('g3hook')) !== env.SELF_URL) await courBot(env).catch(() => {}); // вебхук бота кур'єрів — автоматично
+  let wait = false; // ⏰ є доставка без кур'єра — будильник закладу частіше
   for (const r of await openTables(env)) {
     const g = r.b.go; if (!g || g.kind !== 'del' || g.cour || !['acc', 'cook', 'ready'].includes(g.st) || !g.accAt) continue;
-    const m = (Date.now() - g.accAt) / 60e3;
+    const m = (Date.now() - g.accAt) / 60e3; if (!g.rem2) wait = true;
     if (m >= 3 && !g.rem1) { await mark(env, r.t, 'rem1'); await courNotify(env, r.t, 'remind'); }
     if (m >= 5 && !g.rem2) { await mark(env, r.t, 'rem2'); await notify(env, `⏰ <b>${tn(r.t)}</b> — уже ${Math.round(m)} хв жоден кур'єр не взяв доставку!`); await logEvent(env, { k: 'go', t: r.t, s: 'acc', text: `⏰ ${tn(r.t)}: ${Math.round(m)} хв без кур'єра` }); }
   }
+  return wait;
 }
 const mark = (env, t, k, v = 1) => L(env, 'bills', async () => { const b = await getBill(env, t); if (b.go) { b.go[k] = v; await putBill(env, t, b); } return b.go; });
 

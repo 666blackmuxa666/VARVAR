@@ -347,8 +347,8 @@ export async function guestBot(m, env) {
 // ---------- ⭐ відгук після візиту + ⏰ нагадування (Cron, кожні 5 хв) ----------
 export async function reviewQueue(env, ph, sum) { if (!ph) return; const c = await getCli(env, ph); if (!c?.chat) return; await L(env, 'revq', async () => { const q = (await env.DB.get('revq', 'json')) || []; if (q.some(x => x.ph === ph && Date.now() - x.at < 864e5)) return; q.push({ id: crypto.randomUUID().slice(0, 8), ph, at: Date.now() + 3600e3, sum }); await env.DB.put('revq', JSON.stringify(q.slice(-300))); }); }
 export async function cron(env) {
-  const now = Date.now(), out = [];
-  await (await import('./courier.js')).courWatch(env).catch(() => {}); // 🛵 ніхто не взяв доставку
+  const now = Date.now(), out = []; let next = now + 3600e3; const soon = t => { if (t < next) next = t; }; // ⏰ коли закладу прокинутись наступного разу (store.js alarm)
+  if (await (await import('./courier.js')).courWatch(env).catch(() => false)) soon(now + 60e3); // 🛵 ніхто не взяв доставку
   await autoDay(env).catch(e => console.log('autoZ', e.message)); // 🌙 автоматичний Z за минулий день
   await (await import('./brand.js')).brandBots(env).catch(e => console.log('brand', e.message)); // 🎨 аватари й описи ботів (раз на версію)
   await (await import('./backup.js')).backupDaily(env).catch(e => console.log('backup', e.message)); // 💾 щоночі
@@ -357,13 +357,15 @@ export async function cron(env) {
   // відгуки
   const due = await L(env, 'revq', async () => { const q = (await env.DB.get('revq', 'json')) || [], d = q.filter(x => x.at <= now); if (d.length) await env.DB.put('revq', JSON.stringify(q.filter(x => x.at > now))); return d; });
   for (const r of due) { await guestMsg(env, r.ph, `🙏 Дякуємо, що завітали у ${(await getSite(env)).name}! Як вам усе сподобалось?`, { inline_keyboard: [[1, 2, 3, 4, 5].map(n => ({ text: '⭐'.repeat(n === 5 ? 1 : 0) + n, callback_data: `rv:${r.id}:${n}` }))] }); await env.DB.put('rvph:' + r.id, r.ph, { expirationTtl: 7 * 86400 }); out.push('rv'); }
+  for (const x of (await env.DB.get('revq', 'json')) || []) soon(x.at);
   // нагадування про броні
   for (const b of await bookList(env)) {
     if (b.st !== 'ok') continue; const at = Date.parse(`${b.date}T${b.time}:00+03:00`) - (isDST(b.date) ? 0 : 3600e3), left = at - now; // Київ: +03 влітку, +02 взимку
     if (left <= 3600e3 && left > -600e3 && !b.remA) { await notify(env, `⏰ За годину бронь: <b>${b.time}</b> · ${b.people} гост. · ${esc(b.name)} ${fmtPhone(b.phone)}${b.t ? ` · стіл ${b.t}` : ''}${b.pre?.length ? '\n🍽 є передзамовлення' : ''}`, { inline_keyboard: bkButtons(b) }); await bkEdit(env, b.id, y => { y.remA = 1; }); out.push('remA'); }
+    if (!b.remG && left > 2 * 3600e3) soon(at - 2 * 3600e3); if (!b.remA && left > 3600e3) soon(at - 3600e3);
     if (left <= 2 * 3600e3 && left > 3600e3 && !b.remG) { await guestMsg(env, b.phone, `⏰ Нагадуємо: сьогодні о <b>${b.time}</b> чекаємо вас у ${(await getSite(env)).name} (${b.people} гост.).`, { inline_keyboard: [[{ text: '✅ Будемо', callback_data: `bkg:${b.id}:yes` }, { text: '❌ Скасувати', callback_data: `bkg:${b.id}:no` }]] }); await bkEdit(env, b.id, y => { y.remG = 1; }); out.push('remG'); }
   }
-  return out;
+  return { sent: out, next };
 }
 const isDST = d => { const y = +d.slice(0, 4), last = m => { const x = new Date(Date.UTC(y, m, 31)); x.setUTCDate(31 - x.getUTCDay()); return x.toISOString().slice(0, 10); }; return d >= last(2) && d < last(9); };
 // гість натиснув кнопку (відгук / нагадування) — до перевірки персоналу

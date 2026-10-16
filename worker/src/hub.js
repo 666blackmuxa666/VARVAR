@@ -80,6 +80,22 @@ export class Hub extends DurableObject {
   // ---- заклади ----
   async venueGet(id) { return (await this.st.get('venue:' + id)) || null; }
   async venueList() { return [...(await this.st.list({ prefix: 'venue:' })).values()]; }
+  // 🔢 скільки справжніх закладів (для лічильника акції на posatom.online) — з пам'яті, перерахунок не частіше ніж раз на 10 хв
+  async venueCount() {
+    if (this.cnt && Date.now() - this.cnt.at < 600e3) return this.cnt.n;
+    const n = (await this.venueList()).filter(v => v.id !== MAIN && v.id !== 'atom-demo' && !v.id.startsWith('demo-') && v.status !== 'off').length;
+    this.cnt = { n, at: Date.now() }; return n;
+  }
+  // 💳 щоденна перевірка оплат: перебір — тут, усередині реєстру (локально); назовні лише заклади, з якими є що робити
+  async billScan() {
+    const { billState, GRACE } = await import('./billing.js'), out = [];
+    for (const v of await this.venueList()) {
+      if (v.id === MAIN || v.id === 'atom-demo' || v.id.startsWith('demo-') || v.status === 'off') continue;
+      const s = billState(v);
+      if ((!s.auto && [3, 0].includes(s.left)) || (v.unlockErr && !s.lock) || s.left === -GRACE - 1 || (s.lock && !v.locked)) out.push({ v, acct: pub(await this.st.get('acct:' + normEmail(v.owner))) || null });
+    }
+    return out;
+  }
   async venueCreate({ id, name, owner, status = 'trial', city = '' }) {
     id = String(id || '').toLowerCase(); if (!isVenueId(id)) return { error: 'Адреса закладу: латиниця, цифри, дефіс (2–31)' };
     if (await this.st.get('venue:' + id)) return { error: 'Така адреса вже зайнята' };

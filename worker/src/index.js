@@ -16,7 +16,7 @@ import { queuePrint, kitchenTicket, printApi } from './print.js';
 export { PrintQ } from './print.js';
 export { Store } from './store.js';
 export { Hub } from './hub.js';
-import { hubVenues, hub } from './hub.js';
+import { hub } from './hub.js';
 import { ownerApi, intApi, intSecret } from './owner.js';
 import { storeDB } from './store.js';
 import { qrKey, tableKey, qrRoute } from './qr.js';
@@ -60,18 +60,16 @@ export default {
     return run();
   },
   // ⏰ кожні 5 хв: нагадування про броні, запити відгуків (виконується всередині Store)
-  // ⏰ кожні 5 хв — у кожному активному закладі (VARVAR + заклади з HUB)
+  // ⏰ кожні 5 хв — лише справи платформи (ATOM); справи закладів — їхні власні будильники (store.js)
   async scheduled(ev, env, ctx) {
     const kh = new Date().toLocaleString('en-GB', { timeZone: 'Europe/Kyiv', hour: '2-digit', minute: '2-digit', hour12: false });
-    if (env.HUB) ctx.waitUntil((async () => { // 🚀 ATOM: нагадування «подзвонити» по заявках; о 4:00 — демо-каса до еталону
+    if (env.HUB) ctx.waitUntil((async () => { // 🚀 ATOM: нагадування «подзвонити» по заявках
       const due = await hub(env).leadDue().catch(() => []);
       for (const x of due) await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `⏰ <b>Подзвонити</b>: ${esc(x.name)} · ${esc(x.phone)}${x.place ? ' · ' + esc(x.place) : ''}${x.note ? '\n📝 ' + esc(x.note) : ''}` }).catch(() => {});
       if (kh >= '10:00' && kh < '10:05') await (await import('./billing.js')).billDaily(env).catch(e => console.log('billDaily', e.message)); // 💳 нагадування й блокування підписки
       await (await import('./aitest.js')).aiTestTick(env, kh).catch(e => console.log('aitest', e.message)); // 🧪 ШІ-тестувальник двічі на день
     })());
-    const list = [MAIN, ...(await hubVenues(env).catch(() => []))];
-    const cronKey = env.MASTER_KEY ? await intSecret(env) : '1';
-    ctx.waitUntil(Promise.all(list.map(v => env.STORE.get(env.STORE.idFromName(doName(v))).fetch(new Request('https://in/__cron', { headers: { 'x-cron': cronKey, ...(v === MAIN ? {} : { 'x-venue': v }) } })).catch(() => {}))));
+    // 🏪 заклади більше не обходимо звідси: кожен має власний будильник (store.js alarm) — масштабується на тисячі закладів
   },
 };
 export async function handle(req, env) {
@@ -390,7 +388,7 @@ async function atomApi(req, env, url) {
   const ip = req.headers.get('CF-Connecting-IP') || '', H = hub(env);
   try {
     if (url.pathname === '/api/atom' && req.method === 'GET') { // 🎁 скільки місць за акцією лишилось — з реальних закладів
-      const n = (await H.venueList()).filter(v => v.id !== MAIN && v.id !== DEMO && !v.id.startsWith('demo-') && v.status !== 'off').length;
+      const n = await H.venueCount(); // з пам'яті реєстру, без перебору всіх закладів
       return new Response(JSON.stringify({ left: Math.max(0, ATOM_FREE - n), total: ATOM_FREE, demo: !!(await H.venueGet(DEMO)), contacts: await H.atomCfg() }), { headers: { ...h, 'cache-control': 'public, max-age=300' } });
     }
     if (req.method !== 'POST') return J({ error: 'method' }, 405);
