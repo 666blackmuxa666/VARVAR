@@ -539,6 +539,24 @@ var __objRest = (source, exclude) => {
     });
     if (!S.live || Date.now() - lastMsg > 2e4) revive();
   };
+  {
+    let sx = 0, sy = 0, mode = "";
+    document.addEventListener("touchstart", (e) => {
+      const t = e.touches[0], f = $("#feed");
+      mode = "";
+      if (!f || innerWidth > 980 || e.touches.length > 1) return;
+      sx = t.clientX;
+      sy = t.clientY;
+      if (f.classList.contains("open")) mode = f.contains(e.target) ? "close" : "";
+      else if (S.view === "hall" && !S.open && !document.querySelector(".modal-bg,.modal") && sx > innerWidth * 0.6 && !e.target.closest('input,textarea,[style*="overflow"],.zones,.tabs')) mode = "open";
+    }, { passive: true });
+    document.addEventListener("touchend", (e) => {
+      if (!mode) return;
+      const t = e.changedTouches[0], dx = t.clientX - sx, dy = Math.abs(t.clientY - sy), f = $("#feed");
+      if (dy < 50 && Math.abs(dx) > dy * 2 && (mode === "open" ? dx < -60 : dx > 70)) f.classList.toggle("open", mode === "open");
+      mode = "";
+    }, { passive: true });
+  }
   document.addEventListener("visibilitychange", wake);
   addEventListener("pageshow", wake);
   addEventListener("focus", wake);
