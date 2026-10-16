@@ -117,6 +117,8 @@
     ['🔑 Працівник забув PIN', 'Персонал → 👥 Працівники → змініть PIN.'],
     ['📵 Зник інтернет', 'Каса показує останні дані. Нові дії не збережуться без звʼязку — дочекайтесь, або роздайте замовлення вручну й внесіть після.'],
   ];
+  // 🎓 вкладка ховається, коли всі уроки ролі підтверджено
+  function courseLeft() { try { const D = crDone(); return crList().some(l => !D[l.id]); } catch { return true; } }
   const crRole = () => isAdmin() ? 'a' : isCook() ? 'k' : isCour() ? 'c' : 'w';
   const crDone = () => store.get('course', {});
   const crList = () => { const r = crRole(); return CR.filter(l => l.r === r || (r === 'a' && l.r === 'w')); }; // адмін вчить і зал
@@ -140,7 +142,7 @@
   function crNav(go) { const b = document.createElement('button'); b.hidden = true; b.dataset.a = go[0]; Object.assign(b.dataset, go[1]); document.body.append(b); b.click(); b.remove(); }
   function crEnd() { TR.l = null; clearInterval(TR.tm); $('#crHl')?.remove(); $('#crTip')?.remove(); }
   function crStep() {
-    const l = TR.l, s = l?.s[TR.i]; if (!s) { const id = l?.id; crEnd(); if (id) { const D = crDone(); D[id] = 1; store.set('course', D); toast('✅ Урок пройдено'); } S.view = 'course'; renderNav(); renderMain(); return; }
+    const l = TR.l, s = l?.s[TR.i]; if (!s) { const id = l?.id; crEnd(); if (id) { const D = crDone(); D[id] = 1; store.set('course', D); toast('✅ Урок пройдено'); } S.view = courseLeft() ? 'course' : navList()[0][0]; renderNav(); renderMain(); return; }
     if (s.go) { const par = { zpTab: 'team', setTab: 'settings', cashTab: 'cash' }[s.go[0]]; if (par && S.view !== par) crNav(V(par)); crNav(s.go); } // вкладка всередині розділу — спершу сам розділ
     let hl = $('#crHl'), tip = $('#crTip');
     if (!hl) { hl = document.createElement('div'); hl.id = 'crHl'; document.body.append(hl); tip = document.createElement('div'); tip.id = 'crTip'; document.body.append(tip); }
@@ -169,5 +171,5 @@
   document.addEventListener('click', e => {
     const el = e.target.closest('[data-a]'); if (!el) return; const a = el.dataset.a, id = el.dataset.id;
     if (a === 'crGo') { TR.l = CR.find(l => l.id === id); TR.i = 0; crStep(); }
-    if (a === 'crOk') { const D = crDone(); if (D[id]) delete D[id]; else D[id] = 1; store.set('course', D); renderMain(); }
+    if (a === 'crOk') { const D = crDone(); if (D[id]) delete D[id]; else D[id] = 1; store.set('course', D); if (!courseLeft()) { toast('🏅 Курс пройдено!'); S.view = navList()[0][0]; loadView(); } renderNav(); renderMain(); }
   });

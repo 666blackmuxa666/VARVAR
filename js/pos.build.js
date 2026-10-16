@@ -705,7 +705,7 @@ var __objRest = (source, exclude) => {
   const NAV_MAIN = ["hall", "kq", "cash", "books"];
   const NAV_W = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["books", "\u{1F4C5}", "\u0411\u0440\u043E\u043D\u0456"], ["closed", "\u{1F9FE}", "\u0427\u0435\u043A\u0438"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["course", "\u{1F393}", "\u041D\u0430\u0432\u0447\u0430\u043D\u043D\u044F"]];
   const NAV_COUR = [["go", "\u{1F6F5}", "\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0438"], ["course", "\u{1F393}", "\u041D\u0430\u0432\u0447\u0430\u043D\u043D\u044F"]];
-  const navList = () => isCour() ? NAV_COUR : isCook() ? NAV_COOK : isAdmin() ? NAV_A : NAV_W;
+  const navList = () => (isCour() ? NAV_COUR : isCook() ? NAV_COOK : isAdmin() ? NAV_A : NAV_W).filter((n) => n[0] !== "course" || courseLeft());
   const NAV = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["closed", "\u{1F4DC}", "\u0417\u0430\u043A\u0440\u0438\u0442\u0456"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["cash", "\u{1F4B0}", "\u041A\u0430\u0441\u0430", 1], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438", 1], ["kq", "\u{1F468}\u200D\u{1F373}", "\u041A\u0443\u0445\u043D\u044F", 1], ["calc", "\u{1F9EE}", "\u0420\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043E\u043A", 1], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442.", 1]];
   function renderNav() {
     var _a2, _b, _c;
@@ -1003,7 +1003,7 @@ var __objRest = (source, exclude) => {
         break;
       }
       case "more": {
-        const v = await choose("\u0429\u0435", "", (isCook() ? NAV_COOK : isAdmin() ? NAV_A.filter((n) => !NAV_MAIN.includes(n[0])) : NAV.filter((n) => !n[3] && ["stop", "menu", "calc"].includes(n[0]))).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: "\u{1F512} \u0412\u0438\u0439\u0442\u0438", val: "logout", cls: "red" }]));
+        const v = await choose("\u0429\u0435", "", (isCook() ? navList() : isAdmin() ? navList().filter((n) => !NAV_MAIN.includes(n[0])) : NAV.filter((n) => !n[3] && ["stop", "menu", "calc"].includes(n[0]))).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: "\u{1F512} \u0412\u0438\u0439\u0442\u0438", val: "logout", cls: "red" }]));
         if (v === "logout") {
           if (await confirmBox("\u0412\u0438\u0439\u0442\u0438?", "\u041D\u0430\u0441\u0442\u0443\u043F\u043D\u0438\u0439 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A \u0443\u0432\u0456\u0439\u0434\u0435 \u0441\u0432\u043E\u0457\u043C PIN")) logout();
         } else if (v) {
@@ -6601,7 +6601,7 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     const el = e.target.closest("[data-a]");
     if (el && /^tk[A-Z]/.test(el.dataset.a)) tkClick(el.dataset.a, el.dataset);
   });
-  const COURSE_VID = ["a-book", "a-cards", "a-cash", "a-checks", "a-count", "a-del", "a-gocfg", "a-grid", "a-inv", "a-loy", "a-pay", "a-people", "a-plan", "a-prn", "a-rep", "a-rules", "a-site", "a-stock", "a-sup", "a-z", "c-road", "c-take", "c-tg", "k-q", "k-stock", "k-stop", "w-feed", "w-more", "w-move", "w-pay", "w-pre", "w-shift", "w-split", "w-stop", "w-table", "w-tw"];
+  const COURSE_VID = [];
   const V = (v) => ["view", { v }], T = (a, k, v) => [a, { [k]: v }];
   const CR = [
     // ---------- 🧑‍🍳 офіціант (і всі, хто працює в залі) ----------
@@ -6752,6 +6752,14 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     ["\u{1F511} \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A \u0437\u0430\u0431\u0443\u0432 PIN", "\u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B \u2192 \u{1F465} \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0438 \u2192 \u0437\u043C\u0456\u043D\u0456\u0442\u044C PIN."],
     ["\u{1F4F5} \u0417\u043D\u0438\u043A \u0456\u043D\u0442\u0435\u0440\u043D\u0435\u0442", "\u041A\u0430\u0441\u0430 \u043F\u043E\u043A\u0430\u0437\u0443\u0454 \u043E\u0441\u0442\u0430\u043D\u043D\u0456 \u0434\u0430\u043D\u0456. \u041D\u043E\u0432\u0456 \u0434\u0456\u0457 \u043D\u0435 \u0437\u0431\u0435\u0440\u0435\u0436\u0443\u0442\u044C\u0441\u044F \u0431\u0435\u0437 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443 \u2014 \u0434\u043E\u0447\u0435\u043A\u0430\u0439\u0442\u0435\u0441\u044C, \u0430\u0431\u043E \u0440\u043E\u0437\u0434\u0430\u0439\u0442\u0435 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0432\u0440\u0443\u0447\u043D\u0443 \u0439 \u0432\u043D\u0435\u0441\u0456\u0442\u044C \u043F\u0456\u0441\u043B\u044F."]
   ];
+  function courseLeft() {
+    try {
+      const D = crDone();
+      return crList().some((l) => !D[l.id]);
+    } catch (e) {
+      return true;
+    }
+  }
   const crRole = () => isAdmin() ? "a" : isCook() ? "k" : isCour() ? "c" : "w";
   const crDone = () => store.get("course", {});
   const crList = () => {
@@ -6804,7 +6812,7 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
         store.set("course", D);
         toast("\u2705 \u0423\u0440\u043E\u043A \u043F\u0440\u043E\u0439\u0434\u0435\u043D\u043E");
       }
-      S.view = "course";
+      S.view = courseLeft() ? "course" : navList()[0][0];
       renderNav();
       renderMain();
       return;
@@ -6891,6 +6899,12 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
       if (D[id]) delete D[id];
       else D[id] = 1;
       store.set("course", D);
+      if (!courseLeft()) {
+        toast("\u{1F3C5} \u041A\u0443\u0440\u0441 \u043F\u0440\u043E\u0439\u0434\u0435\u043D\u043E!");
+        S.view = navList()[0][0];
+        loadView();
+      }
+      renderNav();
       renderMain();
     }
   });

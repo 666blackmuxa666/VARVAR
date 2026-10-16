@@ -252,7 +252,7 @@
   const NAV_MAIN = ['hall', 'kq', 'cash', 'books']; // 📱 адмін на телефоні: 4 основні + «⋯ Ще»
   const NAV_W = [['hall', '🪑', 'Зал'], ['books', '📅', 'Броні'], ['closed', '🧾', 'Чеки'], ['stop', '⛔', 'Стоп-лист'], ['course', '🎓', 'Навчання']];
   const NAV_COUR = [['go', '🛵', 'Доставки'], ['course', '🎓', 'Навчання']];
-  const navList = () => isCour() ? NAV_COUR : isCook() ? NAV_COOK : isAdmin() ? NAV_A : NAV_W;
+  const navList = () => (isCour() ? NAV_COUR : isCook() ? NAV_COOK : isAdmin() ? NAV_A : NAV_W).filter(n => n[0] !== 'course' || courseLeft());
   const NAV = [['hall', '🪑', 'Зал'], ['closed', '📜', 'Закриті'], ['stop', '⛔', 'Стоп-лист'], ['cash', '💰', 'Каса', 1], ['reports', '📊', 'Звіти', 1], ['kq', '👨‍🍳', 'Кухня', 1], ['calc', '🧮', 'Розрахунок', 1], ['settings', '⚙️', 'Налашт.', 1]];
   function renderNav() {
     const newCnt = S.events.filter(e => e.k === 'guest' && e.s === 'new').length;
@@ -388,7 +388,7 @@
       case 'view': S.view = el.dataset.v; S.q = ''; renderNav(); renderMain(); loadView(); $('#feed').classList.remove('open'); $('#main').scrollTop = 0; break;
       case 'feed': $('#feed').classList.toggle('open'); break;
       case 'fs': { const on = !document.fullscreenElement; store.set('fs', on); on ? document.documentElement.requestFullscreen?.().catch(() => {}) : document.exitFullscreen?.(); break; }
-      case 'more': { const v = await choose('Ще', '', (isCook() ? NAV_COOK : isAdmin() ? NAV_A.filter(n => !NAV_MAIN.includes(n[0])) : NAV.filter(n => !n[3] && ['stop', 'menu', 'calc'].includes(n[0]))).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: '🔒 Вийти', val: 'logout', cls: 'red' }]));
+      case 'more': { const v = await choose('Ще', '', (isCook() ? navList() : isAdmin() ? navList().filter(n => !NAV_MAIN.includes(n[0])) : NAV.filter(n => !n[3] && ['stop', 'menu', 'calc'].includes(n[0]))).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: '🔒 Вийти', val: 'logout', cls: 'red' }]));
         if (v === 'logout') { if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); } else if (v) { S.view = v; S.q = ''; renderNav(); renderMain(); loadView(); $('#main').scrollTop = 0; } break; }
       case 'switch': if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); break;
       case 'table': $('#feed').classList.remove('open'); openTable(el.dataset.t); break;
