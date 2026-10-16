@@ -1711,6 +1711,20 @@ var __objRest = (source, exclude) => {
       case "qrPanel":
         qrPanel();
         break;
+      case "catG": {
+        const c = S.menu.categories.find((x) => x.id === el.dataset.id);
+        if (!c) break;
+        const g = await choose("\u{1F4C2} " + c.name.uk, "\u041A\u0443\u0434\u0438 \u0439\u0434\u0443\u0442\u044C \u0441\u0442\u0440\u0430\u0432\u0438 \u0446\u044C\u043E\u0433\u043E \u0440\u043E\u0437\u0434\u0456\u043B\u0443?", [{ label: "\u{1F373} \u041A\u0443\u0445\u043D\u044F", val: "kitchen" }, { label: "\u{1F379} \u0411\u0430\u0440", val: "bar" }, { label: "\u{1F4A8} \u041A\u0430\u043B\u044C\u044F\u043D", val: "hookah" }]);
+        if (g && g !== c.g && await act("catSet", { id: c.id, g }, "\u{1F4C2} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) loadMenu().catch(() => {
+        });
+        break;
+      }
+      case "catPack": {
+        const c = S.menu.categories.find((x) => x.id === el.dataset.id);
+        if (c && await act("catSet", { id: c.id, nopack: !c.nopack }, c.nopack ? "\u{1F961} \u0423\u043F\u0430\u043A\u043E\u0432\u043A\u0430 \u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F" : "\u{1F6AB} \u0411\u0435\u0437 \u0443\u043F\u0430\u043A\u043E\u0432\u043A\u0438")) loadMenu().catch(() => {
+        });
+        break;
+      }
       case "catAdd": {
         const v = await ask("\u{1F4C2} \u041D\u043E\u0432\u0438\u0439 \u0440\u043E\u0437\u0434\u0456\u043B \u043C\u0435\u043D\u044E", "\u041D\u0430\u0437\u0432\u0430, \u043D\u0430\u043F\u0440. \u0423\u043F\u0430\u043A\u0443\u0432\u0430\u043D\u043D\u044F");
         if (v && await act("catAdd", { name: v }, "\u{1F4C2} \u0420\u043E\u0437\u0434\u0456\u043B \u0434\u043E\u0434\u0430\u043D\u043E \u0432 \u043A\u0456\u043D\u0435\u0446\u044C \u043C\u0435\u043D\u044E")) loadMenu().catch(() => {
@@ -2179,14 +2193,17 @@ var __objRest = (source, exclude) => {
     var _a2;
     return (_a2 = S.carts)[t] || (_a2[t] = {});
   };
-  const FOOD = ["minimax", "pasta", "burgers", "salads", "snacks", "soups", "pans"];
+  const isFood = (c) => !c.tech && c.g === "kitchen" && !c.nopack;
   const packItem = () => {
     var _a2, _b;
-    return (_b = (_a2 = S.menu) == null ? void 0 : _a2.categories.find((c) => c.id === "upakuvannia")) == null ? void 0 : _b.items[0];
+    return (_b = (_a2 = S.menu) == null ? void 0 : _a2.categories.find((c) => {
+      var _a3;
+      return c.id === "upakuvannia" || /упаков/i.test(((_a3 = c.name) == null ? void 0 : _a3.uk) || "");
+    })) == null ? void 0 : _b.items.find((i) => !i.hidden);
   };
   const packQ = (t) => {
     if (!S.tw[t] || !S.menu) return 0;
-    const food = new Set(S.menu.categories.filter((c) => FOOD.includes(c.id)).flatMap((c) => c.items.map((i) => i.id)));
+    const food = new Set(S.menu.categories.filter(isFood).flatMap((c) => c.items.map((i) => i.id)));
     return Math.max(0, Object.values(cartOf(t)).filter((x) => food.has(x.id)).reduce((s, x) => s + x.q, 0) + (S.packAdj[t] || 0));
   };
   const saveCarts = () => store.set("carts", S.carts);
@@ -3971,7 +3988,8 @@ var __objRest = (source, exclude) => {
   function menuHTML() {
     if (!S.menu) return '<div class="head"><h1>\u041C\u0435\u043D\u044E</h1></div><div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
     return `<div class="head"><h1>\u041C\u0435\u043D\u044E</h1><button class="btn" data-a="menuUndo">\u21A9\uFE0F \u0412\u0456\u0434\u043C\u0456\u043D\u0438\u0442\u0438 \u043E\u0441\u0442\u0430\u043D\u043D\u044E \u0437\u043C\u0456\u043D\u0443</button><button class="btn" data-a="catAdd">\u{1F4C2} \u041D\u043E\u0432\u0438\u0439 \u0440\u043E\u0437\u0434\u0456\u043B</button><button class="btn" data-a="phPanel">\u{1F4F8} \u0428\u0406-\u0444\u043E\u0442\u043E</button><button class="btn primary" data-a="menuEdit" data-id="">\u2795 \u041D\u043E\u0432\u0430 \u0441\u0442\u0440\u0430\u0432\u0430</button></div>
-      ${S.menu.categories.map((c) => `<h3 class="muted" style="margin:18px 4px 8px">${esc(c.name.uk)}</h3><div class="grid2">${c.items.map((i) => `<button class="list-row press" data-a="menuEdit" data-id="${i.id}" style="text-align:left"><div class="grow"><b>${esc(i.name.uk)}</b>${i.hidden ? " \u26D4" : ""}<div class="muted" style="font-size:13px">${i.variants ? i.variants.map((v) => `${v.v} \u2014 ${v.p}`).join(" / ") : i.price + " \u20B4"}${i.size && !i.variants ? " \xB7 " + esc(i.size) : ""}</div></div>\u203A</button>`).join("")}</div>`).join("")}`;
+      <div class="muted" style="font-size:13px;margin:4px 4px 0">\u{1F4C2} \u0411\u0456\u043B\u044F \u043A\u043E\u0436\u043D\u043E\u0433\u043E \u0440\u043E\u0437\u0434\u0456\u043B\u0443 \u2014 \u043A\u0443\u0434\u0438 \u0439\u0434\u0443\u0442\u044C \u0439\u043E\u0433\u043E \u0441\u0442\u0440\u0430\u0432\u0438: \u{1F373} \u043A\u0443\u0445\u043D\u044F (\u0431\u0456\u0433\u0443\u043D\u043E\u043A \u0456 \u0435\u043A\u0440\u0430\u043D \u043A\u0443\u0445\u043D\u0456, \u0443\u043F\u0430\u043A\u043E\u0432\u043A\u0430 \xAB\u0437 \u0441\u043E\u0431\u043E\u044E\xBB) / \u{1F379} \u0431\u0430\u0440 / \u{1F4A8} \u043A\u0430\u043B\u044C\u044F\u043D.</div>
+      ${S.menu.categories.map((c) => `<div class="btnrow" style="margin:18px 4px 8px;align-items:center;flex-wrap:wrap"><h3 class="muted" style="margin:0;flex:1;min-width:0">${esc(c.name.uk)}</h3>${c.tech ? '<span class="muted" style="font-size:12px">\u2699\uFE0F \u0442\u0435\u0445\u043D\u0456\u0447\u043D\u0438\u0439</span>' : `<button class="btn sm" data-a="catG" data-id="${c.id}" title="\u041A\u0443\u0434\u0438 \u0439\u0434\u0443\u0442\u044C \u0441\u0442\u0440\u0430\u0432\u0438 \u0440\u043E\u0437\u0434\u0456\u043B\u0443">${{ kitchen: "\u{1F373} \u041A\u0443\u0445\u043D\u044F", bar: "\u{1F379} \u0411\u0430\u0440", hookah: "\u{1F4A8} \u041A\u0430\u043B\u044C\u044F\u043D" }[c.g] || "\u{1F373} \u041A\u0443\u0445\u043D\u044F"}</button>${c.g === "kitchen" ? `<button class="btn sm" data-a="catPack" data-id="${c.id}">${c.nopack ? "\u{1F6AB} \u0411\u0435\u0437 \u0443\u043F\u0430\u043A\u043E\u0432\u043A\u0438" : "\u{1F961} \u0417 \u0443\u043F\u0430\u043A\u043E\u0432\u043A\u043E\u044E"}</button>` : ""}`}</div><div class="grid2">${c.items.map((i) => `<button class="list-row press" data-a="menuEdit" data-id="${i.id}" style="text-align:left"><div class="grow"><b>${esc(i.name.uk)}</b>${i.hidden ? " \u26D4" : ""}<div class="muted" style="font-size:13px">${i.variants ? i.variants.map((v) => `${v.v} \u2014 ${v.p}`).join(" / ") : i.price + " \u20B4"}${i.size && !i.variants ? " \xB7 " + esc(i.size) : ""}</div></div>\u203A</button>`).join("")}</div>`).join("")}`;
   }
   function lookHTML() {
     const L = look(), opt = (k, v, l) => `<button class="lk-o${L[k] == v ? " on" : ""}" data-a="look" data-k="${k}" data-v="${v}">${l}</button>`;

@@ -51,9 +51,9 @@
   // ---------- стіл (лист) ----------
   const cartOf = t => (S.carts[t] ||= {});
   // «з собою»: 1 упаковка на кожну страву з кухні (як на сайті гостя і в боті)
-  const FOOD = ['minimax', 'pasta', 'burgers', 'salads', 'snacks', 'soups', 'pans'];
-  const packItem = () => S.menu?.categories.find(c => c.id === 'upakuvannia')?.items[0];
-  const packQ = t => { if (!S.tw[t] || !S.menu) return 0; const food = new Set(S.menu.categories.filter(c => FOOD.includes(c.id)).flatMap(c => c.items.map(i => i.id))); return Math.max(0, Object.values(cartOf(t)).filter(x => food.has(x.id)).reduce((s, x) => s + x.q, 0) + (S.packAdj[t] || 0)); };
+  const isFood = c => !c.tech && c.g === 'kitchen' && !c.nopack; // позначка розділу (сервер: menu.js catGroups) — однаково для всіх закладів
+  const packItem = () => S.menu?.categories.find(c => c.id === 'upakuvannia' || /упаков/i.test(c.name?.uk || ''))?.items.find(i => !i.hidden);
+  const packQ = t => { if (!S.tw[t] || !S.menu) return 0; const food = new Set(S.menu.categories.filter(isFood).flatMap(c => c.items.map(i => i.id))); return Math.max(0, Object.values(cartOf(t)).filter(x => food.has(x.id)).reduce((s, x) => s + x.q, 0) + (S.packAdj[t] || 0)); };
   const saveCarts = () => store.set('carts', S.carts);
   const itemsAll = () => S.menu ? S.menu.categories.flatMap(c => c.items) : [];
   function openTable(t) {

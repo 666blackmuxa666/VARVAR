@@ -108,9 +108,9 @@ export async function obCallback(env, uid, p) {
   if (a === 'send') {
     if (!ob.items.length) return { toast: 'Кошик порожній' }; await env.DB.delete('ob:' + uid);
     if (ob.tw) { // з собою: 1 упаковка на кожну страву з кухні
-      const menu = await getMenu(env), FOOD = ['minimax', 'pasta', 'burgers', 'salads', 'snacks', 'soups', 'pans'];
+      const menu = await getMenu(env), FOOD = (await import('./menu.js')).foodCats(menu);
       const food = new Set(menu.categories.filter(c => FOOD.includes(c.id)).flatMap(c => c.items.map(i => i.name.uk)));
-      const pk = menu.categories.find(c => c.id === 'upakuvannia')?.items[0], n = ob.items.filter(i => food.has(i.name)).reduce((s, i) => s + i.q, 0);
+      const pk = (await import('./menu.js')).packItemOf(menu), n = ob.items.filter(i => food.has(i.name)).reduce((s, i) => s + i.q, 0);
       if (pk && n) ob.items.push({ name: pk.name.uk, price: pk.price, q: n });
     }
     return { send: ob };

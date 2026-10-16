@@ -65,7 +65,7 @@ export function openNow(s, at = hhmm()) { const h = dayHours(s, ['Mon', 'Tue', '
 export async function sitePublic(env) {
   const s = await getSite(env), menu = await getMenu(env), all = menu.categories.flatMap(c => c.items.filter(i => !i.hidden).map(i => ({ ...i, cat: c.id })));
   let hits = s.hits.map(id => all.find(i => i.id === id)).filter(Boolean).slice(0, 4); /* 🍽 на візитці — 4 страви, як у меню */
-  if (!hits.length) { const ph = all.filter(i => i.img); hits = (ph.filter(i => ['minimax', 'burgers', 'pasta', 'pans', 'salads'].includes(i.cat)).length ? ph.filter(i => ['minimax', 'burgers', 'pasta', 'pans', 'salads'].includes(i.cat)) : ph).slice(0, 4); }
+  if (!hits.length) { const ph = all.filter(i => i.img); const kc = new Set((await (await import('./menu.js')).getMenu(env)).categories.filter(c => c.g === 'kitchen').map(c => c.id)); hits = (ph.filter(i => kc.has(i.cat)).length ? ph.filter(i => kc.has(i.cat)) : ph).slice(0, 4); }
   const td = new Date().toLocaleDateString('sv-SE', { timeZone: TZ }); /* минулі події й прострочене оголошення / сезон — не віддаємо */
   if (s.events) s.events = s.events.filter(e => e.d >= td).sort((a, b) => (a.d + a.tm).localeCompare(b.d + b.tm));
   if (s.ann?.till && s.ann.till < td) s.ann = { ...s.ann, on: 0 }; if (s.season?.till && s.season.till < td) s.season = { k: '' };

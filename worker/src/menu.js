@@ -6,7 +6,20 @@ import { cur, venueId, MAIN } from './venue.js';
 // Кладемо в контекст запиту (cur().cg) — groupOf(cat) з ops.js бере звідти. VARVAR — як і раніше (список у ops.js).
 const BAR_RE = /бар|напо|кав|кофе|чай|коктейл|пив|вин|сік|соки|лимонад|алко|віскі|горіл|сидр|смузі|шейк|drink|bar|coffee/i;
 export const guessGroup = c => /кальян|hookah/i.test(c.name?.uk || '') ? 'hookah' : BAR_RE.test(c.name?.uk || '') ? 'bar' : 'kitchen';
-function catGroups(m) { const s = cur(); if (!s) return; s.cg = Object.fromEntries(m.categories.filter(c => !c.tech).map(c => [c.id, ['kitchen', 'bar', 'hookah'].includes(c.g) ? c.g : venueId() === MAIN ? null : guessGroup(c)]).filter(x => x[1])); }
+const VV_KITCHEN = ['minimax', 'pasta', 'burgers', 'salads', 'snacks', 'soups', 'pans', 'extras']; // VARVAR — як було до позначок
+export const GRP = ['kitchen', 'bar', 'hookah'];
+function catGroups(m) { // кожен розділ отримує c.g (якщо ще не задано вручну) + c.nopack (без упаковки «з собою», напр. соуси й додатки)
+  const vv = venueId() === MAIN;
+  for (const c of m.categories) { if (c.tech) continue;
+    if (!GRP.includes(c.g)) c.g = vv ? (c.id === 'hookah' ? 'hookah' : VV_KITCHEN.includes(c.id) ? 'kitchen' : 'bar') : guessGroup(c);
+    if (c.nopack == null && vv && c.id === 'extras') c.nopack = 1; }
+  const s = cur(); if (s) s.cg = Object.fromEntries(m.categories.filter(c => !c.tech).map(c => [c.id, c.g]));
+}
+// 🥡 «з собою»: 1 упаковка на кожну страву кухні (крім розділів nopack); упаковка — перша позиція розділу «Упакування»
+export const foodCats = m => m.categories.filter(c => !c.tech && c.g === 'kitchen' && !c.nopack).map(c => c.id);
+export const packItemOf = m => m.categories.find(c => c.id === 'upakuvannia' || /упаков/i.test(c.name?.uk || ''))?.items.find(i => !i.hidden);
+export async function setCatGroup(env, id, f) { const m = await getMenu(env), c = m.categories.find(x => x.id === id && !x.tech); if (!c) return { error: 'Розділ не знайдено' };
+  if (GRP.includes(f.g)) c.g = f.g; if (f.nopack != null) c.nopack = f.nopack ? 1 : 0; await saveMenu(env, m); return { c }; }
 
 export async function getMenu(env) {
   const m = (await env.DB.get('menu', 'json')) || DEFAULT_MENU;
@@ -19,7 +32,7 @@ export async function getMenu(env) {
     m.categories.splice(pi < 0 ? m.categories.length : pi, 0, ...cats);
     await env.DB.put('menu', JSON.stringify(m));
   }
-  for (const c of m.categories) if (c.id === 'upakuvannia' || c.id.startsWith('inshe')) c.tech = true; // не показується гостям
+  for (const c of m.categories) if (c.id === 'upakuvannia' || c.id.startsWith('inshe') || /упаков/i.test(c.name?.uk || '')) c.tech = true; // не показується гостям
   catGroups(m); return m;
 }
 const it = (id, uk, en, price) => ({ id: 'x-' + id, name: { uk, en }, price });
@@ -175,7 +188,13 @@ async function _handleMenuText(text, env, { canEdit = true } = {}) {
     const r = await _addCategory(env, m[1]); if (r?.error) return r.error;
     return `📂 Розділ <b>${esc(r.c.name.uk)}</b> додано в кінець меню.\nДодати страву: <code>додати в ${esc(r.c.name.uk.toLowerCase())}: Назва, ціна 15</code>`;
   }
-  if (/^(розділи|категорії|категории)$/i.test(t)) return menu.categories.map(c => `• ${esc(c.name.uk)} (${c.items.length})`).join('\n');
+  if (/^(розділи|категорії|категории)$/i.test(t)) return menu.categories.map(c => `• ${esc(c.name.uk)} (${c.items.length})${c.tech ? '' : ' ' + { kitchen: '🍳', bar: '🍹', hookah: '💨' }[c.g] + (c.nopack ? ' 🚫🥡' : '')}`).join('\n') + '\n\n🍳 кухня · 🍹 бар · 💨 кальян. Змінити: <code>розділ Десерти бар</code> / <code>розділ Соуси без упаковки</code>';
+  if ((m = t.match(/^розділ\s+(.+?)\s+(кухня|бар|кальян|без упаковки|з упаковкою)$/i))) { // 📂 як кнопки в касі (Налаштування → Меню)
+    if (!canEdit) return NO;
+    const cs = findCat(menu, m[1]).filter(c => !c.tech); if (cs.length !== 1) return `Не знайшов розділ «${esc(m[1])}». Напишіть «розділи».`;
+    const k = m[2].toLowerCase(), c = cs[0]; if (/упаков/.test(k)) c.nopack = k.startsWith('без') ? 1 : 0; else c.g = { кухня: 'kitchen', бар: 'bar', кальян: 'hookah' }[k];
+    await saveMenu(env, menu); return `📂 <b>${esc(c.name.uk)}</b> → ${{ kitchen: '🍳 кухня', bar: '🍹 бар', hookah: '💨 кальян' }[c.g]}${c.nopack ? ' · без упаковки' : ''}`;
+  }
   if ((m = t.match(/^меню\s+(.+)$/i))) {
     const cs = findCat(menu, m[1]); if (cs.length !== 1) return `Не знайшов розділ «${esc(m[1])}». Напишіть «розділи».`;
     return `<b>${esc(cs[0].name.uk)}</b>\n` + cs[0].items.map(it => `• ${esc(it.name.uk)}${it.hidden ? ' ⛔' : ''} — ${it.variants ? it.variants.map(v => v.v + 'л ' + v.p).join(' / ') : it.price} грн`).join('\n');

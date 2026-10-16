@@ -532,6 +532,8 @@
       case 'menuEdit': menuEdit(el.dataset.id); break;
       case 'phPanel': phPanel(); break;
       case 'qrPanel': qrPanel(); break;
+      case 'catG': { const c = S.menu.categories.find(x => x.id === el.dataset.id); if (!c) break; const g = await choose('📂 ' + c.name.uk, 'Куди йдуть страви цього розділу?', [{ label: '🍳 Кухня', val: 'kitchen' }, { label: '🍹 Бар', val: 'bar' }, { label: '💨 Кальян', val: 'hookah' }]); if (g && g !== c.g && await act('catSet', { id: c.id, g }, '📂 Збережено')) loadMenu().catch(() => {}); break; }
+      case 'catPack': { const c = S.menu.categories.find(x => x.id === el.dataset.id); if (c && await act('catSet', { id: c.id, nopack: !c.nopack }, c.nopack ? '🥡 Упаковка рахується' : '🚫 Без упаковки')) loadMenu().catch(() => {}); break; }
       case 'catAdd': { const v = await ask('📂 Новий розділ меню', 'Назва, напр. Упакування'); if (v && await act('catAdd', { name: v }, '📂 Розділ додано в кінець меню')) loadMenu().catch(() => {}); break; }
       case 'menuUndo': if (await confirmBox('Скасувати останню зміну меню?')) act('menuUndo', {}, '↩️ Скасовано'); break;
       case 'staffAdd': {

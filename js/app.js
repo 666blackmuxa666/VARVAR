@@ -21,7 +21,7 @@
   let tip = { p: 0, own: false };
   let tableTotal = null, inVenue = null, busy = false, pendingType = null, bill = null, tw = store.get('tw', false);
   // «з собою»: 1 упаковка на кожну страву з кухні (напої, додатки не рахуються)
-  const FOOD = new Set(['minimax', 'pasta', 'burgers', 'salads', 'snacks', 'soups', 'pans']);
+  let FOOD = new Set(); // розділи кухні (c.g === 'kitchen', без c.nopack) — з меню закладу
   let packId = null, catOf = {};
   if (Date.now() - hist.ts > SESSION_MS) hist = { ts: 0, orders: [] };
   const device = store.get('device', null) || (() => { const d = crypto.randomUUID(); store.set('device', d); return d; })();
@@ -68,7 +68,7 @@
   const IMG_VER = 7; // збільшити після оновлення фото, щоб телефони не брали стару копію
   let menu, byId = {};
   // напої — менші картки
-  const DRINKS = new Set(['coffee', 'soft', 'lemonades', 'cocktails', 'shots', 'whisky', 'rum', 'vermouth', 'liqueur', 'cognac', 'vodka', 'tequila', 'gin', 'wine', 'beer', 'hookah', 'upakuvannia']); // компактні картки (3 в ряд)
+  const isDrinks = c => c.tech || (c.g ? c.g !== 'kitchen' : false); // бар / кальян — компактні картки (3 в ряд)
 
   const priceOf = key => { const [id, v] = key.split('|'); const it = byId[id]; return v ? it.variants.find(x => x.v === v).p : it.price; };
   const labelOf = key => { const [id, v] = key.split('|'); const it = byId[id]; return itemName(it) + (v ? unit(` ${v} л`) : ''); };
@@ -89,7 +89,7 @@
     const cats = menu.categories.filter(c => !c.tech); // технічні (Інше, упаковка) — лише для персоналу
     $('#cats').innerHTML = cats.map(c => `<a href="#c-${c.id}" data-cat="${c.id}">${esc(catName(c))}</a>`).join('');
     $('#menu').innerHTML = cats.map(c => `${c.id === 'extras' ? `<button class="ai-card" data-ai><b>✨ ${esc(t('aiBtn'))}</b><span>${esc(t('aiSub'))}</span></button>` : ''}
-      <section class="cat ${c.id === 'extras' ? 'compact' : DRINKS.has(c.id) ? 'drinks' : ''}" id="c-${c.id}">
+      <section class="cat ${c.nopack ? 'compact' : isDrinks(c) ? 'drinks' : ''}" id="c-${c.id}">
         <h2>${esc(catName(c))}</h2>
         <div class="grid">${c.items.map(card).join('')}</div>
       </section>`).join('');
@@ -548,7 +548,8 @@
       let bar = $('#promoBar'); if (!bar) { bar = document.createElement('div'); bar.id = 'promoBar'; bar.className = 'promo-bar'; $('#menu').before(bar); }
       bar.hidden = !pl.length; bar.innerHTML = pl.map(p => `<div class="promo-chip"><b>⚡ ${esc(p.t)}</b>${p.d ? `<span>${esc(p.d)}</span>` : ''}</div>`).join(''); }
     m.categories.forEach(c => c.items.forEach(it => { byId[it.id] = it; catOf[it.id] = c.id; }));
-    packId = (m.categories.find(c => c.id === 'upakuvannia')?.items || [])[0]?.id || null;
+    packId = (m.categories.find(c => c.id === 'upakuvannia' || /упаков/i.test(c.name?.uk || ''))?.items || []).find(i => !i.hidden)?.id || null;
+    FOOD = new Set(m.categories.filter(c => !c.tech && c.g === 'kitchen' && !c.nopack).map(c => c.id));
     if (GO && qs.get('rep')) { // 🔁 «Повторити» з бота гостей: ?go&rep=id|v*q,…
       cart = {}; qs.get('rep').split(',').forEach(x => { const [k, q] = x.split('*'), [id, v] = k.split('|'), it = byId[id]; if (it && id !== packId && +q > 0 && (v ? it.variants?.some(y => y.v === v) : !it.variants?.length)) cart[k] = (cart[k] || 0) + Math.min(50, +q); });
       save(); history.replaceState(null, '', window.VARVAR.link(location.pathname + '?go'));

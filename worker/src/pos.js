@@ -45,7 +45,7 @@ export async function posApi(b, req, env) {
   // ⛔ підписку ATOM не оплачено (5+ днів) — каса лише для перегляду: нові замовлення й чеки — ні
   if (/^(order|close|accept|split|move|discount|precheck|goNew|goSt|tpayOk|tip|tipPay|cashMove|closedEdit|closedReopen|voidBack|tableBack|expense|shiftOpen|menuSave|menuDel|catAdd|menuImport)$/.test(b.op || '') && env.VENUE !== 'varvar' && await env.DB.get('cfg:lock')) return [{ error: '⛔ Підписку ATOM не оплачено — каса в режимі перегляду. Оплатіть у кабінеті власника (💳 Оплата)' }, 402];
   // 📱 демо-каса ATOM (сайт продажу): усе можна спробувати, крім платного ШІ, Telegram, друку, персоналу й кодів
-  if (env.VENUE === 'atom-demo' && /Гість демо/.test(me.name || '') && /^(help|aiBench|photo[A-Z]|menuPhoto|menuImport|skInvParse|skCardAi|skDups|print|rcpt|closedPrint|precheck|qrNew|regCode|staff[A-Z]|wifi|courTg|reset|lookVSet|dzSet|site[A-Z]*Ai|aiSite|gbSend|chat|menuSave|menuDel|menuUndo|catAdd|cfgSet|closedRefund|tpayRefund|closedDel|zDel|bak|go[A-Z]*Cfg|goCfgSet|siteSet|siteDesign|menuDesign)/.test(b.op || '')) return [{ error: '🔒 У демо це вимкнено — підключіть свій заклад' }, 403];
+  if (env.VENUE === 'atom-demo' && /Гість демо/.test(me.name || '') && /^(help|aiBench|photo[A-Z]|menuPhoto|menuImport|skInvParse|skCardAi|skDups|print|rcpt|closedPrint|precheck|qrNew|regCode|staff[A-Z]|wifi|courTg|reset|lookVSet|dzSet|site[A-Z]*Ai|aiSite|gbSend|chat|menuSave|menuDel|menuUndo|catAdd|catSet|cfgSet|closedRefund|tpayRefund|closedDel|zDel|bak|go[A-Z]*Cfg|goCfgSet|siteSet|siteDesign|menuDesign)/.test(b.op || '')) return [{ error: '🔒 У демо це вимкнено — підключіть свій заклад' }, 403];
   const ok = (x = {}) => [{ ok: true, ...x }, 200];
   // 👨‍🍳 кухар: черга кухні + вибити замовлення + стоп-лист; решта — ні
   // 🧮 Розрахунок: склад, техкарти, накладні, інвентаризація — свої права (адмін / кухар)
@@ -271,6 +271,7 @@ export async function posApi(b, req, env) {
     case 'evDrop': { const t = String(b.match || ''); if (t.length < 3) return [{ error: 'Мінімум 3 символи' }, 400]; let n = 0; await editEv(env, l => { const k = l.filter(e => !JSON.stringify(e).includes(t)); n = l.length - k.length; l.length = 0; l.push(...k); }); return ok({ n }); }
 
     // меню (🔒 по одному — див. menuLock)
+    case 'catSet': { if (!admin) return needAdmin(); const r = await (await import('./menu.js')).setCatGroup(env, String(b.id), b); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 📂 Меню: розділ <b>${esc(r.c.name.uk)}</b> → ${{ kitchen: '🍳 кухня', bar: '🍹 бар', hookah: '💨 кальян' }[r.c.g]}${r.c.nopack ? ' · без упаковки' : ''} — ${esc(who)}`); return ok(); }
     case 'menuSave': case 'catAdd': case 'menuDel': case 'menuUndo': case 'menuPhoto': return menuLock(env, () => menuOp(b, env, who));
     case 'menuImport': { if (!admin) return needAdmin(); const r = await importMenu(env, b.rows, !!b.replace); await notify(env, `🖥 📥 Меню: імпорт — додано ${r.add}, оновлено ${r.upd}, розділів ${r.cats} · ${esc(who)}`); return ok(r); }
     default: return adminRest(b, env, who, ip, ok);
