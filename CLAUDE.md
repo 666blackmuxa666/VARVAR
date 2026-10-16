@@ -13,7 +13,7 @@
 - **Сайт гостя:** `index.html` + `js/app.js` (меню залу за QR; режим `?go` — з собою / доставка; `?go&book=ID` — передзамовлення до броні).
 - **Візитка:** `about.html` + `js/about.js` + `css/about.css`.
 - **Кухня на старому iPad:** `worker/src/kitchen.js` (ES5, `/k`).
-- **Хостинг сайту:** GitHub Pages (push у `main` → ~1 хв).
+- **Хостинг сайту:** файли сайту роздає сам сервер (Cloudflare static assets, `tools/build-site.sh` → `worker/.site`). Сайт викладається разом із сервером: `sh tools/deploy.sh`. GitHub — лише сховище коду (приватне).
 
 ## Збірка й перевірка
 - **Каса:** `sh tools/build-pos.sh`, потім **підняти `?v=`** у `pos.html` (і для `css/pos.css`, якщо змінювався).

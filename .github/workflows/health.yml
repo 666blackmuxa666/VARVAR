@@ -16,8 +16,8 @@ jobs:
         run: node tools/audit-static.mjs
       - name: 🌐 Сайт, каса, кабінет
         run: |
-          S=https://666blackmuxa666.github.io/VARVAR
-          for p in / /about.html /pos.html /owner.html /css/pos.css /js/pos.build.js /js/app.js; do
+          S=https://posatom.online/varvar
+          for p in /?go /about.html /pos.html /owner.html /css/pos.css /js/pos.build.js /js/app.js; do
             c=$(curl -s -o /dev/null -w '%{http_code}' "$S$p"); echo "$c $p"; [ "$c" = 200 ] || exit 1
           done
       - name: ⚙️ Сервер (3 запити)

@@ -402,7 +402,7 @@ export async function ratings(env, from, to) { const ms = [...new Set([from.slic
 // будь-яке інше повідомлення гостя — коротка довідка
 export async function guestHello(m, env) {
   const s = await getSite(env);
-  await gtg(env, 'sendMessage', { chat_id: m.chat.id, text: `👋 Це бот гостей <b>${esc(s.name)}</b>.\nТут приходять підтвердження броні, нагадування й бонуси.\n\n🌐 Сайт: https://666blackmuxa666.github.io/VARVAR/about.html\n📞 ${esc(s.phone)}`, parse_mode: 'HTML', disable_web_page_preview: true });
+  await gtg(env, 'sendMessage', { chat_id: m.chat.id, text: `👋 Це бот гостей <b>${esc(s.name)}</b>.\nТут приходять підтвердження броні, нагадування й бонуси.\n\n🌐 Сайт: ${siteLink('about.html')}\n📞 ${esc(s.phone)}`, parse_mode: 'HTML', disable_web_page_preview: true });
 }
 
 // 🌙 минув робочий день: автоматичний Z (якщо увімкнено) або нагадування адміну (якщо Z не закрили)

@@ -1,8 +1,8 @@
 // 🧪 ШІ-тестувальник у хмарі: двічі на день (вікна нижче, за Києвом) з cron кожні 5 хв бере по ОДНОМУ шматку коду
 // на ділянку й просить Groq знайти баги. 1 запит на 5 хв — хвилинні ліміти не зачіпає.
-// Код — з публічного GitHub (не Cloudflare), стан і знахідки — у KV (ait:state, ait:bugs). Забрати: sh tools/bugs-pull.sh
+// Код — з копії у файлах самого сервера (/__src, назовні не видно), стан і знахідки — у KV (ait:state, ait:bugs). Забрати: sh tools/bugs-pull.sh
 // Ключі TEST_AI_1..3 — окремі тестові, робочі ключі закладу не чіпає. Однакові ключі — ділянки по черзі.
-const RAW = 'https://raw.githubusercontent.com/666blackmuxa666/VARVAR/main/worker/src/';
+import { siteFile } from './index.js';
 const WIN = [['03:00', '05:00'], ['14:00', '16:00']];
 const CH = 14000;
 const AREAS = {
@@ -20,10 +20,10 @@ const sys = a => `Ти — суворий тестувальник POS-сист�
 - Очікував / вийшло: <...>`;
 
 async function sha(s) { const b = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(s)); return [...new Uint8Array(b)].slice(0, 6).map(x => x.toString(16).padStart(2, '0')).join(''); }
-async function chunks(files) {
+async function chunks(env, files) {
   const out = [];
   for (const f of files) {
-    const r = await fetch(RAW + f, { cf: { cacheTtl: 600 } }); if (!r.ok) continue;
+    const r = await siteFile(env, '/__src/' + f); if (!r.ok) continue;
     const lines = (await r.text()).split('\n');
     for (let i = 0, start = 0, buf = ''; i <= lines.length; i++) {
       if (i < lines.length && buf.length + lines[i].length < CH) { buf += lines[i] + '\n'; continue; }
@@ -43,7 +43,7 @@ export async function aiTestTick(env, kh) {
   const todo = uniq ? [1, 2, 3].filter(n => keys[n - 1]) : [[1, 2, 3].filter(n => keys[n - 1])[st.turn++ % keys.filter(Boolean).length]];
   let add = '', hit = 0;
   for (const n of todo) {
-    const A = AREAS[n], list = await chunks(A[1]), c = list.find(x => !st.seen[x.id]);
+    const A = AREAS[n], list = await chunks(env, A[1]), c = list.find(x => !st.seen[x.id]);
     if (!c) continue;
     hit = 1;
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {

@@ -965,7 +965,7 @@ var __objRest = (source, exclude) => {
     renderMain();
   });
   document.addEventListener("click", async (e) => {
-    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A;
+    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B;
     const el = e.target.closest("[data-a]");
     if (!el) return;
     const a = el.dataset.a, t = S.open;
@@ -1393,7 +1393,7 @@ var __objRest = (source, exclude) => {
         break;
       }
       case "goLink": {
-        const u = "https://666blackmuxa666.github.io/VARVAR/?go" + (el.dataset.src ? "&src=" + el.dataset.src : "");
+        const u = (((_n = window.VARVAR) == null ? void 0 : _n.venue) ? "https://posatom.online/" + VARVAR.venue + "/" : "https://posatom.online/varvar/") + "?go" + (el.dataset.src ? "&src=" + el.dataset.src : "");
         try {
           await navigator.clipboard.writeText(u);
           toast("\u{1F4CB} \u0421\u043A\u043E\u043F\u0456\u0439\u043E\u0432\u0430\u043D\u043E: " + u);
@@ -1460,7 +1460,7 @@ var __objRest = (source, exclude) => {
       }
       case "lookReset":
         {
-          const _n = look(), { own, sk, theme, accent, skin } = _n, rest = __objRest(_n, ["own", "sk", "theme", "accent", "skin"]);
+          const _o = look(), { own, sk, theme, accent, skin } = _o, rest = __objRest(_o, ["own", "sk", "theme", "accent", "skin"]);
           store.set("look", rest);
           applyLook();
           renderMain();
@@ -1488,7 +1488,7 @@ var __objRest = (source, exclude) => {
         closeFlow();
         break;
       case "delTable": {
-        const pb = S.tables[t], pp = ((_o = pb == null ? void 0 : pb.paid) == null ? void 0 : _o.sum) || (((_p = pb == null ? void 0 : pb.go) == null ? void 0 : _p.paid) && !pb.go.paid.ref ? pb.go.paid.sum : 0);
+        const pb = S.tables[t], pp = ((_p = pb == null ? void 0 : pb.paid) == null ? void 0 : _p.sum) || (((_q = pb == null ? void 0 : pb.go) == null ? void 0 : _q.paid) && !pb.go.paid.ref ? pb.go.paid.sum : 0);
         if (pp) {
           if (!isAdmin()) {
             toast("\u{1F4B3} \u041E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u043E\u043D\u043B\u0430\u0439\u043D \u2014 \u0432\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u043C\u043E\u0436\u0435 \u043B\u0438\u0448\u0435 \u0430\u0434\u043C\u0456\u043D (\u0437 \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F\u043C \u0433\u0440\u043E\u0448\u0435\u0439)");
@@ -1521,7 +1521,7 @@ var __objRest = (source, exclude) => {
       }
       case "tpayRefund": {
         const tt = +el.dataset.t, b = S.tables[tt];
-        if (await confirmBox(`\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438 \u0433\u043E\u0441\u0442\u044E ${money(((_q = b == null ? void 0 : b.paid) == null ? void 0 : _q.sum) || 0)} \u043D\u0430 \u043A\u0430\u0440\u0442\u043A\u0443?`, `\u0421\u0442\u0456\u043B ${tn(tt)} \u043B\u0438\u0448\u0438\u0442\u044C\u0441\u044F \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u0438\u043C. \u041F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F \u0447\u0435\u0440\u0435\u0437 LiqPay \u2014 \u0433\u0440\u043E\u0448\u0456 \u043F\u0440\u0438\u0439\u0434\u0443\u0442\u044C \u0433\u043E\u0441\u0442\u044E \u0437\u0430 1\u20137 \u0434\u043D\u0456\u0432.`)) await act("tpayRefund", { t: tt }, "\u21A9\uFE0F \u0413\u0440\u043E\u0448\u0456 \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E \u0433\u043E\u0441\u0442\u044E");
+        if (await confirmBox(`\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438 \u0433\u043E\u0441\u0442\u044E ${money(((_r = b == null ? void 0 : b.paid) == null ? void 0 : _r.sum) || 0)} \u043D\u0430 \u043A\u0430\u0440\u0442\u043A\u0443?`, `\u0421\u0442\u0456\u043B ${tn(tt)} \u043B\u0438\u0448\u0438\u0442\u044C\u0441\u044F \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u0438\u043C. \u041F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F \u0447\u0435\u0440\u0435\u0437 LiqPay \u2014 \u0433\u0440\u043E\u0448\u0456 \u043F\u0440\u0438\u0439\u0434\u0443\u0442\u044C \u0433\u043E\u0441\u0442\u044E \u0437\u0430 1\u20137 \u0434\u043D\u0456\u0432.`)) await act("tpayRefund", { t: tt }, "\u21A9\uFE0F \u0413\u0440\u043E\u0448\u0456 \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E \u0433\u043E\u0441\u0442\u044E");
         break;
       }
       case "accept":
@@ -1623,7 +1623,7 @@ var __objRest = (source, exclude) => {
         break;
       }
       case "pQMove": {
-        const r = await api("rcptGet", {}).catch(() => null), st = ((_r = r == null ? void 0 : r.route) == null ? void 0 : _r.st) || [];
+        const r = await api("rcptGet", {}).catch(() => null), st = ((_s = r == null ? void 0 : r.route) == null ? void 0 : _s.st) || [];
         if (!st.length) {
           toast("\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440\u0438 \u0449\u0435 \u043D\u0435 \u0440\u043E\u0437\u043F\u043E\u0434\u0456\u043B\u0435\u043D\u0456 \u2014 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F \u2192 \u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440");
           break;
@@ -1631,7 +1631,7 @@ var __objRest = (source, exclude) => {
         closeModal();
         const sid = await choose("\u{1F501} \u041D\u0430\u0434\u0440\u0443\u043A\u0443\u0432\u0430\u0442\u0438 \u043D\u0430 \u0456\u043D\u0448\u043E\u043C\u0443", "\u0417\u0430\u0432\u0434\u0430\u043D\u043D\u044F \u043F\u0435\u0440\u0435\u0439\u0434\u0435 \u043D\u0430 \u0432\u0438\u0431\u0440\u0430\u043D\u0438\u0439 \u043F\u0440\u0438\u043D\u0442\u0435\u0440", st.map((x) => ({ label: "\u{1F5A8} " + x.name, val: x.id })));
         if (sid && await act("printMove", { id: el.dataset.id, st: sid }, "\u{1F501} \u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0435\u043D\u043E")) {
-          const sm = (_s = el.closest("[data-pq]")) == null ? void 0 : _s.querySelector("small");
+          const sm = (_t = el.closest("[data-pq]")) == null ? void 0 : _t.querySelector("small");
           if (sm) sm.textContent = sm.textContent.replace(/ · 🖨 .*$/, "") + " \xB7 \u{1F5A8} " + st.find((x) => x.id === sid).name;
         }
         break;
@@ -1648,7 +1648,7 @@ var __objRest = (source, exclude) => {
           }, 3e3);
           break;
         }
-        if (await act("printClear", { id: el.dataset.id }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) (_t = el.closest("[data-pq]")) == null ? void 0 : _t.remove();
+        if (await act("printClear", { id: el.dataset.id }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) (_u = el.closest("[data-pq]")) == null ? void 0 : _u.remove();
         break;
       }
       case "pQr": {
@@ -1666,7 +1666,7 @@ var __objRest = (source, exclude) => {
       }
       case "expense": {
         const v = await modal({ title: "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0430", body: '<div class="form"><input id="eSum" inputmode="decimal" placeholder="\u0421\u0443\u043C\u0430, \u20B4"><input id="eNote" placeholder="\u041D\u0430 \u0449\u043E (\u043D\u0430\u043F\u0440. \u043E\u0432\u043E\u0447\u0456 \u043D\u0430 \u0440\u0438\u043D\u043A\u0443)">' + (isAdmin() ? `<label class="muted" style="font-size:13px">\u{1F4C5} \u0417\u0430 \u0434\u0435\u043D\u044C<input id="eDay" type="date" value="${todayK()}" max="${todayK()}"></label>` : "") + "</div>", buttons: [{ label: "\u{1F4B5} \u0417 \u043A\u0430\u0441\u0438", val: "cash", cls: "primary" }, { label: "\u{1F4B3} \u0417 \u043A\u0430\u0440\u0442\u0438", val: "card" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
-        const sum = v && +$("#eSum").value.replace(",", "."), note = v && $("#eNote").value, day = v && ((_u = $("#eDay")) == null ? void 0 : _u.value) !== todayK() ? ((_v = $("#eDay")) == null ? void 0 : _v.value) || "" : "";
+        const sum = v && +$("#eSum").value.replace(",", "."), note = v && $("#eNote").value, day = v && ((_v = $("#eDay")) == null ? void 0 : _v.value) !== todayK() ? ((_w = $("#eDay")) == null ? void 0 : _w.value) || "" : "";
         closeModal();
         if (v && sum) {
           await act("expense", __spreadValues({ sum, note, src: v }, day ? { day } : {}), day ? `\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0443 \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u043E \u0437\u0430 ${day.split("-").reverse().join(".")}` : "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0443 \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u043E");
@@ -1745,7 +1745,7 @@ var __objRest = (source, exclude) => {
         break;
       }
       case "cfgTgl": {
-        const k = el.dataset.k, cur = (_A = (_z = (_x = (_w = S.data.staff) == null ? void 0 : _w.cfg) == null ? void 0 : _x[k]) != null ? _z : (_y = S.cfg) == null ? void 0 : _y[k]) != null ? _A : +(el.dataset.def || 0);
+        const k = el.dataset.k, cur = (_B = (_A = (_y = (_x = S.data.staff) == null ? void 0 : _x.cfg) == null ? void 0 : _y[k]) != null ? _A : (_z = S.cfg) == null ? void 0 : _z[k]) != null ? _B : +(el.dataset.def || 0);
         if (await act("cfgSet", { k, v: cur ? 0 : 1 }, "\u2699\uFE0F \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
           loadView();
           loadState().catch(() => {

@@ -115,11 +115,11 @@ export async function handle(req, env) {
       if (url.pathname.startsWith('/img/')) {
         const b = await env.DB.get('img:' + url.pathname.slice(5), 'arrayBuffer');
         if (b) return new Response(b, { headers: { 'content-type': new Uint8Array(b.slice(0, 4))[0] === 0x89 ? 'image/png' : 'image/jpeg', 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=31536000' } });
-        return proxySite(url); // статичні картинки сайту (для каси через запасну адресу)
+        return proxySite(url, env); // статичні картинки сайту (для каси через запасну адресу)
       }
       if (url.pathname.startsWith('/api/print/')) return printApi(req, env, url);
       // програма друку і логотип через простий HTTP (Windows 7 не вміє TLS 1.2)
-      if (/^\/snd\/[a-z0-9-]+\.mp3$/.test(url.pathname)) { const r = await fetch('https://666blackmuxa666.github.io/VARVAR' + url.pathname, { cf: { cacheTtl: 86400 } }); return new Response(r.body, { status: r.status, headers: { 'content-type': 'audio/mpeg', 'cache-control': 'public, max-age=86400', 'access-control-allow-origin': '*' } }); } // 🔊 звуки кухні
+      if (/^\/snd\/[a-z0-9-]+\.mp3$/.test(url.pathname)) { const r = await siteFile(env, url.pathname); return new Response(r.body, { status: r.status, headers: { 'content-type': 'audio/mpeg', 'cache-control': 'public, max-age=86400', 'access-control-allow-origin': '*' } }); } // 🔊 звуки кухні
       { const qr = await qrRoute(env, url); if (qr) return qr; } // 🔳 QR столів — генеруються сервером
       if (url.pathname === '/print/logo.png') { /* 🧾 логотип чека: свій (конструктор чека) → логотип закладу → VARVAR */
         const P = await import('./print.js'), rc = await P.getRcpt(env); let key = rc.logoImg || '';
@@ -128,7 +128,7 @@ export async function handle(req, env) {
       }
       const pf = url.pathname.match(/^\/print\/(agent\.ps1|[a-z0-9-]+\.png)$/);
       if (pf) {
-        const r = await fetch('https://666blackmuxa666.github.io/VARVAR/printer/' + (pf[1] === 'agent.ps1' ? 'varvar-print.ps1' : pf[1]), { cf: { cacheTtl: 30 } });
+        const r = await siteFile(env, '/printer/' + (pf[1] === 'agent.ps1' ? 'varvar-print.ps1' : pf[1]));
         if (!r.ok) return new Response('not found', { status: 404 });
         return new Response(r.body, { headers: { 'content-type': url.pathname.endsWith('.png') ? 'image/png' : 'application/octet-stream', 'access-control-allow-origin': '*' } }); // * — друк з планшета малює картинку на canvas
       }
@@ -208,7 +208,7 @@ export async function handle(req, env) {
         return new Response('ok');
       }
       // запасна адреса каси для старих Windows 7 без нових сертифікатів: http://varvar-menu.varvar.workers.dev/pos.html
-      if (req.method === 'GET' && /^\/(pos\.html|pos\.webmanifest|css\/|js\/|printer\/logo\.png)/.test(url.pathname)) return proxySite(url);
+      if (req.method === 'GET' && /^\/(pos\.html|pos\.webmanifest|css\/|js\/|printer\/logo\.png)/.test(url.pathname)) return proxySite(url, env);
       return json({ error: 'not_found' }, 404);
     } catch (e) {
       return json({ error: 'bad_request' }, 400);
@@ -371,8 +371,8 @@ async function atomSite(req, env) {
   let rest = m[2];
   if (m[1] === 'atom' && rest === '/') rest = '/atom.html';
   else if (rest === '/') rest = m[1] === 'owner' ? '/owner.html' : url.search ? '/index.html' : '/about.html';
-  if (/\.\.|varvar-print\.config/.test(rest)) return new Response('Not found', { status: 404 });
-  const r = await fetch('https://666blackmuxa666.github.io/VARVAR' + rest + (/\.html$/.test(rest) ? '' : url.search), { cf: { cacheTtl: /\.html$/.test(rest) ? 20 : 300, cacheEverything: true } }); /* ?v= — у ключ кешу, щоб оновлення приходили одразу */
+  if (/\.\.|varvar-print\.config|^\/__src\//.test(rest)) return new Response('Not found', { status: 404 });
+  const r = await siteFile(env, rest);
   const ct = r.headers.get('content-type') || 'application/octet-stream';
   if (rest === '/atom.html' && r.ok) { // 🎨 дизайн із конструктора — одразу в сторінку (без миготіння старих кольорів)
     const d = await (env.DB.kv || env.DB).get('atom:design', { cacheTtl: 60 }).catch(() => null);
@@ -410,7 +410,14 @@ async function atomApi(req, env, url) {
     return J({ error: 'not found' }, 404);
   } catch (e) { return J({ error: 'Помилка, спробуйте ще раз' }, 500); }
 }
-async function proxySite(url) {
-  const r = await fetch('https://666blackmuxa666.github.io/VARVAR' + url.pathname + url.search, { cf: { cacheTtl: 30 } });
+// 📦 Файли сайту лежать у самому сервері (Cloudflare static assets, тека worker/.site — збирає tools/build-site.sh).
+// Ззовні вони недоступні напряму (run_worker_first) — лише через ці маршрути, тож /__src і службові файли не видно.
+export function siteFile(env, path) {
+  if (env.ASSETS) return env.ASSETS.fetch(new Request('https://assets.local' + path));
+  return fetch('https://666blackmuxa666.github.io/VARVAR' + path, { cf: { cacheTtl: 30 } }); // тестовий сервер без assets
+}
+async function proxySite(url, env) {
+  if (url.pathname.startsWith('/__src/')) return new Response('not found', { status: 404 });
+  const r = await siteFile(env, url.pathname);
   return new Response(r.body, { status: r.status, headers: { 'content-type': r.headers.get('content-type') || 'application/octet-stream', 'cache-control': 'no-cache' } });
 }

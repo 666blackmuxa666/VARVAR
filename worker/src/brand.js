@@ -1,6 +1,6 @@
 // 🎨 Оформлення трьох Telegram-ботів: аватар з емблемою (img/bots/*.png), ім'я, опис, команди.
 // Виконується один раз на версію (ключ brand:<V>) з Cron. Змінили картинки/тексти — підніміть V.
-const V = 'v2', IMG = 'https://666blackmuxa666.github.io/VARVAR/img/bots/';
+const V = 'v2', IMG = 'https://posatom.online/varvar/img/bots/';
 const BOTS = [
   { tok: 'BOT_TOKEN', img: 'staff', name: 'Varvar · Команда 🧑‍🍳', short: '🧑‍🍳 Робочий бот персоналу Varvar: столи, кухня, зміни, склад.', desc: '🧑‍🍳 Бот команди Varvar Food Bar.\n\nЗамовлення й столи, кухня, зміни й зарплата, склад, броні, звіти.\n\n🔐 Вхід — ваш PIN з каси.' },
   { tok: 'GUEST_BOT_TOKEN', img: 'guest', name: 'Varvar Food Bar 🍔', short: '🍔 Замовлення, бонуси, броні й сертифікати Varvar — Буковель.', desc: '🍔 Varvar Food Bar · Поляниця (Буковель)\n\n• замовлення з собою й доставка\n• 🎁 бонуси й статус замовлення\n• 📅 броні та 🎟 сертифікати\n• 💬 зв\'язок з адміністратором\n\nНатисніть «Почати» 👇', cmds: [{ command: 'start', description: '📱 Меню' }, { command: 'menu', description: '📱 Меню' }] },

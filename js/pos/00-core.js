@@ -461,7 +461,7 @@
       case 'cliBon0': { const b = S.tables[t]; if (b?.cert) { if (!(await confirmBox(b.cert.code && b.bonus > b.cert.sum ? '↩️ Прибрати сертифікат і бонуси з рахунку?' : '↩️ Прибрати сертифікат з рахунку?'))) break; if (!(await act('certOff', { t }, '↩️ Прибрано'))) break; if (b.bonus > b.cert.sum && b.cli) await act('cliBonus', { t, sum: 0 }); } else if (!(await act('cliBonus', { t, sum: 0 }))) break; loadState().catch(() => {}); break; }
       case 'goCfg': { const k = el.dataset.k, cur = S.data.gocfg?.[k]; const v = ['on', 'del', 'pick'].includes(k) ? (cur ? 0 : 1) : await ask(el.dataset.l || k, String(cur ?? ''), ['phone', 'zone', 'from', 'to'].includes(k) ? 'text' : 'number'); if (v == null) break;
         const r = await act('goCfgSet', { k, v }, '💾 Збережено'); if (r) { S.data.gocfg = r.cfg; renderMain(); } break; }
-      case 'goLink': { const u = 'https://666blackmuxa666.github.io/VARVAR/' + '?go' + (el.dataset.src ? '&src=' + el.dataset.src : ''); try { await navigator.clipboard.writeText(u); toast('📋 Скопійовано: ' + u); } catch { await ask('Посилання', u); } break; }
+      case 'goLink': { const u = (window.VARVAR?.venue ? 'https://posatom.online/' + VARVAR.venue + '/' : 'https://posatom.online/varvar/') + '?go' + (el.dataset.src ? '&src=' + el.dataset.src : ''); try { await navigator.clipboard.writeText(u); toast('📋 Скопійовано: ' + u); } catch { await ask('Посилання', u); } break; }
       case 'rm': { const reason = await voidReason(`Скасувати 1× ${el.dataset.name}?`); if (reason) act('remove', { t, name: el.dataset.name, reason }, '✏️ Скасовано'); break; }
       case 'pre': act('precheck', { t }, '🖨 Пречек відправлено'); break;
       case 'disc': discFlow(); break;

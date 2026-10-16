@@ -175,8 +175,8 @@ async function apiTests() {
   });
   await step('📝 інвентаризація → ↩️ скасувати → залишок як був', async () => {
     const x = (await posOk(A, 'skData')).ing.find(i => !i.off && !i.grp); if (!x) return 'немає продуктів';
-    const st0 = x.st?.k || 0; await posOk(A, 'skCountSave', { wh: 'k', f: { [x.id]: st0 + 3 } }); const d = (await posOk(A, 'skCountFinish', { wh: 'k' })).doc;
-    must(Math.abs(((await posOk(A, 'skData')).ing.find(i => i.id === x.id).st?.k || 0) - (st0 + 3)) < 1e-6, 'інвентаризація не застосувалась');
+    const st0 = x.st?.k || 0, tg = Math.max(0, st0) + 3; /* залишок може бути від'ємним — факт ні */ await posOk(A, 'skCountSave', { wh: 'k', f: { [x.id]: tg } }); const d = (await posOk(A, 'skCountFinish', { wh: 'k' })).doc;
+    must(Math.abs(((await posOk(A, 'skData')).ing.find(i => i.id === x.id).st?.k || 0) - tg) < 1e-6, 'інвентаризація не застосувалась');
     must((await pos(W, 'skCountUndo', { id: d.id })).status !== 200, 'офіціант скасував');
     await posOk(A, 'skCountUndo', { id: d.id }); must((await pos(A, 'skCountUndo', { id: d.id })).status === 400, 'скасовано двічі');
     must(Math.abs(((await posOk(A, 'skData')).ing.find(i => i.id === x.id).st?.k || 0) - st0) < 1e-6, 'залишок не повернувся'); return x.n;

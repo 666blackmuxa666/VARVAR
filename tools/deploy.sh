@@ -11,6 +11,7 @@ if [ "$1" = "--rollback" ]; then (cd worker && npx wrangler rollback --message "
 echo "🧪 Тести…"
 sh tools/test.sh --quiet | tail -1 | grep -q "✅" || { echo "❌ Тести не пройшли — не викладаю"; exit 1; }
 
+sh tools/build-site.sh
 echo "🚀 Деплой…"
 (cd worker && npx wrangler deploy 2>&1 | grep -E "Deployed|rror")
 
