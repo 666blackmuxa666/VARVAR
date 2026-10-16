@@ -186,6 +186,13 @@
   const liveDot = () => { $('#live').className = 'live' + (S.live ? ' on' : ''); };
   setInterval(() => { if (S.token && !S.live && document.visibilityState === 'visible') loadState().catch(() => {}); }, 15000); // запасний варіант без WebSocket
   const wake = () => { if (document.visibilityState !== 'visible' || !S.token) return; loadState().catch(() => {}); if (!S.live || Date.now() - lastMsg > 20000) revive(); };
+  { // 👉 Телефон: свайп від правого краю на екрані столів — відкрити стрічку; свайп вправо по стрічці — закрити
+    let sx = 0, sy = 0, mode = '';
+    document.addEventListener('touchstart', e => { const t = e.touches[0], f = $('#feed'); mode = ''; if (!f || innerWidth > 980 || e.touches.length > 1) return; sx = t.clientX; sy = t.clientY;
+      if (f.classList.contains('open')) mode = f.contains(e.target) ? 'close' : ''; else if (S.view === 'hall' && !S.open && !document.querySelector('.modal-bg,.modal') && sx > innerWidth - 32) mode = 'open'; }, { passive: true });
+    document.addEventListener('touchend', e => { if (!mode) return; const t = e.changedTouches[0], dx = t.clientX - sx, dy = Math.abs(t.clientY - sy), f = $('#feed');
+      if (dy < 60 && (mode === 'open' ? dx < -50 : dx > 70)) f.classList.toggle('open', mode === 'open'); mode = ''; }, { passive: true });
+  }
   document.addEventListener('visibilitychange', wake); addEventListener('pageshow', wake); addEventListener('focus', wake); addEventListener('online', wake);
 
   // 🔊 звуки сповіщень — вибір у Налаштуваннях → 🎨 Вигляд: [частота, старт, тривалість, тип]
