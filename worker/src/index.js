@@ -1,7 +1,7 @@
 import { aiHelp } from './ai.js';
 import { tn } from './tn.js';
 import { BUILD } from './buildid.js';
-import { goOrder, goInfo, reco } from './delivery.js';
+import { goOrder, goInfo, recoAll } from './delivery.js';
 import { promoQuote, promoFill } from './promo.js';
 import { courUpdate } from './courier.js';
 import { guestBot, guestCallback, guestText, guestHello, sitePublic, bookCreate, bookStatus, bookPre, certAsk, certPublic, siteMsg, siteHit, meStart, mePoll, meData, meLogout, cron } from './site.js';
@@ -182,7 +182,7 @@ export async function handle(req, env) {
       if (url.pathname === '/api/go' && req.method === 'POST') { const gb = await req.json(); if (gb && typeof gb === 'object') { delete gb._paid; delete gb._oid; } /* 🔐 службові поля лише від LiqPay (delivery.js), не від гостя */ return json(...await goOrder(gb, ip, env)); }
       if (url.pathname === '/api/goinfo') return json(await goInfo(env, url.searchParams.get('ph')));
       if (url.pathname === '/api/promo' && req.method === 'POST') return json(await promoQuote(await req.json(), env)); // 🎁 знижки кошика ?go
-      if (url.pathname === '/api/reco') return json(await reco(env));
+      if (url.pathname === '/api/reco') return json(await recoAll(env));
       if (url.pathname === '/go') return Response.redirect(siteLink('index.html?go') + (url.search ? '&' + url.search.slice(1) : ''), 302);
       if (url.pathname === '/api/call' && req.method === 'POST') return json(...await callWaiter(await req.json(), ip, env));
       if (url.pathname === '/api/order' && req.method === 'POST') return json(...await order(await req.json(), ip, env));
