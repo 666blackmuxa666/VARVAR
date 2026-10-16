@@ -57,6 +57,7 @@ export async function demoSeed(env, { full = false, days = 14 } = {}) {
     for (const [k, v] of SITE) await setSite(env, k, v).catch(() => {});
   }
   await demoArt(env);
+  await (await import('./demomap.js')).demoMap(env).catch(() => {}); // 🏛 дизайнерські зали
   await resetAll(env); // стара історія (чеки, рахунки, витрати, стрічка, зміна)
   for (const k of (await env.DB.list({ prefix: 'book:' })).keys.map(k => k.name)) await env.DB.delete(k);
   const items = (await getMenu(env)).categories.filter(c => !c.tech).flatMap(c => c.items.map(i => ({ ...i, cat: c.name.uk })));
