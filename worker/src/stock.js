@@ -299,7 +299,7 @@ export async function invoiceSave(env, d, who) {
     const l = await getIng(env), im = new Map(l.map(x => [x.id, x])), al = (await env.DB.get('al', 'json')) || {};
     const lines = [], rows = [], alerts = [], ch = new Set();
     for (const ln of (Array.isArray(d.lines) ? d.lines : []).slice(0, 120)) {
-      const q = r3(ln.q), f = r3(ln.f) || 1, sum = r2(ln.sum != null && ln.sum !== '' ? ln.sum : (+ln.price || 0) * q);
+      const q = r3(ln.q), f = r3(ln.f) || 1, sum = r2(Math.min(1e7, Math.max(0, +(ln.sum != null && ln.sum !== '' ? ln.sum : (+ln.price || 0) * q) || 0)));
       if (!(q > 0)) continue;
       let x = ln.id && im.get(ln.id);
       if (!x && ln.add?.n) { // новий продукт з накладної
@@ -337,7 +337,7 @@ export async function invoiceSave(env, d, who) {
 async function supDebt(env, sup, d) { const s = (await env.DB.get('sups', 'json')) || {}; const x = s[sup] ||= { debt: 0 }; x.debt = r2(Math.max(0, (x.debt || 0) + d)); x.last = Date.now(); await env.DB.put('sups', JSON.stringify(s)); }
 // оплата накладної → витрата в Касі (з посиланням на накладну)
 async function payExpense(env, inv, src, who) {
-  const i = await addExpense(env, { sum: Math.round(inv.total), src: src === 'card' ? 'card' : 'cash', note: `🧾 ${inv.sup}${inv.no ? ' №' + inv.no : ''}`, by: who || '', inv: inv.id });
+  const i = await addExpense(env, { sum: r2(inv.total), src: src === 'card' ? 'card' : 'cash', note: `🧾 ${inv.sup}${inv.no ? ' №' + inv.no : ''}`, by: who || '', inv: inv.id });
   await setInv(env, inv.id, x => { x.paid = { src, ts: Date.now(), by: who || '', exp: { d: dayKey(), i } }; });
 }
 async function setInv(env, id, fn) { const x = await env.DB.get('inv:' + id, 'json'); if (!x) return null; fn(x); await env.DB.put('inv:' + id, JSON.stringify(x)); await idxSet(env, x); return x; }

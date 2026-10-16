@@ -1064,3 +1064,4 @@ main.hall .f3w{flex:1;display:flex;flex-direction:column;gap:10px;min-width:0}
 @media (max-width:700px){.f3w .f3:not(.edit){min-height:0}}
 .f3-zm{display:flex;gap:4px}.f3-zm .btn{min-width:36px;font-size:17px}
 main.hall:has(.f3.edit){overflow-y:auto}main.hall .f3w{min-height:0}.f3w .f3.edit{flex:1 1 0;min-height:260px}
+main.hall:has(.f3.edit){padding-bottom:90px}.f3-pal.fl button.on{background:var(--text);color:var(--bg)}.kpi b{overflow-wrap:anywhere}

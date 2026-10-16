@@ -83,7 +83,7 @@ export async function posApi(b, req, env) {
   if (/^cour[A-Z]/.test(b.op || '')) { // 🛵 кур'єр
     if (b.op === 'courMe') return ok({ day: await courDay(env, b.n && admin ? String(b.n) : who), route: await multiRoute(env, who), bot: env.COURIER_BOT_TOKEN ? await courBot(env) : '', linked: !!(await getLinks(env))[who] });
     if (b.op === 'courTg') return ok(await courLinkUrl(env, who));
-    if (b.op === 'courAct') { const r = await courAct(env, t, who, String(b.act), b.arg); return r.error ? [{ error: r.error }, 400] : ok(r); }
+    if (b.op === 'courAct') { if (b.act === 'take' && me.role !== 'courier' && !admin) return [{ error: 'Брати доставку може кур\'єр або адмін' }, 403]; const r = await courAct(env, t, who, String(b.act), b.arg); return r.error ? [{ error: r.error }, 400] : ok(r); }
     if (b.op === 'courList') { if (!admin) return needAdmin(); const st = (await getStaff(env)).filter(s => s.role === 'courier'), links = await getLinks(env); return ok({ list: await Promise.all(st.map(async s => ({ ...(await courDay(env, s.name)), name: s.name, tg: !!links[s.name] }))), bot: env.COURIER_BOT_TOKEN ? await courBot(env) : '' }); }
     if (b.op === 'courRep') { if (!admin) return needAdmin(); return ok(await courRep(env, String(b.m || ''))); }
     if (b.op === 'courCash') { if (!admin) return needAdmin(); const r = await courCashGive(env, String(b.n), +b.sum, who); await logEvent(env, { k: 'shift', by: who, text: `💵 Отримано від кур'єра ${b.n}: ${+b.sum} ₴` }); return ok({ r }); }
@@ -269,7 +269,7 @@ export async function posApi(b, req, env) {
       const e = { sum, note: String(b.note || '').slice(0, 100), src: b.src === 'card' ? 'card' : 'cash', at: hhmm(), by: who, ...(day ? { late: dayKey() } : {}) };
       await addExpense(env, e, day || undefined); await notify(env, `🖥 💸 Витрата${day ? ` за ${day.split('-').reverse().join('.')}` : ''} ${money(sum)} ${e.src === 'card' ? '💳 з карти' : '💵 з каси'}${e.note ? ` — ${esc(e.note)}` : ''} · ${esc(who)}`); return ok();
     }
-    case 'expenseDel': { if (!admin) return needAdmin(); const ok2 = await delExpense(env, +b.i, b.day); if (ok2) await notify(env, `🖥 🗑 Витрату${b.day ? ' за ' + esc(String(b.day)) : ''} видалено — ${esc(who)}`).catch(() => {}); return ok(); }
+    case 'expenseDel': { if (!admin) return needAdmin(); const ok2 = await delExpense(env, +b.i, b.day); if (ok2 === 'inv') return [{ error: 'Це оплата накладної — видаліть або змініть накладну у Складі' }, 400]; if (ok2) await notify(env, `🖥 🗑 Витрату${b.day ? ' за ' + esc(String(b.day)) : ''} видалено — ${esc(who)}`).catch(() => {}); return ok(); }
     case 'reset': return ok({ n: await resetAll(env) });
     case 'evDrop': { const t = String(b.match || ''); if (t.length < 3) return [{ error: 'Мінімум 3 символи' }, 400]; let n = 0; await editEv(env, l => { const k = l.filter(e => !JSON.stringify(e).includes(t)); n = l.length - k.length; l.length = 0; l.push(...k); }); return ok({ n }); }
 

@@ -63,7 +63,7 @@
       var f = all[i], W = f.clientWidth - 8, two = f.classList.contains('m2'), ed = f.classList.contains('edit'), bw, bh, k, lift = 0;
       if (!W) continue;
       // 📷 камера: з кількох ракурсів беремо той, де зал найбільший і вміщається цілком (на телефоні — зал уздовж екрана)
-      var H = f.parentElement.classList.contains('f3w') ? f.clientHeight - 8 : 0, ax = two ? 0 : AX, cams = ed ? [0] : two ? [0, -90] : [AZ], best = null, tall = !two && !ed && W < 600 && H > 120; // 📱 3D на телефоні: як на ПК, на всю висоту, вбік — гортати
+      var H = f.parentElement.matches('.f3w,.pl-in') ? f.clientHeight - 8 : 0, ax = two ? 0 : AX, cams = ed ? [0] : two ? [0, -90] : [AZ], best = null, tall = !two && !ed && W < 600 && H > 120; // 📱 3D на телефоні: як на ПК, на всю висоту, вбік — гортати
       for (var c = 0; c < cams.length; c++) {
         var az0 = ed ? 0 : cams[c], a = Math.abs(az0) * Math.PI / 180, x = ax * Math.PI / 180, lf = 130 * Math.sin(x);
         var w0 = Math.abs(Math.cos(a)) * FW + Math.abs(Math.sin(a)) * FH, h0 = (Math.abs(Math.sin(a)) * FW + Math.abs(Math.cos(a)) * FH) * Math.cos(x) + lf;
@@ -129,7 +129,7 @@
     '.f3-t.s-book{--g:#bf5af2aa}.f3-t.s-book .f3-pin{background:#bf5af2}.f3-t.s-pick{--g:#30d158cc}.f3-t.s-pick .f3-pin{background:#30d158;color:#04210d}',
     '.f3-t.call{--g:#ffd60acc}.f3-t.call .f3-pin{box-shadow:0 0 0 3px #ffd60a,0 6px 16px #0007}',
     '.f3-t[class*=" s-"] .f3-gl{opacity:1}.f3-t.dim .f3-pin{opacity:.4}.f3-t.dim .tt{--c:#6d6458;background:#6d6458}',
-    '@keyframes f3p{50%{opacity:.45}}.f3:not(.edit) .f3-t:active .f3-pin{filter:brightness(1.3)}.f3-t[class*=" s-"] .f3-pin{color:#fff}',
+    '@keyframes f3p{50%{opacity:.45}}.f3:not(.edit) .f3-t:active .f3-pin{filter:brightness(1.3)}.f3-t.s-new .f3-pin,.f3-t.s-book .f3-pin{color:#fff}',
     '@media (hover:hover){.f3:not(.edit) .f3-t:hover .f3-pin{box-shadow:0 0 0 2px #fff,0 8px 20px #0008}}',
     // редагування: сітка, рамка вибраного
     '.f3.edit .f3-fl::after{content:"";position:absolute;inset:0;background:linear-gradient(#ffffff1a 1px,transparent 1px) 0 0/25px 25px,linear-gradient(90deg,#ffffff1a 1px,transparent 1px) 0 0/25px 25px}',

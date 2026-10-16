@@ -164,8 +164,8 @@ export async function bookSet(env, id, st, who, { t } = {}) {
     return bkEdit(env, id, y => { y.preSent = Date.now(); });
   }
   if (!BST[st]) return { error: 'Невідомий статус' };
-  let same = false; const x = await bkEdit(env, id, y => { same = y.st === st; y.st = st; y.by = who; if (t) y.t = +t; else if (st === 'ok' && !y.t && y.tw) y.t = y.tw; }); /* 🗺 підтвердили — гість сидить за обраним столом */
-  if (!x) return null; if (same) return x; /* повторне натискання (каса + Telegram) — без дубля гостю */
+  let same = false, dead = false; const x = await bkEdit(env, id, y => { if (['ok', 'came'].includes(st) && ['cancel', 'no', 'noshow'].includes(y.st)) { dead = true; return; } same = y.st === st; y.st = st; y.by = who; if (t) y.t = +t; else if (st === 'ok' && !y.t && y.tw) y.t = y.tw; }); /* 🗺 підтвердили — гість сидить за обраним столом */
+  if (dead) return { error: 'Бронь уже скасована' }; if (!x) return null; if (same) return x; /* повторне натискання (каса + Telegram) — без дубля гостю */
   await editEv(env, l => { for (const e of l) if (e.bid === id) { e.s = st === 'no' || st === 'noshow' ? 'rej' : 'acc'; e.accBy = who; } }).catch(() => {});
   if (x.mid) await tg(env, 'editMessageText', { chat_id: env.CHAT_ID, message_id: x.mid, text: `${bkText(x)}\n\n${bkLabel(st)} — <b>${esc(who)}</b>`, parse_mode: 'HTML', reply_markup: { inline_keyboard: bkButtons(x) } }).catch(() => {});
   if (st === 'ok') await guestMsg(env, x.phone, `✅ Вашу бронь підтверджено: ${x.date.slice(8)}.${x.date.slice(5, 7)} о ${x.time}, ${x.people} гост. Чекаємо!`);

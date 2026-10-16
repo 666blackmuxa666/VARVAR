@@ -244,18 +244,21 @@ export async function setHalls(env, halls, go) {
   const l = (Array.isArray(halls) ? halls : []).slice(0, 12).map(h => ({ n: String(h.n || '').trim().slice(0, 24) || 'Зал', ic: IC.includes(h.ic) ? h.ic : '🪑', c: Math.round(+h.c) }));
   if (l.some(h => !(h.c >= 1 && h.c <= 100))) return { error: 'У залі від 1 до 100 столів' };
   const tot = l.reduce((a, h) => a + h.c, 0); if (tot > 200) return { error: 'Разом до 200 столів' };
-  return L(env, 'cfg', async () => { const c = await getCfg(env); if (l.length) { c.halls = l; c.tables = tot; } else delete c.halls; c.goTabs = [0, 1, 2].includes(+go) ? +go : 0; await env.DB.put('cfg', JSON.stringify(c)); return c; });
+  // 🛡 не зменшувати кількість столів, поки за «зниклим» столом відкритий рахунок (гроші зависли б поза залом)
+  if (l.length) { const n0 = (await getCfg(env)).tables || 0; if (tot < n0) for (const k of (await env.DB.list({ prefix: 'bill:' })).keys.map(x => +x.name.slice(5))) if (k > tot && k <= n0) { const x = await env.DB.get('bill:' + k, 'json'); if (x?.items?.length || x?.total > 0) return { error: `Стіл ${k} відкритий — спершу закрийте його` }; } }
+  return L(env, 'cfg', async () => { const c = await getCfg(env); if (l.length) { c.halls = l; c.tables = tot; } else delete c.halls;
+    { const st = new Set(); let f = 1; for (const h of hallsOf(c)) { st.add(String(f)); f += h.c; } for (const o of ['deco', 'floor']) if (c[o]) for (const k of Object.keys(c[o])) if (!st.has(k)) delete c[o][k]; } /* 🗺 декор і підлога залів, яких більше нема */ c.goTabs = [0, 1, 2].includes(+go) ? +go : 0; await env.DB.put('cfg', JSON.stringify(c)); return c; });
 }
 // 🗺 схема залу: { стіл: [x, y] } у відсотках площі залу; надсилається вся схема одного залу (from..to)
 // 🗺 схема залу: місця столів {t:[x%,y%,форма,поворот]} + декор і підлога залу (ключ — перший стіл залу)
 const MAP_SH = ['s', 'r', 'l', 'b', 't'], MAP_K = ['wall', 'win', 'door', 'col', 'bar', 'sofa', 'plant', 'tree', 'umb', 'rug', 'stage', 'stairs'], MAP_FL = ['wood', 'herring', 'tile', 'stone', 'concrete', 'grass'];
 const pct = v => Math.round(Math.min(100, Math.max(0, +v || 0)) * 2) / 2, deg = v => ((Math.round((+v || 0) / 15) * 15) % 360 + 360) % 360;
 export async function setMap(env, pos, from, to, deco, floor) {
-  return L(env, 'cfg', async () => { const c = await getCfg(env), n = c.tables || 200, m = { ...(c.map || {}) }; from = Math.max(1, +from || 1); to = Math.min(n, +to || n);
+  return L(env, 'cfg', async () => { const c = await getCfg(env), n = c.tables || 200, m = { ...(c.map || {}) }; if (!(+from >= 1 && +to >= +from)) return c; from = Math.min(n, Math.max(1, +from)); to = Math.min(n, +to);
     for (const t of Object.keys(m)) if (+t >= from && +t <= to || +t > n) delete m[t];
     for (const [t, p] of Object.entries(pos || {})) { const k = +t; if (!(k >= from && k <= to) || !Array.isArray(p)) continue; const v = [pct(p[0]), pct(p[1])], sh = MAP_SH.includes(p[2]) ? p[2] : 's', r = deg(p[3]); if (sh !== 's' || r) v.push(sh, r); m[k] = v; }
     c.map = m;
-    if (Array.isArray(deco)) { c.deco = { ...(c.deco || {}) }; const l = deco.filter(x => Array.isArray(x) && MAP_K.includes(x[0])).slice(0, 150).map(x => [x[0], pct(x[1]), pct(x[2]), deg(x[3]), Math.max(0, Math.min(700, Math.round(+x[4] || 0)))]); if (l.length) c.deco[from] = l; else delete c.deco[from]; }
+    if (Array.isArray(deco)) { c.deco = { ...(c.deco || {}) }; const l = deco.filter(x => Array.isArray(x) && MAP_K.includes(x[0]) && isFinite(x[1]) && isFinite(x[2]) && x[1] !== '' && x[2] !== '').slice(0, 150).map(x => [x[0], pct(x[1]), pct(x[2]), deg(x[3]), Math.max(0, Math.min(700, Math.round(+x[4] || 0)))]); if (l.length) c.deco[from] = l; else delete c.deco[from]; }
     if (MAP_FL.includes(floor)) c.floor = { ...(c.floor || {}), [from]: floor };
     await env.DB.put('cfg', JSON.stringify(c)); return c; });
 }
@@ -594,7 +597,7 @@ export async function reprintClosed(env, ref, who, day = dayKey()) {
 export const getExp = async (env, day = dayKey()) => (await env.DB.get('exp:' + day, 'json')) || [];
 async function _addExpense(env, e, day = dayKey()) { const k = 'exp:' + day; const l = await getExp(env, day); l.push({ ts: Date.now(), at: hhmm(), ...e }); await env.DB.put(k, JSON.stringify(l)); return l.length - 1; }
 // 🗑/↩️ запис дня (витрата / рух коштів / Z-звіт): прапорець del, будь-який день
-async function _flagRec(env, pfx, day, i, del) { const k = pfx + day, l = (await env.DB.get(k, 'json')) || []; const x = l[+i]; if (!x || !!x.del === del) return false; if (del) x.del = 1; else delete x.del; await env.DB.put(k, JSON.stringify(l)); return true; }
+async function _flagRec(env, pfx, day, i, del) { const k = pfx + day, l = (await env.DB.get(k, 'json')) || []; const x = l[+i]; if (!x || !!x.del === del) return false; if (del && x.inv) return 'inv'; /* 🧾 оплата накладної — скасовується лише через накладну, інакше борг зникне */ if (del) x.del = 1; else delete x.del; await env.DB.put(k, JSON.stringify(l)); return true; }
 // ---------- рух коштів (не витрати): внесення / вилучення готівки, обмін картка ↔ готівка ----------
 // type: in (+готівка) · out (−готівка) · k2c (з картки в готівку) · c2k (з готівки на картку) · kin (+картка) · kout (−картка)
 export const MOVE = { in: '➕ Внесення готівки', out: '➖ Вилучення готівки', k2c: '🔁 Картка → готівка', c2k: '🔁 Готівка → картка', kin: '➕ Внесення на картку', kout: '➖ Вилучення з картки' };

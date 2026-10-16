@@ -2176,7 +2176,7 @@ var __objRest = (source, exclude) => {
       return `<button class="${v.id === cur.id ? "on" : ""}${h ? " hot" : ""}" data-hl="set" data-h="${v.id}">${v.ic} ${esc(v.n)}${n ? ` <b>${n}</b>` : ""}</button>`;
     };
     const tabs = V2.map(tab), bar = V2.length > 1 ? `<div class="hall-tabs">${tabs.join("")}</div>` : "", othHot = tabs.some((x, i) => V2[i].id !== cur.id && x.includes(' hot"'));
-    const tools = go ? "" : `<div class="seg hall-f">${[["mine", "\u{1F464}", "\u041C\u043E\u0457 \u0441\u0442\u043E\u043B\u0438"], ["busy", "\u{1F525}", "\u0417\u0430\u0439\u043D\u044F\u0442\u0456"], ["all", "\u0423\u0441\u0456", "\u0423\u0441\u0456 \u0441\u0442\u043E\u043B\u0438"]].map(([k, l, t]) => `<button class="${S.hf === k ? "on" : ""}" data-hl="hf" data-h="${k}" title="${t}">${l}</button>`).join("")}<button class="${map ? "on" : ""}" data-hl="hm" title="${map ? "\u041F\u043B\u0438\u0442\u043A\u0438" : "\u0421\u0445\u0435\u043C\u0430 \u0437\u0430\u043B\u0443"}">${map ? "\u{1F4CB}" : "\u{1F5FA}"}</button></div>`;
+    const tools = go ? "" : `<div class="seg hall-f">${[["mine", "\u{1F464}", "\u041C\u043E\u0457 \u0441\u0442\u043E\u043B\u0438"], ["busy", "\u{1F525}", "\u0417\u0430\u0439\u043D\u044F\u0442\u0456"], ["all", "\u0423\u0441\u0456", "\u0423\u0441\u0456 \u0441\u0442\u043E\u043B\u0438"]].map(([k, l, t]) => `<button class="${S.hf === k ? "on" : ""}" data-hl="hf" data-h="${k}" title="${t}">${l}</button>`).join("")}<button data-hl="hm" title="\u0412\u0438\u0433\u043B\u044F\u0434: \u043F\u043B\u0438\u0442\u043A\u0438 \u2192 3D \u2192 \u043F\u043B\u0430\u043D">${!map ? "\u{1F4CB}" : S.f3m === "3d" ? "\u{1F9CA}" : "\u25A6"}</button></div>`;
     const why = (t) => {
       var _a3, _b2;
       return calls[t] ? "\u{1F514} \u043A\u043B\u0438\u0447\u0435" : pending.has(t) ? "\u{1F6CE} \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F" : ((_a3 = S.tables[t]) == null ? void 0 : _a3.pwait) ? "\u{1F310} \u043E\u043F\u043B\u0430\u0442\u0438\u0432" : ((_b2 = S.tables[t]) == null ? void 0 : _b2.check) ? "\u{1F9FE} \u0440\u0430\u0445\u0443\u043D\u043E\u043A" : "";
@@ -2645,14 +2645,9 @@ var __objRest = (source, exclude) => {
     const F = window.Floor3D;
     if (!F) return '<div class="muted" style="padding:14px">\u041E\u043D\u043E\u0432\u0456\u0442\u044C \u0441\u0442\u043E\u0440\u0456\u043D\u043A\u0443</div>';
     const mp2 = mapPos(cur), ed = S.mapEd, d = S.mapDraft, key = hk(cur);
-    let busy = 0, sum = 0;
     const tables = all.map((t) => {
       const b = S.tables[t], bk = !b && (S.books || []).find((x2) => x2.t === t && x2.st === "ok"), [x, y, sh, r] = mp2[t];
       const st2 = b ? pending.has(t) || b.pwait ? "s-new" : b.check ? "s-check" : "s-busy" : bk ? "s-book" : "";
-      if (b) {
-        busy++;
-        sum += b.pay2;
-      }
       const sub = b ? `<small>${b.pwait ? "\u{1F310} " : b.check ? "\u{1F9FE} " : pending.has(t) ? "\u{1F6CE} " : ""}${money(b.pay2)}</small>` : bk ? `<small>\u{1F4C5} ${bk.time}</small>` : "";
       return { t, x, y, sh, r, cls: `${st2}${calls[t] ? " call" : ""}${inF.has(t) ? "" : " dim"}`, attrs: ed ? "" : `data-a="table" data-t="${t}"`, pin: `<b>${calls[t] ? "\u{1F514}" : ""}${t}</b>${sub}` };
     });
@@ -2664,12 +2659,10 @@ var __objRest = (source, exclude) => {
       }
     });
     const plan = F.html({ tables, deco: ed ? d.deco : ((_b = (_a2 = S.cfg) == null ? void 0 : _a2.deco) == null ? void 0 : _b[key]) || [], floor: ed ? d.floor : (_d = (_c = S.cfg) == null ? void 0 : _c.floor) == null ? void 0 : _d[key], mode: ed ? "2d" : S.f3m, edit: ed, sel: S.mapSel });
-    const view = `<div class="seg f3-mode"><button class="${S.f3m === "3d" ? "on" : ""}" data-hl="f3m" data-h="3d">\u{1F9CA} 3D</button><button class="${S.f3m === "2d" ? "on" : ""}" data-hl="f3m" data-h="2d">\u25A6 \u041F\u043B\u0430\u043D</button></div>`;
-    const legend = `<div class="f3-leg"><span><i class="lg-f"></i>\u0432\u0456\u043B\u044C\u043D\u0438\u0439</span><span><i class="lg-b"></i>\u0433\u043E\u0441\u0442\u0456</span><span><i class="lg-c"></i>\u0440\u0430\u0445\u0443\u043D\u043E\u043A</span><span><i class="lg-n"></i>\u043D\u043E\u0432\u0435 / \u043E\u043F\u043B\u0430\u0442\u0430</span><span><i class="lg-k"></i>\u0431\u0440\u043E\u043D\u044C</span></div>`;
-    if (!ed) return `<div class="f3w"><div class="f3-bar">${view}<span class="f3-zm"><button class="btn sm" data-hl="f3z" data-h="-1" title="\u0412\u0456\u0434\u0434\u0430\u043B\u0438\u0442\u0438">\u2212</button><button class="btn sm" data-hl="f3z" data-h="1" title="\u041D\u0430\u0431\u043B\u0438\u0437\u0438\u0442\u0438">\uFF0B</button></span><span class="f3-sum"><b>${busy}</b>/${all.length} \u0437\u0430\u0439\u043D\u044F\u0442\u043E \xB7 <b class="money">${money(sum)}</b></span>${isAdmin() ? '<button class="btn sm" data-hl="med">\u270F\uFE0F \u041E\u0431\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u0442\u0438</button>' : ""}</div>${plan}${legend}</div>`;
+    if (!ed) return `<div class="f3w">${plan}</div>`;
     const sel = S.mapSel, st = (sel == null ? void 0 : sel[0]) === "t" ? +sel.slice(1) : null, sd = (sel == null ? void 0 : sel[0]) === "d" ? +sel.slice(1) : null, dx = sd != null ? d.deco[sd] : null;
-    const tools = st != null ? `<div class="f3-tools"><b>\u{1FA91} \u0421\u0442\u0456\u043B ${st}</b>${Object.entries(F.SH).map(([k, v]) => `<button class="chip${mp2[st][2] === k ? " on" : ""}" data-hl="msh" data-h="${k}">${v.n}</button>`).join("")}<button class="btn sm" data-hl="mrot">\u21BB \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438</button></div>` : dx ? `<div class="f3-tools"><b>${((_e = F.K[dx[0]]) == null ? void 0 : _e.n) || ""}</b><button class="btn sm" data-hl="mrot">\u21BB \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438</button>${((_f = F.K[dx[0]]) == null ? void 0 : _f.len) ? '<button class="btn sm" data-hl="mlen" data-h="-40">\u27F7 \u2212</button><button class="btn sm" data-hl="mlen" data-h="40">\u27F7 +</button>' : ""}<button class="btn sm" data-hl="mdup">\u29C9 \u041A\u043E\u043F\u0456\u044F</button><button class="btn sm red" data-hl="mdel">\u{1F5D1}</button></div>` : '<div class="f3-tools muted">\u270B \u041F\u0435\u0440\u0435\u0442\u044F\u0433\u0443\u0439\u0442\u0435 \u0441\u0442\u043E\u043B\u0438 \u0439 \u043F\u0440\u0435\u0434\u043C\u0435\u0442\u0438. \u0422\u043E\u0440\u043A\u043D\u0456\u0442\u044C\u0441\u044F \u2014 \u0437\u2019\u044F\u0432\u043B\u044F\u0442\u044C\u0441\u044F \u0434\u0456\u0457.</div>';
-    return `<div class="f3w"><div class="f3-bar"><b class="f3-title">\u270F\uFE0F ${esc(cur.n)}</b><button class="btn sm" data-hl="mreset">\u21BA \u0420\u044F\u0434\u0430\u043C\u0438</button><button class="btn sm" data-hl="mno">\u2716 \u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438</button><button class="btn sm primary" data-hl="msave">\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438</button></div>${plan}${tools}
+    const tools = st != null ? `<div class="f3-tools"><b>\u{1FA91} \u0421\u0442\u0456\u043B ${st}</b>${Object.entries(F.SH).map(([k, v]) => `<button class="chip${mp2[st][2] === k ? " on" : ""}" data-hl="msh" data-h="${k}">${v.n}</button>`).join("")}<button class="btn sm" data-hl="mrot">\u21BB \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438</button></div>` : dx ? `<div class="f3-tools"><b>${((_e = F.K[dx[0]]) == null ? void 0 : _e.n) || ""}</b><button class="btn sm" data-hl="mrot">\u21BB \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438</button>${((_f = F.K[dx[0]]) == null ? void 0 : _f.len) ? '<button class="btn sm" data-hl="mlen" data-h="-40">\u27F7 \u2212</button><button class="btn sm" data-hl="mlen" data-h="40">\u27F7 +</button>' : ""}<button class="btn sm" data-hl="mdup">\u29C9 \u041A\u043E\u043F\u0456\u044F</button><button class="btn sm red" data-hl="mdel">\u{1F5D1}</button></div>` : '<div class="f3-tools muted">\u041F\u0435\u0440\u0435\u0442\u044F\u0433\u0443\u0439\u0442\u0435 \u0441\u0442\u043E\u043B\u0438 \u0439 \u043F\u0440\u0435\u0434\u043C\u0435\u0442\u0438 \xB7 \u0442\u043E\u0440\u043A\u043D\u0456\u0442\u044C\u0441\u044F \u2014 \u0437\u2019\u044F\u0432\u043B\u044F\u0442\u044C\u0441\u044F \u0434\u0456\u0457<button class="btn sm" data-hl="mreset" style="margin-left:auto">\u21BA \u0420\u044F\u0434\u0430\u043C\u0438</button></div>';
+    return `<div class="f3w"><div class="f3-bar"><button class="f3-ic" data-hl="mno" title="\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438">\u2715</button><b class="f3-title">${esc(cur.n)}</b><button class="btn sm primary" data-hl="msave">\u0413\u043E\u0442\u043E\u0432\u043E</button></div>${plan}${tools}
       <div class="f3-pal">${Object.entries(F.K).map(([k, v]) => `<button data-hl="madd" data-h="${k}">${v.n}</button>`).join("")}</div>
       <div class="f3-pal fl">${Object.entries(F.FLOORS).map(([k, v]) => `<button class="${d.floor === k ? "on" : ""}" data-hl="mfl" data-h="${k}">${v}</button>`).join("")}</div></div>`;
   }
@@ -2727,7 +2720,8 @@ var __objRest = (source, exclude) => {
     const sel = S.mapSel || "", i = +sel.slice(1);
     if (a === "madd") {
       if (d.deco.length >= 150) return toast("\u041C\u0430\u043A\u0441\u0438\u043C\u0443\u043C 150 \u043F\u0440\u0435\u0434\u043C\u0435\u0442\u0456\u0432");
-      d.deco.push([h, 50, 50, 0, ((_a2 = F.K[h]) == null ? void 0 : _a2.len) || 0]);
+      const f = $(".f3"), cx = f ? Math.round(Math.min(90, Math.max(10, (f.scrollLeft + f.clientWidth / 2) / f.scrollWidth * 100))) : 50, cy = f ? Math.round(Math.min(90, Math.max(10, (f.scrollTop + f.clientHeight / 2) / f.scrollHeight * 100))) : 50, j = d.deco.length % 4 * 3;
+      d.deco.push([h, cx + j, cy + j, 0, ((_a2 = F.K[h]) == null ? void 0 : _a2.len) || 0]);
       S.mapSel = "d" + (d.deco.length - 1);
     }
     if (a === "mfl") d.floor = h;
@@ -2793,23 +2787,14 @@ var __objRest = (source, exclude) => {
       return openTable(+el.dataset.t);
     }
     if (a === "hm") {
-      S.hm = S.hm === "map" ? "tiles" : "map";
+      if (S.hm !== "map") {
+        S.hm = "map";
+        S.f3m = "3d";
+      } else if (S.f3m === "3d") S.f3m = "2d";
+      else S.hm = "tiles";
       store.set("hm", S.hm);
-      mapStop();
-      return renderMain();
-    }
-    if (a === "f3m") {
-      S.f3m = el.dataset.h;
       store.set("f3m", S.f3m);
-      const f = $(".f3");
-      if (!f) return renderMain();
-      f.classList.toggle("m2", S.f3m === "2d");
-      document.querySelectorAll(".f3-mode button").forEach((b) => b.classList.toggle("on", b.dataset.h === S.f3m));
-      return window.Floor3D.fit();
-    }
-    if (a === "f3z") return window.Floor3D.zoom(+el.dataset.h);
-    if (a === "med") {
-      mapStart();
+      mapStop();
       return renderMain();
     }
     if (a === "mno") {
@@ -4372,7 +4357,7 @@ var __objRest = (source, exclude) => {
         const f = a;
         a += h.c;
         return `<div class="kv"><span>${h.ic} ${esc(h.n)}<br><small class="muted">${h.c} \u0441\u0442\u043E\u043B. \xB7 \u2116${f}\u2013${a - 1}</small></span><span class="kv-r"><button class="btn sm" data-hs="ed" data-i="${i}">\u270F\uFE0F</button><button class="btn sm" data-hs="up" data-i="${i}" ${i ? "" : "disabled"}>\u2B06\uFE0F</button><button class="btn sm red" data-hs="del" data-i="${i}">\u{1F5D1}</button></span></div>`;
-      }).join("") : row("\u{1FA91} \u0421\u0442\u043E\u043B\u0456\u0432 \u0443 \u0437\u0430\u043B\u0456", S.n, ch("cfg", ' data-k="tables"'), "\u041E\u0434\u0438\u043D \u0437\u0430\u043B. \u0414\u043E\u0434\u0430\u0439\u0442\u0435 \u0437\u0430\u043B\u0438 \u0439 \u0442\u0435\u0440\u0430\u0441\u0438 \u2014 \u043A\u0430\u0441\u0430 \u043F\u043E\u043A\u0430\u0436\u0435 \u043F\u0435\u0440\u0435\u043C\u0438\u043A\u0430\u0447")) + `<button class="btn sm primary" data-hs="add">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438 ${H.length ? "\u0437\u0430\u043B / \u0442\u0435\u0440\u0430\u0441\u0443" : "\u0437\u0430\u043B\u0438"}</button><div class="kv press" data-hs="map"><span>\u{1F5FA} \u0421\u0445\u0435\u043C\u0430 \u0437\u0430\u043B\u0443<br><small class="muted">\u0420\u043E\u0437\u0441\u0442\u0430\u0432\u0442\u0435 \u0441\u0442\u043E\u043B\u0438 \u0442\u0430\u043A, \u044F\u043A \u0432\u043E\u043D\u0438 \u0441\u0442\u043E\u044F\u0442\u044C \u043D\u0430\u0441\u043F\u0440\u0430\u0432\u0434\u0456</small></span><span class="muted">\u0440\u043E\u0437\u0441\u0442\u0430\u0432\u0438\u0442\u0438 \u203A</span></div><div class="kv press" data-hs="go"><span>\u{1F6F5} \u0417 \u0441\u043E\u0431\u043E\u044E \u0456 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430<br><small class="muted">${["\u0423 \u0437\u0430\u043B\u0456 \u2014 \u0441\u0442\u0440\u0456\u0447\u043A\u043E\u044E \u043D\u0430\u0434 \u0441\u0442\u043E\u043B\u0430\u043C\u0438", "\u041E\u043A\u0440\u0435\u043C\u0430 \u0432\u043A\u043B\u0430\u0434\u043A\u0430 \xAB\u0417 \u0441\u043E\u0431\u043E\u044E \u0456 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430\xBB", "\u0414\u0432\u0456 \u0432\u043A\u043B\u0430\u0434\u043A\u0438: \xAB\u0417 \u0441\u043E\u0431\u043E\u044E\xBB \u0456 \xAB\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430\xBB"][c.goTabs || 0]}</small></span><span class="muted">\u0437\u043C\u0456\u043D\u0438\u0442\u0438 \u203A</span></div><div class="muted set-note">\u0421\u0442\u043E\u043B\u0438 \u043D\u0443\u043C\u0435\u0440\u0443\u044E\u0442\u044C\u0441\u044F \u043F\u0456\u0434\u0440\u044F\u0434 \u0447\u0435\u0440\u0435\u0437 \u0443\u0441\u0456 \u0437\u0430\u043B\u0438 \u2014 \u043D\u043E\u043C\u0435\u0440\u0438 \u0439 QR \u043D\u0430 \u0441\u0442\u043E\u043B\u0430\u0445 \u043B\u0438\u0448\u0430\u044E\u0442\u044C\u0441\u044F. \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442 \u043E\u0431\u0438\u0440\u0430\u0454 \xAB\u2B50 \u041C\u043E\u0457 \u0437\u0430\u043B\u0438\xBB \u043D\u0430 \u0441\u0432\u043E\u0454\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457.</div>`;
+      }).join("") : row("\u{1FA91} \u0421\u0442\u043E\u043B\u0456\u0432 \u0443 \u0437\u0430\u043B\u0456", S.n, ch("cfg", ' data-k="tables"'), "\u041E\u0434\u0438\u043D \u0437\u0430\u043B. \u0414\u043E\u0434\u0430\u0439\u0442\u0435 \u0437\u0430\u043B\u0438 \u0439 \u0442\u0435\u0440\u0430\u0441\u0438 \u2014 \u043A\u0430\u0441\u0430 \u043F\u043E\u043A\u0430\u0436\u0435 \u043F\u0435\u0440\u0435\u043C\u0438\u043A\u0430\u0447")) + `<button class="btn sm primary" data-hs="add">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438 ${H.length ? "\u0437\u0430\u043B / \u0442\u0435\u0440\u0430\u0441\u0443" : "\u0437\u0430\u043B\u0438"}</button><div class="kv press" data-hs="map"><span>\u{1F5FA} \u0421\u0445\u0435\u043C\u0430 \u0437\u0430\u043B\u0443<br><small class="muted">\u0420\u043E\u0437\u0441\u0442\u0430\u0432\u0442\u0435 \u0441\u0442\u043E\u043B\u0438 \u0442\u0430\u043A, \u044F\u043A \u0432\u043E\u043D\u0438 \u0441\u0442\u043E\u044F\u0442\u044C \u043D\u0430\u0441\u043F\u0440\u0430\u0432\u0434\u0456</small></span><span class="muted kv-r" style="white-space:nowrap">\u0440\u043E\u0437\u0441\u0442\u0430\u0432\u0438\u0442\u0438 \u203A</span></div><div class="kv press" data-hs="go"><span>\u{1F6F5} \u0417 \u0441\u043E\u0431\u043E\u044E \u0456 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430<br><small class="muted">${["\u0423 \u0437\u0430\u043B\u0456 \u2014 \u0441\u0442\u0440\u0456\u0447\u043A\u043E\u044E \u043D\u0430\u0434 \u0441\u0442\u043E\u043B\u0430\u043C\u0438", "\u041E\u043A\u0440\u0435\u043C\u0430 \u0432\u043A\u043B\u0430\u0434\u043A\u0430 \xAB\u0417 \u0441\u043E\u0431\u043E\u044E \u0456 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430\xBB", "\u0414\u0432\u0456 \u0432\u043A\u043B\u0430\u0434\u043A\u0438: \xAB\u0417 \u0441\u043E\u0431\u043E\u044E\xBB \u0456 \xAB\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430\xBB"][c.goTabs || 0]}</small></span><span class="muted">\u0437\u043C\u0456\u043D\u0438\u0442\u0438 \u203A</span></div><div class="muted set-note">\u0421\u0442\u043E\u043B\u0438 \u043D\u0443\u043C\u0435\u0440\u0443\u044E\u0442\u044C\u0441\u044F \u043F\u0456\u0434\u0440\u044F\u0434 \u0447\u0435\u0440\u0435\u0437 \u0443\u0441\u0456 \u0437\u0430\u043B\u0438 \u2014 \u043D\u043E\u043C\u0435\u0440\u0438 \u0439 QR \u043D\u0430 \u0441\u0442\u043E\u043B\u0430\u0445 \u043B\u0438\u0448\u0430\u044E\u0442\u044C\u0441\u044F. \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442 \u043E\u0431\u0438\u0440\u0430\u0454 \xAB\u2B50 \u041C\u043E\u0457 \u0437\u0430\u043B\u0438\xBB \u043D\u0430 \u0441\u0432\u043E\u0454\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457.</div>`;
     })()}</div>
       <div class="card"><h3>\u{1F4B0} \u0413\u0440\u043E\u0448\u0456</h3>
         ${row("\u{1F3F7} \u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430", ((_a2 = c.discMax) != null ? _a2 : 20) + "%", ch("cfg", ' data-k="discMax"'), "\u0411\u0456\u043B\u044C\u0448\u0443 \u0437\u043D\u0438\u0436\u043A\u0443 \u0434\u0430\u0454 \u043B\u0438\u0448\u0435 \u0430\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440")}

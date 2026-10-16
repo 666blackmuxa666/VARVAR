@@ -346,9 +346,6 @@
     if (a === 'pick') return hallPick();
     if (a === 'go') { S.hall = el.dataset.h; store.set('hall', S.hall); renderMain(); return openTable(+el.dataset.t); }
     if (a === 'hm') { if (S.hm !== 'map') { S.hm = 'map'; S.f3m = '3d'; } else if (S.f3m === '3d') S.f3m = '2d'; else S.hm = 'tiles'; store.set('hm', S.hm); store.set('f3m', S.f3m); mapStop(); return renderMain(); }
-    if (a === 'f3m') { S.f3m = el.dataset.h; store.set('f3m', S.f3m); const f = $('.f3'); if (!f) return renderMain(); f.classList.toggle('m2', S.f3m === '2d'); el.dataset.h = S.f3m === '3d' ? '2d' : '3d'; el.textContent = S.f3m === '3d' ? '2D' : '3D'; return window.Floor3D.fit(); }
-    if (a === 'f3z') return window.Floor3D.zoom(+el.dataset.h);
-    if (a === 'med') { mapStart(); return renderMain(); }
     if (a === 'mno') { mapStop(); return renderMain(); }
     if (a === 'msave') return mapSave();
     if (['madd', 'mfl', 'msh', 'mrot', 'mlen', 'mdup', 'mdel', 'mreset'].includes(a)) return mapEdit(a, el.dataset.h);
