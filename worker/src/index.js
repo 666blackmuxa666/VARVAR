@@ -149,6 +149,10 @@ export async function handle(req, env) {
       if (url.pathname === '/api/owner' && req.method === 'POST') return env.VENUE === MAIN ? json(...await ownerApi(req, env)) : json({ error: 'not_found' }, 404); // 👑 кабінет власника
       if (url.pathname.startsWith('/__int/')) return json(...await intApi(req, env, url.pathname)); // заклад ← кабінет (лише зсередини воркера)
       if (url.pathname === '/__cron') return env.INSTORE && req.headers.get('x-cron') && req.headers.get('x-cron') === (env.MASTER_KEY ? await intSecret(env) : '1') ? json(await cron(env)) : json({ error: 'no' }, 403);
+      if (req.method === 'POST' && ip && ['/api/book', '/api/cert', '/api/go', '/api/tpay'].includes(url.pathname)) { // 🛡 загальна стеля з IP (ліміти по device обходяться зміною device; Wi‑Fi закладу ділить IP — стеля вільна)
+        const tk = 'iprl:' + ip.slice(0, 64), tn_ = +(await env.DB.get(tk)) || 0; if (tn_ >= 60) return json({ error: 'rate' }, 429);
+        await env.DB.put(tk, String(tn_ + 1), { expirationTtl: 600 });
+      }
       // 🌐 візитка
       if (url.pathname === '/api/site') return new Response(JSON.stringify(await sitePublic(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
       if (url.pathname === '/site') return Response.redirect(siteLink('about.html'), 302);
