@@ -5,7 +5,7 @@
   S.evRead = store.get('evRead', {}); S.evDisc = store.get('evDisc', 0); S.evc = null; S.evNames = null;
   const evRx = (o, c) => o.rx ? `<div class="rxs">${Object.entries(o.rx).map(([r, a]) => `<button class="rx${a.includes(S.me?.name) ? ' on' : ''}" data-ec="rx" data-rx="${r}"${c ? ` data-c="${c}"` : ''} title="${esc(a.join(', '))}">${r} ${a.length}</button>`).join('')}</div>` : '';
   const evUnread = e => { if (e.k === 'chat' && !S.evRead[e.id] && !e.cm && e.by !== S.me?.name) return !(e.seen || []).includes(S.me?.name); const n = e.cm?.length || 0; return n > (S.evRead[e.id] || 0) && e.cm[n - 1].by !== S.me?.name; };
-  const evMention = e => evUnread(e) && e.cm.slice(S.evRead[e.id] || 0).some(c => c.by !== S.me?.name && c.m?.some(isMe));
+  const evMention = e => evUnread(e) && (!e.cm ? !!e.m?.some(isMe) : e.cm.slice(S.evRead[e.id] || 0).some(c => c.by !== S.me?.name && c.m?.some(isMe)));
   const isMe = x => x.replace(/_/g, ' ').toLowerCase() === (S.me?.name || '').toLowerCase();
   const cmText = c => esc(c.text).replace(/@([^\s@,.!?]{2,24})/g, '<b class="ment">@$1</b>');
   // підвал картки в стрічці: реакції · 💬 N + останній коментар · 👁 хто бачив

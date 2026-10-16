@@ -2569,10 +2569,13 @@ var __objRest = (source, exclude) => {
     const n = ((_c = e.cm) == null ? void 0 : _c.length) || 0;
     return n > (S.evRead[e.id] || 0) && e.cm[n - 1].by !== ((_d = S.me) == null ? void 0 : _d.name);
   };
-  const evMention = (e) => evUnread(e) && e.cm.slice(S.evRead[e.id] || 0).some((c) => {
-    var _a2, _b;
-    return c.by !== ((_a2 = S.me) == null ? void 0 : _a2.name) && ((_b = c.m) == null ? void 0 : _b.some(isMe));
-  });
+  const evMention = (e) => {
+    var _a2;
+    return evUnread(e) && (!e.cm ? !!((_a2 = e.m) == null ? void 0 : _a2.some(isMe)) : e.cm.slice(S.evRead[e.id] || 0).some((c) => {
+      var _a3, _b;
+      return c.by !== ((_a3 = S.me) == null ? void 0 : _a3.name) && ((_b = c.m) == null ? void 0 : _b.some(isMe));
+    }));
+  };
   const isMe = (x) => {
     var _a2;
     return x.replace(/_/g, " ").toLowerCase() === (((_a2 = S.me) == null ? void 0 : _a2.name) || "").toLowerCase();
