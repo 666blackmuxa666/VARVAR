@@ -547,7 +547,9 @@ export async function handleUpdate(u, env) {
   if (!text) return;
   let x;
   // --- офіціант ---
-  if (low === '/start' || low === '/help' || text === W.help || low === 'допомога' || low === 'help') return send({ text: admin ? ADMIN_HELP(env) : HELP(env) });
+  const LEARN = { inline_keyboard: [[{ text: '🎓 Навчання: уроки з підказками', url: POS_URL(env) + '#course' }]] }; // 🎓 курс — у касі (уроки візуальні)
+  if (low === '/learn' || low === 'навчання') return send({ text: '🎓 <b>Навчання</b>\nУроки для вашої ролі: що натискати й де — з підсвіткою справжніх кнопок у касі.', markup: LEARN });
+  if (low === '/start' || low === '/help' || text === W.help || low === 'допомога' || low === 'help') return send({ text: (admin ? ADMIN_HELP(env) : HELP(env)) + '\n\n🎓 Навчання з підказками в касі — /learn' });
   if (text === W.order || low === '/order' || low === 'замовлення') return send(await tablePick(env, (await openTables(env)).map(r => r.t), tablesCount(env)));
   if (low === '/tables' || text === W.tables || low === 'столи') return send(await tablesView(env));
   if ((x = low.match(/^(?:\/table|стіл|стол)\s+(\d+)$/))) return send(await tableView(env, +x[1]));

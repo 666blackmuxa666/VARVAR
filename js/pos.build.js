@@ -441,6 +441,12 @@ var __objRest = (source, exclude) => {
       S._tk0 = 1;
       loadMyTasks();
       loadLookV();
+      if (location.hash === "#course") {
+        S.view = "course";
+        history.replaceState(null, "", location.pathname + location.search);
+        renderNav();
+        renderMain();
+      }
       if (OPEN_SET && isAdmin()) {
         S.view = "settings";
         S.setTab = OPEN_SET;
@@ -694,11 +700,11 @@ var __objRest = (source, exclude) => {
     renderMain();
   };
   applyLook();
-  const NAV_COOK = [["kq", "\u{1F468}\u200D\u{1F373}", "\u0427\u0435\u0440\u0433\u0430"], ["calc", "\u{1F4E6}", "\u0421\u043A\u043B\u0430\u0434"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["hall", "\u{1FA91}", "\u0417\u0430\u043B"]];
-  const NAV_A = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["cash", "\u{1F4B0}", "\u041A\u0430\u0441\u0430"], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438"], ["calc", "\u{1F4E6}", "\u0421\u043A\u043B\u0430\u0434"], ["kq", "\u{1F468}\u200D\u{1F373}", "\u041A\u0443\u0445\u043D\u044F"], ["team", "\u{1F465}", "\u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B"], ["books", "\u{1F4C5}", "\u0411\u0440\u043E\u043D\u0456"], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442."]];
+  const NAV_COOK = [["kq", "\u{1F468}\u200D\u{1F373}", "\u0427\u0435\u0440\u0433\u0430"], ["calc", "\u{1F4E6}", "\u0421\u043A\u043B\u0430\u0434"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["course", "\u{1F393}", "\u041D\u0430\u0432\u0447\u0430\u043D\u043D\u044F"]];
+  const NAV_A = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["cash", "\u{1F4B0}", "\u041A\u0430\u0441\u0430"], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438"], ["calc", "\u{1F4E6}", "\u0421\u043A\u043B\u0430\u0434"], ["kq", "\u{1F468}\u200D\u{1F373}", "\u041A\u0443\u0445\u043D\u044F"], ["team", "\u{1F465}", "\u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B"], ["books", "\u{1F4C5}", "\u0411\u0440\u043E\u043D\u0456"], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442."], ["course", "\u{1F393}", "\u041D\u0430\u0432\u0447\u0430\u043D\u043D\u044F"]];
   const NAV_MAIN = ["hall", "kq", "cash", "books"];
-  const NAV_W = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["books", "\u{1F4C5}", "\u0411\u0440\u043E\u043D\u0456"], ["closed", "\u{1F9FE}", "\u0427\u0435\u043A\u0438"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"]];
-  const NAV_COUR = [["go", "\u{1F6F5}", "\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0438"]];
+  const NAV_W = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["books", "\u{1F4C5}", "\u0411\u0440\u043E\u043D\u0456"], ["closed", "\u{1F9FE}", "\u0427\u0435\u043A\u0438"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["course", "\u{1F393}", "\u041D\u0430\u0432\u0447\u0430\u043D\u043D\u044F"]];
+  const NAV_COUR = [["go", "\u{1F6F5}", "\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0438"], ["course", "\u{1F393}", "\u041D\u0430\u0432\u0447\u0430\u043D\u043D\u044F"]];
   const navList = () => isCour() ? NAV_COUR : isCook() ? NAV_COOK : isAdmin() ? NAV_A : NAV_W;
   const NAV = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["closed", "\u{1F4DC}", "\u0417\u0430\u043A\u0440\u0438\u0442\u0456"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["cash", "\u{1F4B0}", "\u041A\u0430\u0441\u0430", 1], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438", 1], ["kq", "\u{1F468}\u200D\u{1F373}", "\u041A\u0443\u0445\u043D\u044F", 1], ["calc", "\u{1F9EE}", "\u0420\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043E\u043A", 1], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442.", 1]];
   function renderNav() {
@@ -773,7 +779,7 @@ var __objRest = (source, exclude) => {
       m.style.setProperty("--cols", c);
       m.style.setProperty("--rows", r);
     }
-    const html = (_b = (_a2 = { books: booksHTML, go: goHTML, kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, team: teamHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML, mylook: () => `<div class="rhead"><div><h1>\u{1F3A8} \u041C\u0456\u0439 \u0432\u0438\u0433\u043B\u044F\u0434</h1><span class="muted">${isAdmin() ? "\u0437\u0430\u043A\u043B\u0430\u0434 \u0430\u0431\u043E \u043B\u0438\u0448\u0435 \u0446\u0435\u0439 \u043F\u0440\u0438\u0441\u0442\u0440\u0456\u0439" : "\u043A\u043E\u043B\u0456\u0440 \u0456 \u0441\u0442\u0438\u043B\u044C \u043B\u0438\u0448\u0435 \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457"}</span></div></div>` + lookHTML() })[v]) == null ? void 0 : _b.call(_a2);
+    const html = (_b = (_a2 = { books: booksHTML, go: goHTML, kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, team: teamHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML, course: courseHTML, mylook: () => `<div class="rhead"><div><h1>\u{1F3A8} \u041C\u0456\u0439 \u0432\u0438\u0433\u043B\u044F\u0434</h1><span class="muted">${isAdmin() ? "\u0437\u0430\u043A\u043B\u0430\u0434 \u0430\u0431\u043E \u043B\u0438\u0448\u0435 \u0446\u0435\u0439 \u043F\u0440\u0438\u0441\u0442\u0440\u0456\u0439" : "\u043A\u043E\u043B\u0456\u0440 \u0456 \u0441\u0442\u0438\u043B\u044C \u043B\u0438\u0448\u0435 \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457"}</span></div></div>` + lookHTML() })[v]) == null ? void 0 : _b.call(_a2);
     const fid = (_c = document.activeElement) == null ? void 0 : _c.id, keep = ["stopSearch", "rQ", "skQ", "skQ2", "skCq"].includes(fid);
     const sx = [...m.querySelectorAll(".zp-grid, .sk-tbl, .chips.scroll, .seg")].map((e) => e.scrollLeft);
     setHTML(m, html || "");
@@ -3742,10 +3748,10 @@ var __objRest = (source, exclude) => {
     }) || { name: "\u{1F9E9} \u0406\u043D\u0448\u0435" }).name;
     const days = daysIn(from, to), byDay = new Map(grpBy((c) => c.d));
     const waiterOf = (c) => c.w || c.by || "\u2014";
-    const T = R.tab;
+    const T2 = R.tab;
     let body = "";
-    if (T === "cour") return head + nav + courRepHTML();
-    if (T === "overview") {
+    if (T2 === "cour") return head + nav + courRepHTML();
+    if (T2 === "overview") {
       let chart, ctitle;
       if (days.length === 1) chart = "";
       else if (days.length <= 62) {
@@ -3785,24 +3791,24 @@ var __objRest = (source, exclude) => {
       return head + filters + kpis + pills + nav + `<div class="dash">${chart ? `<div class="card wide"><h3>${ctitle}${days.length > 1 && days.length <= 62 ? ' <span class="muted">\xB7 \u043D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \u0434\u0435\u043D\u044C \u2014 \u0432\u0456\u0434\u043A\u0440\u0438\u0454\u0442\u044C\u0441\u044F \u0437\u0432\u0456\u0442 \u0437\u0430 \u043D\u044C\u043E\u0433\u043E</span>' : ""}</h3>${chart}</div>` : ""}${heat}${insCard}${grpCard}${topCard}${wCard}</div>`;
     }
     let rows, unit = "\u0447\u0435\u043A.", sortable = false, sub;
-    if (T === "dishes") {
+    if (T2 === "dishes") {
       rows = dishAgg((nm) => nm);
       unit = "\u0448\u0442";
       sortable = true;
-    } else if (T === "cats") {
+    } else if (T2 === "cats") {
       rows = dishAgg((nm) => {
         var _a3;
         return ((_a3 = dishOf(nm)) == null ? void 0 : _a3.cname) || "\u0406\u043D\u0448\u0435";
       });
       unit = "\u0448\u0442";
       sortable = true;
-    } else if (T === "groups") {
+    } else if (T2 === "groups") {
       rows = dishAgg(grpName);
       unit = "\u0448\u0442";
-    } else if (T === "waiters") {
+    } else if (T2 === "waiters") {
       rows = grpBy(waiterOf);
       sub = (q, s) => `${q} \u0447\u0435\u043A. \xB7 \u0441\u0435\u0440. ${money(s / q)}`;
-    } else if (T === "tips") {
+    } else if (T2 === "tips") {
       const m = /* @__PURE__ */ new Map();
       checks.forEach((c) => Object.entries(c.tipSplit || (c.tip ? { [c.by || "\u2014"]: c.tip } : {})).forEach(([n, v]) => {
         const a = m.get(n) || [0, 0];
@@ -3811,9 +3817,9 @@ var __objRest = (source, exclude) => {
         m.set(n, a);
       }));
       rows = [...m].filter((x) => x[1][1] > 0);
-    } else if (T === "days") {
+    } else if (T2 === "days") {
       rows = [...byDay].sort((a, b) => a[0].localeCompare(b[0])).map(([d, v]) => [`${WD[wdOf(d)]} ${dm2(d)}`, v]);
-    } else if (T === "wd") {
+    } else if (T2 === "wd") {
       const cnt = Array(7).fill(0);
       days.forEach((d) => cnt[wdOf(d)]++);
       const m = grpBy((c) => wdOf(c.d));
@@ -3824,40 +3830,40 @@ var __objRest = (source, exclude) => {
       body = `<div class="muted" style="margin-bottom:8px">\u0421\u0435\u0440\u0435\u0434\u043D\u044F \u0432\u0438\u0440\u0443\u0447\u043A\u0430 \u0437\u0430 \u043E\u0434\u0438\u043D \u0442\u0430\u043A\u0438\u0439 \u0434\u0435\u043D\u044C \u2014 \u0443 \u0434\u0443\u0436\u043A\u0430\u0445</div>`;
       const cntOf = (w) => cnt[WD.indexOf(w)];
       rows = rows.map(([w, v]) => [`${w} (\u0441\u0435\u0440. ${money(v[1] / cntOf(w))})`, v]);
-    } else if (T === "tables") rows = grpBy((c) => "\u0421\u0442\u0456\u043B " + tn(c.t)).sort((a, b) => parseInt(a[0].slice(5)) - parseInt(b[0].slice(5)));
+    } else if (T2 === "tables") rows = grpBy((c) => "\u0421\u0442\u0456\u043B " + tn(c.t)).sort((a, b) => parseInt(a[0].slice(5)) - parseInt(b[0].slice(5)));
     if (rows) {
-      if (!["hours", "days", "tables", "wd"].includes(T)) rows.sort((a, b) => R.sort === "q" && sortable ? b[1][0] - a[1][0] : b[1][1] - a[1][1]);
+      if (!["hours", "days", "tables", "wd"].includes(T2)) rows.sort((a, b) => R.sort === "q" && sortable ? b[1][0] - a[1][0] : b[1][1] - a[1][1]);
       const tot = rows.reduce((a, x) => a + x[1][1], 0);
       body += barRows(rows, unit, tot, sub);
       if (sortable) body = `<div class="chips" style="margin-bottom:10px"><button class="chip ${R.sort !== "q" ? "on" : ""}" data-a="rSort" data-s="s">\u0417\u0430 \u0441\u0443\u043C\u043E\u044E</button><button class="chip ${R.sort === "q" ? "on" : ""}" data-a="rSort" data-s="q">\u0417\u0430 \u043A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044E</button></div>` + body;
-    } else if (["checks", "exp", "mov", "z"].includes(T)) {
+    } else if (["checks", "exp", "mov", "z"].includes(T2)) {
       const xb = (kind, x, back) => `<button class="xb${back ? " back" : ""}" data-a="${back ? "rBack" : "rDel"}" data-k="${kind}" data-d="${x.d}" data-i="${kind === "checks" ? esc(x.id || "") : x.i}" title="${back ? "\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438" : "\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438"}">${back ? "\u21A9\uFE0F" : "\u{1F5D1}"}</button>`;
       const line = (kind, x, l, v, back) => `<div class="kv rrow${back ? " del" : ""}"><span>${l}</span><span class="kv-r"><b class="money">${v}</b>${kind === "checks" && !back && x.id && isAdmin() ? `<button class="xb" data-a="cEdit" data-ref="${esc(x.id)}" data-d="${x.d}" title="\u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u0439 \u0440\u0435\u0434\u0430\u0433\u0443\u0432\u0430\u0442\u0438">\u270F\uFE0F</button>` : ""}${kind !== "checks" || x.id ? xb(kind, x, back) : ""}</span></div>`;
       const dd = (d) => d.slice(8) + "." + d.slice(5, 7);
       let act2 = [], gone = [], empty = "";
-      if (T === "checks") {
+      if (T2 === "checks") {
         act2 = [...checks].reverse().slice(0, 300).map((c) => line("checks", c, `${dd(c.d)} ${c.at} \xB7 \u0441\u0442\u0456\u043B ${tn(c.t)} \xB7 ${esc(waiterOf(c))} ${c.onl ? "\u{1F310}" : c.card ? "\u{1F4B3}" : "\u{1F4B5}"}${c.disc ? " \u{1F3F7}" : ""}${c.tip ? ` \xB7 \u{1F49D} ${money(c.tip)}` : ""}<br><small class="muted">${c.ds.map(([nm, qq]) => `${qq}\xD7 ${esc(nm)}`).join(", ")}</small>`, money(c.val)));
         gone = (r.removed || []).filter((x) => !x.reopen).map((x) => line("checks", x, `${dd(x.d)} ${x.at} \xB7 \u0441\u0442\u0456\u043B ${tn(x.t)} \xB7 ${esc(x.by)} <span class="muted">\xB7 \u0437\u043D\u044F\u0442\u043E \u0437 \u0432\u0438\u0440\u0443\u0447\u043A\u0438</span>`, money(x.sum), 1));
         empty = "\u041D\u0435\u043C\u0430\u0454 \u0447\u0435\u043A\u0456\u0432";
       }
-      if (T === "exp") {
+      if (T2 === "exp") {
         act2 = [...r.exp].filter((e) => !e.del).reverse().map((e) => line("exp", e, `${dd(e.d)} ${e.at} ${e.src === "card" ? "\u{1F4B3}" : "\u{1F4B5}"} ${esc(e.note || "\u0412\u0438\u0442\u0440\u0430\u0442\u0430")} <span class="muted">${esc(e.by)}</span>`, money(e.sum)));
         gone = (r.expDel || []).map((e) => line("exp", e, `${dd(e.d)} ${e.at} ${esc(e.note || "\u0412\u0438\u0442\u0440\u0430\u0442\u0430")}`, money(e.sum), 1));
         empty = "\u0412\u0438\u0442\u0440\u0430\u0442 \u043D\u0435\u043C\u0430\u0454";
       }
-      if (T === "mov") {
+      if (T2 === "mov") {
         act2 = [...r.mov || []].reverse().map((m) => line("mov", m, `${dd(m.d)} ${m.at} ${MOVE[m.type] || m.type} ${esc(m.note || "")} <span class="muted">${esc(m.by || "")}</span>`, money(m.sum)));
         gone = (r.movDel || []).map((m) => line("mov", m, `${dd(m.d)} ${m.at} ${MOVE[m.type] || m.type} ${esc(m.note || "")}`, money(m.sum), 1));
         empty = "\u0420\u0443\u0445\u0443 \u043A\u043E\u0448\u0442\u0456\u0432 \u043D\u0435\u043C\u0430\u0454";
       }
-      if (T === "z") {
+      if (T2 === "z") {
         const zl = (z) => `${dd(z.d)} ${new Date(z.closed).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })} \xB7 ${z.checks} \u0447\u0435\u043A. \xB7 ${esc(z.closedBy || "")}${z.diff ? ` \xB7 <b style="color:var(--red)">\u0440\u0456\u0437\u043D\u0438\u0446\u044F ${z.diff > 0 ? "+" : ""}${money(z.diff)}</b>` : ""}`;
         act2 = [...r.z].reverse().map((z) => line("z", z, zl(z), money(z.total)));
         gone = (r.zDel || []).map((z) => line("z", z, zl(z), money(z.total), 1));
         empty = "Z-\u0437\u0432\u0456\u0442\u0456\u0432 \u0437\u0430 \u043F\u0435\u0440\u0456\u043E\u0434 \u043D\u0435\u043C\u0430\u0454";
       }
       body = (act2.join("") || `<div class="muted">${empty}</div>`) + (gone.length ? `<h3 style="margin:18px 0 8px">\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u0456 <span class="muted">\xB7 ${gone.length} \xB7 \u21A9\uFE0F \u2014 \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438</span></h3>${gone.join("")}` : "");
-    } else if (T === "kitchen") {
+    } else if (T2 === "kitchen") {
       const L = (S.data.kstats || []).filter((x) => !R.t || String(x.t) === R.t), avg = (l) => l.length ? l.reduce((a, x) => a + x.mins, 0) / l.length : 0, f = (m) => m ? `${Math.round(m)} \u0445\u0432` : "\u2014";
       const byD = /* @__PURE__ */ new Map();
       L.forEach((x) => x.items.forEach(([n]) => {
@@ -3876,7 +3882,7 @@ var __objRest = (source, exclude) => {
       body = L.length ? `<div class="kpis"><div class="kpi"><span>\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u044C \u043A\u0443\u0445\u043D\u0456</span><b>${L.length}</b></div><div class="kpi accent"><span>\u0421\u0435\u0440\u0435\u0434\u043D\u0456\u0439 \u0447\u0430\u0441</span><b>${f(avg(L))}</b></div><div class="kpi"><span>\u041D\u0430\u0439\u0434\u043E\u0432\u0448\u0435</span><b>${f(Math.max(...L.map((x) => x.mins)))}</b></div><div class="kpi ${L.filter((x) => x.mins > 15).length ? "red" : "green"}"><span>\u041F\u043E\u043D\u0430\u0434 15 \u0445\u0432</span><b>${L.filter((x) => x.mins > 15).length}</b></div></div>
         <h3 style="margin:16px 0 8px">\u041F\u043E \u0441\u0442\u0440\u0430\u0432\u0430\u0445 (\u0441\u0435\u0440. \u0447\u0430\u0441)</h3>${[...byD].sort((a, b) => b[1].length - a[1].length).slice(0, 40).map(([k, a]) => row(k, a)).join("")}
         <h3 style="margin:16px 0 8px">\u041F\u043E \u0433\u043E\u0434\u0438\u043D\u0430\u0445</h3>${[...byH].sort((a, b) => hOrd(a[0]) - hOrd(b[0])).map(([k, a]) => row(k, a)).join("")}` : '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454 \u0433\u043E\u0442\u043E\u0432\u0438\u0445 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u044C \u0437 \u043A\u0443\u0445\u043E\u043D\u043D\u043E\u0433\u043E \u0435\u043A\u0440\u0430\u043D\u0430</div>';
-    } else if (T === "ctrl") {
+    } else if (T2 === "ctrl") {
       const vs = (r.voids || []).filter((v) => (!R.by || v.by === R.by) && (!R.t || String(v.t) === R.t)), W = {};
       const w = (nm) => W[nm || "\u2014"] = W[nm || "\u2014"] || { name: nm || "\u2014", n: 0, s: 0, vN: 0, vS: 0, tN: 0, tS: 0, dN: 0, dS: 0, dMax: 0, tip: 0 };
       checks.forEach((c) => {
@@ -4788,13 +4794,13 @@ var __objRest = (source, exclude) => {
     renderMain();
     return r.x;
   }
-  async function skMergeUI(T, pre = []) {
-    const L = S.data.sk.ing.filter((y) => !y.off && !y.grp && y.id !== T.id && !!y.semi === !!T.semi).sort((a, b) => a.n.localeCompare(b.n));
+  async function skMergeUI(T2, pre = []) {
+    const L = S.data.sk.ing.filter((y) => !y.off && !y.grp && y.id !== T2.id && !!y.semi === !!T2.semi).sort((a, b) => a.n.localeCompare(b.n));
     const v = await modal({
-      title: "\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u0442\u0438 \u0432 \xAB" + T.n + "\xBB",
+      title: "\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u0442\u0438 \u0432 \xAB" + T2.n + "\xBB",
       body: `<div class="muted" style="font-size:13px;margin-bottom:8px">\u0412\u0456\u0434\u043C\u0456\u0442\u044C\u0442\u0435 \u0434\u0443\u0431\u043B\u0456\u043A\u0430\u0442\u0438 \u2014 \u0446\u0435 \u0442\u043E\u0439 \u0441\u0430\u043C\u0438\u0439 \u043F\u0440\u043E\u0434\u0443\u043A\u0442 \u043F\u0456\u0434 \u0456\u043D\u0448\u043E\u044E \u043D\u0430\u0437\u0432\u043E\u044E. \u0407\u0445 \u0437\u0430\u043B\u0438\u0448\u043A\u0438 \u043F\u0435\u0440\u0435\u0439\u0434\u0443\u0442\u044C \u0441\u044E\u0434\u0438, \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0438 \u0439 \u043C\u0430\u0439\u0431\u0443\u0442\u043D\u0456 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0456 \u2014 \u0442\u0435\u0436. \u0414\u0443\u0431\u043B\u0456\u043A\u0430\u0442\u0438 \u0441\u0445\u043E\u0432\u0430\u044E\u0442\u044C\u0441\u044F.</div>
       <input id="mgQ" placeholder="\u{1F50E} \u041F\u043E\u0448\u0443\u043A" oninput="const q=this.value.toLowerCase();document.querySelectorAll('.mg-r').forEach(r=>r.hidden=q&&!r.dataset.n.includes(q)&&!r.querySelector('input').checked)">
-      <div class="mg-l">${L.map((y) => `<label class="mg-r" data-n="${esc(y.n.toLowerCase())}"><input type="checkbox" class="mgC" value="${y.id}"${pre.includes(y.id) ? " checked" : ""}> <span>${esc(y.n)} <small class="muted">${fq(totQ(y), y.u)}</small></span>${y.u !== T.u ? `<span class="mg-f">1 ${y.u} = <input class="mgF" data-id="${y.id}" inputmode="decimal" placeholder="?"> ${T.u}</span>` : ""}</label>`).join("")}</div>`,
+      <div class="mg-l">${L.map((y) => `<label class="mg-r" data-n="${esc(y.n.toLowerCase())}"><input type="checkbox" class="mgC" value="${y.id}"${pre.includes(y.id) ? " checked" : ""}> <span>${esc(y.n)} <small class="muted">${fq(totQ(y), y.u)}</small></span>${y.u !== T2.u ? `<span class="mg-f">1 ${y.u} = <input class="mgF" data-id="${y.id}" inputmode="decimal" placeholder="?"> ${T2.u}</span>` : ""}</label>`).join("")}</div>`,
       buttons: [{ label: "\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u0442\u0438", val: 1, cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }],
       keep: true
     });
@@ -4805,8 +4811,8 @@ var __objRest = (source, exclude) => {
     });
     closeModal();
     if (!from.length) return toast("\u041D\u0456\u0447\u043E\u0433\u043E \u043D\u0435 \u043E\u0431\u0440\u0430\u043D\u043E");
-    if (!await confirmBox(`\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u0442\u0438 ${from.length} \u0432 \xAB${T.n}\xBB?`, "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438 \u043C\u043E\u0436\u043D\u0430 \u043B\u0438\u0448\u0435 \u0432\u0440\u0443\u0447\u043D\u0443")) return;
-    const r = await act("skMerge", { to: T.id, from, f }, "\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u043D\u043E");
+    if (!await confirmBox(`\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u0442\u0438 ${from.length} \u0432 \xAB${T2.n}\xBB?`, "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438 \u043C\u043E\u0436\u043D\u0430 \u043B\u0438\u0448\u0435 \u0432\u0440\u0443\u0447\u043D\u0443")) return;
+    const r = await act("skMerge", { to: T2.id, from, f }, "\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u043D\u043E");
     if (!r) return;
     toast(`\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u043D\u043E ${r.n}${r.cards ? ` \xB7 \u0442\u0435\u0445\u043A\u0430\u0440\u0442 \u043E\u043D\u043E\u0432\u043B\u0435\u043D\u043E: ${r.cards}` : ""}`);
     S.data.sk = await api("skData").catch(() => S.data.sk);
@@ -4920,7 +4926,7 @@ var __objRest = (source, exclude) => {
     day || (day = todayK());
     const r = await act("skJournal", { day });
     if (!r) return;
-    const T = { in: "\u{1F9FE}", add: "\u2795", off: "\u{1F5D1}", mv: "\u21C4", prod: "\u{1F373}", cnt: "\u{1F4DD}" }, sh = (n) => {
+    const T2 = { in: "\u{1F9FE}", add: "\u2795", off: "\u{1F5D1}", mv: "\u21C4", prod: "\u{1F373}", cnt: "\u{1F4DD}" }, sh = (n) => {
       const d = /* @__PURE__ */ new Date(day + "T12:00:00Z");
       d.setUTCDate(d.getUTCDate() + n);
       return d.toISOString().slice(0, 10);
@@ -4930,7 +4936,7 @@ var __objRest = (source, exclude) => {
       var _a2;
       return ["add", "off"].includes(x.t) && !x.undo && !/^(🔗|↩️)/.test(x.note || "") && (isAdmin() || x.by === ((_a2 = S.me) == null ? void 0 : _a2.name) && day === todayK());
     };
-    const rows = r.list.map((x, i) => [x, i]).reverse().map(([x, i]) => `<div class="kv${x.undo ? " sk-undo" : ""}"><span>${x.at} ${T[x.t] || "\u2022"} <b>${esc(x.n)}</b> ${x.q > 0 ? "+" : ""}${fq(x.q, x.u)} <span class="muted">\xB7 ${NOTE[x.t] || ""} \xB7 ${WHN[x.wh] || ""}${x.note ? " \xB7 " + esc(x.note) : ""}${x.by ? " \xB7 " + esc(x.by) : ""}${x.undo ? ` \xB7 \u21A9\uFE0F \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E ${esc(x.undo.by)} ${x.undo.at}` : ""}</span></span><span class="kv-r">${isAdmin() && x.sum ? `<b class="money">${money(x.sum)}</b>` : ""}${can(x) ? `<button class="btn sm ghost" data-mi-v="u${i}:${x.ts}" title="\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438">\u21A9\uFE0F</button>` : ""}</span></div>`).join("");
+    const rows = r.list.map((x, i) => [x, i]).reverse().map(([x, i]) => `<div class="kv${x.undo ? " sk-undo" : ""}"><span>${x.at} ${T2[x.t] || "\u2022"} <b>${esc(x.n)}</b> ${x.q > 0 ? "+" : ""}${fq(x.q, x.u)} <span class="muted">\xB7 ${NOTE[x.t] || ""} \xB7 ${WHN[x.wh] || ""}${x.note ? " \xB7 " + esc(x.note) : ""}${x.by ? " \xB7 " + esc(x.by) : ""}${x.undo ? ` \xB7 \u21A9\uFE0F \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E ${esc(x.undo.by)} ${x.undo.at}` : ""}</span></span><span class="kv-r">${isAdmin() && x.sum ? `<b class="money">${money(x.sum)}</b>` : ""}${can(x) ? `<button class="btn sm ghost" data-mi-v="u${i}:${x.ts}" title="\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438">\u21A9\uFE0F</button>` : ""}</span></div>`).join("");
     const v = await modal({ title: "\u{1F4DC} \u0420\u0443\u0445 \u0441\u043A\u043B\u0430\u0434\u0443", body: `<div class="zp-top"><button class="btn sm" data-mi-v="d${sh(-1)}">\u25C0</button><b>${day === todayK() ? "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : day.split("-").reverse().join(".")}</b>${day < todayK() ? `<button class="btn sm" data-mi-v="d${sh(1)}">\u25B6</button>` : "<span></span>"}</div>
       <div class="muted" style="font-size:12px;margin-bottom:6px">\u{1F9FE} \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0430 (\u0437 \xAB\u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E\xBB / \xAB\u21A9\uFE0F \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E\xBB \u2014 \u043A\u043E\u043B\u0438 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0443 \u0432\u0438\u0434\u0430\u043B\u0438\u043B\u0438 \u0430\u0431\u043E \u0432\u0456\u0434\u043D\u043E\u0432\u0438\u043B\u0438) \xB7 \u2795 \u0434\u043E\u0434\u0430\u043D\u043E \xB7 \u{1F5D1} \u0441\u043F\u0438\u0441\u0430\u043D\u043E \xB7 \u21C4 \u043F\u0435\u0440\u0435\u043C\u0456\u0449\u0435\u043D\u043D\u044F \xB7 \u{1F373} \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \xB7 \u{1F4DD} \u0456\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u044F. \u041F\u0440\u043E\u0434\u0430\u0436\u0456 \u0437\u0430 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0430\u043C\u0438 \u2014 \u0443 \xAB\u{1F4CA} \u041F\u043B\u044E\u0441\u0438 / \u043C\u0456\u043D\u0443\u0441\u0438\xBB.</div>
       <div class="sk-jr">${rows || '<div class="muted">\u0420\u0443\u0445\u0456\u0432 \u0437\u0430 \u0446\u0435\u0439 \u0434\u0435\u043D\u044C \u043D\u0435\u043C\u0430\u0454</div>'}</div>`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
@@ -5430,9 +5436,9 @@ ${g.sup}:
     return `<div class="kv"><span>${esc(l.n)}</span><b>${fq(l.q, l.u)}${l.loss ? ` <small class="muted">\u2192 ${fq(net, l.u)} \u043D\u0435\u0442\u0442\u043E</small>` : ""}</b></div>`;
   }).join("")}${x.desc ? `<div class="muted" style="font-size:12px;margin-top:6px">${esc(x.desc)}</div>` : ""}</div>`;
   function skTechHTML() {
-    const T = S.data.skTech;
-    if (!T) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
-    const q = S.sk.q2.trim().toLowerCase(), l = T.list.filter((x) => !q || x.name.toLowerCase().includes(q));
+    const T2 = S.data.skTech;
+    if (!T2) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
+    const q = S.sk.q2.trim().toLowerCase(), l = T2.list.filter((x) => !q || x.name.toLowerCase().includes(q));
     return `<div class="sk-tools"><input id="skQ2" placeholder="\u{1F50E} \u041F\u043E\u0448\u0443\u043A \u0441\u0442\u0440\u0430\u0432\u0438" value="${esc(S.sk.q2)}"></div><div class="tech-g">${l.map(techCard).join("") || '<div class="card muted">\u0422\u0435\u0445\u043A\u0430\u0440\u0442 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454 \u2014 \u0457\u0445 \u0437\u0430\u043F\u043E\u0432\u043D\u044E\u0454 \u0430\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440</div>'}</div>`;
   }
   async function skTechOne(name) {
@@ -6145,9 +6151,9 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     if (pay && await act("zpStaff", { id, pay }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) loadView();
   }
   async function zpOpN(t, n, preset) {
-    const T = { bonus: "\u2795 \u041F\u0440\u0435\u043C\u0456\u044F", fine: "\u2796 \u0428\u0442\u0440\u0430\u0444", adv: "\u{1F4B5} \u0410\u0432\u0430\u043D\u0441", paid: "\u{1F4B8} \u0412\u0438\u0434\u0430\u0442\u0438 \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0443" }[t], money_ = t === "adv" || t === "paid";
+    const T2 = { bonus: "\u2795 \u041F\u0440\u0435\u043C\u0456\u044F", fine: "\u2796 \u0428\u0442\u0440\u0430\u0444", adv: "\u{1F4B5} \u0410\u0432\u0430\u043D\u0441", paid: "\u{1F4B8} \u0412\u0438\u0434\u0430\u0442\u0438 \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0443" }[t], money_ = t === "adv" || t === "paid";
     const body = `<div class="form"><label>\u0421\u0443\u043C\u0430, \u20B4<input id="oS" inputmode="numeric" value="${preset || ""}"></label><input id="oN" placeholder="${t === "fine" ? "\u0417\u0430 \u0449\u043E (\u043D\u0430\u043F\u0440. \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F)" : "\u041A\u043E\u043C\u0435\u043D\u0442\u0430\u0440"}"></div>`;
-    const v = await modal({ title: `${T} \xB7 ${n}`, body, buttons: money_ ? [{ label: "\u{1F4B5} \u0417 \u043A\u0430\u0441\u0438", val: "cash", cls: "primary" }, { label: "\u{1F4B3} \u0417 \u043A\u0430\u0440\u0442\u043A\u0438", val: "card", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }] : [{ label: "OK", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+    const v = await modal({ title: `${T2} \xB7 ${n}`, body, buttons: money_ ? [{ label: "\u{1F4B5} \u0417 \u043A\u0430\u0441\u0438", val: "cash", cls: "primary" }, { label: "\u{1F4B3} \u0417 \u043A\u0430\u0440\u0442\u043A\u0438", val: "card", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }] : [{ label: "OK", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
     const sum = v ? +$("#oS").value.replace(",", ".") : 0, note = v ? $("#oN").value.trim() : "";
     closeModal();
     if (!v) return;
@@ -6594,6 +6600,299 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
   document.addEventListener("click", (e) => {
     const el = e.target.closest("[data-a]");
     if (el && /^tk[A-Z]/.test(el.dataset.a)) tkClick(el.dataset.a, el.dataset);
+  });
+  const COURSE_VID = ["a-book", "a-cards", "a-cash", "a-checks", "a-count", "a-del", "a-gocfg", "a-grid", "a-inv", "a-loy", "a-pay", "a-people", "a-plan", "a-prn", "a-rep", "a-rules", "a-site", "a-stock", "a-sup", "a-z", "c-road", "c-take", "c-tg", "k-q", "k-stock", "k-stop", "w-feed", "w-more", "w-move", "w-pay", "w-pre", "w-shift", "w-split", "w-stop", "w-table", "w-tw"];
+  const V = (v) => ["view", { v }], T = (a, k, v) => [a, { [k]: v }];
+  const CR = [
+    // ---------- 🧑‍🍳 офіціант (і всі, хто працює в залі) ----------
+    { id: "w-table", r: "w", g: "\u0417\u0430\u043B", ic: "\u{1FA91}", n: "\u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u0441\u0442\u0456\u043B \u0456 \u0434\u043E\u0434\u0430\u0442\u0438 \u0441\u0442\u0440\u0430\u0432\u0438", s: [
+      { t: "\u0426\u0435 \u0437\u0430\u043B \u2014 \u043F\u043B\u0438\u0442\u043A\u0438 \u0441\u0442\u043E\u043B\u0456\u0432. \u041D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \u043D\u0430 \u0431\u0443\u0434\u044C-\u044F\u043A\u0438\u0439 \u0441\u0442\u0456\u043B.", go: V("hall"), sel: '[data-a="table"]' },
+      { t: "\u0412\u0456\u0434\u043A\u0440\u0438\u043B\u043E\u0441\u044C \u0432\u0456\u043A\u043D\u043E \u0441\u0442\u043E\u043B\u0443. \u0412\u043A\u043B\u0430\u0434\u043A\u0430 \xAB\u041C\u0435\u043D\u044E\xBB \u2014 \u0442\u0443\u0442 \u0443\u0441\u0456 \u0441\u0442\u0440\u0430\u0432\u0438.", sel: '[data-a="tab"][data-m="1"]' },
+      { t: "\u041D\u0430\u0442\u0438\u0441\u043A\u0430\u0439\u0442\u0435 \u043D\u0430 \u0441\u0442\u0440\u0430\u0432\u0443 \u2014 \u0432\u043E\u043D\u0430 \u0434\u043E\u0434\u0430\u0454\u0442\u044C\u0441\u044F \u0432 \u043A\u043E\u0448\u0438\u043A. \u041A\u043E\u0436\u043D\u0435 \u043D\u0430\u0442\u0438\u0441\u043A\u0430\u043D\u043D\u044F +1.", sel: '[data-a="add"]' },
+      { t: "\u041D\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0456 \u043A\u043E\u0448\u0438\u043A \u2014 \u0443 \u0432\u043A\u043B\u0430\u0434\u0446\u0456 \xAB\u0420\u0430\u0445\u0443\u043D\u043E\u043A\xBB.", sel: '[data-a="tab"][data-m="0"]', opt: 1 },
+      { t: "\u0413\u043E\u0442\u043E\u0432\u043E? \xAB\u0412\u0456\u0434\u043F\u0440\u0430\u0432\u0438\u0442\u0438\xBB \u2014 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0434\u0435 \u043D\u0430 \u043A\u0443\u0445\u043D\u044E \u0439 \u0431\u0430\u0440.", sel: '[data-a="send"]' }
+    ] },
+    { id: "w-more", r: "w", g: "\u0417\u0430\u043B", ic: "\u2795", n: "\u0414\u043E\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", s: [
+      { t: "\u0412\u0456\u0434\u043A\u0440\u0438\u0439\u0442\u0435 \u0441\u0442\u0456\u043B, \u0434\u0435 \u0432\u0436\u0435 \u0441\u0438\u0434\u044F\u0442\u044C \u0433\u043E\u0441\u0442\u0456 (\u043F\u043B\u0438\u0442\u043A\u0430 \u0437 \u0441\u0443\u043C\u043E\u044E).", go: V("hall"), sel: '[data-a="table"]' },
+      { t: "\u0414\u043E\u0434\u0430\u0439\u0442\u0435 \u0441\u0442\u0440\u0430\u0432\u0438 \u0437 \xAB\u041C\u0435\u043D\u044E\xBB \u0456 \u0437\u043D\u043E\u0432\u0443 \xAB\u0412\u0456\u0434\u043F\u0440\u0430\u0432\u0438\u0442\u0438\xBB \u2014 \u043A\u0443\u0445\u043D\u044F \u043F\u043E\u0431\u0430\u0447\u0438\u0442\u044C \u043F\u043E\u0437\u043D\u0430\u0447\u043A\u0443 \xAB\u2795 \u0414\u041E\u0417\u0410\u041C\u041E\u0412\u041B\u0415\u041D\u041D\u042F\xBB.", sel: '[data-a="tab"][data-m="1"]' }
+    ] },
+    { id: "w-pre", r: "w", g: "\u0417\u0430\u043B", ic: "\u{1F9FE}", n: "\u041F\u0440\u0435\u0447\u0435\u043A \u0434\u043B\u044F \u0433\u043E\u0441\u0442\u044F", s: [
+      { t: "\u0412\u0456\u0434\u043A\u0440\u0438\u0439\u0442\u0435 \u0441\u0442\u0456\u043B.", go: V("hall"), sel: '[data-a="table"]' },
+      { t: "\xAB\u{1F5A8} \u041F\u0440\u0435\u0447\u0435\u043A\xBB \u0434\u0440\u0443\u043A\u0443\u0454 \u0440\u0430\u0445\u0443\u043D\u043E\u043A \u0431\u0435\u0437 \u0437\u0430\u043A\u0440\u0438\u0442\u0442\u044F \u2014 \u0433\u0456\u0441\u0442\u044C \u043F\u0435\u0440\u0435\u0432\u0456\u0440\u044F\u0454 \u0441\u0443\u043C\u0443.", sel: '[data-a="pre"]' }
+    ] },
+    { id: "w-pay", r: "w", g: "\u0417\u0430\u043B", ic: "\u{1F4B0}", n: "\u041E\u043F\u043B\u0430\u0442\u0430: \u0433\u043E\u0442\u0456\u0432\u043A\u0430, \u043A\u0430\u0440\u0442\u043A\u0430, \u0447\u0430\u0439\u043E\u0432\u0456", danger: 1, s: [
+      { t: "\u0412\u0456\u0434\u043A\u0440\u0438\u0439\u0442\u0435 \u0441\u0442\u0456\u043B.", go: V("hall"), sel: '[data-a="table"]' },
+      { t: "\xAB\u{1F4B0} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0440\u0430\u0445\u0443\u043D\u043E\u043A\xBB \u2192 \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u0441\u043F\u043E\u0441\u0456\u0431 \u043E\u043F\u043B\u0430\u0442\u0438. \u0413\u043E\u0442\u0456\u0432\u043A\u0430 \u2014 \u0432\u0432\u0435\u0434\u0456\u0442\u044C, \u0441\u043A\u0456\u043B\u044C\u043A\u0438 \u0434\u0430\u0432 \u0433\u0456\u0441\u0442\u044C, \u043A\u0430\u0441\u0430 \u043F\u043E\u0440\u0430\u0445\u0443\u0454 \u0440\u0435\u0448\u0442\u0443. \u0427\u0430\u0439\u043E\u0432\u0456 \u043C\u043E\u0436\u043D\u0430 \u0434\u043E\u0434\u0430\u0442\u0438 \u0442\u0430\u043C \u0436\u0435.", sel: '[data-a="closeT"]' }
+    ] },
+    { id: "w-split", r: "w", g: "\u0417\u0430\u043B", ic: "\u2702\uFE0F", n: "\u0420\u043E\u0437\u0434\u0456\u043B\u0438\u0442\u0438 \u0440\u0430\u0445\u0443\u043D\u043E\u043A", s: [
+      { t: "\u0412\u0456\u0434\u043A\u0440\u0438\u0439\u0442\u0435 \u0441\u0442\u0456\u043B.", go: V("hall"), sel: '[data-a="table"]' },
+      { t: "\xAB\u2702\uFE0F \u0420\u043E\u0437\u0434\u0456\u043B\u0438\u0442\u0438\xBB \u2014 \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u0441\u0442\u0440\u0430\u0432\u0438, \u0437\u0430 \u044F\u043A\u0456 \u043F\u043B\u0430\u0442\u0438\u0442\u044C \u043E\u0434\u0438\u043D \u0433\u0456\u0441\u0442\u044C. \u0412\u043E\u043D\u0438 \u0441\u0442\u0430\u043D\u0443\u0442\u044C \u043E\u043A\u0440\u0435\u043C\u0438\u043C \u0440\u0430\u0445\u0443\u043D\u043A\u043E\u043C.", sel: '[data-a="split"]' }
+    ] },
+    { id: "w-move", r: "w", g: "\u0417\u0430\u043B", ic: "\u2194\uFE0F", n: "\u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0442\u0438 \u0441\u0442\u0456\u043B", s: [
+      { t: "\u0412\u0456\u0434\u043A\u0440\u0438\u0439\u0442\u0435 \u0441\u0442\u0456\u043B.", go: V("hall"), sel: '[data-a="table"]' },
+      { t: "\xAB\u2194\uFE0F \u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0442\u0438\xBB \u2014 \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u043D\u043E\u0432\u0438\u0439 \u0441\u0442\u0456\u043B. \u0412\u0435\u0441\u044C \u0440\u0430\u0445\u0443\u043D\u043E\u043A \u043F\u0435\u0440\u0435\u0457\u0434\u0435.", sel: '[data-a="move"]' }
+    ] },
+    { id: "w-tw", r: "w", g: "\u0417\u0430\u043B", ic: "\u{1F961}", n: "\u0417 \u0441\u043E\u0431\u043E\u044E", s: [
+      { t: "\u0423 \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u043E\u043C\u0443 \u0441\u0442\u043E\u043B\u0456 \xAB\u{1F961} \u0417 \u0441\u043E\u0431\u043E\u044E\xBB \u2014 \u043F\u043E\u0437\u043D\u0430\u0447\u0430\u0454 \u0441\u0442\u0440\u0430\u0432\u0438, \u044F\u043A\u0456 \u0442\u0440\u0435\u0431\u0430 \u0437\u0430\u043F\u0430\u043A\u0443\u0432\u0430\u0442\u0438.", go: V("hall"), sel: '[data-a="table"]' },
+      { t: "\u041D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \xAB\u{1F961} \u0417 \u0441\u043E\u0431\u043E\u044E\xBB.", sel: '[data-a="tw"]' }
+    ] },
+    { id: "w-feed", r: "w", g: "\u0417\u0430\u043B", ic: "\u{1F514}", n: "\u0421\u0442\u0440\u0456\u0447\u043A\u0430: \u0432\u0438\u043A\u043B\u0438\u043A\u0438 \u0439 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0437 QR", s: [
+      { t: "\xAB\u{1F514} \u0421\u0442\u0440\u0456\u0447\u043A\u0430\xBB \u2014 \u0433\u043E\u0441\u0442\u0456 \u043A\u043B\u0438\u0447\u0443\u0442\u044C \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430 \u0439 \u0437\u0430\u043C\u043E\u0432\u043B\u044F\u044E\u0442\u044C \u0437 QR \u043D\u0430 \u0441\u0442\u043E\u043B\u0456. \u0427\u0435\u0440\u0432\u043E\u043D\u0435 \u2014 \u0447\u0435\u043A\u0430\u044E\u0442\u044C \u043F\u043E\u043D\u0430\u0434 \u0445\u0432\u0438\u043B\u0438\u043D\u0443.", sel: ".feed-btn" },
+      { t: "\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0433\u043E\u0441\u0442\u044F \u0437 QR \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0443\u0439\u0442\u0435 \u043A\u043D\u043E\u043F\u043A\u043E\u044E \xAB\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432\xBB.", sel: '[data-a="accept"]' }
+    ] },
+    { id: "w-stop", r: "w", g: "\u0417\u0430\u043B", ic: "\u26D4", n: "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442", s: [
+      { t: "\u0422\u0443\u0442 \u0432\u0438\u0434\u043D\u043E, \u0447\u043E\u0433\u043E \u043D\u0435\u043C\u0430\u0454. \u0421\u0442\u0440\u0430\u0432\u0438 \u0437\u0456 \u0441\u0442\u043E\u043F\u0443 \u043D\u0435 \u043C\u043E\u0436\u043D\u0430 \u0434\u043E\u0434\u0430\u0442\u0438, \u0456 \u0433\u043E\u0441\u0442\u0456 \u043D\u0435 \u0431\u0430\u0447\u0430\u0442\u044C \u0457\u0445 \u0443 \u043C\u0435\u043D\u044E.", go: V("stop") }
+    ] },
+    { id: "w-shift", r: "w", g: "\u042F", ic: "\u{1F7E2}", n: "\u041F\u043E\u0447\u0430\u0442\u0438 \u0439 \u0437\u0430\u043A\u0456\u043D\u0447\u0438\u0442\u0438 \u0437\u043C\u0456\u043D\u0443", s: [
+      { t: "\u041D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \u043D\u0430 \u0441\u0432\u043E\u0454 \u0456\u043C\u02BC\u044F \u2014 \u0446\u0435 \u0432\u0430\u0448 \u043A\u0430\u0431\u0456\u043D\u0435\u0442: \u0437\u043C\u0456\u043D\u0430, \u0447\u0430\u0439\u043E\u0432\u0456, \u043F\u043B\u0430\u043D \u043D\u0430 \u0434\u0435\u043D\u044C, \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0430.", sel: '[data-a="zpMy"]' },
+      { t: "\xAB\u{1F7E2} \u041F\u043E\u0447\u0430\u0442\u0438 \u0437\u043C\u0456\u043D\u0443\xBB \u043D\u0430 \u043F\u043E\u0447\u0430\u0442\u043A\u0443, \xAB\u{1F534} \u0417\u0430\u043A\u0456\u043D\u0447\u0438\u0442\u0438 \u0437\u043C\u0456\u043D\u0443\xBB \u0432 \u043A\u0456\u043D\u0446\u0456 \u2014 \u0437 \u0446\u044C\u043E\u0433\u043E \u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0430.", sel: '[data-a="zpIn"],[data-a="zpOut"]' }
+    ] },
+    // ---------- 🛵 кур'єр ----------
+    { id: "c-take", r: "c", g: "\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430", ic: "\u270B", n: "\u0412\u0437\u044F\u0442\u0438 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0443", s: [
+      { t: "\u0412\u043A\u043B\u0430\u0434\u043A\u0430 \xAB\u{1F195} \u041D\u043E\u0432\u0456\xBB \u2014 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0438 \u0431\u0435\u0437 \u043A\u0443\u0440'\u0454\u0440\u0430. \u041D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \xAB\u270B \u0411\u0435\u0440\u0443\xBB.", go: V("go"), sel: ".cr-tabs" }
+    ] },
+    { id: "c-road", r: "c", g: "\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430", ic: "\u{1F6F5}", n: "\u041F\u043E\u0457\u0445\u0430\u0432 \u2192 \u043C\u0430\u0440\u0448\u0440\u0443\u0442 \u2192 \u0434\u043E\u0441\u0442\u0430\u0432\u043B\u0435\u043D\u043E", s: [
+      { t: "\xAB\u{1F6F5} \u041C\u043E\u0457\xBB \u2014 \u0432\u0430\u0448\u0456 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0438. \u0410\u0434\u0440\u0435\u0441\u0430 \u2014 \u0446\u0435 \u043F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F: \u0432\u0456\u0434\u043A\u0440\u0438\u0432\u0430\u0454 \u043C\u0430\u0440\u0448\u0440\u0443\u0442 \u0443 Google Maps.", go: V("go"), sel: ".cr-addr" },
+      { t: "\xAB\u{1F6F5} \u041F\u043E\u0457\u0445\u0430\u0432\xBB \u2014 \u0433\u0456\u0441\u0442\u044C \u043E\u0442\u0440\u0438\u043C\u0430\u0454 \u043F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u043D\u044F. \u041D\u0430 \u043C\u0456\u0441\u0446\u0456 \u2014 \xAB\u2705 \u0414\u043E\u0441\u0442\u0430\u0432\u043B\u0435\u043D\u043E\xBB \u0456 \u0441\u043F\u043E\u0441\u0456\u0431 \u043E\u043F\u043B\u0430\u0442\u0438.", sel: '[data-a="crAct"],[data-a="crDone"]' }
+    ] },
+    { id: "c-tg", r: "c", g: "\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430", ic: "\u2708\uFE0F", n: "\u041F\u0456\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u0438 Telegram", s: [
+      { t: "\xAB\u2708\uFE0F Telegram\xBB \u2014 \u043D\u043E\u0432\u0456 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0438 \u043F\u0440\u0438\u0445\u043E\u0434\u0438\u0442\u0438\u043C\u0443\u0442\u044C \u0443 \u0442\u0435\u043B\u0435\u0444\u043E\u043D, \u043D\u0430\u0432\u0456\u0442\u044C \u043A\u043E\u043B\u0438 \u043A\u0430\u0441\u0430 \u0437\u0430\u043A\u0440\u0438\u0442\u0430.", go: V("go"), sel: '[data-a="crTg"]' }
+    ] },
+    // ---------- 👨‍🍳 кухар ----------
+    { id: "k-q", r: "k", g: "\u041A\u0443\u0445\u043D\u044F", ic: "\u{1F468}\u200D\u{1F373}", n: "\u0427\u0435\u0440\u0433\u0430 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u044C", s: [
+      { t: "\u0422\u0443\u0442 \u043D\u043E\u0432\u0456 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u043E \u0447\u0435\u0440\u0437\u0456. \u041D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \u043D\u0430 \u0441\u0442\u0440\u0430\u0432\u0443 \u2014 \u0432\u043E\u043D\u0430 \xAB\u0433\u043E\u0442\u0443\u0454\u0442\u044C\u0441\u044F\xBB.", go: V("kq"), sel: '[data-a="kItem"]' },
+      { t: "\u0412\u0441\u0435 \u0433\u043E\u0442\u043E\u0432\u043E \u2014 \xAB\u0413\u043E\u0442\u043E\u0432\u043E\xBB, \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442 \u043E\u0442\u0440\u0438\u043C\u0430\u0454 \u0441\u0438\u0433\u043D\u0430\u043B.", sel: '[data-a="kGo"],[data-a="kAll"]' }
+    ] },
+    { id: "k-stop", r: "k", g: "\u041A\u0443\u0445\u043D\u044F", ic: "\u26D4", n: "\u041F\u043E\u0441\u0442\u0430\u0432\u0438\u0442\u0438 \u0441\u0442\u0440\u0430\u0432\u0443 \u043D\u0430 \u0441\u0442\u043E\u043F", s: [
+      { t: "\u0417\u0430\u043A\u0456\u043D\u0447\u0438\u0432\u0441\u044F \u043F\u0440\u043E\u0434\u0443\u043A\u0442 \u2014 \u0432\u0438\u043C\u043A\u043D\u0456\u0442\u044C \u0441\u0442\u0440\u0430\u0432\u0443 \u0442\u0443\u0442. \u0412\u043E\u043D\u0430 \u0437\u043D\u0438\u043A\u043D\u0435 \u0437 \u043C\u0435\u043D\u044E \u0433\u043E\u0441\u0442\u0435\u0439 \u0456 \u043A\u0430\u0441\u0438.", go: V("stop") }
+    ] },
+    { id: "k-stock", r: "k", g: "\u041A\u0443\u0445\u043D\u044F", ic: "\u{1F4E6}", n: "\u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0456 \u0439 \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438", s: [
+      { t: "\u041F\u0440\u0438\u0432\u0435\u0437\u043B\u0438 \u0442\u043E\u0432\u0430\u0440 \u2014 \xAB\u{1F9FE} \u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0456\xBB: \u0444\u043E\u0442\u043E \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u043E\u0457 \u0430\u0431\u043E \u0432\u0440\u0443\u0447\u043D\u0443.", go: T("skTab", "t", "inv") },
+      { t: "\u0417\u0440\u043E\u0431\u0438\u043B\u0438 \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0443 \u2014 \xAB\u{1F373} \u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438\xBB: \u0441\u043A\u043B\u0430\u0434 \u0441\u0430\u043C \u0441\u043F\u0438\u0448\u0435 \u0441\u0438\u0440\u043E\u0432\u0438\u043D\u0443.", go: T("skTab", "t", "prod") }
+    ] },
+    // ---------- 👑 адмін: перший тиждень ----------
+    { id: "a-site", r: "a", g: "\u0414\u0435\u043D\u044C 1 \xB7 \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", ic: "\u{1F310}", n: "\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0437 \u0441\u0430\u0439\u0442\u0443 \u0439 QR", s: [
+      { t: "\u041D\u043E\u0432\u0456 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0437 \u0441\u0430\u0439\u0442\u0443 \u043F\u0440\u0438\u0445\u043E\u0434\u044F\u0442\u044C \u0443 \xAB\u{1F514} \u0421\u0442\u0440\u0456\u0447\u043A\u0443\xBB \u0437\u0456 \u0437\u0432\u0443\u043A\u043E\u043C.", sel: ".feed-btn" },
+      { t: "\xAB\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432\xBB \u2014 \u0433\u0456\u0441\u0442\u044C \u0431\u0430\u0447\u0438\u0442\u044C, \u0449\u043E \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0440\u0438\u0439\u043D\u044F\u0442\u0435. \u0412\u0456\u0434\u0445\u0438\u043B\u0438\u0442\u0438 \u2014 \u0437 \u043F\u0440\u0438\u0447\u0438\u043D\u043E\u044E.", sel: '[data-a="accept"]' }
+    ] },
+    { id: "a-del", r: "a", g: "\u0414\u0435\u043D\u044C 1 \xB7 \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", ic: "\u{1F6F5}", n: "\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0438 \u0439 \u043A\u0443\u0440'\u0454\u0440\u0438", s: [
+      { t: "\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0438 \u2014 \u0443 \u0432\u043A\u043B\u0430\u0434\u0446\u0456 \xAB\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u043D\u044F\xBB, \u0437\u043D\u0438\u0437\u0443 \xAB\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0438\xBB: \u043D\u043E\u0432\u0456, \u0432 \u0434\u043E\u0440\u043E\u0437\u0456, \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456.", go: V("kq"), sel: ".cr-cols" },
+      { t: "\xAB\u{1F464} \u041F\u0440\u0438\u0437\u043D\u0430\u0447\u0438\u0442\u0438\xBB \u2014 \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u043A\u0443\u0440'\u0454\u0440\u0430. \u0412\u0456\u043D \u043E\u0442\u0440\u0438\u043C\u0430\u0454 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0443 \u0432 \u043A\u0430\u0441\u0456 \u0439 Telegram.", sel: '[data-a="goCourSet"]' },
+      { t: "\xAB\u{1F5FA} \u041A\u0430\u0440\u0442\u0430\xBB \u2014 \u0443\u0441\u0456 \u0430\u0434\u0440\u0435\u0441\u0438 \u043D\u0430 \u043E\u0434\u043D\u0456\u0439 \u043A\u0430\u0440\u0442\u0456.", sel: '[data-a="goMap"]' }
+    ] },
+    { id: "a-book", r: "a", g: "\u0414\u0435\u043D\u044C 1 \xB7 \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", ic: "\u{1F4C5}", n: "\u0411\u0440\u043E\u043D\u0456", s: [
+      { t: "\u0411\u0440\u043E\u043D\u0456 \u0437 \u0441\u0430\u0439\u0442\u0443 \u0439 \u043F\u043E \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0443. \u0421\u0442\u0440\u0456\u0447\u043A\u0430 \u0434\u043D\u0456\u0432 \u0437\u0432\u0435\u0440\u0445\u0443.", go: V("books") },
+      { t: "\xAB\u2795 \u0411\u0440\u043E\u043D\u044C\xBB \u2014 \u0437\u0430\u043F\u0438\u0441\u0430\u0442\u0438 \u0433\u043E\u0441\u0442\u044F, \u044F\u043A\u0438\u0439 \u043F\u043E\u0434\u0437\u0432\u043E\u043D\u0438\u0432.", sel: '[data-a="bkNew"]' },
+      { t: "\u0413\u043E\u0441\u0442\u0456 \u043F\u0440\u0438\u0439\u0448\u043B\u0438 \u2014 \xAB\u{1FA91} \u041F\u0440\u0438\u0439\u0448\u043B\u0438\xBB \u0439 \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u0441\u0442\u0456\u043B: \u043F\u0435\u0440\u0435\u0434\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043E\u0434\u0440\u0430\u0437\u0443 \u043F\u0456\u0434\u0435 \u043D\u0430 \u043A\u0443\u0445\u043D\u044E.", sel: '[data-a="bkCame"]' }
+    ] },
+    { id: "a-cash", r: "a", g: "\u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u{1F4B0}", n: "\u041A\u0430\u0441\u0430: \u0432\u043D\u0435\u0441\u0435\u043D\u043D\u044F, \u0432\u0438\u043B\u0443\u0447\u0435\u043D\u043D\u044F, \u0432\u0438\u0442\u0440\u0430\u0442\u0438", s: [
+      { t: "\u0412\u043A\u043B\u0430\u0434\u043A\u0430 \xAB\u{1F4B0} \u041A\u0430\u0441\u0430\xBB \u2014 \u0441\u043A\u0456\u043B\u044C\u043A\u0438 \u0433\u0440\u043E\u0448\u0435\u0439 \u0443 \u0448\u0443\u0445\u043B\u044F\u0434\u0456 \u0437\u0430\u0440\u0430\u0437.", go: V("cash") },
+      { t: "\xAB\u2795 \u0412\u043D\u0435\u0441\u0442\u0438\xBB \u2014 \u0440\u043E\u0437\u043C\u0456\u043D \u0437\u0440\u0430\u043D\u043A\u0443. \xAB\u2796 \u0412\u0438\u043B\u0443\u0447\u0438\u0442\u0438\xBB \u2014 \u0456\u043D\u043A\u0430\u0441\u0430\u0446\u0456\u044F.", sel: '[data-a="cMove"]' },
+      { t: "\xAB\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0430\xBB \u2014 \u043A\u0443\u043F\u0438\u043B\u0438 \u0449\u043E\u0441\u044C \u0437\u0430 \u0433\u043E\u0442\u0456\u0432\u043A\u0443 \u0437 \u043A\u0430\u0441\u0438 (\u0437 \u0444\u043E\u0442\u043E \u0447\u0435\u043A\u0430).", sel: '[data-a="expense"]' }
+    ] },
+    { id: "a-z", r: "a", g: "\u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u{1F9FE}", n: "\u041A\u0456\u043D\u0435\u0446\u044C \u0434\u043D\u044F: Z-\u0437\u0432\u0456\u0442", danger: 1, s: [
+      { t: "\u041F\u0435\u0440\u0435\u0434 \u0437\u0430\u043A\u0440\u0438\u0442\u0442\u044F\u043C \u0443\u0441\u0456 \u0441\u0442\u043E\u043B\u0438 \u043C\u0430\u044E\u0442\u044C \u0431\u0443\u0442\u0438 \u0437\u0430\u043A\u0440\u0438\u0442\u0456.", go: V("cash") },
+      { t: "\xAB\u{1F9FE} Z-\u0437\u0432\u0456\u0442\xBB \u2014 \u043F\u0456\u0434\u0441\u0443\u043C\u043E\u043A \u0434\u043D\u044F. \xAB\u{1F5A8} \u041D\u0430\u0434\u0440\u0443\u043A\u0443\u0432\u0430\u0442\u0438\xBB \u043B\u0438\u0448\u0435 \u043F\u043E\u043A\u0430\u0437\u0443\u0454 (X-\u0437\u0432\u0456\u0442). \xAB\u{1F512} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0434\u0435\u043D\u044C\xBB \u2014 \u0444\u0456\u043D\u0430\u043B\u044C\u043D\u043E, \u043F\u0456\u0434\u0435 \u0432 Telegram.", sel: '[data-a="zDay"]' }
+    ] },
+    { id: "a-checks", r: "a", g: "\u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u{1F9FE}", n: "\u0427\u0435\u043A\u0438: \u0432\u0438\u043F\u0440\u0430\u0432\u0438\u0442\u0438 \u043E\u043F\u043B\u0430\u0442\u0443, \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F", s: [
+      { t: "\xAB\u{1F9FE} \u0427\u0435\u043A\u0438\xBB \u2014 \u0443\u0441\u0456 \u0437\u0430\u043A\u0440\u0438\u0442\u0456 \u0440\u0430\u0445\u0443\u043D\u043A\u0438 \u0437\u0430 \u0434\u0435\u043D\u044C.", go: T("cashTab", "t", "checks") },
+      { t: "\u0412\u0456\u0434\u043A\u0440\u0438\u0439\u0442\u0435 \u0447\u0435\u043A, \u0449\u043E\u0431 \u0437\u043C\u0456\u043D\u0438\u0442\u0438 \u0441\u043F\u043E\u0441\u0456\u0431 \u043E\u043F\u043B\u0430\u0442\u0438, \u043F\u0435\u0440\u0435\u0434\u0440\u0443\u043A\u0443\u0432\u0430\u0442\u0438 \u0430\u0431\u043E \u043E\u0444\u043E\u0440\u043C\u0438\u0442\u0438 \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F.", sel: '[data-a="cEdit"]' }
+    ] },
+    { id: "a-rep", r: "a", g: "\u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u{1F4CA}", n: "\u0417\u0432\u0456\u0442\u0438", s: [
+      { t: "\u0412\u0438\u0440\u0443\u0447\u043A\u0430, \u0441\u0435\u0440\u0435\u0434\u043D\u0456\u0439 \u0447\u0435\u043A, \u0449\u043E \u043F\u0440\u043E\u0434\u0430\u0454\u0442\u044C\u0441\u044F, \u0433\u043E\u0434\u0438\u043D\u0438 \u043F\u0456\u043A, \u0444\u0443\u0434\u043A\u043E\u0441\u0442.", go: V("reports"), sel: '[data-a="rSec"]' }
+    ] },
+    { id: "a-inv", r: "a", g: "\u0414\u0435\u043D\u044C 3 \xB7 \u0421\u043A\u043B\u0430\u0434", ic: "\u{1F9FE}", n: "\u041F\u0440\u0438\u0445\u0456\u0434 \u0442\u043E\u0432\u0430\u0440\u0443", s: [
+      { t: "\u041F\u0440\u0438\u0432\u0435\u0437\u043B\u0438 \u0442\u043E\u0432\u0430\u0440 \u2014 \xAB\u{1F9FE} \u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0456\xBB: \u0441\u0444\u043E\u0442\u043E\u0433\u0440\u0430\u0444\u0443\u0439\u0442\u0435 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0443, \u0428\u0406 \u0441\u0430\u043C \u0440\u043E\u0437\u043F\u0456\u0437\u043D\u0430\u0454 \u043F\u043E\u0437\u0438\u0446\u0456\u0457.", go: T("skTab", "t", "inv") }
+    ] },
+    { id: "a-stock", r: "a", g: "\u0414\u0435\u043D\u044C 3 \xB7 \u0421\u043A\u043B\u0430\u0434", ic: "\u{1F4E6}", n: "\u0417\u0430\u043B\u0438\u0448\u043A\u0438 \u0439 \u0437\u0430\u043A\u0443\u043F\u0456\u0432\u043B\u044F", s: [
+      { t: "\xAB\u{1F4E6} \u0417\u0430\u043B\u0438\u0448\u043A\u0438\xBB \u2014 \u0449\u043E \u0454 \u043D\u0430 \u0441\u043A\u043B\u0430\u0434\u0456. \u0427\u0435\u0440\u0432\u043E\u043D\u0435 \u2014 \u043D\u0438\u0436\u0447\u0435 \u043C\u0456\u043D\u0456\u043C\u0443\u043C\u0443.", go: T("skTab", "t", "stock") },
+      { t: "\xAB\u{1F6D2} \u0417\u0430\u043A\u0443\u043F\u0456\u0432\u043B\u044F\xBB \u2014 \u0441\u043F\u0438\u0441\u043E\u043A, \u0449\u043E \u0434\u043E\u043A\u0443\u043F\u0438\u0442\u0438, \u043F\u043E \u043F\u043E\u0441\u0442\u0430\u0447\u0430\u043B\u044C\u043D\u0438\u043A\u0430\u0445. \u041C\u043E\u0436\u043D\u0430 \u043E\u0434\u0440\u0430\u0437\u0443 \u043D\u0430\u0434\u0456\u0441\u043B\u0430\u0442\u0438 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F.", go: T("skTab", "t", "buy") }
+    ] },
+    { id: "a-cards", r: "a", g: "\u0414\u0435\u043D\u044C 3 \xB7 \u0421\u043A\u043B\u0430\u0434", ic: "\u{1F4CB}", n: "\u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0438 \u0439 \u0441\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C", s: [
+      { t: "\xAB\u{1F4CB} \u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0438\xBB \u2014 \u0437 \u0447\u043E\u0433\u043E \u0441\u043A\u043B\u0430\u0434\u0430\u0454\u0442\u044C\u0441\u044F \u0441\u0442\u0440\u0430\u0432\u0430. \u0421\u043A\u043B\u0430\u0434 \u0441\u043F\u0438\u0441\u0443\u0454\u0442\u044C\u0441\u044F \u0441\u0430\u043C \u043F\u0440\u0438 \u043F\u0440\u043E\u0434\u0430\u0436\u0456.", go: T("skTab", "t", "cards") }
+    ] },
+    { id: "a-count", r: "a", g: "\u0414\u0435\u043D\u044C 3 \xB7 \u0421\u043A\u043B\u0430\u0434", ic: "\u{1F4DD}", n: "\u0406\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u044F", s: [
+      { t: "\xAB\u{1F4DD} \u0406\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u044F\xBB \u2014 \u043F\u0435\u0440\u0435\u0440\u0430\u0445\u0443\u0439\u0442\u0435 \u0444\u0430\u043A\u0442\u0438\u0447\u043D\u0456 \u0437\u0430\u043B\u0438\u0448\u043A\u0438. \u0420\u0456\u0437\u043D\u0438\u0446\u044F \u043F\u043E\u0442\u0440\u0430\u043F\u0438\u0442\u044C \u0443 \xAB\u041F\u043B\u044E\u0441\u0438 / \u043C\u0456\u043D\u0443\u0441\u0438\xBB.", go: T("skTab", "t", "count") }
+    ] },
+    { id: "a-sup", r: "a", g: "\u0414\u0435\u043D\u044C 3 \xB7 \u0421\u043A\u043B\u0430\u0434", ic: "\u{1F3ED}", n: "\u041F\u043E\u0441\u0442\u0430\u0447\u0430\u043B\u044C\u043D\u0438\u043A\u0438 \u0439 \u0431\u043E\u0440\u0433\u0438", s: [
+      { t: "\xAB\u{1F3ED} \u041F\u043E\u0441\u0442\u0430\u0447\u0430\u043B\u044C\u043D\u0438\u043A\u0438\xBB \u2014 \u043A\u043E\u043D\u0442\u0430\u043A\u0442\u0438, \u0431\u043E\u0440\u0433\u0438, \u043E\u043F\u043B\u0430\u0442\u0438, \u0430\u043A\u0442\u0438 \u0437\u0432\u0456\u0440\u043A\u0438.", go: T("skTab", "t", "sup") }
+    ] },
+    { id: "a-grid", r: "a", g: "\u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u{1F4C5}", n: "\u0413\u0440\u0430\u0444\u0456\u043A \u0437\u043C\u0456\u043D", s: [
+      { t: "\xAB\u{1F465} \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\xBB \u2192 \xAB\u{1F4C5} \u0413\u0440\u0430\u0444\u0456\u043A\xBB \u2014 \u0445\u0442\u043E \u043A\u043E\u043B\u0438 \u043F\u0440\u0430\u0446\u044E\u0454. \u041D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \u043A\u043B\u0456\u0442\u0438\u043D\u043A\u0443, \u0449\u043E\u0431 \u043F\u043E\u0441\u0442\u0430\u0432\u0438\u0442\u0438 \u0437\u043C\u0456\u043D\u0443.", go: T("zpTab", "t", "grid") }
+    ] },
+    { id: "a-pay", r: "a", g: "\u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u{1F4B0}", n: "\u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430", s: [
+      { t: "\xAB\u{1F4B0} \u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430\xBB \u2014 \u043D\u0430\u0440\u0430\u0445\u0443\u0432\u0430\u043D\u043D\u044F \u0437\u0430 \u0437\u043C\u0456\u043D\u0438, \u0432\u0456\u0434\u0441\u043E\u0442\u043A\u0438, \u0447\u0430\u0439\u043E\u0432\u0456, \u0430\u0432\u0430\u043D\u0441\u0438 \u0439 \u0448\u0442\u0440\u0430\u0444\u0438.", go: T("zpTab", "t", "pay") }
+    ] },
+    { id: "a-plan", r: "a", g: "\u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u{1F4CB}", n: "\u041F\u043B\u0430\u043D \u043D\u0430 \u0434\u0435\u043D\u044C", s: [
+      { t: "\xAB\u{1F4CB} \u041F\u043B\u0430\u043D\xBB \u2014 \u0437\u0430\u0432\u0434\u0430\u043D\u043D\u044F \u043D\u0430 \u0434\u0435\u043D\u044C (\u043F\u0440\u0438\u0431\u0438\u0440\u0430\u043D\u043D\u044F, \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438). \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0438 \u0432\u0456\u0434\u043C\u0456\u0447\u0430\u044E\u0442\u044C \u0443 \u0441\u0432\u043E\u0454\u043C\u0443 \u043A\u0430\u0431\u0456\u043D\u0435\u0442\u0456 \u0430\u0431\u043E \u0432 \u0431\u043E\u0442\u0456.", go: T("zpTab", "t", "plan") }
+    ] },
+    { id: "a-people", r: "a", g: "\u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u{1F465}", n: "\u041D\u043E\u0432\u0438\u0439 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A", s: [
+      { t: "\xAB\u{1F465} \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0438\xBB \u2014 \u0434\u043E\u0434\u0430\u0442\u0438 \u043B\u044E\u0434\u0438\u043D\u0443, \u0440\u043E\u043B\u044C \u0456 PIN. PIN \u0432\u0456\u043D \u0432\u0432\u043E\u0434\u0438\u0442\u044C \u043D\u0430 \u0432\u0445\u043E\u0434\u0456 \u0432 \u043A\u0430\u0441\u0443.", go: T("zpTab", "t", "people") }
+    ] },
+    { id: "a-loy", r: "a", g: "\u0414\u0435\u043D\u044C 5 \xB7 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F", ic: "\u{1F381}", n: "\u0410\u043A\u0446\u0456\u0457 \u0439 \u0431\u043E\u043D\u0443\u0441\u0438", s: [
+      { t: "\xAB\u2699\uFE0F \u041D\u0430\u043B\u0430\u0448\u0442.\xBB \u2192 \xAB\u{1F381} \u041B\u043E\u044F\u043B\u044C\u043D\u0456\u0441\u0442\u044C\xBB \u2014 \u0440\u0456\u0432\u043D\u0456 \u0433\u043E\u0441\u0442\u0435\u0439, \u0431\u043E\u043D\u0443\u0441\u0438, \u0430\u043A\u0446\u0456\u0457, \u0449\u043E \u0441\u0430\u043C\u0456 \u0440\u0430\u0445\u0443\u044E\u0442\u044C\u0441\u044F \u0432 \u0447\u0435\u043A\u0443.", go: T("setTab", "s", "loy") }
+    ] },
+    { id: "a-gocfg", r: "a", g: "\u0414\u0435\u043D\u044C 5 \xB7 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F", ic: "\u{1F6F5}", n: "\u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0438", s: [
+      { t: "\xAB\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430\xBB \u2014 \u0437\u043E\u043D\u0438, \u0446\u0456\u043D\u0430 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0438, \u043C\u0456\u043D\u0456\u043C\u0430\u043B\u044C\u043D\u0430 \u0441\u0443\u043C\u0430, \u0447\u0430\u0441.", go: T("setTab", "s", "go") }
+    ] },
+    { id: "a-rules", r: "a", g: "\u0414\u0435\u043D\u044C 5 \xB7 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F", ic: "\u2699\uFE0F", n: "\u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438", s: [
+      { t: "\xAB\u2699\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438\xBB \u2014 \u0441\u0442\u043E\u043B\u0438, \u0441\u0435\u0440\u0432\u0456\u0441, \u0437\u043D\u0438\u0436\u043A\u0438, \u0449\u043E \u043C\u043E\u0436\u0435 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442 \u0431\u0435\u0437 \u0430\u0434\u043C\u0456\u043D\u0430.", go: T("setTab", "s", "rules") }
+    ] },
+    { id: "a-prn", r: "a", g: "\u0414\u0435\u043D\u044C 5 \xB7 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F", ic: "\u{1F5A8}", n: "\u041F\u0440\u0438\u043D\u0442\u0435\u0440", s: [
+      { t: "\xAB\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440\xBB \u2014 \u0441\u0442\u0430\u043D \u043F\u0440\u0438\u043D\u0442\u0435\u0440\u0430 \u0439 \u0442\u0435\u0441\u0442\u043E\u0432\u0438\u0439 \u0434\u0440\u0443\u043A. \u041D\u0435 \u0434\u0440\u0443\u043A\u0443\u0454? \u041F\u043E\u0447\u043D\u0456\u0442\u044C \u0437 \xAB\u0422\u0435\u0441\u0442\xBB.", go: T("setTab", "s", "printer") }
+    ] }
+  ];
+  const FAQ = [
+    ["\u{1F5A8} \u041D\u0435 \u0434\u0440\u0443\u043A\u0443\u0454 \u043F\u0440\u0438\u043D\u0442\u0435\u0440", "\u041D\u0430\u043B\u0430\u0448\u0442. \u2192 \u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440 \u2192 \u0442\u0435\u0441\u0442. \u041F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435, \u0449\u043E \u043A\u043E\u043C\u043F\u02BC\u044E\u0442\u0435\u0440 \u0456\u0437 \u043F\u0440\u043E\u0433\u0440\u0430\u043C\u043E\u044E \u0434\u0440\u0443\u043A\u0443 \u0443\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u0438\u0439 \u0456 \u0454 \u0456\u043D\u0442\u0435\u0440\u043D\u0435\u0442. \u0427\u0435\u043A\u0438 \u043D\u0435 \u0433\u0443\u0431\u043B\u044F\u0442\u044C\u0441\u044F \u2014 \u043D\u0430\u0434\u0440\u0443\u043A\u0443\u044E\u0442\u044C\u0441\u044F, \u043A\u043E\u043B\u0438 \u043F\u0440\u0438\u043D\u0442\u0435\u0440 \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u0442\u044C\u0441\u044F."],
+    ["\u21A9\uFE0F \u0413\u0456\u0441\u0442\u044C \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0432 \u0441\u0442\u0440\u0430\u0432\u0443", "\u041A\u0430\u0441\u0430 \u2192 \u{1F9FE} \u0427\u0435\u043A\u0438 \u2192 \u0432\u0456\u0434\u043A\u0440\u0438\u0439\u0442\u0435 \u0447\u0435\u043A \u2192 \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F. \u042F\u043A\u0449\u043E \u0440\u0430\u0445\u0443\u043D\u043E\u043A \u0449\u0435 \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u0438\u0439 \u2014 \u043F\u0440\u043E\u0441\u0442\u043E \u0432\u0438\u0434\u0430\u043B\u0456\u0442\u044C \u0441\u0442\u0440\u0430\u0432\u0443 \u0437 \u043F\u0440\u0438\u0447\u0438\u043D\u043E\u044E."],
+    ["\u{1F4B3} \u041F\u043E\u043C\u0438\u043B\u0438\u043B\u0438\u0441\u044C \u0437\u0456 \u0441\u043F\u043E\u0441\u043E\u0431\u043E\u043C \u043E\u043F\u043B\u0430\u0442\u0438", "\u041A\u0430\u0441\u0430 \u2192 \u{1F9FE} \u0427\u0435\u043A\u0438 \u2192 \u0432\u0456\u0434\u043A\u0440\u0438\u0439\u0442\u0435 \u0447\u0435\u043A \u2192 \u0437\u043C\u0456\u043D\u0456\u0442\u044C \u0441\u043F\u043E\u0441\u0456\u0431 \u043E\u043F\u043B\u0430\u0442\u0438. Z-\u0437\u0432\u0456\u0442 \u043F\u0435\u0440\u0435\u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F."],
+    ["\u{1F6F5} \u041A\u0443\u0440'\u0454\u0440 \u043D\u0435 \u0432\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u0430\u0454", "\u041A\u0443\u0445\u043D\u044F \u2192 \u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0438 \u2192 \xAB\u{1F464} \u0417\u043C\u0456\u043D\u0438\u0442\u0438 \u043A\u0443\u0440'\u0454\u0440\u0430\xBB. \u0413\u0456\u0441\u0442\u044C \u043E\u0442\u0440\u0438\u043C\u0430\u0454 \u043E\u043D\u043E\u0432\u043B\u0435\u043D\u043D\u044F."],
+    ["\u{1F4B0} \u041D\u0435 \u0441\u0445\u043E\u0434\u0438\u0442\u044C\u0441\u044F \u043A\u0430\u0441\u0430", "\u041A\u0430\u0441\u0430 \u2192 \u0440\u0443\u0445 \u0433\u0440\u043E\u0448\u0435\u0439: \u043F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435 \u0432\u043D\u0435\u0441\u0435\u043D\u043D\u044F, \u0432\u0438\u043B\u0443\u0447\u0435\u043D\u043D\u044F \u0439 \u0432\u0438\u0442\u0440\u0430\u0442\u0438. \u0413\u043E\u0442\u0456\u0432\u043A\u043E\u0432\u0456 \u0447\u0435\u043A\u0438 \u2014 \u0443 \u{1F9FE} \u0427\u0435\u043A\u0438 \u0437 \u0444\u0456\u043B\u044C\u0442\u0440\u043E\u043C."],
+    ["\u26D4 \u0417\u0430\u043A\u0456\u043D\u0447\u0438\u0432\u0441\u044F \u043F\u0440\u043E\u0434\u0443\u043A\u0442", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442 \u2192 \u0432\u0438\u043C\u043A\u043D\u0456\u0442\u044C \u0441\u0442\u0440\u0430\u0432\u0443. \u0413\u043E\u0441\u0442\u0456 \u043D\u0430 \u0441\u0430\u0439\u0442\u0456 \u0457\u0457 \u0431\u0456\u043B\u044C\u0448\u0435 \u043D\u0435 \u043F\u043E\u0431\u0430\u0447\u0430\u0442\u044C."],
+    ["\u{1F511} \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A \u0437\u0430\u0431\u0443\u0432 PIN", "\u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B \u2192 \u{1F465} \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0438 \u2192 \u0437\u043C\u0456\u043D\u0456\u0442\u044C PIN."],
+    ["\u{1F4F5} \u0417\u043D\u0438\u043A \u0456\u043D\u0442\u0435\u0440\u043D\u0435\u0442", "\u041A\u0430\u0441\u0430 \u043F\u043E\u043A\u0430\u0437\u0443\u0454 \u043E\u0441\u0442\u0430\u043D\u043D\u0456 \u0434\u0430\u043D\u0456. \u041D\u043E\u0432\u0456 \u0434\u0456\u0457 \u043D\u0435 \u0437\u0431\u0435\u0440\u0435\u0436\u0443\u0442\u044C\u0441\u044F \u0431\u0435\u0437 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443 \u2014 \u0434\u043E\u0447\u0435\u043A\u0430\u0439\u0442\u0435\u0441\u044C, \u0430\u0431\u043E \u0440\u043E\u0437\u0434\u0430\u0439\u0442\u0435 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0432\u0440\u0443\u0447\u043D\u0443 \u0439 \u0432\u043D\u0435\u0441\u0456\u0442\u044C \u043F\u0456\u0441\u043B\u044F."]
+  ];
+  const crRole = () => isAdmin() ? "a" : isCook() ? "k" : isCour() ? "c" : "w";
+  const crDone = () => store.get("course", {});
+  const crList = () => {
+    const r = crRole();
+    return CR.filter((l) => l.r === r || r === "a" && l.r === "w");
+  };
+  const crVid = new Set(COURSE_VID);
+  window.__CR = CR;
+  function courseHTML() {
+    const L = crList(), D = crDone(), ok = L.filter((l) => D[l.id]).length, gs = [...new Set(L.map((l) => l.g))];
+    const pct = L.length ? Math.round(ok / L.length * 100) : 0;
+    return `<div class="rhead"><div><h1>\u{1F393} \u041D\u0430\u0432\u0447\u0430\u043D\u043D\u044F</h1><span class="muted">${ok} \u0437 ${L.length} \u0443\u0440\u043E\u043A\u0456\u0432 \xB7 \u25B6\uFE0F \xAB\u0421\u043F\u0440\u043E\u0431\u0443\u0432\u0430\u0442\u0438\xBB \u043F\u043E\u043A\u0430\u0436\u0435, \u043A\u0443\u0434\u0438 \u043D\u0430\u0442\u0438\u0441\u043A\u0430\u0442\u0438</span></div></div>
+      <div class="card"><div class="cr-prog"><i style="width:${pct}%"></i></div>${ok === L.length && L.length ? "<b>\u{1F3C5} \u041A\u0443\u0440\u0441 \u043F\u0440\u043E\u0439\u0434\u0435\u043D\u043E!</b>" : `<span class="muted">\u0406\u0434\u0456\u0442\u044C \u043F\u043E \u043F\u043E\u0440\u044F\u0434\u043A\u0443 \u2014 \u043D\u0430\u0441\u0442\u0443\u043F\u043D\u0438\u0439 \u0443\u0440\u043E\u043A \u043F\u0456\u0434\u0441\u0432\u0456\u0447\u0435\u043D\u043E.</span>`}</div>
+      ${gs.map((g) => `<h3 style="margin:16px 0 6px">${esc(g)}</h3><div class="cr-grid">${L.filter((l) => l.g === g).map((l) => {
+      const next = !D[l.id] && L.find((x) => !D[x.id]) === l;
+      return `<div class="card cr-l${D[l.id] ? " done" : ""}${next ? " next" : ""}"><div class="cr-lh"><span class="cr-ic">${D[l.id] ? "\u2705" : l.ic}</span><b>${esc(l.n)}</b></div>
+          ${crVid.has(l.id) ? `<video class="cr-v" src="img/course/${l.id}.mp4" poster="img/course/${l.id}.jpg" preload="none" muted playsinline controls></video>` : ""}
+          <ol class="cr-s">${l.s.map((s) => `<li>${esc(s.t)}</li>`).join("")}</ol>
+          ${l.danger ? '<div class="muted" style="font-size:12px">\u26A0\uFE0F \u0421\u043F\u0440\u0430\u0432\u0436\u043D\u0456 \u0433\u0440\u043E\u0448\u0456 \u2014 \u0442\u0443\u0440 \u043B\u0438\u0448\u0435 \u043F\u043E\u043A\u0430\u0437\u0443\u0454, \u043D\u0456\u0447\u043E\u0433\u043E \u043D\u0435 \u043D\u0430\u0442\u0438\u0441\u043A\u0430\u0454 \u0441\u0430\u043C.</div>' : ""}
+          <div class="btnrow"><button class="btn sm primary" data-a="crGo" data-id="${l.id}">\u25B6\uFE0F \u0421\u043F\u0440\u043E\u0431\u0443\u0432\u0430\u0442\u0438</button><button class="btn sm${D[l.id] ? " ghost" : ""}" data-a="crOk" data-id="${l.id}">${D[l.id] ? "\u21A9\uFE0F" : "\u2705 \u0417\u0440\u043E\u0437\u0443\u043C\u0456\u0432"}</button></div></div>`;
+    }).join("")}</div>`).join("")}
+      <h3 style="margin:22px 0 6px">\u2753 \u0429\u043E \u0440\u043E\u0431\u0438\u0442\u0438, \u044F\u043A\u0449\u043E\u2026</h3><div class="card">${FAQ.map(([q, a]) => `<details class="cr-faq"><summary>${esc(q)}</summary><div class="muted">${esc(a)}</div></details>`).join("")}</div>`;
+  }
+  const TR = { l: null, i: 0, tm: 0 };
+  window.__TR = TR;
+  function crNav(go) {
+    const b = document.createElement("button");
+    b.hidden = true;
+    b.dataset.a = go[0];
+    Object.assign(b.dataset, go[1]);
+    document.body.append(b);
+    b.click();
+    b.remove();
+  }
+  function crEnd() {
+    var _a2, _b;
+    TR.l = null;
+    clearInterval(TR.tm);
+    (_a2 = $("#crHl")) == null ? void 0 : _a2.remove();
+    (_b = $("#crTip")) == null ? void 0 : _b.remove();
+  }
+  function crStep() {
+    const l = TR.l, s = l == null ? void 0 : l.s[TR.i];
+    if (!s) {
+      const id = l == null ? void 0 : l.id;
+      crEnd();
+      if (id) {
+        const D = crDone();
+        D[id] = 1;
+        store.set("course", D);
+        toast("\u2705 \u0423\u0440\u043E\u043A \u043F\u0440\u043E\u0439\u0434\u0435\u043D\u043E");
+      }
+      S.view = "course";
+      renderNav();
+      renderMain();
+      return;
+    }
+    if (s.go) {
+      const par = { zpTab: "team", setTab: "settings", cashTab: "cash" }[s.go[0]];
+      if (par && S.view !== par) crNav(V(par));
+      crNav(s.go);
+    }
+    let hl = $("#crHl"), tip = $("#crTip");
+    if (!hl) {
+      hl = document.createElement("div");
+      hl.id = "crHl";
+      document.body.append(hl);
+      tip = document.createElement("div");
+      tip.id = "crTip";
+      document.body.append(tip);
+    }
+    const draw = () => {
+      const el = s.sel && [...document.querySelectorAll(s.sel)].find((e) => e.offsetParent);
+      if (el && TR.sc < 5) {
+        const q = el.getBoundingClientRect();
+        if (q.top < 60 || q.bottom > innerHeight - 200) {
+          TR.sc++;
+          el.scrollIntoView({ block: "center" });
+        }
+      }
+      const r = el == null ? void 0 : el.getBoundingClientRect();
+      hl.hidden = !r;
+      if (r) Object.assign(hl.style, { left: r.left - 6 + "px", top: r.top - 6 + "px", width: r.width + 12 + "px", height: r.height + 12 + "px" });
+      const below = !r || r.bottom + 170 < innerHeight;
+      tip.style.top = r ? (below ? r.bottom + 14 : Math.max(8, r.top - tip.offsetHeight - 14)) + "px" : "";
+      tip.classList.toggle("mid", !r);
+      if (s.sel && !el && !TR.miss) {
+        TR.miss = Date.now();
+      }
+      if (s.opt && !el && Date.now() - TR.miss > 600) {
+        TR.i++;
+        return crStep();
+      }
+      const h = tip.querySelector(".cr-miss");
+      if (h) h.hidden = !miss;
+    };
+    TR.miss = 0;
+    TR.sc = 0;
+    tip.innerHTML = `<div class="muted" style="font-size:12px">${esc(l.ic + " " + l.n)} \xB7 \u043A\u0440\u043E\u043A ${TR.i + 1} \u0437 ${l.s.length}</div><div>${esc(s.t)}</div>
+      <div class="cr-miss muted" hidden style="font-size:12px">\u041A\u043D\u043E\u043F\u043A\u0438 \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454 \u043D\u0430 \u0435\u043A\u0440\u0430\u043D\u0456 (\u043D\u0430\u043F\u0440., \u043D\u0435\u043C\u0430\u0454 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u044C) \u2014 \u043F\u0440\u043E\u0441\u0442\u043E \u043D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \xAB\u0414\u0430\u043B\u0456\xBB.</div>
+      <div class="btnrow"><button class="btn sm ghost" data-crx="0">\u2715</button><button class="btn sm primary" data-crx="1">${TR.i + 1 < l.s.length ? "\u0414\u0430\u043B\u0456 \u2192" : "\u2705 \u0413\u043E\u0442\u043E\u0432\u043E"}</button></div>`;
+    clearInterval(TR.tm);
+    setTimeout(draw, 60);
+    TR.tm = setInterval(draw, 300);
+  }
+  document.addEventListener("click", (e) => {
+    const x = e.target.closest("[data-crx]");
+    if (x) {
+      e.stopPropagation();
+      if (x.dataset.crx === "0") crEnd();
+      else {
+        TR.i++;
+        crStep();
+      }
+      return;
+    }
+    if (!TR.l) return;
+    const s = TR.l.s[TR.i];
+    if ((s == null ? void 0 : s.sel) && e.target.closest(s.sel)) setTimeout(() => {
+      if (TR.l) {
+        TR.i++;
+        crStep();
+      }
+    }, 450);
+  }, true);
+  document.addEventListener("click", (e) => {
+    const el = e.target.closest("[data-a]");
+    if (!el) return;
+    const a = el.dataset.a, id = el.dataset.id;
+    if (a === "crGo") {
+      TR.l = CR.find((l) => l.id === id);
+      TR.i = 0;
+      crStep();
+    }
+    if (a === "crOk") {
+      const D = crDone();
+      if (D[id]) delete D[id];
+      else D[id] = 1;
+      store.set("course", D);
+      renderMain();
+    }
   });
   if (S.token) start();
   else showLogin();

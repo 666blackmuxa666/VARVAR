@@ -1,0 +1,2 @@
+  // 🎬 уроки з відео (img/course/<id>.mp4) — файл перезаписує tools/course-video.mjs
+  const COURSE_VID = ["a-book","a-cards","a-cash","a-checks","a-count","a-del","a-gocfg","a-grid","a-inv","a-loy","a-pay","a-people","a-plan","a-prn","a-rep","a-rules","a-site","a-stock","a-sup","a-z","c-road","c-take","c-tg","k-q","k-stock","k-stop","w-feed","w-more","w-move","w-pay","w-pre","w-shift","w-split","w-stop","w-table","w-tw"];

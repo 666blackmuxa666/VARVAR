@@ -150,7 +150,7 @@
     const fresh = r.events.filter(e => !S.seen.has(e.id));
     if (S.ready && fresh.some(e => ['guest', 'check', 'call'].includes(e.k) || (!isCook() && ['ready', 'kmsg'].includes(e.k)))) ding();
     r.events.forEach(e => S.seen.add(e.id));
-    const prevEv = S.events; S.events = r.events; if (S.ready) evNotify(prevEv); S.ready = true; if (!S._tk0) { S._tk0 = 1; loadMyTasks(); loadLookV(); if (OPEN_SET && isAdmin()) { S.view = 'settings'; S.setTab = OPEN_SET; renderNav(); renderMain(); loadView(); } }
+    const prevEv = S.events; S.events = r.events; if (S.ready) evNotify(prevEv); S.ready = true; if (!S._tk0) { S._tk0 = 1; loadMyTasks(); loadLookV(); if (location.hash === '#course') { S.view = 'course'; history.replaceState(null, '', location.pathname + location.search); renderNav(); renderMain(); } /* 🎓 посилання з бота */ if (OPEN_SET && isAdmin()) { S.view = 'settings'; S.setTab = OPEN_SET; renderNav(); renderMain(); loadView(); } }
     if (isCour() && S.view === 'go') renderMain(); // 🛵 нові доставки й «готово» — одразу на екрані кур'єра
     render();
   }
@@ -247,11 +247,11 @@
   applyLook();
 
   // ---------- каркас ----------
-  const NAV_COOK = [['kq', '👨‍🍳', 'Черга'], ['calc', '📦', 'Склад'], ['stop', '⛔', 'Стоп-лист'], ['hall', '🪑', 'Зал']];
-  const NAV_A = [['hall', '🪑', 'Зал'], ['cash', '💰', 'Каса'], ['reports', '📊', 'Звіти'], ['calc', '📦', 'Склад'], ['kq', '👨‍🍳', 'Кухня'], ['team', '👥', 'Персонал'], ['books', '📅', 'Броні'], ['settings', '⚙️', 'Налашт.']];
+  const NAV_COOK = [['kq', '👨‍🍳', 'Черга'], ['calc', '📦', 'Склад'], ['stop', '⛔', 'Стоп-лист'], ['hall', '🪑', 'Зал'], ['course', '🎓', 'Навчання']];
+  const NAV_A = [['hall', '🪑', 'Зал'], ['cash', '💰', 'Каса'], ['reports', '📊', 'Звіти'], ['calc', '📦', 'Склад'], ['kq', '👨‍🍳', 'Кухня'], ['team', '👥', 'Персонал'], ['books', '📅', 'Броні'], ['settings', '⚙️', 'Налашт.'], ['course', '🎓', 'Навчання']];
   const NAV_MAIN = ['hall', 'kq', 'cash', 'books']; // 📱 адмін на телефоні: 4 основні + «⋯ Ще»
-  const NAV_W = [['hall', '🪑', 'Зал'], ['books', '📅', 'Броні'], ['closed', '🧾', 'Чеки'], ['stop', '⛔', 'Стоп-лист']];
-  const NAV_COUR = [['go', '🛵', 'Доставки']];
+  const NAV_W = [['hall', '🪑', 'Зал'], ['books', '📅', 'Броні'], ['closed', '🧾', 'Чеки'], ['stop', '⛔', 'Стоп-лист'], ['course', '🎓', 'Навчання']];
+  const NAV_COUR = [['go', '🛵', 'Доставки'], ['course', '🎓', 'Навчання']];
   const navList = () => isCour() ? NAV_COUR : isCook() ? NAV_COOK : isAdmin() ? NAV_A : NAV_W;
   const NAV = [['hall', '🪑', 'Зал'], ['closed', '📜', 'Закриті'], ['stop', '⛔', 'Стоп-лист'], ['cash', '💰', 'Каса', 1], ['reports', '📊', 'Звіти', 1], ['kq', '👨‍🍳', 'Кухня', 1], ['calc', '🧮', 'Розрахунок', 1], ['settings', '⚙️', 'Налашт.', 1]];
   function renderNav() {
@@ -294,7 +294,7 @@
     const v = S.view, m = $('#main');
     m.classList.toggle('hall', v === 'hall');
     if (v === 'hall') { const [c, r] = hallGrid(m); m.style.setProperty('--cols', c); m.style.setProperty('--rows', r); }
-    const html = { books: booksHTML, go: goHTML, kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, team: teamHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML, mylook: () => `<div class="rhead"><div><h1>🎨 Мій вигляд</h1><span class="muted">${isAdmin() ? 'заклад або лише цей пристрій' : 'колір і стиль лише на цьому пристрої'}</span></div></div>` + lookHTML() }[v]?.();
+    const html = { books: booksHTML, go: goHTML, kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, team: teamHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML, course: courseHTML, mylook: () => `<div class="rhead"><div><h1>🎨 Мій вигляд</h1><span class="muted">${isAdmin() ? 'заклад або лише цей пристрій' : 'колір і стиль лише на цьому пристрої'}</span></div></div>` + lookHTML() }[v]?.();
     const fid = document.activeElement?.id, keep = ['stopSearch', 'rQ', 'skQ', 'skQ2', 'skCq'].includes(fid);
     const sx = [...m.querySelectorAll('.zp-grid, .sk-tbl, .chips.scroll, .seg')].map(e => e.scrollLeft); // таблиці, що гортаються вбік, — лишаються на місці
     setHTML(m, html || '');
