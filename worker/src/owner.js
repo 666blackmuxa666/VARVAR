@@ -48,7 +48,9 @@ export async function intApi(req, env, path) {
   }
   if (path === '/__int/demosnap' && env.VENUE === 'atom-demo') { const B = await import('./backup.js');
     if (b.do === 'save') return [await B.backupNow(env, 'demo'), 200];
-    if (b.do === 'reset') return [await B.backupRestore(env, 'demo', 'нічне скидання демо'), 200];
+    const S = await import('./demoseed.js');
+    if (b.do === 'seed') { const r = await S.demoSeed(env, { full: true }); if (r.error) return [r, 400]; await B.backupNow(env, 'demo'); return [r, 200]; } // 🎬 «Все за 500»: меню, персонал, сайт + 14 днів історії → еталон
+    if (b.do === 'reset') { const r = await B.backupRestore(env, 'demo', 'нічне скидання демо'); return [{ ...r, seed: await S.demoSeed(env, { full: !!r.error }) }, 200]; } // еталон + свіжа історія «до сьогодні»
     return [{ error: 'unknown' }, 400]; }
   if (path === '/__int/aibal') { const { aiBal } = await import('./photoai.js'); return [await aiBal(env), 200]; } // 🤖 баланс ШІ
   if (path === '/__int/aitop') { const sum = Math.round(+b.sum || 0); if (!(sum > 0)) return [{ error: 'sum' }, 400];
@@ -274,8 +276,9 @@ ${JSON.stringify(data.filter(Boolean))}
     case 'leadNew': { const r = await H.leadAdd({ ...b, src: 'вручну' }, 'own:' + Date.now()); return r.error ? bad(r.error) : ok({ lead: r }); }
     case 'leadSet': { const r = await H.leadSet(String(b.id), b.f || {}); return r.error ? bad(r.error) : ok({ lead: r }); }
     case 'demo': { // 📱 демо-каса: створити (власник — платформа) / зберегти поточний стан як еталон для нічного скидання
-      if (b.do === 'create') { if (await H.venueGet('atom-demo')) return bad('Демо вже є'); const v = await H.venueCreate({ id: 'atom-demo', name: 'ATOM Демо-кавʼярня', owner: me.email, city: 'Демо' }); if (v.error) return bad(v.error); const r = await callVenue(env, v.id, '/__int/init', { name: v.name }, true); return r.error ? bad(r.error) : ok(); }
+      if (b.do === 'create') { if (await H.venueGet('atom-demo')) return bad('Демо вже є'); const v = await H.venueCreate({ id: 'atom-demo', name: 'Все за 500', owner: me.email, city: 'Демо' }); if (v.error) return bad(v.error); const r = await callVenue(env, v.id, '/__int/init', { name: v.name }, true); return r.error ? bad(r.error) : ok(); }
       if (b.do === 'save') { const r = await demoSnap(env, 'atom-demo', 'save'); return r.error ? bad(r.error) : ok(r); }
+      if (b.do === 'seed') { const r = await demoSnap(env, 'atom-demo', 'seed'); if (r.error) return bad(r.error); await H.venueSet('atom-demo', { name: 'Все за 500' }).catch(() => {}); return ok(r); }
       return bad('unknown'); }
     case 'billMark': { // 👑 платформа: оплата готівкою/переказом — +N міс вручну, або задати дату
       const v = await H.venueGet(String(b.id)); if (!v) return bad('Немає закладу'); const B = await import('./billing.js');
