@@ -64,7 +64,11 @@ export async function addDishes(env, items, day = dayKey(), { stock = true } = {
 }
 async function _logClosed(env, rec) {
   const k = 'closed:' + dayKey(); const list = (await env.DB.get(k, 'json')) || [];
-  list.push(rec); await env.DB.put(k, JSON.stringify(list.slice(-500)));
+  list.push(rec); let j = JSON.stringify(list);
+  // 🧾 без ліміту кількості: якщо день наближається до межі запису (2 МБ), у найстаріших чеків прибираємо деталі (страви, хронологію), гроші й оплати LiqPay лишаються — Z і звіти точні
+  for (let i = 0; j.length > 1.8e6 && i < list.length - 1; i++) { const x = list[i]; if (x.slim) continue; delete x.dishes; delete x.voids; delete x.gt; delete x.promo; x.slim = 1; if (i % 50 === 49) j = JSON.stringify(list); }
+  if (j.length > 1.8e6) j = JSON.stringify(list);
+  await env.DB.put(k, j);
 }
 
 // ---------- 🔒 замки: «прочитав → змінив → записав» з різних запитів не губить зміни одне одного ----------
