@@ -1,6 +1,6 @@
 // 🎬 Демо-заклад «Все за 500» (atom-demo): видумане меню, персонал і 14 днів «життя» закладу.
 // Історію пишуть справжні функції каси (ops.js) з підміненим годинником (Date.now) — тож звіти, чеки, витрати,
-// зміни й стрічка виглядають як у живого закладу. Щоночі (index.js → owner.js demosnap reset): еталон + свіжа історія,
+// зміни й стрічка виглядають як у живого закладу. Оновлення — вручну кнопкою «Заповнити» в кабінеті власника (owner.js demosnap seed),
 // дати завжди «до сьогодні». Telegram і друк у демо не підключені — notify нікуди не шле.
 import { getMenu, importMenu, saveMenu, menuLock } from './menu.js';
 import { addWaiterOrder, itemsFromMenu, closeTable, addExpense, openShift, closeShift, addStaff, getStaff, setDiscount, resetAll, dayKey } from './ops.js';
@@ -21,7 +21,7 @@ export const DEMO_MENU = [
   ...M('🍸 Бар', [['Апероль шприц', 210, '300 мл', '', 'aperol'], ['Мохіто', 190, '300 мл', '', 'mojito'], ['Пиво світле', 75, '500 мл', '', 'beer-light'], ['Пиво темне', 85, '500 мл', '', 'beer-dark'], ['Сидр', 95, '500 мл', '', 'cider']]),
 ];
 const STAFF = [['Олена', 'admin'], ['Максим', 'waiter'], ['Ірина', 'waiter'], ['Денис', 'waiter'], ['Тарас', 'cook'], ['Сергій', 'courier']];
-const SITE = [['name', 'Все за 500'], ['tagline', 'Бургери, піца й бар — усе меню до 500 ₴'], ['about', 'Демонстраційний заклад «Все за 500»: так працює система ATOM. Меню з QR на столі, замовлення з собою й доставка, бронювання, сертифікати, а в касі — столи, кухня, склад, зарплата й звіти. Тут можна все спробувати — щоночі демо повертається до початкового вигляду.'], ['phone', '+380 00 000 05 00'], ['addr', 'вул. Демонстраційна, 500'], ['from', '10:00'], ['to', '23:00'], ['rating', 4.8], ['ratingN', 500], ['bookOn', 1], ['certOn', 1]];
+const SITE = [['name', 'Все за 500'], ['tagline', 'Бургери, піца й бар — усе меню до 500 ₴'], ['about', 'Демонстраційний заклад «Все за 500»: так працює система ATOM. Меню з QR на столі, замовлення з собою й доставка, бронювання, сертифікати, а в касі — столи, кухня, склад, зарплата й звіти. Тут можна все спробувати.'], ['phone', '+380 00 000 05 00'], ['addr', 'вул. Демонстраційна, 500'], ['from', '10:00'], ['to', '23:00'], ['rating', 4.8], ['ratingN', 500], ['bookOn', 1], ['certOn', 1]];
 const PROMOS = [{ t: '🍔 Сет «Все за 500»', d: 'Бургер, піца, фрі й соуси на компанію — рівно 500 ₴', img: 'https://posatom.online/varvar/img/demo/set-500.svg' }, { t: '☕ Кава до 12:00 −20%', d: 'Щоранку в будні' }];
 const EXP = [['Овочі на ринку', 850], ['Хліб і булочки', 420], ['Газ для кухні', 300], ['Миючі засоби', 260], ['Лід для бару', 180]];
 
@@ -40,13 +40,14 @@ const addD = (day, n) => new Date(Date.parse(day + 'T12:00:00Z') + n * 864e5).to
 export async function demoArt(env) {
   const by = Object.fromEntries(DEMO_MENU.filter(r => r.img).map(r => [r.name.toLowerCase(), r.img]));
   await menuLock(env, async () => { const m = await getMenu(env); let n = 0; for (const c of m.categories) for (const it of c.items) { const u = by[it.name.uk.toLowerCase()]; if (u && it.img !== u) { it.img = u; n++; } } if (n) await saveMenu(env, m); });
+  await setSite(env, 'about', SITE.find(r => r[0] === 'about')[1]).catch(() => {});
   for (const k of ['logo', 'hero']) await setSite(env, k, ART + k + '.svg').catch(() => {}); // 🏷 емблема й банер
   const g = await getSite(env).catch(() => ({}));
   for (const p of PROMOS) if (!(g.promos || []).some(x => x.t === p.t)) await setSite(env, 'promoAdd', p).catch(() => {});
   for (const f of ['set-500', 'burger-double', 'pizza-pepperoni', 'aperol', 'soup-borsch', 'cheesecake']) if (!(g.photos || []).includes(ART + f + '.svg')) await setSite(env, 'photoAdd', ART + f + '.svg').catch(() => {});
 }
 
-// full — уперше: меню, персонал, сайт. Без full — лише історія (щоночі після відновлення еталону).
+// full — уперше: меню, персонал, сайт. Без full — лише історія (після відновлення еталону).
 export async function demoSeed(env, { full = false, days = 14 } = {}) {
   if (env.VENUE !== 'atom-demo') return { error: 'лише для atom-demo' };
   if (full) {

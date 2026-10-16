@@ -68,7 +68,6 @@ export default {
       for (const x of due) await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `⏰ <b>Подзвонити</b>: ${esc(x.name)} · ${esc(x.phone)}${x.place ? ' · ' + esc(x.place) : ''}${x.note ? '\n📝 ' + esc(x.note) : ''}` }).catch(() => {});
       if (kh >= '10:00' && kh < '10:05') await (await import('./billing.js')).billDaily(env).catch(e => console.log('billDaily', e.message)); // 💳 нагадування й блокування підписки
       await (await import('./aitest.js')).aiTestTick(env, kh).catch(e => console.log('aitest', e.message)); // 🧪 ШІ-тестувальник двічі на день
-      if (kh >= '04:00' && kh < '04:05') await (await import('./owner.js')).demoSnap(env, 'atom-demo', 'reset');
     })());
     const list = [MAIN, ...(await hubVenues(env).catch(() => []))];
     const cronKey = env.MASTER_KEY ? await intSecret(env) : '1';
