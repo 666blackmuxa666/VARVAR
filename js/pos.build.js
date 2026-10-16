@@ -780,7 +780,7 @@ var __objRest = (source, exclude) => {
       m.style.setProperty("--rows", r);
     }
     const html = (_b = (_a2 = { books: booksHTML, go: goHTML, kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, team: teamHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML, course: courseHTML, mylook: () => `<div class="rhead"><div><h1>\u{1F3A8} \u041C\u0456\u0439 \u0432\u0438\u0433\u043B\u044F\u0434</h1><span class="muted">${isAdmin() ? "\u0437\u0430\u043A\u043B\u0430\u0434 \u0430\u0431\u043E \u043B\u0438\u0448\u0435 \u0446\u0435\u0439 \u043F\u0440\u0438\u0441\u0442\u0440\u0456\u0439" : "\u043A\u043E\u043B\u0456\u0440 \u0456 \u0441\u0442\u0438\u043B\u044C \u043B\u0438\u0448\u0435 \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457"}</span></div></div>` + lookHTML() })[v]) == null ? void 0 : _b.call(_a2);
-    const fid = (_c = document.activeElement) == null ? void 0 : _c.id, keep = ["stopSearch", "rQ", "skQ", "skQ2", "skCq", "hallQ"].includes(fid);
+    const fid = (_c = document.activeElement) == null ? void 0 : _c.id, keep = ["stopSearch", "rQ", "skQ", "skQ2", "skCq"].includes(fid);
     const sx = [...m.querySelectorAll(".zp-grid, .sk-tbl, .chips.scroll, .seg")].map((e) => e.scrollLeft);
     setHTML(m, html || "");
     m.querySelectorAll(".zp-grid, .sk-tbl, .chips.scroll, .seg").forEach((e, i) => {
@@ -2175,11 +2175,18 @@ var __objRest = (source, exclude) => {
       return `<button class="${v.id === cur.id ? "on" : ""}${h ? " hot" : ""}" data-hl="set" data-h="${v.id}">${v.ic} ${esc(v.n)}${n ? ` <b>${n}</b>` : ""}</button>`;
     };
     const tabs = V2.map(tab), bar = V2.length > 1 ? `<div class="hall-tabs">${tabs.join("")}</div>` : "", othHot = tabs.some((x, i) => V2[i].id !== cur.id && x.includes(' hot"'));
-    const tools = go ? "" : `<div class="hall-tools"><div class="seg">${[["mine", "\u{1F464} \u041C\u043E\u0457"], ["busy", "\u{1F525} \u0417\u0430\u0439\u043D\u044F\u0442\u0456"], ["all", "\u0423\u0441\u0456"]].map(([k, l]) => `<button class="${S.hf === k ? "on" : ""}" data-hl="hf" data-h="${k}">${l}</button>`).join("")}</div><input id="hallQ" inputmode="numeric" placeholder="\u{1F50E} \u2116" autocomplete="off" maxlength="3"></div>`;
+    const tools = go ? "" : `<div class="seg hall-f">${[["mine", "\u{1F464}", "\u041C\u043E\u0457 \u0441\u0442\u043E\u043B\u0438"], ["busy", "\u{1F525}", "\u0417\u0430\u0439\u043D\u044F\u0442\u0456"], ["all", "\u0423\u0441\u0456", "\u0423\u0441\u0456 \u0441\u0442\u043E\u043B\u0438"]].map(([k, l, t]) => `<button class="${S.hf === k ? "on" : ""}" data-hl="hf" data-h="${k}" title="${t}">${l}</button>`).join("")}</div>`;
+    const why = (t) => {
+      var _a3, _b2;
+      return calls[t] ? "\u{1F514} \u043A\u043B\u0438\u0447\u0435" : pending.has(t) ? "\u{1F6CE} \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F" : ((_a3 = S.tables[t]) == null ? void 0 : _a3.pwait) ? "\u{1F310} \u043E\u043F\u043B\u0430\u0442\u0438\u0432" : ((_b2 = S.tables[t]) == null ? void 0 : _b2.check) ? "\u{1F9FE} \u0440\u0430\u0445\u0443\u043D\u043E\u043A" : "";
+    };
+    const away = go ? [] : V2.filter((v) => !v.go && v.id !== cur.id).flatMap((v) => Array.from({ length: v.to - v.from + 1 }, (_, i) => v.from + i).filter(hot).map((t) => ({ v, t })));
+    const alerts = away.length ? `<div class="hall-alert">${away.slice(0, 6).map(({ v, t }) => `<button data-hl="go" data-h="${v.id}" data-t="${t}"><b>${v.ic} ${esc(v.n)} \xB7 ${t}</b> ${why(t)}</button>`).join("")}</div>` : "";
     const goTile = !go && ((_a2 = S.cfg) == null ? void 0 : _a2.goTabs) && gos.length ? `<button class="go-sum${goNew2 ? " new" : ""}" data-hl="set" data-h="${(_b = V2.find((v) => v.go)) == null ? void 0 : _b.id}">\u{1F6F5} ${gos.length} ${goNew2 ? `\xB7 <b>${goNew2} \u043D\u043E\u0432.</b>` : "\u0432 \u0440\u043E\u0431\u043E\u0442\u0456"} \u2192</button>` : "";
-    const body = go ? goL.length ? `<div class="go-strip go-grid">${goL.map(goTileHTML).join("")}</div>` : '<div class="muted" style="padding:14px">\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u044C \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454</div>' : `${((_c = S.cfg) == null ? void 0 : _c.goTabs) ? goTile : strip}<div class="tables${rng.length > 24 ? " compact" : ""}">${tiles || `<div class="muted" style="padding:14px">${S.hf === "mine" ? "\u0423 \u0432\u0430\u0441 \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454 \u0441\u0442\u043E\u043B\u0456\u0432" : "\u0417\u0430\u0439\u043D\u044F\u0442\u0438\u0445 \u0441\u0442\u043E\u043B\u0456\u0432 \u043D\u0435\u043C\u0430\u0454"}</div>`}</div>`;
-    return `<div class="head"><h1>${V2.length > 1 ? `<button class="hall-pick${othHot ? " hot" : ""}" data-hl="pick">${cur.ic} ${esc(cur.n)} \u25BE</button>` : "\u0417\u0430\u043B"}</h1>
-      ${isCook() || isCour() ? "" : inboxBtn()}${isCook() || isCour() ? "" : S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="\u041D\u043E\u0432\u0456 \u0431\u0440\u043E\u043D\u0456 \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C">\u{1F4C5} ${S.bkNew} \u043D\u043E\u0432.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">\u{1F4C5} ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="\u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F">\u{1F4C5}</button>`}</div>${bar}${tools}${body}`;
+    const body0 = go ? goL.length ? `<div class="go-strip go-grid">${goL.map(goTileHTML).join("")}</div>` : '<div class="muted" style="padding:14px">\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u044C \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454</div>' : `${((_c = S.cfg) == null ? void 0 : _c.goTabs) ? goTile : strip}<div class="tables${rng.length > 24 ? " compact" : ""}">${tiles || `<div class="muted" style="padding:14px">${S.hf === "mine" ? "\u0423 \u0432\u0430\u0441 \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454 \u0441\u0442\u043E\u043B\u0456\u0432" : "\u0417\u0430\u0439\u043D\u044F\u0442\u0438\u0445 \u0441\u0442\u043E\u043B\u0456\u0432 \u043D\u0435\u043C\u0430\u0454"}</div>`}</div>`;
+    const body = alerts + body0;
+    return `<div class="head"><h1>${V2.length > 1 ? `<button class="hall-pick${othHot ? " hot" : ""}" data-hl="pick">${cur.ic} ${esc(cur.n)} \u25BE</button>` : "\u0417\u0430\u043B"}</h1>${tools}
+      ${isCook() || isCour() ? "" : inboxBtn()}${isCook() || isCour() ? "" : S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="\u041D\u043E\u0432\u0456 \u0431\u0440\u043E\u043D\u0456 \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C">\u{1F4C5} ${S.bkNew} \u043D\u043E\u0432.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">\u{1F4C5} ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="\u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F">\u{1F4C5}</button>`}</div>${bar}${body}`;
   }
   const evTitle = (e) => ({
     guest: `\u{1F6CE} \u0421\u0442\u0456\u043B ${tn(e.t)} \u2014 ${esc((e.kind || "\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F").toLowerCase())}`,
@@ -2520,7 +2527,7 @@ var __objRest = (source, exclude) => {
     }
   }
   function hallGrid(m) {
-    const w = m.clientWidth || innerWidth, h = Math.max(200, (m.clientHeight || innerHeight) - 90 - (Object.keys(S.tables).some((t) => t > 1e3) ? 74 : 0) - (hallViews().length > 1 ? 46 : 0) - 44), V2 = hallViews(), cur = V2.find((v) => v.id === S.hall) || V2[0], n = Math.max(1, cur.go ? 1 : hallRng(cur).length);
+    const w = m.clientWidth || innerWidth, h = Math.max(200, (m.clientHeight || innerHeight) - 90 - (Object.keys(S.tables).some((t) => t > 1e3) ? 74 : 0) - (hallViews().length > 1 ? 46 : 0) - ($(".hall-alert") ? 44 : 0)), V2 = hallViews(), cur = V2.find((v) => v.id === S.hall) || V2[0], n = Math.max(1, cur.go ? 1 : hallRng(cur).length);
     let best = [1, n], score = 1e9;
     for (let c = 1; c <= n; c++) {
       const r = Math.ceil(n / c), empty = c * r - n, ratio = w / c / (h / r);
@@ -2623,24 +2630,17 @@ var __objRest = (source, exclude) => {
     const a = el.dataset.hl;
     if (a === "set") return hallSet(el.dataset.h);
     if (a === "pick") return hallPick();
+    if (a === "go") {
+      S.hall = el.dataset.h;
+      store.set("hall", S.hall);
+      renderMain();
+      return openTable(+el.dataset.t);
+    }
     if (a === "hf") {
       S.hf = el.dataset.h;
       store.set("hf", S.hf);
       return renderMain();
     }
-  });
-  document.addEventListener("keydown", (ev) => {
-    if (ev.target.id !== "hallQ" || ev.key !== "Enter") return;
-    const t = +ev.target.value;
-    ev.target.value = "";
-    if (t >= 1 && t <= S.n) {
-      const v = hallViews().find((v2) => !v2.go && t >= v2.from && t <= v2.to);
-      if (v && v.id !== S.hall) {
-        S.hall = v.id;
-        store.set("hall", v.id);
-      }
-      openTable(t);
-    } else toast("\u26A0\uFE0F \u041D\u0435\u043C\u0430\u0454 \u0441\u0442\u043E\u043B\u0443 " + (t || ""));
   });
   const RXS = ["\u{1F44D}", "\u2705", "\u{1F525}", "\u2764\uFE0F", "\u{1F602}", "\u{1F62E}"];
   const QUICK = ["\u{1F3C3} \u0406\u0434\u0443", "\u23F1 5 \u0445\u0432", "\u26D4 \u041D\u0435\u043C\u0430 \u0432 \u043D\u0430\u044F\u0432\u043D\u043E\u0441\u0442\u0456", "\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432", "\u{1F37D} \u0413\u043E\u0442\u043E\u0432\u043E", "\u{1F44C} \u041E\u043A"];

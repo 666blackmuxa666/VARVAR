@@ -1047,3 +1047,8 @@ main.hall:has(.go-grid){overflow-y:auto}
 @media (max-width:600px){.hall-tabs{display:none}#hallQ{width:72px}}
 main.hall .tables.compact{scrollbar-width:none}main.hall .tables.compact::-webkit-scrollbar{display:none}
 .hall-pick{position:relative}.hall-pick.hot::after{content:"";position:absolute;top:2px;right:-10px;width:9px;height:9px;border-radius:50%;background:var(--red,#ff453a)}
+.head .hall-f{display:flex;gap:2px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:2px;margin:0;flex:none}
+.head .hall-f button{background:none;border:0;color:var(--muted);font:inherit;font-size:13px;line-height:1;padding:6px 8px;border-radius:8px;cursor:pointer}.head .hall-f button.on{background:var(--card2,#24252d);color:var(--text)}
+.hall-alert{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 0 8px;flex:none}.hall-alert::-webkit-scrollbar{display:none}
+.hall-alert button{flex:none;display:flex;gap:6px;align-items:center;background:color-mix(in srgb,var(--red,#ff453a) 16%,var(--card));border:1px solid color-mix(in srgb,var(--red,#ff453a) 55%,transparent);color:var(--text);border-radius:12px;padding:7px 12px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;animation:pulse 1.6s infinite}
+.hall-alert button b{font-weight:600}

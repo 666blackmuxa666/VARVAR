@@ -21,11 +21,16 @@
     const tab = v => { const n = v.go ? gos.filter(b => v.go === 'all' || (v.go === 'del' ? b.go.kind === 'del' : b.go.kind !== 'del')).length : Object.keys(S.tables).filter(t => t >= v.from && t <= v.to).length, h = v.go ? gos.some(b => b.go.st === 'new' && (v.go === 'all' || (v.go === 'del') === (b.go.kind === 'del'))) : Array.from({ length: v.to - v.from + 1 }, (_, i) => v.from + i).some(hot);
       return `<button class="${v.id === cur.id ? 'on' : ''}${h ? ' hot' : ''}" data-hl="set" data-h="${v.id}">${v.ic} ${esc(v.n)}${n ? ` <b>${n}</b>` : ''}</button>`; };
     const tabs = V.map(tab), bar = V.length > 1 ? `<div class="hall-tabs">${tabs.join('')}</div>` : '', othHot = tabs.some((x, i) => V[i].id !== cur.id && x.includes(' hot"')); // 📱 на телефоні вкладок немає — крапка на кнопці залу
-    const tools = go ? '' : `<div class="hall-tools"><div class="seg">${[['mine', '👤 Мої'], ['busy', '🔥 Зайняті'], ['all', 'Усі']].map(([k, l]) => `<button class="${S.hf === k ? 'on' : ''}" data-hl="hf" data-h="${k}">${l}</button>`).join('')}</div><input id="hallQ" inputmode="numeric" placeholder="🔎 №" autocomplete="off" maxlength="3"></div>`;
+    const tools = go ? '' : `<div class="seg hall-f">${[['mine', '👤', 'Мої столи'], ['busy', '🔥', 'Зайняті'], ['all', 'Усі', 'Усі столи']].map(([k, l, t]) => `<button class="${S.hf === k ? 'on' : ''}" data-hl="hf" data-h="${k}" title="${t}">${l}</button>`).join('')}</div>`;
+    // 🔔 що чекає в ІНШИХ залах — одним рядком над столами: тап → той зал і стіл
+    const why = t => calls[t] ? '🔔 кличе' : pending.has(t) ? '🛎 замовлення' : S.tables[t]?.pwait ? '🌐 оплатив' : S.tables[t]?.check ? '🧾 рахунок' : '';
+    const away = go ? [] : V.filter(v => !v.go && v.id !== cur.id).flatMap(v => Array.from({ length: v.to - v.from + 1 }, (_, i) => v.from + i).filter(hot).map(t => ({ v, t })));
+    const alerts = away.length ? `<div class="hall-alert">${away.slice(0, 6).map(({ v, t }) => `<button data-hl="go" data-h="${v.id}" data-t="${t}"><b>${v.ic} ${esc(v.n)} · ${t}</b> ${why(t)}</button>`).join('')}</div>` : '';
     const goTile = !go && S.cfg?.goTabs && gos.length ? `<button class="go-sum${goNew ? ' new' : ''}" data-hl="set" data-h="${V.find(v => v.go)?.id}">🛵 ${gos.length} ${goNew ? `· <b>${goNew} нов.</b>` : 'в роботі'} →</button>` : '';
-    const body = go ? (goL.length ? `<div class="go-strip go-grid">${goL.map(goTileHTML).join('')}</div>` : '<div class="muted" style="padding:14px">Замовлень зараз немає</div>') : `${S.cfg?.goTabs ? goTile : strip}<div class="tables${rng.length > 24 ? ' compact' : ''}">${tiles || `<div class="muted" style="padding:14px">${S.hf === 'mine' ? 'У вас зараз немає столів' : 'Зайнятих столів немає'}</div>`}</div>`;
-    return `<div class="head"><h1>${V.length > 1 ? `<button class="hall-pick${othHot ? ' hot' : ''}" data-hl="pick">${cur.ic} ${esc(cur.n)} ▾</button>` : 'Зал'}</h1>
-      ${isCook() || isCour() ? '' : inboxBtn()}${isCook() || isCour() ? '' : S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="Нові броні — підтвердіть">📅 ${S.bkNew} нов.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">📅 ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="Бронювання">📅</button>`}</div>${bar}${tools}${body}`;
+    const body0 = go ? (goL.length ? `<div class="go-strip go-grid">${goL.map(goTileHTML).join('')}</div>` : '<div class="muted" style="padding:14px">Замовлень зараз немає</div>') : `${S.cfg?.goTabs ? goTile : strip}<div class="tables${rng.length > 24 ? ' compact' : ''}">${tiles || `<div class="muted" style="padding:14px">${S.hf === 'mine' ? 'У вас зараз немає столів' : 'Зайнятих столів немає'}</div>`}</div>`;
+    const body = alerts + body0;
+    return `<div class="head"><h1>${V.length > 1 ? `<button class="hall-pick${othHot ? ' hot' : ''}" data-hl="pick">${cur.ic} ${esc(cur.n)} ▾</button>` : 'Зал'}</h1>${tools}
+      ${isCook() || isCour() ? '' : inboxBtn()}${isCook() || isCour() ? '' : S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="Нові броні — підтвердіть">📅 ${S.bkNew} нов.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">📅 ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="Бронювання">📅</button>`}</div>${bar}${body}`;
   }
 
   // ---------- стрічка ----------
@@ -223,7 +228,7 @@
   }
 
   function hallGrid(m) {
-    const w = m.clientWidth || innerWidth, h = Math.max(200, (m.clientHeight || innerHeight) - 90 - (Object.keys(S.tables).some(t => t > 1000) ? 74 : 0) - (hallViews().length > 1 ? 46 : 0) - 44), V = hallViews(), cur = V.find(v => v.id === S.hall) || V[0], n = Math.max(1, cur.go ? 1 : hallRng(cur).length); // 74 — ряд доставок, 46 — вкладки залів, 44 — фільтри
+    const w = m.clientWidth || innerWidth, h = Math.max(200, (m.clientHeight || innerHeight) - 90 - (Object.keys(S.tables).some(t => t > 1000) ? 74 : 0) - (hallViews().length > 1 ? 46 : 0) - ($('.hall-alert') ? 44 : 0)), V = hallViews(), cur = V.find(v => v.id === S.hall) || V[0], n = Math.max(1, cur.go ? 1 : hallRng(cur).length); // 74 — ряд доставок, 46 — вкладки залів, 44 — фільтри
     let best = [1, n], score = 1e9;
     for (let c = 1; c <= n; c++) {
       const r = Math.ceil(n / c), empty = c * r - n, ratio = (w / c) / (h / r);
@@ -283,9 +288,7 @@
     const el = ev.target.closest('[data-hl]'); if (!el) return; const a = el.dataset.hl;
     if (a === 'set') return hallSet(el.dataset.h);
     if (a === 'pick') return hallPick();
+    if (a === 'go') { S.hall = el.dataset.h; store.set('hall', S.hall); renderMain(); return openTable(+el.dataset.t); }
     if (a === 'hf') { S.hf = el.dataset.h; store.set('hf', S.hf); return renderMain(); }
   });
-  document.addEventListener('keydown', ev => { // 🔎 № столу + Enter — відкрити стіл (з будь-якого залу)
-    if (ev.target.id !== 'hallQ' || ev.key !== 'Enter') return; const t = +ev.target.value; ev.target.value = '';
-    if (t >= 1 && t <= S.n) { const v = hallViews().find(v => !v.go && t >= v.from && t <= v.to); if (v && v.id !== S.hall) { S.hall = v.id; store.set('hall', v.id); } openTable(t); } else toast('⚠️ Немає столу ' + (t || ''));
-  });
+
