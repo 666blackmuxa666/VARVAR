@@ -135,7 +135,9 @@ export class Hub extends DurableObject {
   }
   // 📨 вхідні кабінету: 💡 побажання персоналу й 🆘 допомога з усіх закладів (копія — щоб кабінет читав одним запитом)
   async msgAdd(m) { const id = Date.now().toString(36) + rnd(3), x = { id, kind: m.kind === 'help' ? 'help' : 'idea', venue: String(m.venue || ''), vname: String(m.vname || '').slice(0, 60), by: String(m.by || '').slice(0, 60), role: String(m.role || '').slice(0, 20), text: String(m.text || '').slice(0, 1500), at: Date.now() };
-    await this.st.put('msg:' + id, x); const l = await this.st.list({ prefix: 'msg:' }); if (l.size > 500) await this.st.delete([...l.keys()].slice(0, l.size - 500)); return x; }
+    await this.st.put('msg:' + id, x); const l = await this.st.list({ prefix: 'msg:' }); // 🔒 стеля на заклад (100): спам одного закладу не витісняє звернення інших; загальна — 500
+    const own = [...l].filter(([, v]) => v.venue === x.venue).map(([k]) => k); if (own.length > 100) await this.st.delete(own.slice(0, own.length - 100));
+    if (l.size > 500) await this.st.delete([...l.keys()].slice(0, l.size - 500)); return x; }
   // 💬 чат у зверненні: from 'a' — ATOM (кабінет), 'u' — працівник закладу; повідомлення знову стає «новим», коли пише працівник
   async msgSay(id, from, text, venues) { const m = await this.st.get('msg:' + id); if (!m || (venues && !venues.includes(m.venue))) return { error: 'Не знайдено' };
     m.chat = [...(m.chat || []), { from: from === 'a' ? 'a' : 'u', text: String(text || '').slice(0, 1500), at: Date.now() }].slice(-60); if (from !== 'a') m.done = 0; await this.st.put('msg:' + id, m); return m; }

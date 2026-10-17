@@ -14,9 +14,10 @@ export async function thrIn(env, hid, text) { // від ATOM
 }
 export async function thrSay(env, hid, who, admin, text) { // від працівника
   text = String(text || '').trim().slice(0, 1500); if (text.length < 1) return { error: 'Напишіть повідомлення' };
+  { const rk = 'idrl:s:' + String(who).slice(0, 40); if (await env.DB.locked(rk, async () => { const n = +(await env.DB.get(rk) || 0); if (n >= 30) return true; await env.DB.put(rk, String(n + 1), { expirationTtl: 3600 }); return false; })) return { error: 'Забагато повідомлень — спробуйте за годину' }; }
   const t = await thr(env, l => { const x = l.find(y => y.hid === hid && (admin || y.by === who)); if (!x) return null; x.chat.push({ from: 'u', by: who, text, at: Date.now() }); x.unr = 0; return x; });
   if (!t) return { error: 'Не знайдено' };
-  try { const { hub } = await import('./hub.js'); await hub(env).msgSay(hid, 'u', `${who}: ${text}`); } catch {}
+  try { const { hub } = await import('./hub.js'); await hub(env).msgSay(hid, 'u', `${who}: ${text}`, [env.VENUE || 'varvar']); } catch {}
   return t;
 }
 export const thrSeen = (env, hid, who) => thr(env, l => { const x = l.find(y => y.hid === hid && y.by === who); if (x) x.unr = 0; return {}; });
@@ -24,6 +25,7 @@ const get = async env => (await env.DB.get('ideas', 'json')) || [];
 const edit = (env, fn) => L(env, 'ideas', async () => { const l = await get(env), r = fn(l); if (r?.error) return r; await env.DB.put('ideas', JSON.stringify(l.slice(-300))); return r ?? l; });
 export async function ideaAdd(env, who, text, sid = '') {
   text = String(text || '').trim().slice(0, 1500); if (text.length < 3) return { error: 'Напишіть побажання' };
+  { const rk = 'idrl:' + String(who).slice(0, 40); if (await env.DB.locked(rk, async () => { const n = +(await env.DB.get(rk) || 0); if (n >= 10) return true; await env.DB.put(rk, String(n + 1), { expirationTtl: 3600 }); return false; })) return { error: 'Забагато побажань — спробуйте за годину' }; } // 🔒 10 на годину з працівника: спам іде у спільну скриньку ATOM
   const x = { id: crypto.randomUUID().slice(0, 8), by: who, sid, text, at: Date.now() };
   await edit(env, l => { l.push(x); return x; });
   await logEvent(env, { k: 'shift', text: `💡 Нове побажання від ${who}: ${text.slice(0, 120)}` });
