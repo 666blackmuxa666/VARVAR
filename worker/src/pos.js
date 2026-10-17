@@ -13,6 +13,8 @@ import { storeStub } from './store.js';
 import { stockApi } from './stock.js';
 import { acctExport } from './acct.js';
 import { taxView, taxSet, taxDone } from './tax.js';
+import { setPerm } from './ops.js';
+import { PERMS, SENSITIVE, permOf, can, canList, discLimit } from './perm.js';
 import { payApi, closeStale, getAtt } from './pay.js';
 import { aiInvoice, aiCard, aiDups } from './ai.js';
 import {
@@ -36,12 +38,17 @@ export async function posApi(b, req, env) {
   const ip = req.headers.get('CF-Connecting-IP') || '';
   if (b.op === 'login') return login(b, env, ip);
   if (b.op === 'register') return register(b, env, ip);
-  const token = tokenOf(req), me = await session(env, token);
+  const token = tokenOf(req); let me = await session(env, token);
   if (!me) return [{ error: 'auth' }, 401];
   // видаленого працівника одразу викидає з каси (сесія більше не діє)
   // ✏️ змінили PIN / імʼя / роль (ver) — теж вхід заново
-  if (me.sid) { const s = (await getStaff(env)).find(x => x.id === me.sid); if (!s || (s.ver || 0) !== (me.ver || 0)) { await env.DB.delete('pos:' + token); return [{ error: 'auth' }, 401]; } me.av = s.av || ''; } // 👤 аватарка — свіжа з профілю
-  const admin = me.role === 'admin', who = me.name;
+  if (me.sid) { const s = (await getStaff(env)).find(x => x.id === me.sid); if (!s || (s.ver || 0) !== (me.ver || 0)) { await env.DB.delete('pos:' + token); return [{ error: 'auth' }, 401]; } me.av = s.av || ''; me.perm = s.perm || {}; } // 👤 аватарка — свіжа з профілю
+  let admin = me.role === 'admin'; const who = me.name;
+  // 🔑 права з галочками: адміну право можна зняти, іншій ролі — видати (на цей запит працівник діє як адмін; staff.perm — відхилення від шаблону ролі)
+  { const pk = permOf(b.op);
+    if (pk && !can(me, pk)) { if (admin) return [{ error: 'admin', perm: pk }, 403]; }
+    else if (pk && !admin) { if (b.op === 'staffPerm') return [{ error: 'admin' }, 403]; me = { ...me, role: 'admin', real: me.role, elev: 1 }; admin = true;
+      if (/^staff(Add|Edit|Del)$/.test(b.op) && (b.role === 'admin' || (await getStaff(env)).some(x => x.id === String(b.id) && x.role === 'admin'))) return [{ error: 'Адміністраторів змінює лише адміністратор' }, 403]; } }
   const t = +b.t || 0;
   const needAdmin = () => [{ error: 'admin' }, 403];
   // ⛔ підписку ATOM не оплачено (5+ днів) — каса лише для перегляду: нові замовлення й чеки — ні
@@ -113,7 +120,7 @@ export async function posApi(b, req, env) {
       const bl = me.role === 'courier' ? [] : await bookList(env, dayKey(), undefined), bkNew = (await bookList(env, dayKey(), new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10))).filter(x => x.st === 'new').length; // 🔔 нові броні на будь-яку дату — лічильник у меню
       const books = bl.filter(x => x.date === dayKey() && ['new', 'ok'].includes(x.st)).map(x => ({ id: x.id, time: x.time, name: x.name, people: x.people, t: x.t || 0, st: x.st, pre: (x.pre || []).length }));
       await promoFillMany(env, rows.map(r => r.b)); // 🎁 акції/рівень — для показу суми на столі
-      return ok({ me, shift, myTip, myAtt, books, wl: me.role === 'courier' || me.role === 'cook' ? [] : await (await import('./wl.js')).wlList(env), bkNew: me.role === 'courier' ? 0 : bkNew, brand: await (async () => { const s = await (await import('./site.js')).getSite(env); return { name: s.name, logo: s.logo || '' }; })(), gInN: ['courier', 'cook'].includes(me.role) ? 0 : await (await import('./guestbot.js')).inOpenN(env), cfg: await getCfg(env), n: tablesCount(env), tables: rows.map(r => ({ t: r.t, ...r.b, items: billItems(r.b), pay2: payable(r.b) })), events: events.slice(-120), printer: pr, now: Date.now() });
+      return ok({ me: { ...me, can: canList(me), dmax: me.perm?.discountMax ?? null }, shift, myTip, myAtt, books, wl: me.role === 'courier' || me.role === 'cook' ? [] : await (await import('./wl.js')).wlList(env), bkNew: me.role === 'courier' ? 0 : bkNew, brand: await (async () => { const s = await (await import('./site.js')).getSite(env); return { name: s.name, logo: s.logo || '' }; })(), gInN: ['courier', 'cook'].includes(me.role) ? 0 : await (await import('./guestbot.js')).inOpenN(env), cfg: await getCfg(env), n: tablesCount(env), tables: rows.map(r => ({ t: r.t, ...r.b, items: billItems(r.b), pay2: payable(r.b) })), events: events.slice(-120), printer: pr, now: Date.now() });
     }
     case 'wlAdd': { const [r, c] = await (await import('./wl.js')).wlAdd(env, b, who); return c ? [r, c] : ok(r); }
     case 'wlAct': { const [r, c] = await (await import('./wl.js')).wlAct(env, b.id, b.act, b.t, who); return c ? [r, c] : ok(r); }
@@ -142,7 +149,7 @@ export async function posApi(b, req, env) {
       if (r) await notify(env, `🖥 ✅ <b>Стіл ${tn(t)} закрито</b> — ${money(r.sum)}${r.disc ? ` (знижка ${money(r.disc)})` : ''} · ${payLabel(r.cash, r.card)}${b.print === false ? ' · без чека' : ''} — ${esc(who)}`);
       return ok({ r });
     }
-    case 'discount': { const r = await setDiscount(env, t, b.pct, who, admin); if (r?.error) return [{ error: r.error }, 400]; if (r) await notify(env, `🖥 % Стіл ${tn(t)}: ${r.disc ? `знижка ${r.disc}% — до сплати ${money(payable(r))}` : 'знижку прибрано'} — ${esc(who)}`); return ok(); }
+    case 'discount': { const r = await setDiscount(env, t, b.pct, who, me.perm?.discountMax != null ? discLimit(me) : admin); if (r?.error) return [{ error: r.error }, 400]; if (r) await notify(env, `🖥 % Стіл ${tn(t)}: ${r.disc ? `знижка ${r.disc}% — до сплати ${money(payable(r))}` : 'знижку прибрано'} — ${esc(who)}`); return ok(); }
     case 'tip': { if (+b.sum || !admin) return [{ error: 'Чайові додає лише гість. Прибрати може адміністратор.' }, 403]; const r = await setTip(env, t, b.sum, who); if (r) await notify(env, `🖥 💝 Стіл ${tn(t)}: ${r.tip ? `чайові ${money(r.tip)}` : 'чайові прибрано'} — ${esc(who)}`); return ok(); }
     case 'split': { const r = await splitTable(env, t, b.items, +b.to, who); if (!r) return [{ error: 'Нічого не перенесено' }, 400]; if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 ✂️ Стіл ${tn(t)} розділено → <b>стіл ${tn(r.to)}</b> (${money(r.sum)}): ${esc(r.lines.join(', '))} — ${esc(who)}`, tgBtns(r.to)); return ok({ r }); }
     case 'move': { const r = await moveTable(env, t, +b.to, who); if (r) await notify(env, `🖥 ${r.merged ? `🔗 Стіл ${tn(t)} об'єднано зі столом ${tn(b.to)}` : `↔️ Стіл ${tn(t)} перенесено на стіл ${tn(b.to)}`} — ${esc(who)}`, tgBtns(+b.to)); return ok({ r }); }
@@ -324,7 +331,7 @@ async function adminRest(b, env, who, ip, ok) {
     case 'wifiClear': await env.DB.put('venue_ips', '[]'); await notify(env, `🖥 📶 Усі мережі закладу скинуто — ${esc(who)}`); return ok();
 
     // персонал і паролі
-    case 'staff': return ok({ staff: (await getStaff(env)).map(({ pin, ...s }) => s), waiters: await loggedWaiters(env), reg: { admin: await regCode(env, 'admin'), waiter: await regCode(env, 'waiter'), cook: await regCode(env, 'cook'), courier: await regCode(env, 'courier') }, kpct: await kitchenPct(env), cfg: await getCfg(env), cooks: (await env.DB.get('cooks:' + dayKey(), 'json')) || [] });
+    case 'staff': return ok({ perms: PERMS, sens: SENSITIVE, staff: (await getStaff(env)).map(({ pin, ...s }) => s), waiters: await loggedWaiters(env), reg: { admin: await regCode(env, 'admin'), waiter: await regCode(env, 'waiter'), cook: await regCode(env, 'cook'), courier: await regCode(env, 'courier') }, kpct: await kitchenPct(env), cfg: await getCfg(env), cooks: (await env.DB.get('cooks:' + dayKey(), 'json')) || [] });
     case 'regCode': { const c = String(b.code || '').trim(); if (!/^\d{4,8}$/.test(c)) return [{ error: 'Код — від 4 до 8 цифр' }, 400]; { if (await pinFind(env, await getStaff(env), c)) return [{ error: 'Цей код збігається з PIN працівника — оберіть інший' }, 400]; } await env.DB.put('reg_' + (['admin', 'cook', 'courier'].includes(b.role) ? b.role : 'waiter'), c); return ok(); }
     case 'staffAdd': { const r = await addStaff(env, b.name, b.pin, b.role); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 👥 Додано працівника <b>${esc(r.s.name)}</b> (${ROLE_UA[r.s.role]}) — ${esc(who)}`); return ok(); }
     case 'alog': return ok({ list: await (await import('./ops.js')).alogGet(env, String(b.m || '')) }); // 📜 журнал дій
@@ -339,6 +346,9 @@ async function adminRest(b, env, who, ip, ok) {
     case 'stGet': { const m = await getMenu(env); return ok({ sts: await getStations(env), cats: m.categories.filter(c => !c.tech).map(c => ({ id: c.id, name: c.name.uk, g: groupOf(c.id), st: c.st || '' })) }); } // 🍳 цехи кухні
     case 'stSet': { const sts = await setStations(env, b.list, b.cats); await notify(env, `🖥 🍳 Цехи кухні: ${sts.length ? sts.map(x => esc(x.name)).join(', ') : 'вимкнено'} — ${esc(who)}`); return ok({ sts }); }
     case 'stItem': { const it = await setItemStation(env, String(b.id), String(b.st || '')); return it ? ok() : [{ error: 'Позицію не знайдено' }, 404]; }
+    case 'staffPerm': { // 🔑 права видає лише справжній адміністратор (перевірка elev — у шлюзі прав)
+      const r = await setPerm(env, String(b.id || ''), b.perm, b.pin); if (r.error) return [{ error: r.error }, 400];
+      await notify(env, `🖥 🔑 Права <b>${esc(r.s.name)}</b>: ${Object.keys(r.s.perm || {}).length ? esc(JSON.stringify(r.s.perm)) : 'за шаблоном ролі'} — ${esc(who)}`); return ok({ perm: r.s.perm || {} }); }
     case 'staffDel': await delStaff(env, String(b.id)); return ok();
     case 'staffEdit': { const f = {}; for (const k of ['name', 'pin', 'role']) if (b[k] != null && b[k] !== '') f[k] = b[k];
       const r = await editStaff(env, String(b.id), f); if (r.error) return [{ error: r.error }, 400];
@@ -367,7 +377,7 @@ async function register(b, env, ip) {
   const role = await regRole(env, b.code); if (!role) { await lrlFail(env, ip); return [{ error: 'Невірний код реєстрації' }, 401]; }
   const r = await addStaff(env, b.name, b.pin, role); if (r.error) return [{ error: r.error }, 400];
   await notify(env, `👥 Новий працівник: <b>${esc(r.s.name)}</b> (${ROLE_UA[role]}) — зареєструвався в касі`);
-  const me = { name: r.s.name, role, sid: r.s.id };
+  const me = { name: r.s.name, role, sid: r.s.id, can: canList({ role }) };
   const token = [...crypto.getRandomValues(new Uint8Array(16))].map(x => x.toString(16).padStart(2, '0')).join('');
   await env.DB.put('pos:' + token, JSON.stringify({ ...me, at: Date.now() }), { expirationTtl: SESSION_TTL[role] });
   return [{ ok: true, token, me }, 200];
@@ -377,7 +387,7 @@ async function login(b, env, ip) {
   let me = null;
   if (b.pin) {
     if (!(await loginGuard(env, ip))) return TOO_MANY;
-    const s = await pinFind(env, await getStaff(env), String(b.pin)); if (s) { me = { name: s.name, role: s.role, sid: s.id, ver: s.ver || 0 }; await pinUpgrade(env, s, String(b.pin)); await env.DB.put('okip:' + ip.slice(0, 64), '1', { expirationTtl: 30 * 86400 }); } // спершу PIN працівника — код реєстрації не має його перекривати
+    const s = await pinFind(env, await getStaff(env), String(b.pin)); if (s) { me = { name: s.name, role: s.role, sid: s.id, ver: s.ver || 0, can: canList(s) }; await pinUpgrade(env, s, String(b.pin)); await env.DB.put('okip:' + ip.slice(0, 64), '1', { expirationTtl: 30 * 86400 }); } // спершу PIN працівника — код реєстрації не має його перекривати
     else { const role = await regRole(env, b.pin); if (role) return [{ ok: true, register: role }, 200]; } // код реєстрації → форма «імʼя + свій PIN»
   }
   if (!me) { await lrlFail(env, ip); await loginFailAll(env); return [{ error: 'Невірний PIN' }, 401]; }
