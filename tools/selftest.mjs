@@ -656,6 +656,35 @@ async function loyTests(A, W, dish) {
     const en = await ownT(OT, 'enter', { venue: VID }); must(en.j.token, 'enter'); must((await vpos(en.j.token, 'state')).status === 200, 'токен власника не працює');
     must((await ownT(OT, 'accts')).status === 403, 'власник бачить консоль платформи'); });
   await step('платформа бачить усі заклади', async () => { const me = await ownT(PT, 'me'); must(me.j.venues.some(v => v.id === 'varvar') && me.j.venues.some(v => v.id === VID), 'не всі'); });
+  sect('🎁 Реферальна програма (етап 1, вручну)');
+  const FE = `qa-ref-${VID}@test.local`, FV = [], phone = '+3809' + String(Date.now()).slice(-8);
+  await step('?ref= з лендингу → lead.ref (очищений: a–z0–9); код закладу стабільний', async () => {
+    const r = await ownT(PT, 'leadNew', { name: 'QA реф', phone, place: 'QA', ref: 'QA-Ref_1!' }); must(r.j.ok, JSON.stringify(r.j)); // /api/lead живе лише на домені posatom.online, тож перевіряємо ту саму leadAdd через кабінет
+    const L = (await ownT(PT, 'leads', { days: 7 })).j.list.find(x => x.phone === phone); must(L && L.ref === 'qaref1', 'ref=' + L?.ref);
+    await ownT(PT, 'leadSet', { id: L.id, f: { del: 1 } });
+    const a = await ownT(PT, 'ref', { venue: VID }), b = await ownT(PT, 'ref', { venue: VID }); must(/^[a-z0-9]{6}$/.test(a.j.ref?.code) && a.j.ref.code === b.j.ref.code && a.j.ref.limit === 12, JSON.stringify(a.j));
+    must((await ownT(OT, 'ref', { venue: 'varvar' })).status === 403, 'власник бачить код чужого закладу'); });
+  await step('заборона самореферала: свій код, свій власник; без причини — відмова', async () => {
+    const code = (await ownT(PT, 'ref', { venue: VID })).j.ref.code;
+    must((await ownT(PT, 'refGift', { id: VID, code, why: 'QA' })).status === 400, 'свій заклад зарахувався');
+    must((await ownT(PT, 'refGift', { id: VID, why: ' ' })).status === 400, 'без причини');
+    const sv = VID + '-s'; must((await ownT(PT, 'venueNew', { id: sv, name: 'QA свій', owner: OE })).j.ok, 'venueNew'); FV.push(sv);
+    const r = await ownT(PT, 'refGift', { id: sv, code, why: 'QA' }); must(r.status === 400 && /Свої/.test(r.j.error || ''), 'заклад того ж власника: ' + JSON.stringify(r.j));
+    must((await ownT(PT, 'ref', { venue: VID })).j.ref.n === 0, 'лічильник змінився'); });
+  await step('+1 міс другу й рефері, один раз на заклад; ліміт 12 → далі лише другу; блок коду', async () => {
+    must((await ownT(PT, 'acctNew', { email: FE, pass: 'friend-pass-123', name: 'QA друг' })).j.ok, 'acctNew');
+    const code = (await ownT(PT, 'ref', { venue: VID })).j.ref.code, till = async id => (await ownT(PT, 'bill', { venue: id })).j.sub.till;
+    const t0 = await till(VID);
+    for (let i = 1; i <= 13; i++) {
+      const id = `${VID}-f${i}`, v = await ownT(PT, 'venueNew', { id, name: 'QA друг ' + i, owner: FE, ref: code }); must(v.j.ok, JSON.stringify(v.j)); FV.push(id);
+      const f0 = await till(id), r = await ownT(PT, 'refGift', { id, why: 'QA' }); must(r.j.ok, JSON.stringify(r.j));
+      must(await till(id) > f0, 'другу не додано місяць');
+      if (i <= 12) must(r.j.ref && !r.j.capped, `#${i} рефері не отримав: ` + JSON.stringify(r.j)); else must(r.j.capped && !r.j.ref, 'понад ліміт: ' + JSON.stringify(r.j));
+      if (i === 1) { must(await till(VID) > t0, 'рефері без місяця'); const again = await ownT(PT, 'refGift', { id, why: 'QA' }); must(again.status === 400, 'повторне нарахування'); }
+    }
+    const st = (await ownT(PT, 'ref', { venue: VID })).j.ref; must(st.n === 12, 'n=' + st.n);
+    must((await ownT(PT, 'refBlock', { code, on: 1 })).j.ok && (await ownT(PT, 'ref', { venue: VID })).j.ref.blocked, 'блок'); await ownT(PT, 'refBlock', { code, on: 0 }); });
+  await step('прибирання: тестові заклади й власник-друг', async () => { for (const id of FV) await ownT(PT, 'venueDel', { id, pass: PP }); await ownT(PT, 'acctDel', { email: FE }); });
   await step('платформа: доступ керуючому, зміна власника, видалення', async () => {
     const ME = `qa-mgr-${VID}@test.local`; must((await ownT(PT, 'acctNew', { email: ME, pass: 'manager-pass-1', name: 'QA керуючий' })).j.ok, 'acctNew');
     must((await ownT(PT, 'grant', { venue: VID, email: ME, on: true })).j.ok, 'grant');
