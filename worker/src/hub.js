@@ -65,7 +65,7 @@ export class Hub extends DurableObject {
   async mailToken(email, kind) {
     const a = await this.st.get('acct:' + normEmail(email)); if (!a) return null;
     const rk = 'mt:' + kind + ':' + a.email, last = await this.st.get(rk); if (last && Date.now() - last < 60e3) return { error: 'Лист уже надіслано — зачекайте хвилину' };
-    const t = rnd(24); await this.st.put('tok:' + t, { email: a.email, kind, exp: Date.now() + (kind === 'verify' ? 7 * 864e5 : 3600e3) }); await this.st.put(rk, Date.now());
+    const t = rnd(24); await this.st.put('tok:' + t, { email: a.email, kind, exp: Date.now() + (kind !== 'reset' ? 7 * 864e5 : 3600e3) }); await this.st.put(rk, Date.now());
     return { t, email: a.email, name: a.name };
   }
   async useToken(t, kind, pass) {
@@ -77,6 +77,21 @@ export class Hub extends DurableObject {
     a.verified = true; await this.st.put('acct:' + a.email, a); await this.st.delete('tok:' + t);
     const token = rnd(24); await this.st.put('sess:' + token, { email: a.email, exp: Date.now() + SESS_MS }); return { token, acct: pub(a) };
   }
+  // ⚡ самореєстрація: акаунт (непідтверджений) + «заявка на заклад»; заклад створюється після підтвердження пошти (signupTake)
+  async signupStart({ email, name, pass, place, city, ref, ip }) {
+    email = normEmail(email); if (!okEmail(email)) return { error: 'Невірний email' };
+    const now = Date.now();
+    if (ip) { const rk = 'srl:' + ip.slice(0, 64), fresh = ((await this.st.get(rk)) || []).filter(t => now - t < 3600e3); // ліміт з IP (без IP — лише тестовий виклик)
+      if (fresh.length >= 4) return { error: 'Забагато спроб — спробуйте пізніше або залиште заявку' };
+      await this.st.put(rk, [...fresh, now]); }
+    const old = await this.st.get('acct:' + email);
+    if (old) { if (old.verified !== false || !(await this.st.get('signup:' + email))) return { error: 'Такий email уже зареєстровано — увійдіть у кабінет' }; await this.st.delete('acct:' + email); } // непідтверджену спробу можна повторити
+    const a = await this.acctCreate({ email, name, pass, verify: true }); if (a.error) return a;
+    await this.st.put('signup:' + email, { place: String(place || '').trim().slice(0, 60), city: String(city || '').trim().slice(0, 60), ref: String(ref || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20), at: now });
+    this.ctx.storage.setAlarm?.(now + 864e5);
+    return this.mailToken(email, 'signup');
+  }
+  async signupTake(email) { const k = 'signup:' + normEmail(email), p = await this.st.get(k); if (p) await this.st.delete(k); return p || null; }
   async logout(token) { if (/^[a-f0-9]{48}$/.test(token || '')) await this.st.delete('sess:' + token); }
   // ---- заклади ----
   async venueGet(id) { return (await this.st.get('venue:' + id)) || null; }
@@ -251,7 +266,8 @@ export class Hub extends DurableObject {
   }
   async hit(kind) { const d = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' }), k = 'ah:' + d, v = (await this.st.get(k)) || {}; v[kind] = (v[kind] || 0) + 1; await this.st.put(k, v); }
   async hitOnce(ip) { if (!ip) return; const k = 'ahip:' + ip.slice(0, 64); if (await this.st.get(k)) return; await this.st.put(k, 1); await this.hit('view'); this.ctx.storage.setAlarm?.(Date.now() + 864e5); }
-  async alarm() { for (const p of ['ahip:', 'lrl:']) { const l = await this.st.list({ prefix: p }); if (l.size) await this.st.delete([...l.keys()].slice(0, 1000)); } } // щодоби: перегляди й ліміти заявок з IP
+  async alarm() { for (const [k, v] of await this.st.list({ prefix: 'signup:' })) if (Date.now() - v.at > 7 * 864e5) { await this.st.delete(k); const a = await this.st.get('acct:' + k.slice(7)); if (a && a.verified === false) await this.st.delete('acct:' + k.slice(7)); } /* непідтверджені самореєстрації старші 7 днів */
+    for (const p of ['ahip:', 'lrl:', 'srl:']) { const l = await this.st.list({ prefix: p }); if (l.size) await this.st.delete([...l.keys()].slice(0, 1000)); } } // щодоби: перегляди й ліміти заявок з IP
   async hitStats(days) { const out = []; for (let i = days - 1; i >= 0; i--) { const d = new Date(Date.now() - i * 864e5).toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' }); out.push({ d, ...((await this.st.get('ah:' + d)) || {}) }); } return out; }
 }
 

@@ -843,6 +843,29 @@ async function loyTests(A, W, dish) {
     }
     const st = (await ownT(PT, 'ref', { venue: VID })).j.ref; must(st.n === 12, 'n=' + st.n);
     must((await ownT(PT, 'refBlock', { code, on: 1 })).j.ok && (await ownT(PT, 'ref', { venue: VID })).j.ref.blocked, 'блок'); await ownT(PT, 'refBlock', { code, on: 0 }); });
+  { const SE = 'qa-self@test.local'; let sv = null;
+  await step('⚡ самореєстрація: бот-пастка/коротка назва/слабкий пароль → відмова, акаунт не створено', async () => {
+    must((await own({ op: 'signup', web: 'x', email: SE, place: 'Кав\'ярня', pass: 'selfpass-123' })).j.test === undefined, 'пастка');
+    must((await own({ op: 'signup', email: SE, place: 'К', pass: 'selfpass-123' })).status === 400, 'назва');
+    must((await own({ op: 'signup', email: SE, place: 'Кав\'ярня', pass: '123' })).status === 400, 'пароль');
+    must((await own({ op: 'signup', email: 'не-пошта', place: 'Кав\'ярня', pass: 'selfpass-123' })).status === 400, 'email'); });
+  await step('⚡ самореєстрація: до підтвердження пошти вхід закритий, заклад не створено', async () => {
+    const r = await own({ op: 'signup', email: SE, name: 'QA сам', place: 'Кав\'ярня «Тест»', city: 'Буковель', pass: 'selfpass-123' }); must(r.j.test, JSON.stringify(r.j)); sv = r.j.test;
+    must((await own({ op: 'login', email: SE, pass: 'selfpass-123' })).status === 401, 'вхід до підтвердження');
+    must((await own({ op: 'signupOk', t: 'f'.repeat(48) })).status === 400, 'хибне посилання'); });
+  await step('⚡ самореєстрація: повтор для непідтвердженого email дозволений (старе посилання гасне)', async () => {
+    const r = await own({ op: 'signup', email: SE, name: 'QA сам', place: 'Кав\'ярня «Тест»', city: 'Буковель', pass: 'selfpass-123' });
+    if (r.j.test) sv = r.j.test; else must(/хвилину/.test(r.j.error || ''), JSON.stringify(r.j)); });
+  await step('⚡ самореєстрація: посилання → заклад на пробний місяць, власник входить, заклад у кабінеті', async () => {
+    const r = await own({ op: 'signupOk', t: sv }); must(r.j.token && r.j.venue, JSON.stringify(r.j)); FV.push(r.j.venue); sv = r.j;
+    must(/^[a-z0-9-]+$/.test(r.j.venue), 'адреса ' + r.j.venue);
+    const me = await ownT(r.j.token, 'me'); must(me.j.venues?.some(v => v.id === r.j.venue && v.status === 'trial'), JSON.stringify(me.j.venues));
+    const en = await ownT(r.j.token, 'enter', { venue: r.j.venue }); must(en.j.token, 'вхід у касу закладу');
+    must((await own({ op: 'login', email: SE, pass: 'selfpass-123' })).j.token, 'вхід паролем');
+    must((await own({ op: 'signupOk', t: sv.t || 'x'.repeat(48) })).status === 400, 'повторне використання'); });
+  await step('⚡ самореєстрація: той самий email вдруге → «вже зареєстровано»', async () => {
+    const r = await own({ op: 'signup', email: SE, place: 'Інша', pass: 'selfpass-123' }); must(r.status === 400 && /уже зареєстровано/.test(r.j.error || ''), JSON.stringify(r.j)); });
+  await step('⚡ самореєстрація: прибирання', async () => { await ownT(PT, 'venueDel', { id: sv.venue, pass: PP }); await ownT(PT, 'acctDel', { email: SE }); }); }
   await step('прибирання: тестові заклади й власник-друг', async () => { for (const id of FV) await ownT(PT, 'venueDel', { id, pass: PP }); await ownT(PT, 'acctDel', { email: FE }); });
   await step('платформа: доступ керуючому, зміна власника, видалення', async () => {
     const ME = `qa-mgr-${VID}@test.local`; must((await ownT(PT, 'acctNew', { email: ME, pass: 'manager-pass-1', name: 'QA керуючий' })).j.ok, 'acctNew');

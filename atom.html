@@ -336,6 +336,12 @@ footer a { color: var(--muted); }
       <a class="btn btn-ghost" id="cTg" href="https://t.me/+380683115848" target="_blank" rel="noopener">✈️ Написати в Telegram</a>
       <a class="btn btn-ghost" id="cVb" href="viber://chat?number=%2B380683115848">💜 Написати у Viber</a>
       <a class="btn btn-ghost" id="cCall" href="tel:+380683115848">📞 Подзвонити</a>
+      <form id="sf" novalidate style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line,#333);display:grid;gap:10px">
+        <div class="m"><b>⚡ Або зареєструйтесь самі</b> — заклад з’явиться одразу після підтвердження пошти, перший місяць безкоштовно.</div>
+        <input name="place" placeholder="Назва закладу" autocomplete="organization" required><input name="city" placeholder="Місто, адреса"><input name="email" type="email" placeholder="Email" autocomplete="email" required><input name="pass" type="password" placeholder="Пароль (від 8 символів)" autocomplete="new-password" minlength="8" required>
+        <input class="hp" name="web" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <button class="btn btn-gold" type="submit">⚡ Зареєструвати заклад</button><div class="msg" id="sm" role="status"></div>
+      </form>
       <div class="m" style="margin-top:8px">Демо, налаштування й перший місяць — безкоштовно. Нічого не потрібно купувати.</div>
     </div>
   </div>
@@ -451,6 +457,18 @@ footer a { color: var(--muted); }
       } catch (x) { add('⚠️ ' + x.message + '. Залиште заявку у формі нижче.'); }
       delete F.dataset.busy; };
   }
+  // ⚡ самореєстрація: лист із посиланням → /owner/#signup=… створює заклад
+  $('#sf').addEventListener('submit', async e => {
+    e.preventDefault(); const f = e.target, m = $('#sm'), d = Object.fromEntries(new FormData(f)); m.className = 'msg'; if (PV) { m.textContent = '👁 Перегляд: реєстрація не виконується'; return; }
+    if ((d.place || '').trim().length < 2) { m.className = 'msg err'; m.textContent = 'Вкажіть назву закладу'; return f.place.focus(); }
+    if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test((d.email || '').trim())) { m.className = 'msg err'; m.textContent = 'Вкажіть email'; return f.email.focus(); }
+    if ((d.pass || '').length < 8) { m.className = 'msg err'; m.textContent = 'Пароль — щонайменше 8 символів'; return f.pass.focus(); }
+    const btn = f.querySelector('button'); btn.disabled = true; m.textContent = 'Реєструю…';
+    try { const r = await fetch('/api/owner', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'signup', ...d, ref: refCode() }) }).then(r => r.json()); if (!r.ok) throw new Error(r.error || 'Не вдалося');
+      f.reset(); m.className = 'msg ok'; m.textContent = '✉️ Лист надіслано — натисніть кнопку в ньому (перевірте «Спам»), і заклад буде створено.';
+    } catch (x) { m.className = 'msg err'; m.textContent = '⚠️ ' + x.message; }
+    btn.disabled = false;
+  });
   // 💬 заявка
   $('#lf').addEventListener('submit', async e => {
     e.preventDefault(); const f = e.target, m = $('#lm'), d = Object.fromEntries(new FormData(f)); m.className = 'msg'; if (PV) { m.textContent = '👁 Перегляд: заявка не надсилається'; return; }

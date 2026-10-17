@@ -202,6 +202,36 @@ export async function ownerApi(req, env) {
     return ok({ mail: mailOn(env) });
   }
   if (b.op === 'reset' || b.op === 'verify') { const r = await H.useToken(b.t, b.op, b.pass ?? null); return r.error ? bad(r.error) : ok(r); }
+  if (b.op === 'signup') { // ⚡ самореєстрація закладу: email, назва, місто, пароль → лист → (підтвердження) → заклад на пробний місяць
+    if (b.web) return ok(); // 🍯 пастка для ботів
+    const tst = env.BOT_TOKEN === 'local-test'; // тестовий сервер без пошти: токен підтвердження віддається у відповіді (на проді BOT_TOKEN інший)
+    if (!mailOn(env) && !tst) return bad('Реєстрація тимчасово недоступна — залиште заявку');
+    const place = String(b.place || '').trim(); if (place.length < 2) return bad('Вкажіть назву закладу');
+    const x = await H.signupStart({ email: b.email, name: b.name || place, pass: b.pass, place, city: b.city, ref: b.ref, ip: req.headers.get('CF-Connecting-IP') || '' }); if (x?.error) return bad(x.error);
+    if (tst && !mailOn(env)) return ok({ test: x.t });
+    const r = await sendMail(env, x.email, 'Підтвердіть пошту — ATOM', 'Майже готово!', `${x.name}, підтвердіть пошту — і ми створимо заклад «${place.slice(0, 60)}» з пробним місяцем. Посилання діє 7 днів.`, '✅ Підтвердити й створити заклад', ownerLink('signup', x.t));
+    return r.error ? bad(r.error) : ok();
+  }
+  if (b.op === 'signupOk') { // ✉️ перехід за посиланням: підтверджує пошту й створює заклад
+    const r = await H.useToken(b.t, 'signup', null); if (r.error) return bad(r.error);
+    const p = await H.signupTake(r.acct.email); let venue = null;
+    if (p) {
+      const slug = String(p.place || '').toLowerCase().replace(/[а-яіїєґ'’ь]/g, c => ({ а: 'a', б: 'b', в: 'v', г: 'h', ґ: 'g', д: 'd', е: 'e', є: 'ye', ж: 'zh', з: 'z', и: 'y', і: 'i', ї: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sch', ю: 'yu', я: 'ya' }[c] || '')).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 22);
+      for (let i = 0; i < 6 && !venue?.id; i++) {
+        venue = await H.venueCreate({ id: (slug.length >= 2 ? slug : 'cafe') + '-' + rnd(2), name: p.place, owner: r.acct.email, city: p.city, ref: p.ref, status: 'trial' });
+        if (venue.error) { if (!/зайнята/.test(venue.error)) break; venue = null; }
+      }
+      if (venue?.id) {
+        const q = await callVenue(env, venue.id, '/__int/init', { name: venue.name }, true).catch(e => ({ error: e.message }));
+        if (q.error) { await H.venueSet(venue.id, { status: 'off' }).catch(() => {}); venue = null; }
+        else {
+          const l = await H.leadAdd({ name: r.acct.name, phone: '', place: venue.name, city: venue.city, msg: '⚡ самореєстрація · ' + r.acct.email, src: 'self', ref: p.ref }, 'own:' + Date.now()); if (l?.id) await H.leadSet(l.id, { st: 'trial', venue: venue.id }).catch(() => {});
+          await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `🆕 <b>Новий заклад (самореєстрація)</b>\n🏪 ${hx(venue.name)}${venue.city ? ' · ' + hx(venue.city) : ''}\n👤 ${hx(r.acct.name)} · ${hx(r.acct.email)}\n🧪 пробний місяць · адреса: ${hx(venue.id)}` }).catch(() => {});
+        }
+      }
+    }
+    return ok({ token: r.token, venue: venue?.id || null });
+  }
   if (b.op === 'resend') { const x = await H.mailToken(b.email, 'verify'); if (x?.error) return bad(x.error); if (x && (await H.acctGet(x.email))?.unverified) await sendVerify(env, x); return ok(); }
   if (b.op === 'canBoot') return ok({ boot: !(await H.acctList()).length });
   const me = await H.session(tok); if (!me) return bad('auth', 401);

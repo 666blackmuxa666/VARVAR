@@ -59,6 +59,11 @@
   function logout(silent) { if (!silent) api('logout').catch(() => {}); S.token = ''; store.set('token', ''); renderLogin(); }
   async function renderLogin() {
     const hp = new URLSearchParams(location.hash.slice(1)), pos = hp.get('pos') || '', mt = hp.get('verify') ? 'verify' : hp.get('reset') ? 'reset' : '';
+    if (hp.get('signup')) { // ⚡ підтвердження самореєстрації: пошта підтверджується, заклад створюється
+      app.innerHTML = '<div class="login"><img class="logo" src="img/icon.png" alt=""><h1>⏳ Створюємо ваш заклад…</h1><div class="err" id="serr"></div></div>';
+      try { const r = await api('signupOk', { t: hp.get('signup') }); S.token = r.token; store.set('token', r.token); history.replaceState(null, '', location.pathname + location.search); toast(r.venue ? '🎉 Заклад створено — пробний місяць увімкнено' : '✅ Пошту підтверджено'); return start(); }
+      catch (x) { $('#serr').textContent = x.message; return; }
+    }
     if (mt) return renderSetPass(mt, hp.get(mt));
     let boot = false; try { boot = (await api('canBoot')).boot; } catch {}
     app.innerHTML = `<div class="login"><img class="logo" src="img/icon.png" alt=""><h1>${boot ? 'Перший запуск платформи' : 'Кабінет власника'}</h1>
