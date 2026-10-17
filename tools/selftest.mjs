@@ -173,6 +173,11 @@ async function apiTests() {
     await posOk(A, 'delete', { t: t2, reason: 'QA' });
     const c2 = ((await posOk(A, 'certList')).list || []).find(x => x.code === c.code); must(c2 && c2.left === 500, 'залишок ' + c2?.left); return 'повернуто ' + u.use;
   });
+  await step('🌙 підсумок дня: digGet віддає цифри й текст, налаштування dig вмикається', async () => {
+    const r = await posOk(A, 'digGet'); must(r.d && typeof r.d.rev === 'number' && Array.isArray(r.d.top), 'форма: ' + JSON.stringify(r).slice(0, 120));
+    must(/Підсумок дня/.test(r.text), 'текст'); const c0 = (await posOk(A, 'cfgGet').catch(() => null))?.cfg?.dig;
+    must((await posOk(A, 'cfgSet', { k: 'dig', v: 1 })).cfg.dig === 1, 'dig=1'); must((await posOk(A, 'cfgSet', { k: 'dig', v: c0 ? 1 : 0 })).cfg.dig === (c0 ? 1 : 0), 'dig повернуто'); return r.d.n + ' чеків';
+  });
   await step('📝 інвентаризація → ↩️ скасувати → залишок як був', async () => {
     const x = (await posOk(A, 'skData')).ing.find(i => !i.off && !i.grp); if (!x) return 'немає продуктів';
     const st0 = x.st?.k || 0, tg = Math.max(0, st0) + 3; /* залишок може бути від'ємним — факт ні */ await posOk(A, 'skCountSave', { wh: 'k', f: { [x.id]: tg } }); const d = (await posOk(A, 'skCountFinish', { wh: 'k' })).doc;
@@ -645,6 +650,13 @@ async function loyTests(A, W, dish) {
     const en = await ownT(OT, 'enter', { venue: VID }); must(en.j.token, 'enter'); must((await vpos(en.j.token, 'state')).status === 200, 'токен власника не працює');
     must((await ownT(OT, 'accts')).status === 403, 'власник бачить консоль платформи'); });
   await step('платформа бачить усі заклади', async () => { const me = await ownT(PT, 'me'); must(me.j.venues.some(v => v.id === 'varvar') && me.j.venues.some(v => v.id === VID), 'не всі'); });
+  await step('платформа: «вимкнено» блокує касу, «активний» розблоковує', async () => {
+    const tk = (await ownT(PT, 'enter', { venue: VID })).j.token; must(tk, 'enter');
+    must((await ownT(PT, 'venueSet', { id: VID, f: { status: 'off' } })).j.ok, 'off');
+    const r = await vpos(tk, 'order', {}); must(r.status === 402 && /вимкнено/.test(r.j.error || ''), `off: ${r.status} ${r.j.error}`);
+    must((await vpos(tk, 'state')).status === 200, 'перегляд має працювати');
+    must((await ownT(PT, 'venueSet', { id: VID, f: { status: 'active' } })).j.ok, 'active');
+    must((await vpos(tk, 'order', {})).status !== 402, 'після увімкнення все ще 402'); });
   await step('платформа: доступ керуючому, зміна власника, видалення', async () => {
     const ME = `qa-mgr-${VID}@test.local`; must((await ownT(PT, 'acctNew', { email: ME, pass: 'manager-pass-1', name: 'QA керуючий' })).j.ok, 'acctNew');
     must((await ownT(PT, 'grant', { venue: VID, email: ME, on: true })).j.ok, 'grant');
