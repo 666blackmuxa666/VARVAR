@@ -214,6 +214,23 @@ export async function reco(env) {
   const m = {}; for (const [a, o] of Object.entries(pair)) m[a] = Object.entries(o).filter(([, n]) => n >= 2).sort((x, y) => y[1] - x[1]).slice(0, 4).map(([b]) => b);
   await env.DB.put('reco', JSON.stringify({ day, m })); return m;
 }
+// 💡 допродаж: правила власника («страва → що запропонувати») ідуть перед автостатистикою
+export const upsGet = async env => (await env.DB.get('ups', 'json')) || {};
+export const upsText = r => Object.entries(r).map(([a, l]) => `${a} → ${l.join(', ')}`).join('\n');
+export function upsParse(text) { // рядки «Піца → Лимонад, Соус»
+  const r = {}; let n = 0;
+  for (const ln of String(text || '').split('\n')) { const [a, bs] = ln.split(/→|->/); const k = (a || '').trim().slice(0, 60); const l = (bs || '').split(',').map(x => x.trim().slice(0, 60)).filter(Boolean).slice(0, 6); if (k && l.length && n++ < 100) r[k] = l; }
+  return r;
+}
+export async function recoAll(env) { // для сайту: правила власника + автопари
+  const [own, auto] = await Promise.all([upsGet(env), reco(env)]), m = { ...auto };
+  for (const [a, l] of Object.entries(own)) m[a] = [...new Set([...l, ...(auto[a] || [])])].slice(0, 4);
+  return m;
+}
+export async function upsFor(env, name) { // до 4 назв: правила власника, потім «часто беруть разом»
+  const [own, auto] = await Promise.all([upsGet(env), reco(env)]);
+  return [...new Set([...(own[name] || []), ...(auto[name] || [])])].slice(0, 4);
+}
 
 // публічні дані для сайту: налаштування (без зайвого) і баланс бонусів
 export async function goInfo(env, ph) {
@@ -261,6 +278,9 @@ export async function goApi(b, env, me, t) {
       const pts = list.slice(0, 10).map(r => r.b.go.addr + ', Поляниця'), dest = pts.pop(), e = encodeURIComponent;
       return ok({ n: list.length, url: `https://www.google.com/maps/dir/?api=1${geo ? '&origin=' + e(geo) : ''}&destination=${e(dest)}${pts.length ? '&waypoints=' + e(pts.join('|')) : ''}&travelmode=driving` });
     }
+    case 'upsMap': return ok({ m: await recoAll(env) });
+    case 'upsGet': { if (!admin) return bad('admin', 403); return ok({ text: upsText(await upsGet(env)) }); }
+    case 'upsSet': { if (!admin) return bad('admin', 403); const r = upsParse(b.text); await env.DB.put('ups', JSON.stringify(r)); return ok({ text: upsText(r), n: Object.keys(r).length }); }
     case 'goEdit': { if (!admin) return bad('admin', 403); const r = await goEdit(env, t, b, who); return r.error ? bad(r.error) : ok(r); }
     case 'goCfg': { const k = lpKeys(env); return ok({ cfg: await getGoCfg(env), lp: k ? { on: 1, sandbox: k.sandbox ? 1 : 0 } : null, main: (env.VENUE || 'varvar') === 'varvar' }); }
     case 'goCfgSet': { if (!admin) return bad('admin', 403); const c = await setGoCfg(env, String(b.k), b.v); if (c.error) return bad(c.error); return ok({ cfg: c }); }

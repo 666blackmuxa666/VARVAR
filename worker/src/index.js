@@ -1,7 +1,7 @@
 import { aiHelp } from './ai.js';
 import { tn } from './tn.js';
 import { BUILD } from './buildid.js';
-import { goOrder, goInfo, reco } from './delivery.js';
+import { goOrder, goInfo, recoAll } from './delivery.js';
 import { promoQuote, promoFill } from './promo.js';
 import { courUpdate } from './courier.js';
 import { guestBot, guestCallback, guestText, guestHello, sitePublic, bookCreate, bookStatus, bookPre, certAsk, certPublic, siteMsg, siteHit, meStart, mePoll, meData, meLogout, cron } from './site.js';
@@ -149,9 +149,9 @@ export async function handle(req, env) {
       if (url.pathname === '/api/owner' && req.method === 'POST') return env.VENUE === MAIN ? json(...await ownerApi(req, env)) : json({ error: 'not_found' }, 404); // 👑 кабінет власника
       if (url.pathname.startsWith('/__int/')) return json(...await intApi(req, env, url.pathname)); // заклад ← кабінет (лише зсередини воркера)
       if (url.pathname === '/__cron') return env.INSTORE && req.headers.get('x-cron') && req.headers.get('x-cron') === (env.MASTER_KEY ? await intSecret(env) : '1') ? json(await cron(env)) : json({ error: 'no' }, 403);
-      if (req.method === 'POST' && ip && ['/api/book', '/api/cert', '/api/go', '/api/tpay'].includes(url.pathname)) { // 🛡 загальна стеля з IP (ліміти по device обходяться зміною device; Wi‑Fi закладу ділить IP — стеля вільна)
-        const tk = 'iprl:' + ip.slice(0, 64), tn_ = +(await env.DB.get(tk)) || 0; if (tn_ >= 60) return json({ error: 'rate' }, 429);
-        await env.DB.put(tk, String(tn_ + 1), { expirationTtl: 600 });
+      if (req.method === 'POST' && ip && ['/api/book', '/api/cert', '/api/go', '/api/tpay'].includes(url.pathname)) { // 🛡 ліміти по device обходяться його зміною: з одного IP — не більше 40 різних пристроїв за 10 хв (повтори того ж пристрою не рахуються)
+        const dv = await req.clone().json().then(x => String(x?.device || '').slice(0, 64)).catch(() => ''), tk = 'ipdev:' + ip.slice(0, 64), seen = (await env.DB.get(tk, 'json')) || [];
+        if (dv && !seen.includes(dv)) { if (seen.length >= 40) return json({ error: 'rate' }, 429); await env.DB.put(tk, JSON.stringify([...seen, dv]), { expirationTtl: 600 }); }
       }
       // 🌐 візитка
       if (url.pathname === '/api/site') return new Response(JSON.stringify(await sitePublic(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
@@ -182,7 +182,7 @@ export async function handle(req, env) {
       if (url.pathname === '/api/go' && req.method === 'POST') { const gb = await req.json(); if (gb && typeof gb === 'object') { delete gb._paid; delete gb._oid; } /* 🔐 службові поля лише від LiqPay (delivery.js), не від гостя */ return json(...await goOrder(gb, ip, env)); }
       if (url.pathname === '/api/goinfo') return json(await goInfo(env, url.searchParams.get('ph')));
       if (url.pathname === '/api/promo' && req.method === 'POST') return json(await promoQuote(await req.json(), env)); // 🎁 знижки кошика ?go
-      if (url.pathname === '/api/reco') return json(await reco(env));
+      if (url.pathname === '/api/reco') return json(await recoAll(env));
       if (url.pathname === '/go') return Response.redirect(siteLink('index.html?go') + (url.search ? '&' + url.search.slice(1) : ''), 302);
       if (url.pathname === '/api/call' && req.method === 'POST') return json(...await callWaiter(await req.json(), ip, env));
       if (url.pathname === '/api/order' && req.method === 'POST') return json(...await order(await req.json(), ip, env));

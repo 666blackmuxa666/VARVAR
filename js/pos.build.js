@@ -715,8 +715,9 @@ var __objRest = (source, exclude) => {
     setHTML(nv, `<div class="brand">${brandImg()}</div>` + navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? "on" : ""}${isAdmin() && !NAV_MAIN.includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === "team" && attNew ? `<span class="badge">${attNew}</span>` : ""}${v === "books" && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ""}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : S.events.some(evMention) ? '<span class="badge">@</span>' : ""}</button><button class="more-btn ${isAdmin() && !NAV_MAIN.includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><button class="me" data-a="zpMy" title="\u041C\u0456\u0439 \u043A\u0430\u0431\u0456\u043D\u0435\u0442"><i>${((_a2 = S.me) == null ? void 0 : _a2.av) ? `<img src="${esc(S.me.av)}" alt="">` : esc((((_b = S.me) == null ? void 0 : _b.name) || "?").slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ""}</i>${S.taskN ? `<span class="badge" title="\u0417\u0430\u0432\u0434\u0430\u043D\u044C \u043D\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456">${S.taskN}</span>` : ""}<b>${esc((_c = S.me) == null ? void 0 : _c.name)}</b><small>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : isCour() ? "\u043A\u0443\u0440'\u0454\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"} \xB7 \u043A\u0430\u0431\u0456\u043D\u0435\u0442</small></button><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
     if (nv && nv.scrollWidth > nv.clientWidth) {
       nv.scrollLeft = nx;
-      const on = nv.querySelector("button.on");
-      if (on && (on.offsetLeft < nv.scrollLeft || on.offsetLeft + on.offsetWidth > nv.scrollLeft + nv.clientWidth)) nv.scrollLeft = on.offsetLeft - 8;
+      const on = nv.querySelector("button.on"), moved = renderNav.v !== S.view;
+      renderNav.v = S.view;
+      if (on && moved && (on.offsetLeft < nv.scrollLeft || on.offsetLeft + on.offsetWidth > nv.scrollLeft + nv.clientWidth)) nv.scrollLeft = on.offsetLeft - 8;
     }
   }
   function render() {
@@ -1400,6 +1401,17 @@ var __objRest = (source, exclude) => {
         });
         break;
       }
+      case "upsEdit": {
+        const r = await api("upsGet");
+        const v = await askLong("\u{1F4A1} \u0414\u043E\u043F\u0440\u043E\u0434\u0430\u0436 \u2014 \u043A\u043E\u0436\u0435\u043D \u0440\u044F\u0434\u043E\u043A: \u0421\u0442\u0440\u0430\u0432\u0430 \u2192 \u0449\u043E \u0437\u0430\u043F\u0440\u043E\u043F\u043E\u043D\u0443\u0432\u0430\u0442\u0438, \u0447\u0435\u0440\u0435\u0437 \u043A\u043E\u043C\u0443", r.text || "\u041F\u0456\u0446\u0430 \u041C\u0430\u0440\u0433\u0430\u0440\u0438\u0442\u0430 \u2192 \u041B\u0438\u043C\u043E\u043D\u0430\u0434, \u0421\u043E\u0443\u0441");
+        if (v == null) break;
+        const x = await act("upsSet", { text: v }, "");
+        if (x) {
+          S.ups = null;
+          toast(`\u{1F4BE} \u041F\u0440\u0430\u0432\u0438\u043B: ${x.n}`);
+        }
+        break;
+      }
       case "goCfg": {
         const k = el.dataset.k, cur = (_m = S.data.gocfg) == null ? void 0 : _m[k];
         const v = ["on", "del", "pick"].includes(k) ? cur ? 0 : 1 : await ask(el.dataset.l || k, String(cur != null ? cur : ""), ["phone", "zone", "from", "to"].includes(k) ? "text" : "number");
@@ -1773,10 +1785,10 @@ var __objRest = (source, exclude) => {
         break;
       }
       case "cfg": {
-        const k = el.dataset.k, L = { tables: ["\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u0441\u0442\u043E\u043B\u0456\u0432 \u0443 \u0437\u0430\u043B\u0456", "\u0432\u0456\u0434 1 \u0434\u043E 200"], discMax: ["\u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430, %", "\u0432\u0456\u0434 0 \u0434\u043E 100"], scanMin: ["\u0425\u0432\u0438\u043B\u0438\u043D \u043D\u0430 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0441\u043B\u044F QR", "\u0432\u0456\u0434 10 \u0434\u043E 600"], foodCost: ["\u0426\u0456\u043B\u044C\u043E\u0432\u0438\u0439 \u0444\u0443\u0434\u043A\u043E\u0441\u0442, %", "\u0432\u0456\u0434 5 \u0434\u043E 90"], priceAlert: ["\u0421\u043F\u043E\u0432\u0456\u0449\u0430\u0442\u0438 \u043F\u0440\u043E \u043F\u043E\u0434\u043E\u0440\u043E\u0436\u0447\u0430\u043D\u043D\u044F \u0432\u0456\u0434, %", "\u0432\u0456\u0434 1 \u0434\u043E 100"], lateMin: ["\u0417\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F \u2014 \u043F\u0456\u0441\u043B\u044F \u0441\u043A\u0456\u043B\u044C\u043A\u043E\u0445 \u0445\u0432\u0438\u043B\u0438\u043D", "\u0432\u0456\u0434 0 \u0434\u043E 120"], lateFine: ["\u0428\u0442\u0440\u0430\u0444 \u0437\u0430 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F, \u20B4", "0 \u2014 \u0431\u0435\u0437 \u0448\u0442\u0440\u0430\u0444\u0443"], dayH: ["\u041E \u043A\u043E\u0442\u0440\u0456\u0439 \u0437\u0430\u043A\u0456\u043D\u0447\u0443\u0454\u0442\u044C\u0441\u044F \u0440\u043E\u0431\u043E\u0447\u0438\u0439 \u0434\u0435\u043D\u044C (\u0433\u043E\u0434\u0438\u043D\u0430)", "\u0432\u0456\u0434 0 \u0434\u043E 8, \u043D\u0430\u043F\u0440. 3"] }[k];
+        const k = el.dataset.k, L = { tables: ["\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u0441\u0442\u043E\u043B\u0456\u0432 \u0443 \u0437\u0430\u043B\u0456", "\u0432\u0456\u0434 1 \u0434\u043E 200"], discMax: ["\u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430, %", "\u0432\u0456\u0434 0 \u0434\u043E 100"], scanMin: ["\u0425\u0432\u0438\u043B\u0438\u043D \u043D\u0430 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0441\u043B\u044F QR", "\u0432\u0456\u0434 10 \u0434\u043E 600"], foodCost: ["\u0426\u0456\u043B\u044C\u043E\u0432\u0438\u0439 \u0444\u0443\u0434\u043A\u043E\u0441\u0442, %", "\u0432\u0456\u0434 5 \u0434\u043E 90"], recBonus: ["\u041F\u0440\u0435\u043C\u0456\u044F \u043A\u043E\u0436\u043D\u043E\u043C\u0443 \u043D\u0430 \u0437\u043C\u0456\u043D\u0456 \u0437\u0430 \u0440\u0435\u043A\u043E\u0440\u0434 \u0434\u043D\u044F, \u20B4", "0 \u2014 \u0431\u0435\u0437 \u043F\u0440\u0435\u043C\u0456\u0457"], bankFee: ["\u041A\u043E\u043C\u0456\u0441\u0456\u044F \u0431\u0430\u043D\u043A\u0443 \u0437\u0430 \u043A\u0430\u0440\u0442\u0443/\u043E\u043D\u043B\u0430\u0439\u043D, %", "\u0432\u0456\u0434 0 \u0434\u043E 10, \u043D\u0430\u043F\u0440. 1.3"], priceAlert: ["\u0421\u043F\u043E\u0432\u0456\u0449\u0430\u0442\u0438 \u043F\u0440\u043E \u043F\u043E\u0434\u043E\u0440\u043E\u0436\u0447\u0430\u043D\u043D\u044F \u0432\u0456\u0434, %", "\u0432\u0456\u0434 1 \u0434\u043E 100"], lateMin: ["\u0417\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F \u2014 \u043F\u0456\u0441\u043B\u044F \u0441\u043A\u0456\u043B\u044C\u043A\u043E\u0445 \u0445\u0432\u0438\u043B\u0438\u043D", "\u0432\u0456\u0434 0 \u0434\u043E 120"], lateFine: ["\u0428\u0442\u0440\u0430\u0444 \u0437\u0430 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F, \u20B4", "0 \u2014 \u0431\u0435\u0437 \u0448\u0442\u0440\u0430\u0444\u0443"], dayH: ["\u041E \u043A\u043E\u0442\u0440\u0456\u0439 \u0437\u0430\u043A\u0456\u043D\u0447\u0443\u0454\u0442\u044C\u0441\u044F \u0440\u043E\u0431\u043E\u0447\u0438\u0439 \u0434\u0435\u043D\u044C (\u0433\u043E\u0434\u0438\u043D\u0430)", "\u0432\u0456\u0434 0 \u0434\u043E 8, \u043D\u0430\u043F\u0440. 3"] }[k];
         const v = await ask(L[0], L[1], "number");
         if (v != null && v !== "") {
-          await act("cfgSet", { k, v: +v }, "\u2699\uFE0F \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
+          await act("cfgSet", { k, v: +String(v).replace(",", ".") }, "\u2699\uFE0F \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
           loadView();
           loadState().catch(() => {
           });
@@ -2166,7 +2178,7 @@ var __objRest = (source, exclude) => {
       const b = S.tables[t], at = map ? ` style="left:${mp[t][0]}%;top:${mp[t][1]}%"${S.mapEd ? ` data-mt="${t}"` : ""}` : "", dim = map && !inF.has(t) ? " dim" : "";
       const bk = (S.books || []).find((x) => x.t === t && x.st === "ok");
       if (!b) return `<button${at} class="tbl${dim}${calls[t] ? " calling" : ""}${bk ? " booked" : ""}" data-a="table" data-t="${t}">${bell(t)}<div class="n">${t}</div><div class="st">${bk ? `\u{1F4C5} ${bk.time} \xB7 ${esc(bk.name)}` : "\u0432\u0456\u043B\u044C\u043D\u0438\u0439"}</div></button>`;
-      const due = b.paid ? Math.max(0, b.pay2 - (b.paid.net || 0)) : 0, cls = ["busy", b.check ? "check" : "", pending.has(t) || b.pwait ? "new" : ""].join(" ");
+      const due = b.paid ? Math.max(0, b.pay2 - (b.paid.net || 0)) : 0, cls = ["busy", b.check ? "check" : "", pending.has(t) || b.pwait ? "new" : "", b.pwait ? "pw" : ""].join(" ");
       const tag = b.pwait ? '<span class="tag c" title="\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u043E\u043D\u043B\u0430\u0439\u043D">\u{1F310}</span>' : b.check ? `<span class="tag c">\u{1F9FE} \u0440\u0430\u0445\u0443\u043D\u043E\u043A</span>${b.pay ? `<i class="pay" title="${b.pay === "online" ? "\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u043E\u043D\u043B\u0430\u0439\u043D" : b.pay === "card" ? "\u043A\u0430\u0440\u0442\u0430" : "\u0433\u043E\u0442\u0456\u0432\u043A\u0430"}">${b.pay === "online" ? "\u{1F310}" : b.pay === "card" ? "\u{1F4B3}" : "\u{1F4B5}"}</i>` : ""}` : pending.has(t) ? '<span class="tag g">\u043D\u043E\u0432\u0435</span>' : "";
       return `<button${at} class="tbl${dim} ${cls}${calls[t] ? " calling" : ""}" data-a="table" data-t="${t}">${bell(t)}${tag}<div class="n">${t}</div><div class="st">${b.pwait ? due ? `\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \xB7 \u0434\u043E\u043F\u043B\u0430\u0442\u0430 ${money(due)}` : "\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C" : `${b.orders} \u0437\u0430\u043C\u043E\u0432\u043B.${b.disc ? ` \xB7 \u2212${b.disc}%` : ""}`}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">\u0437 ${b.opened ? hhmm(b.opened) : "\u2014"}</div></button>`;
     }).join("");
@@ -2400,6 +2412,18 @@ var __objRest = (source, exclude) => {
     }
     renderSheet();
     if (keepKb && !searching()) (_e = $("#search")) == null ? void 0 : _e.focus();
+    upsHint(it.name.uk, cart);
+  }
+  async function upsHint(name, cart) {
+    if (!S.ups) {
+      S.ups = {};
+      try {
+        S.ups = (await api("upsMap")).m || {};
+      } catch (e) {
+      }
+    }
+    const have = new Set(Object.values(cart).map((x) => x.name)), l = (S.ups[name] || []).filter((n) => !have.has(n)).slice(0, 3);
+    if (l.length) toast("\u{1F4A1} \u0414\u043E \xAB" + name + "\xBB \u043F\u0440\u043E\u043F\u043E\u043D\u0443\u0454\u043C\u043E: " + l.join(", "));
   }
   for (const ev of ["change", "compositionend"]) document.addEventListener(ev, (e) => {
     if (e.target.id === "cartCom") S.coms[S.open] = e.target.value;
@@ -2453,9 +2477,17 @@ var __objRest = (source, exclude) => {
       { label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 + \u{1F5A8} \u0447\u0435\u043A", val: "cash:1", cls: "green" },
       { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u0430 + \u{1F5A8} \u0447\u0435\u043A", val: "card:1", cls: "blue" },
       { label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430, \u0431\u0435\u0437 \u0447\u0435\u043A\u0430", val: "cash:0" },
-      { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u0430, \u0431\u0435\u0437 \u0447\u0435\u043A\u0430", val: "card:0" }
+      { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u0430, \u0431\u0435\u0437 \u0447\u0435\u043A\u0430", val: "card:0" },
+      { label: "\u2797 \u041F\u043E\u0440\u0456\u0432\u043D\u0443 \u043D\u0430 \u0433\u043E\u0441\u0442\u0435\u0439", val: "eq" }
     ]);
     if (!v) return;
+    if (v === "eq") {
+      const n = Math.round(+await ask("\u041F\u043E\u0440\u0456\u0432\u043D\u0443 \u043D\u0430 \u0441\u043A\u0456\u043B\u044C\u043A\u043E\u0445?", `\u0421\u0443\u043C\u0430 ${money(b.pay2 + (b.tip || 0))}`, "number"));
+      if (!(n >= 2 && n <= 30)) return;
+      const tot = b.pay2 + (b.tip || 0), one = Math.floor(tot / n), rest = tot - one * n;
+      await choose(`\u2797 \u041F\u043E\u0440\u0456\u0432\u043D\u0443 \u043D\u0430 ${n}`, `\u0417 \u043A\u043E\u0436\u043D\u043E\u0433\u043E ${money(one)}${rest ? ` (\u043E\u0434\u0438\u043D \u0434\u043E\u043F\u043B\u0430\u0447\u0443\u0454 ${money(one + rest)})` : ""} \xB7 \u0440\u0430\u0437\u043E\u043C ${money(tot)}`, [{ label: "\u0413\u0430\u0440\u0430\u0437\u0434", val: "ok" }]);
+      return closeFlow();
+    }
     const [pay, pr] = v.split(":");
     const r = await act("close", { t, pay, print: pr === "1" });
     if (r == null ? void 0 : r.queued) {
@@ -2653,7 +2685,7 @@ var __objRest = (source, exclude) => {
     const mp2 = mapPos(cur), ed = S.mapEd, d = S.mapDraft, key = hk(cur);
     const tables = all.map((t) => {
       const b = S.tables[t], bk = !b && (S.books || []).find((x2) => x2.t === t && x2.st === "ok"), [x, y, sh, r] = mp2[t];
-      const st2 = b ? pending.has(t) || b.pwait ? "s-new" : b.check ? "s-check" : "s-busy" : bk ? "s-book" : "";
+      const st2 = b ? pending.has(t) || b.pwait ? "s-new" + (b.pwait ? " pw" : "") : b.check ? "s-check" : "s-busy" : bk ? "s-book" : "";
       const sub = b ? `<small>${b.pwait ? "\u{1F310} " : b.check ? "\u{1F9FE} " : pending.has(t) ? "\u{1F6CE} " : ""}${money(b.pay2)}</small>` : bk ? `<small>\u{1F4C5} ${bk.time}</small>` : "";
       return { t, x, y, sh, r, cls: `${st2}${calls[t] ? " call" : ""}${inF.has(t) ? "" : " dim"}`, attrs: ed ? "" : `data-a="table" data-t="${t}"`, pin: `<b>${calls[t] ? "\u{1F514}" : ""}${t}</b>${sub}` };
     });
@@ -3632,6 +3664,17 @@ var __objRest = (source, exclude) => {
     }
   }
   function kitchenGate() {
+    if (!matchMedia("(min-width: 768px)").matches) {
+      document.addEventListener("pointerdown", async () => {
+        var _a2;
+        tone([660], 0.05, 0.01);
+        try {
+          wakeLock = await ((_a2 = navigator.wakeLock) == null ? void 0 : _a2.request("screen"));
+        } catch (e) {
+        }
+      }, { once: true });
+      return;
+    }
     if ($("#kGate")) return;
     const g = document.createElement("div");
     g.id = "kGate";
@@ -3649,7 +3692,7 @@ var __objRest = (source, exclude) => {
         ${(e.msgs || []).map((x) => `<div class="kmsg">\u{1F4E8} ${x.at} ${esc(x.text)}</div>`).join("")}
         <div class="kb">${e.start ? "" : `<button class="btn" data-a="kStart" data-id="${e.id}">\u{1F525} \u0413\u043E\u0442\u0443\u044E</button>`}<button class="btn" data-a="kMsg" data-id="${e.id}">\u{1F4AC}</button><button class="btn green" data-a="kAll" data-id="${e.id}">\u2705 \u0412\u0421\u0415 \u0413\u041E\u0422\u041E\u0412\u041E</button></div></div>`;
     };
-    return `<div class="khead"><h1>\u{1F468}\u200D\u{1F373} \u0427\u0435\u0440\u0433\u0430 <span class="muted">${act0.length}</span></h1><button class="btn" data-a="kSnd">\u{1F514} \u0417\u0432\u0443\u043A</button><button class="btn" data-a="skKStock">\u{1F4E6} \u0421\u043A\u043B\u0430\u0434</button><button class="btn" data-a="view" data-v="stop">\u26D4 \u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442</button></div>
+    return `<div class="khead"><h1>\u{1F468}\u200D\u{1F373} \u0427\u0435\u0440\u0433\u0430 <span class="muted">${act0.length}</span></h1><button class="btn" data-a="zpMy">\u{1F464} \u042F</button><button class="btn" data-a="kSnd">\u{1F514} \u0417\u0432\u0443\u043A</button><button class="btn" data-a="skKStock">\u{1F4E6} \u0421\u043A\u043B\u0430\u0434</button><button class="btn" data-a="view" data-v="stop">\u26D4 \u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442</button></div>
       <div class="kq f${S.kFont}">${act0.length ? act0.map(card).join("") : '<div class="kempty">\u2705 \u0427\u0435\u0440\u0433\u0430 \u043F\u043E\u0440\u043E\u0436\u043D\u044F</div>'}</div>
       ${done.length ? `<h3 class="muted" style="margin:18px 0 8px">\u041E\u0441\u0442\u0430\u043D\u043D\u0456 \u0433\u043E\u0442\u043E\u0432\u0456</h3><div class="kdone">${done.map((e) => `<div class="kd">\u0421\u0442\u0456\u043B ${tn(e.t)} \xB7 ${e.items.filter((x) => !x.cancel).map((x) => `${x.q}\xD7 ${esc(x.n)}`).join(", ")}${e.cancelled ? " \xB7 \u274C \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E" : ` \xB7 ${Math.round((e.doneAt - e.ts) / 6e4)} \u0445\u0432`} <button class="btn sm" data-a="kUndo" data-id="${e.id}">\u21A9\uFE0F</button></div>`).join("")}</div>` : ""}${isAdmin() ? goCtlHTML() : ""}`;
   }
@@ -3659,6 +3702,7 @@ var __objRest = (source, exclude) => {
     return cseg + courCard() + cashHTML0();
   }
   function cashHTML0() {
+    var _a2;
     const r = S.data.shift;
     if (!r) return '<div class="head"><h1>\u041A\u0430\u0441\u0430</h1></div><div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
     const z = r.z, pc = z.total ? Math.round(z.cash / z.total * 100) : 0;
@@ -3669,7 +3713,12 @@ var __objRest = (source, exclude) => {
       <button class="bal-c" data-a="balInfo" data-s="card"><span>\u{1F4B3} \u041D\u0430 \u043A\u0430\u0440\u0442\u0446\u0456</span><b class="money">${money(B.card)}</b><small>\u270F\uFE0F \u0437\u0432\u0456\u0440\u0438\u0442\u0438</small></button>
       <div class="bal-c tot"><span>\u{1F4B0} \u0420\u0430\u0437\u043E\u043C</span><b class="money">${money(B.total)}</b><small>${B.tipOwed ? `\u0437 \u043D\u0438\u0445 \u0447\u0430\u0439\u043E\u0432\u0456 ${money(B.tipOwed)} \xB7 \u0432\u0456\u043B\u044C\u043D\u0438\u0445 <b>${money(B.free)}</b>` : `\u0437 ${B.from ? B.from.split("-").reverse().join(".") : "\u2014"}`}</small></div></div>` : "";
     const hero = `<div class="cash-hero on"><div class="hero-main"><div class="muted">${today}</div><div class="hero-l">\u0412\u0438\u0440\u0443\u0447\u043A\u0430 \u0437\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</div><div class="hero-n money">${money(z.total)}</div>${z.tip ? `<div class="muted" style="font-size:13px">\u0431\u0435\u0437 \u0447\u0430\u0439\u043E\u0432\u0438\u0445 \xB7 + \u{1F49D} ${money(z.tip)} \u0447\u0430\u0439\u043E\u0432\u0456 \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\u0443</div>` : ""}
-        <div class="split"><div class="bar2"><i style="width:${pc}%"></i></div><div class="split-l"><span>\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 <b class="money">${money(z.cash)}</b></span><span>\u{1F4B3} \u041A\u0430\u0440\u0442\u043A\u0430 <b class="money">${money(z.card)}</b>${z.onl ? `<small class="muted"> \u0437 \u043D\u0438\u0445 \u{1F310} \u043E\u043D\u043B\u0430\u0439\u043D ${money(z.onl)}</small>` : ""}</span></div></div></div>
+        <div class="split"><div class="bar2"><i style="width:${pc}%"></i></div><div class="split-l"><span>\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 <b class="money">${money(z.cash)}</b></span><span>\u{1F4B3} \u041A\u0430\u0440\u0442\u043A\u0430 <b class="money">${money(z.card)}</b>${z.onl ? `<small class="muted"> \u0437 \u043D\u0438\u0445 \u{1F310} \u043E\u043D\u043B\u0430\u0439\u043D ${money(z.onl)}</small>` : ""}${((_a2 = S.cfg) == null ? void 0 : _a2.bankFee) && z.card ? `<small class="muted"> \xB7 \u{1F3E6} \u2212${money(Math.round(z.card * S.cfg.bankFee / 100))} \u043A\u043E\u043C\u0456\u0441\u0456\u044F</small>` : ""}</span></div></div></div>
+      ${(() => {
+      var _a3;
+      const R = r.rec, best = Math.max((R == null ? void 0 : R.sum) || 0, 0), now = z.total, pct = best ? Math.min(100, Math.round(now / best * 100)) : 0;
+      return `<div class="hero-rec${best && now > best ? " beat" : ""}"><span>\u{1F3C6} \u0420\u0435\u043A\u043E\u0440\u0434 \u0437\u0430 \u0434\u0435\u043D\u044C</span><b class="money">${best ? money(best) : "\u2014"}</b><small>${best ? now > best ? "\u{1F525} \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0432\u0436\u0435 \u0431\u0456\u043B\u044C\u0448\u0435 \u2014 \u0440\u0435\u043A\u043E\u0440\u0434!" : `${R.d.split("-").reverse().join(".")} \xB7 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 ${pct}%` : "\u0437\u02BC\u044F\u0432\u0438\u0442\u044C\u0441\u044F \u043F\u0456\u0441\u043B\u044F \u043F\u0435\u0440\u0448\u043E\u0433\u043E Z-\u0437\u0432\u0456\u0442\u0443"}${((_a3 = S.cfg) == null ? void 0 : _a3.recBonus) ? ` \xB7 \u043F\u0440\u0435\u043C\u0456\u044F ${money(S.cfg.recBonus)}` : ""}</small>${best ? `<div class="bar2"><i style="width:${pct}%"></i></div>` : ""}</div>`;
+    })()}
       <button class="btn primary zbtn" data-a="zDay">\u{1F9FE} Z-\u0437\u0432\u0456\u0442<small>\u043F\u0435\u0440\u0435\u0433\u043B\u044F\u043D\u0443\u0442\u0438 \xB7 \u0434\u0440\u0443\u043A \xB7 \u0437\u0430\u043A\u0440\u0438\u0442\u0438 \u0434\u0435\u043D\u044C</small></button></div>`;
     const tiles = [["\u{1F9FE} \u0427\u0435\u043A\u0456\u0432", z.checks], ["\xD8 \u0421\u0435\u0440\u0435\u0434\u043D\u0456\u0439 \u0447\u0435\u043A", z.checks ? money(z.total / z.checks) : "\u2014"], ["\u{1F3F7} \u0417\u043D\u0438\u0436\u043A\u0438", money(z.disc)], ["\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456", money(z.tip || 0)], ["\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0438", money(z.exCash + z.exCard)], ["\u{1F4C8} \u0427\u0438\u0441\u0442\u0438\u043C\u0438", money(z.net), "green"], ["\u23F3 \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u043E \u0432 \u0437\u0430\u043B\u0456", z.openTables ? `${money(z.openSum)} \xB7 ${z.openTables} \u0441\u0442.` : "\u2014"]];
     const tilesH = `<div class="widgets">${tiles.map(([l, v, c]) => `<div class="widget ${c || ""}"><span>${l}</span><b class="money">${v}</b></div>`).join("")}</div>`;
@@ -3683,8 +3732,8 @@ var __objRest = (source, exclude) => {
       ${(r.tippay || []).length ? `<div class="muted" style="font-size:12px;margin-top:8px">\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0432\u0438\u0434\u0430\u043D\u043E: ${r.tippay.map((x) => `${x.at} ${esc(x.name)} ${money(x.sum)}`).join(" \xB7 ")}</div>` : ""}<div class="muted" style="font-size:12px;margin-top:6px">\u0427\u0430\u0439\u043E\u0432\u0456 \u2014 \u043D\u0435 \u0432\u0438\u0440\u0443\u0447\u043A\u0430 (\u0433\u0440\u043E\u0448\u0456 \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\u0443); \u043B\u0435\u0436\u0430\u0442\u044C \u0443 \u043A\u0430\u0441\u0456, \u043F\u043E\u043A\u0438 \u043D\u0435 \u0432\u0438\u0434\u0430\u043D\u0456, \u0456 \u0441\u043F\u0438\u0441\u0443\u044E\u0442\u044C\u0441\u044F \u0437 \u0433\u043E\u0442\u0456\u0432\u043A\u0438 \u0430\u0431\u043E \u043A\u0430\u0440\u0442\u043A\u0438 \u043F\u0440\u0438 \u0432\u0438\u0434\u0430\u0447\u0456.</div></div>`;
     const MC = { in: 1, out: 1, k2c: 1, c2k: 1, tipc: 1, adjc: 1, salc: 1 }, MK = { k2c: 1, c2k: 1, kin: 1, tipk: 1, kout: 1, adjk: 1, salk: 1 };
     const chk = (x, part) => {
-      var _a2;
-      const k = +x.card || 0, c = (_a2 = x.cash) != null ? _a2 : x.sum - k, v = part === "card" ? k : c;
+      var _a3;
+      const k = +x.card || 0, c = (_a3 = x.cash) != null ? _a3 : x.sum - k, v = part === "card" ? k : c;
       return v > 0 ? { at: x.at, ic: part === "card" ? "\u{1F4B3}" : "\u{1F4B5}", t: `\u0421\u0442\u0456\u043B ${tn(x.t)}${x.by ? " \xB7 " + esc(x.by) : ""}${x.disc ? ` \xB7 \u2212${x.disc}%` : ""}${x.tip ? ` \xB7 \u{1F49D} ${money(x.tip)}` : ""}${k && c ? " \xB7 \u0437\u043C\u0456\u0448\u0430\u043D\u0430" : ""}`, v: "+" + money(v), cls: "in" } : null;
     };
     const jlist = (part) => [
@@ -4332,7 +4381,7 @@ var __objRest = (source, exclude) => {
         <div class="set-note muted" style="margin-top:10px">\u0413\u0443\u0447\u043D\u0456\u0441\u0442\u044C</div><div class="lk-row">${[30, 50, 70, 100].map((v) => opt("vol", v, v + "%")).join("")}</div></div></div>`;
   }
   function settingsHTML(only) {
-    var _a2, _b, _c, _d, _e, _f, _g, _h, _i;
+    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
     const st = S.data.staff, wf = S.data.wifi, c = (st == null ? void 0 : st.cfg) || {};
     const ROLE = { admin: "\u{1F510} \u0430\u0434\u043C\u0456\u043D", cook: "\u{1F468}\u200D\u{1F373} \u043A\u0443\u0445\u0430\u0440", courier: "\u{1F6F5} \u043A\u0443\u0440'\u0454\u0440", waiter: "\u{1F9D1}\u200D\u{1F373} \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442" };
     const row = (l, v, btn, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ""}</span><span class="kv-r"><b>${v}</b>${btn}</span></div>`;
@@ -4374,12 +4423,15 @@ var __objRest = (source, exclude) => {
       <div class="card"><h3>\u{1F477} \u0417\u043C\u0456\u043D\u0438</h3>
         ${row("\u23F0 \u0417\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F \u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F \u043F\u0456\u0441\u043B\u044F", ((_e = c.lateMin) != null ? _e : 10) + " \u0445\u0432", ch("cfg", ' data-k="lateMin"'), "\u0412\u0456\u0434 \u0437\u0430\u043F\u043B\u0430\u043D\u043E\u0432\u0430\u043D\u043E\u0433\u043E \u0447\u0430\u0441\u0443 \u043F\u043E\u0447\u0430\u0442\u043A\u0443 \u0437\u043C\u0456\u043D\u0438")}
         ${row("\u2796 \u0428\u0442\u0440\u0430\u0444 \u0437\u0430 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F", ((_f = c.lateFine) != null ? _f : 0) + " \u20B4", ch("cfg", ' data-k="lateFine"'), "0 \u2014 \u0431\u0435\u0437 \u0448\u0442\u0440\u0430\u0444\u0443; \u0430\u0434\u043C\u0456\u043D \u0432\u0438\u0440\u0456\u0448\u0443\u0454 \u043A\u043D\u043E\u043F\u043A\u043E\u044E \xAB\u2705 + \u0448\u0442\u0440\u0430\u0444\xBB")}</div>
+      <div class="card"><h3>\u{1F4A1} \u0414\u043E\u043F\u0440\u043E\u0434\u0430\u0436</h3><div class="muted set-note">\u0414\u043E \u0441\u0442\u0440\u0430\u0432\u0438 \u2014 \u0449\u043E \u0437\u0430\u043F\u0440\u043E\u043F\u043E\u043D\u0443\u0432\u0430\u0442\u0438 \u0433\u043E\u0441\u0442\u044E (\u043A\u0430\u0441\u0430, \u0431\u043E\u0442, \u0441\u0430\u0439\u0442). \u0414\u043E \u043F\u0440\u0430\u0432\u0438\u043B \u0434\u043E\u0434\u0430\u044E\u0442\u044C\u0441\u044F \u043F\u0430\u0440\u0438, \u044F\u043A\u0456 \u0433\u043E\u0441\u0442\u0456 \u0439 \u0442\u0430\u043A \u0431\u0435\u0440\u0443\u0442\u044C \u0440\u0430\u0437\u043E\u043C.</div><button class="btn sm" data-a="upsEdit">\u270F\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0434\u043E\u043F\u0440\u043E\u0434\u0430\u0436\u0443</button></div>
       <div class="card"><h3>\u{1F9EE} \u0420\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043E\u043A</h3>
         ${tg("semiCalc", "\u{1F4D0} \u0421\u043E\u0443\u0441\u0438 \u0439 \u0442\u0456\u0441\u0442\u043E \u2014 \u0440\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043A\u043E\u043C", "\u0423\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u043E: \u043F\u0440\u043E\u0434\u0430\u043B\u0438 \u0441\u0442\u0440\u0430\u0432\u0443 \u2014 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0438 \u0437 \u0440\u0435\u0446\u0435\u043F\u0442\u0443 \u0441\u043E\u0443\u0441\u0443 \u0441\u043F\u0438\u0441\u0443\u044E\u0442\u044C\u0441\u044F \u0441\u0430\u043C\u0456, \u0432\u0430\u0440\u0438\u0442\u0438 \xAB\u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0443\xBB \u043D\u0435 \u0442\u0440\u0435\u0431\u0430. \u0412\u0438\u043C\u043A\u043D\u0435\u043D\u043E: \u043E\u0431\u043B\u0456\u043A \u043F\u0430\u0440\u0442\u0456\u044F\u043C\u0438 \u0447\u0435\u0440\u0435\u0437 \xAB\u{1F373} \u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430\xBB", 1)}
         ${row("\u{1F3AF} \u0426\u0456\u043B\u044C\u043E\u0432\u0438\u0439 \u0444\u0443\u0434\u043A\u043E\u0441\u0442", ((_g = c.foodCost) != null ? _g : 30) + "%", ch("cfg", ' data-k="foodCost"'), "\u0421\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C \xF7 \u0446\u0456\u043D\u0430. \u0417\u0430 \u043D\u0438\u043C \u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F \u0440\u0435\u043A\u043E\u043C\u0435\u043D\u0434\u043E\u0432\u0430\u043D\u0430 \u0446\u0456\u043D\u0430 \u0441\u0442\u0440\u0430\u0432")}
-        ${row("\u{1F53A} \u0421\u043F\u043E\u0432\u0456\u0449\u0430\u0442\u0438 \u043F\u0440\u043E \u043F\u043E\u0434\u043E\u0440\u043E\u0436\u0447\u0430\u043D\u043D\u044F \u0432\u0456\u0434", ((_h = c.priceAlert) != null ? _h : 5) + "%", ch("cfg", ' data-k="priceAlert"'), "\u042F\u043A\u0449\u043E \u0432 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0456\u0439 \u0446\u0456\u043D\u0430 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0443 \u0432\u0438\u0449\u0430 \u0437\u0430 \u043C\u0438\u043D\u0443\u043B\u0443")}</div>
+        ${row("\u{1F3C6} \u041F\u0440\u0435\u043C\u0456\u044F \u0437\u0430 \u0440\u0435\u043A\u043E\u0440\u0434 \u0434\u043D\u044F", ((_h = c.recBonus) != null ? _h : 0) + " \u20B4", ch("cfg", ' data-k="recBonus"'), "\u041A\u043E\u043B\u0438 \u0437\u0430 \u0434\u0435\u043D\u044C \u0437\u0430\u0440\u043E\u0431\u0438\u043B\u0438 \u0431\u0456\u043B\u044C\u0448\u0435, \u043D\u0456\u0436 \u0431\u0443\u0434\u044C-\u043A\u043E\u043B\u0438 \u2014 \u043A\u043E\u0436\u043D\u043E\u043C\u0443 \u043D\u0430 \u0437\u043C\u0456\u043D\u0456 \u0434\u043E\u0434\u0430\u0454\u0442\u044C\u0441\u044F \u043F\u0440\u0435\u043C\u0456\u044F \u0432 \u0417\u041F. 0 \u2014 \u0431\u0435\u0437 \u043F\u0440\u0435\u043C\u0456\u0457")}
+        ${row("\u{1F3E6} \u041A\u043E\u043C\u0456\u0441\u0456\u044F \u0431\u0430\u043D\u043A\u0443 \u0437\u0430 \u043A\u0430\u0440\u0442\u0443/\u043E\u043D\u043B\u0430\u0439\u043D", ((_i = c.bankFee) != null ? _i : 0) + "%", ch("cfg", ' data-k="bankFee"'), "\u041D\u0430\u043F\u0440\u0438\u043A\u043B\u0430\u0434 1.3 \u2014 \u0432\u0456\u0434\u043D\u0456\u043C\u0430\u0454\u0442\u044C\u0441\u044F \u0437 \u043F\u0440\u0438\u0431\u0443\u0442\u043A\u0443 \u0437\u0430 \u0431\u0435\u0437\u0433\u043E\u0442\u0456\u0432\u043A\u043E\u0432\u0456 \u043E\u043F\u043B\u0430\u0442\u0438 (\u0437\u0432\u0456\u0442\u0438, \u043A\u0430\u0431\u0456\u043D\u0435\u0442 \u0432\u043B\u0430\u0441\u043D\u0438\u043A\u0430)")}
+        ${row("\u{1F53A} \u0421\u043F\u043E\u0432\u0456\u0449\u0430\u0442\u0438 \u043F\u0440\u043E \u043F\u043E\u0434\u043E\u0440\u043E\u0436\u0447\u0430\u043D\u043D\u044F \u0432\u0456\u0434", ((_j = c.priceAlert) != null ? _j : 5) + "%", ch("cfg", ' data-k="priceAlert"'), "\u042F\u043A\u0449\u043E \u0432 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0456\u0439 \u0446\u0456\u043D\u0430 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0443 \u0432\u0438\u0449\u0430 \u0437\u0430 \u043C\u0438\u043D\u0443\u043B\u0443")}</div>
       <div class="card"><h3>\u{1F4F1} \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0433\u043E\u0441\u0442\u0435\u0439</h3>
-        ${row("\u23F1 \u0427\u0430\u0441 \u043D\u0430 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0441\u043B\u044F QR", ((_i = c.scanMin) != null ? _i : 60) + " \u0445\u0432", ch("cfg", ' data-k="scanMin"'), "\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u0433\u0456\u0441\u0442\u044C \u043C\u043E\u0436\u0435 \u0437\u0430\u043C\u043E\u0432\u043B\u044F\u0442\u0438 \u043F\u0456\u0441\u043B\u044F \u0441\u043A\u0430\u043D\u0443\u0432\u0430\u043D\u043D\u044F QR \u043D\u0430 \u0441\u0442\u043E\u043B\u0456")}
+        ${row("\u23F1 \u0427\u0430\u0441 \u043D\u0430 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0441\u043B\u044F QR", ((_k = c.scanMin) != null ? _k : 60) + " \u0445\u0432", ch("cfg", ' data-k="scanMin"'), "\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u0433\u0456\u0441\u0442\u044C \u043C\u043E\u0436\u0435 \u0437\u0430\u043C\u043E\u0432\u043B\u044F\u0442\u0438 \u043F\u0456\u0441\u043B\u044F \u0441\u043A\u0430\u043D\u0443\u0432\u0430\u043D\u043D\u044F QR \u043D\u0430 \u0441\u0442\u043E\u043B\u0456")}
         <div class="muted set-note" style="margin-top:10px">\u{1F4F6} Wi\u2011Fi \u0437\u0430\u043A\u043B\u0430\u0434\u0443 (\u0437\u0430\u043F\u0430\u0441\u043D\u0438\u0439 \u0441\u043F\u043E\u0441\u0456\u0431) \xB7 \u0432\u0430\u0448\u0430 \u043C\u0435\u0440\u0435\u0436\u0430: ${esc((wf == null ? void 0 : wf.current) || "\u2026")}</div>
         <div class="scrollbox sm">${wf ? wf.list.map((x) => `<div class="kv"><span>${esc(x.k)}</span><span class="muted">${new Date(x.at).toLocaleDateString("uk-UA")}</span></div>`).join("") || '<div class="muted">\u043D\u0435\u043C\u0430\u0454 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u0438\u0445 \u0430\u0434\u0440\u0435\u0441</div>' : ""}</div>
         <div class="btnrow"><button class="btn sm primary" data-a="wifiAdd">\u2795 \u0426\u0435 \u043D\u0430\u0448\u0430 \u043C\u0435\u0440\u0435\u0436\u0430</button><button class="btn sm red" data-a="wifiClear">\u0421\u043A\u0438\u043D\u0443\u0442\u0438 \u0432\u0441\u0456</button></div></div></div>`;
@@ -6549,6 +6601,29 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     if (!text) return;
     await act("help", { text, screen: S.view + (S.setTab ? "/" + S.setTab : "") }, "\u{1F198} \u041D\u0430\u0434\u0456\u0441\u043B\u0430\u043D\u043E \u2014 \u0437 \u0432\u0430\u043C\u0438 \u0437\u0432'\u044F\u0436\u0443\u0442\u044C\u0441\u044F");
   }
+  async function thrMy(hid) {
+    var _a2;
+    const l = (_a2 = await act("ideaThr", {})) == null ? void 0 : _a2.list;
+    if (!l) return;
+    const tm = (t) => new Date(t).toLocaleString("uk-UA", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    if (!hid) {
+      const v2 = await modal({ title: "\u{1F4AC} \u0417\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F \u0434\u043E ATOM", body: l.length ? l.map((x2) => `<button class="kv thr-r" data-mi-v="${x2.hid}" style="width:100%;text-align:left"><span style="min-width:0;overflow-wrap:anywhere">${x2.unr ? "\u{1F534} " : ""}${x2.kind === "help" ? "\u{1F198}" : "\u{1F4A1}"} ${esc(x2.text.slice(0, 90))}<br><small class="muted">${tm(x2.at)}${x2.chat.length ? ` \xB7 \u{1F4AC} ${x2.chat.length}` : ""}</small></span></button>`).join("") : '<div class="muted">\u041F\u043E\u043A\u0438 \u043D\u0435\u043C\u0430\u0454. \u041D\u0430\u043F\u0438\u0448\u0456\u0442\u044C \xAB\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F\xBB \u0430\u0431\u043E \xAB\u{1F198} \u0414\u043E\u043F\u043E\u043C\u043E\u0433\u0430\xBB \u0432 \u043F\u0440\u043E\u0444\u0456\u043B\u0456 \u2014 \u0442\u0443\u0442 \u0431\u0443\u0434\u0435 \u0432\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u044C.</div>', buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+      if (v2) return thrMy(v2);
+      return;
+    }
+    const x = l.find((y) => y.hid === hid);
+    if (!x) return;
+    if (x.unr) act("ideaSeen", { hid }).catch(() => {
+    });
+    const bub = (who, t, at, mine) => `<div class="thr-b${mine ? " me" : ""}"><small class="muted">${who} \xB7 ${tm(at)}</small><div>${esc(t)}</div></div>`;
+    const body = `<div class="thr">${bub(esc(x.by), x.text, x.at, 1)}${x.chat.map((c) => bub(c.from === "a" ? "\u{1F451} ATOM" : esc(c.by || x.by), c.text, c.at, c.from !== "a")).join("")}</div>`;
+    const v = await modal({ title: x.kind === "help" ? "\u{1F198} \u0414\u043E\u043F\u043E\u043C\u043E\u0433\u0430" : "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F", body, buttons: [{ label: "\u270D\uFE0F \u0412\u0456\u0434\u043F\u043E\u0432\u0456\u0441\u0442\u0438", val: "say" }, { label: "\u2190 \u041D\u0430\u0437\u0430\u0434", val: "back" }] });
+    if (v === "back") return thrMy();
+    if (v !== "say") return;
+    const text = await ask("\u270D\uFE0F \u041F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u043D\u044F \u0434\u043B\u044F ATOM", "\u0414\u0435\u0442\u0430\u043B\u0456, \u0441\u043A\u0440\u0456\u043D\u0448\u043E\u0442 \u043E\u043F\u0438\u0441\u043E\u043C, \u044F\u043A \u043F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0438\u2026");
+    if (!text) return thrMy(hid);
+    if (await act("ideaSay", { hid, text }, "\u{1F4AC} \u041D\u0430\u0434\u0456\u0441\u043B\u0430\u043D\u043E")) thrMy(hid);
+  }
   async function ideasMy() {
     var _a2;
     const l = (_a2 = await act("ideaList", {})) == null ? void 0 : _a2.list;
@@ -6582,7 +6657,7 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
       ${asks.map((s) => `<div class="card zp-ask">\u{1F501} <b>${esc(s.from)}</b> \u043F\u0440\u043E\u0441\u0438\u0442\u044C \u0432\u0438\u0439\u0442\u0438 \u0437\u0430 \u043D\u044C\u043E\u0433\u043E ${s.day.slice(8)}.${s.day.slice(5, 7)} \u043E ${s.time}<div class="btnrow"><button class="btn sm green" data-a="zpSw" data-id="${s.id}" data-s="agree">\u041F\u043E\u0433\u043E\u0434\u0436\u0443\u044E\u0441\u044C</button><button class="btn sm red" data-a="zpSw" data-id="${s.id}" data-s="no">\u041D\u0456</button></div></div>`).join("")}
       <h3 style="margin:14px 0 6px">\u0413\u0440\u0430\u0444\u0456\u043A \xB7 ${monName(r.m)}</h3>${gridHTML(r.grid, r.grid.people, false, me)}<div class="muted" style="font-size:11px;margin-top:4px">\u2705 \u0431\u0443\u0432 \xB7 \u25CF \u0437\u0430\u043F\u043B\u0430\u043D\u043E\u0432\u0430\u043D\u043E \xB7 \u{1F553} \u0447\u0435\u043A\u0430\u0454 \xB7 \u23F0 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F \xB7 \u{1F6AB} \u043F\u0440\u043E\u0433\u0443\u043B</div>
       ${r.swaps.filter((s) => s.from === me).map((s) => `<div class="muted" style="font-size:12px">\u{1F501} ${s.day.slice(8)}.${s.day.slice(5, 7)} \u2192 ${esc(s.to)}: ${s.st === "ask" ? "\u0447\u0435\u043A\u0430\u0454 \u0437\u0433\u043E\u0434\u0438" : "\u0447\u0435\u043A\u0430\u0454 \u0430\u0434\u043C\u0456\u043D\u0430"}</div>`).join("")}`;
-    const v = await modal({ title: `\u{1F464} ${me}`, body, buttons: [{ label: "\u{1F3A8} \u041C\u0456\u0439 \u0432\u0438\u0433\u043B\u044F\u0434", val: "look" }, { label: "\u{1F501} \u041F\u043E\u043F\u0440\u043E\u0441\u0438\u0442\u0438 \u043E\u0431\u043C\u0456\u043D", val: "swap" }, { label: "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F", val: "idea" }, { label: "\u{1F198} \u0414\u043E\u043F\u043E\u043C\u043E\u0433\u0430", val: "help" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+    const v = await modal({ title: `\u{1F464} ${me}`, body, buttons: [{ label: "\u{1F3A8} \u041C\u0456\u0439 \u0432\u0438\u0433\u043B\u044F\u0434", val: "look" }, { label: "\u{1F501} \u041F\u043E\u043F\u0440\u043E\u0441\u0438\u0442\u0438 \u043E\u0431\u043C\u0456\u043D", val: "swap" }, { label: "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F", val: "idea" }, { label: "\u{1F198} \u0414\u043E\u043F\u043E\u043C\u043E\u0433\u0430", val: "help" }, { label: "\u{1F4AC} \u0417\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F", val: "thr" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
     if (v === "look") {
       S.view = "mylook";
       renderNav();
@@ -6591,6 +6666,7 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     }
     if (v === "idea") return ideasMy();
     if (v === "help") return helpAsk();
+    if (v === "thr") return thrMy();
     if (v === "swap") {
       const future = r.days.filter((x) => x.plan && x.d >= todayK());
       if (!future.length) return toast("\u0423 \u0432\u0430\u0448\u043E\u043C\u0443 \u043F\u043B\u0430\u043D\u0456 \u043D\u0435\u043C\u0430\u0454 \u043C\u0430\u0439\u0431\u0443\u0442\u043D\u0456\u0445 \u0437\u043C\u0456\u043D");
@@ -7112,6 +7188,51 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     ] },
     { id: "a-prn", r: "a", g: "\u0414\u0435\u043D\u044C 5 \xB7 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F", ic: "\u{1F5A8}", n: "\u041F\u0440\u0438\u043D\u0442\u0435\u0440", s: [
       { t: "\xAB\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440\xBB \u2014 \u0441\u0442\u0430\u043D \u043F\u0440\u0438\u043D\u0442\u0435\u0440\u0430 \u0439 \u0442\u0435\u0441\u0442\u043E\u0432\u0438\u0439 \u0434\u0440\u0443\u043A. \u041D\u0435 \u0434\u0440\u0443\u043A\u0443\u0454? \u041F\u043E\u0447\u043D\u0456\u0442\u044C \u0437 \xAB\u0422\u0435\u0441\u0442\xBB.", go: T("setTab", "s", "printer") }
+    ] },
+    // ---------- дописано сканом функцій ----------
+    { id: "w-disc", r: "w", g: "\u0417\u0430\u043B", ic: "%", n: "\u0417\u043D\u0438\u0436\u043A\u0430 \u043D\u0430 \u0440\u0430\u0445\u0443\u043D\u043E\u043A", s: [
+      { t: "\u0412\u0456\u0434\u043A\u0440\u0438\u0439\u0442\u0435 \u0441\u0442\u0456\u043B \u0456\u0437 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F\u043C.", go: V("hall"), sel: '[data-a="table"]' },
+      { t: "\xAB% \u0417\u043D\u0438\u0436\u043A\u0430\xBB \u2014 \u0432\u0456\u0434\u0441\u043E\u0442\u043E\u043A \u0430\u0431\u043E \u0441\u0443\u043C\u0430. \u0429\u043E \u0434\u043E\u0437\u0432\u043E\u043B\u0435\u043D\u043E \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0443, \u0432\u0438\u0437\u043D\u0430\u0447\u0430\u0454 \u0430\u0434\u043C\u0456\u043D \u0443 \xAB\u041F\u0440\u0430\u0432\u0438\u043B\u0430\u0445 \u0440\u043E\u0431\u043E\u0442\u0438\xBB.", sel: '[data-a="disc"]', opt: 1 }
+    ] },
+    { id: "w-closed", r: "w", g: "\u042F", ic: "\u{1F9FE}", n: "\u0417\u0430\u043A\u0440\u0438\u0442\u0456 \u0447\u0435\u043A\u0438 \u0437\u0430 \u0434\u0435\u043D\u044C", s: [
+      { t: "\u0422\u0443\u0442 \u0443\u0441\u0456 \u0437\u0430\u043A\u0440\u0438\u0442\u0456 \u0440\u0430\u0445\u0443\u043D\u043A\u0438: \u0441\u0443\u043C\u0430, \u0441\u043F\u043E\u0441\u0456\u0431 \u043E\u043F\u043B\u0430\u0442\u0438, \u0445\u0442\u043E \u0437\u0430\u043A\u0440\u0438\u0432. \u041A\u043E\u0440\u0438\u0441\u043D\u043E, \u044F\u043A\u0449\u043E \u0433\u0456\u0441\u0442\u044C \u043F\u0438\u0442\u0430\u0454 \u0447\u0435\u043A.", go: V("closed") }
+    ] },
+    { id: "a-tips", r: "a", g: "\u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u{1F49D}", n: "\u0427\u0430\u0439\u043E\u0432\u0456: \u0432\u0438\u043F\u043B\u0430\u0442\u0430 \u043A\u043E\u043C\u0430\u043D\u0434\u0456", s: [
+      { t: "\u0427\u0430\u0439\u043E\u0432\u0456 \u0437 \u043A\u0430\u0440\u0442\u043E\u043A \u043D\u0430\u043A\u043E\u043F\u0438\u0447\u0443\u044E\u0442\u044C\u0441\u044F \u0437\u0430 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u043E\u043C. \u041A\u043E\u043B\u0438 \u0432\u0456\u0434\u0434\u0430\u0454\u0442\u0435 \u0433\u043E\u0442\u0456\u0432\u043A\u043E\u044E \u2014 \u043F\u043E\u0437\u043D\u0430\u0447\u0442\u0435 \xAB\u0412\u0438\u0434\u0430\u043D\u043E\xBB.", go: V("cash"), sel: '[data-a="tipPay"]', opt: 1 }
+    ] },
+    { id: "a-exch", r: "a", g: "\u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u{1F501}", n: "\u041E\u0431\u043C\u0456\u043D \u043C\u0456\u0436 \u043A\u0430\u0441\u0430\u043C\u0438", s: [
+      { t: "\xAB\u{1F501} \u041E\u0431\u043C\u0456\u043D\xBB \u2014 \u043F\u0435\u0440\u0435\u043A\u043B\u0430\u043B\u0438 \u0433\u0440\u043E\u0448\u0456 \u0437 \u043A\u0430\u0441\u0438 \u0432 \u0441\u0435\u0439\u0444 \u0447\u0438 \u043C\u0456\u0436 \u0441\u043F\u043E\u0441\u043E\u0431\u0430\u043C\u0438 (\u043D\u0430\u043F\u0440. \u0433\u043E\u0442\u0456\u0432\u043A\u0430 \u2192 \u043A\u0430\u0440\u0442\u0430). \u0420\u0443\u0445 \u0444\u0456\u043A\u0441\u0443\u0454\u0442\u044C\u0441\u044F \u0432 \u0436\u0443\u0440\u043D\u0430\u043B\u0456.", go: V("cash"), sel: '[data-a="cMove"]' }
+    ] },
+    { id: "a-rfil", r: "a", g: "\u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u2699\uFE0F", n: "\u0424\u0456\u043B\u044C\u0442\u0440\u0438 \u0439 \u043F\u0435\u0440\u0456\u043E\u0434\u0438 \u0437\u0432\u0456\u0442\u0456\u0432", s: [
+      { t: "\u041E\u0431\u0435\u0440\u0456\u0442\u044C \u043F\u0435\u0440\u0456\u043E\u0434 (\u0434\u0435\u043D\u044C / \u0442\u0438\u0436\u0434\u0435\u043D\u044C / \u043C\u0456\u0441\u044F\u0446\u044C) \u0456 \u0440\u043E\u0437\u0434\u0456\u043B \u0437\u0432\u0456\u0442\u0443.", go: V("reports"), sel: '[data-a="rp"],[data-a="rSec"]' },
+      { t: "\xAB\u2699\uFE0F \u0424\u0456\u043B\u044C\u0442\u0440\u0438\xBB \u2014 \u043F\u043E \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0443, \u0441\u043F\u043E\u0441\u043E\u0431\u0443 \u043E\u043F\u043B\u0430\u0442\u0438, \u0437\u0430\u043B\u0443. \xAB\u2715 \u0421\u043A\u0438\u043D\u0443\u0442\u0438\xBB \u043F\u043E\u0432\u0435\u0440\u0442\u0430\u0454 \u0432\u0441\u0435.", sel: '[data-a="rFo"]', opt: 1 }
+    ] },
+    { id: "a-ops", r: "a", g: "\u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u{1F9FE}", n: "\u041F\u0440\u0435\u043C\u0456\u044F, \u0448\u0442\u0440\u0430\u0444, \u0430\u0432\u0430\u043D\u0441", s: [
+      { t: "\xAB\u{1F9FE} \u041E\u043F\u0435\u0440\u0430\u0446\u0456\u0457\xBB \u2014 \u043F\u0440\u0435\u043C\u0456\u0457, \u0448\u0442\u0440\u0430\u0444\u0438 \u0439 \u0430\u0432\u0430\u043D\u0441\u0438. \u0412\u043E\u043D\u0438 \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u043D\u043E \u043F\u043E\u0442\u0440\u0430\u043F\u043B\u044F\u0442\u044C \u0443 \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0443.", go: T("zpTab", "t", "ops") },
+      { t: "\u041F\u043E\u043C\u0438\u043B\u0438\u043B\u0438\u0441\u044C \u2014 \u{1F5D1} \u043F\u0440\u0438\u0431\u0438\u0440\u0430\u0454 \u0437\u0430\u043F\u0438\u0441, \u21A9\uFE0F \u043F\u043E\u0432\u0435\u0440\u0442\u0430\u0454.", sel: '[data-a="zpOpDel"]', opt: 1 }
+    ] },
+    { id: "a-tasks", r: "a", g: "\u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u2705", n: "\u0417\u0430\u0432\u0434\u0430\u043D\u043D\u044F \u0439 \u0448\u0430\u0431\u043B\u043E\u043D\u0438", s: [
+      { t: "\xAB\u{1F4CB} \u041F\u043B\u0430\u043D\xBB \u2192 \xAB\u2795 \u0417\u0430\u0432\u0434\u0430\u043D\u043D\u044F\xBB \u2014 \u0440\u0430\u0437\u043E\u0432\u0430 \u0437\u0430\u0434\u0430\u0447\u0430 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0443 (\u0437 \u0444\u043E\u0442\u043E-\u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F\u043C, \u044F\u043A\u0449\u043E \u0442\u0440\u0435\u0431\u0430).", go: T("zpTab", "t", "plan"), sel: '[data-a="tkAdd"]' },
+      { t: "\xAB\u2795 \u0428\u0430\u0431\u043B\u043E\u043D\xBB \u2014 \u0437\u0430\u0432\u0434\u0430\u043D\u043D\u044F, \u0449\u043E \u043F\u043E\u0432\u0442\u043E\u0440\u044E\u0454\u0442\u044C\u0441\u044F \u0449\u043E\u0434\u043D\u044F (\u043F\u0440\u0438\u0431\u0438\u0440\u0430\u043D\u043D\u044F, \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438).", sel: '[data-a="tkTplEd"]', opt: 1 },
+      { t: "\u2705 / \u274C \u2014 \u0432\u0456\u0434\u043C\u0456\u0442\u0438\u0442\u0438 \u0432\u0438\u043A\u043E\u043D\u0430\u043D\u043D\u044F \u0437\u0430 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430.", sel: '[data-a="tkMarkA"]', opt: 1 }
+    ] },
+    { id: "a-ideas", r: "a", g: "\u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u{1F4A1}", n: "\u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F \u043A\u043E\u043C\u0430\u043D\u0434\u0438", s: [
+      { t: "\u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0438 \u043B\u0438\u0448\u0430\u044E\u0442\u044C \u043F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F \u0437 \u043A\u0430\u0431\u0456\u043D\u0435\u0442\u0443. \u0412\u0438\u043A\u043E\u043D\u0430\u043B\u0438 \u2014 \u2705.", go: T("zpTab", "t", "ideas") }
+    ] },
+    { id: "a-cli", r: "a", g: "\u0414\u0435\u043D\u044C 5 \xB7 \u0413\u043E\u0441\u0442\u0456", ic: "\u{1F465}", n: "\u041A\u043B\u0456\u0454\u043D\u0442\u0438 \u0439 \u0431\u043E\u043D\u0443\u0441\u0438", s: [
+      { t: "\xAB\u{1F465} \u041A\u043B\u0456\u0454\u043D\u0442\u0438\xBB \u2014 \u0431\u0430\u0437\u0430 \u0433\u043E\u0441\u0442\u0435\u0439: \u0440\u0456\u0432\u0435\u043D\u044C, \u0431\u043E\u043D\u0443\u0441\u0438, \u0432\u0456\u0437\u0438\u0442\u0438. \u0417\u043D\u0430\u0439\u0434\u0456\u0442\u044C \u0437\u0430 \u043D\u043E\u043C\u0435\u0440\u043E\u043C \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0443.", go: T("setTab", "s", "loy"), sel: '[data-a="loyTab"][data-s="cli"]' }
+    ] },
+    { id: "a-lrule", r: "a", g: "\u0414\u0435\u043D\u044C 5 \xB7 \u0413\u043E\u0441\u0442\u0456", ic: "\u{1F3AF}", n: "\u0410\u043A\u0446\u0456\u0457 (happy hour, \u043A\u043E\u043C\u0431\u043E)", s: [
+      { t: "\xAB\u{1F3AF} \u0410\u043A\u0446\u0456\u0457\xBB \u2014 \u043F\u0440\u0430\u0432\u0438\u043B\u0430, \u0449\u043E \u0441\u0430\u043C\u0456 \u0437\u0430\u0441\u0442\u043E\u0441\u043E\u0432\u0443\u044E\u0442\u044C\u0441\u044F \u0432 \u0447\u0435\u043A\u0443: \u0437\u043D\u0438\u0436\u043A\u0430 \u0437\u0430 \u0447\u0430\u0441\u043E\u043C, \u043A\u043E\u043C\u0431\u043E, \u0434\u0435\u043D\u044C \u043D\u0430\u0440\u043E\u0434\u0436\u0435\u043D\u043D\u044F.", go: T("setTab", "s", "loy"), sel: '[data-a="loyTab"][data-s="rules"]' },
+      { t: "\xAB\u2795 \u0421\u0442\u0432\u043E\u0440\u0438\u0442\u0438\xBB \u2014 \u043D\u043E\u0432\u0435 \u043F\u0440\u0430\u0432\u0438\u043B\u043E; \u043F\u0435\u0440\u0435\u043C\u0438\u043A\u0430\u0447 \u0432\u043C\u0438\u043A\u0430\u0454/\u0432\u0438\u043C\u0438\u043A\u0430\u0454 \u0431\u0435\u0437 \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043D\u044F.", sel: '[data-a="loyRule"]', opt: 1 }
+    ] },
+    { id: "a-cert", r: "a", g: "\u0414\u0435\u043D\u044C 5 \xB7 \u0413\u043E\u0441\u0442\u0456", ic: "\u{1F39F}", n: "\u041F\u043E\u0434\u0430\u0440\u0443\u043D\u043A\u043E\u0432\u0456 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438", s: [
+      { t: "\xAB\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438\xBB \u2014 \u043F\u0440\u043E\u0434\u0430\u0436 \u0456 \u043F\u043E\u0433\u0430\u0448\u0435\u043D\u043D\u044F. \u041E\u043F\u043B\u0430\u0442\u0443 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C \xAB\u{1F4B5} \u041E\u043F\u043B\u0430\u0447\u0435\u043D\u043E\xBB \u0430\u0431\u043E \u043A\u0430\u0440\u0442\u043A\u043E\u044E.", go: T("setTab", "s", "loy"), sel: '[data-a="certs"]' }
+    ] },
+    { id: "a-cast", r: "a", g: "\u0414\u0435\u043D\u044C 5 \xB7 \u0413\u043E\u0441\u0442\u0456", ic: "\u{1F4E3}", n: "\u0420\u043E\u0437\u0441\u0438\u043B\u043A\u0430 \u0433\u043E\u0441\u0442\u044F\u043C", s: [
+      { t: "\u041D\u0430\u043B\u0430\u0448\u0442. \u2192 \xAB\u{1F381} \u041B\u043E\u044F\u043B\u044C\u043D\u0456\u0441\u0442\u044C\xBB \u2192 \xAB\u{1F916} \u0411\u043E\u0442 \u0433\u043E\u0441\u0442\u0435\u0439\xBB.", go: T("setTab", "s", "loy"), sel: '[data-a="loyTab"][data-s="bot"]' },
+      { t: "\xAB\u{1F4E3} \u041D\u043E\u0432\u0430 \u0440\u043E\u0437\u0441\u0438\u043B\u043A\u0430\xBB \u2014 \u043F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u043D\u044F \u0432 \u0431\u043E\u0442 \u0433\u043E\u0441\u0442\u0435\u0439: \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u0441\u0435\u0433\u043C\u0435\u043D\u0442 (\u0443\u0441\u0456, \u043D\u0435 \u0431\u0443\u043B\u0438 30+ \u0434\u043D\u0456\u0432, \u0414\u041D).", go: T("loyTab", "s", "bot"), sel: '[data-a="gbCast"]', opt: 1 },
+      { t: "\xAB\u2709\uFE0F\xBB \u2014 \u0433\u043E\u0441\u0442\u0456 \u043F\u0438\u0448\u0443\u0442\u044C \u0431\u043E\u0442\u0443; \u0442\u0443\u0442 \u0432\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u0430\u0454\u0442\u0435 \u0457\u043C.", sel: '[data-a="gbInbox"]', opt: 1 }
     ] }
   ];
   const FAQ = [
@@ -7190,7 +7311,7 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
       return;
     }
     if (s.go) {
-      const par = { zpTab: "team", setTab: "settings", cashTab: "cash" }[s.go[0]];
+      const par = { zpTab: "team", setTab: "settings", cashTab: "cash", loyTab: "settings" }[s.go[0]];
       if (par && S.view !== par) crNav(V(par));
       crNav(s.go);
     }

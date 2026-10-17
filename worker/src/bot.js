@@ -132,7 +132,7 @@ async function editView(env, t, note = '') {
   };
 }
 const payButtons = t => ({ inline_keyboard: [[{ text: '💵 Готівка + 🖨 чек', callback_data: `clsok:${t}:cash` }, { text: '💳 Карта + 🖨 чек', callback_data: `clsok:${t}:card` }],
-  [{ text: '💵 Готівка, без чека', callback_data: `clsok:${t}:cash:np` }, { text: '💳 Карта, без чека', callback_data: `clsok:${t}:card:np` }], [{ text: '🖨 Пречек', callback_data: 'pre:' + t }, { text: 'Скасувати', callback_data: 'no' }]] });
+  [{ text: '💵 Готівка, без чека', callback_data: `clsok:${t}:cash:np` }, { text: '💳 Карта, без чека', callback_data: `clsok:${t}:card:np` }], [{ text: '🖨 Пречек', callback_data: 'pre:' + t }, { text: '➗ Порівну', callback_data: 'eq:' + t }, { text: 'Скасувати', callback_data: 'no' }]] });
 const PAY_PICK = { cash: '💵 готівка', card: '💳 карта' };
 async function closeAsk(env, t) {
   const b = await getBill(env, t);
@@ -158,7 +158,7 @@ async function cashView(env) {
       z.mvCash || z.mvCard ? `🔁 Рух коштів: готівка ${money(z.mvCash)}${z.mvCard ? `, картка ${money(z.mvCard)}` : ''}` : '',
       z.openTables ? `⏳ Ще відкрито в залі: ${money(z.openSum)} (${z.openTables} ст.)` : '',
       ...(tb.length ? ['\n💝 <b>Чайові до видачі</b> (не виручка):', ...tb.map(([n, v]) => `👤 ${esc(n)}: ${money(v)}`)] : [])].filter(x => x !== '').join('\n'),
-    markup: { inline_keyboard: [[{ text: '🧾 Z-звіт', callback_data: 'zday' }], [{ text: '🔁 Рух коштів', callback_data: 'mvl' }, { text: '🔒 Закриття каси (Z)', callback_data: 'zl' }], [{ text: '💸 Витрати сьогодні', callback_data: 'exlist' }], [{ text: '➕ Внести', callback_data: 'cmvp' }, { text: '➖ Вилучити', callback_data: 'cmvm' }, { text: '🔁 Обмін', callback_data: 'cmvx' }], [{ text: `👨‍🍳 Частка кухні від чайових: ${await kitchenPct(env)}%`, callback_data: 'kpct' }], ...await (async () => { const c = await getCfg(env); return [[{ text: `🏷 Макс. знижка офіціанта: ${c.discMax}%`, callback_data: 'cfg:discMax' }], [{ text: `⏱ Замовлення після QR: ${c.scanMin} хв`, callback_data: 'cfg:scanMin' }]]; })(), [{ text: '✏️ Звірити готівку', callback_data: 'rcn:cash' }, { text: '✏️ Звірити картку', callback_data: 'rcn:card' }], ...tb.map(([n, v]) => [{ text: `💝 Видано: ${n} · ${v}`, callback_data: cb64('tpay:' + n) }])] },
+    markup: { inline_keyboard: [[{ text: '🧾 Z-звіт', callback_data: 'zday' }], [{ text: '🔁 Рух коштів', callback_data: 'mvl' }, { text: '🔒 Закриття каси (Z)', callback_data: 'zl' }], [{ text: '💸 Витрати сьогодні', callback_data: 'exlist' }], [{ text: '➕ Внести', callback_data: 'cmvp' }, { text: '➖ Вилучити', callback_data: 'cmvm' }, { text: '🔁 Обмін', callback_data: 'cmvx' }], [{ text: `👨‍🍳 Частка кухні від чайових: ${await kitchenPct(env)}%`, callback_data: 'kpct' }], ...await (async () => { const c = await getCfg(env); return [[{ text: `🏷 Макс. знижка офіціанта: ${c.discMax}%`, callback_data: 'cfg:discMax' }], [{ text: `⏱ Замовлення після QR: ${c.scanMin} хв`, callback_data: 'cfg:scanMin' }], [{ text: `🏦 Комісія банку (карта/онлайн): ${c.bankFee || 0}%`, callback_data: 'cfg:bankFee' }], [{ text: `🏆 Премія за рекорд дня: ${c.recBonus || 0} ₴`, callback_data: 'cfg:recBonus' }]]; })(), [{ text: '✏️ Звірити готівку', callback_data: 'rcn:cash' }, { text: '✏️ Звірити картку', callback_data: 'rcn:card' }], ...tb.map(([n, v]) => [{ text: `💝 Видано: ${n} · ${v}`, callback_data: cb64('tpay:' + n) }])] },
   };
 }
 async function expListView(env) {
@@ -181,7 +181,7 @@ async function reportsView(env) {
 // детальні звіти: період × розріз (ті самі дані, що фільтри в POS)
 const REP_P = { d: 'Сьогодні', y: 'Вчора', w: '7 днів', m: 'Цей місяць', pm: 'Минулий місяць', yr: 'Цей рік', all: 'За весь час' };
 const REP_BY = { waiter: '👤 Офіціанти', tips: '💝 Чайові', group: '🍳 Кухня/бар', cat: '📂 Категорії', table: '🪑 Столи', ctrl: '🕵️ Контроль' };
-const CFG_NAME = { discMax: '🏷 Макс. знижка офіціанта, %', scanMin: '⏱ Скільки хвилин гість може замовляти після QR' };
+const CFG_NAME = { discMax: '🏷 Макс. знижка офіціанта, %', scanMin: '⏱ Скільки хвилин гість може замовляти після QR', bankFee: '🏦 Комісія банку за карту/онлайн, % (напр. 1.3)', recBonus: '🏆 Премія кожному на зміні за рекорд дня, ₴' };
 const repMarkup = p => ({ inline_keyboard: [Object.entries(REP_P).slice(0, 3).map(([k, l]) => ({ text: (k === p ? '• ' : '') + l, callback_data: `rp:${k}:x` })), Object.entries(REP_P).slice(3).map(([k, l]) => ({ text: (k === p ? '• ' : '') + l, callback_data: `rp:${k}:x` })),
   ...chunk(Object.entries(REP_BY).map(([k, l]) => ({ text: l, callback_data: `rp:${p}:${k}` })), 3)] });
 function repRange(p) {
@@ -805,6 +805,16 @@ async function handleCallback(q, env) {
   if (act === 'kv') { const v = await kitchenView(env); await edit(v.text, v.markup); return answer(''); }
   if (act === 'kst') { const e = await kitchenStart(env, arg, who); const v = await kitchenView(env); await edit(v.text, v.markup); return answer(e ? '🔥 Готується' : ''); }
   if (act === 'kdn') { const e = await kitchenDone(env, arg, null, who); const v = await kitchenView(env, e ? `🍽 Стіл ${tn(e.t)} — готово` : ''); await edit(v.text, v.markup); return answer(e ? 'Готово' : ''); }
+  if (act === 'eq') { // ➗ порівну: скільки з кожного (підказка, оплата — одним рахунком)
+    await send({ text: `➗ Стіл ${tn(arg)} — на скількох гостей?`, markup: { inline_keyboard: [[2, 3, 4, 5, 6, 8].map(n => ({ text: String(n), callback_data: `eqn:${arg}:${n}` })), [{ text: 'Скасувати', callback_data: 'no' }]] } });
+    return answer('');
+  }
+  if (act === 'eqn') {
+    const b = await getBill(env, arg), n = +oid; if (!b.total || !(n >= 2)) return answer('Стіл закритий');
+    const tot = payable(b) + (b.tip || 0), one = Math.floor(tot / n), rest = tot - one * n;
+    await send({ text: `➗ Стіл ${tn(arg)}: ${money(tot)} на ${n} → з кожного <b>${money(one)}</b>${rest ? ` (один доплачує ${money(one + rest)})` : ''}`, markup: payButtons(arg) });
+    return answer('');
+  }
   if (act === 'cls') { await send(await closeAsk(env, arg)); return answer(''); }
   if (act === 'wok') { // підтвердження замовлення офіціанта (текстом)
     const d = await env.DB.get('draft:' + arg, 'json');

@@ -161,12 +161,12 @@
   // 💰 P&L по закладах і разом
   function pnlHTML() {
     const L = S.sum.filter(v => v.pnl && !v.pnl.error); if (!L.length) return '';
-    const T = L.reduce((a, v) => { for (const k of ['rev', 'cogs', 'pay', 'exp', 'profit', 'noCard']) a[k] = (a[k] || 0) + v.pnl[k]; return a; }, {});
+    const T = L.reduce((a, v) => { for (const k of ['rev', 'cogs', 'pay', 'exp', 'bank', 'profit', 'noCard']) a[k] = (a[k] || 0) + v.pnl[k]; return a; }, {});
     const pct = (a, b) => b ? Math.round(a / b * 1000) / 10 + '%' : '—';
-    const row = (nm, p, cls = '') => `<tr class="${cls}"><td>${nm}</td><td class="money">${money(p.rev)}</td><td class="money">${money(p.cogs)} <small class="muted">${pct(p.cogs, p.rev - (p.noCard || 0))}</small></td><td class="money">${money(p.pay)} <small class="muted">${pct(p.pay, p.rev)}</small></td><td class="money">${money(p.exp)}</td><td class="money" style="color:${p.profit >= 0 ? 'var(--green)' : 'var(--red)'}"><b>${money(p.profit)}</b> <small class="muted">${pct(p.profit, p.rev)}</small></td></tr>`;
+    const row = (nm, p, cls = '') => `<tr class="${cls}"><td>${nm}</td><td class="money">${money(p.rev)}</td><td class="money">${money(p.cogs)} <small class="muted">${pct(p.cogs, p.rev - (p.noCard || 0))}</small></td><td class="money">${money(p.pay)} <small class="muted">${pct(p.pay, p.rev)}</small></td><td class="money">${money(p.exp)}</td><td class="money">${money(p.bank || 0)}</td><td class="money" style="color:${p.profit >= 0 ? 'var(--green)' : 'var(--red)'}"><b>${money(p.profit)}</b> <small class="muted">${pct(p.profit, p.rev)}</small></td></tr>`;
     const top = L.length === 1 ? L[0].pnl.top : [];
-    return `<h2>💰 Прибуток (P&L)</h2><div class="kpis">${kpi('Чистий прибуток', money(T.profit), 'маржа ' + pct(T.profit, T.rev))}${kpi('Собівартість', money(T.cogs), 'фудкост ' + pct(T.cogs, T.rev - T.noCard))}${kpi('Зарплата ≈', money(T.pay), pct(T.pay, T.rev) + ' від виручки')}${kpi('Витрати з каси', money(T.exp))}</div>
-      <div class="card tbl" style="margin-top:12px"><table><thead><tr><th>Заклад</th><th>Виручка</th><th>Собівартість</th><th>Зарплата ≈</th><th>Витрати</th><th>Прибуток</th></tr></thead><tbody>${L.map(v => row(esc(v.name), v.pnl)).join('')}${L.length > 1 ? row('Разом', T, 'sum') : ''}</tbody></table></div>
+    return `<h2>💰 Прибуток (P&L)</h2><div class="kpis">${kpi('Чистий прибуток', money(T.profit), 'маржа ' + pct(T.profit, T.rev))}${kpi('Собівартість', money(T.cogs), 'фудкост ' + pct(T.cogs, T.rev - T.noCard))}${kpi('Зарплата ≈', money(T.pay), pct(T.pay, T.rev) + ' від виручки')}${kpi('Витрати з каси', money(T.exp))}${T.bank ? kpi('Комісія банку', money(T.bank), 'карта + онлайн') : ''}</div>
+      <div class="card tbl" style="margin-top:12px"><table><thead><tr><th>Заклад</th><th>Виручка</th><th>Собівартість</th><th>Зарплата ≈</th><th>Витрати</th><th>Комісія банку</th><th>Прибуток</th></tr></thead><tbody>${L.map(v => row(esc(v.name), v.pnl)).join('')}${L.length > 1 ? row('Разом', T, 'sum') : ''}</tbody></table></div>
       ${T.noCard ? `<div class="alert" style="margin-top:8px">⚠️ Продажі без техкарти: ${money(T.noCard)} — їх собівартість не врахована. Заповніть техкарти (каса → 📦 Склад), щоб прибуток був точним.</div>` : ''}
       ${top.length ? `<div class="card tbl" style="margin-top:12px"><h3>🏆 Що приносить найбільше грошей</h3><table><thead><tr><th>Страва</th><th>Продано</th><th>Виручка</th><th>Собівартість</th><th>Заробили</th></tr></thead><tbody>${top.map(x => `<tr><td>${esc(x.n)}</td><td>${x.q}</td><td class="money">${money(x.rev)}</td><td class="money">${money(x.cost)}</td><td class="money"><b>${money(x.m)}</b></td></tr>`).join('')}</tbody></table></div>` : ''}`;
   }
@@ -190,7 +190,8 @@
     const tm = t => new Date(t).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
     return `<h2>📨 Вхідні</h2><div class="chips">${[['open', 'Нові'], ['idea', '💡 Побажання'], ['help', '🆘 Допомога'], ['done', '✅ Опрацьовані'], ['all', 'Усі']].map(([k, l]) => `<button class="${f === k ? 'on' : ''}" data-a="ibF" data-f="${k}">${l}</button>`).join('')}</div>
       <div class="grid">${L.map(m => `<div class="card${m.done ? ' done' : ''}"><div class="kv"><span><b>${m.kind === 'help' ? '🆘 Допомога' : '💡 Побажання'}</b> · ${esc(m.vname || m.venue)}<br><small class="muted">${esc(m.by)}${m.role ? ' · ' + esc(m.role) : ''} · ${tm(m.at)}</small></span></div>
-        <p class="ib-t">${esc(m.text)}</p><div class="btnrow"><button class="btn sm" data-a="ibDone" data-id="${m.id}">${m.done ? '↩️ Повернути' : '✅ Опрацьовано'}</button><button class="btn sm red" data-a="ibDel" data-id="${m.id}">🗑</button></div></div>`).join('') || '<div class="muted">Порожньо</div>'}</div>`;
+        <p class="ib-t">${esc(m.text)}</p>${(m.chat || []).map(c => `<div class="ib-c${c.from === 'a' ? ' me' : ''}"><small class="muted">${c.from === 'a' ? '👑 ATOM' : '👤'} · ${tm(c.at)}</small><div>${esc(c.text)}</div></div>`).join('')}
+        <form class="ib-say" data-id="${m.id}"><input name="t" placeholder="Відповісти ${esc(m.by.split(' · ')[0])}…" maxlength="1500" autocomplete="off"><button class="btn sm">💬</button></form><div class="btnrow"><button class="btn sm" data-a="ibDone" data-id="${m.id}">${m.done ? '↩️ Повернути' : '✅ Опрацьовано'}</button><button class="btn sm red" data-a="ibDel" data-id="${m.id}">🗑</button></div></div>`).join('') || '<div class="muted">Порожньо</div>'}</div>`;
   }
   function platform() {
     const P = S.plat;
@@ -209,11 +210,11 @@
   }
   function render() {
     if (!S.me) return;
-    const plat = S.me.role === 'platform', TABS = [['home', '🏠 Мережа'], ['an', '📊 Аналітика'], ['ven', '🏪 Заклади'], ['cfg', '⚙️ Налаштування'], ['inbox', `📨 Вхідні${S.inboxN ? ` <i class="bdg">${S.inboxN}</i>` : ''}`], ...(plat ? [['crm', '🚀 Продажі'], ['plat', '🌐 Платформа']] : [])];
+    const plat = S.me.role === 'platform', TABS = [['home', '🏠 Мережа'], ['an', '📊 Аналітика'], ['ven', '🏪 Заклади'], ['cfg', '⚙️ Налаштування'], ['learn', '🎓 Навчання'], ['inbox', `📨 Вхідні${S.inboxN ? ` <i class="bdg">${S.inboxN}</i>` : ''}`], ...(plat ? [['crm', '🚀 Продажі'], ['plat', '🌐 Платформа']] : [])];
     if (!TABS.some(x => x[0] === S.tab)) S.tab = 'home';
     app.innerHTML = `<header class="top"><div class="in"><img src="img/icon.png" alt=""><b>Кабінет власника</b><button class="who-av" data-a="myAv" title="Змінити фото">${VVAV.html(S.me.av, S.me.name)}</button><div class="who"><b>${esc(S.me.name)}</b><span class="muted">${plat ? '👑 платформа' : 'власник'}</span></div><div class="icogrp"><button class="icobtn" data-a="myLook" title="Вигляд кабінету">🎨</button><button class="icobtn" data-a="help" title="Допомога">🆘</button><button class="icobtn" data-a="out" title="Вийти">🚪</button></div></div>
       <nav class="tabs">${TABS.map(([k, l]) => `<button class="${S.tab === k ? 'on' : ''}" data-a="tab" data-t="${k}">${l}</button>`).join('')}<button data-a="reload">🔄</button></nav></header>
-      <main>${S.tab === 'cfg' ? (S.cfgV ? VC.view() : pickVenue()) : S.tab === 'home' ? home() : S.tab === 'an' ? analytics() : S.tab === 'ven' ? venues() : S.tab === 'inbox' ? inbox() : S.tab === 'crm' && plat ? OWNCRM.view({ api, toast, render, modal, kpi, VC, enter: goPos }) : platform()}</main>`;
+      <main>${S.tab === 'cfg' ? (S.cfgV ? VC.view() : pickVenue()) : S.tab === 'home' ? home() : S.tab === 'an' ? analytics() : S.tab === 'ven' ? venues() : S.tab === 'learn' ? OWNCOURSE.view({ canOpen: S.venues.length === 1 }) : S.tab === 'inbox' ? inbox() : S.tab === 'crm' && plat ? OWNCRM.view({ api, toast, render, modal, kpi, VC, enter: goPos }) : platform()}</main>`;
   }
 
   // ---------- модалки ----------
@@ -237,12 +238,16 @@
 
   async function goPos(v, set) { const r = await api('enter', { venue: v }); location.href = `${ATOM ? '/' + encodeURIComponent(v) + '/pos.html' : POS}?venue=${encodeURIComponent(v)}#tok=${r.token}&me=${encodeURIComponent(JSON.stringify(r.me))}${set ? '&set=' + set : ''}`; }
   // ---------- кліки ----------
+  // 💬 відповідь у зверненні — працівник побачить її в касі (Профіль → 💬 Звернення)
+  document.addEventListener('submit', async e => { const f = e.target.closest('.ib-say'); if (!f) return; e.preventDefault(); const t = f.t.value.trim(); if (!t) return;
+    f.querySelector('button').disabled = true; try { const r = await api('inboxSay', { id: f.dataset.id, text: t }); const i = S.ib.findIndex(x => x.id === f.dataset.id); if (i >= 0) S.ib[i] = r.m; toast('💬 Надіслано'); render(); } catch (er) { toast('⚠️ ' + er.message); f.querySelector('button').disabled = false; } });
   document.addEventListener('click', async e => {
     const el = e.target.closest('[data-a]'); if (!el) return; const a = el.dataset.a, d = el.dataset;
     const reload = async () => { S.plat = null; await start(); S.tab = 'plat'; render(); };
     if (a === 'out') { e.preventDefault(); return logout(); }
     if (a === 'help') { e.preventDefault(); return modal('🆘 Допомога', '<div class="muted" style="font-size:13px">Напишіть, що не працює або що потрібно налаштувати — розробник отримає повідомлення в Telegram і зв\'яжеться з вами.</div><textarea name="t" rows="5" required style="width:100%;font:inherit;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px"></textarea>', async f => { await api('help', { text: f.t.value }); toast('🆘 Надіслано'); }); }
     if (a === 'tab' && d.t === 'cfg') { store.set('tab', 'cfg'); S.cfgV = null; S.tab = 'cfg'; if (S.venues.length === 1) return VC.open(S.venues[0].id); return render(); } // спершу — вибір закладу
+    if (a === 'ocOpen') { window.scrollTo(0, 0); S.tab = 'cfg'; store.set('tab', 'cfg'); return VC.open(S.venues[0].id, d.s); }
     if (a === 'ibF') { S.ibF = d.f; return render(); }
     if (a === 'ibDone' || a === 'ibDel') { if (a === 'ibDel' && !confirm('Видалити повідомлення?')) return; try { await api('inboxSet', { id: d.id, del: a === 'ibDel' }); const m = S.ib.find(x => x.id === d.id); if (a === 'ibDel') S.ib = S.ib.filter(x => x !== m); else m.done = m.done ? 0 : Date.now(); S.inboxN = S.ib.filter(x => !x.done).length; render(); } catch (x) { toast('⚠️ ' + x.message); } return; }
     if (a === 'tab' && d.t === 'inbox') S.ib = null;

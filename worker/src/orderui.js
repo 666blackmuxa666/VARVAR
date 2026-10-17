@@ -2,6 +2,7 @@
 // Чернетка одна на офіціанта: KV ob:<uid> {table, items:[{name,price,q}], com, mid, chat}; повідомлення редагується на місці.
 import { getMenu } from './menu.js';
 import { tn } from './tn.js';
+import { upsFor } from './delivery.js';
 import { GROUPS, groupOf, getFav, toggleFav, getCfg } from './ops.js';
 
 const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -101,7 +102,13 @@ export async function obCallback(env, uid, p) {
     const ex = ob.items.find(e => e.name === name);
     if (ex) ex.q += +z; else ob.items.push({ name, price, q: +z });
     await putOb(env, uid, ob);
-    return { view: await catsView(env, ob), toast: `➕ ${z}× ${name}` };
+    const view = await catsView(env, ob), menu = await getMenu(env), sug = [];
+    for (const n of await upsFor(env, it.name.uk).catch(() => [])) { // 💡 допродаж: що ще запропонувати гостю
+      if (sug.length >= 3 || ob.items.some(e => e.name === n)) continue;
+      menu.categories.forEach((cc, ci) => cc.items.forEach((x, xi) => { if (x.name.uk === n && !x.hidden && !x.variants && sug.length < 3 && !sug.some(s => s.n === n)) sug.push({ n, c: ci, i: xi, p: x.price }); }));
+    }
+    if (sug.length) { view.text += `\n\n💡 До «${esc(it.name.uk)}» пропонуємо:`; view.markup.inline_keyboard.unshift(sug.map(s => b(`+ ${s.n} · ${s.p}`, `q:${s.c}:${s.i}:1`))); }
+    return { view, toast: `➕ ${z}× ${name}` };
   }
   if (a === 'cart') return { view: cartView(ob) || await catsView(env, ob) };
   if (a === 'r') {

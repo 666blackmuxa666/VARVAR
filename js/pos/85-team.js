@@ -94,6 +94,18 @@
     const text = await ask('🆘 Допомога — що сталось?', 'Напр.: не друкує чек, не можу додати страву'); if (!text) return;
     await act('help', { text, screen: S.view + (S.setTab ? '/' + S.setTab : '') }, '🆘 Надіслано — з вами зв\'яжуться');
   }
+  // 💬 мої звернення до ATOM (побажання й допомога) з перепискою: ATOM відповідає з кабінету, працівник — тут
+  async function thrMy(hid) {
+    const l = (await act('ideaThr', {}))?.list; if (!l) return; const tm = t => new Date(t).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    if (!hid) { const v = await modal({ title: '💬 Звернення до ATOM', body: l.length ? l.map(x => `<button class="kv thr-r" data-mi-v="${x.hid}" style="width:100%;text-align:left"><span style="min-width:0;overflow-wrap:anywhere">${x.unr ? '🔴 ' : ''}${x.kind === 'help' ? '🆘' : '💡'} ${esc(x.text.slice(0, 90))}<br><small class="muted">${tm(x.at)}${x.chat.length ? ` · 💬 ${x.chat.length}` : ''}</small></span></button>`).join('') : '<div class="muted">Поки немає. Напишіть «💡 Побажання» або «🆘 Допомога» в профілі — тут буде відповідь.</div>', buttons: [{ label: 'Закрити', val: null }] }); if (v) return thrMy(v); return; }
+    const x = l.find(y => y.hid === hid); if (!x) return; if (x.unr) act('ideaSeen', { hid }).catch(() => {});
+    const bub = (who, t, at, mine) => `<div class="thr-b${mine ? ' me' : ''}"><small class="muted">${who} · ${tm(at)}</small><div>${esc(t)}</div></div>`;
+    const body = `<div class="thr">${bub(esc(x.by), x.text, x.at, 1)}${x.chat.map(c => bub(c.from === 'a' ? '👑 ATOM' : esc(c.by || x.by), c.text, c.at, c.from !== 'a')).join('')}</div>`;
+    const v = await modal({ title: x.kind === 'help' ? '🆘 Допомога' : '💡 Побажання', body, buttons: [{ label: '✍️ Відповісти', val: 'say' }, { label: '← Назад', val: 'back' }] });
+    if (v === 'back') return thrMy(); if (v !== 'say') return;
+    const text = await ask('✍️ Повідомлення для ATOM', 'Деталі, скріншот описом, як повторити…'); if (!text) return thrMy(hid);
+    if (await act('ideaSay', { hid, text }, '💬 Надіслано')) thrMy(hid);
+  }
   async function ideasMy() { // 👤 особистий кабінет → свої побажання розробнику
     const l = (await act('ideaList', {}))?.list; if (!l) return; const mine = l.filter(x => x.by === S.me?.name);
     const v = await modal({ title: '💡 Побажання розробнику', body: `<div class="muted set-note">Що незручно, чого не вистачає, що змінити в касі чи боті — напишіть, розробник побачить і врахує.</div>${mine.length ? mine.map(ideaRow).join('') : '<div class="muted">Ви ще нічого не писали</div>'}`, buttons: [{ label: '✍️ Написати', val: 'add', cls: 'primary' }, { label: 'Закрити', val: null }] });
@@ -113,10 +125,11 @@
       ${asks.map(s => `<div class="card zp-ask">🔁 <b>${esc(s.from)}</b> просить вийти за нього ${s.day.slice(8)}.${s.day.slice(5, 7)} о ${s.time}<div class="btnrow"><button class="btn sm green" data-a="zpSw" data-id="${s.id}" data-s="agree">Погоджуюсь</button><button class="btn sm red" data-a="zpSw" data-id="${s.id}" data-s="no">Ні</button></div></div>`).join('')}
       <h3 style="margin:14px 0 6px">Графік · ${monName(r.m)}</h3>${gridHTML(r.grid, r.grid.people, false, me)}<div class="muted" style="font-size:11px;margin-top:4px">✅ був · ● заплановано · 🕓 чекає · ⏰ запізнення · 🚫 прогул</div>
       ${r.swaps.filter(s => s.from === me).map(s => `<div class="muted" style="font-size:12px">🔁 ${s.day.slice(8)}.${s.day.slice(5, 7)} → ${esc(s.to)}: ${s.st === 'ask' ? 'чекає згоди' : 'чекає адміна'}</div>`).join('')}`;
-    const v = await modal({ title: `👤 ${me}`, body, buttons: [{ label: '🎨 Мій вигляд', val: 'look' }, { label: '🔁 Попросити обмін', val: 'swap' }, { label: '💡 Побажання', val: 'idea' }, { label: '🆘 Допомога', val: 'help' }, { label: 'Закрити', val: null }] });
+    const v = await modal({ title: `👤 ${me}`, body, buttons: [{ label: '🎨 Мій вигляд', val: 'look' }, { label: '🔁 Попросити обмін', val: 'swap' }, { label: '💡 Побажання', val: 'idea' }, { label: '🆘 Допомога', val: 'help' }, { label: '💬 Звернення', val: 'thr' }, { label: 'Закрити', val: null }] });
     if (v === 'look') { S.view = 'mylook'; renderNav(); renderMain(); return; } // 🎨 свій колір і стиль — для будь-якої ролі, лише на цьому пристрої
     if (v === 'idea') return ideasMy();
     if (v === 'help') return helpAsk();
+    if (v === 'thr') return thrMy();
     if (v === 'swap') {
       const future = r.days.filter(x => x.plan && x.d >= todayK()); if (!future.length) return toast('У вашому плані немає майбутніх змін');
       const d = await choose('🔁 Яку зміну віддати?', '', future.map(x => ({ label: `${x.d.slice(8)}.${x.d.slice(5, 7)} ${WDL[new Date(x.d + 'T12:00:00Z').getUTCDay()]} · ${x.plan}`, val: x.d }))); if (!d) return;
