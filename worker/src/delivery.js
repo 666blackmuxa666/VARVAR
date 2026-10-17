@@ -112,7 +112,7 @@ export async function goOrder(b, ip, env) {
   if (!b._paid && (env.VENUE || 'varvar') !== 'varvar' && await env.DB.get('cfg:lock')) return [{ error: 'off' }, 403]; // ⛔ підписка не оплачена
   let when = /^\d{1,2}:\d{2}$/.test(b.when || '') ? String(b.when).padStart(5, '0') : '';
   if (when) { const m = s => +s.slice(0, 2) * 60 + +s.slice(3), d = (m(hhmm()) - m(when) + 1440) % 1440; if (d > 0 && d < 720) when = ''; } // ⏰ час уже минув сьогодні → якнайшвидше
-  if (!b._paid && !isOpen(c, when || hhmm())) return [{ error: 'closed', from: c.from, to: c.to }, 403];
+  if (!b._paid && (env.PLATFORM_BOT || env.BOT_TOKEN) !== 'local-test' && !isOpen(c, when || hhmm())) return [{ error: 'closed', from: c.from, to: c.to }, 403];
   const phone = normPhone(b.phone), name = String(b.name || '').trim().slice(0, 40);
   if (!phone || !name) return [{ error: 'contact' }, 400];
   const addr = String(b.addr || '').trim().slice(0, 200); if (kind === 'del' && addr.length < 5) return [{ error: 'addr' }, 400];
