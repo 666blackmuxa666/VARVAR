@@ -9,6 +9,7 @@
     uk: { nMenu: 'Меню', nBook: 'Бронь', nBanq: 'Банкети', nCont: 'Контакти', nMe: 'Кабінет', order: 'Замовити', book: 'Забронювати', call: 'Подзвонити', route: 'Маршрут',
       hAbout: 'Про нас', f1: 'Власні рецепти й ситні тарілки', f2: 'Кальяни: 50+ смаків', f3: 'Банкети до 20 гостей', f4: 'Доставка й самовивіз', hPromo: 'Акції та події', hHits: 'Хіти меню', allMenu: 'Усе меню →', hGal: 'Атмосфера',
       hHook: 'Кальяни', hBanq: 'Банкети й кейтеринг', banqBtn: 'Залишити заявку', hBook: 'Бронювання столу', kTable: 'Стіл', kBanq: 'Банкет', fName: "Ваше ім'я", fPhone: 'Телефон', fCom: 'Побажання (необовʼязково)',
+      wlH: 'Немає вільних столів?', wlBtn: '⏳ Зал повний — стати в чергу', wlSend: 'Стати в чергу', wlPos: '№{n} у черзі', wlCall: '🔔 Вас кличуть!', wlCallT: 'Підійдіть до адміністратора — стіл для вас готовий.', wlWait: 'Ми повідомимо, коли звільниться стіл. Сторінку можна лишити відкритою.', wlCancel: 'Скасувати чергу', wlRef: '🔄 Оновити', wlNew: '＋ Нова черга', wlGone: 'Чергу закрито', wlFull: 'Черга переповнена — зателефонуйте нам', wlRate: 'Забагато спроб — зачекайте або зателефонуйте',
       bookSend: 'Забронювати', hCert: 'Подарунковий сертифікат', certTxt: 'Найкращий подарунок — вечеря у нас. Залиште заявку, адміністратор зв’яжеться щодо оплати й надішле сертифікат.',
       own: 'Своя', certOwn: 'Сума, ₴', certFrom: 'Від кого', certTo: 'Кому (необовʼязково)', certSend: 'Замовити сертифікат', hRev: 'Відгуки', revAll: 'Усі відгуки на Google', revWrite: 'Залишити відгук', hCont: 'Контакти', daily: 'Щодня',
       openNow: 'Відчинено', closedNow: 'Зачинено', bookOk: 'Заявку прийнято!', bookOkT: 'Підтвердимо найближчим часом. Статус оновлюється тут.', pre: '🍽 Обрати страви заздалегідь', preT: 'Кухня почне готувати до вашого приходу',
@@ -19,6 +20,7 @@
     en: { nMenu: 'Menu', nBook: 'Booking', nBanq: 'Banquets', nCont: 'Contacts', nMe: 'Account', order: 'Order', book: 'Book a table', call: 'Call', route: 'Directions',
       hAbout: 'About us', f1: 'Own recipes & hearty plates', f2: 'Hookahs: 50+ flavours', f3: 'Banquets up to 20 guests', f4: 'Delivery & pickup', hPromo: 'Offers & events', hHits: 'Menu highlights', allMenu: 'Full menu →', hGal: 'Atmosphere',
       hHook: 'Hookahs', hBanq: 'Banquets & catering', banqBtn: 'Send request', hBook: 'Book a table', kTable: 'Table', kBanq: 'Banquet', fName: 'Your name', fPhone: 'Phone', fCom: 'Wishes (optional)',
+      wlH: 'No free tables?', wlBtn: '⏳ Full house — join the waitlist', wlSend: 'Join the waitlist', wlPos: 'No. {n} in line', wlCall: '🔔 We are calling you!', wlCallT: 'Please come to the host — your table is ready.', wlWait: 'We will let you know when a table frees up. You can keep this page open.', wlCancel: 'Leave the waitlist', wlRef: '🔄 Refresh', wlNew: '＋ New waitlist entry', wlGone: 'Waitlist entry closed', wlFull: 'The waitlist is full — please call us', wlRate: 'Too many attempts — wait or call us',
       bookSend: 'Book', hCert: 'Gift certificate', certTxt: 'The best gift — dinner with us. Leave a request and we will contact you about payment.',
       own: 'Custom', certOwn: 'Amount, ₴', certFrom: 'From', certTo: 'To (optional)', certSend: 'Order certificate', hRev: 'Reviews', revAll: 'All reviews on Google', revWrite: 'Write a review', hCont: 'Contacts', daily: 'Daily',
       openNow: 'Open', closedNow: 'Closed', bookOk: 'Request received!', bookOkT: 'We will confirm shortly. Status updates here.', pre: '🍽 Pre-order dishes', preT: 'The kitchen will start before you arrive',
@@ -58,7 +60,7 @@
     $('#quotes').innerHTML = s.quotes.map(q => `<div class="quote">«${esc(q.t)}»<small>— ${esc(q.a)}</small></div>`).join('');
     $('#revA').href = s.gmaps; $('#revW').href = s.reviewsUrl || s.gmaps;
     { const b = $('#bkPlan'); if (b) { b.hidden = !(s.plan && window.Floor3D); twLbl(); b.onclick = planOpen; } }
-    $('#book').hidden = !s.bookOn; $('#cert').hidden = !s.certOn; if (s.certOn && s.certOnl) { const cb = $('#certF button[type=submit]'); cb.removeAttribute('data-t'); cb.textContent = lang === 'en' ? '💳 Pay online' : '💳 Оплатити онлайн'; }
+    $('#book').hidden = !s.bookOn; $('#wl').hidden = !s.bookOn; $('#cert').hidden = !s.certOn; if (s.certOn && s.certOnl) { const cb = $('#certF button[type=submit]'); cb.removeAttribute('data-t'); cb.textContent = lang === 'en' ? '💳 Pay online' : '💳 Оплатити онлайн'; }
     // 🏪 назва й логотип закладу
     $('.nav .brand').innerHTML = s.logo ? `<img src="${esc(s.logo)}" alt="" style="height:30px;width:30px;object-fit:contain;border-radius:8px;vertical-align:middle;margin-right:8px">${esc(s.name)}` : esc(s.name); $('#fName').textContent = s.name; { const L = s.legal || {}; const f = $('#fLegal'); if (f) f.textContent = [L.name, L.code ? 'ІПН/ЄДРПОУ ' + L.code : '', L.addr].filter(Boolean).join(' · '); } /* 🏛 реквізити (LiqPay) */ document.title = s.name;
     if (window.VARVAR.venue) $('#about > .feats')?.remove(); // переваги VARVAR (кальяни, банкети…) — не для інших закладів
@@ -105,6 +107,35 @@
       store.set('bks', [...store.get('bks', []), data.id].slice(-10)); showBook(data.id);
     };
     const last = store.get('bks', []).slice(-1)[0]; if (last) showBook(last, true);
+  }
+  // ---------- ⏳ черга в залі (без таймера: оновлення ≥45 с, лише видима вкладка, + кнопка) ----------
+  let wlTm = 0, wlLast = 0;
+  function wlInit() {
+    const f = $('#wlF'); f.name.value = store.get('goName', ''); f.phone.value = store.get('goPhone', '');
+    $('#wlOpen').onclick = () => { f.hidden = !f.hidden; };
+    f.onsubmit = async e => {
+      e.preventDefault(); const m = $('#wlMsg'); m.textContent = '…';
+      const d = { name: f.name.value.trim(), phone: f.phone.value.trim(), people: +f.people.value, device };
+      const { status, data } = await api('/api/wl', d).catch(() => ({ status: 0, data: {} }));
+      if (status !== 200 || !data.id) { m.textContent = { contact: t('errC'), full: t('wlFull'), rate: t('wlRate') }[data.error] || t('err'); return; }
+      m.textContent = ''; store.set('goName', d.name); store.set('goPhone', d.phone); store.set('wlId', data.id); f.hidden = true; wlShow(true);
+    };
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - wlLast >= 45e3) wlShow(); });
+    if (store.get('wlId', '')) wlShow();
+  }
+  async function wlShow(force) {
+    const id = store.get('wlId', ''), box = $('#wlDone'); clearTimeout(wlTm); if (!id) return;
+    if (!force && Date.now() - wlLast < 45e3) return; wlLast = Date.now();
+    const { data: w } = await api('/api/wl?id=' + id).catch(() => ({ data: null }));
+    if (!w) return;
+    if (w.error || !['wait', 'called'].includes(w.st)) { store.set('wlId', ''); box.hidden = false; box.innerHTML = `<p class="muted">${t('wlGone')}</p><button class="btn ghost" id="wlNew">${t('wlNew')}</button>`; $('#wlNew').onclick = () => { box.hidden = true; $('#wlF').hidden = false; }; $('#wlOpen').hidden = false; return; }
+    $('#wlOpen').hidden = true; $('#wlF').hidden = true; box.hidden = false;
+    const call = w.st === 'called';
+    box.innerHTML = `<div class="big">${call ? '🔔' : '⏳'}</div><h3>${call ? t('wlCall') : t('wlPos').replace('{n}', w.pos)}</h3><p>${call ? t('wlCallT') : t('wlWait')}</p><p class="muted">${esc(w.name)} · ${w.people} 👤</p><button class="btn ghost" id="wlRef">${t('wlRef')}</button><button class="btn ghost" id="wlCan">${t('wlCancel')}</button>`;
+    $('#wlRef').onclick = () => wlShow(true);
+    $('#wlCan').onclick = async () => { await api('/api/wl', { id, cancel: 1 }).catch(() => {}); store.set('wlId', ''); box.hidden = true; $('#wlOpen').hidden = false; };
+    wlTm = setTimeout(() => { if (document.visibilityState === 'visible') wlShow(); }, 46e3); // видима вкладка; прихована — оновиться при поверненні
+    if (call) navigator.vibrate?.([120, 60, 120]);
   }
   async function showBook(id, quiet) {
     const { data: b } = await api('/api/book?id=' + id).catch(() => ({ data: null }));
@@ -168,7 +199,7 @@
   if (location.hash && !/^#(me|cert=)/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
   scrollTo(0, 0);
   const cm = location.hash.match(/^#cert=([A-Z0-9-]+)$/i); if (cm) { certPage(cm[1]); return; }
-  i18n(); bookInit(); certInit();
+  i18n(); bookInit(); wlInit(); certInit();
   if (location.hash === '#me') me();
   // 👁 перегляд у конструкторі кабінету: чернетка приходить через postMessage, без запитів і без відправки форм
   const PREVIEW = new URLSearchParams(location.search).has('preview');

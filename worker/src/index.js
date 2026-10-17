@@ -27,7 +27,7 @@ const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;
 
 // 💸 запити, що працюють з базою, виконуються всередині Durable Object (store.js → Store.fetch):
 // там кожне читання/запис — локальне, а платний «запит до DO» — один на дію, а не 20–50
-const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|goinfo|promo|reco|site|book|bookpre|cert|me|me\/start|me\/poll|me\/logout)$|tg$|tg2$|tg3$|tg4$|__cron$)/;
+const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|goinfo|promo|reco|site|book|bookpre|wl|cert|me|me\/start|me\/poll|me\/logout)$|tg$|tg2$|tg3$|tg4$|__cron$)/;
 // 💾 кеш у пам'яті воркера для однакових для всіх відповідей (на *.workers.dev кеш Cloudflare не працює).
 // Економить запити до Durable Object: меню відкривають сотні гостей, а змінюється воно рідко. Стоп-лист сервер
 // все одно перевіряє при замовленні (priceMap пропускає hidden), тож 20 с затримки безпечні.
