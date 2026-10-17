@@ -30,7 +30,7 @@ var __objRest = (source, exclude) => {
   return target;
 };
 (() => {
-  var _a;
+  var _a, _b;
   const okV = (x) => /^(?=.*[a-z])[a-z0-9][a-z0-9-]{1,30}$/.test(x || "") && x !== "varvar";
   const VENUE = (() => {
     const seg = /(^|\.)posatom\.online$/.test(location.hostname) ? location.pathname.split("/")[1] : null;
@@ -128,12 +128,12 @@ var __objRest = (source, exclude) => {
     return ((_a2 = S.brand) == null ? void 0 : _a2.logo) ? `<img class="own" src="${esc(S.brand.logo)}" alt="" onerror="this.outerHTML='<b class=&quot;brand-t&quot;>${brandIni()}</b>'">` : !VENUE ? '<img src="printer/logo.png" alt="VARVAR">' : `<b class="brand-t">${brandIni()}</b>`;
   };
   function applyBrand() {
-    var _a2, _b, _c;
+    var _a2, _b2, _c;
     const nm = ((_a2 = S.brand) == null ? void 0 : _a2.name) || (VENUE ? "" : "VARVAR");
     document.title = (nm ? nm + " \u2014 " : "") + "\u043A\u0430\u0441\u0430";
     const li = $(".logo-img");
     if (li) {
-      if ((_b = S.brand) == null ? void 0 : _b.logo) {
+      if ((_b2 = S.brand) == null ? void 0 : _b2.logo) {
         li.src = S.brand.logo;
         li.classList.add("own");
         li.hidden = false;
@@ -156,8 +156,8 @@ var __objRest = (source, exclude) => {
   };
   const VIEW_PERM = { cash: ["cash"], reports: ["reports"], calc: ["stock"], team: ["staff", "pay"], settings: ["settings", "print"], closed: ["void", "edit_closed"] };
   const isAdmin = () => {
-    var _a2, _b;
-    return realAdmin() || !!((_b = (_a2 = S.me) == null ? void 0 : _a2.can) == null ? void 0 : _b.length) && (VIEW_PERM[S.view] || []).some((k) => S.me.can.includes(k));
+    var _a2, _b2;
+    return realAdmin() || !!((_b2 = (_a2 = S.me) == null ? void 0 : _a2.can) == null ? void 0 : _b2.length) && (VIEW_PERM[S.view] || []).some((k) => S.me.can.includes(k));
   }, isCook = () => {
     var _a2;
     return ((_a2 = S.me) == null ? void 0 : _a2.role) === "cook";
@@ -589,10 +589,10 @@ var __objRest = (source, exclude) => {
       return true;
     };
     document.addEventListener("touchstart", (e) => {
-      var _a2, _b;
+      var _a2, _b2;
       d = null;
       if (innerWidth > 600 || e.touches.length > 1) return;
-      const m = (_b = (_a2 = e.target).closest) == null ? void 0 : _b.call(_a2, ".modal-bg > .modal");
+      const m = (_b2 = (_a2 = e.target).closest) == null ? void 0 : _b2.call(_a2, ".modal-bg > .modal");
       if (!m || e.target.closest("input[type=range],textarea,canvas,.nodrag")) return;
       const p = e.touches[0];
       if (p.clientY - m.getBoundingClientRect().top > 70 && !atTop(e.target, m)) return;
@@ -656,11 +656,11 @@ var __objRest = (source, exclude) => {
   };
   let actx;
   function ding(k) {
-    var _a2, _b;
+    var _a2, _b2;
     try {
       const L = look(), sn = SOUNDS[k || L.sound] || SOUNDS.classic, vol = ((_a2 = L.vol) != null ? _a2 : 70) / 100 * 0.35 + 2e-4;
       actx || (actx = new (window.AudioContext || window.webkitAudioContext)());
-      (_b = actx.resume) == null ? void 0 : _b.call(actx);
+      (_b2 = actx.resume) == null ? void 0 : _b2.call(actx);
       sn[1].forEach(([f, d, len, type]) => {
         const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + d;
         o.type = type || "sine";
@@ -723,19 +723,19 @@ var __objRest = (source, exclude) => {
   };
   const NAV_PERM = { cash: "cash", reports: "reports", calc: "stock", team: "staff", settings: "settings" };
   const navList = () => {
-    var _a2, _b;
+    var _a2, _b2;
     if (isCour()) return NAV_COUR;
-    if (isCook()) return ((_b = (_a2 = S.me) == null ? void 0 : _a2.can) == null ? void 0 : _b.length) ? [...NAV_COOK, ...NAV_A.filter(([v]) => NAV_PERM[v] && can(NAV_PERM[v]) && !NAV_COOK.some((x) => x[0] === v))] : NAV_COOK;
+    if (isCook()) return ((_b2 = (_a2 = S.me) == null ? void 0 : _a2.can) == null ? void 0 : _b2.length) ? [...NAV_COOK, ...NAV_A.filter(([v]) => NAV_PERM[v] && can(NAV_PERM[v]) && !NAV_COOK.some((x) => x[0] === v))] : NAV_COOK;
     if (realAdmin()) return NAV_A.filter(([v]) => !NAV_PERM[v] || can(NAV_PERM[v]));
     return [...NAV_W, ...NAV_A.filter(([v]) => NAV_PERM[v] && can(NAV_PERM[v]))];
   };
   const NAV = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["closed", "\u{1F4DC}", "\u0417\u0430\u043A\u0440\u0438\u0442\u0456"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["cash", "\u{1F4B0}", "\u041A\u0430\u0441\u0430", 1], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438", 1], ["kq", "\u{1F468}\u200D\u{1F373}", "\u041A\u0443\u0445\u043D\u044F", 1], ["calc", "\u{1F9EE}", "\u0420\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043E\u043A", 1], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442.", 1]];
   function renderNav() {
-    var _a2, _b, _c;
+    var _a2, _b2, _c;
     const newCnt = S.events.filter((e) => e.k === "guest" && e.s === "new").length;
     const attNew = realAdmin() ? S.events.filter((e) => e.k === "att" && e.s === "new").length : 0;
     const nv = $("#nav"), nx = (nv == null ? void 0 : nv.scrollLeft) || 0, ny = (nv == null ? void 0 : nv.scrollTop) || 0;
-    setHTML(nv, `<div class="brand">${brandImg()}</div>` + navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? "on" : ""}${realAdmin() && !NAV_MAIN.includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === "team" && attNew ? `<span class="badge">${attNew}</span>` : ""}${v === "books" && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ""}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : S.events.some(evMention) ? '<span class="badge">@</span>' : ""}</button><button class="more-btn ${realAdmin() && !NAV_MAIN.includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><button class="me" data-a="zpMy" title="\u041C\u0456\u0439 \u043A\u0430\u0431\u0456\u043D\u0435\u0442"><i>${((_a2 = S.me) == null ? void 0 : _a2.av) ? `<img src="${esc(S.me.av)}" alt="">` : esc((((_b = S.me) == null ? void 0 : _b.name) || "?").slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ""}</i>${S.taskN ? `<span class="badge" title="\u0417\u0430\u0432\u0434\u0430\u043D\u044C \u043D\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456">${S.taskN}</span>` : ""}<b>${esc((_c = S.me) == null ? void 0 : _c.name)}</b><small>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : isCour() ? "\u043A\u0443\u0440'\u0454\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"} \xB7 \u043A\u0430\u0431\u0456\u043D\u0435\u0442</small></button><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
+    setHTML(nv, `<div class="brand">${brandImg()}</div>` + navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? "on" : ""}${realAdmin() && !NAV_MAIN.includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === "team" && attNew ? `<span class="badge">${attNew}</span>` : ""}${v === "books" && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ""}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : S.events.some(evMention) ? '<span class="badge">@</span>' : ""}</button><button class="more-btn ${realAdmin() && !NAV_MAIN.includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><button class="me" data-a="zpMy" title="\u041C\u0456\u0439 \u043A\u0430\u0431\u0456\u043D\u0435\u0442"><i>${((_a2 = S.me) == null ? void 0 : _a2.av) ? `<img src="${esc(S.me.av)}" alt="">` : esc((((_b2 = S.me) == null ? void 0 : _b2.name) || "?").slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ""}</i>${S.taskN ? `<span class="badge" title="\u0417\u0430\u0432\u0434\u0430\u043D\u044C \u043D\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456">${S.taskN}</span>` : ""}<b>${esc((_c = S.me) == null ? void 0 : _c.name)}</b><small>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : isCour() ? "\u043A\u0443\u0440'\u0454\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"} \xB7 \u043A\u0430\u0431\u0456\u043D\u0435\u0442</small></button><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
     if (nv && ny) nv.scrollTop = ny;
     if (nv && nv.scrollWidth > nv.clientWidth) {
       nv.scrollLeft = nx;
@@ -802,7 +802,7 @@ var __objRest = (source, exclude) => {
     renderMain();
   }
   function renderMain() {
-    var _a2, _b, _c;
+    var _a2, _b2, _c;
     const v = S.view, m = $("#main");
     m.classList.toggle("hall", v === "hall");
     if (v === "hall") {
@@ -810,7 +810,7 @@ var __objRest = (source, exclude) => {
       m.style.setProperty("--cols", c);
       m.style.setProperty("--rows", r);
     }
-    const html = (_b = (_a2 = { books: booksHTML, go: goHTML, kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, team: teamHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML, course: courseHTML, mylook: () => `<div class="rhead"><div><h1>\u{1F3A8} \u041C\u0456\u0439 \u0432\u0438\u0433\u043B\u044F\u0434</h1><span class="muted">${isAdmin() ? "\u0437\u0430\u043A\u043B\u0430\u0434 \u0430\u0431\u043E \u043B\u0438\u0448\u0435 \u0446\u0435\u0439 \u043F\u0440\u0438\u0441\u0442\u0440\u0456\u0439" : "\u043A\u043E\u043B\u0456\u0440 \u0456 \u0441\u0442\u0438\u043B\u044C \u043B\u0438\u0448\u0435 \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457"}</span></div></div>` + lookHTML() })[v]) == null ? void 0 : _b.call(_a2);
+    const html = (_b2 = (_a2 = { books: booksHTML, go: goHTML, kq: kqHTML, hall: hallHTML, closed: closedHTML, stop: stopHTML, printer: printerHTML, calc: calcHTML, team: teamHTML, reports: reportsHTML, cash: cashHTML, menu: menuHTML, settings: settingsHTML, course: courseHTML, mylook: () => `<div class="rhead"><div><h1>\u{1F3A8} \u041C\u0456\u0439 \u0432\u0438\u0433\u043B\u044F\u0434</h1><span class="muted">${isAdmin() ? "\u0437\u0430\u043A\u043B\u0430\u0434 \u0430\u0431\u043E \u043B\u0438\u0448\u0435 \u0446\u0435\u0439 \u043F\u0440\u0438\u0441\u0442\u0440\u0456\u0439" : "\u043A\u043E\u043B\u0456\u0440 \u0456 \u0441\u0442\u0438\u043B\u044C \u043B\u0438\u0448\u0435 \u043D\u0430 \u0446\u044C\u043E\u043C\u0443 \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u0457"}</span></div></div>` + lookHTML() })[v]) == null ? void 0 : _b2.call(_a2);
     const fid = (_c = document.activeElement) == null ? void 0 : _c.id, keep = ["stopSearch", "rQ", "skQ", "skQ2", "skCq"].includes(fid);
     const sx = [...m.querySelectorAll(".zp-grid, .sk-tbl, .chips.scroll, .seg")].map((e) => e.scrollLeft);
     setHTML(m, html || "");
@@ -852,8 +852,8 @@ var __objRest = (source, exclude) => {
     return `${String(q).replace(".", ",")} ${u}`;
   };
   const totQ = (x) => {
-    var _a2, _b;
-    return r3((((_a2 = x.st) == null ? void 0 : _a2.k) || 0) + (((_b = x.st) == null ? void 0 : _b.b) || 0));
+    var _a2, _b2;
+    return r3((((_a2 = x.st) == null ? void 0 : _a2.k) || 0) + (((_b2 = x.st) == null ? void 0 : _b2.b) || 0));
   };
   const nrm = (s) => String(s || "").toLowerCase().replace(/ё/g, "\u0435").replace(/[ʼ'’`"«»().,;:!?*_/\\+-]+/g, " ").replace(/\s+/g, " ").trim();
   const parseQ = (s, u) => {
@@ -869,19 +869,19 @@ var __objRest = (source, exclude) => {
   const SK_TABS = () => isCook() ? [["stock", "\u{1F4E6} \u0421\u043A\u043B\u0430\u0434"], ["inv", "\u{1F9FE} \u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0456"], ["prod", "\u{1F373} \u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438"], ["count", "\u{1F4DD} \u0406\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u044F"], ["tech", "\u{1F4CB} \u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0438"]] : [["stock", "\u{1F4E6} \u0417\u0430\u043B\u0438\u0448\u043A\u0438"], ["inv", "\u{1F9FE} \u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0456"], ["sup", "\u{1F3ED} \u041F\u043E\u0441\u0442\u0430\u0447\u0430\u043B\u044C\u043D\u0438\u043A\u0438"], ["buy", "\u{1F6D2} \u0417\u0430\u043A\u0443\u043F\u0456\u0432\u043B\u044F"], ["cards", "\u{1F4CB} \u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0438"], ["prod", "\u{1F373} \u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438"], ["count", "\u{1F4DD} \u0406\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u044F"], ["rep", "\u{1F4CA} \u041F\u043B\u044E\u0441\u0438 / \u043C\u0456\u043D\u0443\u0441\u0438"], ["menu", "\u{1F4D6} \u041C\u0435\u043D\u044E"], ["stop", "\u26D4 \u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"]];
   S.sk = { tab: "stock", q: "", q2: "", cq: "", wh: "", cat: "", flt: "", cf: {}, cwh: "k", p: "w", draft: null, card: null };
   const skBusy = () => {
-    var _a2, _b;
-    return S.sk.draft || S.sk.card || ((_b = (_a2 = document.activeElement) == null ? void 0 : _a2.closest) == null ? void 0 : _b.call(_a2, "#main")) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+    var _a2, _b2;
+    return S.sk.draft || S.sk.card || ((_b2 = (_a2 = document.activeElement) == null ? void 0 : _a2.closest) == null ? void 0 : _b2.call(_a2, "#main")) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
   };
   const hhK = (t) => new Date(t).toLocaleTimeString("uk-UA", { timeZone: "Europe/Kyiv", hour: "2-digit", minute: "2-digit" });
   const WDL = ["\u043D\u0434", "\u043F\u043D", "\u0432\u0442", "\u0441\u0440", "\u0447\u0442", "\u043F\u0442", "\u0441\u0431"];
   const curMon = () => {
-    var _a2, _b;
-    const d = new Date(Date.now() - ((_b = (_a2 = S.cfg) == null ? void 0 : _a2.dayH) != null ? _b : 3) * 36e5);
+    var _a2, _b2;
+    const d = new Date(Date.now() - ((_b2 = (_a2 = S.cfg) == null ? void 0 : _a2.dayH) != null ? _b2 : 3) * 36e5);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   };
   const todayK = () => {
-    var _a2, _b;
-    return iso(Date.now() - ((_b = (_a2 = S.cfg) == null ? void 0 : _a2.dayH) != null ? _b : 3) * 36e5);
+    var _a2, _b2;
+    return iso(Date.now() - ((_b2 = (_a2 = S.cfg) == null ? void 0 : _a2.dayH) != null ? _b2 : 3) * 36e5);
   };
   const monAdd = (m, n) => {
     const [y, mo] = m.split("-").map(Number), d = new Date(y, mo - 1 + n, 15);
@@ -908,11 +908,11 @@ var __objRest = (source, exclude) => {
       el.id = "modal";
       el.innerHTML = `<div class="modal"><h3>${esc(title)}</h3>${text ? `<p>${esc(text)}</p>` : ""}${body}<div class="btns" style="margin-top:14px">${buttons.map((b, i) => `<button class="btn ${b.cls || ""}" data-mi="${i}">${esc(b.label)}</button>`).join("")}</div></div>`;
       el.addEventListener("click", (e) => {
-        var _a2, _b;
+        var _a2, _b2;
         if (e.target === el) return modalResolve(null);
         const i = (_a2 = e.target.closest("[data-mi]")) == null ? void 0 : _a2.dataset.mi;
         if (i != null) return modalResolve(buttons[+i].val);
-        const pk = (_b = e.target.closest("[data-mi-v]")) == null ? void 0 : _b.dataset.miV;
+        const pk = (_b2 = e.target.closest("[data-mi-v]")) == null ? void 0 : _b2.dataset.miV;
         if (pk != null) modalResolve(pk);
       });
       document.body.append(el);
@@ -1009,18 +1009,18 @@ var __objRest = (source, exclude) => {
     loadView();
   });
   document.addEventListener("change", async (e) => {
-    var _a2, _b;
+    var _a2, _b2;
     const el = e.target;
     if (((_a2 = el.dataset) == null ? void 0 : _a2.a) !== "bkDate" || !el.value) return;
     S.bkDay = el.value;
-    if (!((_b = S.data.bk) == null ? void 0 : _b.some((b) => b.date === el.value)) && (el.value < addD(todayK(), -7) || el.value > addD(todayK(), 60))) {
+    if (!((_b2 = S.data.bk) == null ? void 0 : _b2.some((b) => b.date === el.value)) && (el.value < addD(todayK(), -7) || el.value > addD(todayK(), 60))) {
       const r = await api("bkList", { from: el.value, to: el.value, all: true }).catch(() => null);
       if (r) S.data.bk = [...S.data.bk.filter((b) => b.date !== el.value), ...r.list];
     }
     renderMain();
   });
   document.addEventListener("click", async (e) => {
-    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B;
+    var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B;
     const el = e.target.closest("[data-a]");
     if (!el) return;
     const a = el.dataset.a, t = S.open;
@@ -1040,13 +1040,14 @@ var __objRest = (source, exclude) => {
       case "fs": {
         const on = !document.fullscreenElement;
         store.set("fs", on);
-        on ? (_b = (_a2 = document.documentElement).requestFullscreen) == null ? void 0 : _b.call(_a2).catch(() => {
+        on ? (_b2 = (_a2 = document.documentElement).requestFullscreen) == null ? void 0 : _b2.call(_a2).catch(() => {
         }) : (_c = document.exitFullscreen) == null ? void 0 : _c.call(document);
         break;
       }
       case "more": {
-        const v = await choose("\u0429\u0435", "", (isCook() ? navList() : realAdmin() ? navList().filter((n) => !NAV_MAIN.includes(n[0])) : NAV.filter((n) => !n[3] && ["stop", "menu", "calc"].includes(n[0]))).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: "\u{1F512} \u0412\u0438\u0439\u0442\u0438", val: "logout", cls: "red" }]));
-        if (v === "logout") {
+        const v = await choose("\u0429\u0435", "", (isCook() ? navList() : realAdmin() ? navList().filter((n) => !NAV_MAIN.includes(n[0])) : NAV.filter((n) => !n[3] && ["stop", "menu", "calc"].includes(n[0]))).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: "\u{1F514} \u0421\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F", val: "push" }, { label: "\u{1F512} \u0412\u0438\u0439\u0442\u0438", val: "logout", cls: "red" }]));
+        if (v === "push") pushMenu();
+        else if (v === "logout") {
           if (await confirmBox("\u0412\u0438\u0439\u0442\u0438?", "\u041D\u0430\u0441\u0442\u0443\u043F\u043D\u0438\u0439 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A \u0443\u0432\u0456\u0439\u0434\u0435 \u0441\u0432\u043E\u0457\u043C PIN")) logout();
         } else if (v) {
           S.view = v;
@@ -1919,7 +1920,7 @@ var __objRest = (source, exclude) => {
     }
   });
   document.addEventListener("input", (e) => {
-    var _a2, _b, _c;
+    var _a2, _b2, _c;
     const t = e.target, K = S.sk, d = t.dataset || {};
     if (t.id === "skQ") {
       K.q = t.value;
@@ -1946,8 +1947,8 @@ var __objRest = (source, exclude) => {
       const i = +d.cl, l = K.card.items[i];
       if (!l) return;
       const x = S.data.sk.ing.find((y) => y.id === l.id), u = (x == null ? void 0 : x.u) || ((_a2 = l.add) == null ? void 0 : _a2.u) || "\u043A\u0433", k = u === "\u0448\u0442" ? 1 : 1e3, v = +t.value.replace(",", ".") || 0, lo = () => {
-        var _a3, _b2;
-        return +((_b2 = (_a3 = l.loss) != null ? _a3 : x == null ? void 0 : x.loss) != null ? _b2 : 0);
+        var _a3, _b3;
+        return +((_b3 = (_a3 = l.loss) != null ? _a3 : x == null ? void 0 : x.loss) != null ? _b3 : 0);
       };
       if (d.k === "q") {
         l.q = r3(v / k);
@@ -1960,7 +1961,7 @@ var __objRest = (source, exclude) => {
         if (n) n.value = l.q ? r3(l.q * (1 - l.loss / 100) * k) : "";
       }
       if (d.k === "cost" && x && !x.semi) {
-        ((_b = K.card).costCh || (_b.costCh = {}))[x.id] = v;
+        ((_b2 = K.card).costCh || (_b2.costCh = {}))[x.id] = v;
         x.cost = v;
         K.card.items.forEach((o, j) => {
           if (j !== i && o.id === x.id) {
@@ -2065,8 +2066,8 @@ var __objRest = (source, exclude) => {
     }
   });
   document.addEventListener("pointerdown", () => {
-    var _a2, _b;
-    if (store.get("fs", false) && !document.fullscreenElement && matchMedia("(min-width: 900px)").matches) (_b = (_a2 = document.documentElement).requestFullscreen) == null ? void 0 : _b.call(_a2).catch(() => {
+    var _a2, _b2;
+    if (store.get("fs", false) && !document.fullscreenElement && matchMedia("(min-width: 900px)").matches) (_b2 = (_a2 = document.documentElement).requestFullscreen) == null ? void 0 : _b2.call(_a2).catch(() => {
     });
   }, true);
   const searching = () => {
@@ -2136,7 +2137,7 @@ var __objRest = (source, exclude) => {
     a.classList.toggle("go", sw.dx > 90);
   }, { passive: true });
   document.addEventListener("touchend", () => {
-    var _a2, _b;
+    var _a2, _b2;
     if (!sw) return;
     const go = sw.on && sw.dx > 90, el = sw.el;
     sw = null;
@@ -2149,7 +2150,7 @@ var __objRest = (source, exclude) => {
       }, 220);
     }
     if (go) {
-      (_b = navigator.vibrate) == null ? void 0 : _b.call(navigator, 10);
+      (_b2 = navigator.vibrate) == null ? void 0 : _b2.call(navigator, 10);
       goBack();
     }
   });
@@ -2165,6 +2166,86 @@ var __objRest = (source, exclude) => {
   setInterval(checkVer, 5 * 6e4);
   document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && checkVer());
   setTimeout(checkVer, 3e3);
+  const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+  const isApp = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  const pushCan = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window && location.protocol === "https:";
+  const installHow = () => isIOS() ? "1. \u0412\u0456\u0434\u043A\u0440\u0438\u0439\u0442\u0435 \u043A\u0430\u0441\u0443 \u0432 Safari\n2. \u041D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \xAB\u041F\u043E\u0434\u0456\u043B\u0438\u0442\u0438\u0441\u044F\xBB (\u043A\u0432\u0430\u0434\u0440\u0430\u0442 \u0437\u0456 \u0441\u0442\u0440\u0456\u043B\u043A\u043E\u044E)\n3. \xAB\u041D\u0430 \u043F\u043E\u0447\u0430\u0442\u043A\u043E\u0432\u0438\u0439 \u0435\u043A\u0440\u0430\u043D\xBB \u2192 \xAB\u0414\u043E\u0434\u0430\u0442\u0438\xBB\n4. \u0412\u0456\u0434\u043A\u0440\u0438\u0439\u0442\u0435 \u043A\u0430\u0441\u0443 \u0437 \u0456\u043A\u043E\u043D\u043A\u0438 \u0439 \u0443\u0432\u0456\u043C\u043A\u043D\u0456\u0442\u044C \u0441\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F" : "1. \u0412\u0456\u0434\u043A\u0440\u0438\u0439\u0442\u0435 \u043A\u0430\u0441\u0443 \u0432 Chrome\n2. \u041C\u0435\u043D\u044E \u22EE \u2192 \xAB\u0412\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u0438 \u0434\u043E\u0434\u0430\u0442\u043E\u043A\xBB \u0430\u0431\u043E \xAB\u0414\u043E\u0434\u0430\u0442\u0438 \u043D\u0430 \u0433\u043E\u043B\u043E\u0432\u043D\u0438\u0439 \u0435\u043A\u0440\u0430\u043D\xBB\n3. \u0412\u0456\u0434\u043A\u0440\u0438\u0439\u0442\u0435 \u043A\u0430\u0441\u0443 \u0437 \u0456\u043A\u043E\u043D\u043A\u0438";
+  const u8 = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
+  async function pushSubNow() {
+    var _a2;
+    const k = await api("pushKey");
+    if (!k.on) throw new Error("\u0421\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F \u0449\u0435 \u043D\u0435 \u043D\u0430\u043B\u0430\u0448\u0442\u043E\u0432\u0430\u043D\u0456 \u043D\u0430 \u0441\u0435\u0440\u0432\u0435\u0440\u0456");
+    if (await Notification.requestPermission() !== "granted") throw new Error("\u0421\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F \u0437\u0430\u0431\u043E\u0440\u043E\u043D\u0435\u043D\u0456 \u2014 \u0434\u043E\u0437\u0432\u043E\u043B\u044C\u0442\u0435 \u0457\u0445 \u0443 \u043D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F\u0445 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0430 \u0434\u043B\u044F \u043A\u0430\u0441\u0438");
+    const reg = await navigator.serviceWorker.register("pos-sw.js");
+    await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (sub && ((_a2 = sub.options) == null ? void 0 : _a2.applicationServerKey) && btoa(String.fromCharCode(...new Uint8Array(sub.options.applicationServerKey))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "") !== k.key) {
+      await sub.unsubscribe();
+      sub = null;
+    }
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: u8(k.key) });
+    await api("pushSub", { sub: sub.toJSON() });
+    return sub;
+  }
+  async function pushMenu() {
+    if (isIOS() && !isApp()) return modal({ title: "\u{1F4F2} \u0421\u043F\u0435\u0440\u0448\u0443 \u0432\u0441\u0442\u0430\u043D\u043E\u0432\u0456\u0442\u044C \u043A\u0430\u0441\u0443", text: "\u041D\u0430 iPhone \u0441\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F \u043F\u0440\u0430\u0446\u044E\u044E\u0442\u044C \u043B\u0438\u0448\u0435 \u0432 \u043A\u0430\u0441\u0456, \u0432\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0456\u0439 \u043D\u0430 \u0435\u043A\u0440\u0430\u043D (iOS 16.4+).\n\n" + installHow(), buttons: [{ label: "\u0417\u0440\u043E\u0437\u0443\u043C\u0456\u043B\u043E", val: null }] });
+    if (!pushCan()) return modal({ title: "\u{1F514} \u0421\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F", text: "\u0426\u0435\u0439 \u0431\u0440\u0430\u0443\u0437\u0435\u0440 \u043D\u0435 \u043F\u0456\u0434\u0442\u0440\u0438\u043C\u0443\u0454 \u0441\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F. \u0412\u0441\u0442\u0430\u043D\u043E\u0432\u0456\u0442\u044C \u043A\u0430\u0441\u0443 \u044F\u043A \u0434\u043E\u0434\u0430\u0442\u043E\u043A:\n\n" + installHow(), buttons: [{ label: "\u0417\u0440\u043E\u0437\u0443\u043C\u0456\u043B\u043E", val: null }] });
+    const reg = await navigator.serviceWorker.getRegistration(), sub = await (reg == null ? void 0 : reg.pushManager.getSubscription()), on = !!sub && Notification.permission === "granted";
+    const v = await modal({ title: on ? "\u{1F514} \u0421\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F \u0443\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u0456" : "\u{1F514} \u0421\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F \u0432 \u0448\u0442\u043E\u0440\u043A\u0443", text: on ? "\u041D\u043E\u0432\u0456 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0439 \u0432\u0430\u0436\u043B\u0438\u0432\u0456 \u043F\u043E\u0434\u0456\u0457 \u043F\u0440\u0438\u0445\u043E\u0434\u0438\u0442\u0438\u043C\u0443\u0442\u044C \u043D\u0430 \u0446\u0435\u0439 \u0442\u0435\u043B\u0435\u0444\u043E\u043D, \u043D\u0430\u0432\u0456\u0442\u044C \u043A\u043E\u043B\u0438 \u0432\u0456\u043D \u0437\u0430\u0431\u043B\u043E\u043A\u043E\u0432\u0430\u043D\u0438\u0439." : "\u041E\u0442\u0440\u0438\u043C\u0443\u0439\u0442\u0435 \u043D\u043E\u0432\u0456 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0439 \u0432\u0430\u0436\u043B\u0438\u0432\u0456 \u043F\u043E\u0434\u0456\u0457 \u043D\u0430 \u0446\u0435\u0439 \u0442\u0435\u043B\u0435\u0444\u043E\u043D \u2014 \u043D\u0430\u0432\u0456\u0442\u044C \u043D\u0430 \u0437\u0430\u0431\u043B\u043E\u043A\u043E\u0432\u0430\u043D\u0438\u0439 \u0435\u043A\u0440\u0430\u043D." + (isApp() ? "" : "\n\n\u{1F4A1} \u041A\u0440\u0430\u0449\u0435 \u0432\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u0438 \u043A\u0430\u0441\u0443 \u044F\u043A \u0434\u043E\u0434\u0430\u0442\u043E\u043A:\n" + installHow()), buttons: on ? [{ label: "\u{1F4E8} \u0422\u0435\u0441\u0442\u043E\u0432\u0435", val: "test" }, { label: "\u{1F515} \u0412\u0438\u043C\u043A\u043D\u0443\u0442\u0438", val: "off", cls: "red" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] : [{ label: "\u{1F514} \u0423\u0432\u0456\u043C\u043A\u043D\u0443\u0442\u0438", val: "on" }, { label: "\u041F\u0456\u0437\u043D\u0456\u0448\u0435", val: null }] });
+    try {
+      if (v === "on") {
+        await pushSubNow();
+        store.set("pushAsk", 1);
+        pushBanner();
+        toast("\u{1F514} \u0423\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u043E");
+        await api("pushTest");
+      } else if (v === "test") {
+        await api("pushTest");
+        toast("\u{1F4E8} \u041D\u0430\u0434\u0456\u0441\u043B\u0430\u043D\u043E \u2014 \u043F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435 \u0448\u0442\u043E\u0440\u043A\u0443");
+      } else if (v === "off") {
+        await api("pushUnsub", { e: sub.endpoint });
+        await sub.unsubscribe();
+        toast("\u{1F515} \u0412\u0438\u043C\u043A\u043D\u0435\u043D\u043E");
+      }
+    } catch (e) {
+      toast("\u26A0\uFE0F " + (e.message || e));
+    }
+  }
+  async function pushBanner() {
+    var _a2, _b2, _c;
+    (_a2 = $("#pushAsk")) == null ? void 0 : _a2.remove();
+    if (store.get("pushAsk") || !((_b2 = S.me) == null ? void 0 : _b2.sid)) return;
+    try {
+      if (pushCan() && Notification.permission === "granted" && await ((_c = await navigator.serviceWorker.getRegistration()) == null ? void 0 : _c.pushManager.getSubscription())) return;
+    } catch (e) {
+    }
+    const d = document.createElement("div");
+    d.id = "pushAsk";
+    d.className = "toast";
+    d.style.cssText = "display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:min(92vw,420px)";
+    d.innerHTML = `<span style="flex:1;min-width:0">${isIOS() && !isApp() ? "\u{1F4F2} \u0412\u0441\u0442\u0430\u043D\u043E\u0432\u0456\u0442\u044C \u043A\u0430\u0441\u0443 \u043D\u0430 \u0435\u043A\u0440\u0430\u043D \u2014 \u0456 \u043E\u0442\u0440\u0438\u043C\u0443\u0439\u0442\u0435 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0432 \u0448\u0442\u043E\u0440\u043A\u0443" : "\u{1F514} \u041E\u0442\u0440\u0438\u043C\u0443\u0439\u0442\u0435 \u043D\u043E\u0432\u0456 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0432 \u0448\u0442\u043E\u0440\u043A\u0443 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0430"}</span><button class="btn sm" data-p="on">${isIOS() && !isApp() ? "\u042F\u043A?" : "\u0423\u0432\u0456\u043C\u043A\u043D\u0443\u0442\u0438"}</button><button class="btn sm" data-p="no">\u2715</button>`;
+    d.onclick = (e) => {
+      const p = e.target.dataset.p;
+      if (!p) return;
+      d.remove();
+      store.set("pushAsk", 1);
+      if (p === "on") pushMenu();
+    };
+    document.body.append(d);
+  }
+  try {
+    (_b = navigator.serviceWorker) == null ? void 0 : _b.addEventListener("message", (e) => {
+      var _a2;
+      const go = ((_a2 = e.data) == null ? void 0 : _a2.push) && e.data.go;
+      if (go == null ? void 0 : go.view) {
+        S.view = go.view;
+        renderNav();
+        renderMain();
+        loadView();
+      }
+    });
+  } catch (e) {
+  }
   try {
     if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("pos-sw.js").catch(() => {
     });
@@ -2177,6 +2258,7 @@ var __objRest = (source, exclude) => {
     $("#app").hidden = false;
     renderNav();
     $("#main").innerHTML = '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
+    setTimeout(pushBanner, 4e3);
     try {
       await loadState();
     } catch (e) {
@@ -2208,15 +2290,15 @@ var __objRest = (source, exclude) => {
     }
   }
   function hallHTML() {
-    var _a2, _b, _c;
+    var _a2, _b2, _c;
     const list = Object.values(S.tables), sum = list.reduce((s, b) => s + b.pay2, 0);
     const pending = new Set(S.events.filter((e) => e.k === "guest" && e.s === "new").map((e) => e.t));
     const calls = {};
     for (const e of S.events) if (e.k === "call" && e.s === "new") calls[e.t] = e;
     const bell = (t) => calls[t] ? `<span class="callbell${Date.now() - calls[t].ts > 6e4 ? " late" : ""}" title="\u041A\u043B\u0438\u0447\u0435 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430">\u{1F514}</span>` : "";
     const V2 = hallViews(), cur = V2.find((v) => v.id === S.hall) || V2[0], go = cur.go, hot = (t) => {
-      var _a3, _b2;
-      return pending.has(t) || calls[t] || ((_a3 = S.tables[t]) == null ? void 0 : _a3.check) || ((_b2 = S.tables[t]) == null ? void 0 : _b2.pwait);
+      var _a3, _b3;
+      return pending.has(t) || calls[t] || ((_a3 = S.tables[t]) == null ? void 0 : _a3.check) || ((_b3 = S.tables[t]) == null ? void 0 : _b3.pwait);
     };
     const rng = go ? [] : hallRng(cur, calls);
     const map = !go && S.hm === "map", all = map ? Array.from({ length: Math.max(0, cur.to - cur.from + 1) }, (_, i) => cur.from + i) : rng, inF = new Set(rng);
@@ -2242,12 +2324,12 @@ var __objRest = (source, exclude) => {
     const tabs = V2.map(tab), bar = V2.length > 1 ? `<div class="hall-tabs">${tabs.join("")}</div>` : "", othHot = tabs.some((x, i) => V2[i].id !== cur.id && x.includes(' hot"'));
     const tools = go ? "" : `<div class="seg hall-f">${[["mine", "\u{1F464}", "\u041C\u043E\u0457 \u0441\u0442\u043E\u043B\u0438"], ["busy", "\u{1F525}", "\u0417\u0430\u0439\u043D\u044F\u0442\u0456"], ["all", "\u0423\u0441\u0456", "\u0423\u0441\u0456 \u0441\u0442\u043E\u043B\u0438"]].map(([k, l, t]) => `<button class="${S.hf === k ? "on" : ""}" data-hl="hf" data-h="${k}" title="${t}">${l}</button>`).join("")}<button data-hl="hm" title="\u0412\u0438\u0433\u043B\u044F\u0434: \u043F\u043B\u0438\u0442\u043A\u0438 \u2192 3D \u2192 \u043F\u043B\u0430\u043D">${!map ? "\u{1F4CB}" : S.f3m === "3d" ? "\u{1F9CA}" : "\u25A6"}</button></div>`;
     const why = (t) => {
-      var _a3, _b2;
-      return calls[t] ? "\u{1F514} \u043A\u043B\u0438\u0447\u0435" : pending.has(t) ? "\u{1F6CE} \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F" : ((_a3 = S.tables[t]) == null ? void 0 : _a3.pwait) ? "\u{1F310} \u043E\u043F\u043B\u0430\u0442\u0438\u0432" : ((_b2 = S.tables[t]) == null ? void 0 : _b2.check) ? "\u{1F9FE} \u0440\u0430\u0445\u0443\u043D\u043E\u043A" : "";
+      var _a3, _b3;
+      return calls[t] ? "\u{1F514} \u043A\u043B\u0438\u0447\u0435" : pending.has(t) ? "\u{1F6CE} \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F" : ((_a3 = S.tables[t]) == null ? void 0 : _a3.pwait) ? "\u{1F310} \u043E\u043F\u043B\u0430\u0442\u0438\u0432" : ((_b3 = S.tables[t]) == null ? void 0 : _b3.check) ? "\u{1F9FE} \u0440\u0430\u0445\u0443\u043D\u043E\u043A" : "";
     };
     const away = go ? [] : V2.filter((v) => !v.go && v.id !== cur.id).flatMap((v) => Array.from({ length: v.to - v.from + 1 }, (_, i) => v.from + i).filter(hot).map((t) => ({ v, t })));
     const alerts = away.length ? `<div class="hall-alert">${away.slice(0, 6).map(({ v, t }) => `<button data-hl="go" data-h="${v.id}" data-t="${t}"><b>${v.ic} ${esc(v.n)} \xB7 ${t}</b> ${why(t)}</button>`).join("")}</div>` : "";
-    const goTile = !go && ((_a2 = S.cfg) == null ? void 0 : _a2.goTabs) && gos.length ? `<button class="go-sum${goNew2 ? " new" : ""}" data-hl="set" data-h="${(_b = V2.find((v) => v.go)) == null ? void 0 : _b.id}">\u{1F6F5} ${gos.length} ${goNew2 ? `\xB7 <b>${goNew2} \u043D\u043E\u0432.</b>` : "\u0432 \u0440\u043E\u0431\u043E\u0442\u0456"} \u2192</button>` : "";
+    const goTile = !go && ((_a2 = S.cfg) == null ? void 0 : _a2.goTabs) && gos.length ? `<button class="go-sum${goNew2 ? " new" : ""}" data-hl="set" data-h="${(_b2 = V2.find((v) => v.go)) == null ? void 0 : _b2.id}">\u{1F6F5} ${gos.length} ${goNew2 ? `\xB7 <b>${goNew2} \u043D\u043E\u0432.</b>` : "\u0432 \u0440\u043E\u0431\u043E\u0442\u0456"} \u2192</button>` : "";
     const body0 = go ? goL.length ? `<div class="go-strip go-grid">${goL.map(goTileHTML).join("")}</div>` : '<div class="muted" style="padding:14px">\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u044C \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454</div>' : `${((_c = S.cfg) == null ? void 0 : _c.goTabs) ? goTile : strip}${map ? floorUI(cur, all, inF, calls, pending) : ""}${map ? "" : `<div class="tables${rng.length > 24 ? " compact" : ""}">${tiles || `<div class="muted" style="padding:14px">${S.hf === "mine" ? "\u0423 \u0432\u0430\u0441 \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454 \u0441\u0442\u043E\u043B\u0456\u0432" : "\u0417\u0430\u0439\u043D\u044F\u0442\u0438\u0445 \u0441\u0442\u043E\u043B\u0456\u0432 \u043D\u0435\u043C\u0430\u0454"}</div>`}</div>`}`;
     const body = alerts + body0;
     return `<div class="head"><h1>${V2.length > 1 ? `<button class="hall-pick${othHot ? " hot" : ""}" data-hl="pick">${cur.ic} ${esc(cur.n)} \u25BE</button>` : "\u0417\u0430\u043B"}</h1>${tools}
@@ -2279,12 +2361,12 @@ var __objRest = (source, exclude) => {
     swap: esc(e.text)
   })[e.k] || esc(e.text || e.k);
   function renderFeed() {
-    var _a2, _b;
+    var _a2, _b2;
     const ci = $("#chatIn"), cv = ci == null ? void 0 : ci.value, cf = ci && document.activeElement === ci;
     if (S.evc) evcRender();
-    setHTML($("#events"), evHead() + (S.events.length ? (_b = (_a2 = evList().length ? evList() : null) == null ? void 0 : _a2.map((e) => {
-      var _a3, _b2, _c, _d, _e;
-      const add = ((_a3 = e.prev) == null ? void 0 : _a3.length) && ((_b2 = e.lines) == null ? void 0 : _b2.length);
+    setHTML($("#events"), evHead() + (S.events.length ? (_b2 = (_a2 = evList().length ? evList() : null) == null ? void 0 : _a2.map((e) => {
+      var _a3, _b3, _c, _d, _e;
+      const add = ((_a3 = e.prev) == null ? void 0 : _a3.length) && ((_b3 = e.lines) == null ? void 0 : _b3.length);
       const rdy = e.k === "ready" && e.text ? `<div class="lines">${esc(e.text)}</div>` : "";
       const lines = rdy || (((_c = e.lines) == null ? void 0 : _c.length) ? `${add ? '<div class="addtag">\u2795 \u0414\u041E\u0417\u0410\u041C\u041E\u0412\u041B\u0415\u041D\u041D\u042F</div>' : ""}<div class="lines${add ? " add" : ""}">${e.lines.map(esc).join("\n")}</div>` : "");
       const by = e.by && !["waiter", "chat"].includes(e.k) ? ` \xB7 ${esc(e.by)}` : "";
@@ -2293,7 +2375,7 @@ var __objRest = (source, exclude) => {
       const btns = isCour() ? "" : sb || zb || (e.k === "noscan" ? `<div class="act">${e.s === "acc" ? `<span class="muted">\u2705 ${esc(e.accBy || "")}</span>` : `<button class="btn sm green" data-a="evAck" data-id="${e.id}">\u2705 \u0406\u0434\u0443</button>`}<button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${tn(e.t)}</button></div>` : e.k === "guest" || e.k === "check" || e.k === "call" ? `<div class="act">${e.s === "acc" ? `<span class="muted">\u2705 ${esc(e.accBy || "\u043F\u0440\u0438\u0439\u043D\u044F\u0442\u043E")}</span>` : e.s === "rej" ? `<span style="color:var(--red,#ff453a)">\u274C \u0432\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E \xB7 ${esc(e.accBy || "")}</span>` : `<button class="btn sm green" data-a="accept" data-oid="${e.oid}">\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432</button>${e.k === "guest" ? `<button class="btn sm red" data-a="reject" data-oid="${e.oid}">\u274C \u0412\u0456\u0434\u0445\u0438\u043B\u0438\u0442\u0438</button>` : ""}`}<button class="btn sm" data-a="table" data-t="${e.t}">\u0421\u0442\u0456\u043B ${tn(e.t)}</button></div>` : "");
       const fresh = S.shown.size && !S.shown.has(e.id) ? " fresh" : "";
       return `<div data-ec="open" data-id="${e.id}" class="ev ${e.k}${e.pin ? " pinned" : ""}${evMention(e) ? " mention" : ""}${e.k === "call" && e.s === "new" && Date.now() - e.ts > 6e4 ? " late" : ""}${e.k === "noscan" && e.s !== "acc" ? " blink" : ""}${["guest", "check", "call", "noscan"].includes(e.k) && !["acc", "rej"].includes(e.s) || ["book", "cert", "tpay"].includes(e.k) && e.s === "new" ? " wait" : ""}${e.s === "acc" || e.s === "rej" ? " acc" : ""}${e.s && !["new", "ask", "agreed"].includes(e.s) ? " done" : ""}${e.s === "rej" ? " rej" : ""}${fresh}"><div class="top"><b>${evTitle(e)}</b><span class="tm">${e.at}${by}</span></div>${lines}${e.comment ? `<div class="com">\u{1F4AC} ${esc(e.comment)}</div>` : ""}${e.sum && ["guest", "waiter"].includes(e.k) ? `<div class="muted">\u0421\u0443\u043C\u0430 ${money(e.sum)}</div>` : ""}${btns}${evFoot(e)}</div>`;
-    }).join("")) != null ? _b : '<div class="muted" style="padding:12px">\u041F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u044C \u0449\u0435 \u043D\u0435\u043C\u0430\u0454 \u2014 \u043D\u0430\u043F\u0438\u0448\u0456\u0442\u044C \u043F\u0435\u0440\u0448\u0438\u043C \u{1F446}</div>' : '<div class="muted" style="padding:12px">\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u043F\u043E\u0434\u0456\u0439 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454</div>'));
+    }).join("")) != null ? _b2 : '<div class="muted" style="padding:12px">\u041F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u044C \u0449\u0435 \u043D\u0435\u043C\u0430\u0454 \u2014 \u043D\u0430\u043F\u0438\u0448\u0456\u0442\u044C \u043F\u0435\u0440\u0448\u0438\u043C \u{1F446}</div>' : '<div class="muted" style="padding:12px">\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u043F\u043E\u0434\u0456\u0439 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454</div>'));
     if (cv || cf) {
       const n = $("#chatIn");
       if (n) {
@@ -2309,11 +2391,11 @@ var __objRest = (source, exclude) => {
   };
   const isFood = (c) => !c.tech && c.g === "kitchen" && !c.nopack;
   const packItem = () => {
-    var _a2, _b;
-    return (_b = (_a2 = S.menu) == null ? void 0 : _a2.categories.find((c) => {
+    var _a2, _b2;
+    return (_b2 = (_a2 = S.menu) == null ? void 0 : _a2.categories.find((c) => {
       var _a3;
       return c.id === "upakuvannia" || /упаков/i.test(((_a3 = c.name) == null ? void 0 : _a3.uk) || "");
-    })) == null ? void 0 : _b.items.find((i) => !i.hidden);
+    })) == null ? void 0 : _b2.items.find((i) => !i.hidden);
   };
   const packQ = (t) => {
     if (!S.tw[t] || !S.menu) return 0;
@@ -2337,9 +2419,9 @@ var __objRest = (source, exclude) => {
   }
   const grpList = () => [{ id: "fav", name: "\u2B50 \u041E\u0431\u0440\u0430\u043D\u0456" }, ...S.groups];
   const curGrp = () => {
-    var _a2, _b, _c, _d;
+    var _a2, _b2, _c, _d;
     const g = S.grp || (S.fav.length ? "fav" : "kitchen");
-    if (g === "fav" || !((_a2 = S.groups) == null ? void 0 : _a2.length) || ((_c = (_b = S.groups.find((x) => x.id === g)) == null ? void 0 : _b.cats) == null ? void 0 : _c.length)) return g;
+    if (g === "fav" || !((_a2 = S.groups) == null ? void 0 : _a2.length) || ((_c = (_b2 = S.groups.find((x) => x.id === g)) == null ? void 0 : _b2.cats) == null ? void 0 : _c.length)) return g;
     return ((_d = S.groups.find((x) => {
       var _a3;
       return (_a3 = x.cats) == null ? void 0 : _a3.length;
@@ -2358,7 +2440,7 @@ var __objRest = (source, exclude) => {
     return c ? c.items : [];
   }
   function renderSheet() {
-    var _a2, _b, _c, _d, _e;
+    var _a2, _b2, _c, _d, _e;
     const t = S.open;
     if (!t || !$("#shHead")) return;
     const b = S.tables[t], cart = cartOf(t), cartRows = Object.entries(cart);
@@ -2373,7 +2455,7 @@ var __objRest = (source, exclude) => {
     $("#shBody").className = "sheet-body" + (S.mobileMenu ? " show-menu" : "");
     const billRows = b ? b.items.map((it) => `<div class="row"><div class="nm">${esc(it.name)}<small>${it.q} \xD7 ${Math.round(it.sum / it.q)} \u20B4</small></div><b class="money">${it.sum}</b><button class="rb minus" data-a="rm" data-name="${esc(it.name)}" title="\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 1">\u2212</button></div>`).join("") : '<div class="muted" style="padding:8px 4px">\u0420\u0430\u0445\u0443\u043D\u043E\u043A \u043F\u043E\u0440\u043E\u0436\u043D\u0456\u0439 \u2014 \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u0441\u0442\u0440\u0430\u0432\u0438 \u0432 \u043C\u0435\u043D\u044E</div>';
     const discRow = (b == null ? void 0 : b.disc) ? `<div class="row"><div class="nm">\u0417\u043D\u0438\u0436\u043A\u0430 ${b.disc}%</div><b class="money" style="color:var(--green)">\u2212${b.discSum != null ? Math.min(b.total, b.discSum) : Math.round(b.total * b.disc / 100)}</b><button class="rb minus" data-a="discSet" data-p="0">\xD7</button></div>` : "";
-    const promoRow = (b == null ? void 0 : b.promoOff) ? `<div class="row"><div class="nm muted">\u{1F381} \u0410\u043A\u0446\u0456\u0457 \u043D\u0430 \u0441\u0442\u043E\u043B\u0456 \u0432\u0438\u043C\u043A\u043D\u0435\u043D\u043E</div>${isAdmin() ? '<button class="rb plus" data-a="loyOff" data-off="0" title="\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438">\u21BA</button>' : ""}</div>` : (((_b = b == null ? void 0 : b.promo) == null ? void 0 : _b.lines) || []).filter((l) => l.amt || !l.info).map((l, i) => `<div class="row"><div class="nm">${esc(l.n)}</div><b class="money" style="color:var(--green)">${l.amt ? "\u2212" + l.amt : ""}</b>${isAdmin() && i === 0 ? '<button class="rb minus" data-a="loyOff" data-off="1" title="\u0411\u0435\u0437 \u0430\u043A\u0446\u0456\u0439">\xD7</button>' : ""}</div>`).join("");
+    const promoRow = (b == null ? void 0 : b.promoOff) ? `<div class="row"><div class="nm muted">\u{1F381} \u0410\u043A\u0446\u0456\u0457 \u043D\u0430 \u0441\u0442\u043E\u043B\u0456 \u0432\u0438\u043C\u043A\u043D\u0435\u043D\u043E</div>${isAdmin() ? '<button class="rb plus" data-a="loyOff" data-off="0" title="\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438">\u21BA</button>' : ""}</div>` : (((_b2 = b == null ? void 0 : b.promo) == null ? void 0 : _b2.lines) || []).filter((l) => l.amt || !l.info).map((l, i) => `<div class="row"><div class="nm">${esc(l.n)}</div><b class="money" style="color:var(--green)">${l.amt ? "\u2212" + l.amt : ""}</b>${isAdmin() && i === 0 ? '<button class="rb minus" data-a="loyOff" data-off="1" title="\u0411\u0435\u0437 \u0430\u043A\u0446\u0456\u0439">\xD7</button>' : ""}</div>`).join("");
     const bonRow = (b == null ? void 0 : b.bonus) ? `<div class="row"><div class="nm">${b.cert ? `\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 ${esc(b.cert.code)}${b.bonus > b.cert.sum ? " + \u{1F381} \u0431\u043E\u043D\u0443\u0441\u0438" : ""}` : "\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438"}</div><b class="money" style="color:var(--green)">\u2212${b.bonus}</b><button class="rb minus" data-a="cliBon0">\xD7</button></div>` : "";
     const tipRow = (b == null ? void 0 : b.tip) ? `<div class="row"><div class="nm">\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456<small>\u0432\u0445\u043E\u0434\u044F\u0442\u044C \u0443 \u0432\u0438\u0440\u0443\u0447\u043A\u0443</small></div><b class="money" style="color:#ff7aa8">+${b.tip}</b>${isAdmin() ? '<button class="rb minus" data-a="tipSet" data-v="0">\xD7</button>' : ""}</div>` : "";
     const paidRow = (b == null ? void 0 : b.paid) ? `<div class="row"><div class="nm">\u{1F310} \u041E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u043E\u043D\u043B\u0430\u0439\u043D<small>${b.pwait ? "\u0433\u0456\u0441\u0442\u044C \u0437\u0430\u043F\u043B\u0430\u0442\u0438\u0432 \u0437 QR \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C" : "LiqPay"}${Math.max(0, b.pay2 - (b.paid.net || 0)) ? ` \xB7 \u0434\u043E\u043F\u043B\u0430\u0442\u0430 ${money(Math.max(0, b.pay2 - (b.paid.net || 0)))}` : ""}</small></div><b class="money" style="color:var(--green,#30d158)">${money(b.paid.sum)}</b></div>` : "";
@@ -2424,7 +2506,7 @@ var __objRest = (source, exclude) => {
     });
   }
   async function addItem(id) {
-    var _a2, _b, _c, _d, _e;
+    var _a2, _b2, _c, _d, _e;
     const wasKb = searching();
     const it = itemsAll().find((i) => i.id === id);
     if (!it) return;
@@ -2437,7 +2519,7 @@ var __objRest = (source, exclude) => {
         return;
       }
     }
-    const vv = (_b = it.variants) == null ? void 0 : _b.find((x) => x.v === v);
+    const vv = (_b2 = it.variants) == null ? void 0 : _b2.find((x) => x.v === v);
     const key = it.id + (v ? "|" + v : ""), cart = cartOf(S.open);
     cart[key] || (cart[key] = { id: it.id, v, name: it.name.uk + (vv ? ` ${vv.v} ${it.size || ""}`.trimEnd() : ""), price: vv ? vv.p : it.price, q: 0 });
     const keepKb = wasKb || searching();
@@ -2555,10 +2637,10 @@ var __objRest = (source, exclude) => {
     return await ask("\u041F\u0440\u0438\u0447\u0438\u043D\u0430 \u0441\u043A\u0430\u0441\u0443\u0432\u0430\u043D\u043D\u044F", "\u041D\u0430\u043F\u0440.: \u0433\u0456\u0441\u0442\u044C \u043F\u0440\u043E\u043B\u0438\u0432, \u0437\u0430\u043C\u0456\u043D\u0438\u043B\u0438 \u043D\u0430 \u0456\u043D\u0448\u0443");
   }
   async function discFlow() {
-    var _a2, _b, _c, _d, _e;
+    var _a2, _b2, _c, _d, _e;
     const t = S.open, b = S.tables[t];
     if (!b) return;
-    const dmax = (_d = (_c = (_a2 = S.me) == null ? void 0 : _a2.dmax) != null ? _c : (_b = S.cfg) == null ? void 0 : _b.discMax) != null ? _d : 20, max = realAdmin() && ((_e = S.me) == null ? void 0 : _e.dmax) == null ? 100 : dmax;
+    const dmax = (_d = (_c = (_a2 = S.me) == null ? void 0 : _a2.dmax) != null ? _c : (_b2 = S.cfg) == null ? void 0 : _b2.discMax) != null ? _d : 20, max = realAdmin() && ((_e = S.me) == null ? void 0 : _e.dmax) == null ? 100 : dmax;
     const v = await choose(`\u0417\u043D\u0438\u0436\u043A\u0430 \u2014 \u0441\u0442\u0456\u043B ${tn(t)}`, `\u0421\u0443\u043C\u0430 ${money(b.total)}${b.disc ? ` \xB7 \u0437\u0430\u0440\u0430\u0437 ${b.disc}%` : ""}${max === 100 ? "" : ` \xB7 \u0432\u0430\u0448 \u043B\u0456\u043C\u0456\u0442 \u2014 \u0434\u043E ${dmax}%`}`, [...[5, 10, 15, 20, 25, 30, 50].filter((p2) => p2 <= max).map((p2) => ({ label: `${p2}%  \u2192  ${money(b.total - Math.round(b.total * p2 / 100))}`, val: String(p2) })), { label: "\u270F\uFE0F \u0421\u0432\u0456\u0439 \u0432\u0456\u0434\u0441\u043E\u0442\u043E\u043A", val: "own" }, { label: "\u0411\u0435\u0437 \u0437\u043D\u0438\u0436\u043A\u0438", val: "0", cls: "red" }]);
     if (v == null) return;
     let p = v;
@@ -2642,12 +2724,12 @@ var __objRest = (source, exclude) => {
     const stat = (x) => x.reopen ? "\u21A9\uFE0F \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u043E \u0437\u043D\u043E\u0432\u0443" : x.restored ? "\u21A9\uFE0F \u0432\u0456\u0434\u043D\u043E\u0432\u043B\u0435\u043D\u043E" : x.del ? "\u{1F5D1} \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E" : x.rm ? "\u{1F9F9} \u0437\u043D\u044F\u0442\u043E" : payL(x);
     const B = (a, ref, l2, cls = "", extra = "") => `<button class="c-b ${cls}" data-a="${a}" data-ref="${ref}"${extra}>${l2}</button>`;
     const card = (x, i) => {
-      var _a2, _b, _c, _d, _e, _f, _g;
+      var _a2, _b2, _c, _d, _e, _f, _g;
       const ref = x.id || l.length - 1 - i, adm = isAdmin(), g = gone(x);
       const btns = [
         !g && ((_a2 = x.dishes) == null ? void 0 : _a2.length) && B("cPrint", ref, "\u{1F5A8} \u0427\u0435\u043A"),
         !g && adm && B("cEdit", ref, "\u270F\uFE0F \u0417\u043C\u0456\u043D\u0438\u0442\u0438", "", ` data-d="${S.data.cday || ""}"`),
-        adm && !x.del && !x.reopen && ((_b = x.dishes) == null ? void 0 : _b.length) && B("cReopen", ref, "\u21A9\uFE0F \u041D\u0430 \u0441\u0442\u0456\u043B"),
+        adm && !x.del && !x.reopen && ((_b2 = x.dishes) == null ? void 0 : _b2.length) && B("cReopen", ref, "\u21A9\uFE0F \u041D\u0430 \u0441\u0442\u0456\u043B"),
         adm && x.rm && !x.reopen && !x.del && B("cBack", ref, "\u21A9\uFE0F \u0423 \u0432\u0438\u0440\u0443\u0447\u043A\u0443", "ok"),
         adm && x.del && !x.restored && (((_c = x.dishes) == null ? void 0 : _c.length) || ((_d = x.voids) == null ? void 0 : _d.length)) && B("tBack", ref, "\u21A9\uFE0F \u0412\u0456\u0434\u043D\u043E\u0432\u0438\u0442\u0438", "ok"),
         !g && adm && ((_e = x.lpo) == null ? void 0 : _e.length) && B("cRefund", ref, `\u21A9\uFE0F ${money(x.onl)} \u043D\u0430 \u043A\u0430\u0440\u0442\u043A\u0443`, "", ` data-s="${x.onl}"`),
@@ -2664,8 +2746,8 @@ var __objRest = (source, exclude) => {
   S.hall = store.get("hall", "");
   S.hf = store.get("hf", "all");
   function hallViews() {
-    var _a2, _b, _c;
-    const H = ((_b = (_a2 = S.cfg) == null ? void 0 : _a2.halls) == null ? void 0 : _b.length) ? S.cfg.halls : [{ n: "\u0417\u0430\u043B", ic: "\u{1FA91}", c: S.n }];
+    var _a2, _b2, _c;
+    const H = ((_b2 = (_a2 = S.cfg) == null ? void 0 : _a2.halls) == null ? void 0 : _b2.length) ? S.cfg.halls : [{ n: "\u0417\u0430\u043B", ic: "\u{1FA91}", c: S.n }];
     let a = 1;
     const V2 = H.map((h, i) => {
       const v = { id: "h" + i, n: h.n, ic: h.ic || "\u{1FA91}", from: a, to: Math.min(S.n, a + h.c - 1) };
@@ -2682,18 +2764,18 @@ var __objRest = (source, exclude) => {
     return V2;
   }
   const hallRng = (cur, calls = {}) => Array.from({ length: Math.max(0, cur.to - cur.from + 1) }, (_, i) => cur.from + i).filter((t) => {
-    var _a2, _b;
-    return S.hf === "busy" ? S.tables[t] || calls[t] : S.hf === "mine" ? ((_a2 = S.tables[t]) == null ? void 0 : _a2.waiter) === ((_b = S.me) == null ? void 0 : _b.name) : true;
+    var _a2, _b2;
+    return S.hf === "busy" ? S.tables[t] || calls[t] : S.hf === "mine" ? ((_a2 = S.tables[t]) == null ? void 0 : _a2.waiter) === ((_b2 = S.me) == null ? void 0 : _b2.name) : true;
   });
   S.hm = store.get("hm", "tiles");
   S.f3m = store.get("f3m", "3d");
   S.mapSel = null;
   const hk = (cur) => String(cur.from);
   function mapPos(cur) {
-    var _a2, _b, _c;
+    var _a2, _b2, _c;
     const n = cur.to - cur.from + 1, cols = Math.max(1, Math.ceil(Math.sqrt(n * 1.5))), rows = Math.ceil(n / cols), m = {}, d = S.mapDraft;
     for (let t = cur.from; t <= cur.to; t++) {
-      const i = t - cur.from, p = ((_a2 = d == null ? void 0 : d.pos) == null ? void 0 : _a2[t]) || !(d == null ? void 0 : d.r) && ((_c = (_b = S.cfg) == null ? void 0 : _b.map) == null ? void 0 : _c[t]) || [Math.round((i % cols + 0.5) / cols * 1e3) / 10, Math.round((Math.floor(i / cols) + 0.5) / rows * 1e3) / 10];
+      const i = t - cur.from, p = ((_a2 = d == null ? void 0 : d.pos) == null ? void 0 : _a2[t]) || !(d == null ? void 0 : d.r) && ((_c = (_b2 = S.cfg) == null ? void 0 : _b2.map) == null ? void 0 : _c[t]) || [Math.round((i % cols + 0.5) / cols * 1e3) / 10, Math.round((Math.floor(i / cols) + 0.5) / rows * 1e3) / 10];
       m[t] = [p[0], p[1], p[2] || "s", p[3] || 0];
     }
     return m;
@@ -2703,12 +2785,12 @@ var __objRest = (source, exclude) => {
     return V2.find((v) => v.id === S.hall) || V2[0];
   };
   function mapStart() {
-    var _a2, _b, _c, _d;
+    var _a2, _b2, _c, _d;
     const c = curHall();
     S.mapEd = 1;
     S.mapSel = null;
     S.mapDraft = null;
-    S.mapDraft = { pos: mapPos(c), deco: JSON.parse(JSON.stringify(((_b = (_a2 = S.cfg) == null ? void 0 : _a2.deco) == null ? void 0 : _b[hk(c)]) || [])), floor: ((_d = (_c = S.cfg) == null ? void 0 : _c.floor) == null ? void 0 : _d[hk(c)]) || "wood" };
+    S.mapDraft = { pos: mapPos(c), deco: JSON.parse(JSON.stringify(((_b2 = (_a2 = S.cfg) == null ? void 0 : _a2.deco) == null ? void 0 : _b2[hk(c)]) || [])), floor: ((_d = (_c = S.cfg) == null ? void 0 : _c.floor) == null ? void 0 : _d[hk(c)]) || "wood" };
   }
   const mapStop = () => {
     S.mapEd = 0;
@@ -2725,7 +2807,7 @@ var __objRest = (source, exclude) => {
     }
   }
   function floorUI(cur, all, inF, calls, pending) {
-    var _a2, _b, _c, _d, _e, _f;
+    var _a2, _b2, _c, _d, _e, _f;
     const F = window.Floor3D;
     if (!F) return '<div class="muted" style="padding:14px">\u041E\u043D\u043E\u0432\u0456\u0442\u044C \u0441\u0442\u043E\u0440\u0456\u043D\u043A\u0443</div>';
     const mp2 = mapPos(cur), ed = S.mapEd, d = S.mapDraft, key = hk(cur);
@@ -2742,7 +2824,7 @@ var __objRest = (source, exclude) => {
         F.watch(el);
       }
     });
-    const plan = F.html({ tables, deco: ed ? d.deco : ((_b = (_a2 = S.cfg) == null ? void 0 : _a2.deco) == null ? void 0 : _b[key]) || [], floor: ed ? d.floor : (_d = (_c = S.cfg) == null ? void 0 : _c.floor) == null ? void 0 : _d[key], mode: ed ? "2d" : S.f3m, edit: ed, sel: S.mapSel });
+    const plan = F.html({ tables, deco: ed ? d.deco : ((_b2 = (_a2 = S.cfg) == null ? void 0 : _a2.deco) == null ? void 0 : _b2[key]) || [], floor: ed ? d.floor : (_d = (_c = S.cfg) == null ? void 0 : _c.floor) == null ? void 0 : _d[key], mode: ed ? "2d" : S.f3m, edit: ed, sel: S.mapSel });
     if (!ed) return `<div class="f3w">${plan}</div>`;
     const sel = S.mapSel, st = (sel == null ? void 0 : sel[0]) === "t" ? +sel.slice(1) : null, sd = (sel == null ? void 0 : sel[0]) === "d" ? +sel.slice(1) : null, dx = sd != null ? d.deco[sd] : null;
     const tools = st != null ? `<div class="f3-tools"><b>\u{1FA91} \u0421\u0442\u0456\u043B ${st}</b>${Object.entries(F.SH).map(([k, v]) => `<button class="chip${mp2[st][2] === k ? " on" : ""}" data-hl="msh" data-h="${k}">${v.n}</button>`).join("")}<button class="btn sm" data-hl="mrot">\u21BB \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438</button></div>` : dx ? `<div class="f3-tools"><b>${((_e = F.K[dx[0]]) == null ? void 0 : _e.n) || ""}</b><button class="btn sm" data-hl="mrot">\u21BB \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438</button>${((_f = F.K[dx[0]]) == null ? void 0 : _f.len) ? '<button class="btn sm" data-hl="mlen" data-h="-40">\u27F7 \u2212</button><button class="btn sm" data-hl="mlen" data-h="40">\u27F7 +</button>' : ""}<button class="btn sm" data-hl="mdup">\u29C9 \u041A\u043E\u043F\u0456\u044F</button><button class="btn sm red" data-hl="mdel">\u{1F5D1}</button></div>` : '<div class="f3-tools muted">\u041F\u0435\u0440\u0435\u0442\u044F\u0433\u0443\u0439\u0442\u0435 \u0441\u0442\u043E\u043B\u0438 \u0439 \u043F\u0440\u0435\u0434\u043C\u0435\u0442\u0438 \xB7 \u0442\u043E\u0440\u043A\u043D\u0456\u0442\u044C\u0441\u044F \u2014 \u0437\u2019\u044F\u0432\u043B\u044F\u0442\u044C\u0441\u044F \u0434\u0456\u0457<button class="btn sm" data-hl="mreset" style="margin-left:auto">\u21BA \u0420\u044F\u0434\u0430\u043C\u0438</button></div>';
@@ -2760,7 +2842,7 @@ var __objRest = (source, exclude) => {
     (_a2 = el.setPointerCapture) == null ? void 0 : _a2.call(el, ev.pointerId);
   });
   document.addEventListener("pointermove", (ev) => {
-    var _a2, _b;
+    var _a2, _b2;
     if (!drag) return;
     const { el, box } = drag;
     if (!drag.mv && Math.hypot(ev.clientX - drag.x0, ev.clientY - drag.y0) < 4) return;
@@ -2771,7 +2853,7 @@ var __objRest = (source, exclude) => {
     const d = S.mapDraft;
     if (!d) return;
     if (el.dataset.mt) {
-      const p = (_a2 = d.pos)[_b = el.dataset.mt] || (_a2[_b] = [x, y, "s", 0]);
+      const p = (_a2 = d.pos)[_b2 = el.dataset.mt] || (_a2[_b2] = [x, y, "s", 0]);
       p[0] = x;
       p[1] = y;
     } else {
@@ -2840,8 +2922,8 @@ var __objRest = (source, exclude) => {
     renderMain();
   };
   async function hallPick() {
-    var _a2, _b;
-    const all = isAdmin() ? null : ((_b = (_a2 = S.cfg) == null ? void 0 : _a2.halls) == null ? void 0 : _b.length) > 1 ? 1 : null, V2 = hallViews();
+    var _a2, _b2;
+    const all = isAdmin() ? null : ((_b2 = (_a2 = S.cfg) == null ? void 0 : _a2.halls) == null ? void 0 : _b2.length) > 1 ? 1 : null, V2 = hallViews();
     const h = await choose("\u{1F3DB} \u0417\u0430\u043B", "", [...V2.map((v) => ({ label: `${v.ic} ${v.n}${v.go ? "" : ` \xB7 ${v.from}\u2013${v.to}`}`, val: v.id })), ...all ? [{ label: "\u2B50 \u041C\u043E\u0457 \u0437\u0430\u043B\u0438\u2026", val: "*" }] : []]);
     if (h === "*") return myHalls();
     if (h) hallSet(h);
@@ -2942,16 +3024,16 @@ var __objRest = (source, exclude) => {
     return `<button class="rx${a.includes((_a2 = S.me) == null ? void 0 : _a2.name) ? " on" : ""}" data-ec="rx" data-rx="${r}"${c ? ` data-c="${c}"` : ""} title="${esc(a.join(", "))}">${r} ${a.length}</button>`;
   }).join("")}</div>` : "";
   const evUnread = (e) => {
-    var _a2, _b, _c, _d;
-    if (e.k === "chat" && !S.evRead[e.id] && !e.cm && e.by !== ((_a2 = S.me) == null ? void 0 : _a2.name)) return !(e.seen || []).includes((_b = S.me) == null ? void 0 : _b.name);
+    var _a2, _b2, _c, _d;
+    if (e.k === "chat" && !S.evRead[e.id] && !e.cm && e.by !== ((_a2 = S.me) == null ? void 0 : _a2.name)) return !(e.seen || []).includes((_b2 = S.me) == null ? void 0 : _b2.name);
     const n = ((_c = e.cm) == null ? void 0 : _c.length) || 0;
     return n > (S.evRead[e.id] || 0) && e.cm[n - 1].by !== ((_d = S.me) == null ? void 0 : _d.name);
   };
   const evMention = (e) => {
     var _a2;
     return evUnread(e) && (!e.cm ? !!((_a2 = e.m) == null ? void 0 : _a2.some(isMe)) : e.cm.slice(S.evRead[e.id] || 0).some((c) => {
-      var _a3, _b;
-      return c.by !== ((_a3 = S.me) == null ? void 0 : _a3.name) && ((_b = c.m) == null ? void 0 : _b.some(isMe));
+      var _a3, _b2;
+      return c.by !== ((_a3 = S.me) == null ? void 0 : _a3.name) && ((_b2 = c.m) == null ? void 0 : _b2.some(isMe));
     }));
   };
   const isMe = (x) => {
@@ -2960,10 +3042,10 @@ var __objRest = (source, exclude) => {
   };
   const cmText = (c) => esc(c.text).replace(/@([^\s@,.!?]{2,24})/g, '<b class="ment">@$1</b>');
   function evFoot(e) {
-    var _a2, _b;
+    var _a2, _b2;
     const n = ((_a2 = e.cm) == null ? void 0 : _a2.length) || 0, last = n ? e.cm[n - 1] : null, un = evUnread(e);
     if (!n && !e.pin && !e.rx) return "";
-    return `${evRx(e)}<div class="evf">${e.pin ? '<span class="pin">\u{1F4CC}</span>' : ""}<span class="evc${un ? " un" : ""}${evMention(e) ? " me" : ""}">\u{1F4AC} ${n || ""}${un ? " \u043D\u043E\u0432\u0435" : ""}</span>${last ? `<span class="evl"><b>${esc(last.by)}:</b> ${last.v ? "\u{1F399} \u0433\u043E\u043B\u043E\u0441\u043E\u0432\u0435" : esc(last.text)}</span>` : '<span class="evl"></span>'}${((_b = e.seen) == null ? void 0 : _b.length) ? `<span class="seen" title="${esc(e.seen.join(", "))}">\u{1F441} ${e.seen.length}</span>` : ""}</div>`;
+    return `${evRx(e)}<div class="evf">${e.pin ? '<span class="pin">\u{1F4CC}</span>' : ""}<span class="evc${un ? " un" : ""}${evMention(e) ? " me" : ""}">\u{1F4AC} ${n || ""}${un ? " \u043D\u043E\u0432\u0435" : ""}</span>${last ? `<span class="evl"><b>${esc(last.by)}:</b> ${last.v ? "\u{1F399} \u0433\u043E\u043B\u043E\u0441\u043E\u0432\u0435" : esc(last.text)}</span>` : '<span class="evl"></span>'}${((_b2 = e.seen) == null ? void 0 : _b2.length) ? `<span class="seen" title="${esc(e.seen.join(", "))}">\u{1F441} ${e.seen.length}</span>` : ""}</div>`;
   }
   function evList() {
     let l = [...S.events].reverse();
@@ -2991,14 +3073,14 @@ var __objRest = (source, exclude) => {
     }
   }
   function evNotify(prev) {
-    var _a2, _b, _c, _d;
+    var _a2, _b2, _c, _d;
     if (!(prev == null ? void 0 : prev.length)) return;
     const old = Object.fromEntries(prev.map((e) => {
       var _a3;
       return [e.id, ((_a3 = e.cm) == null ? void 0 : _a3.length) || 0];
     }));
     let any = 0, me = 0;
-    for (const e of S.events) for (const c of (e.cm || []).slice((_b = old[e.id]) != null ? _b : ((_a2 = e.cm) == null ? void 0 : _a2.length) || 0)) if (c.by !== ((_c = S.me) == null ? void 0 : _c.name)) {
+    for (const e of S.events) for (const c of (e.cm || []).slice((_b2 = old[e.id]) != null ? _b2 : ((_a2 = e.cm) == null ? void 0 : _a2.length) || 0)) if (c.by !== ((_c = S.me) == null ? void 0 : _c.name)) {
       any = 1;
       if ((_d = c.m) == null ? void 0 : _d.some(isMe)) me = 1;
     }
@@ -3010,7 +3092,7 @@ var __objRest = (source, exclude) => {
   }
   const evGet = () => S.events.find((e) => e.id === S.evc);
   function evcOpen(id) {
-    var _a2, _b;
+    var _a2, _b2;
     S.evc = id;
     const e = evGet();
     if (!e) return;
@@ -3023,7 +3105,7 @@ var __objRest = (source, exclude) => {
       <div class="evc-in"><button class="btn sm ghost" data-ec="mic" id="evcMic" title="\u0413\u043E\u043B\u043E\u0441\u043E\u0432\u0435">\u{1F399}</button><input id="evcIn" placeholder="\u041A\u043E\u043C\u0435\u043D\u0442\u0430\u0440\u2026 (@\u0456\u043C'\u044F \u2014 \u0437\u0433\u0430\u0434\u0430\u0442\u0438)" maxlength="300" autocomplete="off"><button class="btn sm primary" data-ec="send">\u27A4</button></div></div>`;
     document.body.append(d);
     evcRender(true);
-    if (!(e.seen || []).includes((_b = S.me) == null ? void 0 : _b.name)) api("evSeen", { id }).catch(() => {
+    if (!(e.seen || []).includes((_b2 = S.me) == null ? void 0 : _b2.name)) api("evSeen", { id }).catch(() => {
     });
     if (matchMedia("(min-width:700px)").matches) setTimeout(() => {
       var _a3;
@@ -3037,7 +3119,7 @@ var __objRest = (source, exclude) => {
     (_a2 = $("#evcBox")) == null ? void 0 : _a2.remove();
   }
   function evcRender(scroll) {
-    var _a2, _b, _c;
+    var _a2, _b2, _c;
     const e = evGet(), L = $("#evcList");
     if (!L) return;
     if (!e) return evcClose();
@@ -3045,10 +3127,10 @@ var __objRest = (source, exclude) => {
       var _a3;
       return c.by === ((_a3 = S.me) == null ? void 0 : _a3.name);
     }, me = (_a2 = S.me) == null ? void 0 : _a2.name;
-    setHTML($("#evcHd"), `<div class="evc-t"><b>${evTitle(e)}</b><span class="tm">${e.at}${e.by ? " \xB7 " + esc(e.by) : ""}</span>${((_b = e.lines) == null ? void 0 : _b.length) ? `<div class="lines">${e.lines.map(esc).join("\n")}</div>` : e.k === "ready" && e.text ? `<div class="lines">${esc(e.text)}</div>` : ""}${e.comment ? `<div class="com">\u{1F4AC} ${esc(e.comment)}</div>` : ""}</div>
+    setHTML($("#evcHd"), `<div class="evc-t"><b>${evTitle(e)}</b><span class="tm">${e.at}${e.by ? " \xB7 " + esc(e.by) : ""}</span>${((_b2 = e.lines) == null ? void 0 : _b2.length) ? `<div class="lines">${e.lines.map(esc).join("\n")}</div>` : e.k === "ready" && e.text ? `<div class="lines">${esc(e.text)}</div>` : ""}${e.comment ? `<div class="com">\u{1F4AC} ${esc(e.comment)}</div>` : ""}</div>
       <div class="evc-tools">${RXS.map((r) => {
-      var _a3, _b2, _c2;
-      return `<button class="rx${((_b2 = (_a3 = e.rx) == null ? void 0 : _a3[r]) == null ? void 0 : _b2.includes(me)) ? " on" : ""}" data-ec="rx" data-rx="${r}">${r}${((_c2 = e.rx) == null ? void 0 : _c2[r]) ? " " + e.rx[r].length : ""}</button>`;
+      var _a3, _b3, _c2;
+      return `<button class="rx${((_b3 = (_a3 = e.rx) == null ? void 0 : _a3[r]) == null ? void 0 : _b3.includes(me)) ? " on" : ""}" data-ec="rx" data-rx="${r}">${r}${((_c2 = e.rx) == null ? void 0 : _c2[r]) ? " " + e.rx[r].length : ""}</button>`;
     }).join("")}<span class="sp"></span>${isAdmin() || e.by === me ? `<button class="btn sm ghost" data-ec="pin">${e.pin ? "\u{1F4CC} \u0412\u0456\u0434\u043A\u0440\u0456\u043F\u0438\u0442\u0438" : "\u{1F4CC}"}</button>` : ""}<button class="close-x" data-ec="close">\u2715</button></div>
       ${((_c = e.seen) == null ? void 0 : _c.length) ? `<div class="seen muted">\u{1F441} ${esc(e.seen.join(", "))}</div>` : ""}`);
     const atBottom = L.scrollHeight - L.scrollTop - L.clientHeight < 40;
@@ -3262,7 +3344,7 @@ var __objRest = (source, exclude) => {
       pick($("#gAdr"), el);
     };
     $("#gP").onchange = async () => {
-      var _a2, _b;
+      var _a2, _b2;
       const r = await api("cliGet", { phone: $("#gP").value }).catch(() => null), box = $("#gCli");
       box.hidden = false;
       if (!(r == null ? void 0 : r.cli)) {
@@ -3275,7 +3357,7 @@ var __objRest = (source, exclude) => {
       box.innerHTML = `\u{1F464} <b>${esc(c.name || "\u041A\u043B\u0456\u0454\u043D\u0442")}</b> \xB7 ${c.n} \u0437\u0430\u043C\u043E\u0432\u043B. \xB7 \u{1F381} <b>${money(c.bal || 0)}</b>`;
       $("#gAdr").innerHTML = (c.addr || []).map((a, i) => `<button class="chip sm${i ? "" : " on"}" data-v="${esc(a)}">\u{1F4CD} ${esc(a)}</button>`).join("");
       $("#gAdr").hidden = kind !== "del" || !((_a2 = c.addr) == null ? void 0 : _a2.length);
-      if (!$("#gA").value && ((_b = c.addr) == null ? void 0 : _b[0])) $("#gA").value = c.addr[0];
+      if (!$("#gA").value && ((_b2 = c.addr) == null ? void 0 : _b2[0])) $("#gA").value = c.addr[0];
     };
     setTimeout(() => {
       var _a2;
@@ -3363,13 +3445,13 @@ var __objRest = (source, exclude) => {
   }
   const minsAgo = (ts) => ts ? Math.max(0, Math.round((Date.now() - ts) / 6e4)) : 0;
   function goHTML() {
-    var _a2, _b, _c;
+    var _a2, _b2, _c;
     const me = (_a2 = S.me) == null ? void 0 : _a2.name, C = S.data.cour, all = Object.values(S.tables).filter((b) => b.t > 1e3 && b.t < 2e3 && b.go && !["new", "done", "rej"].includes(b.go.st));
     const fresh = all.filter((b) => !b.go.cour), mine = all.filter((b) => b.go.cour === me).sort((a, b) => (a.go.takeAt || 0) - (b.go.takeAt || 0));
     const seen = S.courSeen || (S.courSeen = /* @__PURE__ */ new Set());
     if (S.courReady && fresh.some((b) => !seen.has(b.t)) || mine.some((b) => b.go.st === "ready" && !seen.has("r" + b.t))) {
       ding();
-      ((_b = navigator.userActivation) == null ? void 0 : _b.hasBeenActive) && ((_c = navigator.vibrate) == null ? void 0 : _c.call(navigator, [200, 100, 200]));
+      ((_b2 = navigator.userActivation) == null ? void 0 : _b2.hasBeenActive) && ((_c = navigator.vibrate) == null ? void 0 : _c.call(navigator, [200, 100, 200]));
     }
     fresh.forEach((b) => seen.add(b.t));
     mine.forEach((b) => {
@@ -3431,13 +3513,13 @@ var __objRest = (source, exclude) => {
       <section><h3>\u2705 \u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \xB7 ${done.length}</h3><div class="card">${done.map((x) => `<div class="kv"><span><b>${tn(x.t)}</b> \xB7 ${x.at} \xB7 ${esc(x.n)}${x.mins != null ? ` \xB7 ${x.mins} \u0445\u0432` : ""}</span><b class="money">${money(x.sum)} ${x.pay === "card" ? "\u{1F4B3}" : "\u{1F4B5}"}</b></div>`).join("") || '<div class="cr-empty">\u0429\u0435 \u043D\u0456\u0447\u043E\u0433\u043E</div>'}</div></section></div>`;
   }
   function courCard() {
-    var _a2, _b;
-    const L = ((_b = (_a2 = S.data.cours) == null ? void 0 : _a2.list) == null ? void 0 : _b.filter((c) => c.n || c.left)) || [];
+    var _a2, _b2;
+    const L = ((_b2 = (_a2 = S.data.cours) == null ? void 0 : _a2.list) == null ? void 0 : _b2.filter((c) => c.n || c.left)) || [];
     if (!L.length) return "";
     return `<div class="card cr-adm"><h3>\u{1F6F5} \u041A\u0443\u0440'\u0454\u0440\u0438 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</h3>${L.map((c) => `<div class="kv"><span><b>${esc(c.name)}</b> ${c.tg ? "\u2708\uFE0F" : ""}<br><small class="muted">${c.n} \u0434\u043E\u0441\u0442\u0430\u0432\u043E\u043A${c.avg != null ? ` \xB7 \u2300 ${c.avg} \u0445\u0432 \u0443 \u0434\u043E\u0440\u043E\u0437\u0456` : ""} \xB7 \u0437\u0430\u0440\u043E\u0431\u0456\u0442\u043E\u043A ${money(c.earn)}${c.given ? ` \xB7 \u0437\u0434\u0430\u0432 ${money(c.given)}` : ""}</small></span><span class="kv-r"><b class="money">${money(c.left)}</b>${c.left > 0 ? `<button class="btn sm green" data-a="crGive" data-n="${esc(c.name)}" data-v="${c.left}">\u2705 \u041E\u0442\u0440\u0438\u043C\u0430\u0432</button>` : ""}</span></div>`).join("")}</div>`;
   }
   function goSetHTML() {
-    var _a2, _b, _c, _d;
+    var _a2, _b2, _c, _d;
     const c = S.data.gocfg;
     if (!c) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
     const row = (k, l, v, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ""}</span><span class="kv-r"><b>${v}</b><button class="btn sm" data-a="goCfg" data-k="${k}" data-l="${esc(l)}">${["on", "del", "pick", "track"].includes(k) ? c[k] ? "\u0432\u0438\u043C\u043A\u043D\u0443\u0442\u0438" : "\u0443\u0432\u0456\u043C\u043A\u043D\u0443\u0442\u0438" : "\u0437\u043C\u0456\u043D\u0438\u0442\u0438"}</button></span></div>`;
@@ -3451,7 +3533,7 @@ var __objRest = (source, exclude) => {
       <div class="card"><h3>\u{1F517} \u041F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F \u0434\u043B\u044F \u0433\u043E\u0441\u0442\u0435\u0439</h3><div class="muted set-note">\u0406\u043D\u0441\u0442\u0430\u0433\u0440\u0430\u043C, Google Maps, \u043C\u0435\u0441\u0435\u043D\u0434\u0436\u0435\u0440\u0438 \u2014 \u0433\u0456\u0441\u0442\u044C \u0432\u0456\u0434\u043A\u0440\u0438\u0432\u0430\u0454 \u0456 \u0437\u0430\u043C\u043E\u0432\u043B\u044F\u0454 \u0437 \u0441\u043E\u0431\u043E\u044E. \u041E\u043A\u0440\u0435\u043C\u0456 \u043F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F \u043F\u043E\u043A\u0430\u0437\u0443\u044E\u0442\u044C \u0443 \u0437\u0432\u0456\u0442\u0430\u0445, \u0437\u0432\u0456\u0434\u043A\u0438 \u043F\u0440\u0438\u0439\u0448\u043B\u043E \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F.</div>
         <div class="btnrow"><button class="btn sm primary" data-a="goLink">\u{1F4CB} \u041E\u0441\u043D\u043E\u0432\u043D\u0435</button><button class="btn sm" data-a="goLink" data-src="insta">Instagram</button><button class="btn sm" data-a="goLink" data-src="google">Google</button><button class="btn sm" data-a="goLink" data-src="tiktok">TikTok</button></div>
 </div>
-      <div class="card"><h3>\u{1F6F5} \u041A\u0443\u0440'\u0454\u0440\u0438</h3><div class="muted set-note">\u0420\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u044F \u0432 \u043A\u0430\u0441\u0456 \u043A\u043E\u0434\u043E\u043C <b>${esc(((_b = (_a2 = S.data.staff) == null ? void 0 : _a2.reg) == null ? void 0 : _b.courier) || "1114")}</b> \u2192 \u0443 \u0441\u0432\u043E\u0454\u043C\u0443 \u0435\u043A\u0440\u0430\u043D\u0456 \u043A\u0443\u0440'\u0454\u0440 \u043D\u0430\u0442\u0438\u0441\u043A\u0430\u0454 \xAB\u2708\uFE0F \u041F\u0456\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u0438 Telegram\xBB. \u0411\u043E\u0442 \u043A\u0443\u0440'\u0454\u0440\u0456\u0432: ${((_c = S.data.cours) == null ? void 0 : _c.bot) ? `<a href="https://t.me/${esc(S.data.cours.bot)}" target="_blank" rel="noopener">@${esc(S.data.cours.bot)}</a>` : "\u2014"}</div>
+      <div class="card"><h3>\u{1F6F5} \u041A\u0443\u0440'\u0454\u0440\u0438</h3><div class="muted set-note">\u0420\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u044F \u0432 \u043A\u0430\u0441\u0456 \u043A\u043E\u0434\u043E\u043C <b>${esc(((_b2 = (_a2 = S.data.staff) == null ? void 0 : _a2.reg) == null ? void 0 : _b2.courier) || "1114")}</b> \u2192 \u0443 \u0441\u0432\u043E\u0454\u043C\u0443 \u0435\u043A\u0440\u0430\u043D\u0456 \u043A\u0443\u0440'\u0454\u0440 \u043D\u0430\u0442\u0438\u0441\u043A\u0430\u0454 \xAB\u2708\uFE0F \u041F\u0456\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u0438 Telegram\xBB. \u0411\u043E\u0442 \u043A\u0443\u0440'\u0454\u0440\u0456\u0432: ${((_c = S.data.cours) == null ? void 0 : _c.bot) ? `<a href="https://t.me/${esc(S.data.cours.bot)}" target="_blank" rel="noopener">@${esc(S.data.cours.bot)}</a>` : "\u2014"}</div>
         ${(((_d = S.data.cours) == null ? void 0 : _d.list) || []).map((c2) => `<div class="kv"><span>${esc(c2.name)}</span><span class="kv-r">${c2.tg ? "\u2708\uFE0F Telegram \u043F\u0456\u0434\u043A\u043B\u044E\u0447\u0435\u043D\u043E" : '<span class="muted">\u0431\u0435\u0437 Telegram</span>'}</span></div>`).join("") || `<div class="muted">\u041A\u0443\u0440'\u0454\u0440\u0456\u0432 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454</div>`}</div></div>`;
   }
   function goTileInfo(g) {
@@ -3533,13 +3615,13 @@ var __objRest = (source, exclude) => {
     const list = L0.filter((b) => b.date === day && (S.bkAll || act2(b)));
     const guests = list.filter(act2).reduce((a, b) => a + b.people, 0);
     const card = (b) => {
-      var _a2, _b;
+      var _a2, _b2;
       return `<div class="bk-c st-${b.st}">
       <div class="bk-t"><b>${b.time}</b><small>${b.people} \u{1F464}</small></div>
       <div class="bk-m"><div class="bk-n"><b>${esc(b.name)}</b>${b.kind === "banquet" ? '<span class="chip">\u{1F389} \u0431\u0430\u043D\u043A\u0435\u0442</span>' : ""}<span class="chip bk-s">${BKS[b.st]}</span>${b.t ? `<span class="chip">\u{1FA91} ${b.t}</span>` : b.tw ? `<span class="chip" title="\u0413\u0456\u0441\u0442\u044C \u043E\u0431\u0440\u0430\u0432 \u043D\u0430 \u0441\u0445\u0435\u043C\u0456">\u{1F5FA} \u0431\u0430\u0436\u0430\u0454 ${b.tw}</span>` : ""}${b.src === "\u043A\u0430\u0441\u0430" ? '<span class="chip">\u260E\uFE0F \u043A\u0430\u0441\u0430</span>' : ""}</div>
         <a href="tel:+${b.phone}">\u{1F4DE} ${fmtPh(b.phone)}</a>${b.comment ? `<div class="muted">\u{1F4AC} ${esc(b.comment)}</div>` : ""}${b.note ? `<div class="bk-note">\u{1F4CC} ${esc(b.note)}</div>` : ""}${((_a2 = b.pre) == null ? void 0 : _a2.length) ? `<div class="bk-pre">\u{1F37D} ${b.pre.map(esc).join(" \xB7 ")}${b.preSent ? ' <span class="muted">\xB7 \u043D\u0430 \u043A\u0443\u0445\u043D\u0456</span>' : ""}</div>` : ""}
         <div class="btnrow">${b.st === "new" ? `<button class="btn sm green" data-a="bkSet" data-id="${b.id}" data-s="ok">\u2705 \u041F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438</button><button class="btn sm red" data-a="bkSet" data-id="${b.id}" data-s="no">\u274C \u0412\u0456\u0434\u0445\u0438\u043B\u0438\u0442\u0438</button>` : ""}
-          ${b.st === "ok" ? `<button class="btn sm green" data-a="bkCame" data-id="${b.id}">\u{1FA91} \u041F\u0440\u0438\u0439\u0448\u043B\u0438</button><button class="btn sm" data-a="bkTbl" data-id="${b.id}">${b.t ? "\u{1F504} \u0421\u0442\u0456\u043B" : "\u{1FA91} \u0421\u0442\u0456\u043B"}</button>${((_b = b.pre) == null ? void 0 : _b.length) && !b.preSent ? `<button class="btn sm" data-a="bkSet" data-id="${b.id}" data-s="kit">\u{1F525} \u041D\u0430 \u043A\u0443\u0445\u043D\u044E</button>` : ""}<button class="btn sm" data-a="bkSet" data-id="${b.id}" data-s="noshow">\u{1F6AB} \u041D\u0435 \u043F\u0440\u0438\u0439\u0448\u043B\u0438</button>` : ""}
+          ${b.st === "ok" ? `<button class="btn sm green" data-a="bkCame" data-id="${b.id}">\u{1FA91} \u041F\u0440\u0438\u0439\u0448\u043B\u0438</button><button class="btn sm" data-a="bkTbl" data-id="${b.id}">${b.t ? "\u{1F504} \u0421\u0442\u0456\u043B" : "\u{1FA91} \u0421\u0442\u0456\u043B"}</button>${((_b2 = b.pre) == null ? void 0 : _b2.length) && !b.preSent ? `<button class="btn sm" data-a="bkSet" data-id="${b.id}" data-s="kit">\u{1F525} \u041D\u0430 \u043A\u0443\u0445\u043D\u044E</button>` : ""}<button class="btn sm" data-a="bkSet" data-id="${b.id}" data-s="noshow">\u{1F6AB} \u041D\u0435 \u043F\u0440\u0438\u0439\u0448\u043B\u0438</button>` : ""}
           ${["no", "cancel", "noshow", "came"].includes(b.st) ? `<button class="btn sm" data-a="bkSet" data-id="${b.id}" data-s="ok">\u21A9\uFE0F \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438</button>` : ""}
           <button class="btn sm" data-a="bkEd" data-id="${b.id}">\u270F\uFE0F</button>${["new", "ok"].includes(b.st) ? `<button class="btn sm red" data-a="bkSet" data-id="${b.id}" data-s="cancel" title="\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438">\u{1F5D1}</button>` : ""}</div></div></div>`;
     };
@@ -3738,11 +3820,11 @@ var __objRest = (source, exclude) => {
   }
   let wakeLock;
   async function kitchenStart() {
-    var _a2, _b, _c, _d;
+    var _a2, _b2, _c, _d;
     (_a2 = $("#kGate")) == null ? void 0 : _a2.remove();
     tone([660], 0.05, 0.01);
     try {
-      await ((_c = (_b = document.documentElement).requestFullscreen) == null ? void 0 : _c.call(_b));
+      await ((_c = (_b2 = document.documentElement).requestFullscreen) == null ? void 0 : _c.call(_b2));
     } catch (e) {
     }
     try {
@@ -3925,14 +4007,14 @@ var __objRest = (source, exclude) => {
     }
   }
   async function cEdit(ref, day) {
-    var _a2, _b, _c;
+    var _a2, _b2, _c;
     const [cl, st] = await Promise.all([api("closed", { day }).catch(() => null), api("staff").catch(() => null)]);
     if (!S.menu) await loadMenu().catch(() => {
     });
     const l = (cl == null ? void 0 : cl.list) || [], x = l.find((e) => e.id === ref) || (/^\d+$/.test(ref) ? l[+ref] : null);
     if (!x) return toast("\u0427\u0435\u043A \u043D\u0435 \u0437\u043D\u0430\u0439\u0434\u0435\u043D\u043E");
     if (x.del || x.rm) return toast("\u0427\u0435\u043A \u0437\u043D\u044F\u0442\u043E \u0437 \u0432\u0438\u0440\u0443\u0447\u043A\u0438 \u2014 \u0441\u043F\u0435\u0440\u0448\u0443 \u043F\u043E\u0432\u0435\u0440\u043D\u0456\u0442\u044C");
-    const E = { items: (x.dishes || []).map((d) => [...d]), disc: x.disc || 0, tip: x.tip || 0, pay: x.card && ((_a2 = x.cash) != null ? _a2 : 0) ? "mix" : x.card ? "card" : "cash", cash: (_b = x.cash) != null ? _b : x.sum, w: x.w || x.by || "", t: x.t };
+    const E = { items: (x.dishes || []).map((d) => [...d]), disc: x.disc || 0, tip: x.tip || 0, pay: x.card && ((_a2 = x.cash) != null ? _a2 : 0) ? "mix" : x.card ? "card" : "cash", cash: (_b2 = x.cash) != null ? _b2 : x.sum, w: x.w || x.by || "", t: x.t };
     const opts = itemsAll().flatMap((it) => it.variants ? it.variants.map((v) => [`${it.name.uk} ${v.v} ${it.size || "\u043B"}`.trimEnd(), v.p]) : [[it.name.uk, it.price]]);
     const names = [...new Set(((st == null ? void 0 : st.staff) || []).filter((s) => s.role !== "courier").map((s) => s.name))];
     const calc = () => {
@@ -4012,8 +4094,8 @@ var __objRest = (source, exclude) => {
     }
   }
   function perRange(p) {
-    var _a2, _b;
-    const now = new Date(Date.now() - ((_b = (_a2 = S.cfg) == null ? void 0 : _a2.dayH) != null ? _b : 3) * 36e5), day = 864e5, y = now.getFullYear(), mo = now.getMonth();
+    var _a2, _b2;
+    const now = new Date(Date.now() - ((_b2 = (_a2 = S.cfg) == null ? void 0 : _a2.dayH) != null ? _b2 : 3) * 36e5), day = 864e5, y = now.getFullYear(), mo = now.getMonth();
     if (p === "d") return [iso(now), iso(now)];
     if (p === "y") return [iso(now - day), iso(now - day)];
     if (p === "w") return [iso(now - 6 * day), iso(now)];
@@ -4425,8 +4507,8 @@ var __objRest = (source, exclude) => {
     const R = S.stR, GU = { kitchen: "\u{1F373} \u043A\u0443\u0445\u043D\u044F", bar: "\u{1F379} \u0431\u0430\u0440", hookah: "\u{1F4A8} \u043A\u0430\u043B\u044C\u044F\u043D", other: "\u{1F4E6} \u0456\u043D\u0448\u0435" };
     return `<div class="card" style="margin-top:12px"><h3>\u{1F373} \u0426\u0435\u0445\u0438 \u043A\u0443\u0445\u043D\u0456</h3><div class="muted" style="font-size:13px;margin-bottom:8px">\u0413\u0430\u0440\u044F\u0447\u0438\u0439, \u0445\u043E\u043B\u043E\u0434\u043D\u0438\u0439, \u0431\u0430\u0440\u2026 \u2014 \u0443 \u043A\u043E\u0436\u043D\u043E\u0433\u043E \u0441\u0432\u0456\u0439 \u0435\u043A\u0440\u0430\u043D (/k), \u043A\u0432\u0438\u0442\u043E\u043A \u043D\u0430 \u0441\u0432\u0456\u0439 \u043F\u0440\u0438\u043D\u0442\u0435\u0440 \u0456 \u0441\u0432\u0456\u0439 \u0441\u0442\u0430\u0442\u0443\u0441 \xAB\u0433\u043E\u0442\u043E\u0432\u043E\xBB. \u0411\u0435\u0437 \u0446\u0435\u0445\u0456\u0432 \u0443\u0441\u0435 \u043F\u0440\u0430\u0446\u044E\u0454 \u044F\u043A \u0440\u0430\u043D\u0456\u0448\u0435.</div>
       ${R.sts.map((z) => {
-      var _a2, _b;
-      return `<div class="kv"><span>${esc((z.emoji ? z.emoji + " " : "") + z.name)} <span class="muted">\xB7 ${z.g.map((g) => GU[g]).join(", ") || "\u043B\u0438\u0448\u0435 \u0440\u043E\u0437\u0434\u0456\u043B\u0438"}${z.pr ? " \xB7 \u{1F5A8} " + esc(((_b = (((_a2 = S.prnR) == null ? void 0 : _a2.route.st) || []).find((p) => p.id === z.pr)) == null ? void 0 : _b.name) || z.pr) : ""}${z.scr ? "" : " \xB7 \u0431\u0435\u0437 \u0435\u043A\u0440\u0430\u043D\u0430"}</span></span><span style="display:flex;gap:6px"><button class="btn sm" data-stx="edit" data-id="${z.id}">\u270F\uFE0F</button><button class="btn sm" data-stx="del" data-id="${z.id}">\u{1F5D1}</button></span></div>`;
+      var _a2, _b2;
+      return `<div class="kv"><span>${esc((z.emoji ? z.emoji + " " : "") + z.name)} <span class="muted">\xB7 ${z.g.map((g) => GU[g]).join(", ") || "\u043B\u0438\u0448\u0435 \u0440\u043E\u0437\u0434\u0456\u043B\u0438"}${z.pr ? " \xB7 \u{1F5A8} " + esc(((_b2 = (((_a2 = S.prnR) == null ? void 0 : _a2.route.st) || []).find((p) => p.id === z.pr)) == null ? void 0 : _b2.name) || z.pr) : ""}${z.scr ? "" : " \xB7 \u0431\u0435\u0437 \u0435\u043A\u0440\u0430\u043D\u0430"}</span></span><span style="display:flex;gap:6px"><button class="btn sm" data-stx="edit" data-id="${z.id}">\u270F\uFE0F</button><button class="btn sm" data-stx="del" data-id="${z.id}">\u{1F5D1}</button></span></div>`;
     }).join("") || '<div class="muted">\u0426\u0435\u0445\u0456\u0432 \u043D\u0435\u043C\u0430\u0454 \u2014 \u043F\u0440\u0430\u0446\u044E\u0454 \u043E\u0434\u043D\u0430 \u043A\u0443\u0445\u043D\u044F.</div>'}
       <div class="btnrow" style="margin-top:8px"><button class="btn sm" data-stx="add">\u2795 \u0426\u0435\u0445</button></div>
       ${R.sts.length ? `<h3 class="muted" style="margin:14px 0 6px;font-size:14px">\u0420\u043E\u0437\u0434\u0456\u043B\u0438 \u043C\u0435\u043D\u044E \u2192 \u0446\u0435\u0445</h3>${R.cats.map((c) => `<div class="kv"><span>${esc(c.name)}</span><select data-stx="cat" data-id="${esc(c.id)}"><option value="">\u0430\u0432\u0442\u043E (\u0437\u0430 \u0433\u0440\u0443\u043F\u043E\u044E)</option>${R.sts.map((z) => `<option value="${z.id}" ${c.st === z.id ? "selected" : ""}>${esc((z.emoji ? z.emoji + " " : "") + z.name)}</option>`).join("")}</select></div>`).join("")}` : ""}</div>`;
@@ -4624,7 +4706,7 @@ var __objRest = (source, exclude) => {
         <div class="set-note muted" style="margin-top:10px">\u0413\u0443\u0447\u043D\u0456\u0441\u0442\u044C</div><div class="lk-row">${[30, 50, 70, 100].map((v) => opt("vol", v, v + "%")).join("")}</div></div></div>`;
   }
   function settingsHTML(only) {
-    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
+    var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k;
     const st = S.data.staff, wf = S.data.wifi, c = (st == null ? void 0 : st.cfg) || {};
     const ROLE = { admin: "\u{1F510} \u0430\u0434\u043C\u0456\u043D", cook: "\u{1F468}\u200D\u{1F373} \u043A\u0443\u0445\u0430\u0440", courier: "\u{1F6F5} \u043A\u0443\u0440'\u0454\u0440", waiter: "\u{1F9D1}\u200D\u{1F373} \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442" };
     const row = (l, v, btn, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ""}</span><span class="kv-r"><b>${v}</b>${btn}</span></div>`;
@@ -4659,7 +4741,7 @@ var __objRest = (source, exclude) => {
     })()}</div>
       <div class="card"><h3>\u{1F4B0} \u0413\u0440\u043E\u0448\u0456</h3>
         ${row("\u{1F3F7} \u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430", ((_a2 = c.discMax) != null ? _a2 : 20) + "%", ch("cfg", ' data-k="discMax"'), "\u0411\u0456\u043B\u044C\u0448\u0443 \u0437\u043D\u0438\u0436\u043A\u0443 \u0434\u0430\u0454 \u043B\u0438\u0448\u0435 \u0430\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440")}
-        ${row("\u{1F468}\u200D\u{1F373} \u0427\u0430\u0441\u0442\u043A\u0430 \u043A\u0443\u0445\u043D\u0456 \u0432\u0456\u0434 \u0447\u0430\u0439\u043E\u0432\u0438\u0445", ((_b = st == null ? void 0 : st.kpct) != null ? _b : 20) + "%", ch("kpct"), `\u041F\u043B\u044E\u0441 \xAB\u043F\u043E\u0434\u044F\u043A\u0430 \u043A\u0443\u0445\u043D\u0456\xBB \u0432\u0456\u0434 \u0433\u043E\u0441\u0442\u044F; \u043F\u043E\u0440\u0456\u0432\u043D\u0443 \u043C\u0456\u0436 \u043A\u0443\u0445\u0430\u0440\u044F\u043C\u0438 \u043D\u0430 \u0437\u043C\u0456\u043D\u0456${((_c = st == null ? void 0 : st.cooks) == null ? void 0 : _c.length) ? ` (\u0437\u0430\u0440\u0430\u0437: ${st.cooks.map(esc).join(", ")})` : " (\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0449\u0435 \u043D\u0456\u043A\u043E\u0433\u043E \u2014 \u043F\u0456\u0434\u0435 \u0432 \xAB\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u043D\u044F\xBB)"}`)}</div>
+        ${row("\u{1F468}\u200D\u{1F373} \u0427\u0430\u0441\u0442\u043A\u0430 \u043A\u0443\u0445\u043D\u0456 \u0432\u0456\u0434 \u0447\u0430\u0439\u043E\u0432\u0438\u0445", ((_b2 = st == null ? void 0 : st.kpct) != null ? _b2 : 20) + "%", ch("kpct"), `\u041F\u043B\u044E\u0441 \xAB\u043F\u043E\u0434\u044F\u043A\u0430 \u043A\u0443\u0445\u043D\u0456\xBB \u0432\u0456\u0434 \u0433\u043E\u0441\u0442\u044F; \u043F\u043E\u0440\u0456\u0432\u043D\u0443 \u043C\u0456\u0436 \u043A\u0443\u0445\u0430\u0440\u044F\u043C\u0438 \u043D\u0430 \u0437\u043C\u0456\u043D\u0456${((_c = st == null ? void 0 : st.cooks) == null ? void 0 : _c.length) ? ` (\u0437\u0430\u0440\u0430\u0437: ${st.cooks.map(esc).join(", ")})` : " (\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0449\u0435 \u043D\u0456\u043A\u043E\u0433\u043E \u2014 \u043F\u0456\u0434\u0435 \u0432 \xAB\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u043D\u044F\xBB)"}`)}</div>
       <div class="card"><h3>\u{1F319} \u0414\u0435\u043D\u044C \u0456 Z-\u0437\u0432\u0456\u0442</h3>
         ${row("\u{1F552} \u0420\u043E\u0431\u043E\u0447\u0438\u0439 \u0434\u0435\u043D\u044C \u0437\u0430\u043A\u0456\u043D\u0447\u0443\u0454\u0442\u044C\u0441\u044F \u043E", String((_d = c.dayH) != null ? _d : 3).padStart(2, "0") + ":00", ch("cfg", ' data-k="dayH"'), "\u0427\u0435\u043A\u0438 \u0434\u043E \u0446\u0456\u0454\u0457 \u0433\u043E\u0434\u0438\u043D\u0438 \u0440\u0430\u0445\u0443\u044E\u0442\u044C\u0441\u044F \u0432 \u043F\u043E\u043F\u0435\u0440\u0435\u0434\u043D\u0456\u0439 \u0434\u0435\u043D\u044C (0\u20138)")}
       <div class="card"><h3>\u{1F477} \u0417\u043C\u0456\u043D\u0438</h3>
@@ -4687,7 +4769,7 @@ var __objRest = (source, exclude) => {
       <div class="seg rsec">${SS.map(([k, l]) => `<button class="${cur === k ? "on" : ""}" data-a="setTab" data-s="${k}">${l}</button>`).join("")}</div>${part[cur]}`;
   }
   async function menuEdit(id) {
-    var _a2, _b, _c, _d;
+    var _a2, _b2, _c, _d;
     const it = itemsAll().find((i) => i.id === id) || null;
     const cat = it ? S.menu.categories.find((c) => c.items.includes(it)).id : S.menu.categories[0].id;
     const body = `<div class="form">
@@ -4697,7 +4779,7 @@ var __objRest = (source, exclude) => {
       <label>\u0426\u0456\u043D\u0430, \u20B4 ${(it == null ? void 0 : it.variants) ? "" : ""}<input id="fPrice" inputmode="numeric" value="${(_a2 = it == null ? void 0 : it.price) != null ? _a2 : ""}" placeholder="\u043D\u0430\u043F\u0440. 380"></label>
       <label>\u0410\u0431\u043E \u0440\u043E\u0437\u043C\u0456\u0440\u0438 (\u0434\u043B\u044F \u043D\u0430\u043F\u043E\u0457\u0432): <span class="muted">0.33=60, 0.5=70</span><input id="fVar" value="${esc((it == null ? void 0 : it.variants) ? it.variants.map((v2) => `${v2.v}=${v2.p}`).join(", ") : "")}"></label>
       <label>\u0412\u0430\u0433\u0430/\u043E\u0431\u02BC\u0454\u043C<input id="fSize" value="${esc((it == null ? void 0 : it.size) || "")}" placeholder="\u043D\u0430\u043F\u0440. 400 \u0433 \u0430\u0431\u043E \u043B"></label>
-      <label>\u0421\u043A\u043B\u0430\u0434<textarea id="fDesc" rows="3">${esc(((_b = it == null ? void 0 : it.desc) == null ? void 0 : _b.uk) || "")}</textarea></label>
+      <label>\u0421\u043A\u043B\u0430\u0434<textarea id="fDesc" rows="3">${esc(((_b2 = it == null ? void 0 : it.desc) == null ? void 0 : _b2.uk) || "")}</textarea></label>
       ${it ? `<label>\u0424\u043E\u0442\u043E<input id="fPhoto" type="file" accept="image/*"></label>` : ""}</div>`;
     const v = await modal({ title: it ? "\u0420\u0435\u0434\u0430\u0433\u0443\u0432\u0430\u0442\u0438 \u0441\u0442\u0440\u0430\u0432\u0443" : "\u041D\u043E\u0432\u0430 \u0441\u0442\u0440\u0430\u0432\u0430", body, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: "save", cls: "primary" }, ...it ? [{ label: "\u{1F4F8} \u0428\u0406-\u0444\u043E\u0442\u043E", val: "ai" }, { label: "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0441\u0442\u0440\u0430\u0432\u0443", val: "del", cls: "red" }] : [], { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
     if (v === "ai") {
@@ -4834,7 +4916,7 @@ var __objRest = (source, exclude) => {
       img.src = URL.createObjectURL(file);
     });
   }
-  async function hallsSave(halls, go = ((_c) => (_c = ((_b) => (_b = S.data.staff) == null ? void 0 : _b.cfg)() || S.cfg) == null ? void 0 : _c.goTabs)() || 0) {
+  async function hallsSave(halls, go = ((_d) => (_d = ((_c) => (_c = S.data.staff) == null ? void 0 : _c.cfg)() || S.cfg) == null ? void 0 : _d.goTabs)() || 0) {
     const r = await act("hallsSet", { halls, go }, "\u2705 \u0417\u0430\u043B\u0438 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
     if (r == null ? void 0 : r.cfg) {
       S.cfg = r.cfg;
@@ -4910,8 +4992,8 @@ var __objRest = (source, exclude) => {
     const r = await act("gbInbox", {});
     if (!r) return;
     const v = await modal({ title: "\u2709\uFE0F \u041F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u043D\u044F \u0433\u043E\u0441\u0442\u0435\u0439", body: `<div class="muted set-note">\u041F\u0438\u0448\u0443\u0442\u044C \u0443 \u0431\u043E\u0442 \u0433\u043E\u0441\u0442\u0435\u0439: \xAB\u{1F4AC} \u041D\u0430\u043F\u0438\u0441\u0430\u0442\u0438 \u043D\u0430\u043C\xBB, \u0432\u0456\u0434\u0433\u0443\u043A\u0438 \u0439 \u043D\u0438\u0437\u044C\u043A\u0456 \u043E\u0446\u0456\u043D\u043A\u0438 \u043F\u0456\u0441\u043B\u044F \u0432\u0456\u0437\u0438\u0442\u0443. \u{1F534} \u2014 \u0447\u0435\u043A\u0430\u044E\u0442\u044C \u0432\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u0456.</div><div class="bk-list">${r.list.map((x) => {
-      var _a2, _b, _c;
-      return `<button class="kv press inb${x.open ? " open" : ""}" data-a="gbThread" data-ph="${x.ph}" style="width:100%;text-align:left"><span style="min-width:0;overflow-wrap:anywhere">${x.open ? "\u{1F534} " : ""}<b>${esc(x.name || "\u2014")}</b> <small class="muted">${fmtPh(x.ph)}</small><br><small class="${x.open ? "" : "muted"}">${((_a2 = x.lastMsg) == null ? void 0 : _a2.f) === "s" ? "\u21A9\uFE0F " : ((_b = x.lastMsg) == null ? void 0 : _b.k) === "rev" ? "" : "\u{1F464} "}${esc((((_c = x.lastMsg) == null ? void 0 : _c.text) || "").slice(0, 90))}</small></span><span class="kv-r"><small class="muted">${agoT(x.last)}</small></span></button>`;
+      var _a2, _b2, _c;
+      return `<button class="kv press inb${x.open ? " open" : ""}" data-a="gbThread" data-ph="${x.ph}" style="width:100%;text-align:left"><span style="min-width:0;overflow-wrap:anywhere">${x.open ? "\u{1F534} " : ""}<b>${esc(x.name || "\u2014")}</b> <small class="muted">${fmtPh(x.ph)}</small><br><small class="${x.open ? "" : "muted"}">${((_a2 = x.lastMsg) == null ? void 0 : _a2.f) === "s" ? "\u21A9\uFE0F " : ((_b2 = x.lastMsg) == null ? void 0 : _b2.k) === "rev" ? "" : "\u{1F464} "}${esc((((_c = x.lastMsg) == null ? void 0 : _c.text) || "").slice(0, 90))}</small></span><span class="kv-r"><small class="muted">${agoT(x.last)}</small></span></button>`;
     }).join("") || '<div class="muted">\u0429\u0435 \u043D\u0456\u0445\u0442\u043E \u043D\u0435 \u043F\u0438\u0441\u0430\u0432</div>'}</div>`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
   }
   async function gbThread(ph) {
@@ -5021,11 +5103,11 @@ var __objRest = (source, exclude) => {
     return seg + body;
   }
   function ruleWhat(r, D) {
-    var _a2, _b, _c, _d, _e, _f;
+    var _a2, _b2, _c, _d, _e, _f;
     const cn = (id) => {
       var _a3;
       return ((_a3 = D.cats.find((c) => c.id === id)) == null ? void 0 : _a3.n) || id;
-    }, all = ((_a2 = r.cats) == null ? void 0 : _a2.length) && r.cats.length >= D.cats.length && !((_b = r.dishes) == null ? void 0 : _b.length), what = all ? "" : [...(r.cats || []).map(cn), ...r.dishes || []].join(", ");
+    }, all = ((_a2 = r.cats) == null ? void 0 : _a2.length) && r.cats.length >= D.cats.length && !((_b2 = r.dishes) == null ? void 0 : _b2.length), what = all ? "" : [...(r.cats || []).map(cn), ...r.dishes || []].join(", ");
     return [
       r.type === "happy" || r.from || ((_c = r.days) == null ? void 0 : _c.length) ? `${((_d = r.days) == null ? void 0 : _d.length) ? r.days.map((d) => LOY_D[d]).join(", ") : "\u0449\u043E\u0434\u043D\u044F"}${r.from ? ` ${r.from}\u2013${r.to}` : ""}` : "",
       r.type === "pair" ? `\u043A\u043E\u0436\u043D\u0430 ${r.n}-\u0442\u0430 \u2212${r.pct}%` : "",
@@ -5059,7 +5141,7 @@ var __objRest = (source, exclude) => {
     renderMain();
   }
   async function loyRuleEdit(id, draft) {
-    var _a2, _b;
+    var _a2, _b2;
     const D = S.data.loy, r = draft || D.cfg.rules.find((x) => x.id === id) || { type: "happy", on: 1, pct: 10, where: [], cats: [], dishes: [], days: [], from: "", to: "", n: 5, min: 1e3, bdays: 3 };
     const chk = (name, val, on, l) => `<label class="chip sm ${on ? "on" : ""}" style="display:inline-flex;gap:6px;align-items:center;margin:0 6px 6px 0"><input type="checkbox" name="${name}" value="${val}" ${on ? "checked" : ""} style="width:auto;margin:0">${l}</label>`;
     const body = `<div class="form">
@@ -5112,7 +5194,7 @@ var __objRest = (source, exclude) => {
       const all = (n) => [...document.querySelectorAll(`#modal input[name=${n}]:checked`)].map((i) => i.value);
       const rule = {
         id: r.id,
-        on: (_b = r.on) != null ? _b : 1,
+        on: (_b2 = r.on) != null ? _b2 : 1,
         type: $("#rT").value,
         name: $("#rN").value,
         pct: +$("#rP").value || 0,
@@ -5190,7 +5272,7 @@ var __objRest = (source, exclude) => {
     }
   });
   document.addEventListener("click", async (e) => {
-    var _a2, _b;
+    var _a2, _b2;
     const el = e.target.closest("[data-a]");
     if (!el) return;
     const a = el.dataset.a, d = el.dataset;
@@ -5329,7 +5411,7 @@ var __objRest = (source, exclude) => {
       return;
     }
     if (a === "loyCliT") {
-      const ph = (_b = S.tables[S.open]) == null ? void 0 : _b.cli;
+      const ph = (_b2 = S.tables[S.open]) == null ? void 0 : _b2.cli;
       if (ph) loyCliCard(ph);
     }
   });
@@ -5390,12 +5472,12 @@ var __objRest = (source, exclude) => {
       <div class="kpi ${low.length ? "red" : ""}${low.length ? " press" : ""}" ${low.length ? 'data-a="skTab" data-t="buy"' : ""}><span>\u041D\u0438\u0436\u0447\u0435 \u043C\u0456\u043D\u0456\u043C\u0443\u043C\u0443</span><b>${low.length}</b><small class="muted">${low.length ? "\u{1F6D2} \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u0437\u0430\u043A\u0443\u043F\u0456\u0432\u043B\u044E \u2192" : "\u0443\u0441\u044C\u043E\u0433\u043E \u0432\u0438\u0441\u0442\u0430\u0447\u0430\u0454"}</small></div>
       <div class="kpi"><span>\u041F\u0440\u043E\u0434\u0443\u043A\u0442\u0456\u0432</span><b>${live.length}</b><small class="muted">${live.filter((x) => !x.cost).length ? `\u0431\u0435\u0437 \u0446\u0456\u043D\u0438: ${live.filter((x) => !x.cost).length}` : "\u0443 \u0432\u0441\u0456\u0445 \u0454 \u0446\u0456\u043D\u0430"}</small></div></div>` : low.length ? `<div class="card sk-low">\u26A0\uFE0F \u041D\u0438\u0436\u0447\u0435 \u043C\u0456\u043D\u0456\u043C\u0443\u043C\u0443: ${low.map((x) => esc(x.n)).join(", ")}</div>` : "";
     const rowH = (x) => {
-      var _a2, _b, _c, _d;
+      var _a2, _b2, _c, _d;
       if (x.grp) {
         const m = x.grp.map((id) => D.ing.find((y) => y.id === id)).filter(Boolean);
         return `<div class="sk-row"><div class="sk-n${adm ? " press" : ""}" ${adm ? `data-a="skGrp" data-id="${x.id}"` : ""}><b>\u{1F96C} ${esc(x.n)}</b><small class="muted">\u0433\u0440\u0443\u043F\u0430-\u0437\u0430\u043C\u0456\u043D\u043D\u0438\u043A: ${m.map((y) => esc(y.n)).join(", ")}</small></div><div class="sk-q"><b>${fq(gq(x), x.u)}</b><small class="muted">\u0440\u0430\u0437\u043E\u043C</small></div><div class="sk-act"></div></div>`;
       }
-      const t = totQ(x), lo = x.min > 0 && t < x.min, both = (((_a2 = x.st) == null ? void 0 : _a2.k) || 0) && (((_b = x.st) == null ? void 0 : _b.b) || 0);
+      const t = totQ(x), lo = x.min > 0 && t < x.min, both = (((_a2 = x.st) == null ? void 0 : _a2.k) || 0) && (((_b2 = x.st) == null ? void 0 : _b2.b) || 0);
       return `<div class="sk-row${lo ? " low" : ""}${x.off ? " off" : ""}"><div class="sk-n${adm ? " press" : ""}" ${adm ? `data-a="skIng" data-id="${x.id}"` : ""}><b>${x.semi ? "\u{1F373} " : ""}${esc(x.n)}</b><small class="muted">${x.min ? `\u043C\u0456\u043D ${fq(x.min, x.u)}` : ""}${adm && x.cost ? `${x.min ? " \xB7 " : ""}${money(x.cost)} / ${x.u}` : ""}${adm && !x.cost ? `${x.min ? " \xB7 " : ""}<span class="warn">\u043D\u0435\u043C\u0430\u0454 \u0446\u0456\u043D\u0438</span>` : ""}</small></div>
         <div class="sk-q"><b class="${t < 0 ? "neg" : ""}">${fq(t, x.u)}</b><small class="muted">${both ? `\u041A ${fq(x.st.k, x.u)} \xB7 \u0411 ${fq(x.st.b, x.u)}` : ((_c = x.st) == null ? void 0 : _c.b) ? WHN.b : ((_d = x.st) == null ? void 0 : _d.k) ? WHN.k : WHN[x.home || "k"]}</small></div>
         <div class="sk-act">${adm ? `<button class="rb plus" data-a="skAdd" data-id="${x.id}" title="\u041E\u043F\u0440\u0438\u0431\u0443\u0442\u043A\u0443\u0432\u0430\u0442\u0438">+</button>` : ""}<button class="rb minus" data-a="skOff" data-id="${x.id}" title="\u0421\u043F\u0438\u0441\u0430\u0442\u0438">\u2212</button><button class="rb" data-a="skMv" data-id="${x.id}" title="\u041F\u0435\u0440\u0435\u043C\u0456\u0441\u0442\u0438\u0442\u0438 \u043C\u0456\u0436 \u0441\u043A\u043B\u0430\u0434\u0430\u043C\u0438">\u21C4</button></div></div>`;
@@ -5527,11 +5609,11 @@ var __objRest = (source, exclude) => {
     }
   }
   async function skQty(kind, id) {
-    var _a2, _b, _c, _d, _e;
+    var _a2, _b2, _c, _d, _e;
     const x = S.data.sk.ing.find((y) => y.id === id);
     if (!x) return;
     const ttl = { add: "\u2795 \u041E\u043F\u0440\u0438\u0431\u0443\u0442\u043A\u0443\u0432\u0430\u0442\u0438", off: "\u2796 \u0421\u043F\u0438\u0441\u0430\u0442\u0438", mv: "\u21C4 \u041F\u0435\u0440\u0435\u043C\u0456\u0441\u0442\u0438\u0442\u0438" }[kind] + " \xB7 " + x.n;
-    const dw = (((_a2 = x.st) == null ? void 0 : _a2.b) || 0) > 0 && !((((_b = x.st) == null ? void 0 : _b.k) || 0) > 0) ? "b" : x.home || "k";
+    const dw = (((_a2 = x.st) == null ? void 0 : _a2.b) || 0) > 0 && !((((_b2 = x.st) == null ? void 0 : _b2.k) || 0) > 0) ? "b" : x.home || "k";
     const body = `<div class="form"><label>\u041A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044C <small>${x.u === "\u043A\u0433" ? "\u043D\u0430\u043F\u0440. 0.5 \u0430\u0431\u043E 500 \u0433" : x.u === "\u043B" ? "\u043D\u0430\u043F\u0440. 0.5 \u0430\u0431\u043E 500 \u043C\u043B" : "\u0448\u0442\u0443\u043A"}</small><input id="aQ" inputmode="decimal" placeholder="${x.u}"></label>
       ${kind === "mv" ? `<label>\u041A\u0443\u0434\u0438<select id="aW"><option value="k" ${dw === "k" ? "selected" : ""}>${WHN.k} \u2192 ${WHN.b}</option><option value="b" ${dw === "b" ? "selected" : ""}>${WHN.b} \u2192 ${WHN.k}</option></select></label>` : `<label>\u0421\u043A\u043B\u0430\u0434<select id="aW">${["k", "b"].map((w) => {
       var _a3;
@@ -5669,10 +5751,10 @@ ${g.sup}:
       return pks.map((p) => `<option value="${p.f}" ${(+l.f || 1) === p.f ? "selected" : ""}>${esc(p.n)}${p.f !== 1 ? ` (${p.f} ${u})` : ""}</option>`).join("") + '<option value="?">\u0456\u043D\u0448\u0430\u2026</option>';
     };
     const rows = d.lines.map((l, i) => {
-      var _a3, _b, _c, _d;
+      var _a3, _b2, _c, _d;
       const st = l.add ? "new" : !l.id ? "none" : l.ok === "guess" ? "guess" : "ok", x = im.get(l.id);
       return `<div class="dl ${st}"><div class="dl-src">${i + 1}. ${l.n ? esc(l.n) : '<i class="muted">\u043D\u043E\u0432\u0438\u0439 \u0440\u044F\u0434\u043E\u043A</i>'}${l.u || l.price ? ` <span class="muted">\xB7 ${esc((_a3 = l.q0) != null ? _a3 : l.q)} ${esc(l.u || "")}${l.price ? " \xD7 " + l.price : ""}</span>` : ""}${st === "guess" ? ` <span class="warn">\u2753 \u043F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435${l.sc ? " \xB7 " + Math.round(l.sc * 100) + "%" : ""}</span>` : st === "none" ? ' <span class="warn">\u043E\u0431\u0435\u0440\u0456\u0442\u044C \u043F\u0440\u043E\u0434\u0443\u043A\u0442</span>' : ""}</div>
-        ${(st === "guess" || st === "new") && ((_b = l.c) == null ? void 0 : _b.length) ? `<div class="chips dl-c">${st === "new" ? '<span class="muted">\u0441\u0445\u043E\u0436\u0435 \u043D\u0430:</span>' : ""}${l.c.map((c) => `<button class="chip ${c.id === l.id ? "on" : ""}" data-a="skDlCand" data-i="${i}" data-id="${c.id}">${esc(c.n)} <small class="muted">${Math.round(c.sc * 100)}%</small></button>`).join("")}${st === "guess" ? `<button class="chip" data-a="skDlCand" data-i="${i}" data-id="__new">\u2795 \u041D\u043E\u0432\u0438\u0439</button>` : ""}</div>` : ""}
+        ${(st === "guess" || st === "new") && ((_b2 = l.c) == null ? void 0 : _b2.length) ? `<div class="chips dl-c">${st === "new" ? '<span class="muted">\u0441\u0445\u043E\u0436\u0435 \u043D\u0430:</span>' : ""}${l.c.map((c) => `<button class="chip ${c.id === l.id ? "on" : ""}" data-a="skDlCand" data-i="${i}" data-id="${c.id}">${esc(c.n)} <small class="muted">${Math.round(c.sc * 100)}%</small></button>`).join("")}${st === "guess" ? `<button class="chip" data-a="skDlCand" data-i="${i}" data-id="__new">\u2795 \u041D\u043E\u0432\u0438\u0439</button>` : ""}</div>` : ""}
         <div class="dl-f"><button class="pk-b ${l.id || l.add ? "" : "empty"}" data-a="skDlPick" data-i="${i}">${x ? esc(x.n) + ` <span class="muted">${x.u}</span>` : l.add ? `\u2795 ${esc(l.add.n)} <span class="muted">${l.add.u}</span>` : "\u{1F50E} \u041E\u0431\u0435\u0440\u0456\u0442\u044C \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u2026"}</button><input data-dl="${i}" data-k="q" inputmode="decimal" value="${(_c = l.q) != null ? _c : ""}" placeholder="\u041A-\u0441\u0442\u044C"><select data-dl="${i}" data-k="f">${pkOpt(l)}</select><input data-dl="${i}" data-k="sum" inputmode="decimal" value="${(_d = l.sum) != null ? _d : ""}" placeholder="\u0421\u0443\u043C\u0430 \u20B4"><button class="xb" data-a="skDlDel" data-i="${i}" title="\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0440\u044F\u0434\u043E\u043A">\u2715</button></div>
         <div class="dl-h muted" id="dlh${i}">${lineHint(l, x, adm)}</div></div>`;
     }).join("");
@@ -5703,11 +5785,11 @@ ${g.sup}:
     return (r == null ? void 0 : r.n) ? r : null;
   }
   async function skDraftSave(pay) {
-    var _a2, _b, _c, _d;
+    var _a2, _b2, _c, _d;
     const d = S.sk.draft, bad = d.lines.findIndex((l) => !(+l.q > 0) || !l.id && !l.add);
     if (!d.lines.length) return toast("\u26A0\uFE0F \u041D\u0435\u043C\u0430\u0454 \u043F\u043E\u0437\u0438\u0446\u0456\u0439");
     if (bad >= 0) return toast(`\u26A0\uFE0F \u0420\u044F\u0434\u043E\u043A ${bad + 1}: \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u043F\u0440\u043E\u0434\u0443\u043A\u0442 \u0456 \u043A\u0456\u043B\u044C\u043A\u0456\u0441\u0442\u044C (\u0430\u0431\u043E \u043F\u0440\u0438\u0431\u0435\u0440\u0456\u0442\u044C \u0440\u044F\u0434\u043E\u043A \u2715)`);
-    const inv = __spreadProps(__spreadValues({ sup: ((_a2 = $("#dSup")) == null ? void 0 : _a2.value.trim()) || d.sup, no: ((_b = $("#dNo")) == null ? void 0 : _b.value.trim()) || d.no, date: ((_c = $("#dDate")) == null ? void 0 : _c.value.trim()) || d.date, pay, src: d.src }, d.req ? { req: d.req } : {}), { lines: d.lines.map((l) => __spreadValues(__spreadValues({ id: l.id || null, q: +l.q, f: +l.f || 1, sum: +l.sum || 0, src: l.n || "" }, l.chk ? { chk: 1 } : {}), l.add ? { add: l.add } : {})) });
+    const inv = __spreadProps(__spreadValues({ sup: ((_a2 = $("#dSup")) == null ? void 0 : _a2.value.trim()) || d.sup, no: ((_b2 = $("#dNo")) == null ? void 0 : _b2.value.trim()) || d.no, date: ((_c = $("#dDate")) == null ? void 0 : _c.value.trim()) || d.date, pay, src: d.src }, d.req ? { req: d.req } : {}), { lines: d.lines.map((l) => __spreadValues(__spreadValues({ id: l.id || null, q: +l.q, f: +l.f || 1, sum: +l.sum || 0, src: l.n || "" }, l.chk ? { chk: 1 } : {}), l.add ? { add: l.add } : {})) });
     const r = await act("skInvSave", { inv }, "\u{1F9FE} \u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0443 \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u043E");
     if (!r) return;
     S.sk.draft = null;
@@ -5893,10 +5975,10 @@ ${g.sup}:
     await modal({ title: `\u{1F9FE} ${x.sup}${x.no ? " \u2116" + x.no : ""}`, body, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
   }
   function skUnitCost(id, depth = 0) {
-    var _a2, _b;
+    var _a2, _b2;
     const x = S.data.sk.ing.find((y) => y.id === id);
     if (!x) return 0;
-    const sc = x.semi && ((_b = (_a2 = S.data.skCost) == null ? void 0 : _a2.cards) == null ? void 0 : _b["semi:" + id]);
+    const sc = x.semi && ((_b2 = (_a2 = S.data.skCost) == null ? void 0 : _a2.cards) == null ? void 0 : _b2["semi:" + id]);
     if (sc && depth < 3 && sc.yield > 0) {
       const c = sc.items.reduce((a, l) => a + l.q * skUnitCost(l.id, depth + 1), 0);
       if (c > 0) return c / sc.yield;
@@ -5923,9 +6005,9 @@ ${g.sup}:
       return (groups[_a2 = x.cname] || (groups[_a2] = [])).push(x);
     });
     const body = Object.entries(groups).map(([c, xs]) => `<div class="card"><h3>${esc(c)}</h3>${xs.map((x) => {
-      var _a2, _b;
+      var _a2, _b2;
       return `<div class="kv press sk-cr" data-a="skCard" data-k="${esc(x.key)}"><span>${esc(x.name)}${x.draft ? ' <span class="badge-d">\u2728 \u0447\u0435\u0440\u043D\u0435\u0442\u043A\u0430</span>' : ""}${((_a2 = x.miss) == null ? void 0 : _a2.length) ? `<br><small class="warn">\u043D\u0435\u043C\u0430\u0454 \u0446\u0456\u043D\u0438: ${esc(x.miss.join(", "))}</small>` : ""}</span>
-      <span class="kv-r">${x.cost == null ? '<span class="muted">\u043D\u0435\u043C\u0430\u0454 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0438</span>' : `<span class="muted money">${money(x.cost)}</span><b class="${fcc(x.fc)}">${(_b = x.fc) != null ? _b : "\u2014"}%</b>`}<span class="money" style="min-width:64px;text-align:right">${money(x.price)}</span></span></div>`;
+      <span class="kv-r">${x.cost == null ? '<span class="muted">\u043D\u0435\u043C\u0430\u0454 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0438</span>' : `<span class="muted money">${money(x.cost)}</span><b class="${fcc(x.fc)}">${(_b2 = x.fc) != null ? _b2 : "\u2014"}%</b>`}<span class="money" style="min-width:64px;text-align:right">${money(x.price)}</span></span></div>`;
     }).join("")}</div>`).join("") || '<div class="card muted">\u041D\u0456\u0447\u043E\u0433\u043E \u043D\u0435 \u0437\u043D\u0430\u0439\u0434\u0435\u043D\u043E</div>';
     return tools + body;
   }
@@ -5939,13 +6021,13 @@ ${g.sup}:
     $("#main").scrollTop = 0;
   }
   function skCardEdHTML() {
-    var _a2, _b, _c, _d;
-    const c = S.sk.card, D = S.data.sk, ing = D.ing.filter((x) => !x.off).sort((a, b) => a.n.localeCompare(b.n)), im = new Map(D.ing.map((x) => [x.id, x])), tgt = ((_b = (_a2 = S.data.skCost) == null ? void 0 : _a2.cfg) == null ? void 0 : _b.foodCost) || 30;
+    var _a2, _b2, _c, _d;
+    const c = S.sk.card, D = S.data.sk, ing = D.ing.filter((x) => !x.off).sort((a, b) => a.n.localeCompare(b.n)), im = new Map(D.ing.map((x) => [x.id, x])), tgt = ((_b2 = (_a2 = S.data.skCost) == null ? void 0 : _a2.cfg) == null ? void 0 : _b2.foodCost) || 30;
     const cost = c.items.reduce((a, l) => a + (l.id ? (+l.q || 0) * skUnitCost(l.id) : 0), 0), fc = c.price ? Math.round(cost / c.price * 1e3) / 10 : null, rec2 = cost ? Math.ceil(cost / (tgt / 100) / 5) * 5 : 0;
     const per = c.semi && +c.yield > 0 ? cost / +c.yield : null;
     const rows = c.items.map((l, i) => {
-      var _a3, _b2, _c2, _d2, _e, _f;
-      const x = im.get(l.id), u = (x == null ? void 0 : x.u) || ((_a3 = l.add) == null ? void 0 : _a3.u) || "\u043A\u0433", k = u === "\u0448\u0442" ? 1 : 1e3, loss = (_c2 = (_b2 = l.loss) != null ? _b2 : x == null ? void 0 : x.loss) != null ? _c2 : 0, net = (+l.q || 0) * (1 - loss / 100);
+      var _a3, _b3, _c2, _d2, _e, _f;
+      const x = im.get(l.id), u = (x == null ? void 0 : x.u) || ((_a3 = l.add) == null ? void 0 : _a3.u) || "\u043A\u0433", k = u === "\u0448\u0442" ? 1 : 1e3, loss = (_c2 = (_b3 = l.loss) != null ? _b3 : x == null ? void 0 : x.loss) != null ? _c2 : 0, net = (+l.q || 0) * (1 - loss / 100);
       return `<div class="cl"><button class="pk-b ${l.id || l.add ? "" : "empty"}" data-a="skClPick" data-i="${i}">${x ? (x.semi ? "\u{1F373} " : "") + esc(x.n) : l.add ? `\u2795 ${esc(l.add.n)}` : "\u{1F50E} \u041F\u0440\u043E\u0434\u0443\u043A\u0442\u2026"}</button>
         <label>\u0431\u0440\u0443\u0442\u0442\u043E, ${small(u)}<input data-cl="${i}" data-k="q" inputmode="decimal" value="${l.q ? r3(l.q * k) : ""}"></label><label>\u0432\u0442\u0440\u0430\u0442\u0438 %<input data-cl="${i}" data-k="loss" inputmode="numeric" value="${loss || ""}" placeholder="0"></label>
         <label>\u043D\u0435\u0442\u0442\u043E, ${small(u)}<input data-cl="${i}" data-k="net" inputmode="decimal" value="${net ? r3(net * k) : ""}" id="cln${i}"></label>
@@ -5970,11 +6052,11 @@ ${g.sup}:
         <div class="muted" style="font-size:12px;margin-top:8px">\u0411\u0440\u0443\u0442\u0442\u043E \u2014 \u0441\u043A\u0456\u043B\u044C\u043A\u0438 \u0431\u0435\u0440\u0435\u0442\u044C\u0441\u044F \u0437\u0456 \u0441\u043A\u043B\u0430\u0434\u0443; \u043D\u0435\u0442\u0442\u043E \u2014 \u043F\u0456\u0441\u043B\u044F \u0447\u0438\u0441\u0442\u043A\u0438 / \u0432\u0430\u0440\u043A\u0438. \u041F\u0440\u043E\u0434\u0430\u0436 \u0441\u0442\u0440\u0430\u0432\u0438 \u0441\u043F\u0438\u0441\u0443\u0454 \u0431\u0440\u0443\u0442\u0442\u043E \u0437\u0456 \u0441\u043A\u043B\u0430\u0434\u0443. \u0427\u0435\u0440\u043D\u0435\u0442\u043A\u0430 AI \u043D\u0435 \u0441\u043F\u0438\u0441\u0443\u0454, \u043F\u043E\u043A\u0438 \u0432\u0438 \u043D\u0435 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u0442\u0435.</div></div>`;
   }
   function skMass(c) {
-    var _a2, _b, _c;
+    var _a2, _b2, _c;
     const im = new Map(S.data.sk.ing.map((x) => [x.id, x]));
     let g = 0, n = 0, pc = 0;
     for (const l of c.items) {
-      const x = im.get(l.id), u = (x == null ? void 0 : x.u) || ((_a2 = l.add) == null ? void 0 : _a2.u) || "\u043A\u0433", q = +l.q || 0, loss = (_c = (_b = l.loss) != null ? _b : x == null ? void 0 : x.loss) != null ? _c : 0;
+      const x = im.get(l.id), u = (x == null ? void 0 : x.u) || ((_a2 = l.add) == null ? void 0 : _a2.u) || "\u043A\u0433", q = +l.q || 0, loss = (_c = (_b2 = l.loss) != null ? _b2 : x == null ? void 0 : x.loss) != null ? _c : 0;
       if (u === "\u0448\u0442") pc += q;
       else {
         g += q * 1e3;
@@ -5984,10 +6066,10 @@ ${g.sup}:
     return `${Math.round(g)} \u0433${Math.round(n) !== Math.round(g) ? ` \xB7 \u043D\u0435\u0442\u0442\u043E ${Math.round(n)} \u0433` : ""}${pc ? ` + ${r3(pc)} \u0448\u0442` : ""}`;
   }
   const skCardCalc = () => {
-    var _a2, _b;
+    var _a2, _b2;
     const c = S.sk.card;
     if (!c) return;
-    const tgt = ((_b = (_a2 = S.data.skCost) == null ? void 0 : _a2.cfg) == null ? void 0 : _b.foodCost) || 30, cost = c.items.reduce((a, l) => a + (l.id ? (+l.q || 0) * skUnitCost(l.id) : 0), 0);
+    const tgt = ((_b2 = (_a2 = S.data.skCost) == null ? void 0 : _a2.cfg) == null ? void 0 : _b2.foodCost) || 30, cost = c.items.reduce((a, l) => a + (l.id ? (+l.q || 0) * skUnitCost(l.id) : 0), 0);
     c.items.forEach((l, i) => {
       const el = $("#clc" + i);
       if (el && l.id) el.textContent = money((+l.q || 0) * skUnitCost(l.id));
@@ -6128,8 +6210,8 @@ ${g.sup}:
     await pm;
   }
   function skProdHTML() {
-    var _a2, _b, _c;
-    const D = S.data.sk, adm = isAdmin(), cards = ((_a2 = S.data.skCost) == null ? void 0 : _a2.cards) || {}, semis = D.ing.filter((x) => x.semi && !x.off), calc = (_c = (_b = S.cfg) == null ? void 0 : _b.semiCalc) != null ? _c : 1;
+    var _a2, _b2, _c;
+    const D = S.data.sk, adm = isAdmin(), cards = ((_a2 = S.data.skCost) == null ? void 0 : _a2.cards) || {}, semis = D.ing.filter((x) => x.semi && !x.off), calc = (_c = (_b2 = S.cfg) == null ? void 0 : _b2.semiCalc) != null ? _c : 1;
     return `${calc ? '<div class="card sk-howto">\u{1F4D0} <b>\u0420\u0435\u0436\u0438\u043C \xAB\u0440\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043E\u043A\xBB:</b> \u0441\u043E\u0443\u0441\u0438 \u0439 \u0442\u0456\u0441\u0442\u043E \u0440\u0430\u0445\u0443\u044E\u0442\u044C\u0441\u044F \u0432\u0456\u0434 \u0440\u0435\u0446\u0435\u043F\u0442\u0443 \u2014 \u0446\u0456\u043D\u0430 \u0437\u0430 1 \u043B / 1 \u043A\u0433, \u0430 \u043F\u0440\u0438 \u043F\u0440\u043E\u0434\u0430\u0436\u0456 \u0441\u0442\u0440\u0430\u0432\u0438 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0438 \u0440\u0435\u0446\u0435\u043F\u0442\u0443 \u0441\u043F\u0438\u0441\u0443\u044E\u0442\u044C\u0441\u044F \u0441\u0430\u043C\u0456. \u041D\u0456\u0447\u043E\u0433\u043E \xAB\u0433\u043E\u0442\u0443\u0432\u0430\u0442\u0438\xBB \u0442\u0443\u0442 \u043D\u0435 \u043F\u043E\u0442\u0440\u0456\u0431\u043D\u043E, \u043B\u0438\u0448\u0435 \u0437\u0430\u043F\u043E\u0432\u043D\u0438\u0442\u0438 \u0440\u0435\u0446\u0435\u043F\u0442 (\u{1F4CB} \u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0430). \u041E\u0431\u043B\u0456\u043A \u043F\u0430\u0440\u0442\u0456\u044F\u043C\u0438 \u0432\u043C\u0438\u043A\u0430\u0454\u0442\u044C\u0441\u044F \u0432 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F\u0445 \u2192 \u{1F9EE} \u0420\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043E\u043A.</div>' : ""}<div class="btnrow" style="margin:0 0 12px">${adm ? '<button class="btn sm primary" data-a="skSemiNew">\u2795 \u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430</button>' : ""}</div>` + (semis.length ? `<div class="grid2">${semis.map((x) => {
       const c = cards["semi:" + x.id];
       return `<div class="card"><h3>\u{1F373} ${esc(x.n)}</h3>${calc ? "" : `<div class="kv"><span>\u041D\u0430 \u0441\u043A\u043B\u0430\u0434\u0456</span><b>${fq(totQ(x), x.u)}</b></div>`}${adm ? `<div class="kv"><span>\u0421\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C</span><b class="money">${skUnitCost(x.id) ? money(skUnitCost(x.id)) + " / " + x.u : "\u2014"}</b></div><div class="kv"><span>\u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0430</span><span class="${c ? "" : "warn"}">${c ? `${c.items.length} \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0456\u0432 \xB7 \u043F\u0430\u0440\u0442\u0456\u044F ${c.yield} ${x.u}` : "\u043D\u0435 \u0437\u0430\u043F\u043E\u0432\u043D\u0435\u043D\u0430"}</span></div>` : ""}
@@ -6168,9 +6250,9 @@ ${g.sup}:
     };
     let cat = "";
     const rows = shown.map((x) => {
-      var _a2, _b;
+      var _a2, _b2;
       const h = x.cat !== cat ? `<div class="cnt-cat">${esc(cat = x.cat || "\u0406\u043D\u0448\u0435")}</div>` : "";
-      return h + `<div class="cnt-r"><span>${x.semi ? "\u{1F373} " : ""}${esc(x.n)}<br><small class="muted">\u0441\u0438\u0441\u0442\u0435\u043C\u0430: ${fq(((_a2 = x.st) == null ? void 0 : _a2[wh]) || 0, x.u)}</small></span><input data-cf="${x.id}" inputmode="decimal" value="${esc((_b = K.cf[x.id]) != null ? _b : "")}" placeholder="\u0444\u0430\u043A\u0442, ${x.u}"><span class="cnt-d" id="cfd${x.id}">${diffH(x)}</span></div>`;
+      return h + `<div class="cnt-r"><span>${x.semi ? "\u{1F373} " : ""}${esc(x.n)}<br><small class="muted">\u0441\u0438\u0441\u0442\u0435\u043C\u0430: ${fq(((_a2 = x.st) == null ? void 0 : _a2[wh]) || 0, x.u)}</small></span><input data-cf="${x.id}" inputmode="decimal" value="${esc((_b2 = K.cf[x.id]) != null ? _b2 : "")}" placeholder="\u0444\u0430\u043A\u0442, ${x.u}"><span class="cnt-d" id="cfd${x.id}">${diffH(x)}</span></div>`;
     }).join("");
     const hist = (S.data.skCnts || []).slice(0, 15).map((c) => `<div class="kv press" data-a="skCntView" data-id="${c.id}"><span>${c.undo ? '<s class="muted">' : ""}${c.day.slice(8)}.${c.day.slice(5, 7)} \xB7 ${WHN[c.wh]} \xB7 ${esc(c.by)} <span class="muted">\xB7 ${c.n} \u043F\u043E\u0437.</span>${c.undo ? " \u21A9\uFE0F</s>" : ""}</span>${adm ? `<span class="kv-r"><b class="neg">${money(c.short)}</b><b class="good">+${money(c.over)}</b></span>` : ""}</div>`).join("");
     return `<div class="sk-tools">${adm ? `<div class="chips">${["k", "b"].map((w) => `<button class="chip ${wh === w ? "on" : ""}" data-a="skCwh" data-w="${w}">${WHN[w]}</button>`).join("")}</div>` : ""}<input id="skCq" placeholder="\u{1F50E} \u041F\u043E\u0448\u0443\u043A \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0443" value="${esc(K.cq)}"></div>
@@ -6539,7 +6621,7 @@ ${g.sup}:
     if (S.view === "calc" && S.sk.tab === "sup") renderMain();
   }
   async function supOpen(id) {
-    var _a2, _b, _c, _d;
+    var _a2, _b2, _c, _d;
     let c;
     try {
       c = await api("skSupCard", { id });
@@ -6553,8 +6635,8 @@ ${g.sup}:
       body: `<div class="sup-card">
       ${adm ? `<div class="kpis"><div class="kpi ${c.debt ? "red" : ""}"><span>\u{1F4B8} \u0412\u0438\u043D\u043D\u0456</span><b>${money(c.debt)}</b><small class="muted">${un.length} \u043D\u0435\u043E\u043F\u043B\u0430\u0447.</small></div><div class="kpi"><span>\u0417\u0430 \u0440\u0456\u043A</span><b>${money(c.year)}</b><small class="muted">${c.inv.length} \u043D\u0430\u043A\u043B. \xB7 \u0441\u0435\u0440. ${money(c.avg)}</small></div></div>` : ""}
       <h4>\u{1F4C7} \u0420\u0435\u043A\u0432\u0456\u0437\u0438\u0442\u0438 \u0439 \u043A\u043E\u043D\u0442\u0430\u043A\u0442\u0438</h4>${row("\u042E\u0440. \u043D\u0430\u0437\u0432\u0430", p.legal)}${row("\u0404\u0414\u0420\u041F\u041E\u0423 / \u0406\u041F\u041D", p.code, 1)}${(((_a2 = p.ibans) == null ? void 0 : _a2.length) ? p.ibans : p.iban ? [{ v: p.iban }] : []).map((i) => {
-        var _a3, _b2, _c2;
-        return `<div class="kv" style="${i.v === p.iban && (((_a3 = p.ibans) == null ? void 0 : _a3.length) || 0) > 1 ? "background:color-mix(in srgb,var(--accent) 14%,transparent);border-radius:8px;padding-inline:6px" : ""}"><span>IBAN${i.v === p.iban ? (((_b2 = p.ibans) == null ? void 0 : _b2.length) || 0) > 1 ? " \u2B50 \u043E\u0441\u043D\u043E\u0432\u043D\u0438\u0439" : "" : '<br><small class="muted">\u0441\u0442\u0430\u0440\u0438\u0439</small>'}</span><span class="kv-r" style="flex-wrap:wrap;justify-content:flex-end"><b style="overflow-wrap:anywhere">${esc(i.v)}</b><button class="btn sm" data-mi-v="cp:${esc(i.v)}" title="\u041A\u043E\u043F\u0456\u044E\u0432\u0430\u0442\u0438">\u{1F4CB}</button>${adm && i.v !== p.iban ? `<button class="btn sm" data-mi-v="ib:act:${esc(i.v)}" title="\u0417\u0440\u043E\u0431\u0438\u0442\u0438 \u043E\u0441\u043D\u043E\u0432\u043D\u0438\u043C">\u2B50</button>` : ""}${adm && (((_c2 = p.ibans) == null ? void 0 : _c2.length) || 0) > 1 ? `<button class="btn sm red" data-mi-v="ib:del:${esc(i.v)}" title="\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438">\u{1F5D1}</button>` : ""}</span></div>`;
+        var _a3, _b3, _c2;
+        return `<div class="kv" style="${i.v === p.iban && (((_a3 = p.ibans) == null ? void 0 : _a3.length) || 0) > 1 ? "background:color-mix(in srgb,var(--accent) 14%,transparent);border-radius:8px;padding-inline:6px" : ""}"><span>IBAN${i.v === p.iban ? (((_b3 = p.ibans) == null ? void 0 : _b3.length) || 0) > 1 ? " \u2B50 \u043E\u0441\u043D\u043E\u0432\u043D\u0438\u0439" : "" : '<br><small class="muted">\u0441\u0442\u0430\u0440\u0438\u0439</small>'}</span><span class="kv-r" style="flex-wrap:wrap;justify-content:flex-end"><b style="overflow-wrap:anywhere">${esc(i.v)}</b><button class="btn sm" data-mi-v="cp:${esc(i.v)}" title="\u041A\u043E\u043F\u0456\u044E\u0432\u0430\u0442\u0438">\u{1F4CB}</button>${adm && i.v !== p.iban ? `<button class="btn sm" data-mi-v="ib:act:${esc(i.v)}" title="\u0417\u0440\u043E\u0431\u0438\u0442\u0438 \u043E\u0441\u043D\u043E\u0432\u043D\u0438\u043C">\u2B50</button>` : ""}${adm && (((_c2 = p.ibans) == null ? void 0 : _c2.length) || 0) > 1 ? `<button class="btn sm red" data-mi-v="ib:del:${esc(i.v)}" title="\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438">\u{1F5D1}</button>` : ""}</span></div>`;
       }).join("")}${row("\u0422\u0435\u043B\u0435\u0444\u043E\u043D", p.phone, 1)}${row("\u041C\u0435\u043D\u0435\u0434\u0436\u0435\u0440", p.mgr)}${row("Viber / Telegram", p.msg)}${row("\u0410\u0434\u0440\u0435\u0441\u0430", p.addr)}${row("\u0414\u043D\u0456 \u043F\u043E\u0441\u0442\u0430\u0432\u043A\u0438", p.days)}${row("\u0412\u0456\u0434\u0441\u0442\u0440\u043E\u0447\u043A\u0430", p.term ? p.term + " \u0434\u043D." : "")}${row("\u041F\u0440\u0438\u043C\u0456\u0442\u043A\u0438", p.note)}
       ${!p.code && !p.iban && !p.phone ? '<div class="muted set-note">\u0420\u0435\u043A\u0432\u0456\u0437\u0438\u0442\u0438 \u043F\u0456\u0434\u0442\u044F\u0433\u043D\u0443\u0442\u044C\u0441\u044F \u0437 \u043D\u0430\u0441\u0442\u0443\u043F\u043D\u043E\u0457 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u043E\u0457 \u2014 \u0430\u0431\u043E \u0432\u043D\u0435\u0441\u0456\u0442\u044C \u0432\u0440\u0443\u0447\u043D\u0443</div>' : ""}${adm ? `<div class="btnrow" style="margin:6px 0"><button class="btn sm${!p.iban ? " primary" : ""}" data-mi-v="edit">\u270F\uFE0F ${p.iban || p.code ? "\u0417\u043C\u0456\u043D\u0438\u0442\u0438 \u0440\u0435\u043A\u0432\u0456\u0437\u0438\u0442\u0438" : "\u0412\u043D\u0435\u0441\u0442\u0438 \u0440\u0435\u043A\u0432\u0456\u0437\u0438\u0442\u0438"}</button>${p.iban ? '<button class="btn sm" data-mi-v="ib:new">\u2795 \u0429\u0435 \u0440\u0430\u0445\u0443\u043D\u043E\u043A</button>' : ""}</div>` : ""}
       ${adm && un.length ? `<h4>\u{1F4B8} \u041D\u0435\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u0456</h4>${un.map((x) => `<label class="kv" style="cursor:pointer"><span>${dm(x.day)}${x.no ? " \xB7 \u2116" + esc(x.no) : ""}<br><small class="${x.due != null && x.due < 0 ? "neg" : "muted"}">${x.due == null ? x.age + " \u0434\u043D. \u0442\u043E\u043C\u0443" : x.due < 0 ? `\u23F0 \u043F\u0440\u043E\u0441\u0442\u0440\u043E\u0447\u0435\u043D\u043E ${-x.due} \u0434\u043D.` : x.due === 0 ? "\u23F0 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : `\u0449\u0435 ${x.due} \u0434\u043D.`}</small></span><span class="kv-r"><b class="money">${money(x.total)}</b><input type="checkbox" class="supPk" value="${x.id}" checked style="width:22px;height:22px"></span></label>`).join("")}` : ""}
@@ -6604,7 +6686,7 @@ ${g.sup}:
         return supOpen(id);
       }
       const w = await modal({ title: "\u{1F6D2} \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", body: `<textarea id="supOt" rows="10" style="width:100%">${esc(r.text)}</textarea><div class="muted set-note">\u041C\u043E\u0436\u043D\u0430 \u0432\u0438\u043F\u0440\u0430\u0432\u0438\u0442\u0438 \u043A\u0456\u043B\u044C\u043A\u043E\u0441\u0442\u0456. \u0421\u043F\u0438\u0441\u043E\u043A \u2014 \u0437 \u0442\u043E\u0432\u0430\u0440\u0456\u0432 \u043D\u0438\u0436\u0447\u0435 \u043C\u0456\u043D\u0456\u043C\u0443\u043C\u0443 (\u0421\u043A\u043B\u0430\u0434 \u2192 \u043C\u0456\u043D\u0456\u043C\u0430\u043B\u044C\u043D\u0456 \u0437\u0430\u043B\u0438\u0448\u043A\u0438).</div>`, buttons: [{ label: "\u{1F4E4} \u041D\u0430\u0434\u0456\u0441\u043B\u0430\u0442\u0438 / \u0441\u043A\u043E\u043F\u0456\u044E\u0432\u0430\u0442\u0438", val: "go", cls: "primary" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }], keep: true });
-      const t = (_b = $("#supOt")) == null ? void 0 : _b.value;
+      const t = (_b2 = $("#supOt")) == null ? void 0 : _b2.value;
       closeModal();
       if (w === "go" && t) await supShare(t, p.n);
       return;
@@ -6687,10 +6769,10 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     const G = S.data.zp;
     if (!G) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
     const people = G.staff.filter((s) => {
-      var _a2, _b;
-      return s.role !== "courier" && !(G.hide || []).includes(s.name) && (((_a2 = s.pay) == null ? void 0 : _a2.rate) || ((_b = s.pay) == null ? void 0 : _b.pct) || (G.seen || []).includes(s.name) || G.days.some((d) => {
-        var _a3, _b2;
-        return ((_a3 = G.att[d]) == null ? void 0 : _a3[s.name]) || ((_b2 = G.plan[d]) == null ? void 0 : _b2[s.name]);
+      var _a2, _b2;
+      return s.role !== "courier" && !(G.hide || []).includes(s.name) && (((_a2 = s.pay) == null ? void 0 : _a2.rate) || ((_b2 = s.pay) == null ? void 0 : _b2.pct) || (G.seen || []).includes(s.name) || G.days.some((d) => {
+        var _a3, _b3;
+        return ((_a3 = G.att[d]) == null ? void 0 : _a3[s.name]) || ((_b3 = G.plan[d]) == null ? void 0 : _b3[s.name]);
       }));
     }).map((s) => s.name);
     const rows = G.rows.filter((r) => people.includes(r.n) || r.paid || r.adv || r.bonus || r.fine), due = rows.reduce((a, r) => a + Math.max(0, r.due), 0), pend = rows.reduce((a, r) => a + r.pending, 0);
@@ -6742,8 +6824,8 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
       return `<th class="${d === today ? "td" : ""}${w === 0 || w === 6 ? " we" : ""}">${+d.slice(8)}<small>${WDL[w]}</small></th>`;
     }).join("")}</tr></thead>
       <tbody>${people.map((n) => `<tr class="${n === me ? "me" : ""}"><th>${edit ? `<button class="zp-x" data-a="zpDelP" data-n="${esc(n)}" title="\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0437 \u0433\u0440\u0430\u0444\u0456\u043A\u0430">\u2715</button>` : ""}${esc(n)}</th>${G.days.map((d) => {
-      var _a2, _b;
-      const a = (_a2 = G.att[d]) == null ? void 0 : _a2[n], p = (_b = G.plan[d]) == null ? void 0 : _b[n], h = hrs(a);
+      var _a2, _b2;
+      const a = (_a2 = G.att[d]) == null ? void 0 : _a2[n], p = (_b2 = G.plan[d]) == null ? void 0 : _b2[n], h = hrs(a);
       return `<td class="${edit ? "press" : ""}${d === today ? " td" : ""}"${edit ? ` data-a="zpCell" data-d="${d}" data-n="${esc(n)}"` : ""}><i>${attIc(a, p, d)}</i>${p ? p === "+" ? a ? "" : '<i class="pl">\u25CF</i>' : `<small>${p}</small>` : ""}${h ? `<small class="h">${h}\u0433</small>` : ""}</td>`;
     }).join("")}</tr>`).join("")}</tbody></table></div>`;
   }
@@ -6763,8 +6845,8 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     }
   }
   async function zpCell(d, n) {
-    var _a2, _b, _c, _d;
-    const G = S.data.zp, a = (_a2 = G.att[d]) == null ? void 0 : _a2[n], p = (_b = G.plan[d]) == null ? void 0 : _b[n], fine = (_c = G.cfg) == null ? void 0 : _c.lateFine;
+    var _a2, _b2, _c, _d;
+    const G = S.data.zp, a = (_a2 = G.att[d]) == null ? void 0 : _a2[n], p = (_b2 = G.plan[d]) == null ? void 0 : _b2[n], fine = (_c = G.cfg) == null ? void 0 : _c.lateFine;
     const upd = (x) => {
       var _a3;
       (_a3 = G.att)[d] || (_a3[d] = {});
@@ -6804,7 +6886,7 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     loadView();
   }
   async function zpSet(id) {
-    var _a2, _b;
+    var _a2, _b2;
     const s = S.data.zp.staff.find((x) => x.id === id), p = (s == null ? void 0 : s.pay) || {};
     if (!s) return;
     const body = `<div class="form"><div class="frow"><label>\u0421\u0442\u0430\u0432\u043A\u0430 \u0437\u0430 \u0437\u043C\u0456\u043D\u0443, \u20B4<input id="zR" inputmode="numeric" value="${p.rate || ""}" placeholder="\u043D\u0430\u043F\u0440. 600"></label><label>% \u0432\u0456\u0434 \u0432\u0438\u0440\u0443\u0447\u043A\u0438<input id="zP" inputmode="decimal" value="${p.pct || ""}" placeholder="\u043D\u0430\u043F\u0440. 2"></label></div>
@@ -6812,7 +6894,7 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
       <div class="muted" style="font-size:12px">\u{1F3AF} \u041F\u043B\u0430\u043D \u043F\u0440\u043E\u0434\u0430\u0436\u0456\u0432 (\u0432\u0456\u0434 \u0442\u0456\u0454\u0457 \u0436 \u0431\u0430\u0437\u0438) \u2014 \u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E:</div>
       <div class="frow"><label>\u0417\u0430 \u0437\u043C\u0456\u043D\u0443 \u0431\u0456\u043B\u044C\u0448\u0435, \u20B4<input id="zDR" inputmode="numeric" value="${p.dayRev || ""}"></label><label>\u2192 \u0431\u043E\u043D\u0443\u0441, \u20B4<input id="zDB" inputmode="numeric" value="${p.dayBonus || ""}"></label></div>
       <div class="frow"><label>\u0417\u0430 \u043C\u0456\u0441\u044F\u0446\u044C \u0431\u0456\u043B\u044C\u0448\u0435, \u20B4<input id="zMR" inputmode="numeric" value="${p.monRev || ""}"></label><label>\u2192 \u0431\u043E\u043D\u0443\u0441, \u20B4<input id="zMB" inputmode="numeric" value="${p.monBonus || ""}"></label></div>
-      <label>\u{1F6F5} \u0417\u0430 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0443, \u20B4 (\u043A\u0443\u0440'\u0454\u0440\u0443; \u043F\u043E\u0440\u043E\u0436\u043D\u044C\u043E \u2014 \u044F\u043A \u0443 \u043D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F\u0445)<input id="zDl" inputmode="numeric" value="${(_a2 = p.dlv) != null ? _a2 : ""}"></label>${((_b = S.zpDet) == null ? void 0 : _b[id]) ? `<details class="zp-hist"><summary>\u{1F4DC} \u0420\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043E\u043A \u0437\u0430 \u043F\u0435\u0440\u0456\u043E\u0434</summary>${S.zpDet[id]}</details>` : ""}</div>`;
+      <label>\u{1F6F5} \u0417\u0430 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0443, \u20B4 (\u043A\u0443\u0440'\u0454\u0440\u0443; \u043F\u043E\u0440\u043E\u0436\u043D\u044C\u043E \u2014 \u044F\u043A \u0443 \u043D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F\u0445)<input id="zDl" inputmode="numeric" value="${(_a2 = p.dlv) != null ? _a2 : ""}"></label>${((_b2 = S.zpDet) == null ? void 0 : _b2[id]) ? `<details class="zp-hist"><summary>\u{1F4DC} \u0420\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043E\u043A \u0437\u0430 \u043F\u0435\u0440\u0456\u043E\u0434</summary>${S.zpDet[id]}</details>` : ""}</div>`;
     const v = await modal({ title: `\u2699\uFE0F ${s.name}: \u0441\u0442\u0430\u0432\u043A\u0430`, body, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
     const g = (i) => $("#" + i).value.replace(",", "."), pay = v === "ok" ? { rate: g("zR"), pct: g("zP"), base: $("#zB").value, dayRev: g("zDR"), dayBonus: g("zDB"), monRev: g("zMR"), monBonus: g("zMB"), dlv: $("#zDl").value.trim() } : null;
     closeModal();
@@ -6886,13 +6968,13 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     }
   }
   async function zpMy() {
-    var _a2, _b, _c, _d, _e;
+    var _a2, _b2, _c, _d, _e;
     const r = await act("zpMy", {});
     if (!r) return;
     const w = r.row, me = (_a2 = S.me) == null ? void 0 : _a2.name;
     const lnx = (l, v2) => `<div class="kv"><span>${l}</span><b class="money">${v2}</b></div>`;
     const asks = r.swaps.filter((s) => s.to === me && s.st === "ask");
-    const shiftH = `<div class="zp-shift">${onShift() ? `<button class="btn red" data-a="zpOut">\u{1F534} \u0417\u0430\u043A\u0456\u043D\u0447\u0438\u0442\u0438 \u0437\u043C\u0456\u043D\u0443</button><span class="muted">\u043D\u0430 \u0437\u043C\u0456\u043D\u0456 \u0437 ${hhK(S.myAtt.in)}${S.myAtt.ok === 0 ? " \xB7 \u{1F553} \u0447\u0435\u043A\u0430\u0454 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F" : " \xB7 \u2705"}</span>` : `<button class="btn green" data-a="zpIn">\u{1F7E2} \u041F\u043E\u0447\u0430\u0442\u0438 \u0437\u043C\u0456\u043D\u0443</button>${((_b = S.myAtt) == null ? void 0 : _b.out) ? `<span class="muted">\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 ${hhK(S.myAtt.in)}\u2013${hhK(S.myAtt.out)}</span>` : ""}`}</div>`;
+    const shiftH = `<div class="zp-shift">${onShift() ? `<button class="btn red" data-a="zpOut">\u{1F534} \u0417\u0430\u043A\u0456\u043D\u0447\u0438\u0442\u0438 \u0437\u043C\u0456\u043D\u0443</button><span class="muted">\u043D\u0430 \u0437\u043C\u0456\u043D\u0456 \u0437 ${hhK(S.myAtt.in)}${S.myAtt.ok === 0 ? " \xB7 \u{1F553} \u0447\u0435\u043A\u0430\u0454 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F" : " \xB7 \u2705"}</span>` : `<button class="btn green" data-a="zpIn">\u{1F7E2} \u041F\u043E\u0447\u0430\u0442\u0438 \u0437\u043C\u0456\u043D\u0443</button>${((_b2 = S.myAtt) == null ? void 0 : _b2.out) ? `<span class="muted">\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 ${hhK(S.myAtt.in)}\u2013${hhK(S.myAtt.out)}</span>` : ""}`}</div>`;
     await loadMyTasks();
     const avH = `<div class="my-av"><button class="my-av-b" data-a="zpAv" title="\u0417\u043C\u0456\u043D\u0438\u0442\u0438 \u0444\u043E\u0442\u043E">${VVAV.html((_c = S.me) == null ? void 0 : _c.av, me)}<em>\u{1F4F7}</em></button><div><b>${esc(me)}</b><div class="muted" style="font-size:12px">\u041D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \u043D\u0430 \u0444\u043E\u0442\u043E, \u0449\u043E\u0431 \u0437\u043C\u0456\u043D\u0438\u0442\u0438${((_d = S.me) == null ? void 0 : _d.av) ? ' \xB7 <button class="linkb" data-a="zpAvDel">\u043F\u0440\u0438\u0431\u0440\u0430\u0442\u0438</button>' : ""}</div></div></div>`;
     const body = avH + shiftH + `<div id="myTasks">${myTasksHTML()}</div>${w ? `<div class="pills zp-my"><div class="pill"><span>\u0417\u043C\u0456\u043D</span><b>${w.shifts}</b><small>${w.hours ? w.hours + " \u0433\u043E\u0434" : ""}</small></div><div class="pill"><span>\u0417\u0430\u0440\u043E\u0431\u043B\u0435\u043D\u043E</span><b class="money">${money(w.earned)}</b></div><div class="pill"><span>\u0414\u043E \u0432\u0438\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(w.due)}</b></div><div class="pill"><span>\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456</span><b class="money">${money(((_e = S.myTip) == null ? void 0 : _e.sum) || 0)}</b><small>${w.tips ? `\u0437\u0430 \u043C\u0456\u0441\u044F\u0446\u044C ${money(w.tips)}` : "\u0449\u0435 \u043D\u0435 \u0432\u0438\u0434\u0430\u043D\u043E"}</small></div></div>
@@ -6923,7 +7005,7 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     }
   }
   document.addEventListener("click", async (e) => {
-    var _a2, _b, _c;
+    var _a2, _b2, _c;
     const el = e.target.closest("[data-a]");
     if (!el || !/^(zp|idea)/.test(el.dataset.a)) return;
     const a = el.dataset.a, D = el.dataset;
@@ -7001,7 +7083,7 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
       case "ideaDone": {
         const r = await act("ideaDone", { id: D.id });
         if (r) {
-          const x = (_b = S.data.ideas) == null ? void 0 : _b.find((y) => y.id === D.id);
+          const x = (_b2 = S.data.ideas) == null ? void 0 : _b2.find((y) => y.id === D.id);
           if (x) x.done = r.x.done;
           const row = el.closest("[data-idea]");
           if (row && ((_c = $("#modal")) == null ? void 0 : _c.contains(row))) row.outerHTML = ideaRow(r.x);
@@ -7120,8 +7202,8 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     if (f && await act("staffEdit", __spreadValues({ id: s.id }, f), f.name ? "\u270F\uFE0F \u0406\u043C\u02BC\u044F \u0437\u043C\u0456\u043D\u0435\u043D\u043E" : f.pin ? "\u{1F511} PIN \u0437\u043C\u0456\u043D\u0435\u043D\u043E" : "\u{1F504} \u0420\u043E\u043B\u044C \u0437\u043C\u0456\u043D\u0435\u043D\u043E")) loadView();
   });
   async function staffPerms(s) {
-    var _a2, _b, _c, _d;
-    const P = ((_a2 = S.data.staff) == null ? void 0 : _a2.perms) || [], SENS = ((_b = S.data.staff) == null ? void 0 : _b.sens) || [], cur = s.perm || {}, adm = s.role === "admin", on = (k) => adm ? cur[k] !== 0 : cur[k] === 1;
+    var _a2, _b2, _c, _d;
+    const P = ((_a2 = S.data.staff) == null ? void 0 : _a2.perms) || [], SENS = ((_b2 = S.data.staff) == null ? void 0 : _b2.sens) || [], cur = s.perm || {}, adm = s.role === "admin", on = (k) => adm ? cur[k] !== 0 : cur[k] === 1;
     const body = `<div class="scrollbox" style="max-height:55vh">${P.map((p) => `<div class="kv"><span>${p.e} ${esc(p.n)}${SENS.includes(p.k) && !adm ? ' <small class="muted">\xB7 \u0437 PIN 6+</small>' : ""}</span><label class="switch"><input type="checkbox" data-pk="${p.k}" ${on(p.k) ? "checked" : ""}><i></i></label></div>`).join("")}
       <div class="kv"><span>\u{1F3F7} \u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430, %<br><small class="muted">\u043F\u043E\u0440\u043E\u0436\u043D\u044C\u043E \u2014 \u0437\u0430 \u043D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F\u043C \u0437\u0430\u043A\u043B\u0430\u0434\u0443</small></span><input id="pkDisc" type="number" min="0" max="100" inputmode="numeric" value="${(_c = cur.discountMax) != null ? _c : ""}" style="width:80px"></div></div>`;
     const v = await modal({ title: `\u{1F511} \u041F\u0440\u0430\u0432\u0430: ${s.name}`, text: adm ? "\u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440 \u043C\u0430\u0454 \u0432\u0441\u0456 \u043F\u0440\u0430\u0432\u0430 \u2014 \u0437\u043D\u0456\u043C\u0456\u0442\u044C \u0437\u0430\u0439\u0432\u0435." : "\u0420\u043E\u043B\u044C \u0434\u0430\u0454 \u0437\u0432\u0438\u0447\u043D\u0456 \u0434\u0456\u0457; \u0433\u0430\u043B\u043E\u0447\u043A\u0438 \u0434\u043E\u0434\u0430\u044E\u0442\u044C \u043F\u043E\u043D\u0430\u0434 \u043D\u0438\u0445. \u0417\u043C\u0456\u043D\u0430 \u0434\u0456\u0454 \u043E\u0434\u0440\u0430\u0437\u0443.", body, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
@@ -7555,11 +7637,11 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     b.remove();
   }
   function crEnd() {
-    var _a2, _b;
+    var _a2, _b2;
     TR.l = null;
     clearInterval(TR.tm);
     (_a2 = $("#crHl")) == null ? void 0 : _a2.remove();
-    (_b = $("#crTip")) == null ? void 0 : _b.remove();
+    (_b2 = $("#crTip")) == null ? void 0 : _b2.remove();
   }
   function crStep() {
     const l = TR.l, s = l == null ? void 0 : l.s[TR.i];

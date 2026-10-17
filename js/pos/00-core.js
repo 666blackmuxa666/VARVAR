@@ -401,8 +401,8 @@
       case 'view': S.view = el.dataset.v; S.q = ''; renderNav(); renderMain(); loadView(); $('#feed').classList.remove('open'); $('#main').scrollTop = 0; break;
       case 'feed': $('#feed').classList.toggle('open'); break;
       case 'fs': { const on = !document.fullscreenElement; store.set('fs', on); on ? document.documentElement.requestFullscreen?.().catch(() => {}) : document.exitFullscreen?.(); break; }
-      case 'more': { const v = await choose('Ще', '', (isCook() ? navList() : realAdmin() ? navList().filter(n => !NAV_MAIN.includes(n[0])) : NAV.filter(n => !n[3] && ['stop', 'menu', 'calc'].includes(n[0]))).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: '🔒 Вийти', val: 'logout', cls: 'red' }]));
-        if (v === 'logout') { if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); } else if (v) { S.view = v; S.q = ''; renderNav(); renderMain(); loadView(); $('#main').scrollTop = 0; } break; }
+      case 'more': { const v = await choose('Ще', '', (isCook() ? navList() : realAdmin() ? navList().filter(n => !NAV_MAIN.includes(n[0])) : NAV.filter(n => !n[3] && ['stop', 'menu', 'calc'].includes(n[0]))).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: '🔔 Сповіщення', val: 'push' }, { label: '🔒 Вийти', val: 'logout', cls: 'red' }]));
+        if (v === 'push') pushMenu(); else if (v === 'logout') { if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); } else if (v) { S.view = v; S.q = ''; renderNav(); renderMain(); loadView(); $('#main').scrollTop = 0; } break; }
       case 'switch': if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); break;
       case 'table': $('#feed').classList.remove('open'); openTable(el.dataset.t); break;
       case 'newOrder': { const n = await pickTable('Новe замовлення', 'Оберіть стіл', 0, true); if (n === 'pick' || n === 'del') goNew(n); else if (n) { openTable(n); S.mobileMenu = true; renderSheet(); } break; }
@@ -665,12 +665,50 @@
   }
   setInterval(checkVer, 5 * 60e3); document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && checkVer()); setTimeout(checkVer, 3000);
 
+  // ---------- 🔔 сповіщення в шторку (Web Push) ----------
+  const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isApp = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const pushCan = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && location.protocol === 'https:';
+  const installHow = () => isIOS() ? '1. Відкрийте касу в Safari\n2. Натисніть «Поділитися» (квадрат зі стрілкою)\n3. «На початковий екран» → «Додати»\n4. Відкрийте касу з іконки й увімкніть сповіщення' : '1. Відкрийте касу в Chrome\n2. Меню ⋮ → «Встановити додаток» або «Додати на головний екран»\n3. Відкрийте касу з іконки';
+  const u8 = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+  async function pushSubNow() {
+    const k = await api('pushKey'); if (!k.on) throw new Error('Сповіщення ще не налаштовані на сервері');
+    if ((await Notification.requestPermission()) !== 'granted') throw new Error('Сповіщення заборонені — дозвольте їх у налаштуваннях телефона для каси');
+    const reg = await navigator.serviceWorker.register('pos-sw.js'); await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (sub && sub.options?.applicationServerKey && btoa(String.fromCharCode(...new Uint8Array(sub.options.applicationServerKey))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') !== k.key) { await sub.unsubscribe(); sub = null; }
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: u8(k.key) });
+    await api('pushSub', { sub: sub.toJSON() }); return sub;
+  }
+  async function pushMenu() {
+    if (isIOS() && !isApp()) return modal({ title: '📲 Спершу встановіть касу', text: 'На iPhone сповіщення працюють лише в касі, встановленій на екран (iOS 16.4+).\n\n' + installHow(), buttons: [{ label: 'Зрозуміло', val: null }] });
+    if (!pushCan()) return modal({ title: '🔔 Сповіщення', text: 'Цей браузер не підтримує сповіщення. Встановіть касу як додаток:\n\n' + installHow(), buttons: [{ label: 'Зрозуміло', val: null }] });
+    const reg = await navigator.serviceWorker.getRegistration(), sub = await reg?.pushManager.getSubscription(), on = !!sub && Notification.permission === 'granted';
+    const v = await modal({ title: on ? '🔔 Сповіщення увімкнені' : '🔔 Сповіщення в шторку', text: on ? 'Нові замовлення й важливі події приходитимуть на цей телефон, навіть коли він заблокований.' : 'Отримуйте нові замовлення й важливі події на цей телефон — навіть на заблокований екран.' + (isApp() ? '' : '\n\n💡 Краще встановити касу як додаток:\n' + installHow()), buttons: on ? [{ label: '📨 Тестове', val: 'test' }, { label: '🔕 Вимкнути', val: 'off', cls: 'red' }, { label: 'Закрити', val: null }] : [{ label: '🔔 Увімкнути', val: 'on' }, { label: 'Пізніше', val: null }] });
+    try {
+      if (v === 'on') { await pushSubNow(); store.set('pushAsk', 1); pushBanner(); toast('🔔 Увімкнено'); await api('pushTest'); }
+      else if (v === 'test') { await api('pushTest'); toast('📨 Надіслано — перевірте шторку'); }
+      else if (v === 'off') { await api('pushUnsub', { e: sub.endpoint }); await sub.unsubscribe(); toast('🔕 Вимкнено'); }
+    } catch (e) { toast('⚠️ ' + (e.message || e)); }
+  }
+  // 📲 одна ненав'язлива плашка: встановити касу / увімкнути сповіщення (закривається назавжди)
+  async function pushBanner() {
+    $('#pushAsk')?.remove(); if (store.get('pushAsk') || !S.me?.sid) return;
+    try { if (pushCan() && Notification.permission === 'granted' && await (await navigator.serviceWorker.getRegistration())?.pushManager.getSubscription()) return; } catch {}
+    const d = document.createElement('div'); d.id = 'pushAsk'; d.className = 'toast'; d.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:min(92vw,420px)';
+    d.innerHTML = `<span style="flex:1;min-width:0">${isIOS() && !isApp() ? '📲 Встановіть касу на екран — і отримуйте замовлення в шторку' : '🔔 Отримуйте нові замовлення в шторку телефона'}</span><button class="btn sm" data-p="on">${isIOS() && !isApp() ? 'Як?' : 'Увімкнути'}</button><button class="btn sm" data-p="no">✕</button>`;
+    d.onclick = e => { const p = e.target.dataset.p; if (!p) return; d.remove(); store.set('pushAsk', 1); if (p === 'on') pushMenu(); };
+    document.body.append(d);
+  }
+  try { navigator.serviceWorker?.addEventListener('message', e => { const go = e.data?.push && e.data.go; if (go?.view) { S.view = go.view; renderNav(); renderMain(); loadView(); } }); } catch {}
+
   // ---------- старт ----------
   try { if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('pos-sw.js').catch(() => {}); } catch {} // 📴 каса відкривається й без інтернету
   async function start() {
     offBanner(); setTimeout(offFlush, 1500);
     $('#login').hidden = true; $('#app').hidden = false;
     renderNav(); $('#main').innerHTML = '<div class="muted">Завантаження…</div>';
+    setTimeout(pushBanner, 4000); // 🔔 запропонувати сповіщення (один раз)
     try { await loadState(); } catch (e) { console.error('start', e); if (e.message === 'auth') return; // 🩺 не «вічне завантаження»: показати помилку й надіслати на сервер (видно в логах)
       $('#main').innerHTML = `<div class="card"><h3>⚠️ Каса не завантажилась</h3><div class="muted" style="word-break:break-word">${esc(String(e.message || e))}</div><button class="btn" onclick="location.reload()">🔄 Ще раз</button></div>`;
       api('jsErr', { m: String(e.message || e).slice(0, 300), st: String(e.stack || '').slice(0, 1500) }).catch(() => {}); return; }
