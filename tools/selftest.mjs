@@ -279,10 +279,19 @@ async function apiTests() {
   if (C) {
     await step('кур\'єр бере', async () => { const r = await posOk(C, 'courAct', { t: G, act: 'take' }); must(r.go?.cour === users.courier.me.name, 'cour=' + r.go?.cour); });
     await step('кур\'єр: поїхав', async () => { const r = await posOk(C, 'courAct', { t: G, act: 'road' }); must(r.go?.st === 'road', 'st=' + r.go?.st); });
+    const bal = async () => (await posOk(A, 'shift')).bal, b0 = await bal();
     await step('кур\'єр: видано 💵 → чек закрито', async () => {
       const r = await posOk(C, 'courAct', { t: G, act: 'done', arg: 'cash' }); must(r.done, 'не закрито');
       const o = await http('/api/orders?ids=' + oid); const st = JSON.stringify(o.j); must(/done/.test(st), 'статус гостя: ' + st.slice(0, 150));
       const me = await posOk(C, 'courMe'); return `готівка в кур'єра: ${JSON.stringify(me.day?.cash ?? me.day).slice(0, 60)}`;
+    });
+    await step('🛵 готівка кур\'єра: courOwed = сума, у «Готівці в касі» її нема; «Отримав» → courOwed 0, cash += сума', async () => {
+      const b1 = await bal(), owed = b1.courOwed - (b0.courOwed || 0); must(owed > 0, 'courOwed не зріс: ' + JSON.stringify([b0.courOwed, b1.courOwed]));
+      must(b1.courBy?.[users.courier.me.name] >= owed, 'courBy: ' + JSON.stringify(b1.courBy));
+      must(b1.cash === b0.cash, `готівка в касі змінилась до здачі: ${b0.cash} → ${b1.cash}`);
+      must((await posOk(A, 'courCash', { n: users.courier.me.name, sum: owed })).r, 'courCash');
+      const b2 = await bal(); must(b2.courOwed === b0.courOwed, `courOwed після: ${b2.courOwed} ≠ ${b0.courOwed}`);
+      must(b2.cash === b0.cash + owed, `cash після «Отримав»: ${b2.cash}, має ${b0.cash + owed}`); return `${owed} ₴`;
     });
   } else rec('кур\'єр не зареєстрований — сценарій пропущено', false);
 
