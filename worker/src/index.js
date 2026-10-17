@@ -382,12 +382,15 @@ async function admin(b, ip, env) {
 
 // 🌐 posatom.online/<заклад>/… → файли сайту (GitHub Pages) без змін; заклад береться зі шляху (js/config.js).
 // /<заклад>/ — візитка; /<заклад>/?t=…&k=… (QR столу) — меню; /owner/ — кабінет власника; / — поки VARVAR
+const ATOM_SEO = { '/pos-kafe': '/seo-pos-kafe.html', '/kasa-restoran': '/seo-kasa-restoran.html', '/qr-menu': '/seo-qr-menu.html' };
 async function atomSite(req, env) {
   let url = new URL(req.url);
   if (url.hostname === 'www.posatom.online') return Response.redirect('https://posatom.online' + url.pathname + url.search, 301);
   if (url.pathname.startsWith('/api/')) return atomApi(req, env, url);
   if (url.pathname === '/robots.txt') return new Response('User-agent: *\nAllow: /\nDisallow: /v/\nDisallow: /api/\nSitemap: https://posatom.online/sitemap.xml\n', { headers: { 'content-type': 'text/plain', 'cache-control': 'public, max-age=86400' } }); // 🔎 Гугл: знаходить «ATOM каса» і кабінет
-  if (url.pathname === '/sitemap.xml') return new Response('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://posatom.online/</loc></url><url><loc>https://posatom.online/owner/</loc></url></urlset>', { headers: { 'content-type': 'application/xml', 'cache-control': 'public, max-age=86400' } });
+  if (url.pathname === '/sitemap.xml') return new Response('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://posatom.online/</loc></url><url><loc>https://posatom.online/owner/</loc></url>' + Object.keys(ATOM_SEO).map(u => `<url><loc>https://posatom.online${u}</loc></url>`).join('') + '</urlset>', { headers: { 'content-type': 'application/xml', 'cache-control': 'public, max-age=86400' } });
+  const seo = ATOM_SEO[url.pathname.replace(/(.)\/$/, '$1')]; // 🔎 посадкові сторінки під пошук: /pos-kafe, /kasa-restoran, /qr-menu
+  if (seo) { const r = await siteFile(env, seo); return new Response(r.body, { status: r.status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=300' } }); }
   if (url.pathname === '/' || url.pathname === '/atom.html') { if (url.pathname === '/atom.html') return Response.redirect('https://posatom.online/', 301); url = new URL('https://posatom.online/atom/' + url.search); }
 
   const m = url.pathname.match(/^\/([a-z0-9][a-z0-9-]{1,30})(\/.*)?$/); if (!m) return new Response('Not found', { status: 404 });
