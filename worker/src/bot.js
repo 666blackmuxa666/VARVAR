@@ -764,7 +764,7 @@ async function handleCallback(q, env) {
   if (act === 'tgu') { await env.DB.delete('tgs:' + uid); await edit('🔓 Відвʼязано. «зміна» — привʼязати знову.'); return answer(''); }
   if (act === 'cc') { // 🛵 адмін отримав готівку від кур'єра
     if (!admin) return answer('🔐 Лише для адміністратора');
-    const n = (await getStaff(env)).find(z => z.id === arg)?.name; if (!n) return answer('Не знайдено працівника'); const r = await courCashGive(env, n, +oid, who); await edit(`${q.message?.text ? esc(q.message.text) : ''}\n\n✅ Отримав ${oid} ₴ — <b>${esc(who)}</b>`); return answer(r ? 'Записано' : '');
+    const n = (await getStaff(env)).find(z => z.id === arg)?.name; if (!n) return answer('Не знайдено працівника'); const r = await courCashGive(env, n, +oid, who); if (!r) return answer('Некоректна сума'); await edit(`${q.message?.text ? esc(q.message.text) : ''}\n\n✅ Отримав ${oid} ₴ — <b>${esc(who)}</b>`); return answer(r ? 'Записано' : '');
   }
   if (act === 'ct') { // 🎁 сертифікат оплачено / скасовано
     if (!admin) return answer('🔐 Лише для адміністратора');

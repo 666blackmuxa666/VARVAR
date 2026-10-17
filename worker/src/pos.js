@@ -86,7 +86,7 @@ export async function posApi(b, req, env) {
     if (b.op === 'courAct') { if (b.act === 'take' && me.role !== 'courier' && !admin) return [{ error: 'Брати доставку може кур\'єр або адмін' }, 403]; const r = await courAct(env, t, who, String(b.act), b.arg); return r.error ? [{ error: r.error }, 400] : ok(r); }
     if (b.op === 'courList') { if (!admin) return needAdmin(); const st = (await getStaff(env)).filter(s => s.role === 'courier'), links = await getLinks(env); return ok({ list: await Promise.all(st.map(async s => ({ ...(await courDay(env, s.name)), name: s.name, tg: !!links[s.name] }))), bot: env.COURIER_BOT_TOKEN ? await courBot(env) : '' }); }
     if (b.op === 'courRep') { if (!admin) return needAdmin(); return ok(await courRep(env, String(b.m || ''))); }
-    if (b.op === 'courCash') { if (!admin) return needAdmin(); const r = await courCashGive(env, String(b.n), +b.sum, who); await logEvent(env, { k: 'shift', by: who, text: `💵 Отримано від кур'єра ${b.n}: ${+b.sum} ₴` }); return ok({ r }); }
+    if (b.op === 'courCash') { if (!admin) return needAdmin(); if (!(await getStaff(env)).some(s => s.role === 'courier' && s.name === String(b.n))) return [{ error: 'Немає такого кур\'єра' }, 400]; const r = await courCashGive(env, String(b.n), +b.sum, who); if (!r) return [{ error: 'Некоректна сума' }, 400]; await logEvent(env, { k: 'shift', by: who, text: `💵 Отримано від кур'єра ${b.n}: ${+b.sum} ₴` }); return ok({ r }); }
   }
 
   if (['move', 'split'].includes(b.op) && !(+b.to >= 1 && +b.to <= tablesCount(env))) return [{ error: 'Переносити можна лише на стіл залу' }, 400]; // не на 1005 / 99999
@@ -266,7 +266,7 @@ export async function posApi(b, req, env) {
     case 'reports': return ok({ ...(await reportsData(env)), cash: await cashData(env), top: await topData(env) });
     case 'float': await setFloat(env, +b.sum || 0); return ok();
     case 'expense': {
-      const sum = Math.round(+b.sum || 0); if (!sum) return [{ error: 'sum' }, 400];
+      const sum = Math.round(+b.sum || 0); if (!(sum > 0 && sum <= 1e6)) return [{ error: 'sum' }, 400];
       const day = /^\d{4}-\d{2}-\d{2}$/.test(b.day || '') && b.day < dayKey() ? b.day : ''; if (day && !admin) return needAdmin(); // 📅 минулий день — лише адмін
       const e = { sum, note: String(b.note || '').slice(0, 100), src: b.src === 'card' ? 'card' : 'cash', at: hhmm(), by: who, ...(day ? { late: dayKey() } : {}) };
       await addExpense(env, e, day || undefined); await notify(env, `🖥 💸 Витрата${day ? ` за ${day.split('-').reverse().join('.')}` : ''} ${money(sum)} ${e.src === 'card' ? '💳 з карти' : '💵 з каси'}${e.note ? ` — ${esc(e.note)}` : ''} · ${esc(who)}`); return ok();

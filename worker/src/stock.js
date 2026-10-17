@@ -9,8 +9,10 @@ export const UNITS = ['кг', 'л', 'шт'];
 export const ING_CATS = ["М'ясо", 'Риба', 'Овочі й фрукти', 'Молочне', 'Бакалія', 'Соуси й спеції', 'Хліб', 'Напої', 'Алкоголь', 'Пиво', 'Кальян', 'Упаковка', 'Заготовки', 'Інше'];
 export const OFF_R = ['Зіпсувалось', 'Впало / брак', 'Персоналу', 'Комплімент гостю', 'Проба / дегустація', 'Інше'];
 const uid = () => crypto.randomUUID().replace(/-/g, '').slice(0, 8);
-export const r3 = x => Math.round((+x || 0) * 1000) / 1000;
-const r2 = x => Math.round((+x || 0) * 100) / 100;
+// 🛡 Infinity / 1e300 з API не потрапляють у склад і суми (стеля 1e9 — з запасом для г/мл)
+const fin = x => { x = +x || 0; return x > 1e9 ? 1e9 : x < -1e9 ? -1e9 : x; };
+export const r3 = x => Math.round(fin(x) * 1000) / 1000;
+const r2 = x => Math.round(fin(x) * 100) / 100;
 const tot = x => r3((x.st?.k || 0) + (x.st?.b || 0));
 // кількість для людей: 0.25 кг → «250 г», 2 л → «2 л»
 export const fq = (q, u) => { q = r3(q); if ((u === 'кг' || u === 'л') && q && Math.abs(q) < 1) return `${Math.round(q * 1000)} ${u === 'кг' ? 'г' : 'мл'}`; return `${String(q).replace('.', ',')} ${u}`; };
