@@ -112,6 +112,13 @@ export async function courDay(env, name) {
   const mm = cl.map(x => x.gt?.road && x.gt?.done ? (x.gt.done - x.gt.road) / 60e3 : null).filter(x => x != null);
   return { avg: mm.length ? Math.round(mm.reduce((a, x) => a + x, 0) / mm.length) : null, n: cl.length, cash, given: hand[name]?.sum || 0, left: cash - (hand[name]?.sum || 0), earn: cl.length * (st?.pay?.dlv ?? c.cpay), list: cl.map(x => ({ t: x.t, at: x.at, sum: x.sum, pay: x.card ? 'card' : 'cash', mins: x.gt?.road && x.gt?.done ? Math.round((x.gt.done - x.gt.road) / 60e3) : null })) };
 }
+// 🛵 готівка в кур'єрів, яку адмін ще не прийняв: у «Готівці в касі» не рахується, доки не натиснуть «✅ Отримав»
+export async function courOwed(env) {
+  const cl = (await getClosed(env)).filter(c => !c.del && !c.rm && c.cour && c.go === 'del'), hand = (await env.DB.get('ccash:' + dayKey(), 'json')) || {}, by = {};
+  for (const x of cl) by[x.cour] = (by[x.cour] || 0) + (x.cash || 0);
+  let sum = 0; for (const n in by) sum += Math.max(0, by[n] - (hand[n]?.sum || 0));
+  return { sum, by: Object.fromEntries(Object.entries(by).map(([n, v]) => [n, Math.max(0, v - (hand[n]?.sum || 0))]).filter(([, v]) => v > 0)) };
+}
 export async function courCashGive(env, name, sum, by) { // адмін: «отримав готівку від кур'єра»
   return L(env, 'ccash:' + dayKey(), async () => { const k = 'ccash:' + dayKey(), h = (await env.DB.get(k, 'json')) || {}; h[name] = { sum: (h[name]?.sum || 0) + Math.round(+sum || 0), by, at: hhmm() }; await env.DB.put(k, JSON.stringify(h), { expirationTtl: 40 * 86400 }); return h[name]; });
 }

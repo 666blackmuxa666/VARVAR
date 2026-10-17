@@ -317,7 +317,7 @@ export async function botName(env) {
   let n = await env.DB.get('gbotname'); if (!n) { const r = await gtg(env, 'getMe', {}).then(r => r.json()).catch(() => null); n = r?.result?.username || ''; if (n) await env.DB.put('gbotname', n, { expirationTtl: 7 * 86400 }); } return n; }
 export async function meStart(env) { const n = crypto.randomUUID().replace(/-/g, '').slice(0, 16); await env.DB.put('gl:' + n, JSON.stringify({ at: Date.now() }), { expirationTtl: 900 }); const bot = await botName(env); return { nonce: n, bot, ...(env.__hookErr ? { hookErr: env.__hookErr } : {}) }; }
 export async function mePoll(env, n) { if (!/^[a-f0-9]{16}$/.test(n || '')) return null; const x = await env.DB.get('gl:' + n, 'json'); if (!x?.token) return { wait: 1 }; await env.DB.delete('gl:' + n); return { token: x.token }; }
-const meSess = async (env, tok) => /^[a-f0-9]{32}$/.test(tok || '') ? env.DB.get('gs:' + tok) : null;
+export const meSess = async (env, tok) => /^[a-f0-9]{32}$/.test(tok || '') ? env.DB.get('gs:' + tok) : null;
 export async function meData(env, tok) {
   const ph = await meSess(env, tok); if (!ph) return null;
   const c = (await getCli(env, ph)) || { n: 0, sum: 0, bal: 0 };

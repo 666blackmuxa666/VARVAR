@@ -10,18 +10,18 @@
     // 0. гроші зараз — залишки за весь час (змін немає, усе переходить з дня в день)
     const B = r.bal, sg = n => (n > 0 ? '+' : n < 0 ? '−' : '') + money(Math.abs(n));
     const balH = B ? `<div class="bal">
-      <button class="bal-c" data-a="balInfo" data-s="cash"><span>💵 Готівка в касі</span><b class="money">${money(B.cash)}</b><small>✏️ звірити</small></button>
+      <button class="bal-c" data-a="balInfo" data-s="cash"><span>💵 Готівка в касі</span><b class="money">${money(B.cash)}</b><small>${B.courOwed ? '🛵 у кур\'єрів ' + money(B.courOwed) : '✏️ звірити'}</small></button>
       <button class="bal-c" data-a="balInfo" data-s="card"><span>💳 На картці</span><b class="money">${money(B.card)}</b><small>✏️ звірити</small></button>
       <div class="bal-c tot"><span>💰 Разом</span><b class="money">${money(B.total)}</b><small>${B.tipOwed ? `з них чайові ${money(B.tipOwed)} · вільних <b>${money(B.free)}</b>` : `з ${B.from ? B.from.split('-').reverse().join('.') : '—'}`}</small></div></div>` : '';
     // 1. головне: виручка за сьогодні, готівка/картка, кнопка Z
     const hero = `<div class="cash-hero on"><div class="hero-main"><div class="muted">${today}</div><div class="hero-l">Виручка за сьогодні</div><div class="hero-n money">${money(z.total)}</div>${z.tip ? `<div class="muted" style="font-size:13px">без чайових · + 💝 ${money(z.tip)} чайові персоналу</div>` : ''}
         <div class="split"><div class="bar2"><i style="width:${pc}%"></i></div><div class="split-l"><span>💵 Готівка <b class="money">${money(z.cash)}</b></span><span>💳 Картка <b class="money">${money(z.card)}</b>${z.onl ? `<small class="muted"> з них 🌐 онлайн ${money(z.onl)}</small>` : ''}${S.cfg?.bankFee && z.card ? `<small class="muted"> · 🏦 −${money(Math.round(z.card * S.cfg.bankFee / 100))} комісія</small>` : ''}</span></div></div></div>
-      ${(() => { const R = r.rec, best = Math.max(R?.sum || 0, 0), now = z.total, pct = best ? Math.min(100, Math.round(now / best * 100)) : 0; /* 🏆 рекорд закладу за день */
-        return `<div class="hero-rec${best && now > best ? ' beat' : ''}"><span>🏆 Рекорд за день</span><b class="money">${best ? money(best) : '—'}</b><small>${best ? (now > best ? '🔥 сьогодні вже більше — рекорд!' : `${R.d.split('-').reverse().join('.')} · сьогодні ${pct}%`) : 'зʼявиться після першого Z-звіту'}${S.cfg?.recBonus ? ` · премія ${money(S.cfg.recBonus)}` : ''}</small>${best ? `<div class="bar2"><i style="width:${pct}%"></i></div>` : ''}</div>`; })()}
       <button class="btn primary zbtn" data-a="zDay">🧾 Z-звіт<small>переглянути · друк · закрити день</small></button></div>`;
+    const recH = (() => { const R = r.rec, best = Math.max(R?.sum || 0, 0), now = z.total, pct = best ? Math.min(100, Math.round(now / best * 100)) : 0; /* 🏆 рекорд закладу за день */
+        return `<div class="widget hero-rec${best && now > best ? ' beat' : ''}"><span>🏆 Рекорд за день</span><b class="money">${best ? money(best) : '—'}</b><small>${best ? (now > best ? '🔥 сьогодні вже більше — рекорд!' : `${R.d.split('-').reverse().join('.')} · сьогодні ${pct}%`) : 'зʼявиться після першого Z-звіту'}${S.cfg?.recBonus ? ` · премія ${money(S.cfg.recBonus)}` : ''}</small>${best ? `<div class="bar2"><i style="width:${pct}%"></i></div>` : ''}</div>`; })();
     // 2. плитки
     const tiles = [['🧾 Чеків', z.checks], ['Ø Середній чек', z.checks ? money(z.total / z.checks) : '—'], ['🏷 Знижки', money(z.disc)], ['💝 Чайові', money(z.tip || 0)], ['💸 Витрати', money(z.exCash + z.exCard)], ['📈 Чистими', money(z.net), 'green'], ['⏳ Відкрито в залі', z.openTables ? `${money(z.openSum)} · ${z.openTables} ст.` : '—']];
-    const tilesH = `<div class="widgets">${tiles.map(([l, v, c]) => `<div class="widget ${c || ''}"><span>${l}</span><b class="money">${v}</b></div>`).join('')}</div>`;
+    const tilesH = `<div class="widgets">${tiles.map(([l, v, c]) => `<div class="widget ${c || ''}"><span>${l}</span><b class="money">${v}</b></div>`).join('')}${recH}</div>`;
     // 3. операції
     const ops = `<div class="card"><h3>⚡ Операції</h3><div class="opsg"><button class="btn" data-a="expense">💸 Витрата</button><button class="btn" data-a="cMove" data-t="+">➕ Внести</button><button class="btn" data-a="cMove" data-t="-">➖ Вилучити</button><button class="btn" data-a="cMove" data-t="x">🔁 Обмін</button></div>
       <div class="muted" style="font-size:12px;margin-top:8px">Витрата — купили щось · Внести / вилучити — поклали чи забрали гроші (готівкою або з картки ФОП: собі, податки) · Обмін — картка ↔ готівка</div></div>`;
@@ -53,7 +53,7 @@
     const row = (l, v) => v ? `<div class="kv"><span>${l}</span><b class="money">${(v > 0 ? '+' : '−') + money(Math.abs(v))}</b></div>` : '';
     const body = (c ? [row('💳 Продажі карткою', B.saleCard), row('🔁 Рух (обмін, вилучення)', B.mvCard), row('💸 Витрати з картки', -B.exCard), row('💝 Чайові видано', -B.tipCard), row('✏️ Звірки', B.adjCard)]
       : [row('💵 Продажі готівкою', B.saleCash), row('🔁 Рух (внесення, вилучення, обмін)', B.mvCash), row('💸 Витрати з каси', -B.exCash), row('💝 Чайові видано', -B.tipCash), row('✏️ Звірки', B.adjCash)]).join('')
-      + `<div class="kv" style="font-size:18px"><span><b>Має бути</b></span><b class="money">${money(c ? B.card : B.cash)}</b></div>`;
+      + (!c && B.courOwed ? `<div class="kv"><span>🛵 У кур'єрів (ще не здали)</span><b class="money">${money(B.courOwed)}</b></div>` : '') + `<div class="kv" style="font-size:18px"><span><b>Має бути</b></span><b class="money">${money(c ? B.card : B.cash)}</b></div>`;
     const v = await modal({ title: c ? '💳 На картці' : '💵 Готівка в касі', body: `<div class="card" style="margin:0 0 12px">${body}</div><div class="form"><input id="rcAct" inputmode="decimal" placeholder="${c ? 'Залишок у Приват24, ₴' : 'Перерахували касу — скільки є, ₴'}"></div><div class="muted" style="font-size:12px">Якщо не збігається — впишіть факт, різниця запишеться як звірка (видно в журналі й Telegram)</div>`,
       buttons: [{ label: '✏️ Звірити', val: 1, cls: 'primary' }, { label: 'Закрити', val: null }], keep: true });
     const a = v && $('#rcAct').value.replace(',', '.').trim(); closeModal();

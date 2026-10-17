@@ -336,6 +336,8 @@ footer a { color: var(--muted); }
 </main>
 
 <footer><div class="wrap">
+  <div id="refban" hidden style="flex-basis:100%;color:var(--text)">👋 Вас запросили в ATOM. Спробуйте касу в демо — а після першої оплати ви отримаєте місяць у подарунок.</div>
+  <div style="flex-basis:100%">🎁 Приведіть друга-ресторатора — місяць ATOM у подарунок вам обом. <span style="color:var(--muted)">Подарунок нараховується після першої оплати нового закладу й не діє для власних закладів. Умови можуть змінюватись.</span></div>
   <div><b class="uf" style="color:var(--text)">ATOM</b> · система для закладів харчування · posatom.online</div>
   <div><a href="/varvar/terms.html">Умови та реквізити</a> · <a href="/owner/">Кабінет власника</a> · <a href="#lead">Контакти</a></div>
 </div></footer>
@@ -426,7 +428,7 @@ footer a { color: var(--muted); }
   }));
   // 🎁 реферальний код з ?ref= — зберігаємо на сесію й передаємо в заявку (лише a–z0–9, до 20 символів)
   function refCode() { try { const q = new URLSearchParams(location.search).get('ref'), c = (q || sessionStorage.getItem('ref') || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20); if (q && c) sessionStorage.setItem('ref', c); return c; } catch { return ''; } }
-  refCode();
+  if (refCode()) $('#refban').hidden = false;
   // 💬 заявка
   $('#lf').addEventListener('submit', async e => {
     e.preventDefault(); const f = e.target, m = $('#lm'), d = Object.fromEntries(new FormData(f)); m.className = 'msg'; if (PV) { m.textContent = '👁 Перегляд: заявка не надсилається'; return; }

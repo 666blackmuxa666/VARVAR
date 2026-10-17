@@ -6,7 +6,7 @@ import { ALS, cur } from './venue.js';
 import { cliClose, cliTouch, goKitchen, goButtons, goGone } from './delivery.js';
 import { reviewQueue } from './site.js';
 import { promoFill, promoClose } from './promo.js';
-import { courNotify } from './courier.js';
+import { courNotify, courOwed } from './courier.js';
 import { queuePrint, queueKitchen, kitchenTicket, receipt, getRcpt } from './print.js';
 import { consume, wasteDish } from './stock.js';
 
@@ -627,6 +627,7 @@ export async function balances(env) {
     else if (m.type === 'adjc') r.adjCash += m.sum; else if (m.type === 'adjk') r.adjCard += m.sum;
     else { r.mvCash += moveCash(m); r.mvCard += moveCard(m); } }));
   r.cash = r.saleCash + r.mvCash - r.exCash - r.tipCash + r.adjCash;
+  { const o = await courOwed(env).catch(() => ({ sum: 0, by: {} })); r.courOwed = o.sum; r.courBy = o.by; r.cash -= o.sum; } // 🛵 ще в кур'єрів
   r.card = r.saleCard + r.mvCard - r.exCard - r.tipCard + r.adjCard;
   r.total = r.cash + r.card;
   r.tipOwed = Object.values((await env.DB.get('tipbal', 'json')) || {}).reduce((a, v) => a + (v > 0 ? v : 0), 0); // ще не видані чайові — гроші персоналу
@@ -724,9 +725,10 @@ export async function shiftData(env) {
   const float = s ? s.float : ((await env.DB.get('day:' + dayKey(), 'json')) || {}).float || 0;
   const open = await openTables(env);
   // чайові — не виручка закладу (як у dayZData): total без них, показуються окремо; inBox — фізична готівка, чайові в ній є, поки не видані (рух tipc)
+  const ow = (await courOwed(env).catch(() => ({ sum: 0 }))).sum; // 🛵 готівка ще в кур'єрів — не в шухляді
   const tip = sum(recs, x => x.tip), tipBy = {}; recs.forEach(x => Object.entries(tipSplitOf(x)).forEach(([n, v]) => { tipBy[n] = (tipBy[n] || 0) + v; }));
   return { lastZ: s ? null : await lastZrec(env), open: !!s, id: s?.id, opened: s?.opened || 0, by: s?.by || '', float, checks: recs.length, cash, card, onl: sum(recs, x => x.onl), gross: cash + card, total: cash + card - tip, tip, tipBy, disc: sum(recs, x => x.discSum),
-    exCash, exCard, mvCash, mvCard, inBox: float + cash - exCash + mvCash, openTables: open.length, openSum: open.reduce((a, r) => a + payable(r.b), 0) };
+    exCash, exCard, mvCash, mvCard, courOwed: ow, inBox: float + cash - exCash + mvCash - ow, openTables: open.length, openSum: open.reduce((a, r) => a + payable(r.b), 0) };
 }
 // «Загальна сума» для відкриття каси: уся готівка за весь час (готівка від гостей − витрати готівкою)
 export async function lastZ(env) {

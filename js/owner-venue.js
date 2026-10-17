@@ -113,8 +113,9 @@ window.OWNV = ctx => {
         <div class="muted" style="font-size:13px;margin-bottom:8px">Приведіть інший заклад: коли він уперше заплатить — <b>місяць ATOM у подарунок</b> вам обом.</div>
         <div class="kv"><span>Ваше посилання</span><b style="word-break:break-all">posatom.online/?ref=${esc(r.code)}</b></div>
         <div class="btnrow" style="margin-top:8px"><button class="btn sm" data-a="vrefCopy" data-v="https://posatom.online/?ref=${esc(r.code)}">📋 Копіювати</button>${plat ? '<button class="btn sm ghost" data-a="vrefGift">🎁 +1 міс</button><button class="btn sm ghost" data-a="vrefBlock" data-code="' + esc(r.code) + '" data-on="' + (r.blocked ? 0 : 1) + '">' + (r.blocked ? '✅ Розблокувати код' : '🚫 Заблокувати код') + '</button>' : ''}</div>
+        ${r.leads ? '' : '<div class="muted" style="font-size:13px;margin-top:8px">Поки що ніхто не прийшов за вашим посиланням. Надішліть його колезі — і місяць ваш.</div>'}
         <div class="kv"><span>Заявок за вашим кодом</span><b>${r.leads}</b></div>
-        <div class="kv"><span>Подаровано місяців</span><b>${r.n} із ${r.limit}</b></div>${r.blocked ? '<div class="alert red" style="margin-top:8px">🚫 Код заблоковано</div>' : ''}</div>`;
+        <div class="kv"><span>Подаровано місяців</span><b>${r.n} із 12</b></div>${r.blocked ? '<div class="alert red" style="margin-top:8px">🚫 Код заблоковано. Напишіть нам, якщо це помилка.</div>' : ''}</div>`;
       const g = d.go || {}, gl = d.glp; /* 💳 прийом оплат від гостей — ключі цього закладу */
       const acq = `<div class="card"><h3>💳 Прийом оплат від гостей</h3>
         <div class="muted" style="font-size:13px;margin-bottom:8px">Гості платять карткою онлайн (замовлення, доставка, сертифікати, рахунок столу з QR) — гроші йдуть одразу на рахунок закладу. У касі онлайн видно окремо: 💵 готівка · 💳 термінал · 🌐 онлайн.</div>
