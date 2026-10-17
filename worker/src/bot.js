@@ -397,7 +397,14 @@ export async function handleUpdate(u, env) {
   };
   const text = (m.text || '').trim(), low = text.toLowerCase().replace(/@\S+/, '');
   const tooMany = async () => false; // без блокування на 15 хв (просив власник)
-  const fail = async () => { const n = +(await env.DB.get('fail:' + uid) || 0) + 1; await env.DB.put('fail:' + uid, String(n), { expirationTtl: 900 }); return n; };
+  // 🔒 спроба PIN рахується ДО перевірки, під замком (паралельні повідомлення не обходять ліміт); окрім ліміту на акаунт — спільний на заклад (багато нових акаунтів не перебирають PIN)
+  const pinTry = () => env.DB.locked('pinrl', async () => {
+    const n = +(await env.DB.get('fail:' + uid) || 0), g = +(await env.DB.get('failall') || 0);
+    if (n >= 5 || g >= 60) return false;
+    await env.DB.put('fail:' + uid, String(n + 1), { expirationTtl: 900 }); await env.DB.put('failall', String(g + 1), { expirationTtl: 900 }); return true;
+  });
+  const pinOk = () => env.DB.locked('pinrl', async () => { await env.DB.delete('fail:' + uid); const g = +(await env.DB.get('failall') || 0); if (g > 0) await env.DB.put('failall', String(g - 1), { expirationTtl: 900 }); });
+  const fail = async () => {}; // лічильник уже збільшено в pinTry
 
   // очікуємо пароль або інше введення
   const state = uid && await env.DB.get('st:' + uid);
@@ -406,14 +413,14 @@ export async function handleUpdate(u, env) {
     if (['pin', 'stfadd'].includes(state) || state.startsWith('regp:') || state.startsWith('tgpin:') || state.startsWith('stfp:')) await tg(env, 'deleteMessage', { chat_id: chat, message_id: m.message_id }); // прибираємо паролі/PIN з чату
     if (state.startsWith('tkwhy:')) { const s0 = await meStaff(env, uid); if (!s0) return send({ text: '🔐 Спершу увійдіть своїм PIN' }); const T = await import('./tasks.js'), r = await T.taskMark(env, { name: s0.name, role: s0.role, sid: s0.id }, dayKey(), state.slice(6), 'no', text); if (r.error) return send({ text: '⚠️ ' + r.error }); const v = await T.taskBotView(env, s0); return send({ text: '❌ Записано: ' + esc(text.slice(0, 140)) + '\n\n' + v.text, markup: v.markup }); } // 📋 причина «не зробив»
     if (state === 'pin') { // 🔑 вхід за особистим PIN каси (або код реєстрації нового працівника)
-      if (+(await env.DB.get('fail:' + uid) || 0) >= 5) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' }, { remove_keyboard: true });
       const keep = async t => { await env.DB.put('st:' + uid, 'pin', { expirationTtl: 3600 }); return send({ text: t }, { remove_keyboard: true }); };
       if (!/^\d{4}$/.test(text)) return keep('Введіть 4 цифри — свій PIN (або код реєстрації):');
+      if (!(await pinTry())) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' }, { remove_keyboard: true });
       const h = await pinHash(text), me = (await getStaff(env)).find(z => z.pin === h); // спершу PIN працівника — код реєстрації не має його перекривати
       const role = !me && await regRole(env, text);
       if (role) { await env.DB.put('st:' + uid, 'regn:' + role, { expirationTtl: 900 }); return send({ text: `🆕 Реєстрація (${ROLE_ONE[role]}). Напишіть своє імʼя:` }, { remove_keyboard: true }); }
       if (!me) { await fail(); return keep('❌ Невірний PIN. Введіть ще раз:'); }
-      await env.DB.delete('fail:' + uid);
+      await pinOk();
       return send({ text: `✅ Вітаю, ${esc(me.name)}! Ви увійшли як ${ROLE_ONE[me.role] || me.role}.\n\n` + await helpFor(env, me.role) }, await tgLogin(env, uid, me, chat));
     }
     if (state.startsWith('regn:')) { const name = text.replace(/:/g, ' ').trim().slice(0, 30); if (!name) return send({ text: 'Напишіть імʼя' }); await env.DB.put('st:' + uid, `regp:${state.slice(5)}:${name}`, { expirationTtl: 900 }); return send({ text: `Привіт, ${esc(name)}! Придумайте свій PIN — 4 цифри (повідомлення одразу видалиться):` }, { remove_keyboard: true }); }
@@ -438,9 +445,9 @@ export async function handleUpdate(u, env) {
     if (state.startsWith('bke:') && waiter) { const [, id, f] = state.split(':'); return send(await bookEditText(env, id, f, text, who)); }
     if (state.startsWith('tgpin:') && waiter) { // 👤 привʼязка до працівника: PIN каси
       const s = (await getStaff(env)).find(z => z.id === state.slice(6)); if (!s) return send({ text: 'Не знайдено' });
-      if (+(await env.DB.get('fail:' + uid) || 0) >= 5) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' });
-      if (s.pin !== await pinHash(text)) { await fail(); return send({ text: '❌ PIN не підходить. Напишіть «зміна», щоб спробувати ще раз.' }); }
-      await env.DB.put('tgs:' + uid, s.id);
+      if (!(await pinTry())) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' });
+      if (s.pin !== await pinHash(text)) { return send({ text: '❌ PIN не підходить. Напишіть «зміна», щоб спробувати ще раз.' }); }
+      await pinOk(); await env.DB.put('tgs:' + uid, s.id);
       return send({ text: `✅ Ви — <b>${esc(s.name)}</b>. Тепер «зміна» починає / закінчує вашу зміну.` });
     }
     if (state.startsWith('sk') && admin) { const r = await stockState(state, text, env, uid, who); if (r) return send(r); }
@@ -730,7 +737,7 @@ async function handleCallback(q, env) {
     const T = await import('./tasks.js'), r = await T.taskMark(env, { name: s0.name, role: s0.role, sid: s0.id }, dayKey(), arg, 'done'); if (r.error) return answer(r.error);
     const v = await T.taskBotView(env, s0); await edit(v.text, v.markup); return answer('✅ Зроблено'); }
   if (act === 'idx' || act === 'idd') { const I = await import('./ideas.js'), me = await meStaff(env, uid); if (!me) return answer('🔐 Увійдіть PIN');
-    const r = act === 'idx' ? await I.ideaDel(env, arg, me.name, admin) : await I.ideaDone(env, arg, admin); if (r.error) return answer(r.error);
+    const r = act === 'idx' ? await I.ideaDel(env, arg, me.name, admin, me.id) : await I.ideaDone(env, arg, admin); if (r.error) return answer(r.error);
     const v = await I.ideaBotList(env, me, admin); await edit(v.text, v.markup); return answer(act === 'idx' ? '🗑 Видалено' : '✅'); }
   if (['lcl', 'llv', 'lro', 'lcs', 'lpr'].includes(act)) { // 🎁 лояльність: картка клієнта, рівень, увімк/вимк акції
     const r = await loyBotCb(env, act, arg, oid, admin, who); if (!r) return answer('');

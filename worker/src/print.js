@@ -93,7 +93,12 @@ export async function printClear(env, id) {
 
 export class PrintQ {
   constructor(state) { this.st = state.storage; this.wait = []; }
-  async jobs() { return [...(await this.st.list({ prefix: 'j:', limit: 10 })).values()]; }
+  // завислі без ack завдання (лічильник n) опускаються за нові: 10 «вічних» не блокують чергу; після 5 спроб віддаються лише коли інших немає
+  async jobs() {
+    const all = [...(await this.st.list({ prefix: 'j:', limit: 60 })).values()], fresh = all.filter(j => (j.n || 0) < 5), pick = (fresh.length ? fresh : all).slice(0, 10);
+    const bump = pick; if (bump.length) await this.st.put(Object.fromEntries(bump.map(j => ['j:' + j.id, { ...j, n: (j.n || 0) + 1 }])));
+    return pick;
+  }
   wake() { const w = this.wait; this.wait = []; w.forEach(f => f()); }
   async fetch(req) {
     const u = new URL(req.url);

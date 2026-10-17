@@ -83,9 +83,11 @@ export class Store extends DurableObject {
   // 💾 бекап / відновлення: увесь вміст сховища закладу як є (з терміном життя записів)
   async dump() { return [...(await this.ctx.storage.list())].filter(([k]) => !k.startsWith('__')); }
   async restore(entries) {
-    const keep = Object.fromEntries([...(await this.ctx.storage.list({ prefix: '__' }))]);
-    await this.ctx.storage.deleteAll(); await this.ctx.storage.put(keep);
+    // спершу записуємо новий вміст, лише потім прибираємо зайве: збій посередині лишає суміш, а не порожню базу (deleteAll не атомарний)
+    entries = entries.filter(e => Array.isArray(e) && typeof e[0] === 'string' && !e[0].startsWith('__'));
     for (let i = 0; i < entries.length; i += 128) await this.ctx.storage.put(Object.fromEntries(entries.slice(i, i + 128)));
+    const want = new Set(entries.map(e => e[0])), stale = [...(await this.ctx.storage.list()).keys()].filter(k => !k.startsWith('__') && !want.has(k));
+    for (let i = 0; i < stale.length; i += 128) await this.ctx.storage.delete(stale.slice(i, i + 128));
     this.schema = undefined; // старий бекап → міграції пройдуть знову
     this.changed(['bill:', 'menu', 'staff', 'closed:', 'day:']); return entries.length;
   }
