@@ -318,3 +318,16 @@ tr.sum td { font-weight: 700; border-bottom: 0; }
 .an-heat small { color: var(--muted); text-align: center; }
 .an-heat i { display: block; aspect-ratio: 1; min-height: 10px; border-radius: 3px; background: var(--accent); }
 @media (max-width: 480px) { .an-grid { grid-template-columns: 1fr; } .an-bar { grid-template-columns: 1fr auto; } .an-bar .b { grid-column: 1 / -1; order: 3; } }
+
+/* ✨ Шапка кабінету — стильна: скло, золота лінія, градієнтний заголовок */
+.top { background: linear-gradient(180deg, rgba(20,17,10,.92), rgba(11,11,13,.82)) !important; border-bottom: 0 !important; box-shadow: 0 10px 30px -18px rgba(0,0,0,.9); }
+.top::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: linear-gradient(90deg, transparent, #f2c14e 30%, #d99a2b 70%, transparent); opacity: .7; }
+.top .in { padding: 12px 18px; gap: 14px; }
+.top .in > img { width: 40px; height: 40px; border-radius: 12px; box-shadow: 0 0 0 1px rgba(242,193,78,.45), 0 6px 18px -6px rgba(242,193,78,.55); }
+.top .in > b { font-size: 18px; font-weight: 800; letter-spacing: .2px; background: linear-gradient(90deg, #fff 0%, #f6dc95 60%, #f2c14e 100%); -webkit-background-clip: text; background-clip: text; color: transparent; white-space: nowrap; }
+.top .who-av .vvav { width: 38px; height: 38px; box-shadow: 0 0 0 2px rgba(11,11,13,.9), 0 0 0 3px rgba(242,193,78,.6); }
+.top .who span { font-size: 11px; letter-spacing: .6px; text-transform: uppercase; color: #d9b45a !important; }
+.top .icogrp { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); }
+.top .icogrp .icobtn { border: 0 !important; background: transparent !important; border-radius: 999px !important; width: 34px; height: 34px; transition: background .15s, transform .15s; }
+.top .icogrp .icobtn:hover { background: rgba(242,193,78,.14) !important; transform: translateY(-1px); }
+@media (max-width: 560px) { .top .in > b { font-size: 15px; } .top .who { display: none; } .top .in > img { width: 34px; height: 34px; } }
