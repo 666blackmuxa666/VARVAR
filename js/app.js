@@ -411,7 +411,7 @@
       ${(c.pr || []).filter(r => !r.w || r.w.includes(gf.kind)).map(r => `<div class="go-note">⚡ <b>${esc(r.t)}</b>${r.d ? ' — ' + esc(r.d) : ''}</div>`).join('')}
       <input id="gName" placeholder="${t('goName')}" value="${esc(gf.name)}" autocomplete="name">
       <input id="gPhone" type="tel" placeholder="${t('goPhone')}" value="${esc(gf.phone)}" autocomplete="tel" inputmode="tel">
-      ${gf.kind === 'del' ? `<input id="gAddr" placeholder="${t('goAddr')}" value="${esc(gf.addr)}" autocomplete="street-address"><input id="gEnt" placeholder="${t('goEnt')}" value="${esc(gf.ent)}">${c.zone ? `<div class="go-note">📍 ${esc(c.zone)}</div>` : ''}` : ''}
+      ${gf.kind === 'del' ? `<input id="gAddr" placeholder="${t('goAddr')}" value="${esc(gf.addr)}" autocomplete="street-address"><input id="gEnt" placeholder="${t('goEnt')}" value="${esc(gf.ent)}">${c.zone ? `<div class="go-note">📍 ${esc(c.zone)}</div>` : ''}${c.track ? `<button type="button" class="btn ghost" data-go-dst>${gf.dst ? '✅ ' + t('goDstOk') : '📍 ' + t('goDst')}</button>` : ''}` : ''}
       <label class="go-row"><span>🕐 ${t(gf.kind === 'del' ? 'goWhenDel' : 'goWhen')}</span><select id="gWhen">${c.open ? `<option value="">${t('goAsap')} (~${c.prep} ${t('goMin')})</option>` : ''}${w.map(x => `<option ${gf.when === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
       <label class="go-row"><span>🍴 ${t('goCut')}</span><span class="qty"><button data-go-cut="-1">−</button><b>${gf.cut}</b><button data-go-cut="1">+</button></span></label>
       <div class="go-sub">${(goCfg?.onl ? '💳 ' + t('goPayHow') : t('goPay'))}</div>
@@ -436,24 +436,35 @@
       if (status !== 200) { m.textContent = { closed: `${t('goClosed')} ${data.from}–${data.to}`, min: `${t('goMinSum')} ${money(data.min || 0)}`, rate: t('wait'), contact: t('goNeedContact'), addr: t('goNeedAddr'), off: t('goOff') }[data.error] || t('error'); return; }
       if (data.pay) { /* 🌐 онлайн: кошик лишається до підтвердження оплати; замовлення зʼявиться в закладі після оплати */
         store.set('goPend', { id: data.id, sum: data.sum, ts: Date.now(), items: items.map(([k, q]) => [k, q]) }); m.textContent = t('goPayGo'); location.href = data.pay; return; }
-      goHist.push({ id: data.id, no: data.no, ts: Date.now(), at: new Date().toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' }), sum: data.sum, items: items.map(([k, q]) => [k, q]), g: 'new', eta: Date.now() + data.eta * 60e3 });
+      goHist.push({ id: data.id, no: data.no, ts: Date.now(), at: new Date().toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' }), sum: data.sum, items: items.map(([k, q]) => [k, q]), g: 'new', eta: Date.now() + data.eta * 60e3, ...(gf.dst && gf.kind === 'del' ? { dst: gf.dst } : {}) }); gf.dst = null;
       cart = {}; packAdj = 0; gf.useB = false; gf.pr = null; gf.bal = 0; $('#comment').value = ''; save(); goSave();
       $('#goModal').hidden = true; refreshButtons(); renderFab(); renderCart(); goShow(data.id);
     } catch { m.textContent = t('error'); } finally { busy = false; }
   }
+  // 📍 кур'єр на карті (OSM напряму, без нашого проксі; атрибуція — у самому вбудованні) + відстань, якщо гість поділився точкою
+  function goMap(o) {
+    const { la, lo, ts } = o.loc, ago = Math.max(0, Math.round((Date.now() - ts) / 60e3));
+    if (ago >= 3) return `<p class="go-note">📍 ${t('goLocLost')}</p>`;
+    let dist = ''; if (o.dst) { const R = 6371, rad = x => x * Math.PI / 180, dl = rad(o.dst.la - la), dg = rad(o.dst.lo - lo), a = Math.sin(dl / 2) ** 2 + Math.cos(rad(la)) * Math.cos(rad(o.dst.la)) * Math.sin(dg / 2) ** 2, km = 2 * R * Math.asin(Math.sqrt(a)); dist = ` · ${km < 1 ? Math.round(km * 1000) + ' ' + t('goM') : km.toFixed(1) + ' ' + t('goKm')}`; }
+    const d = 0.004, bb = [lo - d * 1.6, la - d, lo + d * 1.6, la + d].map(x => x.toFixed(5)).join('%2C');
+    return `<iframe class="go-map" loading="lazy" referrerpolicy="no-referrer" title="map" src="https://www.openstreetmap.org/export/embed.html?bbox=${bb}&layer=mapnik&marker=${la}%2C${lo}"></iframe><p class="go-note">📍 ${t('goLocAgo').replace('{n}', ago)}${dist} · <a href="https://www.openstreetmap.org/?mlat=${la}&mlon=${lo}#map=16/${la}/${lo}" target="_blank" rel="noopener">${t('goOpenMap')}</a></p>`;
+  }
+  let goMapT = 0;
   function goShow(id) {
     const o = goHist.find(x => x.id === id); if (!o) return; const g = o.g || 'new', steps = ['new', 'acc', 'cook', 'ready', ...(o.no.startsWith('Д') ? ['road'] : []), 'done'];
     $('#goBody').innerHTML = `<div class="go-big">${GST[g][0]}</div><h3 class="go-no">${t('goOrder')} ${o.no}</h3><p class="go-st">${t(GST[g][1])}</p>
       ${g === 'rej' ? '' : `<div class="go-steps">${steps.map(s => `<i class="${steps.indexOf(s) <= steps.indexOf(g) ? 'on' : ''}" title="${t(GST[s][1])}">${GST[s][0]}</i>`).join('')}</div>`}
       ${o.cour && ['road'].includes(g) ? `<p class="go-st">🛵 ${t('goCour')} <b>${esc(o.cour)}</b></p>` : o.cour && !['done', 'rej'].includes(g) ? `<p class="go-note">✋ ${t('goCourTook')} <b>${esc(o.cour)}</b></p>` : ''}
+      ${g === 'road' && o.loc ? goMap(o) : ''}
       ${o.etaC && g === 'road' ? `<p class="go-st">🛵 ${t('goEtaC')} <b>~${new Date(o.etaC).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' })}</b></p>` : ''}${o.eta && !o.etaC && !['done', 'rej'].includes(g) ? `<p class="go-note">${t('goEta')} ~${new Date(o.eta).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' })}</p>` : ''}
       ${goCfg?.phone ? `<a class="btn ghost" href="tel:${esc(goCfg.phone.replace(/[^\d+]/g, ''))}">📞 ${esc(goCfg.phone)}</a>` : ''}${['done', 'rej'].includes(g) ? '' : `<button class="btn ghost" data-go-refresh>🔄 ${t('goRefresh')}</button>`}<button class="btn alt" data-close>${t('goOk')}</button>`;
     ($('#sheet').hidden = true, $('#goModal').hidden = false); $('#goModal').dataset.show = id;
+    clearTimeout(goMapT); if (g === 'road' && goCfg?.track) goMapT = setTimeout(() => { if (document.visibilityState === 'visible' && !$('#goModal').hidden && $('#goModal').dataset.show === id) goPoll(); }, 60e3); // карта: не частіше ніж раз на 60 с, лише видима вкладка
   }
   async function goPoll() {
     const act = goHist.filter(o => !['done', 'rej'].includes(o.g) && Date.now() - o.ts < 12 * 3600e3); if (!act.length) { $('#orderStatus').hidden = true; return; }
     try { const { data } = await api('/api/orders?g=1&ids=' + act.map(o => o.id).sort().join(','));
-      for (const o of act) { const x = data[o.id]; if (x && x.g && x.g !== o.g) { o.g = x.g; navigator.vibrate?.(80); } if (x?.c !== undefined && x.c !== o.cour) { o.cour = x.c; navigator.vibrate?.(80); } if (x?.etaC && x.etaC !== o.etaC) { o.etaC = x.etaC; navigator.vibrate?.(80); } } goSave(); } catch {}
+      for (const o of act) { const x = data[o.id]; if (x && x.g && x.g !== o.g) { o.g = x.g; navigator.vibrate?.(80); } if (x?.c !== undefined && x.c !== o.cour) { o.cour = x.c; navigator.vibrate?.(80); } if (x && x.loc?.ts !== o.loc?.ts) o.loc = x.loc || null; if (x?.etaC && x.etaC !== o.etaC) { o.etaC = x.etaC; navigator.vibrate?.(80); } } goSave(); } catch {}
     const last = act[act.length - 1], bar = $('#orderStatus'); bar.hidden = false; bar.className = 'order-status ' + (['ready', 'road', 'done'].includes(last.g) ? 'ok' : 'wait'); bar.textContent = `${last.no} · ${GST[last.g || 'new'][0]} ${t(GST[last.g || 'new'][1])}${last.etaC && last.g === 'road' ? ` · ~${new Date(last.etaC).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' })}` : ''}`; bar.dataset.go = last.id;
     if (!$('#goModal').hidden && $('#goModal').dataset.show) goShow($('#goModal').dataset.show);
     if (!$('#sheet').hidden) renderCart();
@@ -468,6 +479,7 @@
     if ('goPre' in d) { (async () => { const items = cartEntries().map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; });
       const { status } = await api('/api/bookpre', { id: BOOK, phone: store.get('bkPhone', store.get('goPhone', '')), items }).catch(() => ({ status: 0 }));
       if (status === 200) { cart = {}; save(); refreshButtons(); renderFab(); $('#msg').textContent = '✅ ' + t('goPreOk'); setTimeout(() => { location.href = window.VARVAR.link('about.html#book'); }, 1500); } else $('#msg').textContent = status === 409 ? (lang === 'en' ? 'The kitchen already has your pre-order — please call us to change it' : 'Передзамовлення вже на кухні — щоб змінити, зателефонуйте нам') : t('error'); })(); return true; }
+    if ('goDst' in d) { navigator.geolocation?.getCurrentPosition(p => { gf.dst = { la: Math.round(p.coords.latitude * 1e5) / 1e5, lo: Math.round(p.coords.longitude * 1e5) / 1e5 }; goRead(); goForm(); }, () => { $('#goMsg').textContent = t('goDstFail'); }, { timeout: 8000 }); return true; }
     if ('goRefresh' in d) { goPoll(); return true; }
     if (d.goSt) { goShow(d.goSt); return true; }
     if (el.id === 'orderStatus' && el.dataset.go) { goShow(el.dataset.go); return true; }

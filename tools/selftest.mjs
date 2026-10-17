@@ -274,9 +274,29 @@ async function apiTests() {
   if (C) {
     await step('кур\'єр бере', async () => { const r = await posOk(C, 'courAct', { t: G, act: 'take' }); must(r.go?.cour === users.courier.me.name, 'cour=' + r.go?.cour); });
     await step('кур\'єр: поїхав', async () => { const r = await posOk(C, 'courAct', { t: G, act: 'road' }); must(r.go?.st === 'road', 'st=' + r.go?.st); });
+    await step('📍 трекінг: вимкнений за замовч.; увімк. → goinfo.track; /api/orders?g=1 без loc, поки точки немає', async () => {
+      const g0 = await http('/api/goinfo?nocache=1'); must(!g0.j.track || g0.j.track === 1, 'goinfo'); // за замовчуванням GO_DEF.track=0 (тест не залежить від залишків попереднього прогону)
+      const c = await posOk(A, 'goCfgSet', { k: 'track', v: 1 }); must(c.cfg?.track === 1, 'cfg.track=' + c.cfg?.track);
+      const g1 = await http('/api/goinfo?nocache=1'); must(g1.j.track === 1, 'goinfo.track=' + g1.j.track);
+      const o = await http('/api/orders?g=1&ids=' + oid); must(o.status === 200 && !JSON.stringify(o.j).includes('"loc"'), 'loc без точки: ' + JSON.stringify(o.j).slice(0, 120));
+      await posOk(A, 'goCfgSet', { k: 'track', v: 0 });
+    });
+    await step('📍 трекінг: Live Location кур\'єра → точка в /api/orders, зайве оновлення відсікається, після видачі зникає', async () => {
+      const tg = async u => (await fetch(API + '/tg3', { method: 'POST', headers: { 'content-type': 'application/json', 'X-Telegram-Bot-Api-Secret-Token': 'x' }, body: JSON.stringify(u) })).status;
+      const lnk = await posOk(C, 'courTg'); const n = /c_([a-f0-9]{16})/.exec(lnk.url || '')?.[1]; must(n, 'немає коду підключення: ' + JSON.stringify(lnk).slice(0, 80));
+      const chat = 900000 + Math.floor(Math.random() * 90000);
+      await tg({ update_id: 1, message: { message_id: 1, chat: { id: chat }, from: { id: chat }, text: '/start c_' + n } }); // відповідь бота піде у вигаданий Telegram — статус не важливий, привʼязка пишеться до відправки
+      const loc = (la, lo) => ({ update_id: 2, edited_message: { message_id: 1, chat: { id: chat }, location: { latitude: la, longitude: lo } } });
+      let o;
+      await posOk(A, 'goCfgSet', { k: 'track', v: 1 }); await new Promise(r => setTimeout(r, 200));
+      await tg({ ...loc(48.36123, 24.43456), update_id: 3 }); o = await http('/api/orders?g=1&ids=' + oid + '&x=' + Date.now()); const l = o.j[oid]?.loc; must(l && l.la === 48.36123 && l.lo === 24.43456, 'loc=' + JSON.stringify(o.j).slice(0, 160));
+      await tg({ ...loc(48.5, 24.5), update_id: 4 }); o = await http('/api/orders?g=1&ids=' + oid + '&x=' + Date.now() + 1); must(o.j[oid]?.loc?.la === 48.36123, 'друге оновлення раніше 2 хв мало відсікатись: ' + o.j[oid]?.loc?.la);
+      const st = await posOk(A, 'state'); must(st.tables.find(x => x.t === G)?.go?.loc?.la === 48.36123, 'bill.go.loc немає');
+      await posOk(A, 'goCfgSet', { k: 'track', v: 0 });
+    });
     await step('кур\'єр: видано 💵 → чек закрито', async () => {
       const r = await posOk(C, 'courAct', { t: G, act: 'done', arg: 'cash' }); must(r.done, 'не закрито');
-      const o = await http('/api/orders?ids=' + oid); const st = JSON.stringify(o.j); must(/done/.test(st), 'статус гостя: ' + st.slice(0, 150));
+      const o = await http('/api/orders?ids=' + oid); const st = JSON.stringify(o.j); must(/done/.test(st), 'статус гостя: ' + st.slice(0, 150)); must(!st.includes('"loc"'), 'після видачі точка не віддається');
       const me = await posOk(C, 'courMe'); return `готівка в кур'єра: ${JSON.stringify(me.day?.cash ?? me.day).slice(0, 60)}`;
     });
   } else rec('кур\'єр не зареєстрований — сценарій пропущено', false);
