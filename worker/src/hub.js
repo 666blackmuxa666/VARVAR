@@ -15,6 +15,7 @@ async function passHash(pass, salt) {
 }
 const normEmail = e => String(e || '').trim().toLowerCase();
 const okEmail = e => /^[^\s@]{1,64}@[^\s@]{1,100}\.[a-z]{2,}$/.test(e);
+const REF_LIMIT = 12; // 🎁 макс. подарункових місяців на одного рефері
 const SESS_MS = 30 * 864e5;
 const pub = a => a && { email: a.email, name: a.name, role: a.role, venues: a.venues || [], ...(a.verified === false ? { unverified: true } : {}), ...(a.av ? { av: a.av } : {}) }; // av — аватарка (data:, ~30 КБ)
 
@@ -96,11 +97,12 @@ export class Hub extends DurableObject {
     }
     return out;
   }
-  async venueCreate({ id, name, owner, status = 'trial', city = '' }) {
+  async venueCreate({ id, name, owner, status = 'trial', city = '', ref = '' }) {
     id = String(id || '').toLowerCase(); if (!isVenueId(id)) return { error: 'Адреса закладу: латиниця, цифри, дефіс (2–31)' };
     if (await this.st.get('venue:' + id)) return { error: 'Така адреса вже зайнята' };
     const a = await this.st.get('acct:' + normEmail(owner)); if (!a) return { error: 'Немає власника з таким email' };
     const v = { id, name: String(name || id).trim().slice(0, 60), owner: a.email, status, plan: 'start', city: String(city).slice(0, 60), at: Date.now() };
+    ref = String(ref || '').toLowerCase().replace(/[^a-z0-9]/g, ''); if (ref && (await this.st.get('refc:' + ref)) && (await this.st.get('refc:' + ref)) !== id) v.refBy = ref; // 🎁 хто привів — незмінне
     await this.st.put('venue:' + id, v); a.venues = [...new Set([...(a.venues || []), id])]; await this.st.put('acct:' + a.email, a);
     return v;
   }
@@ -160,9 +162,39 @@ export class Hub extends DurableObject {
     const rk = 'lrl:' + (ip || 'none').slice(0, 64), r = (await this.st.get(rk)) || []; const now = Date.now(), fresh = r.filter(t => now - t < 3600e3);
     if (fresh.length >= 3) return { error: 'Забагато заявок — спробуйте пізніше або напишіть у Telegram' };
     await this.st.put(rk, [...fresh, now]);
-    const id = now.toString(36) + rnd(3), x = { id, name: String(l.name || '').trim().slice(0, 60), phone: String(l.phone || '').trim().slice(0, 30), place: String(l.place || '').trim().slice(0, 80), city: String(l.city || '').trim().slice(0, 60), msg: String(l.msg || '').trim().slice(0, 800), src: String(l.src || '').slice(0, 30), st: 'new', note: '', next: 0, at: now };
+    const id = now.toString(36) + rnd(3), x = { id, name: String(l.name || '').trim().slice(0, 60), phone: String(l.phone || '').trim().slice(0, 30), place: String(l.place || '').trim().slice(0, 80), city: String(l.city || '').trim().slice(0, 60), msg: String(l.msg || '').trim().slice(0, 800), src: String(l.src || '').slice(0, 30), ref: String(l.ref || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20), st: 'new', note: '', next: 0, at: now };
     await this.st.put('lead:' + id, x); await this.hit('lead'); return x;
   }
+  // 🎁 реферальна програма (етап 1, вручну): refc:<код> → id закладу; ref:<код> → { n, list } — лічильник подарованих місяців рефері
+  async refCode(id) {
+    const v = await this.st.get('venue:' + id); if (!v) return null; if (v.refCode) return v.refCode;
+    const A = 'abcdefghjkmnpqrstuvwxyz23456789'; let c = '';
+    for (let i = 0; i < 20; i++) { c = [...crypto.getRandomValues(new Uint8Array(6))].map(x => A[x % A.length]).join(''); if (!(await this.st.get('refc:' + c))) break; }
+    await this.st.put('refc:' + c, id); v.refCode = c; await this.st.put('venue:' + id, v); return c;
+  }
+  async refStat(id) {
+    const code = await this.refCode(id); if (!code) return { error: 'Немає закладу' };
+    const r = (await this.st.get('ref:' + code)) || { n: 0 }, leads = [...(await this.st.list({ prefix: 'lead:' })).values()].filter(x => x.ref === code);
+    return { code, n: r.n || 0, limit: REF_LIMIT, blocked: !!r.blocked, leads: leads.length, won: leads.filter(x => x.st === 'won' || x.st === 'trial').length };
+  }
+  // подарунок приведеному (id) і, якщо ліміт не вичерпано, рефері: повертає { friend, referrer, capped } — місяці додає викликач
+  async refApply(id, code) {
+    const v = await this.st.get('venue:' + id); if (!v) return { error: 'Немає закладу' };
+    code = String(code || v.refBy || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!code) return { friend: true, referrer: null };
+    if (v.refPaid) return { error: 'Подарунок за цей заклад уже нараховано' };
+    const rid = await this.st.get('refc:' + code); if (!rid) return { error: 'Невірний код рефері' };
+    const rv = await this.st.get('venue:' + rid); if (!rv) return { error: 'Немає закладу рефері' };
+    if (rid === id || rv.owner === v.owner) return { error: 'Свої заклади не рахуються' };
+    { let cur = rv; for (let i = 0; i < 6 && cur; i++) { // ланцюжок запрошень A→B→C→A: рефері не може бути «нащадком» цього закладу (не лише пряма взаємність)
+        if (cur.id === id || cur.owner === v.owner && cur.id !== rv.id) return { error: 'Взаємні запрошення не рахуються' };
+        const up = cur.refBy && await this.st.get('refc:' + cur.refBy); cur = up ? await this.st.get('venue:' + up) : null; } }
+    const r = (await this.st.get('ref:' + code)) || { n: 0, list: [] }, capped = r.blocked || r.n >= REF_LIMIT;
+    v.refBy = code; v.refPaid = Date.now(); await this.st.put('venue:' + id, v);
+    if (!capped) { r.n++; r.list = [{ v: id, ts: v.refPaid }, ...(r.list || [])].slice(0, 50); await this.st.put('ref:' + code, r); }
+    return { friend: true, referrer: capped ? null : rid, capped };
+  }
+  async refBlock(code, on) { code = String(code || '').toLowerCase(); if (!(await this.st.get('refc:' + code))) return { error: 'Невірний код' }; const r = (await this.st.get('ref:' + code)) || { n: 0, list: [] }; r.blocked = on ? 1 : 0; await this.st.put('ref:' + code, r); return { ok: true }; }
   // 💬 контакти сайту ATOM (кабінет → 🚀 Продажі): телефон, посилання Telegram і Viber
   async atomCfg(f) {
     const c = (await this.st.get('atomcfg')) || {}; if (!f) return c;
