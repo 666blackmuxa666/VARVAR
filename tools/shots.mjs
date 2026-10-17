@@ -12,7 +12,7 @@ const W = +(process.argv.find(a => a.startsWith('--w=')) || '--w=375').slice(4),
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 mkdirSync(OUT, { recursive: true });
 
-const pin = String(3000 + Math.floor(Math.random() * 6000));
+const pin = String(300000 + Math.floor(Math.random() * 600000)); // адмін — PIN 6–8 цифр
 const reg = await (await fetch(API + '/api/pos', { method: 'POST', body: JSON.stringify({ op: 'register', code: '1119', name: 'Дизайн ' + pin, pin }) })).json();
 if (!reg.token) throw new Error('реєстрація: ' + JSON.stringify(reg));
 const own = await (await fetch(API + '/api/owner', { method: 'POST', body: JSON.stringify({ op: 'login', email: 'qa-platform@test.local', pass: 'qa-platform-pass-1' }) })).json();

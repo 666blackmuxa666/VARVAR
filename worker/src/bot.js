@@ -414,7 +414,7 @@ export async function handleUpdate(u, env) {
     if (state.startsWith('tkwhy:')) { const s0 = await meStaff(env, uid); if (!s0) return send({ text: '🔐 Спершу увійдіть своїм PIN' }); const T = await import('./tasks.js'), r = await T.taskMark(env, { name: s0.name, role: s0.role, sid: s0.id }, dayKey(), state.slice(6), 'no', text); if (r.error) return send({ text: '⚠️ ' + r.error }); const v = await T.taskBotView(env, s0); return send({ text: '❌ Записано: ' + esc(text.slice(0, 140)) + '\n\n' + v.text, markup: v.markup }); } // 📋 причина «не зробив»
     if (state === 'pin') { // 🔑 вхід за особистим PIN каси (або код реєстрації нового працівника)
       const keep = async t => { await env.DB.put('st:' + uid, 'pin', { expirationTtl: 3600 }); return send({ text: t }, { remove_keyboard: true }); };
-      if (!/^\d{4}$/.test(text)) return keep('Введіть 4 цифри — свій PIN (або код реєстрації):');
+      if (!/^\d{4,8}$/.test(text)) return keep('Введіть свій PIN (4 цифри; адміністратор — 6–8) або код реєстрації:');
       if (!(await pinTry())) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' }, { remove_keyboard: true });
       const me = await pinFind(env, await getStaff(env), text); // спершу PIN працівника — код реєстрації не має його перекривати
       const role = !me && await regRole(env, text);
@@ -426,7 +426,7 @@ export async function handleUpdate(u, env) {
     if (state.startsWith('regn:')) { const name = text.replace(/:/g, ' ').trim().slice(0, 30); if (!name) return send({ text: 'Напишіть імʼя' }); await env.DB.put('st:' + uid, `regp:${state.slice(5)}:${name}`, { expirationTtl: 900 }); return send({ text: `Привіт, ${esc(name)}! Придумайте свій PIN — 4 цифри (повідомлення одразу видалиться):` }, { remove_keyboard: true }); }
     if (state.startsWith('regp:')) {
       const [, role, ...nm] = state.split(':'), name = nm.join(':');
-      if (!/^\d{4}$/.test(text)) { await env.DB.put('st:' + uid, state, { expirationTtl: 900 }); return send({ text: 'PIN — рівно 4 цифри:' }, { remove_keyboard: true }); }
+      if (!/^\d{4,8}$/.test(text)) { await env.DB.put('st:' + uid, state, { expirationTtl: 900 }); return send({ text: role === 'admin' ? 'PIN адміністратора — від 6 до 8 цифр:' : 'PIN — рівно 4 цифри:' }, { remove_keyboard: true }); }
       const r = await addStaff(env, name, text, role); if (r.error) { await env.DB.put('st:' + uid, state, { expirationTtl: 900 }); return send({ text: '⚠️ ' + r.error + '\nВведіть інший PIN:' }, { remove_keyboard: true }); }
       await notify(env, `👥 Новий працівник: <b>${esc(r.s.name)}</b> (${ROLE_ONE[role]}) — зареєструвався в Telegram-боті`).catch(() => {});
       return send({ text: `👋 Вітаю, ${esc(r.s.name)}! PIN збережено — ним же входите в касу.\n\n` + await helpFor(env, role) }, await tgLogin(env, uid, r.s, chat));

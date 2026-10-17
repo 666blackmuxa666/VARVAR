@@ -341,11 +341,16 @@ var __objRest = (source, exclude) => {
     clearTimeout(tryLogin.t);
     if (pin.length >= 4) tryLogin.t = setTimeout(() => tryLogin({ pin }), pin.length === 4 ? 900 : 1200);
   }
-  let regCodeV = "";
+  let regCodeV = "", regRoleV = "";
   function showReg(role, code) {
     regCodeV = code;
+    regRoleV = role;
     pin = "";
     dots();
+    {
+      const adm = role === "admin";
+      $("#rPin").placeholder = adm ? "\u041F\u0440\u0438\u0434\u0443\u043C\u0430\u0439\u0442\u0435 PIN \u2014 6\u20138 \u0446\u0438\u0444\u0440" : "\u041F\u0440\u0438\u0434\u0443\u043C\u0430\u0439\u0442\u0435 PIN \u2014 4 \u0446\u0438\u0444\u0440\u0438";
+    }
     $("#pinView").hidden = true;
     $("#regView").hidden = false;
     $("#loginSub").textContent = "\u0420\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u044F \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430";
@@ -357,7 +362,7 @@ var __objRest = (source, exclude) => {
     setTimeout(() => $("#rName").focus(), 50);
   }
   document.querySelectorAll(".pin4").forEach((i) => i.addEventListener("input", () => {
-    i.value = i.value.replace(/\D/g, "").slice(0, 4);
+    i.value = i.value.replace(/\D/g, "").slice(0, 8);
   }));
   $("#regBack").onclick = () => {
     $("#regView").hidden = true;
@@ -368,8 +373,8 @@ var __objRest = (source, exclude) => {
   $("#regView").onsubmit = async (e) => {
     e.preventDefault();
     const name = $("#rName").value.trim(), p1 = $("#rPin").value.trim(), p2 = $("#rPin2").value.trim();
-    if (!/^\d{4}$/.test(p1)) {
-      $("#lErr").textContent = "PIN \u2014 \u0440\u0456\u0432\u043D\u043E 4 \u0446\u0438\u0444\u0440\u0438";
+    if (!(regRoleV === "admin" ? /^\d{6,8}$/ : /^\d{4}$/).test(p1)) {
+      $("#lErr").textContent = regRoleV === "admin" ? "PIN \u0430\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440\u0430 \u2014 \u0432\u0456\u0434 6 \u0434\u043E 8 \u0446\u0438\u0444\u0440" : "PIN \u2014 \u0440\u0456\u0432\u043D\u043E 4 \u0446\u0438\u0444\u0440\u0438";
       return;
     }
     if (p1 !== p2) {
@@ -1791,7 +1796,7 @@ var __objRest = (source, exclude) => {
         if (await confirmBox("\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438 \u043E\u0441\u0442\u0430\u043D\u043D\u044E \u0437\u043C\u0456\u043D\u0443 \u043C\u0435\u043D\u044E?")) act("menuUndo", {}, "\u21A9\uFE0F \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E");
         break;
       case "staffAdd": {
-        const v = await modal({ title: "\u2795 \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A", body: '<div class="form"><input id="sName" placeholder="\u0406\u043C\u02BC\u044F"><input id="sPin" inputmode="numeric" maxlength="4" placeholder="PIN \u2014 4 \u0446\u0438\u0444\u0440\u0438"></div>', buttons: [{ label: "\u{1F9D1}\u200D\u{1F373} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442", val: "waiter", cls: "primary" }, { label: "\u{1F510} \u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440", val: "admin" }, { label: "\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u0430\u0440", val: "cook" }, { label: "\u{1F6F5} \u041A\u0443\u0440'\u0454\u0440", val: "courier" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+        const v = await modal({ title: "\u2795 \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A", body: '<div class="form"><input id="sName" placeholder="\u0406\u043C\u02BC\u044F"><input id="sPin" inputmode="numeric" maxlength="8" placeholder="PIN \u2014 4 \u0446\u0438\u0444\u0440\u0438 (\u0430\u0434\u043C\u0456\u043D \u2014 6\u20138)"></div>', buttons: [{ label: "\u{1F9D1}\u200D\u{1F373} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442", val: "waiter", cls: "primary" }, { label: "\u{1F510} \u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440", val: "admin" }, { label: "\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u0430\u0440", val: "cook" }, { label: "\u{1F6F5} \u041A\u0443\u0440'\u0454\u0440", val: "courier" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
         const name = v && $("#sName").value, p = v && $("#sPin").value;
         closeModal();
         if (v) {
@@ -7086,7 +7091,7 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
       if (v && v.trim() !== s.name) f = { name: v.trim() };
     }
     if (el.dataset.a === "stfPin") {
-      const v = await ask(`\u{1F511} \u041D\u043E\u0432\u0438\u0439 PIN: ${s.name}`, "4 \u0446\u0438\u0444\u0440\u0438 \xB7 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430 \u0432\u0438\u0439\u0434\u0435 \u0437 \u043A\u0430\u0441\u0438", "tel");
+      const v = await ask(`\u{1F511} \u041D\u043E\u0432\u0438\u0439 PIN: ${s.name}`, "4 \u0446\u0438\u0444\u0440\u0438 (\u0430\u0434\u043C\u0456\u043D \u2014 6\u20138) \xB7 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430 \u0432\u0438\u0439\u0434\u0435 \u0437 \u043A\u0430\u0441\u0438", "tel");
       if (v) f = { pin: String(v) };
     }
     if (el.dataset.a === "stfRole") {

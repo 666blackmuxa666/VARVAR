@@ -108,20 +108,20 @@
     if (pin.length >= 4) tryLogin.t = setTimeout(() => tryLogin({ pin }), pin.length === 4 ? 900 : 1200);
   }
   // реєстрація: код 1119 (адмін) / 1112 (офіціант) → імʼя + свій PIN
-  let regCodeV = '';
+  let regCodeV = '', regRoleV = '';
   function showReg(role, code) {
-    regCodeV = code; pin = ''; dots();
+    regCodeV = code; regRoleV = role; pin = ''; dots(); { const adm = role === 'admin'; $('#rPin').placeholder = adm ? 'Придумайте PIN — 6–8 цифр' : 'Придумайте PIN — 4 цифри'; }
     $('#pinView').hidden = true; $('#regView').hidden = false;
     $('#loginSub').textContent = 'Реєстрація працівника';
     $('#regRole').textContent = role === 'admin' ? '🔐 Новий адміністратор' : role === 'cook' ? '👨‍🍳 Новий кухар' : role === 'courier' ? '🛵 Новий кур\'єр' : '🧑‍🍳 Новий офіціант';
     $('#lErr').textContent = ''; $('#rName').value = ''; $('#rPin').value = ''; $('#rPin2').value = ''; setTimeout(() => $('#rName').focus(), 50);
   }
-  document.querySelectorAll('.pin4').forEach(i => i.addEventListener('input', () => { i.value = i.value.replace(/\D/g, '').slice(0, 4); }));
+  document.querySelectorAll('.pin4').forEach(i => i.addEventListener('input', () => { i.value = i.value.replace(/\D/g, '').slice(0, 8); }));
   $('#regBack').onclick = () => { $('#regView').hidden = true; $('#pinView').hidden = false; $('#loginSub').textContent = 'Введіть свій PIN'; $('#lErr').textContent = ''; };
   $('#regView').onsubmit = async e => {
     e.preventDefault();
     const name = $('#rName').value.trim(), p1 = $('#rPin').value.trim(), p2 = $('#rPin2').value.trim();
-    if (!/^\d{4}$/.test(p1)) { $('#lErr').textContent = 'PIN — рівно 4 цифри'; return; }
+    if (!(regRoleV === 'admin' ? /^\d{6,8}$/ : /^\d{4}$/).test(p1)) { $('#lErr').textContent = regRoleV === 'admin' ? 'PIN адміністратора — від 6 до 8 цифр' : 'PIN — рівно 4 цифри'; return; }
     if (p1 !== p2) { $('#lErr').textContent = 'PIN-и не збігаються'; return; }
     $('#lErr').style.color = 'var(--muted)'; $('#lErr').textContent = 'Реєструю…';
     try {
@@ -546,7 +546,7 @@
       case 'catAdd': { const v = await ask('📂 Новий розділ меню', 'Назва, напр. Упакування'); if (v && await act('catAdd', { name: v }, '📂 Розділ додано в кінець меню')) loadMenu().catch(() => {}); break; }
       case 'menuUndo': if (await confirmBox('Скасувати останню зміну меню?')) act('menuUndo', {}, '↩️ Скасовано'); break;
       case 'staffAdd': {
-        const v = await modal({ title: '➕ Працівник', body: '<div class="form"><input id="sName" placeholder="Імʼя"><input id="sPin" inputmode="numeric" maxlength="4" placeholder="PIN — 4 цифри"></div>', buttons: [{ label: '🧑‍🍳 Офіціант', val: 'waiter', cls: 'primary' }, { label: '🔐 Адміністратор', val: 'admin' }, { label: '👨‍🍳 Кухар', val: 'cook' }, { label: '🛵 Кур\'єр', val: 'courier' }, { label: 'Скасувати', val: null }], keep: true });
+        const v = await modal({ title: '➕ Працівник', body: '<div class="form"><input id="sName" placeholder="Імʼя"><input id="sPin" inputmode="numeric" maxlength="8" placeholder="PIN — 4 цифри (адмін — 6–8)"></div>', buttons: [{ label: '🧑‍🍳 Офіціант', val: 'waiter', cls: 'primary' }, { label: '🔐 Адміністратор', val: 'admin' }, { label: '👨‍🍳 Кухар', val: 'cook' }, { label: '🛵 Кур\'єр', val: 'courier' }, { label: 'Скасувати', val: null }], keep: true });
         const name = v && $('#sName').value, p = v && $('#sPin').value; closeModal();
         if (v) { await act('staffAdd', { name, pin: p, role: v }, '👥 Додано'); loadView(); }
         break;

@@ -28,7 +28,7 @@ async function chrome() {
   return { send, ev, on, close: () => { sock.close(); proc.kill(); setTimeout(() => rmSync(dir, { recursive: true, force: true }), 500); } };
 }
 async function user(code) {
-  for (let i = 0; i < 6; i++) { const r = await (await fetch(API + '/api/pos', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'register', code, name: 'Олена ' + Math.random().toString(36).slice(2, 5), pin: String(2000 + Math.floor(Math.random() * 7000)) }) })).json(); if (r.token) return r; }
+  for (let i = 0; i < 6; i++) { const r = await (await fetch(API + '/api/pos', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'register', code, name: 'Олена ' + Math.random().toString(36).slice(2, 5), pin: String(200000 + Math.floor(Math.random() * 700000)) }) })).json(); if (r.token) return r; }
   throw new Error('реєстрація ' + code);
 }
 // 👆 «палець» і проходження уроку — виконується в сторінці

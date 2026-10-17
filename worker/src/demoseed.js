@@ -53,7 +53,7 @@ export async function demoSeed(env, { full = false, days = 14 } = {}) {
   if (full) {
     await importMenu(env, DEMO_MENU, true);
     const have = new Set((await getStaff(env)).map(s => s.name));
-    for (const [i, [n, r]] of STAFF.entries()) if (!have.has(n)) await addStaff(env, n, String(1000 + Math.floor(Math.random() * 8999)), r).catch(() => {}); // PIN випадкові — у демо входять кнопкою
+    for (const [i, [n, r]] of STAFF.entries()) if (!have.has(n)) await addStaff(env, n, String(r === 'admin' ? 100000 + Math.floor(Math.random() * 899999) : 1000 + Math.floor(Math.random() * 8999)), r).catch(() => {}); // PIN випадкові — у демо входять кнопкою
     for (const [k, v] of SITE) await setSite(env, k, v).catch(() => {});
   }
   await demoArt(env);

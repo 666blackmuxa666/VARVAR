@@ -43,11 +43,11 @@ async function posOk(token, op, b) { const r = await pos(token, op, b); must(r.s
 
 const users = {};
 const usedPins = new Set();
-function pin() { let p; do { p = String(1000 + Math.floor(Math.random() * 9000)); } while (/^111[1-9]$/.test(p) || usedPins.has(p)); usedPins.add(p); return p; }
+function pin(role) { let p; do { p = role === 'admin' ? String(100000 + Math.floor(Math.random() * 899999)) : String(1000 + Math.floor(Math.random() * 9000)); } while (/^111[1-9]$/.test(p) || usedPins.has(p)); usedPins.add(p); return p; }
 async function register(role, code) {
   for (let i = 0; i < 8; i++) { // PIN може збігтися з чужим (база накопичує працівників); відповідь може загубитись при обриві DO → нове імʼя
     const name = `QA ${role} ${RUN}` + (i ? ` ${i}` : '');
-    const r = await http('/api/pos', { op: 'register', code, name, pin: pin() });
+    const r = await http('/api/pos', { op: 'register', code, name, pin: pin(role) });
     if (r.status === 200 && r.j.token) { users[role] = { token: r.j.token, me: r.j.me }; must(r.j.me.role === role, `роль ${r.j.me.role} ≠ ${role}`); return r.j.me.name; }
     if (!/PIN|імʼ|bad_request/.test(r.j.error || '')) throw new Error(`${r.status} ${JSON.stringify(r.j)}`);
   }
@@ -568,6 +568,12 @@ async function apiTests() {
       must(g.att[day()]?.[nu] && !g.att[day()]?.[old], 'att не перенесено'); must(g.plan[tmr]?.[nu] && !g.plan[tmr]?.[old], 'plan не перенесено');
       const r = g.rows.find(x => x.n === nu); must(r && r.bonus === 123 && r.shifts >= 1, 'ЗП: ' + JSON.stringify(r).slice(0, 150)); must(!g.rows.some(x => x.n === old), 'старе імʼя лишилось'); });
     await step('стара сесія кухаря → 401', async () => { const r = await pos(K, 'state'); must(r.status === 401, 'статус ' + r.status); });
+    await step('🔐 PIN адміністратора ≥6 цифр: 4-значний відхиляється, 6–8 приймається; у адміна PIN працює, офіціант — лише 4', async () => {
+      const r4 = await pos(A, 'staffAdd', { name: 'QA PIN ' + RUN, pin: '4821', role: 'admin' }); must(r4.status === 400 && /6/.test(r4.j.error || ''), 'admin 4 цифри: ' + r4.status + JSON.stringify(r4.j));
+      const w6 = await pos(A, 'staffAdd', { name: 'QA PIN ' + RUN, pin: '482193', role: 'waiter' }); must(w6.status === 400, 'офіціант 6 цифр: ' + w6.status);
+      const ok6 = await pos(A, 'staffAdd', { name: 'QA PIN ' + RUN, pin: pin('admin'), role: 'admin' }); must(ok6.status === 200, 'admin 6 цифр: ' + ok6.status + JSON.stringify(ok6.j));
+      const up = await pos(A, 'staffEdit', { id: sid, role: 'admin' }); must(up.status === 400, 'підвищення без PIN: ' + up.status);
+    });
     await step('staffEdit: PIN = код реєстрації / чужий PIN → 400', async () => { for (const p of ['1114', '1119']) { const r = await pos(A, 'staffEdit', { id: sid, pin: p }); must(r.status === 400, p + ' → ' + r.status); } });
     let np = pin();
     await step('staffEdit: новий PIN → вхід ним', async () => { const e = await editRetry(A, { id: sid, pin: np }); must(e.status === 200 && e.j.ok, 'staffEdit → ' + e.status + ' ' + JSON.stringify(e.j)); np = e.pin; const r = await http('/api/pos', { op: 'login', pin: np }); must(r.j.token && r.j.me.name === nu, JSON.stringify(r.j).slice(0, 120)); users.cook = { token: r.j.token, me: r.j.me }; });
@@ -705,7 +711,7 @@ async function loyTests(A, W, dish) {
   const vpos = (tok, op, b = {}) => http(`/v/${VID}/api/pos`, { op, ...b }, tok);
   await step('заклад: реєстрація адміна його кодом; 1119 там не діє', async () => {
     must((await vpos(null, 'login', { pin: '1119' })).status === 401, '1119 спрацював');
-    for (let i = 0; i < 5 && !VA; i++) { const r = await vpos(null, 'register', { code: codes.admin, name: 'QA адмін закладу', pin: String(2000 + Math.floor(Math.random() * 7000)) }); VA = r.j.token || ''; }
+    for (let i = 0; i < 5 && !VA; i++) { const r = await vpos(null, 'register', { code: codes.admin, name: 'QA адмін закладу', pin: String(200000 + Math.floor(Math.random() * 700000)) }); VA = r.j.token || ''; }
     must(VA, 'не зареєструвався'); });
   await step('ізоляція: токени не переходять між закладами', async () => { must((await vpos(A, 'state')).status === 401, 'токен VARVAR працює в закладі'); must((await pos(VA, 'state')).status === 401, 'токен закладу працює у VARVAR'); });
   await step('новий заклад: порожнє меню й своя назва (не VARVAR)', async () => {

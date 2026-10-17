@@ -24,6 +24,7 @@ function Http($method, $url, $body) {
   try { [void]$h.GetType().InvokeMember('Option', [Reflection.BindingFlags]::SetProperty, $null, $h, @(9, 0x0A80)) } catch { }
   $h.SetTimeouts(10000, 10000, 15000, 40000)
   $h.Open($method, $url, $false)
+  if ($script:cfg -and $script:cfg.key -and $url -match '/api/print/') { $h.SetRequestHeader('X-Print-Key', [string]$script:cfg.key) }   # key in a header, not in the URL (URLs end up in logs)
   if ($body) { $h.SetRequestHeader('Content-Type', 'application/json; charset=utf-8'); $h.Send($body) } else { $h.Send() }
   if ($h.Status -ne 200) { throw "HTTP $($h.Status)" }
   return $h
@@ -244,7 +245,7 @@ function Hello {
   if (-not ($devs | Where-Object { $_.rec })) { Add-UsbRaw; $script:devs = @(Find-Devices) }
   $script:auto = Pick-Auto
   try { $lb = [byte[]](Http 'GET' ($cfg.api + '/print/logo.png')).ResponseBody; $script:logo = [System.Drawing.Image]::FromStream((New-Object IO.MemoryStream(,$lb))) } catch { }
-  $body = '{"key":"' + $cfg.key + '","ver":"' + $VER + '","pc":"' + ($env:COMPUTERNAME -replace '"', '') + '","using":"' + ($auto -replace '\\', '\\' -replace '"', '') + '","devices":[' + (($devs | ForEach-Object { '{"id":"' + ($_.id -replace '\\', '\\' -replace '"', '') + '","name":"' + ($_.name -replace '\\', '\\' -replace '"', '') + '","type":"' + $_.type + '"}' }) -join ',') + ']}'
+  $body = '{"ver":"' + $VER + '","pc":"' + ($env:COMPUTERNAME -replace '"', '') + '","using":"' + ($auto -replace '\\', '\\' -replace '"', '') + '","devices":[' + (($devs | ForEach-Object { '{"id":"' + ($_.id -replace '\\', '\\' -replace '"', '') + '","name":"' + ($_.name -replace '\\', '\\' -replace '"', '') + '","type":"' + $_.type + '"}' }) -join ',') + ']}'
   try { $r = FromJson ((Http 'POST' "$($cfg.api)/api/print/hello" $body).ResponseText); $script:route = @{}; if ($r.route.receipt) { $route.receipt = $r.route.receipt }; if ($r.route.kitchen) { $route.kitchen = $r.route.kitchen } } catch { Log "hello: $($_.Exception.Message)" }
   Log "devices: $(($devs | ForEach-Object { $_.id }) -join ' | ') ; auto=$auto ; route=$($route.receipt)/$($route.kitchen)"
 }
@@ -287,7 +288,7 @@ $done = @{}; $fails = 0; $nextHello = (Get-Date).AddMinutes(10)
 while ($true) {
   try {
     if ((Get-Date) -gt $nextHello) { Hello; $nextHello = (Get-Date).AddMinutes(10) }
-    $r = FromJson ((Http 'GET' "$($cfg.api)/api/print/pull?key=$($cfg.key)&wait=25").ResponseText)   # server holds the request until a job appears
+    $r = FromJson ((Http 'GET' "$($cfg.api)/api/print/pull?wait=25").ResponseText)   # server holds the request until a job appears
     $ok = @(); $bad = 0
     foreach ($job in $r.jobs) {
       if (-not $done.ContainsKey($job.id)) {
@@ -296,7 +297,7 @@ while ($true) {
       }
       $ok += $job.id
     }
-    if ($ok.Count) { Http 'GET' "$($cfg.api)/api/print/ack?key=$($cfg.key)&ids=$($ok -join ',')" | Out-Null }
+    if ($ok.Count) { Http 'GET' "$($cfg.api)/api/print/ack?ids=$($ok -join ',')" | Out-Null }
     if ($done.Count -gt 500) { $done = @{} }
     if ($bad) { $fails = [Math]::Min(($fails + 1), 6); Start-Sleep (10 * $fails) } else { $fails = 0 }   # printer error (no paper / off): wait 10..60 s, do not hammer the server
   } catch { Log "net error: $($_.Exception.Message)"; Start-Sleep 5 }

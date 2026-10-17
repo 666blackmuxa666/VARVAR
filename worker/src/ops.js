@@ -1038,9 +1038,12 @@ export const REG_DEF = { admin: '1119', waiter: '1112', cook: '1113', courier: '
 export const regCode = async (env, role) => (await env.DB.get('reg_' + role)) || REG_DEF[role];
 export async function regRole(env, code) { code = String(code || ''); for (const r of ['admin', 'waiter', 'cook', 'courier']) if (code === await regCode(env, r)) return r; return null; }
 export const getStaff = async env => (await env.DB.get('staff', 'json')) || [];
+// 🔐 PIN: адміністратор — 6–8 цифр (він бачить гроші й налаштування), решта — 4. Старі 4-значні PIN адмінів діють, доки їх не змінять.
+export const pinRule = role => role === 'admin' ? { re: /^\d{6,8}$/, err: 'PIN адміністратора — від 6 до 8 цифр.' } : { re: /^\d{4}$/, err: 'PIN — рівно 4 цифри.' };
 async function _addStaff(env, name, pin, role = 'waiter') {
-  name = String(name || '').trim().slice(0, 30); pin = String(pin || '').trim();
-  if (!name || !/^\d{4}$/.test(pin)) return { error: 'Потрібні імʼя і PIN з 4 цифр.' };
+  name = String(name || '').trim().slice(0, 30); pin = String(pin || '').trim(); role = ['admin', 'cook', 'courier'].includes(role) ? role : 'waiter';
+  if (!name) return { error: 'Потрібне імʼя.' };
+  if (!pinRule(role).re.test(pin)) return { error: pinRule(role).err };
   const list = await getStaff(env);
   if (await pinFind(env, list, pin)) return { error: 'Такий PIN уже є — оберіть інший.' };
   if (await regRole(env, pin)) return { error: 'Цей код — для реєстрації. Оберіть інший PIN.' };
@@ -1060,7 +1063,9 @@ async function _editStaff(env, id, f) {
   if (f.name != null) { const n = String(f.name).trim().slice(0, 30); if (!n) return { error: 'Порожнє імʼя' };
     if (n === KITCHEN_POOL || n === '—') return { error: 'Таке імʼя зайняте' };
     if (list.some(x => x.id !== id && x.name.toLowerCase() === n.toLowerCase())) return { error: 'Працівник з таким імʼям уже є — додайте прізвище або букву.' }; s.name = n; }
-  if (f.pin != null) { const pin = String(f.pin).trim(); if (!/^\d{4}$/.test(pin)) return { error: 'PIN — 4 цифри' };
+  const fr = f.role != null ? (['admin', 'cook', 'courier'].includes(f.role) ? f.role : 'waiter') : s.role;
+  if (fr === 'admin' && s.role !== 'admin' && f.pin == null) return { error: 'Для адміністратора задайте новий PIN — від 6 до 8 цифр.' };
+  if (f.pin != null) { const pin = String(f.pin).trim(); if (!pinRule(fr).re.test(pin)) return { error: pinRule(fr).err };
     if (await regRole(env, pin)) return { error: 'Цей код — для реєстрації. Оберіть інший PIN.' };
     if (await pinFind(env, list, pin, id)) return { error: 'Такий PIN уже є — оберіть інший.' }; s.pin = await pinMake(env, pin, id); }
   if (f.role != null) s.role = ['admin', 'cook', 'courier'].includes(f.role) ? f.role : 'waiter';
