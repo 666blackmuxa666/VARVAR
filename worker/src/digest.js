@@ -1,5 +1,5 @@
-// 🌙 Щоденний дайджест власнику (о 22:00 за Києвом): виручка, чеки, оплати, ЗП, нестача, топ страв — одним повідомленням у робочий чат.
-// Увімкнення — налаштування `dig` (Налаштування → Звіти). Раз на день: прапорець `dig:<день>`.
+// 🌙 Підсумок дня для власника (о 23:00 за Києвом): виручка, чеки, оплати, ЗП, нестача, топ страв.
+// Зберігається в `digl` (останні 14 днів) → блок «🌙 Підсумок дня» у кабінеті власника. У Telegram — лише особисто, якщо власник вказав свій chat id (`digchat`). Раз на день: прапорець `dig:<день>`.
 const money = n => Math.round(n || 0).toLocaleString('uk-UA').replace(/ /g, ' ') + ' ₴';
 const esc = s => String(s ?? '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 const dm = d => d.split('-').reverse().join('.');
@@ -37,11 +37,21 @@ export async function digData(env, day) {
   };
 }
 
-// ⏰ з cron (кожні 5 хв): після 22:00 за Києвом, якщо увімкнено і сьогодні ще не слали
+// ⏰ з cron (кожні 5 хв): після 23:00 за Києвом (до кінця робочого дня) — рахуємо, зберігаємо, за потреби шлемо власнику особисто
 export async function digDaily(env) {
-  const o = await import('./ops.js'), c = await o.getCfg(env); if (!c.dig) return;
-  const h = +new Date().toLocaleString('en-GB', { timeZone: 'Europe/Kyiv', hour: 'numeric', hour12: false }) % 24; if (h < 22 && h >= c.dayH) return; // 22:00 … кінець робочого дня
+  const o = await import('./ops.js'), c = await o.getCfg(env);
+  const h = +new Date().toLocaleString('en-GB', { timeZone: 'Europe/Kyiv', hour: 'numeric', hour12: false }) % 24; if (h < 23 && h >= c.dayH) return;
   const day = o.dayKey(), flag = 'dig:' + day; if (await env.DB.get(flag)) return;
   await env.DB.put(flag, '1', { expirationTtl: 3 * 86400 }); // спершу прапорець: збій не повинен давати дублі кожні 5 хв
-  await o.notify(env, digText(await digData(env, day)));
+  await digRun(env, day, true);
 }
+// порахувати й зберегти підсумок дня (tgSend — слати власнику особисто, якщо вказав chat id)
+export async function digRun(env, day, tgSend) {
+  const d = await digData(env, day), log = ((await env.DB.get('digl', 'json')) || []).filter(x => x.day !== day);
+  log.push(d); await env.DB.put('digl', JSON.stringify(log.sort((a, b) => a.day < b.day ? -1 : 1).slice(-14)));
+  const chat = tgSend && await env.DB.get('digchat'); if (chat && env.BOT_TOKEN) await (await import('./ops.js')).tg(env, 'sendMessage', { chat_id: chat, text: digText(d), parse_mode: 'HTML' }).catch(() => {});
+  return d;
+}
+// для кабінету власника: останні дні (найновіші першими) і чи ввімкнено Telegram
+export async function digList(env) { return { list: ((await env.DB.get('digl', 'json')) || []).slice().reverse().map(d => ({ ...d, text: digText(d) })), tg: !!(await env.DB.get('digchat')) }; }
+export async function digChat(env, chat) { chat = String(chat || '').trim(); if (chat && !/^-?\d{5,15}$/.test(chat)) return { error: 'Chat id — число (дізнатись: @userinfobot)' }; if (chat) await env.DB.put('digchat', chat); else await env.DB.delete('digchat'); return { ok: true, tg: !!chat }; }

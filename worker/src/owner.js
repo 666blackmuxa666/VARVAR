@@ -110,6 +110,7 @@ export async function intApi(req, env, path) {
     if (b.do === 'get') { const t = await B.backupGet(env, String(b.tag)); return t ? [{ data: t }, 200] : [{ error: 'Не знайдено' }, 404]; }
     if (b.do === 'restore') return [await B.backupRestore(env, String(b.tag), String(b.who || '')), 200];
     return [{ error: 'unknown' }, 400]; }
+  if (path === '/__int/dig') { const D = await import('./digest.js'); return [b.do === 'chat' ? await D.digChat(env, b.chat) : b.do === 'now' ? (await D.digRun(env, dayKey(), false), await D.digList(env)) : await D.digList(env), 200]; }
   if (path === '/__int/sum') { const r = await venueSum(env, b.from, b.to); if (b.pnl) r.pnl = await pnl(env, r).catch(e => ({ error: e.message })); return [r, 200]; }
   if (path === '/__int/codes') return [{ codes: Object.fromEntries(await Promise.all(['admin', 'waiter', 'cook', 'courier'].map(async r => [r, await env.DB.get('reg_' + r)]))) }, 200];
   return [{ error: 'unknown' }, 404];
@@ -203,6 +204,12 @@ export async function ownerApi(req, env) {
   switch (b.op) {
     case 'logout': await H.logout(tok); return ok();
     case 'me': return ok({ me, venues: await mine(), seen: await H.seenAll(), inbox: (await H.msgList(plat ? null : me.venues)).filter(m => !m.done).length });
+    case 'dig': { // 🌙 підсумок дня: останні дні всіх закладів / особистий Telegram власника
+      if (b.now) { if (!(await may(b.venue))) return bad('Немає доступу', 403); return ok(await callVenue(env, b.venue, '/__int/dig', { do: 'now' })); }
+      if (b.chat != null) { if (!(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/dig', { do: 'chat', chat: b.chat }); return r.error ? bad(r.error) : ok(r); }
+      const vs = (await mine()).filter(v => v.status !== 'off' && v.id !== 'atom-demo');
+      return ok({ list: await Promise.all(vs.map(async v => ({ id: v.id, name: v.name, ...(await callVenue(env, v.id, '/__int/dig', {}).catch(e => ({ error: e.message, list: [] }))) }))) });
+    }
     case 'sum': { // аналітика: кожен заклад рахує сам, паралельно
       const vs = (await mine()).filter(v => v.status !== 'off' && v.id !== 'atom-demo' && (!b.venues?.length || b.venues.includes(v.id))); // ⛔ вимкнені — не в аналітиці
       const out = await Promise.all(vs.map(async v => ({ ...(await callVenue(env, v.id, '/__int/sum', { from: b.from, to: b.to, pnl: !!b.pnl }).catch(e => ({ error: e.message }))), id: v.id, name: v.name, status: v.status })));

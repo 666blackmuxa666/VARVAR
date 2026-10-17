@@ -173,11 +173,6 @@ async function apiTests() {
     await posOk(A, 'delete', { t: t2, reason: 'QA' });
     const c2 = ((await posOk(A, 'certList')).list || []).find(x => x.code === c.code); must(c2 && c2.left === 500, 'залишок ' + c2?.left); return 'повернуто ' + u.use;
   });
-  await step('🌙 підсумок дня: digGet віддає цифри й текст, налаштування dig вмикається', async () => {
-    const r = await posOk(A, 'digGet'); must(r.d && typeof r.d.rev === 'number' && Array.isArray(r.d.top), 'форма: ' + JSON.stringify(r).slice(0, 120));
-    must(/Підсумок дня/.test(r.text), 'текст'); const c0 = (await posOk(A, 'cfgGet').catch(() => null))?.cfg?.dig;
-    must((await posOk(A, 'cfgSet', { k: 'dig', v: 1 })).cfg.dig === 1, 'dig=1'); must((await posOk(A, 'cfgSet', { k: 'dig', v: c0 ? 1 : 0 })).cfg.dig === (c0 ? 1 : 0), 'dig повернуто'); return r.d.n + ' чеків';
-  });
   await step('📝 інвентаризація → ↩️ скасувати → залишок як був', async () => {
     const x = (await posOk(A, 'skData')).ing.find(i => !i.off && !i.grp); if (!x) return 'немає продуктів';
     const st0 = x.st?.k || 0, tg = Math.max(0, st0) + 3; /* залишок може бути від'ємним — факт ні */ await posOk(A, 'skCountSave', { wh: 'k', f: { [x.id]: tg } }); const d = (await posOk(A, 'skCountFinish', { wh: 'k' })).doc;
@@ -727,6 +722,13 @@ async function loyTests(A, W, dish) {
     must((await ownT(OT, 'enter', { venue: 'varvar' })).status === 403, 'зайшов у чужий заклад');
     const en = await ownT(OT, 'enter', { venue: VID }); must(en.j.token, 'enter'); must((await vpos(en.j.token, 'state')).status === 200, 'токен власника не працює');
     must((await ownT(OT, 'accts')).status === 403, 'власник бачить консоль платформи'); });
+  await step('🌙 підсумок дня у кабінеті власника: порахувати, список, особистий Telegram, чужий заклад — 403', async () => {
+    const r = await ownT(OT, 'dig', { venue: VID, now: 1 }); must(r.status === 200 && Array.isArray(r.j.list) && r.j.list[0]?.day && /Підсумок дня/.test(r.j.list[0].text), 'now ' + JSON.stringify(r.j).slice(0, 150));
+    const l = await ownT(OT, 'dig'); must(l.j.list.length === 1 && l.j.list[0].id === VID && l.j.list[0].list.length >= 1, 'list ' + JSON.stringify(l.j).slice(0, 150));
+    must((await ownT(OT, 'dig', { venue: VID, chat: 'abc' })).status === 400, 'нечисловий chat');
+    must((await ownT(OT, 'dig', { venue: VID, chat: '123456789' })).j.tg === true, 'chat не збережено'); must((await ownT(OT, 'dig')).j.list[0].tg === true, 'tg=false у списку');
+    must((await ownT(OT, 'dig', { venue: VID, chat: '' })).j.tg === false, 'chat не прибрано');
+    must((await ownT(OT, 'dig', { venue: 'varvar', now: 1 })).status === 403, 'чужий заклад'); return r.j.list[0].day; });
   await step('платформа бачить усі заклади', async () => { const me = await ownT(PT, 'me'); must(me.j.venues.some(v => v.id === 'varvar') && me.j.venues.some(v => v.id === VID), 'не всі'); });
   sect('🎁 Реферальна програма (етап 1, вручну)');
   const FE = `qa-ref-${VID}@test.local`, FV = [], phone = '+3809' + String(Date.now()).slice(-8);

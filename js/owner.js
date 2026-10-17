@@ -96,7 +96,8 @@
     try {
       const reqs = [api('sum', { from: f, to: t, pnl: S.tab === 'an' })];
       if (S.tab === 'home') { const w = addD(today(), -7); reqs.push(api('sum', { from: w, to: w })); }
-      const [a, b] = await Promise.all(reqs); S.sum = a.list; S.prev = b?.list || null;
+      if (S.tab === 'home') reqs.push(api('dig').catch(() => ({ list: [] })));
+      const [a, b, g] = await Promise.all(reqs); S.sum = a.list; S.prev = S.tab === 'home' ? b?.list || null : null; S.dig = g?.list || [];
     } catch (e) { if (e.message !== 'auth') toast('⚠️ ' + e.message); S.sum = []; }
     render();
   }
@@ -126,7 +127,13 @@
       ${kpi('Виручка', money(T.rev), delta(T.rev, P?.rev))}${kpi('Чеків', T.n || 0, T.n ? 'середній ' + money(T.rev / T.n) : '')}${kpi('Зараз у залах', money(now.open), `${now.tables} столів · ${now.go} доставок`)}${kpi('На зміні', now.staff, 'людей')}${kpi('Чайові', money(T.tip))}${kpi('Знижки', money(T.disc))}${now.sup ? kpi('💸 Винні постачальникам', money(now.sup), 'деталі — у касі: Склад → 🏭') : ''}</div>
       <h2>🧠 Запитай у даних</h2><form class="card" id="askF" style="display:grid;gap:8px"><div class="btnrow" style="flex-wrap:nowrap"><input name="q" placeholder="Напр.: який заклад заробив найбільше цього місяця і чому?" autocomplete="off"><button class="btn primary">Запитати</button></div><div class="muted" style="font-size:12px">${['Скільки заробили на доставці за тиждень?', 'Чому вчора впала виручка?', 'Які страви приносять найбільше грошей?'].map(x => `<a href="#" data-a="askEx" data-q="${esc(x)}" style="margin-right:10px">${esc(x)}</a>`).join('')}</div><div id="askA" style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(S.askA || '')}</div></form>
       <h2>🚨 Тривоги ${al.length ? `<span class="muted">(${al.length})</span>` : ''}</h2>${al.length ? al.map(([c, t]) => `<div class="alert ${c}">${t}</div>`).join('') : '<div class="card muted">Усе спокійно 👌</div>'}
+      ${digBlock()}
       <h2>🏪 Заклади</h2><div class="grid">${S.sum.map(venueCard).join('')}</div>`;
+  }
+  // 🌙 підсумок дня (щодня о 23:00): останні дні по закладах + особистий Telegram власника
+  function digBlock() {
+    const L = (S.dig || []).filter(v => !v.error);
+    return `<h2>🌙 Підсумок дня</h2>` + (L.length ? L.map(v => `<div class="card" style="display:grid;gap:8px"><b>${esc(v.name)}</b>${v.list.length ? v.list.map((d, i) => `<details${i ? '' : ' open'}><summary>${esc(d.day.split('-').reverse().join('.'))} · <b>${money(d.rev)}</b> · ${d.n} чек.</summary><div class="muted" style="white-space:pre-wrap;overflow-wrap:anywhere;margin-top:6px">${esc(d.text.replace(/<[^>]+>/g, '').split('\n').slice(2).join('\n'))}</div></details>`).join('') : '<div class="muted">Перший підсумок з\'явиться сьогодні о 23:00</div>'}<div class="btnrow" style="flex-wrap:wrap"><button class="btn sm" data-a="digNow" data-v="${esc(v.id)}">🔄 Порахувати зараз</button><button class="btn sm" data-a="digTg" data-v="${esc(v.id)}">${v.tg ? '✈️ Telegram увімкнено' : '✈️ Надсилати в Telegram'}</button></div></div>`).join('') : '<div class="card muted">Поки немає даних</div>');
   }
   function venueCard(v) {
     const n = v.now || {}, t = v.tot || {}, meta = S.venues.find(x => x.id === v.id) || {};
@@ -250,6 +257,8 @@
     if (a === 'ocOpen') { window.scrollTo(0, 0); S.tab = 'cfg'; store.set('tab', 'cfg'); return VC.open(S.venues[0].id, d.s); }
     if (a === 'ibF') { S.ibF = d.f; return render(); }
     if (a === 'ibDone' || a === 'ibDel') { if (a === 'ibDel' && !confirm('Видалити повідомлення?')) return; try { await api('inboxSet', { id: d.id, del: a === 'ibDel' }); const m = S.ib.find(x => x.id === d.id); if (a === 'ibDel') S.ib = S.ib.filter(x => x !== m); else m.done = m.done ? 0 : Date.now(); S.inboxN = S.ib.filter(x => !x.done).length; render(); } catch (x) { toast('⚠️ ' + x.message); } return; }
+    if (a === 'digNow') { el.disabled = true; try { await api('dig', { venue: d.v, now: 1 }); S.dig = (await api('dig')).list; toast('🌙 Підсумок оновлено'); } catch (x) { toast('⚠️ ' + x.message); } return render(); }
+    if (a === 'digTg') { const v = (S.dig || []).find(x => x.id === d.v), c = prompt('Ваш особистий Telegram chat id (число; дізнатись — бот @userinfobot; спершу натисніть Start у боті закладу). Порожнє — вимкнути:', ''); if (c == null) return; try { await api('dig', { venue: d.v, chat: c.trim() }); if (v) v.tg = !!c.trim(); toast(c.trim() ? '✈️ Підсумок надходитиме вам особисто' : 'Telegram вимкнено'); } catch (x) { toast('⚠️ ' + x.message); } return render(); }
     if (a === 'tab' && d.t === 'inbox') S.ib = null;
     if (a === 'tab') { S.cfgV = null; S.tab = d.t; store.set('tab', d.t); if (d.t === 'home' || d.t === 'an') return load(); return render(); }
     if (a === 'reload') { S.plat = null; window.OWNCRM?.reset(); return start(); }
