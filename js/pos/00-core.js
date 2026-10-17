@@ -257,12 +257,13 @@
   function renderNav() {
     const newCnt = S.events.filter(e => e.k === 'guest' && e.s === 'new').length;
     const attNew = isAdmin() ? S.events.filter(e => e.k === 'att' && e.s === 'new').length : 0;
-    const nv = $('#nav'), nx = nv?.scrollLeft || 0; // 📱 меню гортається вбік — після перемальовки лишається на місці
+    const nv = $('#nav'), nx = nv?.scrollLeft || 0, ny = nv?.scrollTop || 0; // 📱 меню гортається вбік — після перемальовки лишається на місці
     setHTML(nv, `<div class="brand">${brandImg()}</div>` +
       navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? 'on' : ''}${isAdmin() && !NAV_MAIN.includes(v) ? ' more-i' : ''}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === 'team' && attNew ? `<span class="badge">${attNew}</span>` : ''}${v === 'books' && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ''}</button>`).join('') +
       `<button class="feed-btn" data-a="feed"><span class="ic">🔔</span>Стрічка${newCnt ? `<span class="badge">${newCnt}</span>` : S.events.some(evMention) ? '<span class="badge">@</span>' : ''}</button>` +
       `<button class="more-btn ${isAdmin() && !NAV_MAIN.includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><button class="me" data-a="zpMy" title="Мій кабінет"><i>${S.me?.av ? `<img src="${esc(S.me.av)}" alt="">` : esc((S.me?.name || '?').slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ''}</i>${S.taskN ? `<span class="badge" title="Завдань на сьогодні">${S.taskN}</span>` : ''}<b>${esc(S.me?.name)}</b><small>${isAdmin() ? 'адмін' : isCook() ? 'кухар' : isCour() ? 'кур\'єр' : 'офіціант'} · кабінет</small></button>` +
       `<button data-a="switch"><span class="ic">🔒</span>Вийти</button>`);
+    if (nv && ny) nv.scrollTop = ny; // 📲 бокове меню планшета не відскакує нагору
     if (nv && nv.scrollWidth > nv.clientWidth) { nv.scrollLeft = nx; const on = nv.querySelector('button.on'), moved = renderNav.v !== S.view; renderNav.v = S.view; /* до активної кнопки — лише коли змінили вкладку, інакше людина гортає, а меню смикає назад */ if (on && moved && (on.offsetLeft < nv.scrollLeft || on.offsetLeft + on.offsetWidth > nv.scrollLeft + nv.clientWidth)) nv.scrollLeft = on.offsetLeft - 8; }
   }
   function render() { renderNav(); renderFeed(); if (['hall', 'printer', 'kq'].includes(S.view) || (S.view === 'settings' && S.setTab === 'printer')) renderMain(); if (S.open) renderSheet(); }
@@ -465,7 +466,7 @@
       case 'cliT': cliT(t); break;
       case 'cliBon0': { const b = S.tables[t]; if (b?.cert) { if (!(await confirmBox(b.cert.code && b.bonus > b.cert.sum ? '↩️ Прибрати сертифікат і бонуси з рахунку?' : '↩️ Прибрати сертифікат з рахунку?'))) break; if (!(await act('certOff', { t }, '↩️ Прибрано'))) break; if (b.bonus > b.cert.sum && b.cli) await act('cliBonus', { t, sum: 0 }); } else if (!(await act('cliBonus', { t, sum: 0 }))) break; loadState().catch(() => {}); break; }
       case 'upsEdit': { const r = await api('upsGet'); const v = await askLong('💡 Допродаж — кожен рядок: Страва → що запропонувати, через кому', r.text || 'Піца Маргарита → Лимонад, Соус'); if (v == null) break; const x = await act('upsSet', { text: v }, ''); if (x) { S.ups = null; toast(`💾 Правил: ${x.n}`); } break; }
-      case 'goCfg': { const k = el.dataset.k, cur = S.data.gocfg?.[k]; const v = ['on', 'del', 'pick'].includes(k) ? (cur ? 0 : 1) : await ask(el.dataset.l || k, String(cur ?? ''), ['phone', 'zone', 'from', 'to'].includes(k) ? 'text' : 'number'); if (v == null) break;
+      case 'goCfg': { const k = el.dataset.k, cur = S.data.gocfg?.[k]; const v = ['on', 'del', 'pick', 'track'].includes(k) ? (cur ? 0 : 1) : await ask(el.dataset.l || k, String(cur ?? ''), ['phone', 'zone', 'from', 'to'].includes(k) ? 'text' : 'number'); if (v == null) break;
         const r = await act('goCfgSet', { k, v }, '💾 Збережено'); if (r) { S.data.gocfg = r.cfg; renderMain(); } break; }
       case 'goLink': { const u = (window.VARVAR?.venue ? 'https://posatom.online/' + VARVAR.venue + '/' : 'https://posatom.online/varvar/') + '?go' + (el.dataset.src ? '&src=' + el.dataset.src : ''); try { await navigator.clipboard.writeText(u); toast('📋 Скопійовано: ' + u); } catch { await ask('Посилання', u); } break; }
       case 'rm': { const reason = await voidReason(`Скасувати 1× ${el.dataset.name}?`); if (reason) act('remove', { t, name: el.dataset.name, reason }, '✏️ Скасовано'); break; }

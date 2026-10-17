@@ -12,9 +12,9 @@ export const getLinks = async env => (await env.DB.get('courtg', 'json')) || {};
 
 // ---------- прив'язка Telegram (з каси) ----------
 export async function courBot(env) {
-  if (env.COURIER_BOT_TOKEN && (await env.DB.get('g3hook')) !== env.SELF_URL) {
-    const r = await ctg(env, 'setWebhook', { url: env.SELF_URL + '/tg3', secret_token: env.TG_SECRET, allowed_updates: ['message', 'callback_query'] }).then(r => r.json()).catch(() => null);
-    if (r?.ok) await env.DB.put('g3hook', env.SELF_URL);
+  if (env.COURIER_BOT_TOKEN && (await env.DB.get('g3hook')) !== env.SELF_URL + '#e') {
+    const r = await ctg(env, 'setWebhook', { url: env.SELF_URL + '/tg3', secret_token: env.TG_SECRET, allowed_updates: ['message', 'edited_message', 'callback_query'] }).then(r => r.json()).catch(() => null);
+    if (r?.ok) await env.DB.put('g3hook', env.SELF_URL + '#e');
   }
   let n = await env.DB.get('cbotname'); if (!n) { const r = await ctg(env, 'getMe', {}).then(r => r.json()).catch(() => null); n = r?.result?.username || ''; if (n) await env.DB.put('cbotname', n, { expirationTtl: 7 * 86400 }); }
   return n;
@@ -112,6 +112,13 @@ export async function courDay(env, name) {
   const mm = cl.map(x => x.gt?.road && x.gt?.done ? (x.gt.done - x.gt.road) / 60e3 : null).filter(x => x != null);
   return { avg: mm.length ? Math.round(mm.reduce((a, x) => a + x, 0) / mm.length) : null, n: cl.length, cash, given: hand[name]?.sum || 0, left: cash - (hand[name]?.sum || 0), earn: cl.length * (st?.pay?.dlv ?? c.cpay), list: cl.map(x => ({ t: x.t, at: x.at, sum: x.sum, pay: x.card ? 'card' : 'cash', mins: x.gt?.road && x.gt?.done ? Math.round((x.gt.done - x.gt.road) / 60e3) : null })) };
 }
+// 🛵 готівка в кур'єрів, яку адмін ще не прийняв: у «Готівці в касі» не рахується, доки не натиснуть «✅ Отримав»
+export async function courOwed(env) {
+  const cl = (await getClosed(env)).filter(c => !c.del && !c.rm && c.cour && c.go === 'del'), hand = (await env.DB.get('ccash:' + dayKey(), 'json')) || {}, by = {};
+  for (const x of cl) by[x.cour] = (by[x.cour] || 0) + (x.cash || 0);
+  let sum = 0; for (const n in by) sum += Math.max(0, by[n] - (hand[n]?.sum || 0));
+  return { sum, by: Object.fromEntries(Object.entries(by).map(([n, v]) => [n, Math.max(0, v - (hand[n]?.sum || 0))]).filter(([, v]) => v > 0)) };
+}
 export async function courCashGive(env, name, sum, by) { // адмін: «отримав готівку від кур'єра»
   return L(env, 'ccash:' + dayKey(), async () => { const k = 'ccash:' + dayKey(), h = (await env.DB.get(k, 'json')) || {}; h[name] = { sum: (h[name]?.sum || 0) + Math.round(+sum || 0), by, at: hhmm() }; await env.DB.put(k, JSON.stringify(h), { expirationTtl: 40 * 86400 }); return h[name]; });
 }
@@ -127,7 +134,7 @@ export async function courShiftEnd(env, name) {
 // ---------- ⏰ ніхто не взяв: 3 хв — кур'єрам ще раз, 5 хв — адміну ----------
 export async function courWatch(env) {
   await (await import('./kitbot.js')).kitHook(env).catch(() => {}); // 👨‍🍳 вебхук бота кухні — автоматично
-  if (env.COURIER_BOT_TOKEN && (await env.DB.get('g3hook')) !== env.SELF_URL) await courBot(env).catch(() => {}); // вебхук бота кур'єрів — автоматично
+  if (env.COURIER_BOT_TOKEN && (await env.DB.get('g3hook')) !== env.SELF_URL + '#e') await courBot(env).catch(() => {}); // вебхук бота кур'єрів — автоматично
   let wait = false; // ⏰ є доставка без кур'єра — будильник закладу частіше
   for (const r of await openTables(env)) {
     const g = r.b.go; if (!g || g.kind !== 'del' || g.cour || !['acc', 'cook', 'ready'].includes(g.st) || !g.accAt) continue;
@@ -174,7 +181,22 @@ export async function courAct(env, t, name, act, arg) {
 }
 
 // ---------- бот кур'єрів (/tg3) ----------
+// 📍 Live Location кур'єра: пишемо точку лише поки доставка «в дорозі», якщо вмикнено gocfg.track і не частіше ніж раз на 2 хв
+// (зовнішній Worker вже відсікає частіші оновлення до DO — тут друга перевірка). Координата живе в bill.go.loc і ord:<oid>.loc, після видачі зникає.
+export const LOC_GAP = 120e3;
+async function courLoc(env, m) {
+  const loc = m.location, la = Math.round(+loc.latitude * 1e5) / 1e5, lo = Math.round(+loc.longitude * 1e5) / 1e5;
+  if (!(Math.abs(la) <= 90 && Math.abs(lo) <= 180) || !(await getGoCfg(env)).track) return;
+  const name = Object.entries(await getLinks(env)).find(([, c]) => c === m.chat.id)?.[0]; if (!name) return;
+  const mine = (await openTables(env)).filter(r => r.b.go?.kind === 'del' && r.b.go.cour === name && r.b.go.st === 'road' && !(r.b.go.loc && Date.now() - r.b.go.loc.ts < LOC_GAP));
+  const ts = Date.now();
+  for (const r of mine) {
+    const ok = await L(env, 'bills', async () => { const x = await getBill(env, r.t); if (!x.go || x.go.st !== 'road' || x.go.cour !== name) return null; x.go.loc = { la, lo, ts }; await putBill(env, r.t, x); return x.go.oid || ''; });
+    if (ok) await L(env, 'ord:' + ok, async () => { const o = await env.DB.get('ord:' + ok, 'json'); if (o) await env.DB.put('ord:' + ok, JSON.stringify({ ...o, loc: { la, lo, ts } }), { expirationTtl: 2 * 86400 }); });
+  }
+}
 export async function courUpdate(u, env) {
+  { const lm = u.edited_message || u.message; if (lm?.location && lm.chat) return courLoc(env, lm); }
   if (u.callback_query) {
     const q = u.callback_query, chat = q.message?.chat.id, [a, t, act, arg] = (q.data || '').split(':'), ans = text => ctg(env, 'answerCallbackQuery', { callback_query_id: q.id, text: text || '' });
     const name = Object.entries(await getLinks(env)).find(([, c]) => c === chat)?.[0]; if (!name) return ans('Спершу підключіться з каси: «✈️ Telegram»');

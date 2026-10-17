@@ -106,7 +106,7 @@
     const items = b => b.items.filter(i => !i.name.includes('Доставка')).map(i => `${i.q}× ${esc(i.name)}`).join(', ');
     const card = b => { const g = b.go, late = g.st === 'new' || (!g.cour && minsAgo(g.accAt || g.at) >= 3);
       return `<div class="cr-c st-${g.st}${g.prob ? ' prob' : ''}${late && !g.cour ? ' late' : ''}" data-t="${b.t}"><div class="cr-h"><b>${tn(b.t)}</b><span class="chip sm">${g.when ? '🕐 ' + g.when : '⚡'}</span><span class="chip sm">${GOST[g.st] || g.st}</span><small>${minsAgo(g.accAt || g.at)} хв</small></div>
-        <div>${g.cour ? `🛵 <b>${esc(g.cour)}</b>${g.st === 'road' && g.roadAt ? ` · в дорозі ${minsAgo(g.roadAt)} хв` : ''}${g.etaC ? ` · ⏱ буду о ${hhmm(g.etaC)}` : ''}` : '⚠️ <b>кур\'єра немає</b>'}</div>
+        <div>${g.cour ? `🛵 <b>${esc(g.cour)}</b>${g.st === 'road' && g.roadAt ? ` · в дорозі ${minsAgo(g.roadAt)} хв` : ''}${g.etaC ? ` · ⏱ буду о ${hhmm(g.etaC)}` : ''}${g.st === 'road' && g.loc ? ` · <a href="https://www.openstreetmap.org/?mlat=${g.loc.la}&mlon=${g.loc.lo}#map=16/${g.loc.la}/${g.loc.lo}" target="_blank" rel="noopener">📍 ${minsAgo(g.loc.ts)} хв тому</a>` : ''}` : '⚠️ <b>кур\'єра немає</b>'}</div>
         ${g.prob ? `<div class="cr-prob">⚠️ ${esc(g.prob.text)}</div>` : ''}<div class="cr-addr">📍 ${esc(g.addr || '—')}${g.ent ? ` · ${esc(g.ent)}` : ''} · 👤 ${esc(g.name || '')}</div>
         <div class="muted">🍽 ${items(b)}</div>
         <div class="btnrow"><button class="btn sm${g.cour ? '' : ' primary'}" data-a="goCourSet" data-t="${b.t}">👤 ${g.cour ? 'Змінити кур\'єра' : 'Призначити'}</button><button class="btn sm" data-a="table" data-t="${b.t}">Відкрити</button></div></div>`; };
@@ -123,12 +123,13 @@
   }
   function goSetHTML() {
     const c = S.data.gocfg; if (!c) return '<div class="muted">Завантаження…</div>';
-    const row = (k, l, v, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ''}</span><span class="kv-r"><b>${v}</b><button class="btn sm" data-a="goCfg" data-k="${k}" data-l="${esc(l)}">${['on', 'del', 'pick'].includes(k) ? (c[k] ? 'вимкнути' : 'увімкнути') : 'змінити'}</button></span></div>`;
+    const row = (k, l, v, hint) => `<div class="kv"><span>${l}${hint ? `<br><small class="muted">${hint}</small>` : ''}</span><span class="kv-r"><b>${v}</b><button class="btn sm" data-a="goCfg" data-k="${k}" data-l="${esc(l)}">${['on', 'del', 'pick', 'track'].includes(k) ? (c[k] ? 'вимкнути' : 'увімкнути') : 'змінити'}</button></span></div>`;
     const yn = v => v ? '✅ так' : '⛔ ні';
     return `<div class="grid2 set">
       <div class="card"><h3>🛵 Прийом онлайн-замовлень</h3>${row('on', '🌐 Приймати з сайту', yn(c.on))}${row('pick', '🥡 Самовивіз', yn(c.pick))}${row('del', '🛵 Доставка', yn(c.del))}
         ${row('from', '🕐 Приймаємо з', c.from)}${row('to', '🕐 Приймаємо до', c.to, 'Поза цим часом гість може замовити лише на час')}${row('prep', '⏱ Готуємо приблизно', c.prep + ' хв', 'Для «орієнтовно о…» у гостя')}${row('phone', '📞 Телефон закладу', esc(c.phone || '—'), 'Показується гостю на екрані статусу')}</div>
       <div class="card"><h3>💰 Умови</h3>${row('min', '🧾 Мінімальне замовлення', money(c.min))}${row('fee', '🛵 Ціна доставки', money(c.fee))}${row('free', '🎁 Безкоштовна доставка від', c.free ? money(c.free) : '—', '0 — завжди платна')}${row('zone', '📍 Зона доставки', esc(c.zone || '—'), 'Текст для гостя: райони, межі')}${row('cpay', '🛵 Кур\'єру за доставку', money(c.cpay), 'Додається у відомість ЗП; можна змінити кожному в Персоналі')}</div>
+      <div class="card"><h3>📍 Трекінг кур'єра</h3>${row('track', '📍 Показувати гостю кур\'єра на карті', yn(c.track), 'Кур\'єр у боті ділиться «Показувати моє місце» (Live Location); точка пишеться раз на 2 хв, лише в дорозі, і зникає після видачі')}</div>
       <div class="card"><h3>🎁 Бонуси за телефоном</h3>${row('cash', '💸 Кешбек', c.cash + '%', 'Нараховується при закритті чека (сайт, каса, зал)')}${row('bmax', '🎟 Бонусами можна оплатити до', c.bmax + '%', 'від суми замовлення')}</div>
       <div class="card"><h3>🔗 Посилання для гостей</h3><div class="muted set-note">Інстаграм, Google Maps, месенджери — гість відкриває і замовляє з собою. Окремі посилання показують у звітах, звідки прийшло замовлення.</div>
         <div class="btnrow"><button class="btn sm primary" data-a="goLink">📋 Основне</button><button class="btn sm" data-a="goLink" data-src="insta">Instagram</button><button class="btn sm" data-a="goLink" data-src="google">Google</button><button class="btn sm" data-a="goLink" data-src="tiktok">TikTok</button></div>

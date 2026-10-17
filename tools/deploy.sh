@@ -8,6 +8,7 @@ cd "$(dirname "$0")/.."
 SELF=$(grep SELF_URL worker/wrangler.toml | cut -d'"' -f2)
 if [ "$1" = "--rollback" ]; then (cd worker && npx wrangler rollback --message "ручний відкат" -y); exit; fi
 
+if [ -n "$(git diff --name-only --diff-filter=U)" ] || grep -rlqE "^(<<<<<<<|>>>>>>>) " worker/src js css *.html 2>/dev/null; then echo "❌ Незавершене злиття (конфлікт) — не викладаю"; exit 1; fi
 echo "🧪 Тести…"
 sh tools/test.sh --quiet | tail -1 | grep -q "✅" || { echo "❌ Тести не пройшли — не викладаю"; exit 1; }
 

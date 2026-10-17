@@ -45,14 +45,16 @@ const users = {};
 const usedPins = new Set();
 function pin() { let p; do { p = String(1000 + Math.floor(Math.random() * 9000)); } while (/^111[1-9]$/.test(p) || usedPins.has(p)); usedPins.add(p); return p; }
 async function register(role, code) {
-  const name = `QA ${role} ${RUN}`;
-  for (let i = 0; i < 5; i++) { // PIN може випадково збігтися з чужим
+  for (let i = 0; i < 8; i++) { // PIN може збігтися з чужим (база накопичує працівників); відповідь може загубитись при обриві DO → нове імʼя
+    const name = `QA ${role} ${RUN}` + (i ? ` ${i}` : '');
     const r = await http('/api/pos', { op: 'register', code, name, pin: pin() });
     if (r.status === 200 && r.j.token) { users[role] = { token: r.j.token, me: r.j.me }; must(r.j.me.role === role, `роль ${r.j.me.role} ≠ ${role}`); return r.j.me.name; }
-    if (!/PIN/.test(r.j.error || '')) throw new Error(`${r.status} ${JSON.stringify(r.j)}`);
+    if (!/PIN|імʼ|bad_request/.test(r.j.error || '')) throw new Error(`${r.status} ${JSON.stringify(r.j)}`);
   }
-  throw new Error('не вдалося підібрати PIN');
+  throw new Error('не вдалося зареєструватись');
 }
+// staffEdit із повтором: PIN може збігтися з чужим, а запит — потрапити на перезавантаження сервера
+async function editRetry(A, b, tries = 6) { let r; for (let i = 0; i < tries; i++) { const x = { ...b }; if (b.pin) x.pin = i ? pin() : b.pin; r = await pos(A, 'staffEdit', x); if (r.status === 200 && r.j.ok) { r.pin = x.pin; return r; } if (r.status === 401) break; if (!(b.pin && /PIN/.test(r.j.error || '')) && r.j.error !== 'bad_request') break; await new Promise(f => setTimeout(f, 700)); } return r; }
 
 async function apiTests() {
   sect('Сервер');
@@ -274,9 +276,29 @@ async function apiTests() {
   if (C) {
     await step('кур\'єр бере', async () => { const r = await posOk(C, 'courAct', { t: G, act: 'take' }); must(r.go?.cour === users.courier.me.name, 'cour=' + r.go?.cour); });
     await step('кур\'єр: поїхав', async () => { const r = await posOk(C, 'courAct', { t: G, act: 'road' }); must(r.go?.st === 'road', 'st=' + r.go?.st); });
+    await step('📍 трекінг: вимкнений за замовч.; увімк. → goinfo.track; /api/orders?g=1 без loc, поки точки немає', async () => {
+      const g0 = await http('/api/goinfo?nocache=1'); must(!g0.j.track || g0.j.track === 1, 'goinfo'); // за замовчуванням GO_DEF.track=0 (тест не залежить від залишків попереднього прогону)
+      const c = await posOk(A, 'goCfgSet', { k: 'track', v: 1 }); must(c.cfg?.track === 1, 'cfg.track=' + c.cfg?.track);
+      const g1 = await http('/api/goinfo?nocache=1'); must(g1.j.track === 1, 'goinfo.track=' + g1.j.track);
+      const o = await http('/api/orders?g=1&ids=' + oid); must(o.status === 200 && !JSON.stringify(o.j).includes('"loc"'), 'loc без точки: ' + JSON.stringify(o.j).slice(0, 120));
+      await posOk(A, 'goCfgSet', { k: 'track', v: 0 });
+    });
+    await step('📍 трекінг: Live Location кур\'єра → точка в /api/orders, зайве оновлення відсікається, після видачі зникає', async () => {
+      const tg = async u => (await fetch(API + '/tg3', { method: 'POST', headers: { 'content-type': 'application/json', 'X-Telegram-Bot-Api-Secret-Token': 'x' }, body: JSON.stringify(u) })).status;
+      const lnk = await posOk(C, 'courTg'); const n = /c_([a-f0-9]{16})/.exec(lnk.url || '')?.[1]; must(n, 'немає коду підключення: ' + JSON.stringify(lnk).slice(0, 80));
+      const chat = 900000 + Math.floor(Math.random() * 90000);
+      await tg({ update_id: 1, message: { message_id: 1, chat: { id: chat }, from: { id: chat }, text: '/start c_' + n } }); // відповідь бота піде у вигаданий Telegram — статус не важливий, привʼязка пишеться до відправки
+      const loc = (la, lo) => ({ update_id: 2, edited_message: { message_id: 1, chat: { id: chat }, location: { latitude: la, longitude: lo } } });
+      let o;
+      await posOk(A, 'goCfgSet', { k: 'track', v: 1 }); await new Promise(r => setTimeout(r, 200));
+      await tg({ ...loc(48.36123, 24.43456), update_id: 3 }); o = await http('/api/orders?g=1&ids=' + oid + '&x=' + Date.now()); const l = o.j[oid]?.loc; must(l && l.la === 48.36123 && l.lo === 24.43456, 'loc=' + JSON.stringify(o.j).slice(0, 160));
+      await tg({ ...loc(48.5, 24.5), update_id: 4 }); o = await http('/api/orders?g=1&ids=' + oid + '&x=' + Date.now() + 1); must(o.j[oid]?.loc?.la === 48.36123, 'друге оновлення раніше 2 хв мало відсікатись: ' + o.j[oid]?.loc?.la);
+      const st = await posOk(A, 'state'); must(st.tables.find(x => x.t === G)?.go?.loc?.la === 48.36123, 'bill.go.loc немає');
+      await posOk(A, 'goCfgSet', { k: 'track', v: 0 });
+    });
     await step('кур\'єр: видано 💵 → чек закрито', async () => {
       const r = await posOk(C, 'courAct', { t: G, act: 'done', arg: 'cash' }); must(r.done, 'не закрито');
-      const o = await http('/api/orders?ids=' + oid); const st = JSON.stringify(o.j); must(/done/.test(st), 'статус гостя: ' + st.slice(0, 150));
+      const o = await http('/api/orders?ids=' + oid); const st = JSON.stringify(o.j); must(/done/.test(st), 'статус гостя: ' + st.slice(0, 150)); must(!st.includes('"loc"'), 'після видачі точка не віддається');
       const me = await posOk(C, 'courMe'); return `готівка в кур'єра: ${JSON.stringify(me.day?.cash ?? me.day).slice(0, 60)}`;
     });
   } else rec('кур\'єр не зареєстрований — сценарій пропущено', false);
@@ -473,10 +495,10 @@ async function apiTests() {
       const r = g.rows.find(x => x.n === nu); must(r && r.bonus === 123 && r.shifts >= 1, 'ЗП: ' + JSON.stringify(r).slice(0, 150)); must(!g.rows.some(x => x.n === old), 'старе імʼя лишилось'); });
     await step('стара сесія кухаря → 401', async () => { const r = await pos(K, 'state'); must(r.status === 401, 'статус ' + r.status); });
     await step('staffEdit: PIN = код реєстрації / чужий PIN → 400', async () => { for (const p of ['1114', '1119']) { const r = await pos(A, 'staffEdit', { id: sid, pin: p }); must(r.status === 400, p + ' → ' + r.status); } });
-    const np = pin();
-    await step('staffEdit: новий PIN → вхід ним', async () => { await posOk(A, 'staffEdit', { id: sid, pin: np }); const r = await http('/api/pos', { op: 'login', pin: np }); must(r.j.token && r.j.me.name === nu, JSON.stringify(r.j).slice(0, 120)); users.cook = { token: r.j.token, me: r.j.me }; });
-    await step('staffEdit: роль кур\'єр → назад кухар', async () => { await posOk(A, 'staffEdit', { id: sid, role: 'courier' }); let s = (await posOk(A, 'staff')).staff.find(x => x.id === sid); must(s.role === 'courier', s.role);
-      await posOk(A, 'staffEdit', { id: sid, role: 'cook' }); const r = await http('/api/pos', { op: 'login', pin: np }); must(r.j.me?.role === 'cook', JSON.stringify(r.j).slice(0, 100)); users.cook = { token: r.j.token, me: r.j.me }; });
+    let np = pin();
+    await step('staffEdit: новий PIN → вхід ним', async () => { const e = await editRetry(A, { id: sid, pin: np }); must(e.status === 200 && e.j.ok, 'staffEdit → ' + e.status + ' ' + JSON.stringify(e.j)); np = e.pin; const r = await http('/api/pos', { op: 'login', pin: np }); must(r.j.token && r.j.me.name === nu, JSON.stringify(r.j).slice(0, 120)); users.cook = { token: r.j.token, me: r.j.me }; });
+    await step('staffEdit: роль кур\'єр → назад кухар', async () => { must((await editRetry(A, { id: sid, role: 'courier' })).j.ok, 'role courier'); let s = (await posOk(A, 'staff')).staff.find(x => x.id === sid); must(s.role === 'courier', s.role);
+      must((await editRetry(A, { id: sid, role: 'cook' })).j.ok, 'role cook'); const r = await http('/api/pos', { op: 'login', pin: np }); must(r.j.me?.role === 'cook', JSON.stringify(r.j).slice(0, 100)); users.cook = { token: r.j.token, me: r.j.me }; });
     await step('коди реєстрації: є кур\'єр', async () => { const r = await posOk(A, 'staff'); must(r.reg.courier, 'нема reg.courier'); });
   }
   return true;
@@ -674,6 +696,37 @@ async function loyTests(A, W, dish) {
     const z3 = await vpos(VA, 'zDay', { print: false }); must(z3.j.z.total === z2.j.z.total, 'сума Z змінилась');
     const r3 = (await vpos(VA, 'shift')).j.rec; must(r3.sum === r2.sum, 'рівна виручка змінила рекорд'); must(z3.j.z.rec.beat === 0, 'рівна виручка = beat');
     must((await vpos(VA, 'cfgSet', { k: 'recBonus', v: 0 })).status === 200, 'recBonus reset'); return `рекорд ${r3.sum} ₴`; });
+  await step('⏳ черга в залі (wl): гість /api/wl — створення, дубль за телефоном, статус, скасування, ліміт 3/пристрій', async () => {
+    const dev = 'qa-wl-' + Date.now(), ph = n => '067' + String(Date.now()).slice(-6) + n;
+    // 🛡 index.js: wlip — не більше 6 POST /api/wl за годину з одного IP (спільний IP тестів вичерпується) → тест чесно пропускається
+    const v0 = await http('/api/wl', { name: '', people: 2, phone: ph(0), device: dev + 'x' });
+    must(v0.status === 400, 'без імені');
+    must((await http('/api/wl', { name: 'QA', people: 2, device: dev + 'x' })).status === 400, 'гість без телефону');
+    const p1 = ph(1), r1 = await http('/api/wl', { name: 'QA Черга', people: 3, phone: p1, device: dev }); must(r1.status === 200 && r1.j.id && r1.j.st === 'wait' && r1.j.pos >= 1, JSON.stringify(r1.j).slice(0, 150));
+    const r1b = await http('/api/wl', { name: 'QA Черга', people: 3, phone: p1, device: dev }); must(r1b.j.dup && !r1b.j.id && r1b.j.pos === r1.j.pos, 'дубль за телефоном: ' + JSON.stringify(r1b.j).slice(0, 120));
+    const st = await http('/api/wl?id=' + r1.j.id); must(st.j.st === 'wait' && st.j.name === 'QA Черга' && !('phone' in st.j), 'статус ' + JSON.stringify(st.j));
+    must((await http('/api/wl?id=nope')).j.error === 'not_found', 'статус чужого id');
+    must((await http('/api/wl', { cancel: 1, id: r1.j.id })).j.st === 'gone', 'cancel');
+    must((await http('/api/wl?id=' + r1.j.id)).j.st === 'gone', 'після cancel не gone');
+    const r2 = await http('/api/wl', { name: 'QA Два', people: 2, phone: ph(2), device: dev }); must(r2.status === 200, 'друга за пристроєм ' + r2.status);
+    // ліміт рахує кожен запит пристрою (дубль за телефоном теж): r1, r1b, r2 = 3 → наступний 429
+    const r3 = await http('/api/wl', { name: 'QA Три', people: 2, phone: ph(3), device: dev }); must(r3.status === 429, 'четвертий запит пристрою → ' + r3.status);
+    await http('/api/wl', { cancel: 1, id: r2.j.id }); });
+  await step('⏳ черга в залі (wl): каса wlAdd/wlAct — call, повторний call < 2 хв → 429, seat, зайнятий стіл → 409, gone; права', async () => {
+    const W = users.waiter?.token, A = users.admin?.token, K = users.cook?.token, C = users.courier?.token, TW = 100 + Math.floor(Math.random() * 800);
+    const a = await pos(W, 'wlAdd', { name: 'QA Зал', people: 4 }); must(a.status === 200 && a.j.id, 'wlAdd ' + a.status + JSON.stringify(a.j).slice(0, 100));
+    const id = a.j.id, wl = async tok => (await posOk(tok, 'state')).wl;
+    must((await wl(W)).some(x => x.id === id), 'офіціант не бачить у state.wl');
+    if (K) must((await wl(K)).length === 0, 'кухар бачить чергу'); if (C) must((await wl(C)).length === 0, "кур'єр бачить чергу");
+    must((await pos(W, 'wlAct', { id, act: 'xxx' })).status === 400, 'невідома дія'); must((await pos(W, 'wlAct', { id: 'nope', act: 'call' })).status === 404, 'невідомий id');
+    const c1 = await pos(W, 'wlAct', { id, act: 'call' }); must(c1.status === 200 && c1.j.st === 'called', 'call ' + JSON.stringify(c1.j).slice(0, 100));
+    const c2 = await pos(W, 'wlAct', { id, act: 'call' }); must(c2.status === 429, 'повторний call → ' + c2.status);
+    const s1 = await pos(W, 'wlAct', { id, act: 'seat', t: TW }); must(s1.status === 200 && s1.j.st === 'seated' && s1.j.t === TW, 'seat ' + JSON.stringify(s1.j).slice(0, 100));
+    must(!(await wl(W)).some(x => x.id === id), 'посаджений лишився в черзі');
+    const b = await pos(W, 'wlAdd', { name: 'QA Зал 2', people: 2 }); must(b.status === 200, 'wlAdd 2');
+    const s2 = await pos(W, 'wlAct', { id: b.j.id, act: 'seat', t: TW }); must(s2.status === 409, 'посадка на зайнятий стіл → ' + s2.status);
+    must((await pos(A, 'wlAct', { id: b.j.id, act: 'gone' })).j.st === 'gone', 'gone');
+    for (const [tok, role] of [[K, 'cook'], [C, 'courier']]) if (tok) for (const [op, bb] of [['wlAdd', { name: 'X', people: 2 }], ['wlAct', { id, act: 'call' }]]) must((await pos(tok, op, bb)).status === 403, `${role} ✗ ${op}`); });
   await step('невідомий заклад → 404', async () => { const r = await http('/v/nope-' + VID.slice(-5) + '/api/menu'); must(r.status === 404, String(r.status)); });
   await step('кабінет власника: свої заклади, аналітика, вхід у касу', async () => {
     const l = await own({ op: 'login', email: OE, pass: 'owner-pass-123' }); OT = l.j.token; must(OT, 'вхід');

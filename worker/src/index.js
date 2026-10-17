@@ -31,7 +31,7 @@ const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|g
 // 💾 кеш у пам'яті воркера для однакових для всіх відповідей (на *.workers.dev кеш Cloudflare не працює).
 // Економить запити до Durable Object: меню відкривають сотні гостей, а змінюється воно рідко. Стоп-лист сервер
 // все одно перевіряє при замовленні (priceMap пропускає hidden), тож 20 с затримки безпечні.
-const MEM = new Map(), TTL = { '/api/menu': 20, '/api/site': 60, '/api/reco': 600, '/api/goinfo': 30, '/k': 3600, '/kitchen': 3600 };
+const LOCT = new Map(), MEM = new Map(), TTL = { '/api/menu': 20, '/api/site': 60, '/api/reco': 600, '/api/goinfo': 30, '/k': 3600, '/kitchen': 3600 };
 async function cached(req, path, run) {
   const u = new URL(req.url), ttl = req.method === 'GET' && (path === '/api/orders' ? u.searchParams.has('g') && 15 : TTL[path]); // 🛵 статус доставки гостя — спільний кеш 15 с (?g=1)
   if (!ttl || u.searchParams.has('ph') || u.searchParams.has('nocache')) return run();
@@ -50,6 +50,10 @@ export default {
     const { venue, path: p } = splitVenue(new URL(req0.url)), req = venue === MAIN ? new Request(req0) : stripVenue(req0, venue, p);
     if (venue === MAIN) { req.headers.delete('x-venue'); req.headers.delete('x-venue-init'); } // заклад визначає лише адреса, не заголовок від клієнта
     else req.headers.delete('x-venue-init');
+    if (p === '/tg3' && req.method === 'POST') { // 📍 Live Location кур'єра приходить часто: частіше ніж раз на 2 хв не будимо Durable Object (пам'ять воркера; якщо скинулась — просто пройде зайве)
+      let j = null; try { j = await req.clone().json(); } catch {} const em = j?.edited_message;
+      if (em?.location && em.chat) { const k = venue + '|' + em.chat.id, now = Date.now(); if (now - (LOCT.get(k) || 0) < 120e3) return new Response('ok'); if (LOCT.size > 500) LOCT.clear(); LOCT.set(k, now); }
+    }
     if (IN_STORE.test(p) && req.method !== 'OPTIONS') return cached(req0, p, async () => {
       const r = await env.STORE.get(env.STORE.idFromName(doName(venue))).fetch(req);
       if (r.status !== 404 || venue === MAIN) return r;
@@ -135,7 +139,7 @@ export async function handle(req, env) {
       if (url.pathname === '/api/orders') { // статуси замовлень гостя: ?ids=a,b
         const ids = (url.searchParams.get('ids') || '').split(',').filter(x => /^[a-z0-9]{6,12}$/.test(x)).slice(0, 20);
         const out = {}, all = ids.length ? await env.DB.getMany(ids.map(id => 'ord:' + id), 'json') : []; // один запит замість N
-        ids.forEach((id, i) => { const o = all[i]; out[id] = o && { s: o.s, t: o.t, by: o.by, at: o.at, ...(o.go ? { g: o.g || o.s, no: tn(o.t), eta: o.eta, gAt: o.gAt, ...(o.cour ? { c: o.cour } : {}), ...(o.etaC ? { etaC: o.etaC } : {}) } : {}) }; });
+        ids.forEach((id, i) => { const o = all[i]; out[id] = o && { s: o.s, t: o.t, by: o.by, at: o.at, ...(o.go ? { g: o.g || o.s, no: tn(o.t), eta: o.eta, gAt: o.gAt, ...(o.cour ? { c: o.cour } : {}), ...(o.loc && (o.g || o.s) === 'road' ? { loc: o.loc } : {}), ...(o.etaC ? { etaC: o.etaC } : {}) } : {}) }; });
         return json(out);
       }
       if (url.pathname === '/api/pos/live') return posLive(req, env, url);
@@ -161,7 +165,7 @@ export async function handle(req, env) {
       // 🌐 візитка
       if (url.pathname === '/api/site') return new Response(JSON.stringify(await sitePublic(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
       if (url.pathname === '/site') return Response.redirect(siteLink('about.html'), 302);
-      if (url.pathname === '/api/wl') { const W = await import('./wl.js'); if (req.method !== 'POST') return json(await W.wlStatus(env, url.searchParams.get('id')) || { error: 'not_found' }); const b = await req.json().catch(() => null); if (!b || typeof b !== 'object') return json({ error: 'bad_request' }, 400); if (b.cancel) return json(...await W.wlAct(env, b.id, 'cancel')); const ik = 'wlip:' + (ip || 'none').slice(0, 64), ic = +(await env.DB.get(ik)) || 0; if (ic >= 6) return json({ error: 'rate' }, 429); await env.DB.put(ik, String(ic + 1), { expirationTtl: 3600 }); const rk = 'wlrl:' + String(b.device || ip).slice(0, 64), rn = +(await env.DB.get(rk)) || 0; if (rn >= 3) return json({ error: 'rate' }, 429); await env.DB.put(rk, String(rn + 1), { expirationTtl: 3600 }); return json(...await W.wlAdd(env, b)); }
+      if (url.pathname === '/api/wl') { const W = await import('./wl.js'); if (req.method !== 'POST') return json(await W.wlStatus(env, url.searchParams.get('id')) || { error: 'not_found' }); const b = await req.json().catch(() => null); if (!b || typeof b !== 'object') return json({ error: 'bad_request' }, 400); if (b.cancel) return json(...await W.wlAct(env, b.id, 'cancel')); const ik = 'wlip:' + (ip || 'none').slice(0, 64), ic = +(await env.DB.get(ik)) || 0; if (ic >= (+env.WLIP_MAX || 30)) return json({ error: "rate" }, 429); /* заклад: усі гості на одному Wi‑Fi */ await env.DB.put(ik, String(ic + 1), { expirationTtl: 3600 }); const rk = 'wlrl:' + String(b.device || ip).slice(0, 64), rn = +(await env.DB.get(rk)) || 0; if (rn >= 3) return json({ error: 'rate' }, 429); await env.DB.put(rk, String(rn + 1), { expirationTtl: 3600 }); return json(...await W.wlAdd(env, b)); }
       if (url.pathname === '/api/book' && req.method === 'POST') return json(...await bookCreate(await req.json(), ip, env));
       if (url.pathname === '/api/book') return json(await bookStatus(env, url.searchParams.get('id')) || { error: 'not_found' });
       if (url.pathname === '/api/bookpre' && req.method === 'POST') return json(...await bookPre(await req.json(), env));

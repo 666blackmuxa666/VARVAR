@@ -987,8 +987,8 @@ body.noanim .ev.wait{outline:3px solid var(--wc,#ff9f0a)}
 @keyframes tblFlow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
 @media (prefers-reduced-motion: reduce) { .tables .tbl { animation: none; } }
 
-/* ✨ Нижнє меню: скло, живі значки при натисканні */
-@media (max-width: 1100px) {
+/* ✨ Нижнє меню: скло, живі значки при натисканні (лише телефон — на планшеті бокове меню не стрибає) */
+@media (max-width: 980px) {
   .nav { background: linear-gradient(180deg, #14161ccc, #0b0c10f2) !important; backdrop-filter: blur(18px) saturate(1.6); -webkit-backdrop-filter: blur(18px) saturate(1.6); border-top: 1px solid #ffffff14; box-shadow: none; }
   .nav button { transition: color .25s, background .3s, transform .2s cubic-bezier(.3, 1.6, .5, 1); }
   .nav button .ic { transition: transform .35s cubic-bezier(.3, 1.8, .45, 1), filter .3s; will-change: transform; }
@@ -1075,3 +1075,8 @@ body.noanim .tbl.new.pw::after{animation:none;opacity:.35}
 .hero-rec{display:grid;gap:3px;align-content:center;padding:12px 14px;border-radius:14px;background:#ffffff08;border:1px solid var(--line);min-width:0}.hero-rec span{font-size:12px;color:var(--muted)}.hero-rec b{font-size:22px}.hero-rec small{font-size:11.5px;color:var(--muted)}.hero-rec .bar2{margin-top:4px}.hero-rec.beat{border-color:var(--accent);box-shadow:0 0 18px #f2c14e44}
 .thr{display:grid;gap:8px}.thr-b{max-width:85%;padding:8px 11px;border-radius:14px;background:#ffffff0d;border:1px solid var(--line);overflow-wrap:anywhere}.thr-b.me{justify-self:end;background:#f2c14e1a;border-color:#f2c14e44}.thr-b small{display:block;font-size:11px;margin-bottom:2px}
 .f3-pal:not(.fl){flex-wrap:wrap;overflow:visible}
+
+/* 🛎 усе від гостя (замовлення, дозамовлення, оплата з QR) — плитка столу блимає, доки хтось не підтвердить */
+.tbl.new{position:relative;outline:3px solid #ff453a;outline-offset:-3px}.tbl.new::after{content:'';position:absolute;inset:0;border-radius:inherit;background:#ff453a;box-shadow:0 0 28px #ff453acc;pointer-events:none;opacity:0;animation:pwblink .8s steps(2,start) infinite}
+.f3-t.call .f3-pin{animation:f3pw .8s steps(2,start) infinite}
+body.noanim .tbl.new::after{animation:none;opacity:.35}
