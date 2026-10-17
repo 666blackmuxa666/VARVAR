@@ -55,55 +55,55 @@
       { t: 'Привезли товар — «🧾 Накладні»: фото накладної або вручну.', go: T('skTab', 't', 'inv') },
       { t: 'Зробили заготовку — «🍳 Заготовки»: склад сам спише сировину.', go: T('skTab', 't', 'prod') }] },
     // ---------- 👑 адмін: перший тиждень ----------
-    { id: 'a-site', r: 'a', g: 'День 1 · Замовлення', ic: '🌐', n: 'Замовлення з сайту й QR', s: [
+    { id: 'a-site', r: 'a', g: 'Перший тиждень адміна · День 1 · Замовлення', ic: '🌐', n: 'Замовлення з сайту й QR', s: [
       { t: 'Нові замовлення з сайту приходять у «🔔 Стрічку» зі звуком.', sel: '.feed-btn' },
       { t: '«✅ Прийняв» — гість бачить, що замовлення прийняте. Відхилити — з причиною.', sel: '[data-a="accept"]' }] },
-    { id: 'a-del', r: 'a', g: 'День 1 · Замовлення', ic: '🛵', n: 'Доставки й кур\'єри', s: [
+    { id: 'a-del', r: 'a', g: 'Перший тиждень адміна · День 1 · Замовлення', ic: '🛵', n: 'Доставки й кур\'єри', s: [
       { t: 'Доставки — у вкладці «👨‍🍳 Кухня», знизу «🛵 Доставки»: нові, в дорозі, сьогодні.', go: V('kq'), sel: '.cr-cols' },
       { t: '«👤 Призначити» — оберіть кур\'єра. Він отримає доставку в касі й Telegram.', sel: '[data-a="goCourSet"]' },
       { t: '«🗺 Карта» — усі адреси на одній карті.', sel: '[data-a="goMap"]' }] },
-    { id: 'a-book', r: 'a', g: 'День 1 · Замовлення', ic: '📅', n: 'Броні', s: [
+    { id: 'a-book', r: 'a', g: 'Перший тиждень адміна · День 1 · Замовлення', ic: '📅', n: 'Броні', s: [
       { t: 'Броні з сайту й по телефону. Стрічка днів зверху.', go: V('books') },
       { t: '«➕ Бронь» — записати гостя, який подзвонив.', sel: '[data-a="bkNew"]' },
       { t: 'Гості прийшли — «🪑 Прийшли» й оберіть стіл: передзамовлення одразу піде на кухню.', sel: '[data-a="bkCame"]' }] },
-    { id: 'a-cash', r: 'a', g: 'День 2 · Гроші', ic: '💰', n: 'Каса: внесення, вилучення, витрати', s: [
+    { id: 'a-cash', r: 'a', g: 'Перший тиждень адміна · День 2 · Гроші', ic: '💰', n: 'Каса: внесення, вилучення, витрати', s: [
       { t: 'Вкладка «💰 Каса» — скільки грошей у шухляді зараз.', go: V('cash') },
       { t: '«➕ Внести» — розмін зранку. «➖ Вилучити» — інкасація.', sel: '[data-a="cMove"]' },
       { t: '«💸 Витрата» — купили щось за готівку з каси (з фото чека).', sel: '[data-a="expense"]' }] },
-    { id: 'a-z', r: 'a', g: 'День 2 · Гроші', ic: '🧾', n: 'Кінець дня: Z-звіт', danger: 1, s: [
+    { id: 'a-z', r: 'a', g: 'Перший тиждень адміна · День 2 · Гроші', ic: '🧾', n: 'Кінець дня: Z-звіт', danger: 1, s: [
       { t: 'Перед закриттям усі столи мають бути закриті.', go: V('cash') },
       { t: '«🧾 Z-звіт» — підсумок дня. «🖨 Надрукувати» лише показує (X-звіт). «🔒 Закрити день» — фінально, піде в Telegram.', sel: '[data-a="zDay"]' }] },
-    { id: 'a-checks', r: 'a', g: 'День 2 · Гроші', ic: '🧾', n: 'Чеки: виправити оплату, повернення', s: [
+    { id: 'a-checks', r: 'a', g: 'Перший тиждень адміна · День 2 · Гроші', ic: '🧾', n: 'Чеки: виправити оплату, повернення', s: [
       { t: '«🧾 Чеки» — усі закриті рахунки за день.', go: T('cashTab', 't', 'checks') },
       { t: 'Відкрийте чек, щоб змінити спосіб оплати, передрукувати або оформити повернення.', sel: '[data-a="cEdit"]' }] },
-    { id: 'a-rep', r: 'a', g: 'День 2 · Гроші', ic: '📊', n: 'Звіти', s: [
+    { id: 'a-rep', r: 'a', g: 'Перший тиждень адміна · День 2 · Гроші', ic: '📊', n: 'Звіти', s: [
       { t: 'Виручка, середній чек, що продається, години пік, фудкост.', go: V('reports'), sel: '[data-a="rSec"]' }] },
-    { id: 'a-inv', r: 'a', g: 'День 3 · Склад', ic: '🧾', n: 'Прихід товару', s: [
+    { id: 'a-inv', r: 'a', g: 'Перший тиждень адміна · День 3 · Склад', ic: '🧾', n: 'Прихід товару', s: [
       { t: 'Привезли товар — «🧾 Накладні»: сфотографуйте накладну, ШІ сам розпізнає позиції.', go: T('skTab', 't', 'inv') }] },
-    { id: 'a-stock', r: 'a', g: 'День 3 · Склад', ic: '📦', n: 'Залишки й закупівля', s: [
+    { id: 'a-stock', r: 'a', g: 'Перший тиждень адміна · День 3 · Склад', ic: '📦', n: 'Залишки й закупівля', s: [
       { t: '«📦 Залишки» — що є на складі. Червоне — нижче мінімуму.', go: T('skTab', 't', 'stock') },
       { t: '«🛒 Закупівля» — список, що докупити, по постачальниках. Можна одразу надіслати замовлення.', go: T('skTab', 't', 'buy') }] },
-    { id: 'a-cards', r: 'a', g: 'День 3 · Склад', ic: '📋', n: 'Техкарти й собівартість', s: [
+    { id: 'a-cards', r: 'a', g: 'Перший тиждень адміна · День 3 · Склад', ic: '📋', n: 'Техкарти й собівартість', s: [
       { t: '«📋 Техкарти» — з чого складається страва. Склад списується сам при продажі.', go: T('skTab', 't', 'cards') }] },
-    { id: 'a-count', r: 'a', g: 'День 3 · Склад', ic: '📝', n: 'Інвентаризація', s: [
+    { id: 'a-count', r: 'a', g: 'Перший тиждень адміна · День 3 · Склад', ic: '📝', n: 'Інвентаризація', s: [
       { t: '«📝 Інвентаризація» — перерахуйте фактичні залишки. Різниця потрапить у «Плюси / мінуси».', go: T('skTab', 't', 'count') }] },
-    { id: 'a-sup', r: 'a', g: 'День 3 · Склад', ic: '🏭', n: 'Постачальники й борги', s: [
+    { id: 'a-sup', r: 'a', g: 'Перший тиждень адміна · День 3 · Склад', ic: '🏭', n: 'Постачальники й борги', s: [
       { t: '«🏭 Постачальники» — контакти, борги, оплати, акти звірки.', go: T('skTab', 't', 'sup') }] },
-    { id: 'a-grid', r: 'a', g: 'День 4 · Команда', ic: '📅', n: 'Графік змін', s: [
+    { id: 'a-grid', r: 'a', g: 'Перший тиждень адміна · День 4 · Команда', ic: '📅', n: 'Графік змін', s: [
       { t: '«👥 Персонал» → «📅 Графік» — хто коли працює. Натисніть клітинку, щоб поставити зміну.', go: T('zpTab', 't', 'grid') }] },
-    { id: 'a-pay', r: 'a', g: 'День 4 · Команда', ic: '💰', n: 'Зарплата', s: [
+    { id: 'a-pay', r: 'a', g: 'Перший тиждень адміна · День 4 · Команда', ic: '💰', n: 'Зарплата', s: [
       { t: '«💰 Зарплата» — нарахування за зміни, відсотки, чайові, аванси й штрафи.', go: T('zpTab', 't', 'pay') }] },
-    { id: 'a-plan', r: 'a', g: 'День 4 · Команда', ic: '📋', n: 'План на день', s: [
+    { id: 'a-plan', r: 'a', g: 'Перший тиждень адміна · День 4 · Команда', ic: '📋', n: 'План на день', s: [
       { t: '«📋 План» — завдання на день (прибирання, заготовки). Працівники відмічають у своєму кабінеті або в боті.', go: T('zpTab', 't', 'plan') }] },
-    { id: 'a-people', r: 'a', g: 'День 4 · Команда', ic: '👥', n: 'Новий працівник', s: [
+    { id: 'a-people', r: 'a', g: 'Перший тиждень адміна · День 4 · Команда', ic: '👥', n: 'Новий працівник', s: [
       { t: '«👥 Працівники» — додати людину, роль і PIN. PIN він вводить на вході в касу.', go: T('zpTab', 't', 'people') }] },
-    { id: 'a-loy', r: 'a', g: 'День 5 · Налаштування', ic: '🎁', n: 'Акції й бонуси', s: [
+    { id: 'a-loy', r: 'a', g: 'Перший тиждень адміна · День 5 · Налаштування', ic: '🎁', n: 'Акції й бонуси', s: [
       { t: '«⚙️ Налашт.» → «🎁 Лояльність» — рівні гостей, бонуси, акції, що самі рахуються в чеку.', go: T('setTab', 's', 'loy') }] },
-    { id: 'a-gocfg', r: 'a', g: 'День 5 · Налаштування', ic: '🛵', n: 'Налаштування доставки', s: [
+    { id: 'a-gocfg', r: 'a', g: 'Перший тиждень адміна · День 5 · Налаштування', ic: '🛵', n: 'Налаштування доставки', s: [
       { t: '«🛵 Доставка» — зони, ціна доставки, мінімальна сума, час.', go: T('setTab', 's', 'go') }] },
-    { id: 'a-rules', r: 'a', g: 'День 5 · Налаштування', ic: '⚙️', n: 'Правила роботи', s: [
+    { id: 'a-rules', r: 'a', g: 'Перший тиждень адміна · День 5 · Налаштування', ic: '⚙️', n: 'Правила роботи', s: [
       { t: '«⚙️ Правила роботи» — столи, сервіс, знижки, що може офіціант без адміна.', go: T('setTab', 's', 'rules') }] },
-    { id: 'a-prn', r: 'a', g: 'День 5 · Налаштування', ic: '🖨', n: 'Принтер', s: [
+    { id: 'a-prn', r: 'a', g: 'Перший тиждень адміна · День 5 · Налаштування', ic: '🖨', n: 'Принтер', s: [
       { t: '«🖨 Принтер» — стан принтера й тестовий друк. Не друкує? Почніть з «Тест».', go: T('setTab', 's', 'printer') }] },
     // ---------- дописано сканом функцій ----------
     { id: 'w-disc', r: 'w', g: 'Зал', ic: '%', n: 'Знижка на рахунок', s: [
@@ -111,30 +111,30 @@
       { t: '«% Знижка» — відсоток або сума. Що дозволено офіціанту, визначає адмін у «Правилах роботи».', sel: '[data-a="disc"]', opt: 1 }] },
     { id: 'w-closed', r: 'w', g: 'Я', ic: '🧾', n: 'Закриті чеки за день', s: [
       { t: 'Тут усі закриті рахунки: сума, спосіб оплати, хто закрив. Корисно, якщо гість питає чек.', go: V('closed') }] },
-    { id: 'a-tips', r: 'a', g: 'День 2 · Гроші', ic: '💝', n: 'Чайові: виплата команді', s: [
+    { id: 'a-tips', r: 'a', g: 'Перший тиждень адміна · День 2 · Гроші', ic: '💝', n: 'Чайові: виплата команді', s: [
       { t: 'Чайові з карток накопичуються за працівником. Коли віддаєте готівкою — позначте «Видано».', go: V('cash'), sel: '[data-a="tipPay"]', opt: 1 }] },
-    { id: 'a-exch', r: 'a', g: 'День 2 · Гроші', ic: '🔁', n: 'Обмін між касами', s: [
+    { id: 'a-exch', r: 'a', g: 'Перший тиждень адміна · День 2 · Гроші', ic: '🔁', n: 'Обмін між касами', s: [
       { t: '«🔁 Обмін» — переклали гроші з каси в сейф чи між способами (напр. готівка → карта). Рух фіксується в журналі.', go: V('cash'), sel: '[data-a="cMove"]' }] },
-    { id: 'a-rfil', r: 'a', g: 'День 2 · Гроші', ic: '⚙️', n: 'Фільтри й періоди звітів', s: [
+    { id: 'a-rfil', r: 'a', g: 'Перший тиждень адміна · День 2 · Гроші', ic: '⚙️', n: 'Фільтри й періоди звітів', s: [
       { t: 'Оберіть період (день / тиждень / місяць) і розділ звіту.', go: V('reports'), sel: '[data-a="rp"],[data-a="rSec"]' },
       { t: '«⚙️ Фільтри» — по офіціанту, способу оплати, залу. «✕ Скинути» повертає все.', sel: '[data-a="rFo"]', opt: 1 }] },
-    { id: 'a-ops', r: 'a', g: 'День 4 · Команда', ic: '🧾', n: 'Премія, штраф, аванс', s: [
+    { id: 'a-ops', r: 'a', g: 'Перший тиждень адміна · День 4 · Команда', ic: '🧾', n: 'Премія, штраф, аванс', s: [
       { t: '«🧾 Операції» — премії, штрафи й аванси. Вони автоматично потраплять у зарплату.', go: T('zpTab', 't', 'ops') },
       { t: 'Помилились — 🗑 прибирає запис, ↩️ повертає.', sel: '[data-a="zpOpDel"]', opt: 1 }] },
-    { id: 'a-tasks', r: 'a', g: 'День 4 · Команда', ic: '✅', n: 'Завдання й шаблони', s: [
+    { id: 'a-tasks', r: 'a', g: 'Перший тиждень адміна · День 4 · Команда', ic: '✅', n: 'Завдання й шаблони', s: [
       { t: '«📋 План» → «➕ Завдання» — разова задача працівнику (з фото-підтвердженням, якщо треба).', go: T('zpTab', 't', 'plan'), sel: '[data-a="tkAdd"]' },
       { t: '«➕ Шаблон» — завдання, що повторюється щодня (прибирання, заготовки).', sel: '[data-a="tkTplEd"]', opt: 1 },
       { t: '✅ / ❌ — відмітити виконання за працівника.', sel: '[data-a="tkMarkA"]', opt: 1 }] },
-    { id: 'a-ideas', r: 'a', g: 'День 4 · Команда', ic: '💡', n: 'Побажання команди', s: [
+    { id: 'a-ideas', r: 'a', g: 'Перший тиждень адміна · День 4 · Команда', ic: '💡', n: 'Побажання команди', s: [
       { t: 'Працівники лишають побажання з кабінету. Виконали — ✅.', go: T('zpTab', 't', 'ideas') }] },
-    { id: 'a-cli', r: 'a', g: 'День 5 · Гості', ic: '👥', n: 'Клієнти й бонуси', s: [
+    { id: 'a-cli', r: 'a', g: 'Перший тиждень адміна · День 5 · Гості', ic: '👥', n: 'Клієнти й бонуси', s: [
       { t: '«👥 Клієнти» — база гостей: рівень, бонуси, візити. Знайдіть за номером телефону.', go: T('setTab', 's', 'loy'), sel: '[data-a="loyTab"][data-s="cli"]' }] },
-    { id: 'a-lrule', r: 'a', g: 'День 5 · Гості', ic: '🎯', n: 'Акції (happy hour, комбо)', s: [
+    { id: 'a-lrule', r: 'a', g: 'Перший тиждень адміна · День 5 · Гості', ic: '🎯', n: 'Акції (happy hour, комбо)', s: [
       { t: '«🎯 Акції» — правила, що самі застосовуються в чеку: знижка за часом, комбо, день народження.', go: T('setTab', 's', 'loy'), sel: '[data-a="loyTab"][data-s="rules"]' },
       { t: '«➕ Створити» — нове правило; перемикач вмикає/вимикає без видалення.', sel: '[data-a="loyRule"]', opt: 1 }] },
-    { id: 'a-cert', r: 'a', g: 'День 5 · Гості', ic: '🎟', n: 'Подарункові сертифікати', s: [
+    { id: 'a-cert', r: 'a', g: 'Перший тиждень адміна · День 5 · Гості', ic: '🎟', n: 'Подарункові сертифікати', s: [
       { t: '«🎟 Сертифікати» — продаж і погашення. Оплату підтвердіть «💵 Оплачено» або карткою.', go: T('setTab', 's', 'loy'), sel: '[data-a="certs"]' }] },
-    { id: 'a-cast', r: 'a', g: 'День 5 · Гості', ic: '📣', n: 'Розсилка гостям', s: [
+    { id: 'a-cast', r: 'a', g: 'Перший тиждень адміна · День 5 · Гості', ic: '📣', n: 'Розсилка гостям', s: [
       { t: 'Налашт. → «🎁 Лояльність» → «🤖 Бот гостей».', go: T('setTab', 's', 'loy'), sel: '[data-a="loyTab"][data-s="bot"]' },
       { t: '«📣 Нова розсилка» — повідомлення в бот гостей: оберіть сегмент (усі, не були 30+ днів, ДН).', go: T('loyTab', 's', 'bot'), sel: '[data-a="gbCast"]', opt: 1 },
       { t: '«✉️» — гості пишуть боту; тут відповідаєте їм.', sel: '[data-a="gbInbox"]', opt: 1 }] },
@@ -157,21 +157,21 @@
   const crList = () => { const r = crRole(); return CR.filter(l => l.r === r || (r === 'a' && l.r === 'w')); }; // адмін вчить і зал
   const crVid = new Set(COURSE_VID); window.__CR = CR; // відео є лише для знятих уроків (94-course-vid.js пише tools/course-video.mjs)
   function courseHTML() {
-    const L = crList(), D = crDone(), ok = L.filter(l => D[l.id]).length, gs = [...new Set(L.map(l => l.g))];
+    const L = crList(), D = crDone(), fl = TR.f; TR.f = '', ok = L.filter(l => D[l.id]).length, gs = [...new Set(L.map(l => l.g))];
     const pct = L.length ? Math.round(ok / L.length * 100) : 0;
     return `<div class="rhead"><div><h1>🎓 Навчання</h1><span class="muted">${ok} з ${L.length} уроків · ▶️ «Спробувати» покаже, куди натискати</span></div></div>
       <div class="card"><div class="cr-prog"><i style="width:${pct}%"></i></div>${ok === L.length && L.length ? '<b>🏅 Курс пройдено!</b>' : `<span class="muted">Ідіть по порядку — наступний урок підсвічено.</span>`}</div>
       ${gs.map(g => `<h3 style="margin:16px 0 6px">${esc(g)}</h3><div class="cr-grid">${L.filter(l => l.g === g).map(l => {
         const next = !D[l.id] && L.find(x => !D[x.id]) === l;
-        return `<div class="card cr-l${D[l.id] ? ' done' : ''}${next ? ' next' : ''}"><div class="cr-lh"><span class="cr-ic">${D[l.id] ? '✅' : l.ic}</span><b>${esc(l.n)}</b></div>
+        return `<div class="card cr-l${D[l.id] ? ' done' : ''}${next || fl === l.id ? ' next' : ''}" id="cr-${l.id}"><div class="cr-lh"><span class="cr-ic">${D[l.id] ? '✅' : l.ic}</span><b>${esc(l.n)}</b></div>
           ${crVid.has(l.id) ? `<video class="cr-v" src="img/course/${l.id}.mp4" poster="img/course/${l.id}.jpg" preload="none" muted playsinline controls></video>` : ''}
           <ol class="cr-s">${l.s.map(s => `<li>${esc(s.t)}</li>`).join('')}</ol>
           ${l.danger ? '<div class="muted" style="font-size:12px">⚠️ Справжні гроші — тур лише показує, нічого не натискає сам.</div>' : ''}
           <div class="btnrow"><button class="btn sm primary" data-a="crGo" data-id="${l.id}">▶️ Спробувати</button><button class="btn sm${D[l.id] ? ' ghost' : ''}" data-a="crOk" data-id="${l.id}">${D[l.id] ? '↩️' : '✅ Зрозумів'}</button></div></div>`; }).join('')}</div>`).join('')}
-      <h3 style="margin:22px 0 6px">❓ Що робити, якщо…</h3><div class="card">${FAQ.map(([q, a]) => `<details class="cr-faq"><summary>${esc(q)}</summary><div class="muted">${esc(a)}</div></details>`).join('')}</div>`;
+      <h3 style="margin:22px 0 6px">❓ Що робити, якщо…</h3><div class="card"><input id="crQ" class="inp" type="search" placeholder="🔍 Пошук: принтер, PIN, каса…" style="width:100%;margin-bottom:8px">${FAQ.map(([q, a]) => `<details class="cr-faq" data-q="${esc((q + ' ' + a).toLowerCase())}"><summary>${esc(q)}</summary><div class="muted">${esc(a)}</div></details>`).join('')}</div>`;
   }
   // ---------- ▶️ тур: перехід + підсвітка ----------
-  const TR = { l: null, i: 0, tm: 0 }; window.__TR = TR; // для запису відео
+  const TR = { l: null, i: 0, tm: 0, f: '' }; window.__TR = TR; // для запису відео
   function crNav(go) { const b = document.createElement('button'); b.hidden = true; b.dataset.a = go[0]; Object.assign(b.dataset, go[1]); document.body.append(b); b.click(); b.remove(); }
   function crEnd() { TR.l = null; clearInterval(TR.tm); $('#crHl')?.remove(); $('#crTip')?.remove(); }
   function crStep() {
@@ -207,3 +207,18 @@
     if (a === 'crGo') { TR.l = CR.find(l => l.id === id); TR.i = 0; crStep(); }
     if (a === 'crOk') { const D = crDone(); if (D[id]) delete D[id]; else D[id] = 1; store.set('course', D); if (!courseLeft()) { toast('🏅 Курс пройдено!'); S.view = navList()[0][0]; loadView(); } renderNav(); renderMain(); }
   });
+
+  // 🔍 пошук у «Що робити, якщо…» (без запитів, лише фільтр на сторінці)
+  document.addEventListener('input', e => { if (e.target.id !== 'crQ') return; const q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll('.cr-faq').forEach(d => { const hit = !q || d.dataset.q.includes(q); d.hidden = !hit; d.open = !!q && hit; }); });
+  // ❓ у кожній вкладці → урок саме цієї вкладки
+  const CR_TAB = { hall: 'w-table', closed: 'w-closed', stop: 'w-stop', go: 'c-take', cash: 'a-cash', reports: 'a-rep', calc: 'a-inv', team: 'a-grid', books: 'a-book', settings: 'a-rules' };
+  const crFor = v => { const L = crList(); if (v === 'kq') return L.find(l => l.id === (isAdmin() ? 'a-del' : 'k-q')); if (v === 'calc' && isCook()) return L.find(l => l.id === 'k-stock'); if (v === 'stop' && isCook()) return L.find(l => l.id === 'k-stop'); return L.find(l => l.id === CR_TAB[v]); };
+  function crHelpBtn() {
+    const m = $('#main'); if (!m || !S.view || S.view === 'course' || TR.l) return; const l = crFor(S.view); if (!l) return;
+    const b = document.createElement('button'); b.className = 'btn sm ghost cr-q'; b.dataset.a = 'crHelp'; b.dataset.id = l.id; b.title = 'Урок: ' + l.n; b.textContent = '❓';
+    b.style.cssText = 'position:fixed;right:12px;bottom:84px;z-index:50;border-radius:50%;width:40px;height:40px;padding:0'; m.append(b);
+  }
+  new MutationObserver(() => { const m = $('#main'); if (m && !m.querySelector('.cr-q')) crHelpBtn(); }).observe(document.body, { childList: true, subtree: true });
+  document.addEventListener('click', e => { const b = e.target.closest('[data-a="crHelp"]'); if (!b) return; e.stopPropagation();
+    TR.f = b.dataset.id; S.view = 'course'; renderNav(); renderMain(); setTimeout(() => $('#cr-' + b.dataset.id)?.scrollIntoView({ block: 'center' }), 50); }, true);
