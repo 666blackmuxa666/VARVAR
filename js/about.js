@@ -117,6 +117,7 @@
       e.preventDefault(); const m = $('#wlMsg'); m.textContent = '…';
       const d = { name: f.name.value.trim(), phone: f.phone.value.trim(), people: +f.people.value, device };
       const { status, data } = await api('/api/wl', d).catch(() => ({ status: 0, data: {} }));
+      if (status === 200 && data.dup && !data.id) { m.textContent = (document.documentElement.lang === 'en' ? 'This phone is already in the queue: #' : 'Цей телефон уже в черзі: №') + data.pos; return; }
       if (status !== 200 || !data.id) { m.textContent = { contact: t('errC'), full: t('wlFull'), rate: t('wlRate') }[data.error] || t('err'); return; }
       m.textContent = ''; store.set('goName', d.name); store.set('goPhone', d.phone); store.set('wlId', data.id); f.hidden = true; wlShow(true);
     };
