@@ -186,7 +186,9 @@ export class Hub extends DurableObject {
     const rid = await this.st.get('refc:' + code); if (!rid) return { error: 'Невірний код рефері' };
     const rv = await this.st.get('venue:' + rid); if (!rv) return { error: 'Немає закладу рефері' };
     if (rid === id || rv.owner === v.owner) return { error: 'Свої заклади не рахуються' };
-    if (rv.refBy === v.refCode && v.refCode) return { error: 'Взаємні запрошення не рахуються' };
+    { let cur = rv; for (let i = 0; i < 6 && cur; i++) { // ланцюжок запрошень A→B→C→A: рефері не може бути «нащадком» цього закладу (не лише пряма взаємність)
+        if (cur.id === id || cur.owner === v.owner && cur.id !== rv.id) return { error: 'Взаємні запрошення не рахуються' };
+        const up = cur.refBy && await this.st.get('refc:' + cur.refBy); cur = up ? await this.st.get('venue:' + up) : null; } }
     const r = (await this.st.get('ref:' + code)) || { n: 0, list: [] }, capped = r.blocked || r.n >= REF_LIMIT;
     v.refBy = code; v.refPaid = Date.now(); await this.st.put('venue:' + id, v);
     if (!capped) { r.n++; r.list = [{ v: id, ts: v.refPaid }, ...(r.list || [])].slice(0, 50); await this.st.put('ref:' + code, r); }

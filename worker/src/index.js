@@ -149,9 +149,9 @@ export async function handle(req, env) {
       if (url.pathname === '/api/owner' && req.method === 'POST') return env.VENUE === MAIN ? json(...await ownerApi(req, env)) : json({ error: 'not_found' }, 404); // 👑 кабінет власника
       if (url.pathname.startsWith('/__int/')) return json(...await intApi(req, env, url.pathname)); // заклад ← кабінет (лише зсередини воркера)
       if (url.pathname === '/__cron') return env.INSTORE && req.headers.get('x-cron') && req.headers.get('x-cron') === (env.MASTER_KEY ? await intSecret(env) : '1') ? json(await cron(env)) : json({ error: 'no' }, 403);
-      if (req.method === 'POST' && ip && ['/api/book', '/api/cert', '/api/go', '/api/tpay', '/api/wl'].includes(url.pathname)) { // 🛡 ліміти по device обходяться його зміною: з одного IP — не більше 40 різних пристроїв за 10 хв (повтори того ж пристрою не рахуються)
+      if (req.method === 'POST' && ip && ['/api/book', '/api/cert', '/api/go', '/api/tpay', '/api/wl'].includes(url.pathname)) { // 🛡 ліміти по device обходяться його зміною: з одного IP — не більше 150 (env.IPDEV_MAX) різних пристроїв за 10 хв (повтори того ж пристрою не рахуються)
         const dv = await req.clone().json().then(x => String(x?.device || '').slice(0, 64)).catch(() => ''), tk = 'ipdev:' + ip.slice(0, 64), seen = (await env.DB.get(tk, 'json')) || [];
-        if (dv && !seen.includes(dv)) { if (seen.length >= 150) return json({ error: 'rate' }, 429); await env.DB.put(tk, JSON.stringify([...seen, dv]), { expirationTtl: 600 }); }
+        if (dv && !seen.includes(dv)) { if (seen.length >= (+env.IPDEV_MAX || 150)) return json({ error: 'rate' }, 429); await env.DB.put(tk, JSON.stringify([...seen, dv]), { expirationTtl: 600 }); }
       }
       // 🌐 візитка
       if (url.pathname === '/api/site') return new Response(JSON.stringify(await sitePublic(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
