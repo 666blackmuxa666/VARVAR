@@ -976,6 +976,18 @@ export async function pinHash(pin) {
   const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('varvar:' + pin));
   return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
 }
+// 🔐 PIN: старий формат — SHA-256('varvar:'+pin) (64 hex); новий — 'h2:'+HMAC-SHA256(ключ з MASTER_KEY, id+':'+pin): без секрету з дампу бази PIN не підібрати.
+// Читаються обидва формати. Новий пишеться лише коли env.PIN2 увімкнено (спершу викладається читання, потім вмикається запис — відкат коду не відбирає вхід).
+const pinKey = async env => crypto.subtle.importKey('raw', new TextEncoder().encode('pin:' + env.MASTER_KEY), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+const pinH2 = async (env, pin, sid) => 'h2:' + [...new Uint8Array(await crypto.subtle.sign('HMAC', await pinKey(env), new TextEncoder().encode(sid + ':' + pin)))].map(x => x.toString(16).padStart(2, '0')).join('');
+export const pinMake = async (env, pin, sid) => env.PIN2 && env.MASTER_KEY ? pinH2(env, pin, sid) : pinHash(pin);
+export async function pinIs(env, s, pin) { pin = String(pin); if (!s?.pin) return false; return String(s.pin).startsWith('h2:') ? !!env.MASTER_KEY && s.pin === await pinH2(env, pin, s.id) : s.pin === await pinHash(pin); }
+export async function pinFind(env, list, pin, exceptId) { for (const s of list) if (s.id !== exceptId && await pinIs(env, s, pin)) return s; return null; }
+// тихе перехешування при вдалому вході: старий формат → новий (під замком, лише якщо запис не змінився)
+export async function pinUpgrade(env, s, pin) {
+  if (!env.PIN2 || !env.MASTER_KEY || String(s.pin).startsWith('h2:')) return;
+  try { await L(env, 'staff', async () => { const l = await getStaff(env), x = l.find(y => y.id === s.id); if (!x || x.pin !== s.pin) return; x.pin = await pinH2(env, pin, x.id); await env.DB.put('staff', JSON.stringify(l)); }); } catch (e) { console.log('pinUpgrade', e.message); }
+}
 // коди реєстрації: адмін 1119, офіціант 1112 — ними не входять, а реєструються (імʼя + свій PIN)
 export const REG_DEF = { admin: '1119', waiter: '1112', cook: '1113', courier: '1114' };
 export const regCode = async (env, role) => (await env.DB.get('reg_' + role)) || REG_DEF[role];
@@ -984,11 +996,11 @@ export const getStaff = async env => (await env.DB.get('staff', 'json')) || [];
 async function _addStaff(env, name, pin, role = 'waiter') {
   name = String(name || '').trim().slice(0, 30); pin = String(pin || '').trim();
   if (!name || !/^\d{4}$/.test(pin)) return { error: 'Потрібні імʼя і PIN з 4 цифр.' };
-  const list = await getStaff(env), h = await pinHash(pin);
-  if (list.some(s => s.pin === h)) return { error: 'Такий PIN уже є — оберіть інший.' };
+  const list = await getStaff(env);
+  if (await pinFind(env, list, pin)) return { error: 'Такий PIN уже є — оберіть інший.' };
   if (await regRole(env, pin)) return { error: 'Цей код — для реєстрації. Оберіть інший PIN.' };
   if (list.some(s => s.name.toLowerCase() === name.toLowerCase())) return { error: 'Працівник з таким імʼям уже є — додайте прізвище або букву.' };
-  const s = { id: crypto.randomUUID().slice(0, 6), name, pin: h, role: ['admin', 'cook', 'courier'].includes(role) ? role : 'waiter' };
+  const sid = crypto.randomUUID().slice(0, 6), s = { id: sid, name, pin: await pinMake(env, pin, sid), role: ['admin', 'cook', 'courier'].includes(role) ? role : 'waiter' };
   list.push(s); await env.DB.put('staff', JSON.stringify(list));
   return { ok: true, s };
 }
@@ -1005,7 +1017,7 @@ async function _editStaff(env, id, f) {
     if (list.some(x => x.id !== id && x.name.toLowerCase() === n.toLowerCase())) return { error: 'Працівник з таким імʼям уже є — додайте прізвище або букву.' }; s.name = n; }
   if (f.pin != null) { const pin = String(f.pin).trim(); if (!/^\d{4}$/.test(pin)) return { error: 'PIN — 4 цифри' };
     if (await regRole(env, pin)) return { error: 'Цей код — для реєстрації. Оберіть інший PIN.' };
-    const h = await pinHash(pin); if (list.some(x => x.id !== id && x.pin === h)) return { error: 'Такий PIN уже є — оберіть інший.' }; if (await regRole(env, pin)) return { error: 'Цей код — для реєстрації. Оберіть інший PIN.' }; s.pin = h; }
+    if (await pinFind(env, list, pin, id)) return { error: 'Такий PIN уже є — оберіть інший.' }; s.pin = await pinMake(env, pin, id); }
   if (f.role != null) s.role = ['admin', 'cook', 'courier'].includes(f.role) ? f.role : 'waiter';
   s.ver = (s.ver || 0) + 1;
   await env.DB.put('staff', JSON.stringify(list));

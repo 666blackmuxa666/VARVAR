@@ -107,7 +107,7 @@ export async function intApi(req, env, path) {
   if (path === '/__int/bak') { const B = await import('./backup.js'); // 💾
     if (b.do === 'list') return [{ list: await B.backupList(env) }, 200];
     if (b.do === 'now') return [await B.backupNow(env, 'вручну-' + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')), 200];
-    if (b.do === 'get') { const t = await B.backupGet(env, String(b.tag)); return t ? [{ data: t }, 200] : [{ error: 'Не знайдено' }, 404]; }
+    if (b.do === 'get') { console.log('BAKGET', env.VENUE || 'main', String(b.tag).slice(0, 60), String(b.who || '').slice(0, 40)); const t = await B.backupGet(env, String(b.tag)); return t ? [{ data: t }, 200] : [{ error: 'Не знайдено' }, 404]; }
     if (b.do === 'restore') return [await B.backupRestore(env, String(b.tag), String(b.who || '')), 200];
     return [{ error: 'unknown' }, 400]; }
   if (path === '/__int/dig') { const D = await import('./digest.js'); return [b.do === 'chat' ? await D.digChat(env, b.chat) : b.do === 'now' ? (await D.digRun(env, dayKey(), false), await D.digList(env)) : await D.digList(env), 200]; }

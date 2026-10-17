@@ -17,7 +17,7 @@ import {
   L, tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
   precheck, setDiscount, splitTable, restoreVoid, getVoids, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
   reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, tipBalances, payTips, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenPct, rejectOrder, kitchenStats, getKq, kitchenDone, kitchenStart, restoreClosed, reopenClosed, restoreTable, restoreExpense, balances, reconcile, WAITER_DISC_MAX, getCfg, setCfg, CFG_LIM, zText, reportBreakdown, regRole, isAdmin, isWaiter, getStaff, addStaff, delStaff, editStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
-  getMov, delMove, restoreMove, delZ, restoreZ, pinHash, isDay,editClosed, dayX, notify, getEvents,
+  getMov, delMove, restoreMove, delZ, restoreZ, pinHash, pinFind, pinIs, isDay,editClosed, dayX, notify, getEvents,
 } from './ops.js';
 export { tg, esc, hhmm, getBill } from './ops.js';
 export { addStat, addDishes } from './ops.js';
@@ -416,7 +416,7 @@ export async function handleUpdate(u, env) {
       const keep = async t => { await env.DB.put('st:' + uid, 'pin', { expirationTtl: 3600 }); return send({ text: t }, { remove_keyboard: true }); };
       if (!/^\d{4}$/.test(text)) return keep('Введіть 4 цифри — свій PIN (або код реєстрації):');
       if (!(await pinTry())) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' }, { remove_keyboard: true });
-      const h = await pinHash(text), me = (await getStaff(env)).find(z => z.pin === h); // спершу PIN працівника — код реєстрації не має його перекривати
+      const me = await pinFind(env, await getStaff(env), text); // спершу PIN працівника — код реєстрації не має його перекривати
       const role = !me && await regRole(env, text);
       if (role) { await env.DB.put('st:' + uid, 'regn:' + role, { expirationTtl: 900 }); return send({ text: `🆕 Реєстрація (${ROLE_ONE[role]}). Напишіть своє імʼя:` }, { remove_keyboard: true }); }
       if (!me) { await fail(); return keep('❌ Невірний PIN. Введіть ще раз:'); }
@@ -447,7 +447,7 @@ export async function handleUpdate(u, env) {
     if (state.startsWith('tgpin:') && waiter) { // 👤 привʼязка до працівника: PIN каси
       const s = (await getStaff(env)).find(z => z.id === state.slice(6)); if (!s) return send({ text: 'Не знайдено' });
       if (!(await pinTry())) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' });
-      if (s.pin !== await pinHash(text)) { return send({ text: '❌ PIN не підходить. Напишіть «зміна», щоб спробувати ще раз.' }); }
+      if (!(await pinIs(env, s, text))) { return send({ text: '❌ PIN не підходить. Напишіть «зміна», щоб спробувати ще раз.' }); }
       await pinOk(); await env.DB.put('tgs:' + uid, s.id);
       return send({ text: `✅ Ви — <b>${esc(s.name)}</b>. Тепер «зміна» починає / закінчує вашу зміну.` });
     }
