@@ -33,7 +33,7 @@ const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|g
 // все одно перевіряє при замовленні (priceMap пропускає hidden), тож 20 с затримки безпечні.
 const MEM = new Map(), TTL = { '/api/menu': 20, '/api/site': 60, '/api/reco': 600, '/api/goinfo': 30, '/k': 3600, '/kitchen': 3600 };
 async function cached(req, path, run) {
-  const u = new URL(req.url), ttl = req.method === 'GET' && TTL[path];
+  const u = new URL(req.url), ttl = req.method === 'GET' && (path === '/api/orders' ? u.searchParams.has('g') && 15 : TTL[path]); // 🛵 статус доставки гостя — спільний кеш 15 с (?g=1)
   if (!ttl || u.searchParams.has('ph') || u.searchParams.has('nocache')) return run();
   const key = u.pathname + u.search + '|' + (req.headers.get('Origin') || ''), hit = MEM.get(key);
   if (hit && hit.exp > Date.now()) return new Response(hit.body, { status: 200, headers: { ...hit.headers, 'x-cache': 'HIT' } });
@@ -135,7 +135,7 @@ export async function handle(req, env) {
       if (url.pathname === '/api/orders') { // статуси замовлень гостя: ?ids=a,b
         const ids = (url.searchParams.get('ids') || '').split(',').filter(x => /^[a-z0-9]{6,12}$/.test(x)).slice(0, 20);
         const out = {}, all = ids.length ? await env.DB.getMany(ids.map(id => 'ord:' + id), 'json') : []; // один запит замість N
-        ids.forEach((id, i) => { const o = all[i]; out[id] = o && { s: o.s, t: o.t, by: o.by, at: o.at, ...(o.go ? { g: o.g || o.s, no: tn(o.t), eta: o.eta, gAt: o.gAt, ...(o.etaC ? { etaC: o.etaC } : {}) } : {}) }; });
+        ids.forEach((id, i) => { const o = all[i]; out[id] = o && { s: o.s, t: o.t, by: o.by, at: o.at, ...(o.go ? { g: o.g || o.s, no: tn(o.t), eta: o.eta, gAt: o.gAt, ...(o.cour ? { c: o.cour } : {}), ...(o.etaC ? { etaC: o.etaC } : {}) } : {}) }; });
         return json(out);
       }
       if (url.pathname === '/api/pos/live') return posLive(req, env, url);

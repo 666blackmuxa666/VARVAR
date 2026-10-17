@@ -229,7 +229,7 @@
       if (changed) { save(); renderStatus(); setTimeout(renderStatus, 3100); if (!$('#sheet').hidden) renderCart(); } // зелена плашка — 3 с
     } catch {}
   }
-  setInterval(pollOrders, 5000);
+  setInterval(() => { if (!GO) pollOrders(); }, 5000); // 🛵 режим ?go — без таймера: лише при відкритті, поверненні на вкладку і кнопці «Оновити» (запит іде в спільний кеш 15 с)
   setInterval(() => { if (!$('#sheet').hidden && document.visibilityState === 'visible') syncStatus(); }, 5000);
   setInterval(renderStatus, 30000);
 
@@ -445,14 +445,15 @@
     const o = goHist.find(x => x.id === id); if (!o) return; const g = o.g || 'new', steps = ['new', 'acc', 'cook', 'ready', ...(o.no.startsWith('Д') ? ['road'] : []), 'done'];
     $('#goBody').innerHTML = `<div class="go-big">${GST[g][0]}</div><h3 class="go-no">${t('goOrder')} ${o.no}</h3><p class="go-st">${t(GST[g][1])}</p>
       ${g === 'rej' ? '' : `<div class="go-steps">${steps.map(s => `<i class="${steps.indexOf(s) <= steps.indexOf(g) ? 'on' : ''}" title="${t(GST[s][1])}">${GST[s][0]}</i>`).join('')}</div>`}
+      ${o.cour && ['road'].includes(g) ? `<p class="go-st">🛵 ${t('goCour')} <b>${esc(o.cour)}</b></p>` : o.cour && !['done', 'rej'].includes(g) ? `<p class="go-note">✋ ${t('goCourTook')} <b>${esc(o.cour)}</b></p>` : ''}
       ${o.etaC && g === 'road' ? `<p class="go-st">🛵 ${t('goEtaC')} <b>~${new Date(o.etaC).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' })}</b></p>` : ''}${o.eta && !o.etaC && !['done', 'rej'].includes(g) ? `<p class="go-note">${t('goEta')} ~${new Date(o.eta).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' })}</p>` : ''}
-      ${goCfg?.phone ? `<a class="btn ghost" href="tel:${esc(goCfg.phone.replace(/[^\d+]/g, ''))}">📞 ${esc(goCfg.phone)}</a>` : ''}<button class="btn alt" data-close>${t('goOk')}</button>`;
+      ${goCfg?.phone ? `<a class="btn ghost" href="tel:${esc(goCfg.phone.replace(/[^\d+]/g, ''))}">📞 ${esc(goCfg.phone)}</a>` : ''}${['done', 'rej'].includes(g) ? '' : `<button class="btn ghost" data-go-refresh>🔄 ${t('goRefresh')}</button>`}<button class="btn alt" data-close>${t('goOk')}</button>`;
     ($('#sheet').hidden = true, $('#goModal').hidden = false); $('#goModal').dataset.show = id;
   }
   async function goPoll() {
     const act = goHist.filter(o => !['done', 'rej'].includes(o.g) && Date.now() - o.ts < 12 * 3600e3); if (!act.length) { $('#orderStatus').hidden = true; return; }
-    try { const { data } = await api('/api/orders?ids=' + act.map(o => o.id).join(','));
-      for (const o of act) { const x = data[o.id]; if (x && x.g && x.g !== o.g) { o.g = x.g; navigator.vibrate?.(80); } if (x?.etaC && x.etaC !== o.etaC) { o.etaC = x.etaC; navigator.vibrate?.(80); } } goSave(); } catch {}
+    try { const { data } = await api('/api/orders?g=1&ids=' + act.map(o => o.id).sort().join(','));
+      for (const o of act) { const x = data[o.id]; if (x && x.g && x.g !== o.g) { o.g = x.g; navigator.vibrate?.(80); } if (x?.c !== undefined && x.c !== o.cour) { o.cour = x.c; navigator.vibrate?.(80); } if (x?.etaC && x.etaC !== o.etaC) { o.etaC = x.etaC; navigator.vibrate?.(80); } } goSave(); } catch {}
     const last = act[act.length - 1], bar = $('#orderStatus'); bar.hidden = false; bar.className = 'order-status ' + (['ready', 'road', 'done'].includes(last.g) ? 'ok' : 'wait'); bar.textContent = `${last.no} · ${GST[last.g || 'new'][0]} ${t(GST[last.g || 'new'][1])}${last.etaC && last.g === 'road' ? ` · ~${new Date(last.etaC).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' })}` : ''}`; bar.dataset.go = last.id;
     if (!$('#goModal').hidden && $('#goModal').dataset.show) goShow($('#goModal').dataset.show);
     if (!$('#sheet').hidden) renderCart();
@@ -467,6 +468,7 @@
     if ('goPre' in d) { (async () => { const items = cartEntries().map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; });
       const { status } = await api('/api/bookpre', { id: BOOK, phone: store.get('bkPhone', store.get('goPhone', '')), items }).catch(() => ({ status: 0 }));
       if (status === 200) { cart = {}; save(); refreshButtons(); renderFab(); $('#msg').textContent = '✅ ' + t('goPreOk'); setTimeout(() => { location.href = window.VARVAR.link('about.html#book'); }, 1500); } else $('#msg').textContent = status === 409 ? (lang === 'en' ? 'The kitchen already has your pre-order — please call us to change it' : 'Передзамовлення вже на кухні — щоб змінити, зателефонуйте нам') : t('error'); })(); return true; }
+    if ('goRefresh' in d) { goPoll(); return true; }
     if (d.goSt) { goShow(d.goSt); return true; }
     if (el.id === 'orderStatus' && el.dataset.go) { goShow(el.dataset.go); return true; }
     if (d.goRep) { const o = goHist.find(x => x.id === d.goRep); if (o) { o.items.forEach(([k, q]) => { const it = byId[k.split('|')[0]]; if (it) cart[k] = (cart[k] || 0) + q; }); save(); refreshButtons(); renderFab(); renderCart(); } return true; }
