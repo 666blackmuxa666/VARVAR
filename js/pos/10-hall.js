@@ -31,7 +31,7 @@
     const body0 = go ? (goL.length ? `<div class="go-strip go-grid">${goL.map(goTileHTML).join('')}</div>` : '<div class="muted" style="padding:14px">Замовлень зараз немає</div>') : `${S.cfg?.goTabs ? goTile : strip}${map ? floorUI(cur, all, inF, calls, pending) : ''}${map ? '' : `<div class="tables${rng.length > 24 ? ' compact' : ''}">${tiles || `<div class="muted" style="padding:14px">${S.hf === 'mine' ? 'У вас зараз немає столів' : 'Зайнятих столів немає'}</div>`}</div>`}`;
     const body = alerts + body0;
     return `<div class="head"><h1>${V.length > 1 ? `<button class="hall-pick${othHot ? ' hot' : ''}" data-hl="pick">${cur.ic} ${esc(cur.n)} ▾</button>` : 'Зал'}</h1>${tools}
-      ${isCook() || isCour() ? '' : inboxBtn()}${isCook() || isCour() ? '' : S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="Нові броні — підтвердіть">📅 ${S.bkNew} нов.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">📅 ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="Бронювання">📅</button>`}</div>${bar}${body}`;
+      ${isCook() || isCour() ? '' : inboxBtn()}${isCook() || isCour() ? '' : `<button class="btn${(S.wl || []).length ? '' : ' ghost'}" data-a="wl" title="Черга гостей">⏳${(S.wl || []).length ? ' ' + S.wl.length : ''}</button>`}${isCook() || isCour() ? '' : S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="Нові броні — підтвердіть">📅 ${S.bkNew} нов.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">📅 ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="Бронювання">📅</button>`}</div>${bar}${body}`;
   }
 
   // ---------- стрічка ----------
@@ -365,3 +365,15 @@
     if (a === 'hf') { S.hf = el.dataset.h; store.set('hf', S.hf); return renderMain(); }
   });
 
+
+  // ⏳ черга гостей у залі (wl.js; та сама wlAct у боті)
+  async function wlOpen() {
+    const ago = x => Math.max(0, Math.round((Date.now() - x.at) / 60e3));
+    const rows = (S.wl || []).map((x, i) => `<div class="kv" style="flex-wrap:wrap;gap:6px"><span style="min-width:0;overflow-wrap:anywhere">${i + 1}. <b>${esc(x.name)}</b> · ${x.people} ос. · ${ago(x)} хв${x.st === 'called' ? ' · 🔔' : ''}${x.phone ? ` · ${esc(x.phone)}` : ''}</span><span class="row" style="gap:6px"><button class="btn sm" data-mi-v="call:${x.id}">🔔</button><button class="btn sm" data-mi-v="seat:${x.id}">🪑</button><button class="btn sm ghost" data-mi-v="gone:${x.id}">✖</button></span></div>`).join('') || '<div class="muted">Черга порожня</div>';
+    const v = await modal({ title: '⏳ Черга в залі', body: rows, buttons: [{ label: '➕ Додати гостя', val: 'add', cls: 'primary' }, { label: 'Закрити', val: null }] });
+    if (!v) return;
+    if (v === 'add') { const name = await ask('Імʼя гостя'); if (!name) return; const p = await ask('Скільки людей?', '2', 'number'); if (!p) return; const r = await act('wlAdd', { name, people: +p }, '⏳ Додано в чергу'); if (r) { await loadState().catch(() => {}); wlOpen(); } return; }
+    const [a, id] = String(v).split(':'); let tt = 0;
+    if (a === 'seat') { tt = await pickTable('🪑 За який стіл?', ''); if (!tt) return; }
+    if (await act('wlAct', { id, act: a, t: tt }, { call: '🔔 Покликали', seat: '🪑 Посадили', gone: '✖ Прибрано' }[a])) { await loadState().catch(() => {}); if ((S.wl || []).length) wlOpen(); }
+  }

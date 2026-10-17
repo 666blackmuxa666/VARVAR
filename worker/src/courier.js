@@ -149,6 +149,7 @@ export async function courAct(env, t, name, act, arg) {
   if (act === 'take') {
     const g = await L(env, 'bills', async () => { const x = await getBill(env, t); if (!x.go) return { error: 'Закрито' }; if (x.go.cour && x.go.cour !== name) return { error: 'Вже взяв ' + x.go.cour }; x.go.cour = name; x.go.takeAt = Date.now(); await putBill(env, t, x); return x.go; });
     if (g.error) return g;
+    if (g.oid) await (await import('./delivery.js')).markOrd(env, g.oid, g.st || 'acc', { cour: name }); // гість бачить ім'я
     await logEvent(env, { k: 'go', t, by: name, s: 'acc', text: `✋ ${tn(t)} → кур'єр ${name}` }); await courNotify(env, t, 'taken'); return { ok: 1, go: g };
   }
   if (act === 'road') { const g = await goSet(env, t, 'road', name, { cour: name }); await courNotify(env, t, 'refresh'); return { ok: 1, go: g }; }

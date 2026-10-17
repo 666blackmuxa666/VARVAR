@@ -145,7 +145,7 @@
     if (my < stateDone) return; // повільна стара відповідь не затирає новішу (стіл «повертався» після закриття)
     stateDone = my;
     if (!S.tpInit && window.TABP) { S.tpInit = 1; TABP.init({ api, toast, ask, base: API }); } // 📱 принтер планшета (js/tabprint.js)
-    S.me = { ...S.me, ...r.me }; S.myTip = r.myTip; S.myAtt = r.myAtt || null; S.books = r.books || []; S.bkNew = r.bkNew || 0; if (r.brand && JSON.stringify(r.brand) !== JSON.stringify(S.brand)) { S.brand = r.brand; store.set('brand', r.brand); applyBrand(); } S.gInN = r.gInN || 0; S.cfg = r.cfg || S.cfg; S.n = r.n; S.printer = r.printer; S.shift = r.shift;
+    S.me = { ...S.me, ...r.me }; S.myTip = r.myTip; S.myAtt = r.myAtt || null; S.books = r.books || []; S.wl = r.wl || []; S.bkNew = r.bkNew || 0; if (r.brand && JSON.stringify(r.brand) !== JSON.stringify(S.brand)) { S.brand = r.brand; store.set('brand', r.brand); applyBrand(); } S.gInN = r.gInN || 0; S.cfg = r.cfg || S.cfg; S.n = r.n; S.printer = r.printer; S.shift = r.shift;
     S.tables = Object.fromEntries(r.tables.map(b => [b.t, b]));
     const fresh = r.events.filter(e => !S.seen.has(e.id));
     if (S.ready && fresh.some(e => ['guest', 'check', 'call'].includes(e.k) || (!isCook() && ['ready', 'kmsg'].includes(e.k)))) ding();
@@ -433,6 +433,7 @@
       case 'send': sendCart(); break;
       case 'goNew': goNew(); break;
       case 'books': S.view = 'books'; renderNav(); renderMain(); loadView(); break;
+      case 'wl': wlOpen(); break;
       case 'bkDay': S.bkDay = el.dataset.d; renderMain(); break;
       case 'bkAll': S.bkAll = !!el.dataset.v; renderMain(); break;
       case 'bkNew': bkForm(); break;
