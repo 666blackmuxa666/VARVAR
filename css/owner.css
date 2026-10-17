@@ -344,3 +344,4 @@ body:has(.login) { background: radial-gradient(900px 600px at 50% -10%, #2a1a52 
 .login input { background: #0f0b1acc; border-color: #2e2350; }
 .login input:focus { border-color: #f2c14e; outline: none; box-shadow: 0 0 0 3px #f2c14e22; }
 .login .btn.primary { background: linear-gradient(135deg, #ffdf8a, #f2c14e); color: #1a1206; border: 0; font-weight: 800; }
+.top .in > img { background: none !important; }
