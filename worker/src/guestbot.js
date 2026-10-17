@@ -60,7 +60,7 @@ export async function guestMenu(m, env) {
       await env.DB.delete('gst:' + chat); const g = await giftInfo(env); await say(env, chat, `🎂 Записали: <b>${bdText(r.bd)}</b>. ${g ? `У день народження надішлемо вам сертифікат — <b>${esc(g.n)} у подарунок</b> 🎁` : 'У цей день чекайте на привітання!'}`, KB);
       if (r.bd === dayKey().slice(5)) await bdGreet(env, { ...(await getCli(env, ph)), phone: ph }); return true;
     }
-    if (st === 'chat' && gb.chat && text) { await chatIn(env, ph, m.from?.first_name || '', text); await say(env, chat, '✅ Передали адміністратору — відповідь прийде сюди.'); return true; }
+    if (st === 'chat' && gb.chat && text) { const rk = 'gchrl:' + chat, n = +(await env.DB.get(rk)) || 0; if (n >= 15) return await say(env, chat, '⏳ Забагато повідомлень за годину — зачекайте або зателефонуйте.'), true; await env.DB.put(rk, String(n + 1), { expirationTtl: 3600 }); /* 🛡 не засипати групу персоналу */ await chatIn(env, ph, m.from?.first_name || '', text); await say(env, chat, '✅ Передали адміністратору — відповідь прийде сюди.'); return true; }
     return false;
   }
   if (btn === 'order') return say(env, chat, '🍔 Меню з собою та доставка — оберіть страви:', url('🍔 Відкрити меню', siteLink('index.html?go'))), true;
