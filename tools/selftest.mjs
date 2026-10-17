@@ -123,6 +123,15 @@ async function apiTests() {
     const h = await (await fetch(API + '/k')).text(), sc = [...h.matchAll(/<script>([\s\S]*?)<\/script>/g)].pop()?.[1]; must(sc, 'немає скрипта');
     try { new Function(sc); } catch (e) { must(false, 'синтаксис: ' + e.message); }
     must(sc.includes("replace(/\\/(k|kitchen)\\/?$/,'')") && /match\(\/\^\\s\*\(\\d/.test(sc), 'регулярки втратили слеші'); });
+  await step('📤 експорт для бухгалтера: усі розділи, суми збігаються зі звітом, офіціанту заборонено', async () => {
+    const day = new Date().toISOString().slice(0, 10), to = new Date(Date.now() + 864e5).toISOString().slice(0, 10), x = await posOk(A, 'acctExport', { from: day, to });
+    const ids = x.sections.map(s => s.id).join(); must(['sales', 'checks', 'pay', 'inv', 'off', 'exp', 'zp'].every(k => ids.includes(k)), 'розділи: ' + ids);
+    must(x.sections.every(s => s.rows.every(r => r.length === s.head.length)), 'ширина рядків ≠ шапка');
+    const rep = await posOk(A, 'report', { from: day, to }), tot = x.sections.find(s => s.id === 'sales').rows.at(-1);
+    must(tot[1] === rep.checks.length, `чеків ${tot[1]} ≠ ${rep.checks.length}`);
+    const bad = await pos(W, 'acctExport', { from: day, to }); must(bad.status === 403 || bad.status === 401 || bad.json?.error, 'офіціант отримав дані');
+    const e = await pos(A, 'acctExport', { from: 'x', to: 'y' }); must(e.status === 400, 'невірний період: ' + e.status);
+  });
   await step('🍳 цехи кухні: гарячий/бар — свої екрани, принтери, готовність по цехах; без цехів — як раніше', async () => {
     const back = (await posOk(A, 'rcptGet')).route, s0 = await posOk(A, 'state'), busy = new Set(s0.tables.map(x => x.t)); let t = s0.n; while (busy.has(t)) t--;
     try {

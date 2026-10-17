@@ -20,6 +20,18 @@
     if (!resolver.memo.has(name)) resolver.memo.set(name, resolver.all.find(x => name === x.n || name.startsWith(x.n + ' ')) || null);
     return resolver.memo.get(name);
   }
+  // 📤 експорт для бухгалтера: CSV (Excel, UTF-8 + «;») або друк/PDF — за обраний період
+  const csvOf = x => x.sections.map(s => [s.title, s.head, ...s.rows].map(r => Array.isArray(r) ? r.map(v => { const t = String(v ?? ''); return /[;"\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; }).join(';') : r).join('\r\n')).join('\r\n\r\n');
+  async function acctExport() {
+    const [from, to] = perRange(S.rep.p), how = await choose('📤 Експорт для бухгалтера', `Період ${from} — ${to}: продажі, оплати за типами, приходи складу, списання, витрати з каси, ЗП.`, [{ label: '📄 CSV (Excel)', val: 'csv', cls: 'primary' }, { label: '🖨 PDF / друк', val: 'pdf' }]);
+    if (!how) return;
+    let x; try { x = await api('acctExport', { from, to }); } catch { return toast('⚠️ Не вдалось сформувати'); }
+    if (how === 'csv') { const f = new Blob(['\ufeff' + csvOf(x)], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = `varvar-${from}_${to}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); return; }
+    const w = window.open('', '_blank'); if (!w) return toast('⚠️ Дозвольте спливаюче вікно');
+    w.document.write(`<!doctype html><meta charset="utf-8"><title>Експорт ${esc(from)} — ${esc(to)}</title><style>body{font:12px Arial;margin:18px}h1{font-size:16px}h2{font-size:13px;margin:16px 0 4px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:3px 6px;text-align:left}th{background:#eee}td:not(:first-child){text-align:right}@media print{h2{break-after:avoid}tr{break-inside:avoid}}</style><h1>Звіт для бухгалтера · ${esc(from)} — ${esc(to)}</h1>`
+      + x.sections.map(s => `<h2>${esc(s.title)}</h2><table><tr>${s.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr>${s.rows.map(r => `<tr>${r.map(v => `<td>${esc(String(v ?? ''))}</td>`).join('')}</tr>`).join('')}</table>`).join('') + '<script>setTimeout(function(){print()},300)<\/script>');
+    w.document.close();
+  }
   async function loadReport() {
     const [from, to] = perRange(S.rep.p), key = from + '|' + to, [pf, pt] = prevRange(from, to), cmp = S.rep.p !== 'all';
     if (S.data.rangeKey !== key) { S.data.range = null; S.data.prev = null; S.data.rangeKey = key; renderMain(); }
@@ -75,7 +87,7 @@
     const nF = [R.pay, R.by, R.grp, R.cat, R.t, R.q.trim()].filter(Boolean).length;
     const dm = d => d.split('-').reverse().slice(0, from.slice(0, 4) === to.slice(0, 4) ? 2 : 3).join('.');
     const head = `<div class="rhead"><div><h1>Звіти</h1><span class="muted">${from === to ? dm(from) : dm(from) + ' — ' + dm(to)}${S.data.prev ? ' · порівняння з попередніми ' + daysIn(from, to).length + ' дн.' : ''}</span></div>
-      <button class="btn sm ${nF ? 'primary' : ''}" data-a="rFo">⚙️ Фільтри${nF ? ` · ${nF}` : ''}</button></div>
+      <button class="btn sm" data-a="rAcct">📤 Бухгалтеру</button><button class="btn sm ${nF ? 'primary' : ''}" data-a="rFo">⚙️ Фільтри${nF ? ` · ${nF}` : ''}</button></div>
       <div class="chips scroll">${PER.map(([k, l]) => `<button class="chip ${R.p === k ? 'on' : ''}" data-a="rp" data-p="${k}">${l}</button>`).join('')}</div>
       ${R.p === 'c' ? `<div class="frow" style="margin-top:10px"><label>З<input type="date" id="rFrom" value="${from}"></label><label>По<input type="date" id="rTo" value="${to}"></label></div>` : ''}`;
     const filters = R.fo || nF ? `<div class="filters" style="margin-top:10px">${R.fo ? `<div class="frow">

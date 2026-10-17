@@ -1165,6 +1165,9 @@ var __objRest = (source, exclude) => {
       case "shOpen":
         shOpen();
         break;
+      case "rAcct":
+        acctExport();
+        break;
       case "rp":
         S.rep.p = el.dataset.p;
         loadView();
@@ -4010,6 +4013,32 @@ var __objRest = (source, exclude) => {
     if (!resolver.memo.has(name)) resolver.memo.set(name, resolver.all.find((x) => name === x.n || name.startsWith(x.n + " ")) || null);
     return resolver.memo.get(name);
   }
+  const csvOf = (x) => x.sections.map((s) => [s.title, s.head, ...s.rows].map((r) => Array.isArray(r) ? r.map((v) => {
+    const t = String(v != null ? v : "");
+    return /[;"\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+  }).join(";") : r).join("\r\n")).join("\r\n\r\n");
+  async function acctExport() {
+    const [from, to] = perRange(S.rep.p), how = await choose("\u{1F4E4} \u0415\u043A\u0441\u043F\u043E\u0440\u0442 \u0434\u043B\u044F \u0431\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u0430", `\u041F\u0435\u0440\u0456\u043E\u0434 ${from} \u2014 ${to}: \u043F\u0440\u043E\u0434\u0430\u0436\u0456, \u043E\u043F\u043B\u0430\u0442\u0438 \u0437\u0430 \u0442\u0438\u043F\u0430\u043C\u0438, \u043F\u0440\u0438\u0445\u043E\u0434\u0438 \u0441\u043A\u043B\u0430\u0434\u0443, \u0441\u043F\u0438\u0441\u0430\u043D\u043D\u044F, \u0432\u0438\u0442\u0440\u0430\u0442\u0438 \u0437 \u043A\u0430\u0441\u0438, \u0417\u041F.`, [{ label: "\u{1F4C4} CSV (Excel)", val: "csv", cls: "primary" }, { label: "\u{1F5A8} PDF / \u0434\u0440\u0443\u043A", val: "pdf" }]);
+    if (!how) return;
+    let x;
+    try {
+      x = await api("acctExport", { from, to });
+    } catch (e) {
+      return toast("\u26A0\uFE0F \u041D\u0435 \u0432\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u0444\u043E\u0440\u043C\u0443\u0432\u0430\u0442\u0438");
+    }
+    if (how === "csv") {
+      const f = new Blob(["\uFEFF" + csvOf(x)], { type: "text/csv;charset=utf-8" }), a = document.createElement("a");
+      a.href = URL.createObjectURL(f);
+      a.download = `varvar-${from}_${to}.csv`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5e3);
+      return;
+    }
+    const w = window.open("", "_blank");
+    if (!w) return toast("\u26A0\uFE0F \u0414\u043E\u0437\u0432\u043E\u043B\u044C\u0442\u0435 \u0441\u043F\u043B\u0438\u0432\u0430\u044E\u0447\u0435 \u0432\u0456\u043A\u043D\u043E");
+    w.document.write(`<!doctype html><meta charset="utf-8"><title>\u0415\u043A\u0441\u043F\u043E\u0440\u0442 ${esc(from)} \u2014 ${esc(to)}</title><style>body{font:12px Arial;margin:18px}h1{font-size:16px}h2{font-size:13px;margin:16px 0 4px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:3px 6px;text-align:left}th{background:#eee}td:not(:first-child){text-align:right}@media print{h2{break-after:avoid}tr{break-inside:avoid}}</style><h1>\u0417\u0432\u0456\u0442 \u0434\u043B\u044F \u0431\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u0430 \xB7 ${esc(from)} \u2014 ${esc(to)}</h1>` + x.sections.map((s) => `<h2>${esc(s.title)}</h2><table><tr>${s.head.map((h) => `<th>${esc(h)}</th>`).join("")}</tr>${s.rows.map((r) => `<tr>${r.map((v) => `<td>${esc(String(v != null ? v : ""))}</td>`).join("")}</tr>`).join("")}</table>`).join("") + "<script>setTimeout(function(){print()},300)<\/script>");
+    w.document.close();
+  }
   async function loadReport() {
     const [from, to] = perRange(S.rep.p), key = from + "|" + to, [pf, pt] = prevRange(from, to), cmp = S.rep.p !== "all";
     if (S.data.rangeKey !== key) {
@@ -4099,7 +4128,7 @@ var __objRest = (source, exclude) => {
     const nF = [R.pay, R.by, R.grp, R.cat, R.t, R.q.trim()].filter(Boolean).length;
     const dm2 = (d) => d.split("-").reverse().slice(0, from.slice(0, 4) === to.slice(0, 4) ? 2 : 3).join(".");
     const head = `<div class="rhead"><div><h1>\u0417\u0432\u0456\u0442\u0438</h1><span class="muted">${from === to ? dm2(from) : dm2(from) + " \u2014 " + dm2(to)}${S.data.prev ? " \xB7 \u043F\u043E\u0440\u0456\u0432\u043D\u044F\u043D\u043D\u044F \u0437 \u043F\u043E\u043F\u0435\u0440\u0435\u0434\u043D\u0456\u043C\u0438 " + daysIn(from, to).length + " \u0434\u043D." : ""}</span></div>
-      <button class="btn sm ${nF ? "primary" : ""}" data-a="rFo">\u2699\uFE0F \u0424\u0456\u043B\u044C\u0442\u0440\u0438${nF ? ` \xB7 ${nF}` : ""}</button></div>
+      <button class="btn sm" data-a="rAcct">\u{1F4E4} \u0411\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u0443</button><button class="btn sm ${nF ? "primary" : ""}" data-a="rFo">\u2699\uFE0F \u0424\u0456\u043B\u044C\u0442\u0440\u0438${nF ? ` \xB7 ${nF}` : ""}</button></div>
       <div class="chips scroll">${PER.map(([k, l]) => `<button class="chip ${R.p === k ? "on" : ""}" data-a="rp" data-p="${k}">${l}</button>`).join("")}</div>
       ${R.p === "c" ? `<div class="frow" style="margin-top:10px"><label>\u0417<input type="date" id="rFrom" value="${from}"></label><label>\u041F\u043E<input type="date" id="rTo" value="${to}"></label></div>` : ""}`;
     const filters = R.fo || nF ? `<div class="filters" style="margin-top:10px">${R.fo ? `<div class="frow">
