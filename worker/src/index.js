@@ -151,7 +151,7 @@ export async function handle(req, env) {
       if (url.pathname === '/__cron') return env.INSTORE && req.headers.get('x-cron') && req.headers.get('x-cron') === (env.MASTER_KEY ? await intSecret(env) : '1') ? json(await cron(env)) : json({ error: 'no' }, 403);
       if (req.method === 'POST' && ip && ['/api/book', '/api/cert', '/api/go', '/api/tpay'].includes(url.pathname)) { // 🛡 ліміти по device обходяться його зміною: з одного IP — не більше 40 різних пристроїв за 10 хв (повтори того ж пристрою не рахуються)
         const dv = await req.clone().json().then(x => String(x?.device || '').slice(0, 64)).catch(() => ''), tk = 'ipdev:' + ip.slice(0, 64), seen = (await env.DB.get(tk, 'json')) || [];
-        if (dv && !seen.includes(dv)) { if (seen.length >= 40) return json({ error: 'rate' }, 429); await env.DB.put(tk, JSON.stringify([...seen, dv]), { expirationTtl: 600 }); }
+        if (dv && !seen.includes(dv)) { if (seen.length >= 150) return json({ error: 'rate' }, 429); await env.DB.put(tk, JSON.stringify([...seen, dv]), { expirationTtl: 600 }); }
       }
       // 🌐 візитка
       if (url.pathname === '/api/site') return new Response(JSON.stringify(await sitePublic(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
@@ -412,11 +412,13 @@ async function atomApi(req, env, url) {
       return J({ ok: true });
     }
     if (url.pathname === '/api/demo') { // 📱 демо-каса: адмін-сесія демо-закладу (щоночі скидається)
-      const drk = 'demorl:' + (ip || 'none').slice(0, 64); // ліміт: одна сесія демо з IP на 20 с (кожен виклик створює сесію на 12 год)
+      const ct = await env.DB.get('demotok'); if (ct) return J({ ok: true, token: ct, venue: DEMO }); // ♻️ одна спільна демо-сесія на 30 хв (а не нова 12-год адмін-сесія на кожен виклик)
+      const drk = 'demorl:' + (ip || 'none').slice(0, 64); // ліміт створення: одна нова демо-сесія з IP на хвилину
       if (await env.DB.get(drk)) return J({ error: 'Зачекайте хвилину' }, 429);
       await env.DB.put(drk, '1', { expirationTtl: 60 });
       if (!(await H.venueGet(DEMO))) return J({ error: 'Демо ще готується' }, 404);
-      const r = await (await import('./owner.js')).demoLogin(env, DEMO); return r.token ? J({ ok: true, token: r.token, venue: DEMO }) : J({ error: r.error || 'Не вдалося' }, 500);
+      const r = await (await import('./owner.js')).demoLogin(env, DEMO); if (!r.token) return J({ error: r.error || 'Не вдалося' }, 500);
+      await env.DB.put('demotok', r.token, { expirationTtl: 1800 }); return J({ ok: true, token: r.token, venue: DEMO });
     }
     return J({ error: 'not found' }, 404);
   } catch (e) { return J({ error: 'Помилка, спробуйте ще раз' }, 500); }
