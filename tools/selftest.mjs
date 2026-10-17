@@ -572,6 +572,10 @@ async function loyTests(A, W, dish) {
     const lg = await http('/api/owner', { op: 'login', email: 'qa-platform@test.local', pass: 'qa-platform-pass-1' }); if (lg.status !== 200) return 'немає тестового акаунта платформи — пропуск';
     const o = (op, b = {}) => fetch(API + '/api/owner', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + lg.j.token }, body: JSON.stringify({ op, ...b }) }).then(r => r.json());
     const l = (await o('inbox')).list.filter(m => m.text.startsWith(tag)); must(l.length === 2 && l.some(m => m.kind === 'help') && l.some(m => m.kind === 'idea'), JSON.stringify(l).slice(0, 200));
+    const hl = l.find(m => m.kind === 'help'); must(!(await o('inboxSay', { id: hl.id, text: '  ' })).ok, 'порожня відповідь прийнята'); must(!(await o('inboxSay', { id: 'нема-такого', text: 'x' })).ok, 'неіснуюче звернення');
+    const sy = await o('inboxSay', { id: hl.id, text: 'QA відповідь ATOM' }); must(sy.ok && sy.m.chat.some(c => c.from === 'a'), JSON.stringify(sy).slice(0, 150));
+    const th = (await posOk(A, 'ideaThr')).list.find(x => x.hid === hl.id); must(th && th.unr === 1 && th.chat.some(c => c.from === 'a' && c.text.includes('QA відповідь')), '💬 відповідь ATOM не дійшла до каси: ' + JSON.stringify(th).slice(0, 150));
+    await posOk(A, 'ideaSeen', { hid: hl.id }); must(!(await posOk(A, 'ideaThr')).list.find(x => x.hid === hl.id).unr, 'unr не знято');
     for (const m of l) { must((await o('inboxSet', { id: m.id })).ok, 'done'); must((await o('inboxSet', { id: m.id, del: 1 })).ok, 'del'); }
     must(!(await o('inbox')).list.some(m => m.text.startsWith(tag)), 'не видалилось'); });
 
@@ -689,6 +693,17 @@ async function loyTests(A, W, dish) {
   let iid = '';
   await step('waiter: ideaAdd', async () => { const r = await posOk(W, 'ideaAdd', { text: 'QA побажання ' + RUN }); iid = r.x.id; must(iid, 'id'); });
   await step('waiter бачить своє, адмін — усі', async () => { const w = await posOk(W, 'ideaList'), a = await posOk(A, 'ideaList'); must(w.list.some(x => x.id === iid) && a.list.some(x => x.id === iid), 'немає в списку'); });
+  await step('💬 чат у зверненні: ideaThr бачить своє; ideaSay додає; чужий не може; порожнє — помилка', async () => {
+    const l = (await posOk(W, 'ideaThr')).list; const t = l.find(x => x.text.includes('QA побажання ' + RUN)); must(t && t.hid, 'звернення немає в ideaThr: ' + JSON.stringify(l).slice(0, 150));
+    must((await pos(W, 'ideaSay', { hid: t.hid, text: '   ' })).status === 400, 'порожнє прийняте');
+    const s = await posOk(W, 'ideaSay', { hid: t.hid, text: 'QA відповідь ' + RUN }); must(s.x?.chat?.some(c => c.from === 'u' && c.text.includes('QA відповідь')) || s.chat?.some(c => c.from === 'u'), 'повідомлення не в чаті: ' + JSON.stringify(s).slice(0, 150));
+    const cook = users.cook?.token; if (cook) { must((await pos(cook, 'ideaSay', { hid: t.hid, text: 'чужий' })).status === 400, 'чужий пише у звернення'); must(!(await posOk(cook, 'ideaThr')).list.some(x => x.hid === t.hid), 'чужий бачить звернення'); }
+    await posOk(W, 'ideaSeen', { hid: t.hid }); });
+  await step('🏦 cfgSet bankFee: 1.3 зберігається до сотих; поза межами — 400; повернули 0', async () => {
+    const r = await posOk(A, 'cfgSet', { k: 'bankFee', v: 1.3 }); must(r.cfg.bankFee === 1.3, 'bankFee=' + r.cfg.bankFee);
+    must((await pos(A, 'cfgSet', { k: 'bankFee', v: 99 })).status === 400, 'bankFee 99 прийнято'); must((await pos(A, 'cfgSet', { k: 'recBonus', v: -5 })).status === 400, 'recBonus -5 прийнято');
+    must((await pos(W, 'cfgSet', { k: 'bankFee', v: 2 })).status !== 200, 'офіціант змінив комісію');
+    await posOk(A, 'cfgSet', { k: 'bankFee', v: 0 }); });
   await step('waiter ✗ ideaDone', async () => { const r = await pos(W, 'ideaDone', { id: iid }); must(r.status === 400, String(r.status)); });
   await step('admin: ideaDone', async () => { const r = await posOk(A, 'ideaDone', { id: iid }); must(r.x.done, 'done'); });
   await step('waiter: ideaDel своє', async () => { await posOk(W, 'ideaDel', { id: iid }); const a = await posOk(A, 'ideaList'); must(!a.list.some(x => x.id === iid), 'не видалено'); iid = ''; });
