@@ -264,8 +264,9 @@
   $('#tipOwn').addEventListener('input', () => { const a = tipAmount(); $('#tipSum').textContent = a ? '+' + money(a) : ''; });
 
   // ---------- сервер ----------
-  async function api(path, body) {
-    const r = await fetch(C.api + path, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {});
+  async function api(path, body, auth) {
+    let tk = ''; if (auth || path === '/api/go') try { tk = JSON.parse(localStorage.getItem((window.VARVAR.pre || 'vv_') + 'gtok') || '""'); } catch {} // 🔐 сесія кабінету гостя — для бонусів
+    const r = await fetch(C.api + path, body ? { method: 'POST', headers: { 'content-type': 'application/json', ...(tk ? { authorization: 'Bearer ' + tk } : {}) }, body: JSON.stringify(body) } : { ...(tk ? { headers: { authorization: 'Bearer ' + tk } } : {}) });
     return { status: r.status, data: await r.json().catch(() => ({})) };
   }
   async function syncStatus() {
@@ -423,7 +424,7 @@
       <button class="btn" data-go-send ${min ? 'disabled' : ''}>${t('goSend')} · ${money(goTotal())}</button>`;
   }
   const goRead = () => { const v = id => $('#' + id)?.value.trim(); gf.name = v('gName') ?? gf.name; gf.phone = v('gPhone') ?? gf.phone; if ($('#gAddr')) { gf.addr = v('gAddr'); gf.ent = v('gEnt'); } if ($('#gWhen')) gf.when = $('#gWhen').value; if ($('#gChange')) gf.change = +$('#gChange').value; if ($('#gUseB')) gf.useB = $('#gUseB').checked; };
-  async function goBal() { const d = gf.phone.replace(/\D/g, ''); if (d.length < 10) return; try { const r = (await api('/api/goinfo?ph=' + encodeURIComponent(gf.phone))).data; const b = r.bal || 0; if (b !== gf.bal) { gf.bal = b; goForm(); } } catch {} }
+  async function goBal() { const d = gf.phone.replace(/\D/g, ''); if (d.length < 10) return; try { const r = (await api('/api/goinfo?ph=' + encodeURIComponent(gf.phone), null, true)).data; const b = r.bal || 0; if (b !== gf.bal) { gf.bal = b; goForm(); } } catch {} }
   async function goSend() {
     goRead(); goSave(); const m = $('#goMsg');
     if (!gf.name || gf.phone.replace(/\D/g, '').length < 10) { m.textContent = t('goNeedContact'); return; }

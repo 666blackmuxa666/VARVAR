@@ -180,8 +180,8 @@ export async function handle(req, env) {
       if (url.pathname === '/api/tpay') { const T = await import('./lpay.js'); if (req.method === 'POST') { const b = await req.json(), si = await scanInfo(env, b.device); /* як для замовлень: сканував QR (сесія діє) або Wi‑Fi закладу */
         return json(...await T.tpayStart(env, b, { scan: si?.until > Date.now() ? si.t || 0 : -1, wifi: await inVenue(env, ip) })); } return json(await T.tpayState(env, url.searchParams.get('id'))); } // 🍽 оплата столу з QR
       if (url.pathname === '/api/gopay') return json(await (await import('./delivery.js')).goPayState(env, url.searchParams.get('id')));
-      if (url.pathname === '/api/go' && req.method === 'POST') { const gb = await req.json(); if (gb && typeof gb === 'object') { delete gb._paid; delete gb._oid; } /* 🔐 службові поля лише від LiqPay (delivery.js), не від гостя */ return json(...await goOrder(gb, ip, env)); }
-      if (url.pathname === '/api/goinfo') return json(await goInfo(env, url.searchParams.get('ph')));
+      if (url.pathname === '/api/go' && req.method === 'POST') { const gb = await req.json(); if (gb && typeof gb === 'object') { delete gb._paid; delete gb._oid; delete gb._me; gb._me = await (await import('./site.js')).meSess(env, (req.headers.get('authorization') || '').slice(7)).catch(() => null); /* 🔐 бонуси лише для гостя, що увійшов під цим телефоном */ } /* 🔐 службові поля лише від LiqPay (delivery.js), не від гостя */ return json(...await goOrder(gb, ip, env)); }
+      if (url.pathname === '/api/goinfo') return json(await goInfo(env, url.searchParams.get('ph'), (req.headers.get('authorization') || '').slice(7)));
       if (url.pathname === '/api/promo' && req.method === 'POST') return json(await promoQuote(await req.json(), env)); // 🎁 знижки кошика ?go
       if (url.pathname === '/api/reco') return json(await recoAll(env));
       if (url.pathname === '/go') return Response.redirect(siteLink('index.html?go') + (url.search ? '&' + url.search.slice(1) : ''), 302);

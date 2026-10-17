@@ -34,6 +34,7 @@ export async function tpayStart(env, b, at) {
     const price = typeof p.p === 'number' ? p.p : Object.hasOwn(p.p, String(it.v)) ? p.p[it.v] : 0; if (!(price > 0)) continue;
     items.push({ name: p.n + (typeof p.p === 'number' ? '' : ` ${it.v} ${p.s || 'л'}`), price, q }); }
   const extra = items.reduce((a, i) => a + i.price * i.q, 0);
+  if (extra > 30000) return [{ error: 'too_big' }, 400]; // стеля як у /api/order (MAX_ORDER)
   if (!bill?.total && !extra) return [{ error: 'empty' }, 400];
   if (bill?.total) await promoFill(env, bill).catch(() => {});
   const due = (bill?.total ? tDue(bill) : 0) + extra; if (due < 1) return [{ error: 'paid' }, 400];
