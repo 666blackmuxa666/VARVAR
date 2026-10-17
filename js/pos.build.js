@@ -7488,10 +7488,6 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     b.style.cssText = "position:fixed;right:12px;bottom:84px;z-index:50;border-radius:50%;width:40px;height:40px;padding:0";
     m.append(b);
   }
-  new MutationObserver(() => {
-    const m = $("#main");
-    if (m && !m.querySelector(".cr-q")) crHelpBtn();
-  }).observe(document.body, { childList: true, subtree: true });
   document.addEventListener("click", (e) => {
     const b = e.target.closest('[data-a="crHelp"]');
     if (!b) return;

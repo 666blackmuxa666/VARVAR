@@ -13,3 +13,11 @@ _team/bugs.md
 _team/.ai-test.json
 _tmp/
 worker/.site/
+_team/video/.eleven
+
+# 🎬 ключ ElevenLabs і важкі файли відео
+_team/video/.eleven
+_team/video/frames/
+_team/video/*.mp4
+_team/video/*.wav
+_team/video/*.aiff

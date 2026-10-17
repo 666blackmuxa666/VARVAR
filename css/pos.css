@@ -1088,3 +1088,10 @@ main.hall:has(.f3.edit){padding-bottom:90px}.f3-pal.fl button.on{background:var(
 @keyframes tblBreath{0%,100%{box-shadow:0 0 10px 0 color-mix(in srgb,var(--g1) 30%,transparent)}50%{box-shadow:0 0 28px 6px color-mix(in srgb,var(--g1) 60%,transparent)}}
 .f3-t.call .f3-pin{animation:f3pw 1.6s ease-in-out infinite alternate}
 body.noanim .tables .tbl.new::before,body.noanim .tables .tbl.new::after{animation:none}
+
+/* 🛎 стрічка: усе, що чекає підтвердження, світиться так само, як плитка столу */
+.ev.wait{position:relative;isolation:isolate;overflow:visible;--g1:#ff9f0a;--g2:#ff375f;--g3:#ffd60a;animation:evBreath 1.6s ease-in-out infinite!important;outline:none!important;background:linear-gradient(160deg,color-mix(in srgb,var(--g1) 16%,var(--card,#16110c)),var(--card,#120e0a))!important}
+.ev.wait.tpay{--g1:#30d158;--g2:#0a84ff;--g3:#64d2ff}
+.ev.wait::before{content:'';position:absolute;inset:-3px;border-radius:inherit;padding:3px;background:conic-gradient(from var(--a),var(--g1),var(--g2),var(--g3),var(--g1));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:tblSpin 2.2s linear infinite;pointer-events:none;z-index:2}
+@keyframes evBreath{50%{box-shadow:0 0 26px color-mix(in srgb,var(--g1) 55%,transparent)}}
+body.noanim .ev.wait::before{animation:none}

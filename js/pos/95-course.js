@@ -219,6 +219,6 @@
     const b = document.createElement('button'); b.className = 'btn sm ghost cr-q'; b.dataset.a = 'crHelp'; b.dataset.id = l.id; b.title = 'Урок: ' + l.n; b.textContent = '❓';
     b.style.cssText = 'position:fixed;right:12px;bottom:84px;z-index:50;border-radius:50%;width:40px;height:40px;padding:0'; m.append(b);
   }
-  new MutationObserver(() => { const m = $('#main'); if (m && !m.querySelector('.cr-q')) crHelpBtn(); }).observe(document.body, { childList: true, subtree: true });
+  // ❓ плаваючу кнопку прибрано на прохання власника (crHelpBtn лишився для майбутнього)
   document.addEventListener('click', e => { const b = e.target.closest('[data-a="crHelp"]'); if (!b) return; e.stopPropagation();
     TR.f = b.dataset.id; S.view = 'course'; renderNav(); renderMain(); setTimeout(() => $('#cr-' + b.dataset.id)?.scrollIntoView({ block: 'center' }), 50); }, true);
