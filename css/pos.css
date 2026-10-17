@@ -1111,3 +1111,4 @@ body.noanim .tables .tbl.new::after,body.noanim .ev.wait::after{animation:none!i
 .zp-det{display:block!important}.zp-det .zp-det-b{grid-template-columns:repeat(4,1fr)!important}
 @media (max-width:700px){.zp-det .zp-det-b{grid-template-columns:1fr 1fr!important}}
 .zp-hist{margin-top:10px;border-top:1px solid var(--line,#333);padding-top:8px}.zp-hist summary{cursor:pointer;font-weight:600;margin-bottom:6px}
+@media (max-width:700px){.btnrow>.catH{flex:1 0 100%!important}} /* назва розділу меню — окремим рядком над кнопками */
