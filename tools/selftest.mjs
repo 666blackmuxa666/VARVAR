@@ -119,6 +119,36 @@ async function apiTests() {
     } finally { await posOk(A, 'printRoute', back); }
     return 'кухня ×1, бар ×2';
   });
+  await step('👨‍🍳 сторінка кухні /k: скрипт без синтаксичних помилок, шлях заклад-префікса та парсер ваги не зіпсовані', async () => {
+    const h = await (await fetch(API + '/k')).text(), sc = [...h.matchAll(/<script>([\s\S]*?)<\/script>/g)].pop()?.[1]; must(sc, 'немає скрипта');
+    try { new Function(sc); } catch (e) { must(false, 'синтаксис: ' + e.message); }
+    must(sc.includes("replace(/\\/(k|kitchen)\\/?$/,'')") && /match\(\/\^\\s\*\(\\d/.test(sc), 'регулярки втратили слеші'); });
+  await step('🍳 цехи кухні: гарячий/бар — свої екрани, принтери, готовність по цехах; без цехів — як раніше', async () => {
+    const back = (await posOk(A, 'rcptGet')).route, s0 = await posOk(A, 'state'), busy = new Set(s0.tables.map(x => x.t)); let t = s0.n; while (busy.has(t)) t--;
+    try {
+      await posOk(A, 'printRoute', { st: [{ id: 'qk', name: 'QA Кухня', g: ['kitchen', 'other'], n: 1 }, { id: 'qb', name: 'QA Бар', g: ['bar', 'hookah'], n: 1 }] });
+      must((await pos(W, 'stSet', { list: [] })).status === 403 && (await pos(W, 'stGet')).status === 403, 'офіціант змінив цехи');
+      const r = await posOk(A, 'stSet', { list: [{ id: 'hot', name: 'Гарячий', emoji: '🔥', g: ['kitchen'], pr: 'qk' }, { id: 'bar', name: 'Бар', emoji: '🍹', g: ['bar', 'hookah'], pr: 'qb' }, { id: 'hot', name: 'дубль' }, { name: '' }] });
+      must(r.sts.length === 2 && r.sts[1].pr === 'qb', 'цехи: ' + JSON.stringify(r.sts));
+      const q0 = new Set((await posOk(A, 'printQ')).list.map(j => j.id));
+      await posOk(A, 'order', { t, items: [{ id: dish.id, q: 1 }, { id: drink.id, q: 1 }] });
+      const all = (await posOk(A, 'kitchen')).list.filter(e => e.t === t && !e.done).pop(); must(all?.items.length === 2 && all.items.some(x => x.st === 'bar') && all.items.some(x => x.st === 'hot'), 'картка: ' + JSON.stringify(all?.items));
+      const hot = (await posOk(A, 'kitchen', { st: 'hot' })), bar = (await posOk(A, 'kitchen', { st: 'bar' }));
+      must(hot.sts.length === 2 && hot.list.find(e => e.id === all.id).items.length === 1 && bar.list.find(e => e.id === all.id).items[0].n === drink.name?.uk, 'екрани цехів: ' + JSON.stringify(bar.list.find(e => e.id === all.id)?.items));
+      const jobs = (await posOk(A, 'printQ')).list.filter(j => !q0.has(j.id) && j.kind === 'kitchen'); must(jobs.filter(j => j.st === 'qk').length === 1 && jobs.filter(j => j.st === 'qb').length === 1, 'друк по цехах: ' + JSON.stringify(jobs.map(j => j.st)));
+      await posOk(A, 'kDone', { id: all.id, st: 'bar' });
+      const e1 = (await posOk(A, 'kitchen')).list.find(e => e.id === all.id); must(!e1.done && e1.items.find(x => x.st === 'bar').done && !e1.items.find(x => x.st === 'hot').done, 'готовий лише бар');
+      must((await posOk(A, 'state')).events.some(x => x.k === 'ready' && x.st === 'bar' && /Бар: готово/.test(x.text)), 'немає події «Бар: готово»');
+      must((await posOk(A, 'kitchen', { st: 'bar' })).list.find(e => e.id === all.id).done, 'екран бару: цех готовий');
+      await posOk(A, 'kDone', { id: all.id, st: 'hot' }); must((await posOk(A, 'kitchen')).list.find(e => e.id === all.id).done, 'замовлення не закрилось після обох цехів');
+      for (const j of jobs) await posOk(A, 'printClear', { id: j.id });
+      must((await posOk(A, 'stItem', { id: dish.id, st: 'bar' })).ok, 'stItem'); await posOk(A, 'stItem', { id: dish.id, st: '' });
+      await posOk(A, 'stSet', { list: [] }); await posOk(A, 'order', { t, items: [{ id: drink.id, q: 1 }] });
+      must(!(await posOk(A, 'kitchen')).list.some(e => e.t === t && !e.done && e.items.some(x => x.n === drink.name?.uk)), 'без цехів напій потрапив на кухню');
+      await posOk(A, 'close', { t, pay: 'cash', print: false });
+    } finally { await posOk(A, 'stSet', { list: [] }); await posOk(A, 'printRoute', back); }
+    return 'гарячий + бар';
+  });
   await step('📱 принтер планшета: реєстрація, своя черга, друк і підтвердження', async () => {
     const back = (await posOk(A, 'rcptGet')).route, dev = 'tab:qa' + Date.now().toString(36).slice(-6), s0 = await posOk(A, 'state'), busy = new Set(s0.tables.map(x => x.t)); let t = s0.n; while (busy.has(t)) t--;
     try {

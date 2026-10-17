@@ -64,12 +64,15 @@ export async function queuePrint(env, kind, lines) {
 // 👨‍🍳 бігунок ділиться між принтерами за групами страв (кухня / бар / кальян / інше); без налаштувань — один бігунок, як раніше
 export async function queueKitchen(env, t) {
   const [rc, { st }] = await Promise.all([getRcpt(env), getRoute(env)]), ks = st.filter(x => x.g.length);
-  if (!ks.length) return push(env, 'kitchen', kitchenTicket(t, rc), rc);
-  const { getMenu } = await import('./menu.js'), { dishResolver, groupOf } = await import('./ops.js'), res = dishResolver(await getMenu(env));
-  const by = new Map();
-  for (const l of t.lines) { const m = l.match(/^\d+× (.+?) — \d+$/), g = groupOf(res(m ? m[1] : l)?.cat); const s = ks.find(x => x.g.includes(g)) || ks.find(x => x.g.includes('kitchen')) || ks[0]; by.set(s, [...(by.get(s) || []), l]); }
+  const { getStations, stationOf, dishResolver, groupOf } = await import('./ops.js'), sts = await getStations(env);
+  if ((!ks.length && !sts.length) || !st.length) return push(env, 'kitchen', kitchenTicket(t, rc), rc);
+  const { getMenu } = await import('./menu.js'), res = dishResolver(await getMenu(env));
+  const by = new Map(), zname = new Map(); // принтер → рядки; 🍳 цех (якщо є) маршрутизує на свій принтер, інакше за групою страви
+  for (const l of t.lines) { const m = l.match(/^\d+× (.+?) — \d+$/), d = res(m ? m[1] : l), z = stationOf(d, sts), g = groupOf(d?.cat);
+    const s = (z?.pr && st.find(x => x.id === z.pr)) || (z && ks.find(x => z.g.some(y => x.g.includes(y)))) || ks.find(x => x.g.includes(g)) || ks.find(x => x.g.includes('kitchen')) || ks[0] || st[0];
+    by.set(s, [...(by.get(s) || []), l]); if (z) zname.set(s, [...new Set([...(zname.get(s) || []), z.name])]); }
   const parts = [...by], N = parts.length;
-  for (const [i, [s, lines]] of parts.entries()) for (let c = 0; c < s.n; c++) await push(env, 'kitchen', kitchenTicket({ ...t, lines, kind: N > 1 ? `${t.kind} · ${s.name} ${i + 1}/${N}` : t.kind }, rc), rc, { st: s.id, sn: s.name, dev: s.dev });
+  for (const [i, [s, lines]] of parts.entries()) for (let c = 0; c < s.n; c++) await push(env, 'kitchen', kitchenTicket({ ...t, lines, kind: N > 1 ? `${t.kind} · ${(zname.get(s) || [s.name]).join('+')} ${i + 1}/${N}` : t.kind }, rc), rc, { st: s.id, sn: s.name, dev: s.dev });
 }
 // 🔁 завдання з черги — на інший принтер (якщо той зламався)
 export async function printMove(env, id, sid) {

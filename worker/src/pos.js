@@ -16,7 +16,7 @@ import { aiInvoice, aiCard, aiDups } from './ai.js';
 import {
   esc, money, hhmm, dayKey, isDay, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, setTip, moveTable, splitTable, restoreVoid, getVoids, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
-  pinFind, pinUpgrade, topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenClosed, markCook, kitchenPct, getCfg, setCfg, setHalls, setMap, hallsOf, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, delZ, restoreZ, editEv, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, editStaff, editClosed, dayX, loggedWaiters, resetAll, acceptOrder, getEvents, logEvent,
+  getStations, setStations, setItemStation, kqView, pinFind, pinUpgrade, topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenClosed, markCook, kitchenPct, getCfg, setCfg, setHalls, setMap, hallsOf, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, delZ, restoreZ, editEv, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, editStaff, editClosed, dayX, loggedWaiters, resetAll, acceptOrder, getEvents, logEvent,
 } from './ops.js';
 
 const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400, cook: 30 * 86400, courier: 30 * 86400 };
@@ -156,8 +156,9 @@ export async function posApi(b, req, env) {
     case 'kitchen': {
       const open = new Set((await openTables(env)).map(r => r.t)), stale = [...new Set((await getKq(env)).filter(e => !e.done && !open.has(e.t)).map(e => e.t))];
       if (stale.length) await kitchenClosed(env, stale); // стіл уже закритий — картка лишається, позначка «оплачено»
-      const l = await getKq(env), { KV } = await import('./kitchen.js'); return ok({ kv: KV, list: l.filter(e => !e.done).concat(l.filter(e => e.done && !e.cancelled && !e.closed).slice(-10)) }); }
-    case 'kDone': return ok({ e: await kitchenDone(env, String(b.id), b.i == null ? null : +b.i, who) });
+      const l = await getKq(env), { KV } = await import('./kitchen.js'), sts = await getStations(env), z = sts.some(x => x.id === b.st) ? b.st : '';
+      return ok({ kv: KV, sts: sts.filter(x => x.scr), list: kqView(l.filter(e => !e.done).concat(l.filter(e => e.done && !e.cancelled && !e.closed).slice(-10)), z) }); }
+    case 'kDone': return ok({ e: await kitchenDone(env, String(b.id), b.i == null ? null : +b.i, who, String(b.st || '').slice(0, 12) || undefined) });
     case 'kStart': return ok({ e: await kitchenStart(env, String(b.id), who) });
     case 'kUndo': return ok({ e: await kitchenUndo(env, String(b.id)) });
     case 'kMsg': { const e = await kitchenMsg(env, String(b.id), b.text, who); return e ? ok() : [{ error: 'Порожнє повідомлення' }, 400]; }
@@ -329,6 +330,9 @@ async function adminRest(b, env, who, ip, ok) {
     case 'mapSet': { const c = await setMap(env, b.pos, b.from, b.to, b.deco, b.floor); return ok({ cfg: c }); } // 🗺 без повідомлення в групу
     case 'cfgSet': { const c = await setCfg(env, String(b.k), b.v); if (c.error) return [{ error: c.error }, 400]; await notify(env, `🖥 ⚙️ Налаштування: ${esc(String(b.k))} = <b>${c[b.k]}</b> — ${esc(who)}`); return ok({ cfg: c }); }
     case 'kitchenPct': { const v = Math.round(+b.pct); if (!(v >= 0 && v <= 100)) return [{ error: 'Від 0 до 100' }, 400]; await env.DB.put('kitchen_pct', String(v)); await notify(env, `🖥 👨‍🍳 Частка кухні від чайових: <b>${v}%</b> — ${esc(who)}`); return ok(); }
+    case 'stGet': { const m = await getMenu(env); return ok({ sts: await getStations(env), cats: m.categories.filter(c => !c.tech).map(c => ({ id: c.id, name: c.name.uk, g: groupOf(c.id), st: c.st || '' })) }); } // 🍳 цехи кухні
+    case 'stSet': { const sts = await setStations(env, b.list, b.cats); await notify(env, `🖥 🍳 Цехи кухні: ${sts.length ? sts.map(x => esc(x.name)).join(', ') : 'вимкнено'} — ${esc(who)}`); return ok({ sts }); }
+    case 'stItem': { const it = await setItemStation(env, String(b.id), String(b.st || '')); return it ? ok() : [{ error: 'Позицію не знайдено' }, 404]; }
     case 'staffDel': await delStaff(env, String(b.id)); return ok();
     case 'staffEdit': { const f = {}; for (const k of ['name', 'pin', 'role']) if (b[k] != null && b[k] !== '') f[k] = b[k];
       const r = await editStaff(env, String(b.id), f); if (r.error) return [{ error: r.error }, 400];

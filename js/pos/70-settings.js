@@ -15,9 +15,33 @@
     const p = S.printer || {}, ok = p.seen && Date.now() - p.seen < 60e3;
     return `<div class="cards"><div class="card"><div class="big">${ok ? '✅ на звʼязку' : p.seen ? '❌ немає звʼязку' : '❌ програма друку не запущена'}</div>
       <div class="muted">${p.seen ? 'Останній звʼязок: ' + hhmm(p.seen) : ''} · у черзі: ${p.q ?? 0}</div>${p.q && isAdmin() ? '<div class="btnrow" style="margin-top:10px"><button class="btn sm" data-a="pQList">📋 Що в черзі</button><button class="btn sm red" data-a="pQClear">🗑 Очистити чергу</button></div>' : ''}</div>
-      <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">🖨 Тестовий друк</button><button class="btn" data-a="pQr">🔳 QR меню для столу</button><button class="btn" data-a="qrPanel">🔳 Усі QR-коди</button></div></div>${prnCard()}`;
+      <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">🖨 Тестовий друк</button><button class="btn" data-a="pQr">🔳 QR меню для столу</button><button class="btn" data-a="qrPanel">🔳 Усі QR-коди</button></div></div>${stCard()}${prnCard()}`;
   }
   // 🖨 що на який принтер (js/prnroute.js) — лише адмін; розподіл вантажиться раз при відкритті вкладки
+  // 🍳 цехи кухні: свій екран, принтер і готовність; порожній список = як раніше (одна кухня)
+  const stNew = () => 'c' + Math.random().toString(36).slice(2, 7);
+  function stCard() {
+    if (!isAdmin()) return '';
+    if (!S.stR) { if (!S.stL) { S.stL = 1; api('stGet', {}).then(r => { S.stR = r; renderMain(); }).catch(() => { S.stL = 0; }); } return '<div class="card" style="margin-top:12px"><h3>🍳 Цехи кухні</h3><div class="muted">Завантаження…</div></div>'; }
+    const R = S.stR, GU = { kitchen: '🍳 кухня', bar: '🍹 бар', hookah: '💨 кальян', other: '📦 інше' };
+    return `<div class="card" style="margin-top:12px"><h3>🍳 Цехи кухні</h3><div class="muted" style="font-size:13px;margin-bottom:8px">Гарячий, холодний, бар… — у кожного свій екран (/k), квиток на свій принтер і свій статус «готово». Без цехів усе працює як раніше.</div>
+      ${R.sts.map(z => `<div class="kv"><span>${esc((z.emoji ? z.emoji + ' ' : '') + z.name)} <span class="muted">· ${z.g.map(g => GU[g]).join(', ') || 'лише розділи'}${z.pr ? ' · 🖨 ' + esc((S.prnR?.route.st || []).find(p => p.id === z.pr)?.name || z.pr) : ''}${z.scr ? '' : ' · без екрана'}</span></span><span style="display:flex;gap:6px"><button class="btn sm" data-stx="edit" data-id="${z.id}">✏️</button><button class="btn sm" data-stx="del" data-id="${z.id}">🗑</button></span></div>`).join('') || '<div class="muted">Цехів немає — працює одна кухня.</div>'}
+      <div class="btnrow" style="margin-top:8px"><button class="btn sm" data-stx="add">➕ Цех</button></div>
+      ${R.sts.length ? `<h3 class="muted" style="margin:14px 0 6px;font-size:14px">Розділи меню → цех</h3>${R.cats.map(c => `<div class="kv"><span>${esc(c.name)}</span><select data-stx="cat" data-id="${esc(c.id)}"><option value="">авто (за групою)</option>${R.sts.map(z => `<option value="${z.id}" ${c.st === z.id ? 'selected' : ''}>${esc((z.emoji ? z.emoji + ' ' : '') + z.name)}</option>`).join('')}</select></div>`).join('')}` : ''}</div>`;
+  }
+  async function stSave(list, cats) { const r = await act('stSet', { list, cats }, '🍳 Збережено'); S.stR = null; S.stL = 0; if (r) loadMenu?.().catch(() => {}); renderMain(); return r; }
+  async function stEdit(z) {
+    const name = await askVal('Назва цеху', z.name); if (!name?.trim()) return null;
+    const emoji = await askVal('Емодзі (необовʼязково)', z.emoji || '');
+    const g = await choose('Які страви сюди за замовчуванням?', 'Розділи меню можна призначити окремо нижче', [{ label: '🍳 Кухня', val: 'kitchen' }, { label: '🍹 Бар', val: 'bar' }, { label: '💨 Кальян', val: 'hookah' }, { label: '📦 Інше', val: 'other' }, { label: '— лише вибрані розділи', val: 'none' }]); if (!g) return null;
+    const ps = S.prnR?.route.st || []; let pr = z.pr || ''; if (ps.length) { const p = await choose('🖨 Принтер цеху', 'Куди друкувати квитки цього цеху', [...ps.map(x => ({ label: x.name, val: x.id })), { label: '— за групою (як раніше)', val: 'none' }]); if (!p) return null; pr = p === 'none' ? '' : p; }
+    return { ...z, name: name.trim(), emoji: (emoji || '').trim(), g: g === 'none' ? [] : [g], pr, scr: 1 };
+  }
+  document.addEventListener('click', async e => { const el = e.target.closest('button[data-stx]'); if (!el || !S.stR) return; const R = S.stR;
+    if (el.dataset.stx === 'add') { const z = await stEdit({ id: stNew() }); if (z) await stSave([...R.sts, z], null); }
+    else if (el.dataset.stx === 'edit') { const z = await stEdit(R.sts.find(x => x.id === el.dataset.id)); if (z) await stSave(R.sts.map(x => x.id === z.id ? z : x), null); }
+    else if (el.dataset.stx === 'del' && await confirmBox('Видалити цех?', 'Страви підуть у перший цех або за групою')) { const cats = Object.fromEntries(R.cats.filter(c => c.st === el.dataset.id).map(c => [c.id, ''])); await stSave(R.sts.filter(x => x.id !== el.dataset.id), cats); } });
+  document.addEventListener('change', async e => { const el = e.target.closest('select[data-stx="cat"]'); if (el) await stSave(S.stR.sts, { [el.dataset.id]: el.value }); });
   function prnCard() {
     if (!isAdmin() || !window.PRN) return '';
     if (!S.prnR) { if (!S.prnL) { S.prnL = 1; api('rcptGet', {}).then(r => { S.prnR = { route: r.route || { st: [] }, dev: r.dev }; renderMain(); }).catch(() => { S.prnL = 0; }); } return '<div class="card" style="margin-top:12px"><h3>🖨 Що на який принтер</h3><div class="muted">Завантаження…</div></div>'; }

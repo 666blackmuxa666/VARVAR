@@ -1,5 +1,5 @@
   async function loadKq() {
-    const r = await api('kitchen'); const list = r.list || [];
+    const r = await api('kitchen', S.kst ? { st: S.kst } : {}); const list = r.list || []; S.ksts = r.sts || []; if (S.kst && !S.ksts.some(z => z.id === S.kst)) S.kst = '';
     const ids = list.filter(e => !e.done).map(e => e.id), canc = list.flatMap(e => e.items.filter(x => x.cancel || x.canc).map(x => e.id + x.n + (x.canc || 0)));
     if (S.kqSeen) { const nw = list.filter(e => !e.done && !S.kqSeen.has(e.id)); if (nw.length) kPlay(kSndCur(), nw.some(e => e.urgent)); else if (canc.some(c => !S.kqCanc.has(c))) beep(); }
     S.kqSeen = new Set(list.map(e => e.id)); S.kqCanc = new Set(canc); S.kq = list;
@@ -62,10 +62,11 @@
       return `<div class="kc${e.urgent ? ' urg' : ''}${e.start ? ' cook' : ' new'}"><div class="kh"><b>Стіл ${tn(e.t)}${e.paid ? ' · 💰 оплачено' : ''}</b><span class="tm ${tc}">⏱ ${m} хв</span></div>
         <div class="km">${e.at} · ${esc(e.by)}${e.src === 'гість' ? ' · 📱 сайт' : ''}</div>
         ${e.urgent ? '<div class="ktag urg">⚡ ТЕРМІНОВО</div>' : ''}${e.tw ? '<div class="ktag">🥡 З СОБОЮ</div>' : ''}${e.comment ? `<div class="kcom">💬 ${esc(e.comment)}</div>` : ''}
-        <div class="ki">${e.items.map((x, i) => `<div class="kit-w"><button class="kit${x.done ? ' done' : ''}${x.cancel ? ' canc' : ''}" data-a="kItem" data-id="${e.id}" data-i="${i}" ${x.cancel ? 'disabled' : ''}><b>${x.q}×</b> ${esc(x.n)}${x.cancel ? ' <em>СКАСОВАНО</em>' : x.canc ? ` <em>−${x.canc} скас.</em>` : ''}</button><button class="kinfo" data-a="skTechOne" data-n="${esc(x.n)}" title="Техкарта">ⓘ</button></div>`).join('')}</div>
+        <div class="ki">${e.items.map((x, i) => `<div class="kit-w"><button class="kit${x.done ? ' done' : ''}${x.cancel ? ' canc' : ''}" data-a="kItem" data-id="${e.id}" data-i="${i}" ${x.cancel ? 'disabled' : ''}><b>${x.q}×</b> ${x.sl && !S.kst ? esc(x.sl) + ' ' : ''}${esc(x.n)}${x.cancel ? ' <em>СКАСОВАНО</em>' : x.canc ? ` <em>−${x.canc} скас.</em>` : ''}</button><button class="kinfo" data-a="skTechOne" data-n="${esc(x.n)}" title="Техкарта">ⓘ</button></div>`).join('')}</div>
         ${(e.msgs || []).map(x => `<div class="kmsg">📨 ${x.at} ${esc(x.text)}</div>`).join('')}
         <div class="kb">${e.start ? '' : `<button class="btn" data-a="kStart" data-id="${e.id}">🔥 Готую</button>`}<button class="btn" data-a="kMsg" data-id="${e.id}">💬</button><button class="btn green" data-a="kAll" data-id="${e.id}">✅ ВСЕ ГОТОВО</button></div></div>`; };
+    const stb = S.ksts?.length ? `<div class="seg" style="margin:0 0 10px"><button class="${S.kst ? '' : 'on'}" data-a="kSt" data-v="">Усі</button>${S.ksts.map(z => `<button class="${S.kst === z.id ? 'on' : ''}" data-a="kSt" data-v="${z.id}">${esc((z.emoji ? z.emoji + ' ' : '') + z.name)}</button>`).join('')}</div>` : '';
     return `<div class="khead"><h1>👨‍🍳 Черга <span class="muted">${act0.length}</span></h1><button class="btn" data-a="zpMy">👤 Я</button><button class="btn" data-a="kSnd">🔔 Звук</button><button class="btn" data-a="skKStock">📦 Склад</button><button class="btn" data-a="view" data-v="stop">⛔ Стоп-лист</button></div>
-      <div class="kq f${S.kFont}">${act0.length ? act0.map(card).join('') : '<div class="kempty">✅ Черга порожня</div>'}</div>
+      ${stb}<div class="kq f${S.kFont}">${act0.length ? act0.map(card).join('') : '<div class="kempty">✅ Черга порожня</div>'}</div>
       ${done.length ? `<h3 class="muted" style="margin:18px 0 8px">Останні готові</h3><div class="kdone">${done.map(e => `<div class="kd">Стіл ${tn(e.t)} · ${e.items.filter(x => !x.cancel).map(x => `${x.q}× ${esc(x.n)}`).join(', ')}${e.cancelled ? ' · ❌ скасовано' : ` · ${Math.round((e.doneAt - e.ts) / 60000)} хв`} <button class="btn sm" data-a="kUndo" data-id="${e.id}">↩️</button></div>`).join('')}</div>` : ''}${isAdmin() ? goCtlHTML() : ''}`;
   }

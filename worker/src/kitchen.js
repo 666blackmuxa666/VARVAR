@@ -1,7 +1,7 @@
 // 👨‍🍳 Легкий кухонний екран для старих планшетів (iPad 2 / iOS 9): відкривається по http://…workers.dev/kitchen
 // Старий Safari не довіряє сучасним сертифікатам (https) і не знає новий JS — тому тут ES5, XMLHttpRequest, flexbox, без grid.
 // версія сторінки кухні: змінили kitchen.js → підняти KV, і старий iPad сам перезавантажиться (сервер віддає kv у відповіді «kitchen»)
-export const KV = '3';
+export const KV = '4';
 export const KITCHEN_HTML = `<!doctype html><html lang="uk"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><meta name="apple-mobile-web-app-capable" content="yes">
 <title>VARVAR кухня</title><style>
@@ -25,17 +25,19 @@ export const KITCHEN_HTML = `<!doctype html><html lang="uk"><head><meta charset=
 #gate{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.85);text-align:center;padding-top:30%}#err{color:#ff453a;margin:10px}
 </style></head><body>
 <div id="login" style="display:none"><h1>👨‍🍳 VARVAR кухня</h1><p>Введіть свій PIN</p><input id="pin" type="tel" maxlength="4"><br><button class="btn g" id="go" style="margin-top:14px">Увійти</button><div id="err"></div></div>
-<div id="app" style="display:none"><div class="top"><h1 id="ttl">👨‍🍳 Черга</h1><span id="st" style="color:#8e8e93;font-size:13px"></span><button class="btn" id="snd">🔔 Звук</button><button class="btn" id="out">Вийти</button></div><div class="tabs"><button data-tab="q" class="on">👨‍🍳 Черга <span id="n"></span></button><button data-tab="f">🔔 Стрічка</button><button data-tab="o">📝 Замовлення</button><button data-tab="s">⛔ Стоп-лист</button><button data-tab="w">🗑 Списати</button></div><div class="q" id="q"></div><div id="f" class="pg" style="display:none"></div><div id="o" class="pg" style="display:none"></div><div id="s" class="pg" style="display:none"></div><div id="w" class="pg" style="display:none"></div></div>
+<div id="app" style="display:none"><div class="top"><h1 id="ttl">👨‍🍳 Черга</h1><span id="st" style="color:#8e8e93;font-size:13px"></span><button class="btn" id="snd">🔔 Звук</button><button class="btn" id="out">Вийти</button></div><div id="stb" style="padding:6px 10px"></div><div class="tabs"><button data-tab="q" class="on">👨‍🍳 Черга <span id="n"></span></button><button data-tab="f">🔔 Стрічка</button><button data-tab="o">📝 Замовлення</button><button data-tab="s">⛔ Стоп-лист</button><button data-tab="w">🗑 Списати</button></div><div class="q" id="q"></div><div id="f" class="pg" style="display:none"></div><div id="o" class="pg" style="display:none"></div><div id="s" class="pg" style="display:none"></div><div id="w" class="pg" style="display:none"></div></div>
 <div id="msg" style="display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.85);padding:12% 15%;text-align:center"><h2>Повідомлення в зал</h2><p style="color:#8e8e93">Офіціанти побачать у стрічці</p><div id="msgb"></div><button class="btn" id="msgx" style="margin-top:14px">Скасувати</button></div>
 <div id="gate" style="display:none"><button class="btn g" id="start" style="font-size:28px;padding:24px 34px">🔊 Почати зміну</button><p style="color:#8e8e93">увімкне звук нових замовлень</p></div>
 <script>
 var LS={g:function(k){try{return localStorage.getItem(k)}catch(e){return null}},s:function(k,v){try{localStorage.setItem(k,v)}catch(e){}},r:function(k){try{localStorage.removeItem(k)}catch(e){}}};
-var T=LS.g('ktok')||'',seen=null,ctx=null,list=[];
+var T=LS.g('ktok')||'',seen=null,ctx=null,list=[];var STS=[],KST=(location.search.match(/[?&]st=([\\w-]+)/)||[])[1]||LS.g('kst')||'';if(KST)LS.s('kst',KST);
+function stbar(){if(!STS.length){$('stb').innerHTML='';return}var h='<button class="btn'+(KST?'':' g')+'" data-kst="">Усі</button> ';for(var i=0;i<STS.length;i++)h+='<button class="btn'+(KST===STS[i].id?' g':'')+'" data-kst="'+STS[i].id+'">'+esc((STS[i].emoji?STS[i].emoji+' ':'')+STS[i].name)+'</button> ';$('stb').innerHTML=h}
+document.addEventListener('click',function(ev){var t=ev.target;while(t&&t!==document&&t.getAttribute&&t.getAttribute('data-kst')==null)t=t.parentNode;if(!t||t===document)return;KST=t.getAttribute('data-kst');if(KST)LS.s('kst',KST);else LS.r('kst');seen=null;load()});
 function $(i){return document.getElementById(i)}
-var BASE=location.pathname.replace(/\/(k|kitchen)\/?$/,''); // /v/<заклад>/k → запити в свій заклад
+var BASE=location.pathname.replace(/\\/(k|kitchen)\\/?$/,''); // /v/<заклад>/k → запити в свій заклад
 function api(op,b,cb){var x=new XMLHttpRequest();x.open('POST',BASE+'/api/pos',true);x.setRequestHeader('Content-Type','application/json');if(T)x.setRequestHeader('Authorization','Bearer '+T);
  x.onreadystatechange=function(){if(x.readyState!==4)return;var j={};try{j=JSON.parse(x.responseText)}catch(e){}if(x.status===401&&op!=='login'){T='';LS.r('ktok');show();return}$('st').textContent=x.status===200?'':'⚠️ немає звʼязку';cb&&cb(j,x.status)};
- b=b||{};b.op=op;x.send(JSON.stringify(b))}
+ b=b||{};b.op=op;if(KST&&(op==='kitchen'||op==='kDone'))b.st=KST;x.send(JSON.stringify(b))}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 // 🎵 мелодії по 4 с: [тип хвилі, [[частота, початок с, тривалість с], …]]
 var SND={siren:['🚨 Сирена',function(){var a=[];for(var i=0;i<16;i++)a.push([i%2?1200:700,i*.25,.25]);return['square',a]}],
@@ -55,10 +57,10 @@ function draw(){var now=Date.now(),a=list.filter(function(e){return!e.done}).sor
  for(var i=0;i<a.length;i++){var e=a[i],m=Math.floor((now-e.ts)/60000);
   h+='<div class="c'+(e.urgent?' u':e.start?' s':'')+'"><div class="h"><b>'+tnm(e.t)+(e.paid?' · 💰 оплачено':'')+'</b><span class="t'+(m>=15?' rr':m>=10?' y':'')+'">⏱ '+m+' хв</span></div><div class="m">'+esc(e.at)+' · '+esc(e.by)+'</div>'+(e.urgent?'<span class="tag">⚡ ТЕРМІНОВО</span>':'')+(e.tw?'<span class="tag" style="background:#0a84ff">🥡 З СОБОЮ</span>':'')+(e.comment?'<div class="m" style="color:#ffd60a">💬 '+esc(e.comment)+'</div>':'');
   if(e.msgs)for(var mm=0;mm<e.msgs.length;mm++)h+='<div class="m" style="color:#d8a5ff">📨 '+esc(e.msgs[mm].at)+' '+esc(e.msgs[mm].text)+'</div>';
-  for(var j=0;j<e.items.length;j++){var x=e.items[j];h+='<button class="i'+(x.cancel?' x':x.done?' d':'')+'" data-id="'+e.id+'" data-i="'+j+'"'+(x.cancel?' disabled':'')+'><b>'+x.q+'×</b> '+esc(x.n)+(x.cancel?' — СКАСОВАНО':'')+'</button>'}
+  for(var j=0;j<e.items.length;j++){var x=e.items[j];h+='<button class="i'+(x.cancel?' x':x.done?' d':'')+'" data-id="'+e.id+'" data-i="'+j+'"'+(x.cancel?' disabled':'')+'><b>'+x.q+'×</b> '+(x.sl&&!KST?esc(x.sl)+' ':'')+esc(x.n)+(x.cancel?' — СКАСОВАНО':'')+'</button>'}
   h+='<div class="b">'+(e.start?'':'<button class="btn o" data-st="'+e.id+'">🔥 Готую</button>')+'<button class="btn" data-msg="'+e.id+'">💬</button><button class="btn g" data-all="'+e.id+'">✅ ВСЕ ГОТОВО</button></div></div>'}
  $('q').innerHTML=h||'<div class="e">✅ Черга порожня</div>'}
-var KV='${KV}';function load(){api('kitchen',{},function(j){if(j.kv&&j.kv!==KV){location.reload(true);return}if(!j.list)return;list=j.list;var ids={},nw=0,urg=0;for(var i=0;i<list.length;i++){var e=list[i];ids[e.id]=1;if(seen&&!seen[e.id]&&!e.done){nw++;if(e.urgent)urg=1}}if(nw)play(snd);seen=ids;draw()})}
+var KV='${KV}';function load(){api('kitchen',{},function(j){if(j.kv&&j.kv!==KV){location.reload(true);return}if(!j.list)return;list=j.list;STS=j.sts||[];if(KST&&!STS.some(function(z){return z.id===KST}))KST='';stbar();var ids={},nw=0,urg=0;for(var i=0;i<list.length;i++){var e=list[i];ids[e.id]=1;if(seen&&!seen[e.id]&&!e.done){nw++;if(e.urgent)urg=1}}if(nw)play(snd);seen=ids;draw()})}
 document.addEventListener('click',function(ev){var t=ev.target;while(t&&t!==document&&!t.getAttribute('data-id')&&!t.getAttribute('data-st')&&!t.getAttribute('data-all'))t=t.parentNode;if(!t||t===document)return;
  if(t.getAttribute('data-id'))api('kDone',{id:t.getAttribute('data-id'),i:+t.getAttribute('data-i')},load);
  else if(t.getAttribute('data-st'))api('kStart',{id:t.getAttribute('data-st')},load);
@@ -106,13 +108,13 @@ function wdraw(){if(!ing){$('w').innerHTML='<div class="e">Завантажен�
  var l=ing.filter(function(x){return!wq||x.n.toLowerCase().indexOf(wq.toLowerCase())>=0});
  for(var j=0;j<l.length&&j<80;j++)h+='<div class="it" data-wi="'+l[j].id+'"><span data-wi="'+l[j].id+'">'+esc(l[j].n)+' <small style="color:#8e8e93">'+fq((l[j].st.k||0)+(l[j].st.b||0),l[j].u)+'</small></span><button data-wi="'+l[j].id+'" style="background:#ff453a">−</button></div>';
  $('w').innerHTML=h+(l.length?'':'<div class="e">Нічого не знайдено</div>')}
-function pq(s,u){var m=String(s).replace(',','.').match(/^\s*(\d*\.?\d+)\s*(г|гр|мл|кг|л|шт)?/i);if(!m)return NaN;var v=+m[1],su=(m[2]||'').toLowerCase();if((su==='г'||su==='гр')&&u==='кг')v/=1000;if(su==='мл'&&u==='л')v/=1000;return v}
+function pq(s,u){var m=String(s).replace(',','.').match(/^\\s*(\\d*\\.?\\d+)\\s*(г|гр|мл|кг|л|шт)?/i);if(!m)return NaN;var v=+m[1],su=(m[2]||'').toLowerCase();if((su==='г'||su==='гр')&&u==='кг')v/=1000;if(su==='мл'&&u==='л')v/=1000;return v}
 document.addEventListener('input',function(ev){if(ev.target.id==='ws'){wq=ev.target.value;var p=ev.target.selectionStart;wdraw();var i=$('ws');i.focus();try{i.setSelectionRange(p,p)}catch(e){}}});
 document.addEventListener('click',function(ev){var t=ev.target,a;
  if((a=t.getAttribute('data-wi'))){wsel=ing.filter(function(x){return x.id===a})[0];wdraw();return}
  if((a=t.getAttribute('data-wr'))){$('wn').value=a;return}
  if(t.id==='wx'){wsel=null;wdraw();return}
- if(t.id==='wgo'){var q=pq($('wq').value,wsel.u),n=$('wn').value.replace(/^\s+|\s+$/g,'');if(!(q>0))return alert('Вкажіть кількість');if(!n)return alert('Вкажіть причину');
+ if(t.id==='wgo'){var q=pq($('wq').value,wsel.u),n=$('wn').value.replace(/^\\s+|\\s+$/g,'');if(!(q>0))return alert('Вкажіть кількість');if(!n)return alert('Вкажіть причину');
   var w=(wsel.st.b||0)>0&&!((wsel.st.k||0)>0)?'b':'k';t.disabled=true;api('skAdj',{id:wsel.id,wh:w,q:-q,note:n},function(j,s){if(s===200){alert('🗑 Списано: '+wsel.n+' '+fq(q,wsel.u));wsel=null;wload()}else{alert('⚠️ '+(j.error||'помилка'));t.disabled=false}})}});
 var msgId='';
 document.addEventListener('click',function(ev){var t=ev.target,a;
