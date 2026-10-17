@@ -24,6 +24,7 @@ export async function callVenue(env, venue, path, body, init) {
 }
 
 // 📱 демо ATOM: адмін-сесія без PIN; заклад atom-demo щоночі повертається до еталону (save — зберегти еталон, reset — повернути)
+const hx = t => String(t ?? '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])); // екранування для Telegram HTML
 export const demoLogin = (env, id) => callVenue(env, id, '/__int/login', { name: 'Гість демо' });
 export const demoSnap = (env, id, op) => callVenue(env, id, '/__int/demosnap', { do: op }).catch(e => ({ error: e.message }));
 
@@ -214,7 +215,8 @@ export async function ownerApi(req, env) {
     case 'codes': { if (!(await may(b.venue))) return bad('Немає доступу', 403); return ok(await callVenue(env, b.venue, '/__int/codes', {})); }
     case 'secrets': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/secrets', b.f || {}); return r.error ? bad(r.error) : ok(r); }
     case 'help': { const text = String(b.text || '').trim().slice(0, 1500); if (text.length < 3) return bad('Опишіть питання');
-      await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `🆘 <b>Допомога з кабінету</b>\n👤 ${me.name} · ${me.email}\n🏪 ${me.venues.join(', ') || '—'}\n\n${text.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}` }).catch(() => {});
+      const hk = 'helprl:' + String(me.email || me.name).slice(0, 60), hn = +(await env.DB.get(hk) || 0); if (hn >= 5) return bad('Забагато звернень — спробуйте за годину'); await env.DB.put(hk, String(hn + 1), { expirationTtl: 3600 });
+      await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `🆘 <b>Допомога з кабінету</b>\n👤 ${hx(me.name)} · ${hx(me.email)}\n🏪 ${hx(me.venues.join(', ') || '—')}\n\n${text.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}` }).catch(() => {});
       await H.msgAdd({ kind: 'help', venue: me.venues[0] || '', vname: '👑 кабінет', by: me.name + ' · ' + me.email, role: me.role, text }); return ok(); }
     case 'inbox': return ok({ list: await H.msgList(plat ? null : me.venues) });
     case 'inboxSay': { const text = String(b.text || '').trim().slice(0, 1500); if (!text) return bad('Напишіть відповідь'); // 💬 відповідь працівнику закладу
