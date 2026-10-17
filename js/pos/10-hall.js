@@ -195,7 +195,7 @@
     const [pay, pr] = v.split(':');
     const r = await act('close', { t, pay, print: pr === '1' });
     if (r?.queued) { toast(`📴 Стіл ${tn(t)}: немає зв'язку — закриття в черзі, відправимо самі`); closeSheet(); return; }
-    if (r?.r) { toast(`✅ Стіл ${tn(t)} закрито · ${money(r.r.sum)}`); closeSheet(); loadState().catch(() => {}); }
+    if (r?.r) { toast(`✅ Стіл ${tn(t)} закрито · ${money(r.r.sum)}`); closeSheet(); loadState().then(wlFree.bind(null, t)).catch(() => {}); }
   }
   // причина скасування — обовʼязкова, видно у звітах і в закритому рахунку
   const VOID_R = ['Гість передумав', 'Помилка офіціанта', 'Довго чекали', 'Не сподобалось', 'Немає продукту', 'Брак / зіпсовано'];
@@ -366,6 +366,11 @@
   });
 
 
+  // ⏳ стіл звільнився → пропонуємо покликати першого з черги (місткість столів у системі не зберігається; без автовідправки)
+  function wlFree(t) {
+    const n = (S.wl || []).find(x => x.st === 'wait'); if (!n) return;
+    toast(`⏳ Стіл ${tn(t)} вільний — покликати ${n.name} (${n.people} ос.)?`, { label: '🔔 Покликати', fn: async () => { if (await act('wlAct', { id: n.id, act: 'call' }, '🔔 Покликали')) loadState().catch(() => {}); } });
+  }
   // ⏳ черга гостей у залі (wl.js; та сама wlAct у боті)
   async function wlOpen() {
     const ago = x => Math.max(0, Math.round((Date.now() - x.at) / 60e3));
