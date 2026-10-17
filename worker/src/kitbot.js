@@ -1,7 +1,7 @@
 // 👨‍🍳 Бот кухні (KITCHEN_BOT_TOKEN, вебхук /tg4): кухарі отримують нові замовлення на телефон,
 // «🔥 Почав», «✅ Готово» (по страві або все), повідомлення в зал, стоп-лист. Вхід — PIN кухаря/адміна з каси.
 // Повідомлення з карткою (kbm:<id> → {chat: msg}) оновлюються, коли статус змінюють з /k або каси.
-import { tg, esc, dayKey, L, getStaff, getKq, pinHash, kitchenDone, kitchenStart, kitchenMsg, setHidden, logEvent, groupOf } from './ops.js';
+import { tg, esc, dayKey, L, getStaff, getKq, pinFind, kitchenDone, kitchenStart, kitchenMsg, setHidden, logEvent, groupOf } from './ops.js';
 import { getAtt } from './pay.js';
 import { getMenu } from './menu.js';
 import { tn } from './tn.js';
@@ -105,7 +105,7 @@ export async function kitUpdate(u, env) {
     if (!/^\d{4}$/.test(text)) return ktg(env, 'sendMessage', { chat_id: chat, text: '👨‍🍳 Бот кухні.\nВведіть свій PIN з каси (4 цифри) — сюди приходитимуть замовлення кухні.', reply_markup: { remove_keyboard: true } });
     await ktg(env, 'deleteMessage', { chat_id: chat, message_id: m.message_id });
     const fk = 'kfail:' + chat, n = +(await env.DB.get(fk) || 0), na = +(await env.DB.get('kfail:all') || 0); if (n >= 5 || na >= 30) return ktg(env, 'sendMessage', { chat_id: chat, text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' });
-    const h = await pinHash(text), s = (await getStaff(env)).find(z => z.pin === h);
+    const s = await pinFind(env, await getStaff(env), text);
     if (!s || !['cook', 'admin'].includes(s.role)) { await env.DB.put(fk, String(n + 1), { expirationTtl: 900 }); await env.DB.put('kfail:all', String(na + 1), { expirationTtl: 900 }); return ktg(env, 'sendMessage', { chat_id: chat, text: s ? '⛔ Цей бот — для кухні. Офіціанти — у боті команди.' : '❌ Невірний PIN' }); }
     await L(env, 'kittg', async () => { const l = await getLinks(env); l[chat] = s.id; await env.DB.put('kittg', JSON.stringify(l)); });
     await env.DB.delete(fk);
