@@ -424,13 +424,16 @@ footer a { color: var(--muted); }
       location.href = `/${r.venue}/pos.html?venue=${r.venue}#tok=${r.token}&me=${encodeURIComponent(JSON.stringify({ name: 'Гість демо', role: 'admin' }))}`;
     } catch (e) { m.textContent = '⚠️ ' + e.message + ' — подивіться живий сайт або залиште заявку, покажемо особисто.'; document.getElementById('demo').scrollIntoView(); b.disabled = false; b.textContent = t; }
   }));
+  // 🎁 реферальний код з ?ref= — зберігаємо на сесію й передаємо в заявку (лише a–z0–9, до 20 символів)
+  function refCode() { try { const q = new URLSearchParams(location.search).get('ref'), c = (q || sessionStorage.getItem('ref') || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20); if (q && c) sessionStorage.setItem('ref', c); return c; } catch { return ''; } }
+  refCode();
   // 💬 заявка
   $('#lf').addEventListener('submit', async e => {
     e.preventDefault(); const f = e.target, m = $('#lm'), d = Object.fromEntries(new FormData(f)); m.className = 'msg'; if (PV) { m.textContent = '👁 Перегляд: заявка не надсилається'; return; }
     if ((d.name || '').trim().length < 2) { m.className = 'msg err'; m.textContent = 'Вкажіть імʼя'; f.name.focus(); return; }
     if (!/^\+?\d{9,13}$/.test((d.phone || '').replace(/[\s()-]/g, ''))) { m.className = 'msg err'; m.textContent = 'Вкажіть телефон, напр. +380 67 123 45 67'; f.phone.focus(); return; }
     const btn = f.querySelector('button'); btn.disabled = true; m.textContent = 'Надсилаю…';
-    try { const r = await fetch('/api/lead', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...d, src: location.hash.slice(1) || 'site' }) }).then(r => r.json()); if (!r.ok) throw new Error(r.error || 'Не вдалося');
+    try { const r = await fetch('/api/lead', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...d, src: location.hash.slice(1) || 'site', ref: refCode() }) }).then(r => r.json()); if (!r.ok) throw new Error(r.error || 'Не вдалося');
       f.reset(); m.className = 'msg ok'; m.textContent = '✅ Дякуємо! Передзвонимо найближчим часом.';
     } catch (x) { m.className = 'msg err'; m.textContent = '⚠️ ' + x.message + '. Або напишіть у Telegram.'; }
     btn.disabled = false;
