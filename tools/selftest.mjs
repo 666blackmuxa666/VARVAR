@@ -671,6 +671,12 @@ async function loyTests(A, W, dish) {
     must((await vpos(VA, 'cfgSet', { k: 'tables', v: 7 })).status === 200, 'tables'); must((await vpos(VA, 'state')).j.n === 7, 'столів не 7'); must((await posOk(A, 'state')).n !== 7 || true, '');
     const lg = await vpos(VA, 'alog', {}); must(lg.j.list?.some(x => /імпорт/i.test(x.t)), 'журнал без імпорту меню: ' + JSON.stringify(lg.j).slice(0, 120));
     const rd = await ownT(PT, 'ready', { venue: VID }); must(rd.j.items === 2 && rd.j.tables === 7 && rd.j.bots && rd.j.printKey, JSON.stringify(rd.j).slice(0, 150)); });
+  await step('📊 аналітика закладу: один запит, структура, кеш, доступ', async () => {
+    const d = new Date().toISOString().slice(0, 10), r = await ownT(PT, 'an', { venue: VID, from: d, to: d });
+    must(r.status === 200 && r.j.cur && r.j.heat?.length === 7 && r.j.heat[0].length === 24 && r.j.ch && r.j.pay && r.j.forecast?.est >= 0 && Array.isArray(r.j.top) && r.j.abc && r.j.kitchen && r.j.guests, JSON.stringify(r.j).slice(0, 200));
+    const r2 = await ownT(PT, 'an', { venue: VID, from: d, to: d }); must(r2.j.cached === 1, 'другий запит має бути з кешу');
+    must((await ownT(PT, 'an', { venue: 'nope-zzz', from: d, to: d })).status >= 400, 'чужий/невірний заклад');
+  });
   await step('💾 бекап: зробити, список, відновити (стіл повертається)', async () => {
     const it = (await http(`/v/${VID}/api/menu`)).j.categories.flatMap(c => c.items).find(i => typeof i.price === 'number');
     const b = await ownT(PT, 'bak', { venue: VID, do: 'now' }); must(b.j.ok && b.j.n > 0, JSON.stringify(b.j));

@@ -856,7 +856,7 @@ export async function reportRange(env, from, to) {
   const [cl, ex, zz, mm, vv] = await Promise.all(['closed:', 'exp:', 'z:', 'mov:', 'void:'].map(p => env.DB.getMany(days.map(d => p + d), 'json')));
   return {
     from, to,
-    checks: days.flatMap((d, i) => (cl[i] || []).filter(x => !x.del && !x.rm).map(x => ({ d, id: x.id, at: x.at, t: x.t, sum: x.sum, cash: x.cash ?? x.sum, card: x.card || 0, onl: x.onl || 0, by: x.by || '', w: x.w || x.by || '', disc: x.discSum || 0, pct: x.disc || 0, tip: x.tip || 0, tipSplit: tipSplitOf(x), dishes: x.dishes || [], voids: x.voids || [], ...(x.go ? { go: x.go, cour: x.cour || '', fee: x.fee || 0 } : {}), ...(x.bonus ? { bonus: x.bonus } : {}) }))),
+    checks: days.flatMap((d, i) => (cl[i] || []).filter(x => !x.del && !x.rm).map(x => ({ d, id: x.id, at: x.at, t: x.t, sum: x.sum, cash: x.cash ?? x.sum, card: x.card || 0, onl: x.onl || 0, by: x.by || '', w: x.w || x.by || '', disc: x.discSum || 0, pct: x.disc || 0, tip: x.tip || 0, tipSplit: tipSplitOf(x), dishes: x.dishes || [], voids: x.voids || [], ...(x.go ? { go: x.go, cour: x.cour || '', fee: x.fee || 0 } : {}), ...(x.bonus ? { bonus: x.bonus } : {}), ...(x.cli ? { cli: x.cli } : {}) }))),
     voids: days.flatMap((d, i) => (vv[i] || []).map(x => ({ d, ...x }))),
     removed: days.flatMap((d, i) => (cl[i] || []).filter(x => x.rm).map(x => ({ d, id: x.id, at: x.at, t: x.t, sum: x.sum, by: x.by || '', reopen: !!x.reopen }))),
     exp: days.flatMap((d, i) => (ex[i] || []).map((x, j) => ({ d, i: j, del: !!x.del, at: x.at, sum: x.sum, src: x.src, note: x.note || '', by: x.by || '' })).filter(x => !x.del)),
