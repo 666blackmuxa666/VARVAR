@@ -20,3 +20,4 @@ summary{cursor:pointer;font-weight:700}details p{margin:10px 0 0;color:var(--mut
 nav.rel{display:flex;flex-wrap:wrap;gap:8px 18px;margin:30px 0}
 footer{border-top:1px solid var(--line);padding:24px 0 40px;color:var(--muted);font-size:14px;margin-top:40px}
 @media(max-width:480px){.btn{width:100%}header .btn{width:auto}}
+.logo{display:flex;align-items:center;gap:10px}.logo img{width:30px;height:30px;border-radius:8px;box-shadow:0 0 12px rgba(242,193,78,.35)}

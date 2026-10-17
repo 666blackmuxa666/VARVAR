@@ -10,7 +10,8 @@
 <meta name="description" content="ATOM — система для кафе, барів і ресторанів: каса в телефоні, QR-меню, кухня, доставка, склад з ШІ-накладними, персонал, лояльність, сайт і Telegram-боти. 500 ₴/міс, перший місяць безкоштовно.">
 <meta property="og:title" content="ATOM — увесь заклад в одному телефоні">
 <meta property="og:description" content="Каса, кухня, склад, доставка, сайт і боти. 500 ₴/міс, перший місяць безкоштовно, налаштуємо безкоштовно.">
-<link rel="icon" href="https://posatom.online/varvar/img/icon.png">
+<link rel="icon" href="https://posatom.online/varvar/img/app/pos.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="https://posatom.online/varvar/img/app/pos.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700&display=swap">
 <style>
@@ -37,8 +38,7 @@ h2 { font-size: clamp(26px, 4vw, 40px); line-height: 1.15; margin: 8px 0 14px; }
 header { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
 header .wrap { display: flex; align-items: center; gap: 18px; height: 64px; }
 .logo { display: flex; align-items: center; gap: 10px; font: 800 20px var(--fh); color: var(--text); text-decoration: none; }
-.logo i { width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(circle at 50% 50%, var(--gold) 0 4px, transparent 5px), conic-gradient(from 0deg, var(--vio), var(--gold), var(--vio)); position: relative; }
-.logo i::after { content: ''; position: absolute; inset: 4px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--bg) 85%, transparent); }
+.logo img { width: 32px; height: 32px; border-radius: 9px; box-shadow: 0 0 14px rgba(242,193,78,.35); }
 nav { display: flex; gap: 20px; margin-left: auto; }
 nav a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: 15px; }
 nav a:hover { color: var(--text); }
@@ -195,7 +195,7 @@ footer a { color: var(--muted); }
 </head>
 <body>
 <header><div class="wrap">
-  <a class="logo" href="#top"><i></i>ATOM</a>
+  <a class="logo" href="#top"><img src="https://posatom.online/varvar/img/app/pos.svg" alt="">ATOM</a>
   <nav><a href="#feat">Можливості</a><a href="#demo">Демо</a><a href="#calc">Економія</a><a href="#price">Ціна</a><a href="#faq">Питання</a></nav>
   <a class="btn" href="/owner/" title="Кабінет власника · каса" style="margin-right:8px">🔑 Увійти</a><a class="btn btn-gold" href="#lead" data-t="top.b">Підключити</a>
 </div></header>
