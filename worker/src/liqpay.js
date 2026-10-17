@@ -1,17 +1,20 @@
 // 💳 LiqPay (ПриватБанк): форма оплати, перевірка підпису callback, серверні запити (статус, повернення, відписка).
 // Ключі: VARVAR і платформа (підписка ATOM, баланс ШІ) — env.LIQPAY_PUBLIC / LIQPAY_PRIVATE; інші заклади — свої (cfg:secrets → env закладу).
 // Підпис: base64( sha1( private + data + private ) ). Пісочниця — ключі з префіксом sandbox_ (гроші не списуються).
+import { monoKeys, monoForm, monoRefund } from './mono.js';
 const enc = new TextEncoder();
 const b64 = s => { const u = enc.encode(s); let r = ''; for (let i = 0; i < u.length; i += 0x8000) r += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(r); };
 const unb64 = s => new TextDecoder().decode(Uint8Array.from(atob(s), c => c.charCodeAt(0)));
 async function sign(priv, data) { const h = await crypto.subtle.digest('SHA-1', enc.encode(priv + data + priv)); return btoa(String.fromCharCode(...new Uint8Array(h))); }
 
-export const lpKeys = env => env.LIQPAY_PUBLIC && env.LIQPAY_PRIVATE ? { pub: env.LIQPAY_PUBLIC, priv: env.LIQPAY_PRIVATE, sandbox: /^sandbox_/.test(env.LIQPAY_PUBLIC) } : null;
+// «ключі приймання оплат»: LiqPay або monobank (env.PAY_PROVIDER = 'mono'); решта коду бачить одну форму lpForm/lpRefund
+export const lpKeys = env => env.PAY_PROVIDER === 'mono' ? monoKeys(env) : env.LIQPAY_PUBLIC && env.LIQPAY_PRIVATE ? { pub: env.LIQPAY_PUBLIC, priv: env.LIQPAY_PRIVATE, sandbox: /^sandbox_/.test(env.LIQPAY_PUBLIC) } : null;
 // платформа (підписка ATOM, баланс ШІ) — завжди ключі VARVAR з кореневого env, а не закладу
 export const lpPlatform = env => env.PLATFORM_LP_PUB ? { pub: env.PLATFORM_LP_PUB, priv: env.PLATFORM_LP_PRIV, sandbox: /^sandbox_/.test(env.PLATFORM_LP_PUB) } : env.VENUE && env.VENUE !== 'varvar' ? null : lpKeys(env); /* ніколи — ключі закладу (інакше заклад «оплатив би» підписку сам собі) */
 
 // форма для переходу на checkout: { url, data, signature } — сторінка робить POST-форму (або GET з параметрами)
 export async function lpForm(k, p) {
+  if (k.mono) return monoForm(k, p);
   const data = b64(JSON.stringify({ version: 3, public_key: k.pub, currency: 'UAH', language: 'uk', action: 'pay', ...(k.sandbox ? { sandbox: 1 } : {}), ...p, amount: Math.round(+p.amount * 100) / 100 }));
   const signature = await sign(k.priv, data);
   return { url: `https://www.liqpay.ua/api/3/checkout?data=${encodeURIComponent(data)}&signature=${encodeURIComponent(signature)}`, data, signature };
@@ -35,6 +38,7 @@ export async function lpApi(k, p) {
 export async function lpFake(k, obj) { const data = b64(JSON.stringify(obj)); return { data, signature: await sign(k.priv, data) }; }
 // ↩️ повернення: спершу стан платежу (вже повернено? ще в обробці?), далі refund; повна відповідь — у журнал воркера (wrangler tail)
 export async function lpRefund(k, order, amt) {
+  if (k.mono) return monoRefund(k, order, amt);
   const st = await lpApi(k, { action: 'status', order_id: order }); console.log('lp status', order, JSON.stringify(st).slice(0, 400));
   if (['reversed', 'refund'].includes(st.status)) return { ok: true, already: 1 };
   const tries = [{ action: 'refund', order_id: order, amount: amt }, { action: 'refund', order_id: order }];

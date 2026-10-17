@@ -42,6 +42,7 @@ export async function tpayStart(env, b, at) {
   const id = Date.now().toString(36) + [...crypto.getRandomValues(new Uint8Array(3))].map(x => x.toString(16).padStart(2, '0')).join('');
   await env.DB.put('tpp:' + id, JSON.stringify({ t, due, tip, amount, at: Date.now(), ...(items.length ? { items, comment: String(b.comment || '').slice(0, 300) } : {}) }), { expirationTtl: 3600 });
   const f = await lpForm(lpKeys(env), { order_id: `tb-${env.VENUE || 'varvar'}-${id}`, amount, description: `Рахунок · стіл ${tn(t)}${tip ? ` · чайові ${tip} грн` : ''}`, result_url: siteLink(`?tpaid=${id}`), server_url: env.SELF_URL + '/api/lp/table' });
+  if (!f.url) return [{ error: 'pay_fail', msg: f.error }, 502];
   return [{ ok: true, pay: f.url, id, sum: amount }, 200];
 }
 export async function tpayState(env, id) {

@@ -142,6 +142,7 @@ export async function goOrder(b, ip, env) {
     await Promise.all([env.DB.put('gop:' + oid, JSON.stringify({ b: { kind, name, phone, addr, ent, when: b.when || '', cut, pay: 'online', bonus, comment: note, device: String(b.device || '').slice(0, 64), src: String(b.src || '').slice(0, 20), items }, amount, at: Date.now() }), { expirationTtl: 1800 }), // ⏳ не оплатив за 30 хв — замовлення знімається
       env.DB.put(rk, String(rn + 1), { expirationTtl: 600 })]);
     const f = await lpForm(k, { order_id: `go-${env.VENUE || 'varvar'}-${oid}`, amount, description: `${TYPES[kind] === 'ДОСТАВКА' ? 'Доставка' : 'Замовлення з собою'} · ${name}`, result_url: siteLink(`?go&paid=${oid}`), server_url: env.SELF_URL + '/api/lp/go' });
+    if (!f.url) return [{ error: 'pay_fail', msg: f.error }, 502];
     return [{ ok: true, pay: f.url, id: oid, sum: amount, wait: 1 }, 200];
   }
   const comment = ['З СОБОЮ', when ? `НА ${when}` : '', cut ? `прибори: ${cut}` : '', note].filter(Boolean).join(' · ');
@@ -284,7 +285,7 @@ export async function goApi(b, env, me, t) {
     case 'upsGet': { if (!admin) return bad('admin', 403); return ok({ text: upsText(await upsGet(env)) }); }
     case 'upsSet': { if (!admin) return bad('admin', 403); const r = upsParse(b.text); await env.DB.put('ups', JSON.stringify(r)); return ok({ text: upsText(r), n: Object.keys(r).length }); }
     case 'goEdit': { if (!admin) return bad('admin', 403); const r = await goEdit(env, t, b, who); return r.error ? bad(r.error) : ok(r); }
-    case 'goCfg': { const k = lpKeys(env); return ok({ cfg: await getGoCfg(env), lp: k ? { on: 1, sandbox: k.sandbox ? 1 : 0 } : null, main: (env.VENUE || 'varvar') === 'varvar' }); }
+    case 'goCfg': { const k = lpKeys(env); return ok({ cfg: await getGoCfg(env), lp: k ? { on: 1, sandbox: k.sandbox ? 1 : 0, prov: k.mono ? 'mono' : 'liqpay' } : null, prov: env.PAY_PROVIDER === 'mono' ? 'mono' : 'liqpay', main: (env.VENUE || 'varvar') === 'varvar' }); }
     case 'goCfgSet': { if (!admin) return bad('admin', 403); const c = await setGoCfg(env, String(b.k), b.v); if (c.error) return bad(c.error); return ok({ cfg: c }); }
     case 'cliGet': { const ph = normPhone(b.phone); if (!ph) return bad('Невірний номер'); const c = await getCli(env, ph); const { botName } = await import('./site.js'); return ok({ phone: ph, cli: c, mem: isMem(c), bot: await botName(env).catch(() => ''), cfg: await getGoCfg(env) }); }
     case 'cliSet': { // 🎁 телефон гостя в залі — щоб нарахувати кешбек при закритті

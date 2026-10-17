@@ -35,7 +35,7 @@ window.OWNV = ctx => {
       if (sec === 'printer') { const [q, rc] = await Promise.all([vapi(id, 'printQ').catch(() => ({ list: [] })), vapi(id, 'rcptGet').catch(() => ({}))]); Object.assign(v.d, { q: q.list, rc: rc.rcpt, dev: rc.dev, route: rc.route || {} }); }
       if (sec === 'menu') v.d = { menu: (await vapi(id, 'menu')).menu };
       if (sec === 'dz') { const [si, m] = await Promise.all([vapi(id, 'siteGet'), vapi(id, 'menu')]); v.d = { site: si.site, menu: m.menu }; }
-      if (sec === 'pay') { const [bl, g] = await Promise.all([api('bill', { venue: id }), vapi(id, 'goCfg').catch(() => ({}))]); v.d = { ...bl, go: g.cfg || {}, glp: g.lp, main: g.main, ref: (await api('ref', { venue: id }).catch(() => ({}))).ref }; if (g.lp) v.d.onl = (await vapi(id, 'onlList', { days: 30 }).catch(() => ({}))).list || []; }
+      if (sec === 'pay') { const [bl, g] = await Promise.all([api('bill', { venue: id }), vapi(id, 'goCfg').catch(() => ({}))]); v.d = { ...bl, go: g.cfg || {}, glp: g.lp, prov: g.prov, main: g.main, ref: (await api('ref', { venue: id }).catch(() => ({}))).ref }; if (g.lp) v.d.onl = (await vapi(id, 'onlList', { days: 30 }).catch(() => ({}))).list || []; }
       if (sec === 'go') { const r = await vapi(id, 'goCfg'); v.d = { go: r.cfg, lp: r.lp, main: r.main }; }
       if (sec === 'staff') v.d = await vapi(id, 'staff');
       if (sec === 'log') { const [a, b] = await Promise.all([vapi(id, 'alog', { m: S.logM || '' }), api('bak', { venue: id, do: 'list' }).catch(() => ({ list: [] }))]); v.d = { list: a.list, bak: b.list }; }
@@ -119,18 +119,25 @@ window.OWNV = ctx => {
       const g = d.go || {}, gl = d.glp; /* 💳 прийом оплат від гостей — ключі цього закладу */
       const acq = `<div class="card"><h3>💳 Прийом оплат від гостей</h3>
         <div class="muted" style="font-size:13px;margin-bottom:8px">Гості платять карткою онлайн (замовлення, доставка, сертифікати, рахунок столу з QR) — гроші йдуть одразу на рахунок закладу. У касі онлайн видно окремо: 💵 готівка · 💳 термінал · 🌐 онлайн.</div>
-        <div class="kv"><span>Платіжна система</span><b>LiqPay (ПриватБанк)</b></div>
+        ${d.main ? `<div class="kv"><span>Платіжна система</span><b>${gl?.prov === 'mono' ? 'monobank' : 'LiqPay (ПриватБанк)'}</b></div>` : `<div class="kv"><span>Платіжна система</span><span style="display:flex;gap:6px"><button class="btn sm ${d.prov === 'mono' ? '' : 'primary'}" data-a="vprov" data-p="liqpay">LiqPay</button><button class="btn sm ${d.prov === 'mono' ? 'primary' : ''}" data-a="vprov" data-p="mono">monobank</button></span></div>`}
         <div class="kv"><span>Стан</span><b>${gl ? (gl.sandbox ? '🧪 тестові ключі' : '✅ підключено') : '⚪ не підключено'}</b></div>
         ${gl ? tgl('🌐 Оплата замовлень онлайн (з собою, доставка, сертифікати)', g.onl, 'vgoTgl', 'onl') + tgl('🍽 Оплата рахунку столу з QR', g.qrpay, 'vgoTgl', 'qrpay') : ''}
         ${d.main ? '<div class="muted" style="font-size:12px;margin-top:8px">Ключі VARVAR — у налаштуваннях сервера (через розробника).</div>' : `
+        ${d.prov === 'mono' ? `<details ${gl ? '' : 'open'} style="margin-top:10px"><summary><b>${gl ? '🔄 Замінити токен' : '🔑 Додати токен'}</b></summary>
+          <ol class="muted" style="font-size:13px;padding-left:18px;margin:8px 0">
+            <li>Підключіть еквайринг на <a href="https://web.monobank.ua" target="_blank" rel="noopener">web.monobank.ua</a> (бізнес-акаунт monobank), як сайт вкажіть <b>${esc(window.VVPUB(v.id, ''))}</b>.</li>
+            <li>У кабінеті мерчанта скопіюйте <b>токен (X-Token)</b>.</li>
+            <li>Вставте нижче й збережіть — система одразу перевірить токен. Вебхук налаштовувати не треба.</li></ol>
+          <form id="vmof" style="display:grid;gap:8px"><input name="MONO_TOKEN" type="password" placeholder="X-Token monobank" autocomplete="off"><button class="btn sm primary">💾 Зберегти токен</button><div class="err" id="vmoerr"></div></form></details>
+        ${gl ? '<button class="btn sm red" data-a="vmoDel" style="margin-top:10px">🗑 Відключити monobank</button>' : ''}` : `
         <details ${gl ? '' : 'open'} style="margin-top:10px"><summary><b>${gl ? '🔄 Замінити ключі' : '🔑 Додати ключі'}</b></summary>
           <ol class="muted" style="font-size:13px;padding-left:18px;margin:8px 0">
             <li>Зареєструйте магазин на <a href="https://www.liqpay.ua" target="_blank" rel="noopener">liqpay.ua</a> (вхід через Приват24), як сайт вкажіть <b>${esc(window.VVPUB(v.id, ''))}</b>, сторінка умов — <b>${esc(window.VVPUB(v.id, 'terms.html'))}</b>.</li>
             <li>Після активації: кабінет LiqPay → <b>Налаштування → API</b> → скопіюйте <b>public_key</b> і <b>private_key</b>.</li>
             <li>Вставте нижче й збережіть — система одразу перевірить ключі.</li></ol>
           <form id="vlpf" style="display:grid;gap:8px"><input name="LIQPAY_PUBLIC" placeholder="public_key (i… або sandbox_i…)" autocomplete="off"><input name="LIQPAY_PRIVATE" type="password" placeholder="private_key" autocomplete="off"><button class="btn sm primary">💾 Зберегти ключі</button><div class="err" id="vlperr"></div></form></details>
-        ${gl ? '<button class="btn sm red" data-a="vlpDel" style="margin-top:10px">🗑 Відключити LiqPay</button>' : ''}
-        <div class="muted" style="font-size:12px;margin-top:8px">Інші платіжні системи (monobank, WayForPay) — скоро.</div>`}</div>`;
+        ${gl ? '<button class="btn sm red" data-a="vlpDel" style="margin-top:10px">🗑 Відключити LiqPay</button>' : ''}`}
+        <div class="muted" style="font-size:12px;margin-top:8px">WayForPay — скоро.</div>`}</div>`;
       const ol = d.onl || [], live = ol.filter(x => !x.rm), refd = ol.filter(x => x.ref), sm = a => a.reduce((t, x) => t + (x.onl || 0), 0);
       const row = x => `<div class="kv" style="align-items:center;gap:8px"><span>${esc(x.d.slice(5).split('-').reverse().join('.'))} ${esc(x.at || '')} · ${x.go ? '🛵 ' : ''}стіл ${esc(String(x.t))}${x.test ? ' · 🧪' : ''}${x.ref ? `<br><small class="muted">↩️ повернуто${x.refBy ? ' · ' + esc(x.refBy) : ''}</small>` : x.rm ? '<br><small class="muted">знято з виручки</small>' : ''}</span><span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><b class="money">${x.onl} ₴</b>${!x.rm ? `<button class="btn sm" data-a="vRefund" data-ref="${esc(x.id)}" data-day="${esc(x.d)}" data-s="${x.onl}">↩️</button>` : ''}</span></div>`;
       const onl = gl ? `<div class="card"><h3>🌐 Оплачені онлайн · 30 днів</h3><div class="kv"><span>Рахунків</span><b>${live.length} · ${sm(live)} ₴</b></div>${ol.length ? `<div style="max-height:420px;overflow:auto;margin-top:6px">${ol.filter(x => !x.ref).map(row).join('')}</div>` : '<div class="muted" style="margin-top:6px">Ще немає онлайн-оплат.</div>'}</div>
@@ -292,6 +299,8 @@ window.OWNV = ctx => {
     if (a === 'vimg') { const data = await img(d.k === 'logo' ? 512 : 1600, d.k === 'logo'); if (!data) return; return act(() => vapi(id, 'sitePhoto', { data, logo: d.k === 'logo', hero: d.k === 'hero' }), '🖼 Збережено'); }
     if (a === 'vgo') { const x = await ask(el.closest('.kv')?.querySelector('span')?.firstChild?.textContent || d.k, v.d.go[d.k], ['from', 'to', 'zone', 'phone'].includes(d.k) ? 'text' : 'number'); if (x == null) return; return act(() => vapi(id, 'goCfgSet', { k: d.k, v: x }), '💾 Збережено'); }
     if (a === 'vbPay' || a === 'vbAuto' || a === 'vbTop') { el.disabled = true; try { const r = await api('billPay', { venue: id, kind: a === 'vbTop' ? 'ai' : 'sub', auto: a === 'vbAuto', sum: +d.n || 0 }); location.href = r.url; } catch (x) { toast('⚠️ ' + x.message); el.disabled = false; } return; }
+    if (a === 'vprov') return act(() => api('secrets', { venue: id, f: { PAY_PROVIDER: d.p } }), d.p === 'mono' ? '💳 Обрано monobank' : '💳 Обрано LiqPay');
+    if (a === 'vmoDel') { if (!confirm('Відключити monobank? Онлайн-оплата для гостей вимкнеться, токен буде видалено.')) return; return act(() => api('secrets', { venue: id, f: { MONO_TOKEN: '', PAY_PROVIDER: 'liqpay' } }), '🗑 monobank відключено'); }
     if (a === 'vlpDel') { if (!confirm('Відключити LiqPay? Онлайн-оплата для гостей вимкнеться, ключі буде видалено.')) return; return act(() => api('secrets', { venue: id, f: { LIQPAY_PUBLIC: '', LIQPAY_PRIVATE: '' } }), '🗑 LiqPay відключено'); }
     if (a === 'vrefCopy') { try { await navigator.clipboard.writeText(d.v); toast('📋 Скопійовано'); } catch { toast(d.v); } return; }
     if (a === 'vrefBlock') return act(() => api('refBlock', { code: d.code, on: +d.on }), +d.on ? '🚫 Код заблоковано' : '✅ Код розблоковано');
@@ -340,6 +349,8 @@ window.OWNV = ctx => {
   document.addEventListener('input', e => { if (e.target.id === 'logQ' && S.cfgV) { S.logQ = e.target.value; clearTimeout(S.lqT); S.lqT = setTimeout(() => { const p = e.target.selectionStart; render(); const i = $('#logQ'); if (i) { i.focus(); i.setSelectionRange(p, p); } }, 250); } });
   document.addEventListener('input', e => { if (e.target.id === 'mq' && S.cfgV) { S.mq = e.target.value; clearTimeout(S.mqT); S.mqT = setTimeout(() => { const p = e.target.selectionStart; render(); const i = $('#mq'); if (i) { i.focus(); i.setSelectionRange(p, p); } }, 250); } });
   document.addEventListener('submit', async e => {
+    if (e.target.id === 'vmof' && S.cfgV) { e.preventDefault(); const err = $('#vmoerr'), tk = e.target.MONO_TOKEN.value.trim(); if (!tk) { err.textContent = 'Вставте токен'; return; } err.textContent = '…';
+      try { await api('secrets', { venue: S.cfgV.id, f: { MONO_TOKEN: tk } }); toast('💳 Токен monobank збережено'); load(); } catch (y) { err.textContent = y.message; } return; }
     if (e.target.id === 'vlpf' && S.cfgV) { e.preventDefault(); const f = e.target, err = $('#vlperr'), x = { LIQPAY_PUBLIC: f.LIQPAY_PUBLIC.value.trim(), LIQPAY_PRIVATE: f.LIQPAY_PRIVATE.value.trim() }; if (!x.LIQPAY_PUBLIC || !x.LIQPAY_PRIVATE) { err.textContent = 'Потрібні обидва ключі'; return; } err.textContent = '…';
       try { await api('secrets', { venue: S.cfgV.id, f: x }); toast('💳 Ключі LiqPay збережено'); load(); } catch (y) { err.textContent = y.message; } return; }
     if (e.target.id !== 'vbf' || !S.cfgV) return; e.preventDefault(); const f = e.target, err = $('#vberr'), x = {};

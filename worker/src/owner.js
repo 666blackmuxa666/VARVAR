@@ -71,6 +71,12 @@ export async function intApi(req, env, path) {
       if (!me?.ok) return [{ error: `Токен ${nm}: Telegram не приймає` }, 400]; f[k] = String(v).trim(); names[nm] = me.result.username;
     }
     if (b.CHAT_ID != null) f.CHAT_ID = String(b.CHAT_ID);
+    if (b.PAY_PROVIDER != null) { if (!['liqpay', 'mono'].includes(b.PAY_PROVIDER)) return [{ error: 'Невідома платіжна система' }, 400]; f.PAY_PROVIDER = b.PAY_PROVIDER === 'mono' ? 'mono' : ''; } // 💳 вибір платіжної системи
+    if (b.MONO_TOKEN === '') f.MONO_TOKEN = '';
+    else if (b.MONO_TOKEN != null) { // 💳 monobank: токен X-Token з web.monobank.ua — перевіряємо запитом «details»
+      const tok = String(b.MONO_TOKEN).trim(); if (!/^[\w-]{10,80}$/.test(tok)) return [{ error: 'Токен monobank: невірний формат' }, 400];
+      const M = await import('./mono.js'), r = await M.monoCheck({ mono: 1, token: tok, sandbox: /^mono_test_/.test(tok) });
+      if (r.error) return [{ error: 'monobank не приймає токен: ' + r.error }, 400]; f.MONO_TOKEN = tok; f.PAY_PROVIDER = 'mono'; }
     if (b.LIQPAY_PUBLIC === '' && b.LIQPAY_PRIVATE === '') { f.LIQPAY_PUBLIC = ''; f.LIQPAY_PRIVATE = ''; } // 🗑 відключити LiqPay закладу
     else if (b.LIQPAY_PUBLIC != null || b.LIQPAY_PRIVATE != null) { // 💳 ключі LiqPay закладу: перевіряємо запитом статусу (неіснуючий order_id → відповідь з підписом прийнята)
       const pub = String(b.LIQPAY_PUBLIC || '').trim(), priv = String(b.LIQPAY_PRIVATE || '').trim();

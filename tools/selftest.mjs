@@ -674,6 +674,29 @@ async function loyTests(A, W, dish) {
     const b1 = (await ownT(PT, 'bill', { venue: VID })).j.sub, days = Math.round((b1.till - b0.sub.till) / 864e5); must(!b1.trial && b1.auto && days >= 28 && days <= 31, `till +${days} дн, auto=${b1.auto}`);
     await cb('/api/lp/ai', { order_id: `ai-${VID}-x2`, status: 'sandbox', amount: 100, payment_id: pid + 'a' });
     const b2 = (await ownT(PT, 'bill', { venue: VID })).j; must(b2.ai.bal === 100, 'баланс ' + b2.ai.bal); return `+${days} дн · ШІ ${b2.ai.bal} ₴`; });
+  await step('💳 monobank: токен → /api/go online дає посилання, вебхук (підпис ECDSA) → в касі оплачено, хибний підпис 403, «processing» ігнорується', async () => {
+    const { createPrivateKey, sign } = await import('node:crypto');
+    const KEY = createPrivateKey({ key: Buffer.from('MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgsd0Stv5JbnV3LvGDk5/DX3S9aYEmbUkOZCa4HpviGs6hRANCAATGghUZMECHtZaQTr3DPK2Ox8SHdo7hu1TT7LtipKtq8/eWxKEBRiOgCaoLx/T46RQGgY3oDr0g/9qqBGfB3fpS', 'base64'), format: 'der', type: 'pkcs8' });
+    const hook = async (path, obj, bad) => { const raw = JSON.stringify(obj), sig = sign('sha256', Buffer.from(raw), KEY).toString('base64');
+      const r = await fetch(API + path, { method: 'POST', headers: { 'content-type': 'application/json', 'x-sign': bad ? sig.slice(0, 20) + (sig[20] === 'A' ? 'B' : 'A') + sig.slice(21) : sig }, body: raw }); return { status: r.status, j: await r.json().catch(() => ({})) }; };
+    const it = (await http(`/v/${VID}/api/menu`)).j.categories.flatMap(c => c.items).find(i => typeof i.price === 'number');
+    must((await ownT(PT, 'secrets', { venue: VID, f: { MONO_TOKEN: 'bad token!' } })).status === 400, 'невірний формат токена прийнято');
+    must((await ownT(PT, 'secrets', { venue: VID, f: { PAY_PROVIDER: 'x' } })).status === 400, 'невідома система прийнята');
+    must((await ownT(PT, 'secrets', { venue: VID, f: { MONO_TOKEN: 'mono_test_qa1234567' } })).j.ok, 'збереження токена');
+    try {
+      for (const k of ['on', 'pick', 'onl']) await vpos(VA, 'goCfgSet', { k, v: 1 });
+      const r = await http(`/v/${VID}/api/go`, { kind: 'pick', name: 'QA Mono', phone: '0670008' + String(Math.floor(Math.random() * 900) + 100), when: '12:00', pay: 'online', items: [{ id: it.id, q: 1 }], device: 'qa-mono-' + RUN });
+      must(r.status === 200 && /monobank/.test(r.j.pay || '') && r.j.id, `${r.status} ${JSON.stringify(r.j).slice(0, 200)}`);
+      const ref = `go-${VID}-${r.j.id}`, ev = { invoiceId: 'mt1', reference: ref, amount: r.j.sum * 100, ccy: 980 };
+      { const bd = await hook(`/v/${VID}/api/lp/go`, { ...ev, status: 'success' }, true); must(bd.status === 403, 'хибний підпис не відхилено: ' + bd.status + ' ' + JSON.stringify(bd.j).slice(0, 120)); }
+      must((await hook(`/v/${VID}/api/lp/go`, { ...ev, status: 'processing' })).j.wait, 'processing не проігноровано');
+      must((await http(`/v/${VID}/api/gopay?id=` + r.j.id)).j.st === 'wait', 'стан після processing');
+      const c1 = await hook(`/v/${VID}/api/lp/go`, { ...ev, status: 'success' }), c2 = await hook(`/v/${VID}/api/lp/go`, { ...ev, status: 'success' });
+      must(c1.status === 200 && c1.j.ok && c2.j.dup, JSON.stringify([c1.j, c2.j]));
+      const w = (await http(`/v/${VID}/api/gopay?id=` + r.j.id)).j; must(w.st === 'paid', 'стан ' + JSON.stringify(w));
+      const t = (await vpos(VA, 'state')).j.tables.find(x => x.go?.oid === r.j.id); must(t?.go?.paid?.sum === r.j.sum, 'у касі: ' + JSON.stringify(t?.go).slice(0, 160));
+    } finally { await ownT(PT, 'secrets', { venue: VID, f: { MONO_TOKEN: '', PAY_PROVIDER: 'liqpay' } }); await vpos(VA, 'goCfgSet', { k: 'onl', v: 0 }); }
+  });
   await step('📴 офлайн-черга: повтор з тим самим qid не дублює замовлення', async () => {
     const it = (await http(`/v/${VID}/api/menu`)).j.categories.flatMap(c => c.items).find(i => typeof i.price === 'number'), qid = 'qa' + Date.now().toString(36);
     for (let i = 0; i < 2; i++) must((await vpos(VA, 'order', { t: 6, items: [{ id: it.id, q: 1 }], qid })).status === 200, 'order');

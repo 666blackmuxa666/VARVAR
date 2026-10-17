@@ -175,8 +175,12 @@ export async function handle(req, env) {
       if (url.pathname === '/api/me') { const d = await meData(env, (req.headers.get('authorization') || '').slice(7)); return d ? json(d) : json({ error: 'auth' }, 401); }
       // 🛵 замовлення за посиланням (самовивіз / доставка)
       if (url.pathname.startsWith('/api/lp/') && req.method === 'POST') { // 💳 callback LiqPay (data + signature); ключі — закладу (go, table, cert) або платформи (sub, ai)
-        const kind = url.pathname.slice(8), f = new URLSearchParams(await req.text()), L = await import('./liqpay.js');
-        const x = await L.lpVerify(['sub', 'ai'].includes(kind) ? L.lpPlatform(env) : L.lpKeys(env), f.get('data'), f.get('signature'));
+        const kind = url.pathname.slice(8), raw = await req.text(), xs = req.headers.get('x-sign'), L = await import('./liqpay.js');
+        let x;
+        if (xs) { // 💳 monobank: JSON + X-Sign (ECDSA); лише оплати закладу — підписка/ШІ платформи йдуть через LiqPay
+          const M = await import('./mono.js'); x = ['sub', 'ai'].includes(kind) ? null : await M.monoVerify(M.monoKeys(env), raw, xs);
+          if (x?.wait) return json({ ok: true, wait: 1 }); // created / processing / hold — чекаємо фінального статусу
+        } else { const f = new URLSearchParams(raw); x = await L.lpVerify(['sub', 'ai'].includes(kind) ? L.lpPlatform(env) : L.lpKeys(env), f.get('data'), f.get('signature')); }
         if (!x) return json({ error: 'sign' }, 403);
         const r = kind === 'go' ? await (await import('./delivery.js')).goPaid(env, x) : await (await import('./lpay.js')).lpCallback(env, kind, x);
         return json(r || { ok: true }); // підпис правильний — завжди 200, інакше LiqPay повторює callback по колу (про проблему вже сказали в Telegram)

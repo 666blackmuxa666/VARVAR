@@ -229,6 +229,7 @@ export async function certAsk(b, ip, env) {
     const LP = await import('./liqpay.js'), k = LP.lpKeys(env); if (!k || !(await (await import('./delivery.js')).getGoCfg(env)).onl) return [{ error: 'off' }, 403];
     await env.DB.put('cert:' + code, JSON.stringify({ ...c, onl: 1 }), { expirationTtl: 3 * 86400 }); await env.DB.put(rk, String(rn + 1), { expirationTtl: 3600 });
     const f = await LP.lpForm(k, { order_id: `ct-${env.VENUE || 'varvar'}-${code}`, amount: sum, description: `Подарунковий сертифікат ${sum} грн`, result_url: siteLink('about.html#cert=' + code), server_url: env.SELF_URL + '/api/lp/cert' });
+    if (!f.url) return [{ error: 'pay_fail', msg: f.error }, 502];
     return [{ ok: true, pay: f.url, code }, 200];
   }
   await env.DB.put('cert:' + code, JSON.stringify(c)); await env.DB.put(rk, String(rn + 1), { expirationTtl: 3600 });
