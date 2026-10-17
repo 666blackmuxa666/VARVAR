@@ -1095,3 +1095,11 @@ body.noanim .tables .tbl.new::before,body.noanim .tables .tbl.new::after{animati
 .ev.wait::before{content:'';position:absolute;inset:-3px;border-radius:inherit;padding:3px;background:conic-gradient(from var(--a),var(--g1),var(--g2),var(--g3),var(--g1));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:tblSpin 2.2s linear infinite;pointer-events:none;z-index:2}
 @keyframes evBreath{50%{box-shadow:0 0 26px color-mix(in srgb,var(--g1) 55%,transparent)}}
 body.noanim .ev.wait::before{animation:none}
+
+/* 🔴 за бажанням власника: без обводки — увесь стіл / картка стрічки плавно пульсує червоним (оплата QR — зеленим) */
+.tables .tbl.new::before,.ev.wait::before{content:none!important;animation:none!important}
+.tables .tbl.new,.ev.wait{--pc:255,59,48;position:relative;isolation:isolate;outline:none!important;border-color:rgba(var(--pc),.75)!important;animation:none!important}
+.tables .tbl.new.pw,.ev.wait.tpay{--pc:48,209,88}
+.tables .tbl.new::after,.ev.wait::after{content:''!important;position:absolute!important;inset:0!important;border-radius:inherit;background:rgb(var(--pc))!important;opacity:.2;animation:redPulse 2.4s ease-in-out infinite!important;pointer-events:none;z-index:-1;box-shadow:0 0 24px rgb(var(--pc))!important;filter:none!important;mask:none!important;-webkit-mask:none!important;padding:0!important}
+@keyframes redPulse{0%,100%{opacity:.18}50%{opacity:.55}}
+body.noanim .tables .tbl.new::after,body.noanim .ev.wait::after{animation:none!important;opacity:.4}
