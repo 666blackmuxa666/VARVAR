@@ -10,7 +10,7 @@ import { courNotify, courOwed } from './courier.js';
 import { queuePrint, queueKitchen, kitchenTicket, receipt, getRcpt } from './print.js';
 import { consume, wasteDish } from './stock.js';
 
-export const tg = (env, method, body) => fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+export const tg = (env, method, body) => fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).catch(() => new Response('{"ok":false}', { status: 502 })); // збій мережі до Telegram не валить дію каси (дія вже виконана)
 export const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 export const TZ = 'Europe/Kyiv';
 export const hhmm = (t = Date.now()) => new Date(t).toLocaleTimeString('uk-UA', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
