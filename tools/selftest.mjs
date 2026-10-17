@@ -584,6 +584,40 @@ async function apiTests() {
       const ok6 = await pos(A, 'staffAdd', { name: 'QA PIN ' + RUN, pin: pin('admin'), role: 'admin' }); must(ok6.status === 200, 'admin 6 цифр: ' + ok6.status + JSON.stringify(ok6.j));
       const up = await pos(A, 'staffEdit', { id: sid, role: 'admin' }); must(up.status === 400, 'підвищення без PIN: ' + up.status);
     });
+    await step('🔑 права з галочками: видача/зняття, чутливі — лише з PIN 6+, не-адмін не видає права й не робить адмінів', async () => {
+      const wp = pin(), wn = 'QA Права ' + RUN; must((await pos(A, 'staffAdd', { name: wn, pin: wp, role: 'waiter' })).status === 200, 'staffAdd');
+      const wid = (await posOk(A, 'staff')).staff.find(x => x.name === wn)?.id; must(wid, 'нема id');
+      let lg = await http('/api/pos', { op: 'login', pin: wp }); const W2 = () => lg.j.token;
+      must(!lg.j.me.can.includes('void'), 'офіціант без прав: ' + lg.j.me.can);
+      must((await pos(W2(), 'voidBack', { ts: 1 })).status === 403, 'voidBack без права має бути 403');
+      let r = await pos(A, 'staffPerm', { id: wid, perm: { void: 1 } }); must(r.status === 400 && /PIN/.test(r.j.error || ''), 'чутливе право без PIN: ' + r.status + JSON.stringify(r.j));
+      r = await pos(A, 'staffPerm', { id: wid, perm: { tax: 1 } }); must(r.status === 200 && r.j.perm.tax === 1, 'tax без PIN: ' + JSON.stringify(r.j));
+      r = await pos(A, 'staffPerm', { id: wid, perm: { void: 1, staff: 1, tax: 1 }, pin: '1234' }); must(r.status === 400, 'PIN 4 цифри з чутливим правом: ' + r.status);
+      const wp6 = pin('admin'); r = await pos(A, 'staffPerm', { id: wid, perm: { void: 1, staff: 1, tax: 1 }, pin: wp6 }); must(r.status === 200, 'з PIN 6: ' + JSON.stringify(r.j));
+      lg = await http('/api/pos', { op: 'login', pin: wp6 }); must(lg.j.token && lg.j.me.can.includes('void') && lg.j.me.can.includes('staff') && !lg.j.me.can.includes('cash'), 'can: ' + JSON.stringify(lg.j.me));
+      must((await pos(W2(), 'voidBack', { ts: 1 })).status !== 403, 'voidBack з правом не має бути 403');
+      must((await pos(W2(), 'taxGet', {})).status === 200, 'taxGet з правом');
+      must((await pos(W2(), 'expense', { sum: 1, cat: 'x' })).status === 403, 'expense без права cash = 403');
+      must((await pos(W2(), 'staffAdd', { name: 'QA Адм ' + RUN, pin: pin('admin'), role: 'admin' })).status === 403, 'не-адмін не створює адмінів');
+      must((await pos(W2(), 'staffPerm', { id: wid, perm: { cash: 1 } })).status === 403, 'не-адмін не видає права');
+      { const adm0 = (await posOk(A, 'staff')).staff.find(x => x.role === 'admin')?.id;
+        must((await pos(W2(), 'regCode', { role: 'admin', code: '7391' })).status === 403, 'regCode admin через elev = 403');
+        must((await posOk(W2(), 'staff')).reg.admin === '', 'elev не бачить reg.admin');
+        must((await pos(W2(), 'staffDel', { id: adm0 })).status === 403, 'staffDel адміна через elev = 403');
+        must((await pos(W2(), 'staffEdit', { id: adm0, pin: pin('admin') })).status === 403, 'staffEdit адміна через elev = 403');
+        must((await pos(W2(), 'reset', {})).status === 403, 'reset через elev = 403');
+        must((await pos(W2(), 'waiterOut', { uid: 1 })).status === 403, 'waiterOut через elev = 403'); }
+      // адміну можна зняти право: другий адмін без «reports» → 403 на звіт, але інше працює
+      const an = 'QA Адм2 ' + RUN, ap = pin('admin'); must((await pos(A, 'staffAdd', { name: an, pin: ap, role: 'admin' })).status === 200, 'admin2');
+      const aid = (await posOk(A, 'staff')).staff.find(x => x.name === an)?.id; must((await pos(A, 'staffPerm', { id: aid, perm: { reports: 0 } })).status === 200, 'зняти reports');
+      const a2 = await http('/api/pos', { op: 'login', pin: ap }); const A2 = a2.j.token;
+      must(!a2.j.me.can.includes('reports') && a2.j.me.can.includes('cash'), 'admin2 can: ' + a2.j.me.can);
+      must((await pos(A2, 'reports', { from: '2000-01-01', to: '2000-01-02' })).status === 403, 'reports без права = 403');
+      must((await pos(A2, 'shift', {})).status === 200, 'shift у admin2 працює');
+      must((await pos(A, 'staffPerm', { id: aid, perm: {} })).status === 200, 'скинути до шаблону');
+      must((await pos(A2, 'reports', { from: '2000-01-01', to: '2000-01-02' })).status !== 403, 'reports після скидання');
+      await pos(A, 'staffDel', { id: aid }); await pos(A, 'staffDel', { id: wid });
+    });
     await step('staffEdit: PIN = код реєстрації / чужий PIN → 400', async () => { for (const p of ['1114', '1119']) { const r = await pos(A, 'staffEdit', { id: sid, pin: p }); must(r.status === 400, p + ' → ' + r.status); } });
     let np = pin();
     await step('staffEdit: новий PIN → вхід ним', async () => { const e = await editRetry(A, { id: sid, pin: np }); must(e.status === 200 && e.j.ok, 'staffEdit → ' + e.status + ' ' + JSON.stringify(e.j)); np = e.pin; const r = await http('/api/pos', { op: 'login', pin: np }); must(r.j.token && r.j.me.name === nu, JSON.stringify(r.j).slice(0, 120)); users.cook = { token: r.j.token, me: r.j.me }; });

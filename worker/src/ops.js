@@ -2,6 +2,7 @@
 // Усе, що змінює столи/звіти/касу, — тут, щоб бот і POS завжди робили одне й те саме.
 import { getMenu, saveMenu, menuLock } from './menu.js';
 import { tn } from './tn.js';
+import { SENSITIVE, cleanPerm, diffPerm } from './perm.js';
 import { ALS, cur } from './venue.js';
 import { cliClose, cliTouch, goKitchen, goButtons, goGone } from './delivery.js';
 import { reviewQueue } from './site.js';
@@ -314,8 +315,8 @@ export async function precheck(env, t, who) {
 async function _setDiscount(env, t, pct, who, admin = true) {
   const b = await getBill(env, t); if (!b.total) return null;
   pct = Math.max(0, Math.min(100, Math.round(+pct || 0)));
-  const dmax = (await getCfg(env)).discMax;
-  if (!admin && pct > dmax) return { error: `Офіціант може дати знижку до ${dmax}%. Більше — лише адміністратор.`, max: dmax };
+  const dmax = typeof admin === 'number' ? admin : (await getCfg(env)).discMax; // число — персональний ліміт (perm.discountMax)
+  if (admin !== true && pct > dmax) return { error: `Офіціант може дати знижку до ${dmax}%. Більше — лише адміністратор.`, max: dmax };
   delete b.discSum; // нова знижка — знову відсотком від усього рахунку
   if (pct) b.discBy = who || ''; else delete b.discBy;
   if (pct) b.disc = pct; else delete b.disc;
@@ -1039,7 +1040,7 @@ export const regCode = async (env, role) => (await env.DB.get('reg_' + role)) ||
 export async function regRole(env, code) { code = String(code || ''); for (const r of ['admin', 'waiter', 'cook', 'courier']) if (code === await regCode(env, r)) return r; return null; }
 export const getStaff = async env => (await env.DB.get('staff', 'json')) || [];
 // 🔐 PIN: адміністратор — 6–8 цифр (він бачить гроші й налаштування), решта — 4. Старі 4-значні PIN адмінів діють, доки їх не змінять.
-export const pinRule = role => role === 'admin' ? { re: /^\d{6,8}$/, err: 'PIN адміністратора — від 6 до 8 цифр.' } : { re: /^\d{4}$/, err: 'PIN — рівно 4 цифри.' };
+export const pinRule = (role, perm) => role === 'admin' || (perm && SENSITIVE.some(k => perm[k] === 1)) ? { re: /^\d{6,8}$/, err: role === 'admin' ? 'PIN адміністратора — від 6 до 8 цифр.' : 'З правами на видалення, персонал, налаштування чи звіти PIN — від 6 до 8 цифр.' } : { re: /^\d{4}$/, err: 'PIN — рівно 4 цифри.' };
 async function _addStaff(env, name, pin, role = 'waiter') {
   name = String(name || '').trim().slice(0, 30); pin = String(pin || '').trim(); role = ['admin', 'cook', 'courier'].includes(role) ? role : 'waiter';
   if (!name) return { error: 'Потрібне імʼя.' };
@@ -1065,7 +1066,7 @@ async function _editStaff(env, id, f) {
     if (list.some(x => x.id !== id && x.name.toLowerCase() === n.toLowerCase())) return { error: 'Працівник з таким імʼям уже є — додайте прізвище або букву.' }; s.name = n; }
   const fr = f.role != null ? (['admin', 'cook', 'courier'].includes(f.role) ? f.role : 'waiter') : s.role;
   if (fr === 'admin' && s.role !== 'admin' && f.pin == null) return { error: 'Для адміністратора задайте новий PIN — від 6 до 8 цифр.' };
-  if (f.pin != null) { const pin = String(f.pin).trim(); if (!pinRule(fr).re.test(pin)) return { error: pinRule(fr).err };
+  if (f.pin != null) { const pin = String(f.pin).trim(); if (!pinRule(fr, fr === 'admin' ? null : s.perm).re.test(pin)) return { error: pinRule(fr, fr === 'admin' ? null : s.perm).err };
     if (await regRole(env, pin)) return { error: 'Цей код — для реєстрації. Оберіть інший PIN.' };
     if (await pinFind(env, list, pin, id)) return { error: 'Такий PIN уже є — оберіть інший.' }; s.pin = await pinMake(env, pin, id); }
   if (f.role != null) s.role = ['admin', 'cook', 'courier'].includes(f.role) ? f.role : 'waiter';
@@ -1182,6 +1183,23 @@ async function kqEdit(env, ...a) { const e = await L(env, 'kq:' + dayKey(), () =
 export async function kitchenClosed(env, ...a) { return L(env, 'kq:' + dayKey(), () => _kitchenClosed(env, ...a)); }
 async function kitchenCancel(env, t, ...a) { const r = await L(env, 'kq:' + dayKey(), () => _kitchenCancel(env, t, ...a)); if (r?.length) await (await import('./kitbot.js')).kitSyncTable(env, t).catch(() => {}); return r; }
 export async function toggleFav(env, ...a) { return L(env, 'fav', () => _toggleFav(env, ...a)); }
+// 🔑 права працівника (відхилення від шаблону ролі). Чутливі права (SENSITIVE) — лише разом із новим PIN 6–8 цифр; старі PIN не чіпаємо
+export async function setPerm(env, id, p, pin) {
+  return L(env, 'staff', async () => {
+    const list = await getStaff(env), s = list.find(x => x.id === id); if (!s) return { error: 'Працівника не знайдено' };
+    const np = diffPerm(s.role, cleanPerm(p));
+    if (s.role !== 'admin' && SENSITIVE.some(k => np[k] === 1 && s.perm?.[k] !== 1) && (pin == null || pin === '')) return { error: 'Для прав «видалення / персонал / налаштування / звіти» задайте новий PIN — від 6 до 8 цифр.' };
+    if (s.role === 'admin' && np.staff === 0 && !list.some(x => x.id !== id && x.role === 'admin' && x.perm?.staff !== 0)) return { error: 'Має лишитись хоча б один адміністратор із правом «Персонал».' };
+    if (pin != null && pin !== '') { const pn = String(pin).trim(), rule = pinRule(s.role, np);
+      if (!rule.re.test(pn)) return { error: rule.err };
+      if (await regRole(env, pn)) return { error: 'Цей код — для реєстрації. Оберіть інший PIN.' };
+      if (await pinFind(env, list, pn, id)) return { error: 'Такий PIN уже є — оберіть інший.' };
+      s.pin = await pinMake(env, pn, id); s.ver = (s.ver || 0) + 1; }
+    if (Object.keys(np).length) s.perm = np; else delete s.perm;
+    await env.DB.put('staff', JSON.stringify(list));
+    return { ok: true, s };
+  });
+}
 export async function addStaff(env, ...a) { return L(env, 'staff', () => _addStaff(env, ...a)); }
 export async function delStaff(env, ...a) { return L(env, 'staff', () => _delStaff(env, ...a)); }
 // 👤 аватарки (працівник, гість, власник): data:image/… → байти (до 600 КБ; клієнт стискає до ~30 КБ)

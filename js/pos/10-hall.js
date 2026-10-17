@@ -206,8 +206,8 @@
   }
   async function discFlow() {
     const t = S.open, b = S.tables[t]; if (!b) return;
-    const dmax = S.cfg?.discMax ?? 20, max = isAdmin() ? 100 : dmax; // офіціант — до ліміту з налаштувань, адмін — будь-яка
-    const v = await choose(`Знижка — стіл ${tn(t)}`, `Сума ${money(b.total)}${b.disc ? ` · зараз ${b.disc}%` : ''}${isAdmin() ? '' : ` · офіціант — до ${dmax}%`}`, [...[5, 10, 15, 20, 25, 30, 50].filter(p => p <= max).map(p => ({ label: `${p}%  →  ${money(b.total - Math.round(b.total * p / 100))}`, val: String(p) })), { label: '✏️ Свій відсоток', val: 'own' }, { label: 'Без знижки', val: '0', cls: 'red' }]);
+    const dmax = S.me?.dmax ?? S.cfg?.discMax ?? 20, max = realAdmin() && S.me?.dmax == null ? 100 : dmax; // офіціант — до ліміту з налаштувань, адмін — будь-яка
+    const v = await choose(`Знижка — стіл ${tn(t)}`, `Сума ${money(b.total)}${b.disc ? ` · зараз ${b.disc}%` : ''}${max === 100 ? '' : ` · ваш ліміт — до ${dmax}%`}`, [...[5, 10, 15, 20, 25, 30, 50].filter(p => p <= max).map(p => ({ label: `${p}%  →  ${money(b.total - Math.round(b.total * p / 100))}`, val: String(p) })), { label: '✏️ Свій відсоток', val: 'own' }, { label: 'Без знижки', val: '0', cls: 'red' }]);
     if (v == null) return;
     let p = v;
     if (v === 'own') { p = await ask('Свій відсоток знижки', `Число від 0 до ${max}`, 'number'); if (p == null) return; if (+p > max) return toast(`⛔ Офіціант може дати знижку до ${max}%`); }

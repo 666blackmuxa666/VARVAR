@@ -2,6 +2,7 @@
 // і окремо пароль адміністратора (звіти, каса, видалення, меню, Wi‑Fi, персонал, паролі).
 // Уся логіка — у ops.js (та сама, що в касовій програмі POS).
 import { siteLink } from './venue.js';
+import { PERMS, PERM_KEYS, SENSITIVE, can } from './perm.js';
 import { getMenu, handleMenuText, handleMenuPhoto, HELP as MENU_HELP } from './menu.js';
 import { tn, isGo } from './tn.js';
 import { courCashGive } from './courier.js';
@@ -19,6 +20,7 @@ import {
   reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, tipBalances, payTips, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenPct, rejectOrder, kitchenStats, getKq, kitchenDone, kitchenStart, restoreClosed, reopenClosed, restoreTable, restoreExpense, balances, reconcile, WAITER_DISC_MAX, getCfg, setCfg, CFG_LIM, zText, reportBreakdown, regRole, isAdmin, isWaiter, getStaff, addStaff, delStaff, editStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
   getMov, delMove, restoreMove, delZ, restoreZ, pinHash, pinFind, pinIs, isDay,editClosed, dayX, notify, getEvents,
 } from './ops.js';
+import { setPerm } from './ops.js';
 export { tg, esc, hhmm, getBill } from './ops.js';
 export { addStat, addDishes } from './ops.js';
 
@@ -288,8 +290,16 @@ async function staffOne(env, id) {
   const s = (await getStaff(env)).find(x => x.id === id); if (!s) return staffView(env);
   return { text: `👤 <b>${esc(s.name)}</b> · ${ROLE_ONE[roleOf(s)]}`, markup: { inline_keyboard: [
     [{ text: '✏️ Імʼя', callback_data: 'stfn:' + id }, { text: '🔑 PIN', callback_data: 'stfp:' + id }],
-    [{ text: '🔄 Роль', callback_data: 'stfr:' + id }, { text: '🗑 Видалити', callback_data: 'stfdq:' + id }],
+    [{ text: '🔄 Роль', callback_data: 'stfr:' + id }, { text: '🛡 Права', callback_data: 'prm:' + id }, { text: '🗑 Видалити', callback_data: 'stfdq:' + id }],
     [{ text: '⬅️ Усі працівники', callback_data: 'stfbk' }]] } };
+}
+// 🛡 Права працівника: перемикачі (паритет із касою). Чутливі права для не-адмінів — лише в касі разом із новим PIN 6–8 цифр
+const BOT_PERM = { mvl: 'cash', zl: 'cash', zday: 'cash', rp: 'reports', stf: 'staff', stfn: 'staff', stfp: 'staff', stfr: 'staff', stfro: 'staff', stfdq: 'staff', stfdel: 'staff', stfadd: 'staff', prm: 'staff', prt: 'staff' };
+async function permView(env, id) {
+  const s = (await getStaff(env)).find(x => x.id === id); if (!s) return staffView(env);
+  const adm = s.role === 'admin', on = k => adm ? s.perm?.[k] !== 0 : s.perm?.[k] === 1;
+  return { text: `🛡 <b>Права: ${esc(s.name)}</b> · ${ROLE_ONE[roleOf(s)]}\n${adm ? 'Адміністратор має всі права — натисніть, щоб вимкнути.' : 'Роль дає звичні дії; натисніть, щоб додати право.'}\n<i>🔒 — чутливе право: у боті лише для адміністраторів, для інших — у касі з новим PIN 6–8 цифр.</i>`,
+    markup: { inline_keyboard: [...PERMS.map(p => [{ text: `${on(p.k) ? '✅' : '▫️'} ${p.e} ${p.n.slice(0, 38)}${SENSITIVE.includes(p.k) && !adm ? ' 🔒' : ''}`, callback_data: `prt:${id}:${p.k}` }]), [{ text: '⬅️ Назад', callback_data: 'stf:' + id }]] } };
 }
 const staffEdited = r => r.error ? { text: '⚠️ ' + r.error } : { text: `✅ <b>${esc(r.s.name)}</b> · ${ROLE_ONE[roleOf(r.s)]}${r.old !== r.s.name ? `\n✏️ Було: ${esc(r.old)} — графік, зарплату й чайові перенесено` : ''}\nВхід у касу — заново.` };
 const TEST_PRINT = () => [['logo'], ['big', 'ТЕСТ ДРУКУ'], ['c', hhmm()], ['hr'], ['l', 'Українські літери: Іі Її Єє Ґґ'], ['lr', '2 × Мєско', '760'], ['lr2', 'Всього', '760 грн'], ['hr'], ['gap']];
@@ -684,6 +694,8 @@ async function handleCallback(q, env) {
     await tg(env, 'editMessageReplyMarkup', { chat_id: chat, message_id: mid, reply_markup: { inline_keyboard: kb } }).catch(() => {});
     return answer('✅ Позначено як зроблено');
   }
+  { const pk = admin && BOT_PERM[(q.data || '').split(':')[0]]; // 🔑 адміну право могли зняти в налаштуваннях прав
+    if (pk) { const a = await env.DB.get('adm:' + uid, 'json'), st = (await getStaff(env)).find(x => x.name === a?.name); if (st && !can(st, pk)) return answer('🔐 Для вас вимкнено це право'); } }
   if (!admin && !(await isWaiter(env, uid))) return answer('🔑 Спершу увійдіть: напишіть боту і введіть пароль офіціанта');
   const edit = (text, markup) => tg(env, 'editMessageText', { chat_id: chat, message_id: mid, text, parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: markup || { inline_keyboard: [] } });
   const send = async (v) => {
@@ -1003,6 +1015,14 @@ async function handleCallback(q, env) {
   if (act === 'float') { await env.DB.put('st:' + uid, 'float', { expirationTtl: 600 }); await send({ text: '🏦 Скільки грошей у касі на початок дня (розмін)? Напишіть число:' }); return answer(''); }
   if (act === 'stfadd') { await env.DB.put('st:' + uid, 'stfadd', { expirationTtl: 600 }); await send({ text: '👥 Напишіть імʼя і PIN (4–6 цифр):\n<code>Назар 1234</code> — офіціант\n<code>Назар 1234 адмін</code> — адміністратор\n(повідомлення одразу видалиться)' }); return answer(''); }
   if (act === 'stf') { const v = await staffOne(env, arg); await edit(v.text, v.markup); return answer(''); }
+  if (act === 'prm') { const v = await permView(env, arg); await edit(v.text, v.markup); return answer(''); }
+  if (act === 'prt') { // перемикач права: arg = id працівника, oid = ключ
+    const s = (await getStaff(env)).find(x => x.id === arg); if (!s || !PERM_KEYS.includes(oid)) return answer('Не знайдено');
+    const adm = s.role === 'admin', now = adm ? s.perm?.[oid] !== 0 : s.perm?.[oid] === 1;
+    if (!adm && !now && SENSITIVE.includes(oid)) return answer('🔒 Це право видається в касі разом з новим PIN 6–8 цифр');
+    const r = await setPerm(env, arg, { ...(s.perm || {}), [oid]: now ? 0 : 1 }, undefined); if (r.error) return answer('⚠️ ' + r.error);
+    const v = await permView(env, arg); await edit(v.text, v.markup); return answer(now ? 'Вимкнено' : 'Увімкнено');
+  }
   if (act === 'stfbk') { const v = await staffView(env); await edit(v.text, v.markup); return answer(''); }
   if (act === 'stfn' || act === 'stfp') { await env.DB.put('st:' + uid, act + ':' + arg, { expirationTtl: 600 }); await send({ text: act === 'stfn' ? '✏️ Напишіть нове імʼя (графік, зарплата й чайові перейдуть на нього)' : '🔑 Напишіть новий PIN — 4 цифри (повідомлення одразу видалиться)' }); return answer(''); }
   if (act === 'stfr') { const s = (await getStaff(env)).find(x => x.id === arg); if (!s) return answer('Не знайдено'); await edit(`🔄 Нова роль для <b>${esc(s.name)}</b>:`, { inline_keyboard: [...chunk(Object.keys(ROLE_ONE).filter(r => r !== roleOf(s)).map(r => ({ text: ROLE_ONE[r], callback_data: `stfro:${arg}:${r}` })), 2), [{ text: '⬅️ Назад', callback_data: 'stf:' + arg }]] }); return answer(''); }

@@ -150,9 +150,14 @@ var __objRest = (source, exclude) => {
     if (sub) sub.textContent = VENUE || ((_c = S.brand) == null ? void 0 : _c.logo) ? nm : "";
   }
   applyBrand();
-  const isAdmin = () => {
+  const realAdmin = () => {
     var _a2;
     return ((_a2 = S.me) == null ? void 0 : _a2.role) === "admin";
+  };
+  const VIEW_PERM = { cash: ["cash"], reports: ["reports"], calc: ["stock"], team: ["staff", "pay"], settings: ["settings", "print"], closed: ["void", "edit_closed"] };
+  const isAdmin = () => {
+    var _a2, _b;
+    return realAdmin() || !!((_b = (_a2 = S.me) == null ? void 0 : _a2.can) == null ? void 0 : _b.length) && (VIEW_PERM[S.view] || []).some((k) => S.me.can.includes(k));
   }, isCook = () => {
     var _a2;
     return ((_a2 = S.me) == null ? void 0 : _a2.role) === "cook";
@@ -712,14 +717,25 @@ var __objRest = (source, exclude) => {
   const NAV_MAIN = ["hall", "kq", "cash", "books"];
   const NAV_W = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["books", "\u{1F4C5}", "\u0411\u0440\u043E\u043D\u0456"], ["closed", "\u{1F9FE}", "\u0427\u0435\u043A\u0438"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["course", "\u{1F393}", "\u041D\u0430\u0432\u0447\u0430\u043D\u043D\u044F"]];
   const NAV_COUR = [["go", "\u{1F6F5}", "\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0438"], ["course", "\u{1F393}", "\u041D\u0430\u0432\u0447\u0430\u043D\u043D\u044F"]];
-  const navList = () => isCour() ? NAV_COUR : isCook() ? NAV_COOK : isAdmin() ? NAV_A : NAV_W;
+  const can = (k) => {
+    var _a2;
+    return ((_a2 = S.me) == null ? void 0 : _a2.can) ? S.me.can.includes(k) : realAdmin();
+  };
+  const NAV_PERM = { cash: "cash", reports: "reports", calc: "stock", team: "staff", settings: "settings" };
+  const navList = () => {
+    var _a2, _b;
+    if (isCour()) return NAV_COUR;
+    if (isCook()) return ((_b = (_a2 = S.me) == null ? void 0 : _a2.can) == null ? void 0 : _b.length) ? [...NAV_COOK, ...NAV_A.filter(([v]) => NAV_PERM[v] && can(NAV_PERM[v]) && !NAV_COOK.some((x) => x[0] === v))] : NAV_COOK;
+    if (realAdmin()) return NAV_A.filter(([v]) => !NAV_PERM[v] || can(NAV_PERM[v]));
+    return [...NAV_W, ...NAV_A.filter(([v]) => NAV_PERM[v] && can(NAV_PERM[v]))];
+  };
   const NAV = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["closed", "\u{1F4DC}", "\u0417\u0430\u043A\u0440\u0438\u0442\u0456"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["cash", "\u{1F4B0}", "\u041A\u0430\u0441\u0430", 1], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438", 1], ["kq", "\u{1F468}\u200D\u{1F373}", "\u041A\u0443\u0445\u043D\u044F", 1], ["calc", "\u{1F9EE}", "\u0420\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043E\u043A", 1], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442.", 1]];
   function renderNav() {
     var _a2, _b, _c;
     const newCnt = S.events.filter((e) => e.k === "guest" && e.s === "new").length;
-    const attNew = isAdmin() ? S.events.filter((e) => e.k === "att" && e.s === "new").length : 0;
+    const attNew = realAdmin() ? S.events.filter((e) => e.k === "att" && e.s === "new").length : 0;
     const nv = $("#nav"), nx = (nv == null ? void 0 : nv.scrollLeft) || 0, ny = (nv == null ? void 0 : nv.scrollTop) || 0;
-    setHTML(nv, `<div class="brand">${brandImg()}</div>` + navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? "on" : ""}${isAdmin() && !NAV_MAIN.includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === "team" && attNew ? `<span class="badge">${attNew}</span>` : ""}${v === "books" && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ""}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : S.events.some(evMention) ? '<span class="badge">@</span>' : ""}</button><button class="more-btn ${isAdmin() && !NAV_MAIN.includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><button class="me" data-a="zpMy" title="\u041C\u0456\u0439 \u043A\u0430\u0431\u0456\u043D\u0435\u0442"><i>${((_a2 = S.me) == null ? void 0 : _a2.av) ? `<img src="${esc(S.me.av)}" alt="">` : esc((((_b = S.me) == null ? void 0 : _b.name) || "?").slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ""}</i>${S.taskN ? `<span class="badge" title="\u0417\u0430\u0432\u0434\u0430\u043D\u044C \u043D\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456">${S.taskN}</span>` : ""}<b>${esc((_c = S.me) == null ? void 0 : _c.name)}</b><small>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : isCour() ? "\u043A\u0443\u0440'\u0454\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"} \xB7 \u043A\u0430\u0431\u0456\u043D\u0435\u0442</small></button><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
+    setHTML(nv, `<div class="brand">${brandImg()}</div>` + navList().map(([v, ic, l]) => `<button data-n="${v}" class="${S.view === v ? "on" : ""}${realAdmin() && !NAV_MAIN.includes(v) ? " more-i" : ""}" data-a="view" data-v="${v}"><span class="ic">${ic}</span>${l}${v === "team" && attNew ? `<span class="badge">${attNew}</span>` : ""}${v === "books" && S.bkNew ? `<span class="badge">${S.bkNew}</span>` : ""}</button>`).join("") + `<button class="feed-btn" data-a="feed"><span class="ic">\u{1F514}</span>\u0421\u0442\u0440\u0456\u0447\u043A\u0430${newCnt ? `<span class="badge">${newCnt}</span>` : S.events.some(evMention) ? '<span class="badge">@</span>' : ""}</button><button class="more-btn ${realAdmin() && !NAV_MAIN.includes(S.view) ? "on" : ""}" data-a="more"><span class="ic">\u22EF</span>\u0429\u0435</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="\u041D\u0430 \u0432\u0435\u0441\u044C \u0435\u043A\u0440\u0430\u043D"><span class="ic">\u26F6</span>\u0415\u043A\u0440\u0430\u043D</button><button class="me" data-a="zpMy" title="\u041C\u0456\u0439 \u043A\u0430\u0431\u0456\u043D\u0435\u0442"><i>${((_a2 = S.me) == null ? void 0 : _a2.av) ? `<img src="${esc(S.me.av)}" alt="">` : esc((((_b = S.me) == null ? void 0 : _b.name) || "?").slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ""}</i>${S.taskN ? `<span class="badge" title="\u0417\u0430\u0432\u0434\u0430\u043D\u044C \u043D\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456">${S.taskN}</span>` : ""}<b>${esc((_c = S.me) == null ? void 0 : _c.name)}</b><small>${isAdmin() ? "\u0430\u0434\u043C\u0456\u043D" : isCook() ? "\u043A\u0443\u0445\u0430\u0440" : isCour() ? "\u043A\u0443\u0440'\u0454\u0440" : "\u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442"} \xB7 \u043A\u0430\u0431\u0456\u043D\u0435\u0442</small></button><button data-a="switch"><span class="ic">\u{1F512}</span>\u0412\u0438\u0439\u0442\u0438</button>`);
     if (nv && ny) nv.scrollTop = ny;
     if (nv && nv.scrollWidth > nv.clientWidth) {
       nv.scrollLeft = nx;
@@ -1029,7 +1045,7 @@ var __objRest = (source, exclude) => {
         break;
       }
       case "more": {
-        const v = await choose("\u0429\u0435", "", (isCook() ? navList() : isAdmin() ? navList().filter((n) => !NAV_MAIN.includes(n[0])) : NAV.filter((n) => !n[3] && ["stop", "menu", "calc"].includes(n[0]))).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: "\u{1F512} \u0412\u0438\u0439\u0442\u0438", val: "logout", cls: "red" }]));
+        const v = await choose("\u0429\u0435", "", (isCook() ? navList() : realAdmin() ? navList().filter((n) => !NAV_MAIN.includes(n[0])) : NAV.filter((n) => !n[3] && ["stop", "menu", "calc"].includes(n[0]))).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: "\u{1F512} \u0412\u0438\u0439\u0442\u0438", val: "logout", cls: "red" }]));
         if (v === "logout") {
           if (await confirmBox("\u0412\u0438\u0439\u0442\u0438?", "\u041D\u0430\u0441\u0442\u0443\u043F\u043D\u0438\u0439 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A \u0443\u0432\u0456\u0439\u0434\u0435 \u0441\u0432\u043E\u0457\u043C PIN")) logout();
         } else if (v) {
@@ -2539,11 +2555,11 @@ var __objRest = (source, exclude) => {
     return await ask("\u041F\u0440\u0438\u0447\u0438\u043D\u0430 \u0441\u043A\u0430\u0441\u0443\u0432\u0430\u043D\u043D\u044F", "\u041D\u0430\u043F\u0440.: \u0433\u0456\u0441\u0442\u044C \u043F\u0440\u043E\u043B\u0438\u0432, \u0437\u0430\u043C\u0456\u043D\u0438\u043B\u0438 \u043D\u0430 \u0456\u043D\u0448\u0443");
   }
   async function discFlow() {
-    var _a2, _b;
+    var _a2, _b, _c, _d, _e;
     const t = S.open, b = S.tables[t];
     if (!b) return;
-    const dmax = (_b = (_a2 = S.cfg) == null ? void 0 : _a2.discMax) != null ? _b : 20, max = isAdmin() ? 100 : dmax;
-    const v = await choose(`\u0417\u043D\u0438\u0436\u043A\u0430 \u2014 \u0441\u0442\u0456\u043B ${tn(t)}`, `\u0421\u0443\u043C\u0430 ${money(b.total)}${b.disc ? ` \xB7 \u0437\u0430\u0440\u0430\u0437 ${b.disc}%` : ""}${isAdmin() ? "" : ` \xB7 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442 \u2014 \u0434\u043E ${dmax}%`}`, [...[5, 10, 15, 20, 25, 30, 50].filter((p2) => p2 <= max).map((p2) => ({ label: `${p2}%  \u2192  ${money(b.total - Math.round(b.total * p2 / 100))}`, val: String(p2) })), { label: "\u270F\uFE0F \u0421\u0432\u0456\u0439 \u0432\u0456\u0434\u0441\u043E\u0442\u043E\u043A", val: "own" }, { label: "\u0411\u0435\u0437 \u0437\u043D\u0438\u0436\u043A\u0438", val: "0", cls: "red" }]);
+    const dmax = (_d = (_c = (_a2 = S.me) == null ? void 0 : _a2.dmax) != null ? _c : (_b = S.cfg) == null ? void 0 : _b.discMax) != null ? _d : 20, max = realAdmin() && ((_e = S.me) == null ? void 0 : _e.dmax) == null ? 100 : dmax;
+    const v = await choose(`\u0417\u043D\u0438\u0436\u043A\u0430 \u2014 \u0441\u0442\u0456\u043B ${tn(t)}`, `\u0421\u0443\u043C\u0430 ${money(b.total)}${b.disc ? ` \xB7 \u0437\u0430\u0440\u0430\u0437 ${b.disc}%` : ""}${max === 100 ? "" : ` \xB7 \u0432\u0430\u0448 \u043B\u0456\u043C\u0456\u0442 \u2014 \u0434\u043E ${dmax}%`}`, [...[5, 10, 15, 20, 25, 30, 50].filter((p2) => p2 <= max).map((p2) => ({ label: `${p2}%  \u2192  ${money(b.total - Math.round(b.total * p2 / 100))}`, val: String(p2) })), { label: "\u270F\uFE0F \u0421\u0432\u0456\u0439 \u0432\u0456\u0434\u0441\u043E\u0442\u043E\u043A", val: "own" }, { label: "\u0411\u0435\u0437 \u0437\u043D\u0438\u0436\u043A\u0438", val: "0", cls: "red" }]);
     if (v == null) return;
     let p = v;
     if (v === "own") {
@@ -4620,7 +4636,7 @@ var __objRest = (source, exclude) => {
       ${[["admin", "\u{1F510} \u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440\u0438"], ["waiter", "\u{1F9D1}\u200D\u{1F373} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0438"], ["cook", "\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u043D\u044F"], ["courier", "\u{1F6F5} \u041A\u0443\u0440'\u0454\u0440\u0438"]].map(([r, t]) => {
       const l = staff ? staff.filter((s) => (ROLE[s.role] ? s.role : "waiter") === r) : null;
       return `<div class="card"><h3>${t} <span class="muted">\xB7 ${l ? l.length : "\u2026"}</span></h3>
-        <div class="scrollbox">${l ? l.map((s) => `<div class="kv stf-row"><span class="stf-n">${esc(s.name)}</span><span class="kv-r"><button class="btn sm" data-a="stfName" data-id="${s.id}" title="\u0417\u043C\u0456\u043D\u0438\u0442\u0438 \u0456\u043C\u02BC\u044F">\u270F\uFE0F</button><button class="btn sm" data-a="stfPin" data-id="${s.id}" title="\u0417\u043C\u0456\u043D\u0438\u0442\u0438 PIN">\u{1F511}</button><button class="btn sm" data-a="stfRole" data-id="${s.id}" title="\u0417\u043C\u0456\u043D\u0438\u0442\u0438 \u0440\u043E\u043B\u044C">\u{1F504}</button><button class="btn sm red" data-a="staffDel" data-id="${s.id}" title="\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438">\u{1F5D1}</button></span></div>`).join("") || '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454</div>' : "\u2026"}</div></div>`;
+        <div class="scrollbox">${l ? l.map((s) => `<div class="kv stf-row"><span class="stf-n">${esc(s.name)}</span><span class="kv-r"><button class="btn sm" data-a="stfName" data-id="${s.id}" title="\u0417\u043C\u0456\u043D\u0438\u0442\u0438 \u0456\u043C\u02BC\u044F">\u270F\uFE0F</button><button class="btn sm" data-a="stfPin" data-id="${s.id}" title="\u0417\u043C\u0456\u043D\u0438\u0442\u0438 PIN">\u{1F511}</button><button class="btn sm" data-a="stfRole" data-id="${s.id}" title="\u0417\u043C\u0456\u043D\u0438\u0442\u0438 \u0440\u043E\u043B\u044C">\u{1F504}</button><button class="btn sm" data-a="stfPerm" data-id="${s.id}" title="\u041F\u0440\u0430\u0432\u0430 (\u0433\u0430\u043B\u043E\u0447\u043A\u0438)">\u{1F6E1}${Object.keys(s.perm || {}).length ? "\u2022" : ""}</button><button class="btn sm red" data-a="staffDel" data-id="${s.id}" title="\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438">\u{1F5D1}</button></span></div>`).join("") || '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454</div>' : "\u2026"}</div></div>`;
     }).join("")}
       <div class="card"><h3>\u2795 \u041D\u043E\u0432\u0438\u0439 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A</h3><div class="muted set-note">\u0410\u0431\u043E \u0441\u0430\u043C \u2014 \u043A\u043E\u0434\u043E\u043C \u0440\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u0457 \u0432 \u043A\u0430\u0441\u0456.</div>
         <button class="btn sm primary" data-a="staffAdd">\u2795 \u0414\u043E\u0434\u0430\u0442\u0438 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430</button></div>
@@ -5578,11 +5594,11 @@ var __objRest = (source, exclude) => {
       return d.toISOString().slice(0, 10);
     };
     const NOTE = { in: "\u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0430", add: "\u0434\u043E\u0434\u0430\u043D\u043E \u0432\u0440\u0443\u0447\u043D\u0443", off: "\u0441\u043F\u0438\u0441\u0430\u043D\u043E", mv: "\u043F\u0435\u0440\u0435\u043C\u0456\u0449\u0435\u043D\u043D\u044F", prod: "\u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430", cnt: "\u0456\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u044F" };
-    const can = (x) => {
+    const can2 = (x) => {
       var _a2;
       return ["add", "off"].includes(x.t) && !x.undo && !/^(🔗|↩️)/.test(x.note || "") && (isAdmin() || x.by === ((_a2 = S.me) == null ? void 0 : _a2.name) && day === todayK());
     };
-    const rows = r.list.map((x, i) => [x, i]).reverse().map(([x, i]) => `<div class="kv${x.undo ? " sk-undo" : ""}"><span>${x.at} ${T2[x.t] || "\u2022"} <b>${esc(x.n)}</b> ${x.q > 0 ? "+" : ""}${fq(x.q, x.u)} <span class="muted">\xB7 ${NOTE[x.t] || ""} \xB7 ${WHN[x.wh] || ""}${x.note ? " \xB7 " + esc(x.note) : ""}${x.by ? " \xB7 " + esc(x.by) : ""}${x.undo ? ` \xB7 \u21A9\uFE0F \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E ${esc(x.undo.by)} ${x.undo.at}` : ""}</span></span><span class="kv-r">${isAdmin() && x.sum ? `<b class="money">${money(x.sum)}</b>` : ""}${can(x) ? `<button class="btn sm ghost" data-mi-v="u${i}:${x.ts}" title="\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438">\u21A9\uFE0F</button>` : ""}</span></div>`).join("");
+    const rows = r.list.map((x, i) => [x, i]).reverse().map(([x, i]) => `<div class="kv${x.undo ? " sk-undo" : ""}"><span>${x.at} ${T2[x.t] || "\u2022"} <b>${esc(x.n)}</b> ${x.q > 0 ? "+" : ""}${fq(x.q, x.u)} <span class="muted">\xB7 ${NOTE[x.t] || ""} \xB7 ${WHN[x.wh] || ""}${x.note ? " \xB7 " + esc(x.note) : ""}${x.by ? " \xB7 " + esc(x.by) : ""}${x.undo ? ` \xB7 \u21A9\uFE0F \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E ${esc(x.undo.by)} ${x.undo.at}` : ""}</span></span><span class="kv-r">${isAdmin() && x.sum ? `<b class="money">${money(x.sum)}</b>` : ""}${can2(x) ? `<button class="btn sm ghost" data-mi-v="u${i}:${x.ts}" title="\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438">\u21A9\uFE0F</button>` : ""}</span></div>`).join("");
     const v = await modal({ title: "\u{1F4DC} \u0420\u0443\u0445 \u0441\u043A\u043B\u0430\u0434\u0443", body: `<div class="zp-top"><button class="btn sm" data-mi-v="d${sh(-1)}">\u25C0</button><b>${day === todayK() ? "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : day.split("-").reverse().join(".")}</b>${day < todayK() ? `<button class="btn sm" data-mi-v="d${sh(1)}">\u25B6</button>` : "<span></span>"}</div>
       <div class="muted" style="font-size:12px;margin-bottom:6px">\u{1F9FE} \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0430 (\u0437 \xAB\u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E\xBB / \xAB\u21A9\uFE0F \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E\xBB \u2014 \u043A\u043E\u043B\u0438 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0443 \u0432\u0438\u0434\u0430\u043B\u0438\u043B\u0438 \u0430\u0431\u043E \u0432\u0456\u0434\u043D\u043E\u0432\u0438\u043B\u0438) \xB7 \u2795 \u0434\u043E\u0434\u0430\u043D\u043E \xB7 \u{1F5D1} \u0441\u043F\u0438\u0441\u0430\u043D\u043E \xB7 \u21C4 \u043F\u0435\u0440\u0435\u043C\u0456\u0449\u0435\u043D\u043D\u044F \xB7 \u{1F373} \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \xB7 \u{1F4DD} \u0456\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u044F. \u041F\u0440\u043E\u0434\u0430\u0436\u0456 \u0437\u0430 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0430\u043C\u0438 \u2014 \u0443 \xAB\u{1F4CA} \u041F\u043B\u044E\u0441\u0438 / \u043C\u0456\u043D\u0443\u0441\u0438\xBB.</div>
       <div class="sk-jr">${rows || '<div class="muted">\u0420\u0443\u0445\u0456\u0432 \u0437\u0430 \u0446\u0435\u0439 \u0434\u0435\u043D\u044C \u043D\u0435\u043C\u0430\u0454</div>'}</div>`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
@@ -7084,9 +7100,10 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
   document.addEventListener("click", async (e) => {
     var _a2;
     const el = e.target.closest("[data-a]");
-    if (!el || !/^stf(Name|Pin|Role)$/.test(el.dataset.a)) return;
+    if (!el || !/^stf(Name|Pin|Role|Perm)$/.test(el.dataset.a)) return;
     const s = (((_a2 = S.data.staff) == null ? void 0 : _a2.staff) || []).find((x) => x.id === el.dataset.id);
     if (!s) return;
+    if (el.dataset.a === "stfPerm") return staffPerms(s);
     let f = null;
     if (el.dataset.a === "stfName") {
       const v = await askVal("\u270F\uFE0F \u041D\u043E\u0432\u0435 \u0456\u043C\u02BC\u044F (\u0433\u0440\u0430\u0444\u0456\u043A, \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0430 \u0439 \u0447\u0430\u0439\u043E\u0432\u0456 \u043F\u0435\u0440\u0435\u0439\u0434\u0443\u0442\u044C)", s.name);
@@ -7102,6 +7119,27 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     }
     if (f && await act("staffEdit", __spreadValues({ id: s.id }, f), f.name ? "\u270F\uFE0F \u0406\u043C\u02BC\u044F \u0437\u043C\u0456\u043D\u0435\u043D\u043E" : f.pin ? "\u{1F511} PIN \u0437\u043C\u0456\u043D\u0435\u043D\u043E" : "\u{1F504} \u0420\u043E\u043B\u044C \u0437\u043C\u0456\u043D\u0435\u043D\u043E")) loadView();
   });
+  async function staffPerms(s) {
+    var _a2, _b, _c, _d;
+    const P = ((_a2 = S.data.staff) == null ? void 0 : _a2.perms) || [], SENS = ((_b = S.data.staff) == null ? void 0 : _b.sens) || [], cur = s.perm || {}, adm = s.role === "admin", on = (k) => adm ? cur[k] !== 0 : cur[k] === 1;
+    const body = `<div class="scrollbox" style="max-height:55vh">${P.map((p) => `<div class="kv"><span>${p.e} ${esc(p.n)}${SENS.includes(p.k) && !adm ? ' <small class="muted">\xB7 \u0437 PIN 6+</small>' : ""}</span><label class="switch"><input type="checkbox" data-pk="${p.k}" ${on(p.k) ? "checked" : ""}><i></i></label></div>`).join("")}
+      <div class="kv"><span>\u{1F3F7} \u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430, %<br><small class="muted">\u043F\u043E\u0440\u043E\u0436\u043D\u044C\u043E \u2014 \u0437\u0430 \u043D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F\u043C \u0437\u0430\u043A\u043B\u0430\u0434\u0443</small></span><input id="pkDisc" type="number" min="0" max="100" inputmode="numeric" value="${(_c = cur.discountMax) != null ? _c : ""}" style="width:80px"></div></div>`;
+    const v = await modal({ title: `\u{1F511} \u041F\u0440\u0430\u0432\u0430: ${s.name}`, text: adm ? "\u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440 \u043C\u0430\u0454 \u0432\u0441\u0456 \u043F\u0440\u0430\u0432\u0430 \u2014 \u0437\u043D\u0456\u043C\u0456\u0442\u044C \u0437\u0430\u0439\u0432\u0435." : "\u0420\u043E\u043B\u044C \u0434\u0430\u0454 \u0437\u0432\u0438\u0447\u043D\u0456 \u0434\u0456\u0457; \u0433\u0430\u043B\u043E\u0447\u043A\u0438 \u0434\u043E\u0434\u0430\u044E\u0442\u044C \u043F\u043E\u043D\u0430\u0434 \u043D\u0438\u0445. \u0417\u043C\u0456\u043D\u0430 \u0434\u0456\u0454 \u043E\u0434\u0440\u0430\u0437\u0443.", body, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+    if (v !== "ok") return;
+    const perm = {};
+    document.querySelectorAll("#modal [data-pk]").forEach((i) => {
+      perm[i.dataset.pk] = i.checked ? 1 : 0;
+    });
+    const dm2 = (_d = $("#pkDisc")) == null ? void 0 : _d.value;
+    if (dm2 !== "" && dm2 != null) perm.discountMax = +dm2;
+    closeModal();
+    let pin2;
+    if (!adm && SENS.some((k) => perm[k] === 1 && cur[k] !== 1)) {
+      pin2 = await ask(`\u{1F511} \u041D\u043E\u0432\u0438\u0439 PIN: ${s.name}`, "\u0414\u043B\u044F \u0442\u0430\u043A\u0438\u0445 \u043F\u0440\u0430\u0432 \u2014 6\u20138 \u0446\u0438\u0444\u0440 \xB7 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430 \u0432\u0438\u0439\u0434\u0435 \u0437 \u043A\u0430\u0441\u0438", "tel");
+      if (!pin2) return;
+    }
+    if (await act("staffPerm", __spreadValues({ id: s.id, perm }, pin2 ? { pin: String(pin2) } : {}), "\u{1F511} \u041F\u0440\u0430\u0432\u0430 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) loadView();
+  }
   const zpSL = {};
   new MutationObserver(() => document.querySelectorAll(".zp-grid:not([data-c])").forEach((g) => {
     var _a2;
