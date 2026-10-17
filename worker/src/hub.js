@@ -85,7 +85,8 @@ export class Hub extends DurableObject {
       if (fresh.length >= 4) return { error: 'Забагато спроб — спробуйте пізніше або залиште заявку' };
       await this.st.put(rk, [...fresh, now]); }
     const old = await this.st.get('acct:' + email);
-    if (old) { if (old.verified !== false || !(await this.st.get('signup:' + email))) return { error: 'Такий email уже зареєстровано — увійдіть у кабінет' }; await this.st.delete('acct:' + email); } // непідтверджену спробу можна повторити
+    if (old) { if (old.verified !== false || !(await this.st.get('signup:' + email))) return { error: 'Такий email уже зареєстровано — увійдіть у кабінет' }; const last = await this.st.get('mt:signup:' + email); if (last && now - last < 60e3) return { error: 'Лист уже надіслано — зачекайте хвилину' }; await this.st.delete('acct:' + email); } // непідтверджену спробу можна повторити
+    else await this.st.delete('mt:signup:' + email); // нова реєстрація — старий лічильник листів не діє
     const a = await this.acctCreate({ email, name, pass, verify: true }); if (a.error) return a;
     await this.st.put('signup:' + email, { place: String(place || '').trim().slice(0, 60), city: String(city || '').trim().slice(0, 60), ref: String(ref || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20), at: now });
     this.ctx.storage.setAlarm?.(now + 864e5);
