@@ -195,10 +195,42 @@ export class Hub extends DurableObject {
     const n = { phone: String(f.phone ?? c.phone ?? '').trim().slice(0, 30), tg: url(f.tg ?? c.tg), viber: url(f.viber ?? c.viber) };
     await this.st.put('atomcfg', n); return n;
   }
+  // 💬 ATOM: живий чат з сайту (ШІ-асистент). Розмова — окремо в chat:<leadId> (до 40 повідомлень по 500 символів), у lead лише прапорці chat/hot/last
+  async chatCfg(f) {
+    const c = (await this.st.get('chatcfg')) || { on: 0, tg: '' }; if (!f) return c;
+    const n = { on: (f.on ?? c.on) ? 1 : 0, tg: String(f.tg ?? c.tg ?? '').replace(/[^\d-]/g, '').slice(0, 20) };
+    await this.st.put('chatcfg', n); return n;
+  }
+  async chatOpen(ip) { // 1 новий чат на IP за годину
+    const rk = 'ccr:' + (ip || 'none').slice(0, 64), now = Date.now(), r = ((await this.st.get(rk)) || []).filter(t => now - t < 3600e3);
+    if (r.length >= 1) return { error: 'Забагато чатів — залиште заявку в формі або напишіть у Telegram', code: 429 };
+    await this.st.put(rk, [...r, now]);
+    const id = now.toString(36) + rnd(3), k = rnd(8);
+    await this.st.put('lead:' + id, { id, name: 'Гість з чату', phone: '', place: '', city: '', msg: '', src: 'chat', ref: '', st: 'new', note: '', next: 0, at: now, chat: 1, hot: 0, last: now });
+    await this.st.put('chat:' + id, { k, m: [] }); return { id, k };
+  }
+  async chatGuest(id, k, text, ip) { // повідомлення гостя: ліміт 20 за 10 хв з IP, до 40 у розмові
+    const c = await this.st.get('chat:' + String(id)), x = await this.st.get('lead:' + String(id)); if (!c || !x || c.k !== k) return { error: 'Чат закінчився — почніть новий', code: 404 };
+    const rk = 'cmr:' + (ip || 'none').slice(0, 64), now = Date.now(), r = ((await this.st.get(rk)) || []).filter(t => now - t < 600e3);
+    if (r.length >= 20) return { error: 'Забагато повідомлень — зачекайте кілька хвилин', code: 429 };
+    if (c.m.length >= 40) return { error: 'Розмова завелика — залиште телефон у формі нижче', code: 429 };
+    await this.st.put(rk, [...r, now]); c.m.push({ r: 'g', t: String(text).slice(0, 500), ts: now }); x.last = now;
+    await this.st.put('chat:' + id, c); await this.st.put('lead:' + id, x); return { m: c.m, lead: x };
+  }
+  async chatBot(id, reply, u = {}) { // відповідь асистента + дані, які гість сам назвав; newHot — перший раз «тепла»
+    const c = await this.st.get('chat:' + String(id)), x = await this.st.get('lead:' + String(id)); if (!c || !x) return { error: 'Не знайдено' };
+    const cl = (v, n) => String(v || '').replace(/[<>]/g, '').trim().slice(0, n);
+    if (reply && c.m.length < 40) c.m.push({ r: 'a', t: String(reply).slice(0, 500), ts: Date.now() });
+    if (u.name && x.name === 'Гість з чату') x.name = cl(u.name, 60) || x.name;
+    if (u.place && !x.place) x.place = cl(u.place, 80); if (u.city && !x.city) x.city = cl(u.city, 60); if (u.phone && !x.phone) x.phone = cl(u.phone, 30);
+    const newHot = !!(u.hot && x.phone && !x.hot); if (newHot) { x.hot = 1; x.msg = (c.m.filter(m => m.r === 'g').map(m => m.t).join(' · ')).slice(0, 800); }
+    x.last = Date.now(); await this.st.put('chat:' + id, c); await this.st.put('lead:' + id, x); if (newHot) await this.hit('lead'); return { lead: x, newHot };
+  }
+  async chatGet(id) { const c = await this.st.get('chat:' + String(id)); return c ? { m: c.m } : { error: 'Розмови немає' }; }
   async leadList() { return [...(await this.st.list({ prefix: 'lead:', reverse: true, limit: 500 })).values()]; }
   async leadSet(id, f) {
     const x = await this.st.get('lead:' + id); if (!x) return { error: 'Не знайдено' };
-    if (f.del) { await this.st.delete('lead:' + id); return { ok: true }; }
+    if (f.del) { await this.st.delete('lead:' + id); await this.st.delete('chat:' + id); return { ok: true }; }
     if (f.st && ['new', 'call', 'demo', 'trial', 'won', 'lost'].includes(f.st)) x.st = f.st;
     if (f.note != null) x.note = String(f.note).slice(0, 1000);
     if (f.next != null) { x.next = +f.next || 0; x.rem = 0; }

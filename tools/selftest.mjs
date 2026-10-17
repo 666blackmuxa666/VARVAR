@@ -656,6 +656,33 @@ async function loyTests(A, W, dish) {
     const en = await ownT(OT, 'enter', { venue: VID }); must(en.j.token, 'enter'); must((await vpos(en.j.token, 'state')).status === 200, 'токен власника не працює');
     must((await ownT(OT, 'accts')).status === 403, 'власник бачить консоль платформи'); });
   await step('платформа бачить усі заклади', async () => { const me = await ownT(PT, 'me'); must(me.j.venues.some(v => v.id === 'varvar') && me.j.venues.some(v => v.id === VID), 'не всі'); });
+  sect('💬 Чат-асистент на сайті ATOM');
+  const CIP = 'q' + Date.now().toString(36), cph = '+3809' + String(Date.now()).slice(-8), CL = [];
+  await step('вимикач: вимкнено → 503; чужий доступ (власник) до чату й вимикача → 403', async () => {
+    await ownT(PT, 'chatCfg', { set: 1, f: { on: 0 } });
+    must((await ownT(PT, 'chatSim', { text: 'привіт', ip: CIP })).status === 503, 'чат працює при вимкненому вимикачі');
+    must((await ownT(OT, 'chatCfg', {})).status === 403 && (await ownT(OT, 'chat', { id: 'x' })).status === 403 && (await ownT(OT, 'chatSim', { text: 'a' })).status === 403, 'власник має доступ'); });
+  await step('чат: перше повідомлення → лід 💬 з прапорцем chat, без тепла; чужий ключ — відмова', async () => {
+    must((await ownT(PT, 'chatCfg', { set: 1, f: { on: 1 } })).j.cfg.on === 1, 'chatCfg');
+    const r = await ownT(PT, 'chatSim', { text: 'Скільки коштує?', ip: CIP }); must(r.j.ok && r.j.id && r.j.k && r.j.reply && r.j.reply.length <= 500 && !r.j.done, JSON.stringify(r.j)); CL.push(r.j.id); globalThis.__c = r.j;
+    const L = (await ownT(PT, 'leads', { days: 7 })).j.list.find(x => x.id === r.j.id); must(L && L.chat === 1 && !L.hot && L.src === 'chat' && !('m' in L), JSON.stringify(L));
+    must((await ownT(PT, 'chatSim', { text: 'hi', ip: CIP, id: r.j.id, k: 'wrong' })).status === 404, 'чужий ключ прийнято');
+    must((await ownT(PT, 'chatSim', { text: 'ще чат', ip: CIP })).status === 429, '2-й чат з того ж IP за годину'); });
+  await step('телефон у розмові → 🔥 тепла: ШІ замовкає («Власник зв’яжеться…»), контакт у ліді', async () => {
+    const c = globalThis.__c, r = await ownT(PT, 'chatSim', { text: 'Хочу демо, мій телефон ' + cph, ip: CIP, id: c.id, k: c.k }); must(r.j.ok && r.j.done && /зв’яжеться/.test(r.j.reply), JSON.stringify(r.j));
+    const L = (await ownT(PT, 'leads', { days: 7 })).j.list.find(x => x.id === c.id); must(L.hot === 1 && L.phone === cph, JSON.stringify(L));
+    const r2 = await ownT(PT, 'chatSim', { text: 'ще питання', ip: CIP, id: c.id, k: c.k }); must(r2.j.done && /зв’яжеться/.test(r2.j.reply), 'після 🔥 відповідає не людина');
+    const th = (await ownT(PT, 'chat', { id: c.id })).j.chat; must(th.length >= 4 && th.every(m => m.t.length <= 500 && ['g', 'a'].includes(m.r)), 'розмова: ' + th.length); });
+  await step('ліміт 20 повідомлень за 10 хв з IP; у розмові не більше 40', async () => {
+    const ip2 = CIP + 'b', a = await ownT(PT, 'chatSim', { text: 'м1', ip: ip2 }); must(a.j.ok, JSON.stringify(a.j)); CL.push(a.j.id); let last;
+    for (let i = 2; i <= 21; i++) { last = await ownT(PT, 'chatSim', { text: 'м' + i, ip: ip2, id: a.j.id, k: a.j.k }); if (i < 21) must(last.j.ok, i + ': ' + JSON.stringify(last.j)); }
+    must(last.status === 429, '21-е повідомлення пройшло: ' + last.status);
+    const th = (await ownT(PT, 'chat', { id: a.j.id })).j.chat; must(th.length <= 40, 'довжина ' + th.length); });
+  await step('прибирання: ліди чату (разом з розмовою), вимикач вимкнено', async () => {
+    for (const id of CL) await ownT(PT, 'leadSet', { id, f: { del: 1 } });
+    must((await ownT(PT, 'chat', { id: CL[0] })).status === 400, 'розмова лишилась після видалення ліда');
+    await ownT(PT, 'chatCfg', { set: 1, f: { on: 0 } }); });
+
   sect('🎁 Реферальна програма (етап 1, вручну)');
   const FE = `qa-ref-${VID}@test.local`, FV = [], phone = '+3809' + String(Date.now()).slice(-8);
   await step('?ref= з лендингу → lead.ref (очищений: a–z0–9); код закладу стабільний', async () => {

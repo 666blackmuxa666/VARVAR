@@ -17,6 +17,7 @@ export { PrintQ } from './print.js';
 export { Store } from './store.js';
 export { Hub } from './hub.js';
 import { hub } from './hub.js';
+import { chatTurn } from './chat.js';
 import { ownerApi, intApi, intSecret } from './owner.js';
 import { storeDB } from './store.js';
 import { qrKey, tableKey, qrRoute } from './qr.js';
@@ -397,7 +398,7 @@ async function atomApi(req, env, url) {
   try {
     if (url.pathname === '/api/atom' && req.method === 'GET') { // 🎁 скільки місць за акцією лишилось — з реальних закладів
       const n = await H.venueCount(); // з пам'яті реєстру, без перебору всіх закладів
-      return new Response(JSON.stringify({ left: Math.max(0, ATOM_FREE - n), total: ATOM_FREE, demo: !!(await H.venueGet(DEMO)), contacts: await H.atomCfg() }), { headers: { ...h, 'cache-control': 'public, max-age=300' } });
+      return new Response(JSON.stringify({ left: Math.max(0, ATOM_FREE - n), total: ATOM_FREE, demo: !!(await H.venueGet(DEMO)), contacts: await H.atomCfg(), chat: !!(await H.chatCfg()).on }), { headers: { ...h, 'cache-control': 'public, max-age=300' } });
     }
     if (req.method !== 'POST') return J({ error: 'method' }, 405);
     const b = await req.json().catch(() => ({}));
@@ -411,6 +412,7 @@ async function atomApi(req, env, url) {
       await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `🚀 <b>Заявка ATOM</b>\n👤 ${e(x.name)} · ${e(x.phone)}\n🏪 ${e(x.place) || '—'}${x.city ? ' · ' + e(x.city) : ''}${x.msg ? '\n💬 ' + e(x.msg) : ''}\n\nКабінет → 🚀 Продажі` }).catch(() => {});
       return J({ ok: true });
     }
+    if (url.pathname === '/api/chat') { const [d, st] = await chatTurn(env, H, b, ip); return J(d, st); } // 💬 чат-асистент (вимикач — кабінет платформи)
     if (url.pathname === '/api/demo') { // 📱 демо-каса: адмін-сесія демо-закладу (щоночі скидається)
       const drk = 'demorl:' + (ip || 'none').slice(0, 64); // ліміт: одна сесія демо з IP на 20 с (кожен виклик створює сесію на 12 год)
       if (await env.DB.get(drk)) return J({ error: 'Зачекайте хвилину' }, 429);
