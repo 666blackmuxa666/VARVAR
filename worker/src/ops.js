@@ -697,7 +697,7 @@ async function _toggleFav(env, id, on) {
 }
 // назва позиції з рахунку («Pepsi 0.5 л») → страва меню (найдовший збіг назви)
 export function dishResolver(menu) {
-  const all = menu.categories.flatMap(c => c.items.map(it => ({ n: it.name.uk, cat: c.id, cname: c.name.uk }))).sort((a, b) => b.n.length - a.n.length);
+  const all = menu.categories.flatMap(c => c.items.map(it => ({ n: it.name.uk, cat: c.id, cname: c.name.uk, ...(it.st ? { st: it.st } : {}), ...(c.st ? { cst: c.st } : {}) }))).sort((a, b) => b.n.length - a.n.length);
   const memo = new Map();
   return name => { if (!memo.has(name)) memo.set(name, all.find(x => name === x.n || name.startsWith(x.n + ' ')) || null); return memo.get(name); };
 }
@@ -893,26 +893,70 @@ export function controlData(r) {
   return Object.values(m).map(w => ({ ...w, voidPct: w.sum ? Math.round(w.voidSum / (w.sum + w.voidSum) * 1000) / 10 : 0 })).sort((a, b) => b.voidSum + b.discSum - a.voidSum - a.discSum);
 }
 
+// ---------- 🍳 цехи кухні (cfg.stations; порожньо = як раніше: одна кухня за групами) ----------
+// станція: { id, name, emoji, g:[групи меню, що йдуть сюди за замовчуванням], pr: id принтера, scr: 0 — без екрана }
+const ST_GROUPS = ['kitchen', 'bar', 'hookah', 'other'];
+export function cleanStations(v) {
+  const out = [], ids = new Set();
+  for (const x of [].concat(v || []).slice(0, 8)) {
+    const id = String(x?.id || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 12), name = String(x?.name || '').trim().slice(0, 20);
+    if (!id || !name || ids.has(id)) continue; ids.add(id);
+    out.push({ id, name, emoji: String(x.emoji || '').trim().slice(0, 4), g: ST_GROUPS.filter(g => [].concat(x.g || []).includes(g)), pr: String(x.pr || '').replace(/[^\w-]/g, '').slice(0, 12), scr: x.scr === 0 || x.scr === false ? 0 : 1 });
+  }
+  return out;
+}
+export const getStations = async env => cleanStations(((await env.DB.get('cfg', 'json')) || {}).stations);
+// цех страви: перевизначення на позиції → цех категорії → цех за групою → перший
+export function stationOf(d, sts) {
+  if (!sts.length) return null; const id = d?.st || d?.cst;
+  return (id && sts.find(x => x.id === id)) || sts.find(x => x.g.includes(groupOf(d?.cat))) || sts[0];
+}
+export const stLabel = (sts, id) => { const s = sts.find(x => x.id === id); return s ? (s.emoji ? s.emoji + ' ' : '') + s.name : ''; };
+export async function setStations(env, list, cats) {
+  const sts = cleanStations(list);
+  await L(env, 'cfg', async () => { const c = (await env.DB.get('cfg', 'json')) || {}; if (sts.length) c.stations = sts; else delete c.stations; await env.DB.put('cfg', JSON.stringify(c)); });
+  if (cats && typeof cats === 'object') await menuLock(env, async () => { const m = await getMenu(env); let ch = false;
+    for (const c of m.categories) if (c.id in cats) { const v = sts.some(x => x.id === cats[c.id]) ? cats[c.id] : ''; if ((c.st || '') !== v) { if (v) c.st = v; else delete c.st; ch = true; } }
+    if (ch) await saveMenu(env, m); });
+  return sts;
+}
+export async function setItemStation(env, id, st) {
+  const sts = await getStations(env); return menuLock(env, async () => { const m = await getMenu(env), it = m.categories.flatMap(c => c.items).find(i => i.id === id); if (!it) return null;
+    if (st && sts.some(x => x.id === st)) it.st = st; else delete it.st; await saveMenu(env, m); return it; });
+}
+// вигляд черги для цеху: лише позиції цеху (індекси — у межах цеху), «готово» — коли готовий цех
+export function kqView(list, st) {
+  if (!st) return list;
+  return list.map(e => { const items = e.items.filter(x => x.st === st); if (!items.length) return null; const done = items.every(x => x.done || x.cancel) ? 1 : 0; return { ...e, items, done: e.done || done, ...(done && !e.doneAt ? { doneAt: Date.now() } : {}) }; }).filter(Boolean);
+}
+
 // ---------- 👨‍🍳 кухонний екран: черга замовлень кухні ----------
 // kq:день = [{ id, ts, at, t, by, src, tw, urgent, comment, items:[{n,q,done,cancel}], start, done, doneAt, msgs:[{at,text}] }]
 const KQ_CATS = c => groupOf(c) === 'kitchen' || c === 'inshe-food';
 export const getKq = async (env, day = dayKey()) => (await env.DB.get('kq:' + day, 'json')) || [];
 const putKq = (env, l, day = dayKey()) => env.DB.put('kq:' + day, JSON.stringify(l.slice(-400)));
 async function _addKitchen(env, { t, by, src, comment = '', lines, urgent = false }) {
-  const res = dishResolver(await getMenu(env)), items = [];
-  for (const l of lines || []) { const x = l.match(LINE); if (!x) continue; const d = res(x[2]); if (d && KQ_CATS(d.cat)) items.push({ n: x[2], q: +x[1] }); }
+  const res = dishResolver(await getMenu(env)), sts = await getStations(env), items = [];
+  for (const l of lines || []) { const x = l.match(LINE); if (!x) continue; const d = res(x[2]);
+    if (!d) continue; if (sts.length) { const z = stationOf(d, sts); if (z.scr) items.push({ n: x[2], q: +x[1], st: z.id, sl: z.emoji || z.name }); } else if (KQ_CATS(d.cat)) items.push({ n: x[2], q: +x[1] }); }
   if (!items.length) return null;
   const l = await getKq(env), e = { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), at: hhmm(), t: +t, by: by || '', src, tw: /З СОБОЮ/.test(comment || ''), urgent: !!urgent, comment: String(comment || '').replace(/З СОБОЮ\s*·?\s*/, '').trim(), items };
   l.push(e); await putKq(env, l); return e;
 }
 async function _kqEdit(env, id, fn) { const l = await getKq(env), e = l.find(x => x.id === id); if (!e) return null; const r = fn(e); await putKq(env, l); return r === false ? null : e; }
 // i — номер страви або null (усе замовлення)
-export async function kitchenDone(env, id, i, who) {
-  const e = await kqEdit(env, id, e => { if (e.done) return false; if (i == null) e.items.forEach(x => { x.done = 1; }); else if (e.items[+i]) e.items[+i].done = e.items[+i].done ? 0 : 1; else return false;
+export async function kitchenDone(env, id, i, who, st) {
+  const sts = await getStations(env); let full = [];
+  const stDone = e => { const m = {}; for (const x of e.items) if (x.st) m[x.st] = (m[x.st] ?? true) && !!(x.done || x.cancel); return new Set(Object.keys(m).filter(k => m[k])); }; // цехи, де все готове
+  const e = await kqEdit(env, id, e => { if (e.done) return false; const pool = st ? e.items.filter(x => x.st === st) : e.items; // цех бачить лише свої позиції — індекс у межах цеху
+    if (st && !pool.length) return false; const pre = stDone(e);
+    if (i == null) pool.forEach(x => { if (!x.cancel) x.done = 1; }); else if (pool[+i]) pool[+i].done = pool[+i].done ? 0 : 1; else return false;
+    full = [...stDone(e)].filter(k => !pre.has(k));
     if (e.items.every(x => x.done || x.cancel)) { e.done = 1; e.doneAt = Date.now(); } });
-  const it = i != null && e?.items[+i];
-  if (it && it.done && !e.done) await logEvent(env, { k: 'ready', part: 1, kid: e.id, ki: +i, t: e.t, by: who, text: `${it.q}× ${it.n}` }); // одна страва готова
-  if (it && !it.done) await dropEvents(env, x => x.k === 'ready' && x.kid === e.id && x.ki === +i); // випадково натиснув — прибрати «готово» зі стрічки
+  if (e && !e.done) for (const z of full) await logEvent(env, { k: 'ready', part: 1, kid: e.id, st: z, t: e.t, by: who, text: `${stLabel(sts, z)}: готово` }); // 🍳 цех віддав усе своє
+  const it = i != null && (st ? e?.items.filter(x => x.st === st) : e?.items)[+i];
+  if (it && it.done && !e.done) await logEvent(env, { k: 'ready', part: 1, kid: e.id, ki: e.items.indexOf(it), t: e.t, by: who, text: `${it.q}× ${it.n}` }); // одна страва готова
+  if (it && !it.done) await dropEvents(env, x => x.k === 'ready' && x.kid === e.id && x.ki === e.items.indexOf(it)); // випадково натиснув — прибрати «готово» зі стрічки
   if (e?.done) await goKitchen(env, e.t, 'ready').catch(() => {});
   if (e?.done) await logEvent(env, { k: 'ready', kid: e.id, t: e.t, by: who, text: e.items.filter(x => !x.cancel).map(x => `${x.q}× ${x.n}`).join(', '), mins: Math.round((e.doneAt - e.ts) / 60000) });
   return e;

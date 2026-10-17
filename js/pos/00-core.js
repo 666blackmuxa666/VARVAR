@@ -15,7 +15,7 @@
 
   const S = {
     token: store.get('token', ''), me: store.get('me', null), view: 'hall', n: 15, tables: {}, events: [], printer: {}, menu: null,
-    tw: {}, packAdj: {}, open: 0, carts: store.get('carts', {}), coms: {}, grp: store.get('grp', ''), cat: '', q: '', fav: [], groups: [], photos: store.get('photos', true), shift: null, shown: new Set(), rep: { p: 'd', pay: '', by: '', grp: '', cat: '', t: '', q: '', tab: 'overview', sort: 's', fo: false }, mobileMenu: false, data: {}, kq: [], kqSeen: null, kqCanc: new Set(), ur: {}, kFont: store.get('kfont', 1), seen: new Set(), ready: false, live: false,
+    tw: {}, packAdj: {}, kst: store.get('kst', ''), open: 0, carts: store.get('carts', {}), coms: {}, grp: store.get('grp', ''), cat: '', q: '', fav: [], groups: [], photos: store.get('photos', true), shift: null, shown: new Set(), rep: { p: 'd', pay: '', by: '', grp: '', cat: '', t: '', q: '', tab: 'overview', sort: 's', fo: false }, mobileMenu: false, data: {}, kq: [], kqSeen: null, kqCanc: new Set(), ur: {}, kFont: store.get('kfont', 1), seen: new Set(), ready: false, live: false,
   };
   // 🏪 бренд закладу (лого й назва) — приходить разом зі state, пам'ятається для вікна входу; VARVAR — свій логотип
   S.brand = store.get('brand', null);
@@ -407,8 +407,9 @@
         const k = await choose('🥡 З собою', 'Замовлення піде окремим чеком; стіл не займається', [{ label: '🥡 Самовивіз', val: 'pick', cls: 'primary' }, { label: '🛵 Доставка', val: 'del', cls: 'primary' }]);
         if (k) goNew(k, t); break; }
       case 'ur': S.ur[t] = !S.ur[t]; renderSheet(); break;
-      case 'kItem': { const r = await act('kDone', { id: el.dataset.id, i: +el.dataset.i }); if (r) loadKq(); break; }
-      case 'kAll': { el.closest('.kc')?.classList.add('bye'); const r = await act('kDone', { id: el.dataset.id }); if (r) setTimeout(loadKq, 250); break; }
+      case 'kSt': S.kst = el.dataset.v || ''; store.set('kst', S.kst); loadKq(); break;
+      case 'kItem': { const r = await act('kDone', { id: el.dataset.id, i: +el.dataset.i, st: S.kst || undefined }); if (r) loadKq(); break; }
+      case 'kAll': { el.closest('.kc')?.classList.add('bye'); const r = await act('kDone', { id: el.dataset.id, st: S.kst || undefined }); if (r) setTimeout(loadKq, 250); break; }
       case 'kStart': { await act('kStart', { id: el.dataset.id }); loadKq(); break; }
       case 'kUndo': { await act('kUndo', { id: el.dataset.id }, '↩️ Повернуто в чергу'); loadKq(); break; }
       case 'kMsg': { let v = await choose('Повідомлення в зал', 'Офіціанти побачать у стрічці', ['❗ Немає продукту', '⏱ Ще +10 хв', '🙋 Підійди на кухню', '🔥 Вже майже готово'].map(x => ({ label: x, val: x })).concat([{ label: '✏️ Своє…', val: 'own' }]));

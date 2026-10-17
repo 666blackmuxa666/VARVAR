@@ -27,7 +27,7 @@ async function targets(env) {
 function card(e) {
   const st = e.cancelled ? '🚫 <b>СКАСОВАНО</b>' : e.done ? '✅ <b>ВИДАНО</b>' : e.start ? '🔥 готується' : '🆕 нове';
   return [`${e.urgent ? '‼️ ' : ''}<b>${tn(e.t)}</b>${e.tw ? ' · 🥡 З СОБОЮ' : ''} · ${e.at}${e.by ? ' · ' + esc(e.by) : ''}\n${st}`,
-    e.items.map(x => `${x.cancel ? '🚫 <s>' : x.done ? '✅ ' : '▫️ '}${x.q}× ${esc(x.n)}${x.cancel ? '</s>' : ''}${x.canc ? ` (−${x.canc} скас.)` : ''}`).join('\n'),
+    e.items.map(x => `${x.cancel ? '🚫 <s>' : x.done ? '✅ ' : '▫️ '}${x.sl ? esc(x.sl) + ' ' : ''}${x.q}× ${esc(x.n)}${x.cancel ? '</s>' : ''}${x.canc ? ` (−${x.canc} скас.)` : ''}`).join('\n'),
     e.comment ? `💬 ${esc(e.comment)}` : '', ...(e.msgs || []).map(m => `📣 ${m.at} ${esc(m.text)}`)].filter(Boolean).join('\n');
 }
 function kb(e) {
