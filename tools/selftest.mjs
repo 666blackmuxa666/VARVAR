@@ -296,10 +296,19 @@ async function apiTests() {
       const st = await posOk(A, 'state'); must(st.tables.find(x => x.t === G)?.go?.loc?.la === 48.36123, 'bill.go.loc немає');
       await posOk(A, 'goCfgSet', { k: 'track', v: 0 });
     });
+    const bal = async () => (await posOk(A, 'shift')).bal, b0 = await bal();
     await step('кур\'єр: видано 💵 → чек закрито', async () => {
       const r = await posOk(C, 'courAct', { t: G, act: 'done', arg: 'cash' }); must(r.done, 'не закрито');
       const o = await http('/api/orders?ids=' + oid); const st = JSON.stringify(o.j); must(/done/.test(st), 'статус гостя: ' + st.slice(0, 150)); must(!st.includes('"loc"'), 'після видачі точка не віддається');
       const me = await posOk(C, 'courMe'); return `готівка в кур'єра: ${JSON.stringify(me.day?.cash ?? me.day).slice(0, 60)}`;
+    });
+    await step('🛵 готівка кур\'єра: courOwed = сума, у «Готівці в касі» її нема; «Отримав» → courOwed 0, cash += сума', async () => {
+      const b1 = await bal(), owed = b1.courOwed - (b0.courOwed || 0); must(owed > 0, 'courOwed не зріс: ' + JSON.stringify([b0.courOwed, b1.courOwed]));
+      must(b1.courBy?.[users.courier.me.name] >= owed, 'courBy: ' + JSON.stringify(b1.courBy));
+      must(b1.cash === b0.cash, `готівка в касі змінилась до здачі: ${b0.cash} → ${b1.cash}`);
+      must((await posOk(A, 'courCash', { n: users.courier.me.name, sum: owed })).r, 'courCash');
+      const b2 = await bal(); must(b2.courOwed === b0.courOwed, `courOwed після: ${b2.courOwed} ≠ ${b0.courOwed}`);
+      must(b2.cash === b0.cash + owed, `cash після «Отримав»: ${b2.cash}, має ${b0.cash + owed}`); return `${owed} ₴`;
     });
   } else rec('кур\'єр не зареєстрований — сценарій пропущено', false);
 
@@ -735,6 +744,13 @@ async function loyTests(A, W, dish) {
     must((await ownT(OT, 'enter', { venue: 'varvar' })).status === 403, 'зайшов у чужий заклад');
     const en = await ownT(OT, 'enter', { venue: VID }); must(en.j.token, 'enter'); must((await vpos(en.j.token, 'state')).status === 200, 'токен власника не працює');
     must((await ownT(OT, 'accts')).status === 403, 'власник бачить консоль платформи'); });
+  await step('🌙 підсумок дня у кабінеті власника: порахувати, список, особистий Telegram, чужий заклад — 403', async () => {
+    const r = await ownT(OT, 'dig', { venue: VID, now: 1 }); must(r.status === 200 && Array.isArray(r.j.list) && r.j.list[0]?.day && /Підсумок дня/.test(r.j.list[0].text), 'now ' + JSON.stringify(r.j).slice(0, 150));
+    const l = await ownT(OT, 'dig'); must(l.j.list.length === 1 && l.j.list[0].id === VID && l.j.list[0].list.length >= 1, 'list ' + JSON.stringify(l.j).slice(0, 150));
+    must((await ownT(OT, 'dig', { venue: VID, chat: 'abc' })).status === 400, 'нечисловий chat');
+    must((await ownT(OT, 'dig', { venue: VID, chat: '123456789' })).j.tg === true, 'chat не збережено'); must((await ownT(OT, 'dig')).j.list[0].tg === true, 'tg=false у списку');
+    must((await ownT(OT, 'dig', { venue: VID, chat: '' })).j.tg === false, 'chat не прибрано');
+    must((await ownT(OT, 'dig', { venue: 'varvar', now: 1 })).status === 403, 'чужий заклад'); return r.j.list[0].day; });
   await step('платформа бачить усі заклади', async () => { const me = await ownT(PT, 'me'); must(me.j.venues.some(v => v.id === 'varvar') && me.j.venues.some(v => v.id === VID), 'не всі'); });
   sect('🎁 Реферальна програма (етап 1, вручну)');
   const FE = `qa-ref-${VID}@test.local`, FV = [], phone = '+3809' + String(Date.now()).slice(-8);
