@@ -253,7 +253,7 @@ ${JSON.stringify(data.filter(Boolean))}
     case 'acctResend': { const x = await H.mailToken(b.email, 'verify'); if (!x) return bad('Немає акаунта'); if (x.error) return bad(x.error); const r = await sendVerify(env, x); return r.error ? bad(r.error) : ok(); }
     case 'acctPass': { const r = await H.acctPass(b.email, b.pass); return r.error ? bad(r.error) : ok(); }
     case 'venueNew': {
-      const v = await H.venueCreate({ id: b.id, name: b.name, owner: b.owner, city: b.city }); if (v.error) return bad(v.error);
+      const v = await H.venueCreate({ id: b.id, name: b.name, owner: b.owner, city: b.city, ref: b.ref }); if (v.error) return bad(v.error);
       const r = await callVenue(env, v.id, '/__int/init', { name: v.name }, true); if (r.error) return bad(r.error);
       return ok({ venue: v, codes: r.codes });
     }
@@ -281,6 +281,16 @@ ${JSON.stringify(data.filter(Boolean))}
       if (b.do === 'save') { const r = await demoSnap(env, 'atom-demo', 'save'); return r.error ? bad(r.error) : ok(r); }
       if (b.do === 'seed') { const r = await demoSnap(env, 'atom-demo', 'seed'); if (r.error) return bad(r.error); await H.venueSet('atom-demo', { name: 'Все за 500' }).catch(() => {}); return ok(r); }
       return bad('unknown'); }
+    case 'ref': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const r = await H.refStat(String(b.venue)); return r.error ? bad(r.error) : ok({ ref: r }); } // 🎁 код і лічильник; назву друга не показуємо
+    case 'refBlock': { if (!plat) return bad('Лише платформа', 403); const r = await H.refBlock(b.code, !!b.on); return r.error ? bad(r.error) : ok(); }
+    case 'refGift': { // 🎁 +1 міс закладу вручну (причина обов'язкова); з кодом — ще й рефері (ліміт 12), один раз на заклад
+      if (!plat) return bad('Лише платформа', 403); const why = String(b.why || '').trim().slice(0, 80); if (!why) return bad('Вкажіть причину');
+      const v = await H.venueGet(String(b.id)); if (!v) return bad('Немає закладу'); const B = await import('./billing.js');
+      const give = async (x, note) => { const d = new Date(Math.max(Date.now(), B.tillOf(x))); d.setMonth(d.getMonth() + 1); await H.venueBill(x.id, { paidTill: d.getTime(), locked: 0, pay: { ts: Date.now(), sum: 0, lp: note } }); await callVenue(env, x.id, '/__int/lock', { on: 0 }).catch(() => {}); return d.getTime(); };
+      let ra = null; if (b.code || v.refBy) { ra = await H.refApply(v.id, b.code); if (ra.error) return bad(ra.error); }
+      const till = await give(v, '🎁 подарунок · ' + why + ' · ' + me.name); let ref = null;
+      if (ra?.referrer) { const rv = await H.venueGet(ra.referrer); if (rv) { await give(rv, '🎁 запросив друга · ' + me.name); ref = rv.name; } }
+      return ok({ till, ref, capped: !!ra?.capped }); }
     case 'billMark': { // 👑 платформа: оплата готівкою/переказом — +N міс вручну, або задати дату
       const v = await H.venueGet(String(b.id)); if (!v) return bad('Немає закладу'); const B = await import('./billing.js');
       let till = B.tillOf(v); if (b.till) till = Date.parse(b.till + 'T23:59:59+03:00'); else { const d = new Date(Math.max(Date.now(), till)); d.setMonth(d.getMonth() + Math.max(1, Math.min(12, +b.months || 1))); till = d.getTime(); }
