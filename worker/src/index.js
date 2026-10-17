@@ -162,7 +162,7 @@ export async function handle(req, env) {
         const tight = url.pathname === '/api/cert' || url.pathname === '/api/book';
         if (ip && !(await pubRl(env, 'g' + ipKey(ip), 600, 60)) || ip && tight && !(await pubRl(env, 'c' + ipKey(ip), 40, 600))) return json({ error: 'rate' }, 429);
       }
-      if (req.method === 'POST' && ip && url.pathname === '/api/tpay' && !(await pubRl(env, 't' + ipKey(ip), 60, 600))) return json({ error: 'rate' }, 429); // 🛡 створення рахунків оплати столу — не безкінечно з одного IP
+      if (req.method === 'POST' && ip && url.pathname === '/api/tpay' && env.BOT_TOKEN !== 'local-test' && !(await pubRl(env, 't' + ipKey(ip), 60, 600))) return json({ error: 'rate' }, 429); // 🛡 створення рахунків оплати столу — не безкінечно з одного IP
       if (req.method === 'POST' && ip && url.pathname === '/api/bookpre' && !(await pubRl(env, 'p' + ipKey(ip), 40, 600))) return json({ error: 'rate' }, 429);
       // 🌐 візитка
       if (url.pathname === '/api/site') return new Response(JSON.stringify(await sitePublic(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });

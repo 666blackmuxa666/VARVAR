@@ -4384,7 +4384,7 @@ var __objRest = (source, exclude) => {
     const p = S.printer || {}, ok2 = p.seen && Date.now() - p.seen < 6e4;
     return `<div class="cards"><div class="card"><div class="big">${ok2 ? "\u2705 \u043D\u0430 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : p.seen ? "\u274C \u043D\u0435\u043C\u0430\u0454 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : "\u274C \u043F\u0440\u043E\u0433\u0440\u0430\u043C\u0430 \u0434\u0440\u0443\u043A\u0443 \u043D\u0435 \u0437\u0430\u043F\u0443\u0449\u0435\u043D\u0430"}</div>
       <div class="muted">${p.seen ? "\u041E\u0441\u0442\u0430\u043D\u043D\u0456\u0439 \u0437\u0432\u02BC\u044F\u0437\u043E\u043A: " + hhmm(p.seen) : ""} \xB7 \u0443 \u0447\u0435\u0440\u0437\u0456: ${(_a2 = p.q) != null ? _a2 : 0}</div>${p.q && isAdmin() ? '<div class="btnrow" style="margin-top:10px"><button class="btn sm" data-a="pQList">\u{1F4CB} \u0429\u043E \u0432 \u0447\u0435\u0440\u0437\u0456</button><button class="btn sm red" data-a="pQClear">\u{1F5D1} \u041E\u0447\u0438\u0441\u0442\u0438\u0442\u0438 \u0447\u0435\u0440\u0433\u0443</button></div>' : ""}</div>
-      <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">\u{1F5A8} \u0422\u0435\u0441\u0442\u043E\u0432\u0438\u0439 \u0434\u0440\u0443\u043A</button><button class="btn" data-a="pQr">\u{1F533} QR \u043C\u0435\u043D\u044E \u0434\u043B\u044F \u0441\u0442\u043E\u043B\u0443</button><button class="btn" data-a="qrPanel">\u{1F533} \u0423\u0441\u0456 QR-\u043A\u043E\u0434\u0438</button></div></div>${stCard()}${prnCard()}`;
+      <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">\u{1F5A8} \u0422\u0435\u0441\u0442\u043E\u0432\u0438\u0439 \u0434\u0440\u0443\u043A</button><button class="btn" data-a="pQr">\u{1F533} QR \u043C\u0435\u043D\u044E \u0434\u043B\u044F \u0441\u0442\u043E\u043B\u0443</button><button class="btn" data-a="qrPanel">\u{1F533} \u0423\u0441\u0456 QR-\u043A\u043E\u0434\u0438</button></div></div>${stCard()}${taxCard()}${prnCard()}`;
   }
   const stNew = () => "c" + Math.random().toString(36).slice(2, 7);
   function stCard() {
@@ -4453,6 +4453,66 @@ var __objRest = (source, exclude) => {
   document.addEventListener("change", async (e) => {
     const el = e.target.closest('select[data-stx="cat"]');
     if (el) await stSave(S.stR.sts, { [el.dataset.id]: el.value });
+  });
+  const TXR = { minWage: "\u041C\u0456\u043D\u0456\u043C\u0430\u043B\u044C\u043D\u0430 \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0430, \u20B4", living: "\u041F\u0440\u043E\u0436\u0438\u0442\u043A\u043E\u0432\u0438\u0439 \u043C\u0456\u043D\u0456\u043C\u0443\u043C, \u20B4", esv: "\u0404\u0421\u0412, %", ep3: "\u0404\u041F 3 \u0433\u0440\u0443\u043F\u0438, % \u0434\u043E\u0445\u043E\u0434\u0443", vz: "\u0412\u0456\u0439\u0441\u044C\u043A\u043E\u0432\u0438\u0439 \u0437\u0431\u0456\u0440 \u0424\u041E\u041F, % \u0434\u043E\u0445\u043E\u0434\u0443", pdfo: "\u041F\u0414\u0424\u041E \u0456\u0437 \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0438, %", vzZp: "\u0412\u0456\u0439\u0441\u044C\u043A\u043E\u0432\u0438\u0439 \u0437\u0431\u0456\u0440 \u0456\u0437 \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0438, %" };
+  function taxCard() {
+    if (!isAdmin()) return "";
+    const hd = '<div class="card" style="margin-top:12px"><h3>\u{1F4C5} \u041F\u043E\u0434\u0430\u0442\u043A\u043E\u0432\u0438\u0439 \u043A\u0430\u043B\u0435\u043D\u0434\u0430\u0440</h3>';
+    if (!S.txR) {
+      if (!S.txL) {
+        S.txL = 1;
+        api("taxGet", {}).then((r) => {
+          S.txR = r;
+          renderMain();
+        }).catch(() => {
+          S.txL = 0;
+        });
+      }
+      return hd + '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div></div>';
+    }
+    const R = S.txR, T2 = R.tax, dm2 = (d) => d.split("-").reverse().slice(0, 2).join(".");
+    return hd + `<div class="muted" style="font-size:13px;margin-bottom:8px">\u041E\u0431\u0435\u0440\u0456\u0442\u044C \u0444\u043E\u0440\u043C\u0443 \u2014 \u0441\u0438\u0441\u0442\u0435\u043C\u0430 \u043D\u0430\u0433\u0430\u0434\u0430\u0454 \u0432 Telegram \u043F\u0440\u043E \u0437\u0432\u0456\u0442\u0438 \u0439 \u043F\u043B\u0430\u0442\u0435\u0436\u0456 \u0442\u0430 \u0434\u0430\u0441\u0442\u044C \u043F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F \u043D\u0430 \u043A\u0430\u0431\u0456\u043D\u0435\u0442 \u043F\u043B\u0430\u0442\u043D\u0438\u043A\u0430. \u041C\u0438 \u043D\u0435 \u043F\u043E\u0434\u0430\u0454\u043C\u043E \u0437\u0432\u0456\u0442\u0438 \u0439 \u043D\u0435 \u043C\u0430\u0454\u043C\u043E \u0434\u043E\u0441\u0442\u0443\u043F\u0443 \u0434\u043E \u0440\u0430\u0445\u0443\u043D\u043A\u0456\u0432. \u26A0\uFE0F \u0414\u0430\u0442\u0438 \u0439 \u0441\u0443\u043C\u0438 \u043E\u0440\u0456\u0454\u043D\u0442\u043E\u0432\u043D\u0456 \u2014 \u0437\u0432\u0456\u0440\u0442\u0435 \u0437 \u0431\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u043E\u043C.</div>
+      <div class="kv"><span>\u0424\u043E\u0440\u043C\u0430</span><button class="btn sm ${T2.kind ? "primary" : ""}" data-tx="kind">${esc(R.kinds[T2.kind] || "\u041D\u0435 \u043E\u0431\u0440\u0430\u043D\u043E")}</button></div>
+      ${T2.kind === "tov" ? `<div class="kv"><span>\u041F\u043B\u0430\u0442\u043D\u0438\u043A \u041F\u0414\u0412</span><label class="switch"><input type="checkbox" data-tx="pdv" ${T2.pdv ? "checked" : ""}><i></i></label></div>` : ""}
+      ${T2.kind ? `<div class="kv"><span>\u{1F514} \u041D\u0430\u0433\u0430\u0434\u0443\u0432\u0430\u043D\u043D\u044F \u0432 Telegram</span><label class="switch"><input type="checkbox" data-tx="on" ${T2.on ? "checked" : ""}><i></i></label></div>
+      <div class="kv"><span>\u041D\u0430\u0433\u0430\u0434\u0443\u0432\u0430\u0442\u0438 \u0437\u0430 (\u0434\u043D\u0456\u0432)</span><button class="btn sm" data-tx="lead">${T2.lead}</button></div>
+      <div class="kv"><span>\u0421\u0442\u0430\u0432\u043A\u0438 \u0439 \u043C\u0456\u043D\u0456\u043C\u0443\u043C\u0438</span><button class="btn sm" data-tx="rates">\u270F\uFE0F \u0417\u043C\u0456\u043D\u0438\u0442\u0438</button></div>
+      <h3 class="muted" style="margin:14px 0 6px;font-size:14px">\u041D\u0430\u0439\u0431\u043B\u0438\u0436\u0447\u0456 \u0441\u0442\u0440\u043E\u043A\u0438</h3>
+      ${R.list.map((e) => `<div class="kv" style="${e.done ? "opacity:.5" : ""}"><span>${esc(e.title)}<br><small class="muted">${dm2(e.d)} \xB7 ${e.left < 0 ? "\u043F\u0440\u043E\u0441\u0442\u0440\u043E\u0447\u0435\u043D\u043E" : e.left === 0 ? "\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : "\u0447\u0435\u0440\u0435\u0437 " + e.left + " \u0434\u043D."}${e.amt ? " \xB7 \u2248 " + money(e.amt) : ""}</small></span><button class="btn sm ${e.done ? "" : "primary"}" data-tx="done" data-k="${esc(e.key)}" data-v="${e.done ? 0 : 1}">${e.done ? "\u21A9\uFE0F" : "\u2705 \u0413\u043E\u0442\u043E\u0432\u043E"}</button></div>`).join("") || '<div class="muted">\u041D\u0435\u043C\u0430\u0454 \u0441\u0442\u0440\u043E\u043A\u0456\u0432 \u043D\u0430\u0439\u0431\u043B\u0438\u0436\u0447\u0438\u043C \u0447\u0430\u0441\u043E\u043C</div>'}
+      <div class="btnrow" style="margin-top:10px"><a class="btn sm" href="${esc(R.link)}" target="_blank" rel="noopener">\u{1F517} \u041A\u0430\u0431\u0456\u043D\u0435\u0442 \u043F\u043B\u0430\u0442\u043D\u0438\u043A\u0430 \u043F\u043E\u0434\u0430\u0442\u043A\u0456\u0432</a></div>` : ""}</div>`;
+  }
+  async function taxDo(b, msg) {
+    const r = await act("taxSet", b, msg || "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
+    if (r) S.txR = r;
+    renderMain();
+  }
+  document.addEventListener("click", async (e) => {
+    const el = e.target.closest("button[data-tx]");
+    if (!el || !S.txR) return;
+    const R = S.txR, T2 = R.tax, a = el.dataset.tx;
+    if (a === "kind") {
+      const k = await choose("\u0424\u043E\u0440\u043C\u0430 \u043E\u043F\u043E\u0434\u0430\u0442\u043A\u0443\u0432\u0430\u043D\u043D\u044F", "\u0412\u0456\u0434 \u043D\u0435\u0457 \u0437\u0430\u043B\u0435\u0436\u0430\u0442\u044C \u0441\u0442\u0440\u043E\u043A\u0438 \u0439 \u043F\u043B\u0430\u0442\u0435\u0436\u0456", [...Object.entries(R.kinds).map(([val, label]) => ({ label, val })), { label: "\u{1F6AB} \u041D\u0435 \u0432\u0435\u0441\u0442\u0438", val: "-" }]);
+      if (k) await taxDo({ kind: k === "-" ? "" : k });
+    } else if (a === "lead") {
+      const v = await askVal("\u0417\u0430 \u0441\u043A\u0456\u043B\u044C\u043A\u0438 \u0434\u043D\u0456\u0432 \u043D\u0430\u0433\u0430\u0434\u0443\u0432\u0430\u0442\u0438 (0\u201330)", String(T2.lead), "number");
+      if (v != null && v !== "") await taxDo({ lead: +v });
+    } else if (a === "rates") {
+      const b = {};
+      for (const [k, l] of Object.entries(TXR)) {
+        const v = await askVal(l, String(T2.rates[k]), "number");
+        if (v == null) return;
+        if (v !== "") b[k] = +v;
+      }
+      await taxDo({ rates: b });
+    } else if (a === "done") {
+      const r = await act("taxDone", { key: el.dataset.k, v: +el.dataset.v }, el.dataset.v === "1" ? "\u2705 \u041F\u043E\u0437\u043D\u0430\u0447\u0435\u043D\u043E" : "\u21A9\uFE0F \u0417\u043D\u044F\u0442\u043E");
+      if (r) S.txR = r;
+      renderMain();
+    }
+  });
+  document.addEventListener("change", async (e) => {
+    const el = e.target.closest("input[data-tx]");
+    if (el && S.txR) await taxDo({ [el.dataset.tx]: el.checked ? 1 : 0 });
   });
   function prnCard() {
     if (!isAdmin() || !window.PRN) return "";

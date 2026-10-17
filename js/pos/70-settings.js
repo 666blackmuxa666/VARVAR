@@ -15,7 +15,7 @@
     const p = S.printer || {}, ok = p.seen && Date.now() - p.seen < 60e3;
     return `<div class="cards"><div class="card"><div class="big">${ok ? '✅ на звʼязку' : p.seen ? '❌ немає звʼязку' : '❌ програма друку не запущена'}</div>
       <div class="muted">${p.seen ? 'Останній звʼязок: ' + hhmm(p.seen) : ''} · у черзі: ${p.q ?? 0}</div>${p.q && isAdmin() ? '<div class="btnrow" style="margin-top:10px"><button class="btn sm" data-a="pQList">📋 Що в черзі</button><button class="btn sm red" data-a="pQClear">🗑 Очистити чергу</button></div>' : ''}</div>
-      <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">🖨 Тестовий друк</button><button class="btn" data-a="pQr">🔳 QR меню для столу</button><button class="btn" data-a="qrPanel">🔳 Усі QR-коди</button></div></div>${stCard()}${prnCard()}`;
+      <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">🖨 Тестовий друк</button><button class="btn" data-a="pQr">🔳 QR меню для столу</button><button class="btn" data-a="qrPanel">🔳 Усі QR-коди</button></div></div>${stCard()}${taxCard()}${prnCard()}`;
   }
   // 🖨 що на який принтер (js/prnroute.js) — лише адмін; розподіл вантажиться раз при відкритті вкладки
   // 🍳 цехи кухні: свій екран, принтер і готовність; порожній список = як раніше (одна кухня)
@@ -42,6 +42,30 @@
     else if (el.dataset.stx === 'edit') { const z = await stEdit(R.sts.find(x => x.id === el.dataset.id)); if (z) await stSave(R.sts.map(x => x.id === z.id ? z : x), null); }
     else if (el.dataset.stx === 'del' && await confirmBox('Видалити цех?', 'Страви підуть у перший цех або за групою')) { const cats = Object.fromEntries(R.cats.filter(c => c.st === el.dataset.id).map(c => [c.id, ''])); await stSave(R.sts.filter(x => x.id !== el.dataset.id), cats); } });
   document.addEventListener('change', async e => { const el = e.target.closest('select[data-stx="cat"]'); if (el) await stSave(S.stR.sts, { [el.dataset.id]: el.value }); });
+  // 📅 податковий календар: ФОП/ТОВ → дати звітів і платежів, нагадування в Telegram; без КЕП і без доступу до рахунків
+  const TXR = { minWage: 'Мінімальна зарплата, ₴', living: 'Прожитковий мінімум, ₴', esv: 'ЄСВ, %', ep3: 'ЄП 3 групи, % доходу', vz: 'Військовий збір ФОП, % доходу', pdfo: 'ПДФО із зарплати, %', vzZp: 'Військовий збір із зарплати, %' };
+  function taxCard() {
+    if (!isAdmin()) return '';
+    const hd = '<div class="card" style="margin-top:12px"><h3>📅 Податковий календар</h3>';
+    if (!S.txR) { if (!S.txL) { S.txL = 1; api('taxGet', {}).then(r => { S.txR = r; renderMain(); }).catch(() => { S.txL = 0; }); } return hd + '<div class="muted">Завантаження…</div></div>'; }
+    const R = S.txR, T = R.tax, dm = d => d.split('-').reverse().slice(0, 2).join('.');
+    return hd + `<div class="muted" style="font-size:13px;margin-bottom:8px">Оберіть форму — система нагадає в Telegram про звіти й платежі та дасть посилання на кабінет платника. Ми не подаємо звіти й не маємо доступу до рахунків. ⚠️ Дати й суми орієнтовні — звірте з бухгалтером.</div>
+      <div class="kv"><span>Форма</span><button class="btn sm ${T.kind ? 'primary' : ''}" data-tx="kind">${esc(R.kinds[T.kind] || 'Не обрано')}</button></div>
+      ${T.kind === 'tov' ? `<div class="kv"><span>Платник ПДВ</span><label class="switch"><input type="checkbox" data-tx="pdv" ${T.pdv ? 'checked' : ''}><i></i></label></div>` : ''}
+      ${T.kind ? `<div class="kv"><span>🔔 Нагадування в Telegram</span><label class="switch"><input type="checkbox" data-tx="on" ${T.on ? 'checked' : ''}><i></i></label></div>
+      <div class="kv"><span>Нагадувати за (днів)</span><button class="btn sm" data-tx="lead">${T.lead}</button></div>
+      <div class="kv"><span>Ставки й мінімуми</span><button class="btn sm" data-tx="rates">✏️ Змінити</button></div>
+      <h3 class="muted" style="margin:14px 0 6px;font-size:14px">Найближчі строки</h3>
+      ${R.list.map(e => `<div class="kv" style="${e.done ? 'opacity:.5' : ''}"><span>${esc(e.title)}<br><small class="muted">${dm(e.d)} · ${e.left < 0 ? 'прострочено' : e.left === 0 ? 'сьогодні' : 'через ' + e.left + ' дн.'}${e.amt ? ' · ≈ ' + money(e.amt) : ''}</small></span><button class="btn sm ${e.done ? '' : 'primary'}" data-tx="done" data-k="${esc(e.key)}" data-v="${e.done ? 0 : 1}">${e.done ? '↩️' : '✅ Готово'}</button></div>`).join('') || '<div class="muted">Немає строків найближчим часом</div>'}
+      <div class="btnrow" style="margin-top:10px"><a class="btn sm" href="${esc(R.link)}" target="_blank" rel="noopener">🔗 Кабінет платника податків</a></div>` : ''}</div>`;
+  }
+  async function taxDo(b, msg) { const r = await act('taxSet', b, msg || '💾 Збережено'); if (r) S.txR = r; renderMain(); }
+  document.addEventListener('click', async e => { const el = e.target.closest('button[data-tx]'); if (!el || !S.txR) return; const R = S.txR, T = R.tax, a = el.dataset.tx;
+    if (a === 'kind') { const k = await choose('Форма оподаткування', 'Від неї залежать строки й платежі', [...Object.entries(R.kinds).map(([val, label]) => ({ label, val })), { label: '🚫 Не вести', val: '-' }]); if (k) await taxDo({ kind: k === '-' ? '' : k }); }
+    else if (a === 'lead') { const v = await askVal('За скільки днів нагадувати (0–30)', String(T.lead), 'number'); if (v != null && v !== '') await taxDo({ lead: +v }); }
+    else if (a === 'rates') { const b = {}; for (const [k, l] of Object.entries(TXR)) { const v = await askVal(l, String(T.rates[k]), 'number'); if (v == null) return; if (v !== '') b[k] = +v; } await taxDo({ rates: b }); }
+    else if (a === 'done') { const r = await act('taxDone', { key: el.dataset.k, v: +el.dataset.v }, el.dataset.v === '1' ? '✅ Позначено' : '↩️ Знято'); if (r) S.txR = r; renderMain(); } });
+  document.addEventListener('change', async e => { const el = e.target.closest('input[data-tx]'); if (el && S.txR) await taxDo({ [el.dataset.tx]: el.checked ? 1 : 0 }); });
   function prnCard() {
     if (!isAdmin() || !window.PRN) return '';
     if (!S.prnR) { if (!S.prnL) { S.prnL = 1; api('rcptGet', {}).then(r => { S.prnR = { route: r.route || { st: [] }, dev: r.dev }; renderMain(); }).catch(() => { S.prnL = 0; }); } return '<div class="card" style="margin-top:12px"><h3>🖨 Що на який принтер</h3><div class="muted">Завантаження…</div></div>'; }

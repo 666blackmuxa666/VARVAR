@@ -12,6 +12,7 @@ import { QR_PRINT, TEST_JOB } from './bot.js';
 import { storeStub } from './store.js';
 import { stockApi } from './stock.js';
 import { acctExport } from './acct.js';
+import { taxView, taxSet, taxDone } from './tax.js';
 import { payApi, closeStale, getAtt } from './pay.js';
 import { aiInvoice, aiCard, aiDups } from './ai.js';
 import {
@@ -332,6 +333,9 @@ async function adminRest(b, env, who, ip, ok) {
     case 'cfgSet': { const c = await setCfg(env, String(b.k), b.v); if (c.error) return [{ error: c.error }, 400]; await notify(env, `🖥 ⚙️ Налаштування: ${esc(String(b.k))} = <b>${c[b.k]}</b> — ${esc(who)}`); return ok({ cfg: c }); }
     case 'kitchenPct': { const v = Math.round(+b.pct); if (!(v >= 0 && v <= 100)) return [{ error: 'Від 0 до 100' }, 400]; await env.DB.put('kitchen_pct', String(v)); await notify(env, `🖥 👨‍🍳 Частка кухні від чайових: <b>${v}%</b> — ${esc(who)}`); return ok(); }
     case 'acctExport': { const r = await acctExport(env, String(b.from), String(b.to)); if (!r) return [{ error: 'Невірний період' }, 400]; return ok(r); } // 📤 експорт для бухгалтера
+    case 'taxGet': return ok(await taxView(env)); // 📅 податковий календар
+    case 'taxSet': { const r = await taxSet(env, b); if (r.error) return [{ error: r.error }, 400]; return ok(await taxView(env)); }
+    case 'taxDone': { if (typeof b.key !== 'string' || !/^[a-zA-Z0-9]+:\d{4}-\d{2}-\d{2}$/.test(b.key)) return [{ error: 'Невірний ключ' }, 400]; await taxDone(env, b.key, b.v ? 1 : 0); return ok(await taxView(env)); }
     case 'stGet': { const m = await getMenu(env); return ok({ sts: await getStations(env), cats: m.categories.filter(c => !c.tech).map(c => ({ id: c.id, name: c.name.uk, g: groupOf(c.id), st: c.st || '' })) }); } // 🍳 цехи кухні
     case 'stSet': { const sts = await setStations(env, b.list, b.cats); await notify(env, `🖥 🍳 Цехи кухні: ${sts.length ? sts.map(x => esc(x.name)).join(', ') : 'вимкнено'} — ${esc(who)}`); return ok({ sts }); }
     case 'stItem': { const it = await setItemStation(env, String(b.id), String(b.st || '')); return it ? ok() : [{ error: 'Позицію не знайдено' }, 404]; }

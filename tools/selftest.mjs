@@ -132,6 +132,19 @@ async function apiTests() {
     const bad = await pos(W, 'acctExport', { from: day, to }); must(bad.status === 403 || bad.status === 401 || bad.json?.error, 'офіціант отримав дані');
     const e = await pos(A, 'acctExport', { from: 'x', to: 'y' }); must(e.status === 400, 'невірний період: ' + e.status);
   });
+  await step('📅 податковий календар: форма → строки (ФОП3/ТОВ), ставки, «готово», офіціанту заборонено', async () => {
+    const v0 = await posOk(A, 'taxGet'); must(v0.kinds?.fop3 && v0.link, 'taxGet без форм');
+    const v = await posOk(A, 'taxSet', { kind: 'fop3', lead: 5, rates: { minWage: 8000 } }); must(v.tax.kind === 'fop3' && v.tax.lead === 5, 'не збереглось');
+    must(v.list.some(e => e.id === 'esv') && v.list.some(e => e.id === 'decl') && v.list.every(e => !/^\d{4}-\d{2}-\d{2}$/.test(e.d) ? false : ![0, 6].includes(new Date(e.d + 'T12:00:00Z').getUTCDay())), 'строки: ' + v.list.map(e => e.key).join());
+    const esv = v.list.find(e => e.id === 'esv'); must(esv.amt === 1760 * 3, 'ЄСВ квартал ≠ 5280: ' + esv.amt);
+    const d = await posOk(A, 'taxDone', { key: esv.key, v: 1 }); must(d.list.find(e => e.key === esv.key)?.done, 'done не збереглось');
+    const t = await posOk(A, 'taxSet', { kind: 'tov', pdv: 1 }); must(t.list.some(e => e.id === 'pdv') && t.list.some(e => e.id === 'zp'), 'ТОВ без ПДВ/ЗП');
+    must((await pos(A, 'taxSet', { kind: 'zzz' })).status === 400, 'невідома форма');
+    must((await pos(A, 'taxSet', { rates: { esv: -1 } })).status === 400, 'мінусова ставка');
+    must((await pos(A, 'taxDone', { key: 'bad' })).status === 400, 'поганий ключ');
+    const w = await pos(W, 'taxGet'); must(w.status === 403 || w.status === 401 || w.json?.error, 'офіціант бачить податки');
+    await posOk(A, 'taxSet', { kind: '' });
+  });
   await step('🍳 цехи кухні: гарячий/бар — свої екрани, принтери, готовність по цехах; без цехів — як раніше', async () => {
     const back = (await posOk(A, 'rcptGet')).route, s0 = await posOk(A, 'state'), busy = new Set(s0.tables.map(x => x.t)); let t = s0.n; while (busy.has(t)) t--;
     try {
