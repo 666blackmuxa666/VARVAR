@@ -1098,12 +1098,16 @@ body.noanim .ev.wait::before{animation:none}
 
 /* 🍒 за бажанням власника: без обводки-кола — увесь стіл / картка стрічки насичено-вишнева й плавно пульсує (як зелене «готово» з кухні); оплата QR — зелена */
 .tables .tbl.new::before,.ev.wait::before{content:none!important;animation:none!important}
-.tables .tbl.new,.ev.wait{--pc:230,22,70;position:relative;isolation:isolate;outline:none!important;border:2px solid rgb(var(--pc))!important;animation:none!important}
-.tables .tbl.new,.tables .tbl.new.busy,.ev.wait{background:linear-gradient(135deg,#5c0a22,#2e0612)!important}
+.tables .tbl.new,.ev.wait{--pc:200,24,24;position:relative;isolation:isolate;outline:none!important;border-color:transparent!important;animation:none!important}
+.tables .tbl.new,.tables .tbl.new.busy,.ev.wait{background:linear-gradient(135deg,#4f0b0b,#290505)!important}
 .tables .tbl.new.pw,.ev.wait.tpay{--pc:48,209,88}
 .tables .tbl.new.pw,.tables .tbl.new.pw.busy,.ev.wait.tpay{background:linear-gradient(135deg,#0f3a1c,#0d2614)!important}
-.ev.wait .top b{color:#ff8fab!important}.ev.wait.tpay .top b{color:#7ee29a!important}
+.ev.wait .top b{color:#ff8a8a!important}.ev.wait.tpay .top b{color:#7ee29a!important}
 .tables .tbl.new::after,.ev.wait::after{content:''!important;position:absolute!important;inset:0!important;border-radius:inherit;background:rgb(var(--pc))!important;opacity:.12;animation:redPulse 2.4s ease-in-out infinite!important;pointer-events:none;z-index:-1;box-shadow:0 0 26px rgb(var(--pc))!important;filter:none!important;mask:none!important;-webkit-mask:none!important;padding:0!important}
 
 @keyframes redPulse{0%,100%{opacity:.08}50%{opacity:.42}}
 body.noanim .tables .tbl.new::after,body.noanim .ev.wait::after{animation:none!important;opacity:.25}
+/* ЗП: у рядку лише кнопки, розрахунок — у «⚙️ Ставка» */
+.zp-det{display:block!important}.zp-det .zp-det-b{grid-template-columns:repeat(4,1fr)!important}
+@media (max-width:700px){.zp-det .zp-det-b{grid-template-columns:1fr 1fr!important}}
+.zp-hist{margin-top:10px;border-top:1px solid var(--line,#333);padding-top:8px}.zp-hist summary{cursor:pointer;font-weight:600;margin-bottom:6px}
