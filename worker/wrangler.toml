@@ -18,6 +18,7 @@ html_handling = "none"
 not_found_handling = "none"
 
 [vars]
+PIN2 = "1" # 🔐 PIN-и з ключем сервера; після вмикання відкат коду нижче 452ecc8 зламає вхід
 ALLOWED_ORIGIN = "https://666blackmuxa666.github.io,https://posatom.online,http://localhost:8000"
 TABLES = "15"
 SELF_URL = "https://varvar-menu.varvar.workers.dev"
