@@ -847,7 +847,9 @@ async function handleCallback(q, env) {
     const r = await (await import('./lpay.js')).tpayApi({ op: act === 'tpok' ? 'tpayOk' : 'tpayRefund', t: +arg, pay: 'cash' }, env, { role: admin ? 'admin' : 'waiter', name: who + ' · бот' });
     if (r[0].error) return answer('⚠️ ' + r[0].error);
     await edit(act === 'tpok' ? `✅ Стіл ${tn(arg)}: онлайн-оплату підтверджено, стіл закрито (${esc(who)})` : `↩️ Стіл ${tn(arg)}: гостю повернуто ${money(r[0].sum)} (${esc(who)})`); return answer(act === 'tpok' ? 'Закрито' : 'Повернуто'); }
-  if (act === 'clsok') { await edit(closedText(await closeTable(env, +arg, who, oid === 'card' ? 'card' : 'cash', opt !== 'np'))); return answer('Закрито'); }
+  if (act === 'clsok') { const txt = closedText(await closeTable(env, +arg, who, oid === 'card' ? 'card' : 'cash', opt !== 'np'));
+    const nx = (await (await import('./wl.js')).wlList(env).catch(() => [])).find(x => x.st === 'wait'); // ⏳ у черзі є гість — пропонуємо покликати (без автовідправки)
+    await edit(nx ? txt + `\n\n⏳ Стіл вільний — у черзі <b>${esc(nx.name)}</b>, ${nx.people} ос.` : txt, nx ? { inline_keyboard: [[{ text: `🔔 Покликати ${nx.name.slice(0, 14)}`, callback_data: 'wl:call:' + nx.id }]] } : undefined); return answer('Закрито'); }
   if (act === 'pre') return answer(await precheck(env, +arg, who) ? '🖨 Пречек відправлено на принтер' : `Стіл ${tn(arg)} порожній`);
   if (act === 'dsc') { // знижка
     const b = await getBill(env, arg); if (!b.total) return answer(`Стіл ${tn(arg)} порожній`);

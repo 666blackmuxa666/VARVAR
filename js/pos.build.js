@@ -955,15 +955,26 @@ var __objRest = (source, exclude) => {
   setTimeout(() => {
   }, 0);
   let toastT;
-  function toast(msg) {
+  function toast(msg, btn) {
     var _a2;
     (_a2 = $(".toast")) == null ? void 0 : _a2.remove();
     const d = document.createElement("div");
     d.className = "toast";
     d.textContent = msg;
+    if (btn) {
+      const b = document.createElement("button");
+      b.className = "btn sm";
+      b.textContent = btn.label;
+      b.style.marginLeft = "10px";
+      b.onclick = () => {
+        d.remove();
+        btn.fn();
+      };
+      d.append(b);
+    }
     document.body.append(d);
     clearTimeout(toastT);
-    toastT = setTimeout(() => d.remove(), 2600);
+    toastT = setTimeout(() => d.remove(), btn ? 9e3 : 2600);
   }
   document.addEventListener("change", (e) => {
     var _a2;
@@ -2502,7 +2513,7 @@ var __objRest = (source, exclude) => {
     if (r == null ? void 0 : r.r) {
       toast(`\u2705 \u0421\u0442\u0456\u043B ${tn(t)} \u0437\u0430\u043A\u0440\u0438\u0442\u043E \xB7 ${money(r.r.sum)}`);
       closeSheet();
-      loadState().catch(() => {
+      loadState().then(wlFree.bind(null, t)).catch(() => {
       });
     }
   }
@@ -2851,6 +2862,14 @@ var __objRest = (source, exclude) => {
       return renderMain();
     }
   });
+  function wlFree(t) {
+    const n = (S.wl || []).find((x) => x.st === "wait");
+    if (!n) return;
+    toast(`\u23F3 \u0421\u0442\u0456\u043B ${tn(t)} \u0432\u0456\u043B\u044C\u043D\u0438\u0439 \u2014 \u043F\u043E\u043A\u043B\u0438\u043A\u0430\u0442\u0438 ${n.name} (${n.people} \u043E\u0441.)?`, { label: "\u{1F514} \u041F\u043E\u043A\u043B\u0438\u043A\u0430\u0442\u0438", fn: async () => {
+      if (await act("wlAct", { id: n.id, act: "call" }, "\u{1F514} \u041F\u043E\u043A\u043B\u0438\u043A\u0430\u043B\u0438")) loadState().catch(() => {
+      });
+    } });
+  }
   async function wlOpen() {
     const ago = (x) => Math.max(0, Math.round((Date.now() - x.at) / 6e4));
     const rows = (S.wl || []).map((x, i) => `<div class="kv" style="flex-wrap:wrap;gap:6px"><span style="min-width:0;overflow-wrap:anywhere">${i + 1}. <b>${esc(x.name)}</b> \xB7 ${x.people} \u043E\u0441. \xB7 ${ago(x)} \u0445\u0432${x.st === "called" ? " \xB7 \u{1F514}" : ""}${x.phone ? ` \xB7 ${esc(x.phone)}` : ""}</span><span class="row" style="gap:6px"><button class="btn sm" data-mi-v="call:${x.id}">\u{1F514}</button><button class="btn sm" data-mi-v="seat:${x.id}">\u{1FA91}</button><button class="btn sm ghost" data-mi-v="gone:${x.id}">\u2716</button></span></div>`).join("") || '<div class="muted">\u0427\u0435\u0440\u0433\u0430 \u043F\u043E\u0440\u043E\u0436\u043D\u044F</div>';
