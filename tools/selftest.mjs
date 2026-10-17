@@ -45,14 +45,16 @@ const users = {};
 const usedPins = new Set();
 function pin() { let p; do { p = String(1000 + Math.floor(Math.random() * 9000)); } while (/^111[1-9]$/.test(p) || usedPins.has(p)); usedPins.add(p); return p; }
 async function register(role, code) {
-  const name = `QA ${role} ${RUN}`;
-  for (let i = 0; i < 5; i++) { // PIN може випадково збігтися з чужим
+  for (let i = 0; i < 8; i++) { // PIN може збігтися з чужим (база накопичує працівників); відповідь може загубитись при обриві DO → нове імʼя
+    const name = `QA ${role} ${RUN}` + (i ? ` ${i}` : '');
     const r = await http('/api/pos', { op: 'register', code, name, pin: pin() });
     if (r.status === 200 && r.j.token) { users[role] = { token: r.j.token, me: r.j.me }; must(r.j.me.role === role, `роль ${r.j.me.role} ≠ ${role}`); return r.j.me.name; }
-    if (!/PIN/.test(r.j.error || '')) throw new Error(`${r.status} ${JSON.stringify(r.j)}`);
+    if (!/PIN|імʼ|bad_request/.test(r.j.error || '')) throw new Error(`${r.status} ${JSON.stringify(r.j)}`);
   }
-  throw new Error('не вдалося підібрати PIN');
+  throw new Error('не вдалося зареєструватись');
 }
+// staffEdit із повтором: PIN може збігтися з чужим, а запит — потрапити на перезавантаження сервера
+async function editRetry(A, b, tries = 6) { let r; for (let i = 0; i < tries; i++) { const x = { ...b }; if (b.pin) x.pin = i ? pin() : b.pin; r = await pos(A, 'staffEdit', x); if (r.status === 200 && r.j.ok) { r.pin = x.pin; return r; } if (r.status === 401) break; if (!(b.pin && /PIN/.test(r.j.error || '')) && r.j.error !== 'bad_request') break; await new Promise(f => setTimeout(f, 700)); } return r; }
 
 async function apiTests() {
   sect('Сервер');
@@ -473,10 +475,10 @@ async function apiTests() {
       const r = g.rows.find(x => x.n === nu); must(r && r.bonus === 123 && r.shifts >= 1, 'ЗП: ' + JSON.stringify(r).slice(0, 150)); must(!g.rows.some(x => x.n === old), 'старе імʼя лишилось'); });
     await step('стара сесія кухаря → 401', async () => { const r = await pos(K, 'state'); must(r.status === 401, 'статус ' + r.status); });
     await step('staffEdit: PIN = код реєстрації / чужий PIN → 400', async () => { for (const p of ['1114', '1119']) { const r = await pos(A, 'staffEdit', { id: sid, pin: p }); must(r.status === 400, p + ' → ' + r.status); } });
-    const np = pin();
-    await step('staffEdit: новий PIN → вхід ним', async () => { await posOk(A, 'staffEdit', { id: sid, pin: np }); const r = await http('/api/pos', { op: 'login', pin: np }); must(r.j.token && r.j.me.name === nu, JSON.stringify(r.j).slice(0, 120)); users.cook = { token: r.j.token, me: r.j.me }; });
-    await step('staffEdit: роль кур\'єр → назад кухар', async () => { await posOk(A, 'staffEdit', { id: sid, role: 'courier' }); let s = (await posOk(A, 'staff')).staff.find(x => x.id === sid); must(s.role === 'courier', s.role);
-      await posOk(A, 'staffEdit', { id: sid, role: 'cook' }); const r = await http('/api/pos', { op: 'login', pin: np }); must(r.j.me?.role === 'cook', JSON.stringify(r.j).slice(0, 100)); users.cook = { token: r.j.token, me: r.j.me }; });
+    let np = pin();
+    await step('staffEdit: новий PIN → вхід ним', async () => { const e = await editRetry(A, { id: sid, pin: np }); must(e.status === 200 && e.j.ok, 'staffEdit → ' + e.status + ' ' + JSON.stringify(e.j)); np = e.pin; const r = await http('/api/pos', { op: 'login', pin: np }); must(r.j.token && r.j.me.name === nu, JSON.stringify(r.j).slice(0, 120)); users.cook = { token: r.j.token, me: r.j.me }; });
+    await step('staffEdit: роль кур\'єр → назад кухар', async () => { must((await editRetry(A, { id: sid, role: 'courier' })).j.ok, 'role courier'); let s = (await posOk(A, 'staff')).staff.find(x => x.id === sid); must(s.role === 'courier', s.role);
+      must((await editRetry(A, { id: sid, role: 'cook' })).j.ok, 'role cook'); const r = await http('/api/pos', { op: 'login', pin: np }); must(r.j.me?.role === 'cook', JSON.stringify(r.j).slice(0, 100)); users.cook = { token: r.j.token, me: r.j.me }; });
     await step('коди реєстрації: є кур\'єр', async () => { const r = await posOk(A, 'staff'); must(r.reg.courier, 'нема reg.courier'); });
   }
   return true;
@@ -677,7 +679,7 @@ async function loyTests(A, W, dish) {
   await step('⏳ черга в залі (wl): гість /api/wl — створення, дубль за телефоном, статус, скасування, ліміт 3/пристрій', async () => {
     const dev = 'qa-wl-' + Date.now(), ph = n => '067' + String(Date.now()).slice(-6) + n;
     // 🛡 index.js: wlip — не більше 6 POST /api/wl за годину з одного IP (спільний IP тестів вичерпується) → тест чесно пропускається
-    const v0 = await http('/api/wl', { name: '', people: 2, phone: ph(0), device: dev + 'x' }); if (v0.status === 429) return 'пропущено: ліміт IP wlip (6/год) вичерпано — повторити через годину';
+    const v0 = await http('/api/wl', { name: '', people: 2, phone: ph(0), device: dev + 'x' });
     must(v0.status === 400, 'без імені');
     must((await http('/api/wl', { name: 'QA', people: 2, device: dev + 'x' })).status === 400, 'гість без телефону');
     const p1 = ph(1), r1 = await http('/api/wl', { name: 'QA Черга', people: 3, phone: p1, device: dev }); must(r1.status === 200 && r1.j.id && r1.j.st === 'wait' && r1.j.pos >= 1, JSON.stringify(r1.j).slice(0, 150));
