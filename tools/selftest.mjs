@@ -132,6 +132,16 @@ async function apiTests() {
     const bad = await pos(W, 'acctExport', { from: day, to }); must(bad.status === 403 || bad.status === 401 || bad.json?.error, 'офіціант отримав дані');
     const e = await pos(A, 'acctExport', { from: 'x', to: 'y' }); must(e.status === 400, 'невірний період: ' + e.status);
   });
+  await step('🚨 продаж нижче собівартості: техкарта дорожча за ціну → у звіті складу loss', async () => {
+    const ing = await posOk(A, 'skIngSave', { x: { n: 'QA дорогий ' + RUN, u: 'кг' } }), id = ing.x?.id || ing.id; must(id, 'продукт: ' + JSON.stringify(ing).slice(0, 120));
+    await posOk(A, 'skIngCost', { list: [{ id, cost: dish.price * 10 }] });
+    try {
+      await posOk(A, 'skCardSave', { key: dish.id, name: dish.name?.uk || dish.n, card: { items: [{ id, q: 1 }] } });
+      const d0 = new Date().toISOString().slice(0, 10), r = await posOk(A, 'skReport', { from: d0, to: d0 });
+      const x = (r.loss || []).find(y => y.cost > y.price && Math.abs(y.price - dish.price) < 1e-6); must(x, 'немає в loss: ' + JSON.stringify(r.loss || []).slice(0, 200));
+    } finally { await pos(A, 'skCardSave', { key: dish.id, card: null }); await pos(A, 'skIngDel', { id }); }
+    const r2 = await posOk(A, 'skReport', { from: '2026-01-01', to: '2026-01-01' }); must(!(r2.loss || []).some(y => y.price === dish.price && y.cost === dish.price * 10), 'loss лишився після видалення техкарти');
+  });
   await step('📅 податковий календар: форма → строки (ФОП3/ТОВ), ставки, «готово», офіціанту заборонено', async () => {
     const v0 = await posOk(A, 'taxGet'); must(v0.kinds?.fop3 && v0.link, 'taxGet без форм');
     const v = await posOk(A, 'taxSet', { kind: 'fop3', lead: 5, rates: { minWage: 8000 } }); must(v.tax.kind === 'fop3' && v.tax.lead === 5, 'не збереглось');

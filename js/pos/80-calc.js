@@ -499,7 +499,8 @@
     const tbl = `<div class="card"><h3>🍽 Прибуток по стравах</h3><div class="sk-tbl"><div class="th"><span>Страва</span><span>Продано</span><span>Виручка</span><span>Собів./шт</span><span>Маржа</span><span>Фудкост</span></div>
       ${R.rows.slice(0, 120).map(x => `<div class="tr"><span>${esc(x.n)}${x.rec && x.fc > tgt ? `<br><small class="warn">реком. ціна ${money(x.rec)}</small>` : ''}</span><span>${x.q}</span><span class="money">${money(x.rev)}</span><span class="money">${x.unit == null ? '—' : money(x.unit)}</span><span class="money">${x.cm == null ? '—' : money(x.cm * x.q)}</span><b class="${cls(x.fc)}">${x.fc == null ? '—' : x.fc + '%'}</b></div>`).join('')}</div></div>`;
     const off = R.off.length ? `<div class="grid2"><div class="card"><h3>🗑 Списання за причинами</h3>${R.off.map(([k, v]) => `<div class="kv"><span>${esc(k)}</span><b class="money">${money(v)}</b></div>`).join('')}</div><div class="card"><h3>Що списуємо найбільше</h3>${R.offIng.map(([k, v]) => `<div class="kv"><span>${esc(k)}</span><b class="money">${money(v)}</b></div>`).join('')}</div></div>` : '';
-    return head + kpis + meH + tbl + off;
+    const loss = R.loss?.length ? `<div class="card" style="border-color:var(--red)"><h3>🚨 Продаж нижче собівартості · ${R.loss.length}</h3><div class="muted" style="font-size:13px;margin-bottom:6px">Ціна в меню менша за вартість продуктів за техкартою — кожна порція в збиток.</div>${R.loss.map(x => `<div class="kv"><span>${esc(x.n)}</span><span class="neg">ціна ${money(x.price)}, собів. ${money(x.cost)} (−${money(x.loss)})</span></div>`).join('')}</div>` : '';
+    return head + loss + kpis + meH + tbl + off;
   }
 
   document.addEventListener('click', async e => {
