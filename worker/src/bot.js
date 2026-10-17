@@ -25,12 +25,12 @@ export { addStat, addDishes } from './ops.js';
 const ADMIN_TTL = 12 * 3600;
 
 // ---------- клавіатури ----------
-const W = { loy: '🎁 Гості й акції', order: '➕ Замовлення', kitchen: '👨‍🍳 Кухня', tables: '📋 Столи', close: '🧾 Закрити стіл', stop: '⛔ Стоп-лист', help: '❓ Допомога', plan: '📋 Мій план', admin: '🔐 Адмін', go: '🛵 Доставка', book: '📅 Броні' };
+const W = { loy: '🎁 Гості й акції', order: '➕ Замовлення', kitchen: '👨‍🍳 Кухня', tables: '📋 Столи', close: '🧾 Закрити стіл', stop: '⛔ Стоп-лист', help: '❓ Допомога', plan: '📋 Мій план', admin: '🔐 Адмін', go: '🛵 Доставка', book: '📅 Броні', learn: '🎓 Навчання' };
 const A = { cash: '💰 Каса', expense: '💸 Витрата', reports: '📊 Звіти', closed: '📜 Закриті сьогодні', top: '🏆 Топ страв', del: '🗑 Видалити стіл', menu: '📖 Редагувати меню', wifi: '📶 Wi‑Fi',
   staff: '👥 Персонал', waiter: '⬅️ Режим офіціанта', logout: '🚪 Вийти',
   calc: '🧮 Розрахунок', pay: '👷 Зарплата', delClosed: '🧹 Видалити закритий', reset: '♻️ Обнулити все' }; // ТЕСТ: delClosed і reset — прибрати, коли скаже власник
 const kb = rows => ({ keyboard: rows.map(r => r.map(text => ({ text }))), resize_keyboard: true, is_persistent: true });
-export const KEYBOARD = kb([[W.order], [W.tables, W.close], [W.kitchen, W.go], [W.stop, W.book], [W.loy, W.plan], [W.help, W.admin]]);
+export const KEYBOARD = kb([[W.order], [W.tables, W.close], [W.kitchen, W.go], [W.stop, W.book], [W.loy, W.plan], [W.help, W.admin], [W.learn]]);
 const ADMIN_KB = kb([[W.order], [A.cash, A.expense], [A.reports, A.closed], [A.calc, A.pay], [A.top, A.del], [W.tables, W.stop], [W.kitchen, W.go], [W.book, W.loy], [A.menu, A.wifi], [A.staff, W.plan], [A.delClosed, A.reset], [A.waiter, A.logout]]);
 
 export const COMMANDS = [
@@ -560,7 +560,7 @@ export async function handleUpdate(u, env) {
   // --- офіціант ---
   const LEARN = { inline_keyboard: [[{ text: '🎓 Навчання: уроки з підказками', url: POS_URL(env) + '#course' }]] }; // 🎓 курс — у касі (уроки візуальні)
   if (/^\/chat(@\w+)?(\s|$)/i.test(text)) { const t = text.replace(/^\/chat(@\w+)?/i, '').trim().slice(0, 500); if (!t) { const l = (await getEvents(env)).filter(e => e.k === 'chat').slice(-15); return send({ text: `💬 <b>Чат закладу</b> (сьогодні)\n${l.map(e => `<b>${esc(e.by || '')}</b> ${e.at || ''}: ${esc(e.text || '')}`).join('\n') || 'Поки тихо'}\n\nНаписати: <code>/chat текст</code>` }); } await logEvent(env, { k: 'chat', by: who, text: t, seen: [who] }); return send({ text: '💬 Надіслано в чат каси' }); }
-  if (low === '/learn' || low === 'навчання') return send({ text: '🎓 <b>Навчання</b>\nУроки для вашої ролі: що натискати й де — з підсвіткою справжніх кнопок у касі.', markup: LEARN });
+  if (low === '/learn' || low === 'навчання' || text === W.learn) return send({ text: '🎓 <b>Навчання</b>\nУроки для вашої ролі: що натискати й де — з підсвіткою справжніх кнопок у касі.', markup: LEARN });
   if (low === '/start' || low === '/help' || text === W.help || low === 'допомога' || low === 'help') return send({ text: (admin ? ADMIN_HELP(env) : HELP(env)) + '\n\n🎓 Навчання з підказками в касі — /learn' });
   if (text === W.order || low === '/order' || low === 'замовлення') return send(await tablePick(env, (await openTables(env)).map(r => r.t), tablesCount(env)));
   if (low === '/wl' || low === 'черга' || text === '⏳ Черга') { const Wl = await import('./wl.js'), l = await Wl.wlList(env); return send({ text: Wl.wlText(l) + '\n\nДодати гостя: <code>/wl Імʼя 4</code>', markup: Wl.wlKb(l) }); }
