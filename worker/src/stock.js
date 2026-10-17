@@ -446,6 +446,25 @@ export const countDoc = async (env, id) => env.DB.get('cnt:' + id, 'json');
 
 // ---------- 📊 плюси / мінуси ----------
 // фудкост, прибуток по стравах, меню-інженерія (Kasavana–Smith), списання за причинами, підсумки інвентаризацій
+// 🚨 страви, які продаються нижче собівартості: ціна меню < вартість техкарти (за поточними цінами продуктів)
+export function lossList(menu, cards, im) {
+  const out = [];
+  for (const c of menu.categories) { if (c.tech) continue; for (const it of c.items) {
+    if (it.hidden) continue;
+    const rows = it.variants?.length ? it.variants.map(v => ({ n: `${it.name.uk} ${v.v} ${it.size || 'л'}`.trimEnd(), key: it.id + '|' + v.v, id: it.id, v: v.v, price: v.p })) : [{ n: it.name.uk, key: it.id, id: it.id, price: it.price }];
+    for (const r of rows) { const f = cardFor(cards, r), cost = f ? cardCost(f.card, im, cards) * f.k : 0, price = +r.price || 0; if (cost > 0 && price > 0 && cost > price) out.push({ n: r.n, price, cost: r2(cost), loss: r2(cost - price) }); }
+  } }
+  return out.sort((a, b) => b.loss - a.loss);
+}
+// ⏰ щодня після 10:00: якщо з'явились нові збиткові страви — сповіщення (той самий набір не повторюється)
+export async function lossDaily(env) {
+  const h = +new Date().toLocaleString('en-GB', { timeZone: 'Europe/Kyiv', hour: '2-digit', hour12: false }) % 24; if (h < 10 || h >= 22) return;
+  const k = 'lossRem:' + dayKey(); if (await env.DB.get(k)) return; await env.DB.put(k, '1', { expirationTtl: 2 * 86400 });
+  const [menu, cards, l] = await Promise.all([getMenu(env), getCards(env), getIng(env)]), list = lossList(menu, cards, new Map(l.map(x => [x.id, x])));
+  const sig = list.map(x => x.n + ':' + Math.round(x.price) + ':' + Math.round(x.cost)).join('|'), old = await env.DB.get('lossSig');
+  if (sig === (old || '')) return; await env.DB.put('lossSig', sig);
+  if (list.length) await notify(env, `🚨 <b>Продаж нижче собівартості</b>\n${list.slice(0, 12).map(x => `• ${esc(x.n)} — ціна ${money(x.price)}, собівартість ${money(x.cost)} (−${money(x.loss)})`).join('\n')}\n<i>Перевірте ціну в меню або техкарту.</i>`);
+}
 export async function costReport(env, from, to) {
   const r = await reportRange(env, from, to); if (!r) return null;
   const [menu, cards, l, cfg] = await Promise.all([getMenu(env), getCards(env), getIng(env), getCfg(env)]);
@@ -466,7 +485,7 @@ export async function costReport(env, from, to) {
   const off = {}, offIng = {};
   for (const j of jrs) for (const x of j || []) if (x.t === 'off') { const k = (x.note || 'Інше').replace(/^скасовано: .*· /, 'Скасовано: ').split(' · ')[0]; off[k] = r2((off[k] || 0) - x.sum); offIng[x.n] = r2((offIng[x.n] || 0) - x.sum); }
   const cnts = ((await env.DB.get('cntl', 'json')) || []).filter(c => c.day >= from && c.day <= to);
-  return { from, to, foodCost: cfg.foodCost, revenue, cogs, fc: revenue ? Math.round(cogs / revenue * 1000) / 10 : null, revKnown, rows: rows.sort((a, b) => b.rev - a.rev), avgCm: r2(avgCm), noCard: rows.filter(x => x.unit == null).length,
+  return { from, to, loss: lossList(menu, cards, im).slice(0, 30), foodCost: cfg.foodCost, revenue, cogs, fc: revenue ? Math.round(cogs / revenue * 1000) / 10 : null, revKnown, rows: rows.sort((a, b) => b.rev - a.rev), avgCm: r2(avgCm), noCard: rows.filter(x => x.unit == null).length,
     off: Object.entries(off).sort((a, b) => b[1] - a[1]), offIng: Object.entries(offIng).sort((a, b) => b[1] - a[1]).slice(0, 15), offSum: r2(Object.values(off).reduce((a, v) => a + v, 0)),
     cnt: { n: cnts.length, short: r2(cnts.reduce((a, c) => a + c.short, 0)), over: r2(cnts.reduce((a, c) => a + c.over, 0)) } };
 }

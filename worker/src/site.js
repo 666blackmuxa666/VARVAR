@@ -376,6 +376,7 @@ export async function cron(env) {
   await (await import('./backup.js')).backupDaily(env).catch(e => console.log('backup', e.message)); // 💾 щоночі
   await (await import('./guestbot.js')).gbDaily(env).catch(e => console.log('gbDaily', e.message)); // 🎂 ДН + 👋 «сплячі»
   await (await import('./suppliers.js')).supDaily(env).catch(e => console.log('supDaily', e.message)); // ⏰ оплата постачальникам
+  await (await import('./stock.js')).lossDaily(env).catch(e => console.log('lossDaily', e.message)); // 🚨 продаж нижче собівартості
   await (await import('./tax.js')).taxDaily(env).catch(e => console.log('taxDaily', e.message)); // 📅 податковий календар
   await (await import('./digest.js')).digDaily(env).catch(e => console.log('digDaily', e.message)); // 🌙 підсумок дня о 22:00
   // відгуки

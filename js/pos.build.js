@@ -6209,6 +6209,7 @@ ${g.sup}:
     });
   }
   function skRepHTML() {
+    var _a2;
     const K = S.sk, R = S.data.skRep, P = [["d", "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456"], ["w", "7 \u0434\u043D\u0456\u0432"], ["30", "30 \u0434\u043D\u0456\u0432"], ["m", "\u0426\u0435\u0439 \u043C\u0456\u0441\u044F\u0446\u044C"], ["pm", "\u041C\u0438\u043D. \u043C\u0456\u0441\u044F\u0446\u044C"]];
     const head = `<div class="chips scroll" style="margin-bottom:12px">${P.map(([k, l]) => `<button class="chip ${K.p === k ? "on" : ""}" data-a="skP" data-p="${k}">${l}</button>`).join("")}</div>`;
     if (!R) return head + '<div class="muted">\u0420\u0430\u0445\u0443\u044E\u2026</div>';
@@ -6225,7 +6226,8 @@ ${g.sup}:
     const tbl = `<div class="card"><h3>\u{1F37D} \u041F\u0440\u0438\u0431\u0443\u0442\u043E\u043A \u043F\u043E \u0441\u0442\u0440\u0430\u0432\u0430\u0445</h3><div class="sk-tbl"><div class="th"><span>\u0421\u0442\u0440\u0430\u0432\u0430</span><span>\u041F\u0440\u043E\u0434\u0430\u043D\u043E</span><span>\u0412\u0438\u0440\u0443\u0447\u043A\u0430</span><span>\u0421\u043E\u0431\u0456\u0432./\u0448\u0442</span><span>\u041C\u0430\u0440\u0436\u0430</span><span>\u0424\u0443\u0434\u043A\u043E\u0441\u0442</span></div>
       ${R.rows.slice(0, 120).map((x) => `<div class="tr"><span>${esc(x.n)}${x.rec && x.fc > tgt ? `<br><small class="warn">\u0440\u0435\u043A\u043E\u043C. \u0446\u0456\u043D\u0430 ${money(x.rec)}</small>` : ""}</span><span>${x.q}</span><span class="money">${money(x.rev)}</span><span class="money">${x.unit == null ? "\u2014" : money(x.unit)}</span><span class="money">${x.cm == null ? "\u2014" : money(x.cm * x.q)}</span><b class="${cls(x.fc)}">${x.fc == null ? "\u2014" : x.fc + "%"}</b></div>`).join("")}</div></div>`;
     const off = R.off.length ? `<div class="grid2"><div class="card"><h3>\u{1F5D1} \u0421\u043F\u0438\u0441\u0430\u043D\u043D\u044F \u0437\u0430 \u043F\u0440\u0438\u0447\u0438\u043D\u0430\u043C\u0438</h3>${R.off.map(([k, v]) => `<div class="kv"><span>${esc(k)}</span><b class="money">${money(v)}</b></div>`).join("")}</div><div class="card"><h3>\u0429\u043E \u0441\u043F\u0438\u0441\u0443\u0454\u043C\u043E \u043D\u0430\u0439\u0431\u0456\u043B\u044C\u0448\u0435</h3>${R.offIng.map(([k, v]) => `<div class="kv"><span>${esc(k)}</span><b class="money">${money(v)}</b></div>`).join("")}</div></div>` : "";
-    return head + kpis + meH + tbl + off;
+    const loss = ((_a2 = R.loss) == null ? void 0 : _a2.length) ? `<div class="card" style="border-color:var(--red)"><h3>\u{1F6A8} \u041F\u0440\u043E\u0434\u0430\u0436 \u043D\u0438\u0436\u0447\u0435 \u0441\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u043E\u0441\u0442\u0456 \xB7 ${R.loss.length}</h3><div class="muted" style="font-size:13px;margin-bottom:6px">\u0426\u0456\u043D\u0430 \u0432 \u043C\u0435\u043D\u044E \u043C\u0435\u043D\u0448\u0430 \u0437\u0430 \u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0456\u0432 \u0437\u0430 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u043E\u044E \u2014 \u043A\u043E\u0436\u043D\u0430 \u043F\u043E\u0440\u0446\u0456\u044F \u0432 \u0437\u0431\u0438\u0442\u043E\u043A.</div>${R.loss.map((x) => `<div class="kv"><span>${esc(x.n)}</span><span class="neg">\u0446\u0456\u043D\u0430 ${money(x.price)}, \u0441\u043E\u0431\u0456\u0432. ${money(x.cost)} (\u2212${money(x.loss)})</span></div>`).join("")}</div>` : "";
+    return head + loss + kpis + meH + tbl + off;
   }
   document.addEventListener("click", async (e) => {
     const el = e.target.closest("[data-a]");
