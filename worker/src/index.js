@@ -380,6 +380,8 @@ async function atomSite(req, env) {
   let url = new URL(req.url);
   if (url.hostname === 'www.posatom.online') return Response.redirect('https://posatom.online' + url.pathname + url.search, 301);
   if (url.pathname.startsWith('/api/')) return atomApi(req, env, url);
+  if (url.pathname === '/robots.txt') return new Response('User-agent: *\nAllow: /\nDisallow: /v/\nDisallow: /api/\nSitemap: https://posatom.online/sitemap.xml\n', { headers: { 'content-type': 'text/plain', 'cache-control': 'public, max-age=86400' } }); // 🔎 Гугл: знаходить «ATOM каса» і кабінет
+  if (url.pathname === '/sitemap.xml') return new Response('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://posatom.online/</loc></url><url><loc>https://posatom.online/owner/</loc></url></urlset>', { headers: { 'content-type': 'application/xml', 'cache-control': 'public, max-age=86400' } });
   if (url.pathname === '/' || url.pathname === '/atom.html') { if (url.pathname === '/atom.html') return Response.redirect('https://posatom.online/', 301); url = new URL('https://posatom.online/atom/' + url.search); }
 
   const m = url.pathname.match(/^\/([a-z0-9][a-z0-9-]{1,30})(\/.*)?$/); if (!m) return new Response('Not found', { status: 404 });
