@@ -7,7 +7,9 @@
   var K = {
     wall: { n: '🧱 Стіна', len: 200 }, win: { n: '🪟 Вікно', len: 140 }, door: { n: '🚪 Двері' }, col: { n: '◼️ Колона' },
     bar: { n: '🍸 Барна стійка', len: 220 }, sofa: { n: '🛋 Диван', len: 140 }, plant: { n: '🪴 Вазон' }, tree: { n: '🌳 Дерево' },
-    umb: { n: '⛱ Парасоля' }, rug: { n: '🟫 Килим', len: 180 }, stage: { n: '🎤 Сцена', len: 220 }, stairs: { n: '🪜 Сходи' }
+    umb: { n: '⛱ Парасоля' }, rug: { n: '🟫 Килим', len: 180 }, stage: { n: '🎤 Сцена', len: 220 }, stairs: { n: '🪜 Сходи' },
+    fire: { n: '🔥 Камін' }, fridge: { n: '🧊 Вітрина' }, shelf: { n: '📚 Стелаж', len: 120 }, host: { n: '🛎 Хостес' },
+    lamp: { n: '💡 Торшер' }, part: { n: '🎋 Перегородка', len: 160 }, bench: { n: '🪑 Банкетка', len: 160 }, coffee: { n: '☕ Кавомашина' }
   };
   var FLOORS = { wood: '🪵 Дерево', herring: '🧩 Ялинка', tile: '◻️ Плитка', stone: '🪨 Камінь', concrete: '⬜ Бетон', grass: '🌿 Тераса' };
   // столи: розмір і крісла навколо (вигляд згори)
@@ -37,6 +39,14 @@
     else if (k === 'rug') o = '<b class="f3-rug" style="width:' + px(L) + ';height:' + px(Math.round(L * .62)) + ';left:' + px(-L / 2) + ';top:' + px(-L * .31) + '"></b>';
     else if (k === 'stage') o = shadow(L + 20, 140) + box(L, 120, 16, 'stage');
     else if (k === 'stairs') { for (var j = 0; j < 5; j++) o += '<i class="f3-p" style="top:' + px(-40 + j * 20) + '">' + box(90, 20, 50 - j * 10, 'step') + '</i>'; }
+    else if (k === 'fire') o = shadow(110, 60) + box(96, 44, 90, 'mfire') + '<i class="f3-p" style="top:23px">' + box(44, 2, 34, 'flame') + '</i>';
+    else if (k === 'fridge') o = shadow(90, 66) + box(80, 56, 110, 'mfrg') + '<i class="f3-p" style="top:29px">' + box(70, 2, 90, 'glass') + '</i>';
+    else if (k === 'shelf') { o = shadow(L + 8, 40); for (var q = 0; q < 4; q++) o += '<i class="f3-p" style="transform:translateZ(' + px(q * 34) + ')">' + box(L, 30, 4, 'step') + '</i>'; o += box(L, 4, 120, 'step', ';top:-15px'); }
+    else if (k === 'host') o = shadow(70, 50) + box(60, 40, 80, 'mbar');
+    else if (k === 'lamp') o = '<b class="f3-sh round" style="width:50px;height:50px;left:-25px;top:-25px"></b>' + box(4, 4, 120, 'pole') + disc(40, 120, 'lampsh');
+    else if (k === 'part') o = shadow(L + 6, 20) + box(L, 8, 4, 'pot') + '<i class="f3-p" style="transform:translateZ(4px)">' + box(L, 6, 100, 'mpart') + '</i>';
+    else if (k === 'bench') o = shadow(L + 8, 46) + box(L, 38, 28, 'sofa');
+    else if (k === 'coffee') o = shadow(70, 54) + box(60, 44, 46, 'mcof');
     else return '';
     return '<i class="f3-o f3-d' + (sel ? ' sel' : '') + '"' + (edit ? ' data-md="' + i + '"' : '') + ' style="left:' + x[1] + '%;top:' + x[2] + '%;--r:' + (+x[3] || 0) + 'deg">' + o + '</i>';
   }
@@ -107,6 +117,7 @@
     // матеріали
     '.wall{--c:#55555c}.wall .xt{background:#6a6a72}.sill{--c:#d9d2c8}.glass{--c:#9fd4ff55}.glass>b{border:1px solid #cfeaff66}.mcol{--c:#d8d2ca}',
     '.mbar{--c:#2c2522}.mbar .xt{background:linear-gradient(90deg,#1b1b1e,#3a3a40 50%,#1b1b1e)}.stool{--c:#c9a26b;box-shadow:0 0 0 3px #00000040}',
+    '.mfire{--c:#6b5a52}.flame{--c:#ff7a1a}.flame .xf{background:radial-gradient(#ffd23a,#ff5a1a);animation:f3fl 1s infinite alternate}@keyframes f3fl{to{opacity:.6}}.mfrg{--c:#d8dde2}.mpart{--c:#9a7a4c}.mpart .xf,.mpart .xb{background:repeating-linear-gradient(90deg,#8a6a3c 0 6px,#b08e5a 6px 10px)}.mcof{--c:#3b3b40}.lampsh{background:#ffe7a0;box-shadow:0 0 40px #ffd86a}',
     '.sofa{--c:#5b3a3a}.sofa .xt{background:linear-gradient(#ffffff14,transparent),#6b4444}.pot{--c:#b4643c}',
     '.leaf{background:radial-gradient(circle at 35% 30%,#6f8f5c,#3d5a35 60%,#2a4026)}.leaf.l2{background:radial-gradient(circle at 35% 30%,#7c9c68,#47653e 60%,#30482b)}.leaf.l3{background:radial-gradient(circle at 35% 30%,#8aab75,#527147 60%,#375231)}.pole{--c:#ddd}',
     '.canopy{background:repeating-conic-gradient(#e8e2d6 0 22.5deg,#d4ccbd 22.5deg 45deg);box-shadow:0 0 0 2px #0002;opacity:.96}',
@@ -120,7 +131,7 @@
     '.f3-gl{border-radius:50%;opacity:0;transition:opacity .4s;background:radial-gradient(closest-side,var(--g,transparent),transparent)}',
     // 📍 мітка над столом — завжди обличчям до глядача, розмір не залежить від масштабу
     '.f3-pin{left:0;top:0;transform-origin:0 0;transform:translateZ(var(--lz)) rotateZ(calc(-1 * var(--r))) rotateZ(calc(-1 * var(--az))) rotateX(calc(-1 * var(--ax))) scale(var(--pk)) translate(-50%,var(--py));',
-    'display:flex;flex-direction:column;align-items:center;gap:1px;padding:3px 7px 4px;min-width:28px;border-radius:9px;background:#1c1c1ef2;color:#8e8e93;font:600 11px/1.15 system-ui,-apple-system,sans-serif;white-space:nowrap;box-shadow:0 6px 16px #0007,inset 0 0 0 1px #ffffff1f;pointer-events:auto}',
+    'display:flex;flex-direction:column;align-items:center;gap:1px;padding:3px 7px 4px;min-width:28px;width:max-content;border-radius:9px;background:#1c1c1ef2;color:#8e8e93;font:600 11px/1.15 system-ui,-apple-system,sans-serif;white-space:nowrap;box-shadow:0 6px 16px #0007,inset 0 0 0 1px #ffffff1f;pointer-events:auto}',
     '.f3-pin b{position:static;font-size:15px;font-weight:800;letter-spacing:-.02em}.f3-pin small{display:block;font-size:10.5px;opacity:.85;font-weight:600}',
     '.f3:not(.m2) .f3-pin::after{content:"";position:absolute;left:50%;top:100%;width:2px;height:12px;margin-left:-1px;background:linear-gradient(currentColor,transparent);opacity:.5}',
     '.f3-t.s-busy{--g:#f2c14eaa}.f3-t.s-busy .f3-pin{background:#f2c14e;color:#1a1400}',

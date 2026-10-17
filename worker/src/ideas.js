@@ -2,7 +2,24 @@
 // Адмін бачить усі (Персонал → 💡 Побажання), позначає «✅ зроблено» і видаляє. Автор бачить і видаляє свої. Ключ бази: ideas.
 import { L, logEvent, esc } from './ops.js';
 // копія у 📨 вхідні кабінету власника (HUB)
-export async function toHub(env, m) { try { if (!env.HUB) return; const { hub } = await import('./hub.js'), { getSite } = await import('./site.js'); await hub(env).msgAdd({ ...m, venue: env.VENUE || 'varvar', vname: (await getSite(env)).name }); } catch (e) { console.log('toHub', e.message); } }
+export async function toHub(env, m) { try { if (!env.HUB) return; const { hub } = await import('./hub.js'), { getSite } = await import('./site.js'); const x = await hub(env).msgAdd({ ...m, venue: env.VENUE || 'varvar', vname: (await getSite(env)).name });
+    await thr(env, l => { l.push({ hid: x.id, kind: x.kind, by: m.by, text: x.text, at: x.at, chat: [] }); }); return x; } catch (e) { console.log('toHub', e.message); } }
+// 💬 звернення закладу до ATOM (побажання й допомога) з перепискою — ключ hmsg; відповідь ATOM приходить через /__int/msgIn
+const thr = (env, fn) => L(env, 'hmsg', async () => { const l = (await env.DB.get('hmsg', 'json')) || [], r = fn(l); await env.DB.put('hmsg', JSON.stringify(l.slice(-200))); return r; });
+export const thrList = async (env, who, admin) => ((await env.DB.get('hmsg', 'json')) || []).filter(x => admin || x.by === who).reverse();
+export async function thrIn(env, hid, text) { // від ATOM
+  const t = await thr(env, l => { const x = l.find(y => y.hid === hid); if (!x) return null; x.chat.push({ from: 'a', text: String(text).slice(0, 1500), at: Date.now() }); x.unr = 1; return x; });
+  if (t) await logEvent(env, { k: 'shift', text: `📨 ATOM відповів ${t.by}: ${String(text).slice(0, 140)} — Профіль → 💬 Звернення` });
+  return t ? { ok: true } : { error: 'Не знайдено' };
+}
+export async function thrSay(env, hid, who, admin, text) { // від працівника
+  text = String(text || '').trim().slice(0, 1500); if (text.length < 1) return { error: 'Напишіть повідомлення' };
+  const t = await thr(env, l => { const x = l.find(y => y.hid === hid && (admin || y.by === who)); if (!x) return null; x.chat.push({ from: 'u', by: who, text, at: Date.now() }); x.unr = 0; return x; });
+  if (!t) return { error: 'Не знайдено' };
+  try { const { hub } = await import('./hub.js'); await hub(env).msgSay(hid, 'u', `${who}: ${text}`); } catch {}
+  return t;
+}
+export const thrSeen = (env, hid, who) => thr(env, l => { const x = l.find(y => y.hid === hid && y.by === who); if (x) x.unr = 0; return {}; });
 const get = async env => (await env.DB.get('ideas', 'json')) || [];
 const edit = (env, fn) => L(env, 'ideas', async () => { const l = await get(env), r = fn(l); if (r?.error) return r; await env.DB.put('ideas', JSON.stringify(l.slice(-300))); return r ?? l; });
 export async function ideaAdd(env, who, text) {
@@ -23,6 +40,9 @@ export async function ideaApi(b, env, me) {
     case 'ideaList': return ok({ list: await ideaList(env, me.name, admin) });
     case 'ideaDel': return r(await ideaDel(env, String(b.id), me.name, admin));
     case 'ideaDone': return r(await ideaDone(env, String(b.id), admin));
+    case 'ideaThr': return ok({ list: await thrList(env, me.name, admin) });
+    case 'ideaSay': return r(await thrSay(env, String(b.hid), me.name, admin, b.text));
+    case 'ideaSeen': return r(await thrSeen(env, String(b.hid), me.name));
   }
   return bad('unknown');
 }

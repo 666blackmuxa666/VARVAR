@@ -10,7 +10,7 @@
       const b = S.tables[t], at = map ? ` style="left:${mp[t][0]}%;top:${mp[t][1]}%"${S.mapEd ? ` data-mt="${t}"` : ''}` : '', dim = map && !inF.has(t) ? ' dim' : '';
       const bk = (S.books || []).find(x => x.t === t && x.st === 'ok');
       if (!b) return `<button${at} class="tbl${dim}${calls[t] ? ' calling' : ''}${bk ? ' booked' : ''}" data-a="table" data-t="${t}">${bell(t)}<div class="n">${t}</div><div class="st">${bk ? `📅 ${bk.time} · ${esc(bk.name)}` : 'вільний'}</div></button>`;
-      const due = b.paid ? Math.max(0, b.pay2 - (b.paid.net || 0)) : 0, cls = ['busy', b.check ? 'check' : '', pending.has(t) || b.pwait ? 'new' : ''].join(' '); /* 💳 оплачено з QR — червона, доки не підтвердять */
+      const due = b.paid ? Math.max(0, b.pay2 - (b.paid.net || 0)) : 0, cls = ['busy', b.check ? 'check' : '', pending.has(t) || b.pwait ? 'new' : '', b.pwait ? 'pw' : ''].join(' '); /* 💳 оплачено з QR — червона, доки не підтвердять */
       const tag = b.pwait ? '<span class="tag c" title="оплачено онлайн">🌐</span>' : b.check ? `<span class="tag c">🧾 рахунок</span>${b.pay ? `<i class="pay" title="${b.pay === 'online' ? 'оплачено онлайн' : b.pay === 'card' ? 'карта' : 'готівка'}">${b.pay === 'online' ? '🌐' : b.pay === 'card' ? '💳' : '💵'}</i>` : ''}` : pending.has(t) ? '<span class="tag g">нове</span>' : '';
       return `<button${at} class="tbl${dim} ${cls}${calls[t] ? ' calling' : ''}" data-a="table" data-t="${t}">${bell(t)}${tag}<div class="n">${t}</div><div class="st">${b.pwait ? (due ? `оплачено · доплата ${money(due)}` : 'оплачено — підтвердіть') : `${b.orders} замовл.${b.disc ? ` · −${b.disc}%` : ''}`}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">з ${b.opened ? hhmm(b.opened) : '—'}</div></button>`;
     }).join('');
@@ -302,7 +302,7 @@
     const mp = mapPos(cur), ed = S.mapEd, d = S.mapDraft, key = hk(cur);
     const tables = all.map(t => {
       const b = S.tables[t], bk = !b && (S.books || []).find(x => x.t === t && x.st === 'ok'), [x, y, sh, r] = mp[t];
-      const st = b ? (pending.has(t) || b.pwait ? 's-new' : b.check ? 's-check' : 's-busy') : bk ? 's-book' : '';
+      const st = b ? (pending.has(t) || b.pwait ? 's-new' + (b.pwait ? ' pw' : '') : b.check ? 's-check' : 's-busy') : bk ? 's-book' : '';
       const sub = b ? `<small>${b.pwait ? '🌐 ' : b.check ? '🧾 ' : pending.has(t) ? '🛎 ' : ''}${money(b.pay2)}</small>` : bk ? `<small>📅 ${bk.time}</small>` : '';
       return { t, x, y, sh, r, cls: `${st}${calls[t] ? ' call' : ''}${inF.has(t) ? '' : ' dim'}`, attrs: ed ? '' : `data-a="table" data-t="${t}"`, pin: `<b>${calls[t] ? '🔔' : ''}${t}</b>${sub}` };
     });

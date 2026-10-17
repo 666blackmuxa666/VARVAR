@@ -57,6 +57,7 @@ export async function intApi(req, env, path) {
   if (path === '/__int/aitop') { const sum = Math.round(+b.sum || 0); if (!(sum > 0)) return [{ error: 'sum' }, 400];
     const a = await env.DB.locked('aibal', async () => { const x = (await env.DB.get('aibal', 'json')) || { bal: 0, h: [] }; if (x.h.some(h => h.lp && h.lp === b.lp)) return x; x.bal = Math.round((x.bal + sum) * 100) / 100; x.h = [{ ts: Date.now(), sum, what: '💳 Поповнення LiqPay', lp: String(b.lp || ''), ...(b.test ? { test: 1 } : {}) }, ...x.h].slice(0, 200); await env.DB.put('aibal', JSON.stringify(x)); return x; });
     return [a, 200]; }
+  if (path === '/__int/msgIn') { const r = await (await import('./ideas.js')).thrIn(env, String(b.hid || ''), String(b.text || '')); return [r, r.error ? 404 : 200]; } // 💬 відповідь ATOM у зверненні
   if (path === '/__int/lock') { if (b.on) await env.DB.put('cfg:lock', JSON.stringify({ why: String(b.why || 'sub'), at: Date.now() })); else await env.DB.delete('cfg:lock'); return [{ ok: true }, 200]; } // ⛔ підписка не оплачена — лише перегляд
   if (path === '/__int/whoami') { const s = /^[a-f0-9]{32}$/.test(b.token || '') ? await env.DB.get('pos:' + b.token, 'json') : null; return [{ admin: s?.role === 'admin', name: s?.name || '' }, 200]; }
   if (path === '/__int/secrets') { // 🤖 токени ботів закладу → перевірка getMe, збереження, вебхуки
@@ -164,8 +165,10 @@ async function pnl(env, S) {
     const dim = new Date(+m.slice(0, 4), +m.slice(5, 7), 0).getDate(), a = S.from > m + '-01' ? +S.from.slice(8) : 1, z = S.to < m + '-' + dim ? +S.to.slice(8) : dim, today = dayKey(), elapsed = today.slice(0, 7) === m ? +today.slice(8) : dim;
     pay += p.fund * Math.max(0, Math.min(z, elapsed) - a + 1) / Math.max(1, elapsed);
   }
-  const rev = S.tot.rev || 0, exp = S.tot.exp || 0, profit = rev - cogs - pay - exp, r = x => Math.round(x);
-  return { rev, cogs: r(cogs), noCard: r(noCard), fc: rev ? Math.round(cogs / (rev - noCard || 1) * 1000) / 10 : 0, pay: r(pay), payPct: rev ? Math.round(pay / rev * 1000) / 10 : 0, exp: r(exp), profit: r(profit), margin: rev ? Math.round(profit / rev * 1000) / 10 : 0,
+  // 🏦 комісія банку з безготівки (карта + онлайн) — % з налаштувань каси
+  const bf = (await (await import('./ops.js')).getCfg(env)).bankFee || 0, bank = (S.tot.card || 0) * bf / 100; /* онлайн уже входить у card */
+  const rev = S.tot.rev || 0, exp = S.tot.exp || 0, profit = rev - cogs - pay - exp - bank, r = x => Math.round(x);
+  return { rev, cogs: r(cogs), noCard: r(noCard), fc: rev ? Math.round(cogs / (rev - noCard || 1) * 1000) / 10 : 0, pay: r(pay), payPct: rev ? Math.round(pay / rev * 1000) / 10 : 0, exp: r(exp), bank: r(bank), bankFee: bf, profit: r(profit), margin: rev ? Math.round(profit / rev * 1000) / 10 : 0,
     top: Object.values(top).map(t => ({ ...t, cost: r(t.cost), m: r(t.rev - t.cost) })).sort((a, b) => b.m - a.m).slice(0, 10) };
 }
 
@@ -214,6 +217,9 @@ export async function ownerApi(req, env) {
       await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `🆘 <b>Допомога з кабінету</b>\n👤 ${me.name} · ${me.email}\n🏪 ${me.venues.join(', ') || '—'}\n\n${text.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}` }).catch(() => {});
       await H.msgAdd({ kind: 'help', venue: me.venues[0] || '', vname: '👑 кабінет', by: me.name + ' · ' + me.email, role: me.role, text }); return ok(); }
     case 'inbox': return ok({ list: await H.msgList(plat ? null : me.venues) });
+    case 'inboxSay': { const text = String(b.text || '').trim().slice(0, 1500); if (!text) return bad('Напишіть відповідь'); // 💬 відповідь працівнику закладу
+      const m = await H.msgSay(String(b.id), 'a', text, plat ? null : me.venues); if (m.error) return bad(m.error);
+      if (m.venue) await callVenue(env, m.venue, '/__int/msgIn', { hid: m.id, text }).catch(() => {}); return ok({ m }); }
     case 'inboxSet': { const r = await H.msgSet(String(b.id), { del: !!b.del }, plat ? null : me.venues); return r.error ? bad(r.error) : ok(); }
     case 'ask': { // 🧠 «Запитай у даних»: цифри закладів за цей і минулий місяць → ШІ відповідає лише з них
       const q = String(b.q || '').trim().slice(0, 500); if (q.length < 3) return bad('Напишіть питання');

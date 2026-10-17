@@ -1065,3 +1065,10 @@ main.hall .f3w{flex:1;display:flex;flex-direction:column;gap:10px;min-width:0}
 .f3-zm{display:flex;gap:4px}.f3-zm .btn{min-width:36px;font-size:17px}
 main.hall:has(.f3.edit){overflow-y:auto}main.hall .f3w{min-height:0}.f3w .f3.edit{flex:1 1 0;min-height:260px}
 main.hall:has(.f3.edit){padding-bottom:90px}.f3-pal.fl button.on{background:var(--text);color:var(--bg)}.kpi b{overflow-wrap:anywhere}
+
+/* 🌐 оплачено з QR — яскраво блимає червоним, доки адмін не підтвердить */
+.tbl.new.pw{animation:pwblink .8s steps(2,start) infinite}@keyframes pwblink{to{background:#ff453a;border-color:#ff8a80;box-shadow:0 0 28px #ff453acc}}
+.f3-t.pw .f3-pin{animation:f3pw .8s steps(2,start) infinite}@keyframes f3pw{to{opacity:.2}}
+body.noanim .tbl.new.pw{outline:3px solid #ff453a}
+.hero-rec{display:grid;gap:3px;align-content:center;padding:12px 14px;border-radius:14px;background:#ffffff08;border:1px solid var(--line);min-width:0}.hero-rec span{font-size:12px;color:var(--muted)}.hero-rec b{font-size:22px}.hero-rec small{font-size:11.5px;color:var(--muted)}.hero-rec .bar2{margin-top:4px}.hero-rec.beat{border-color:var(--accent);box-shadow:0 0 18px #f2c14e44}
+.thr{display:grid;gap:8px}.thr-b{max-width:85%;padding:8px 11px;border-radius:14px;background:#ffffff0d;border:1px solid var(--line);overflow-wrap:anywhere}.thr-b.me{justify-self:end;background:#f2c14e1a;border-color:#f2c14e44}.thr-b small{display:block;font-size:11px;margin-bottom:2px}
