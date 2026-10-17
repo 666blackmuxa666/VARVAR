@@ -100,6 +100,7 @@ export async function taxDaily(env) {
     lines.push(`• ${esc(e.title)} — ${when}${amt ? ` · ≈ ${money(amt)}` : ''}`);
   }
   const text = `📅 <b>Податковий календар</b> · ${KINDS[tax.kind]}\n${lines.join('\n')}\n\n🔗 <a href="${TAX_LINK}">Кабінет платника податків</a> — подати звіт / сплатити.\n<i>Дати й суми орієнтовні — звірте з бухгалтером.</i>`;
-  if (chat && env.BOT_TOKEN) await tg(env, 'sendMessage', { chat_id: chat, text, parse_mode: 'HTML', disable_web_page_preview: true }).catch(() => {});
-  else await notify(env, text.replace(/ · ≈ [^\n]*/g, '')).catch(() => {}); // без особистого чату власника — у робочу групу, без сум
+  const markup = { inline_keyboard: due.map(e => [{ text: '✅ Сплачено/подано: ' + e.title.slice(0, 30), callback_data: 'txd:' + e.key }]) }; // key = «вид:дата» → txd:вид:дата
+  if (chat && env.BOT_TOKEN) await tg(env, 'sendMessage', { chat_id: chat, text, parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: markup }).catch(() => {});
+  else await notify(env, text.replace(/ · ≈ [^\n]*/g, ''), markup).catch(() => {}); // без особистого чату власника — у робочу групу, без сум
 }

@@ -675,6 +675,15 @@ async function handleCallback(q, env) {
   const chat = q.message?.chat?.id, mid = q.message?.message_id, uid = q.from?.id;
   const answer = (text) => tg(env, 'answerCallbackQuery', { callback_query_id: q.id, text });
   const admin = await isAdmin(env, uid);
+  if ((q.data || '').startsWith('txd:')) { // 📅 «Сплачено» під податковим нагадуванням: адміністратор або власник (особистий чат)
+    const owner = String(await env.DB.get('digchat')) === String(uid);
+    if (!admin && !owner) return answer('🔐 Лише для адміністратора');
+    const key = q.data.slice(4); if (!/^[a-zA-Z0-9]+:\d{4}-\d{2}-\d{2}$/.test(key)) return answer('Невірний ключ');
+    const { taxDone } = await import('./tax.js'); await taxDone(env, key, 1);
+    const kb = (q.message?.reply_markup?.inline_keyboard || []).filter(r => r[0]?.callback_data !== q.data);
+    await tg(env, 'editMessageReplyMarkup', { chat_id: chat, message_id: mid, reply_markup: { inline_keyboard: kb } }).catch(() => {});
+    return answer('✅ Позначено як зроблено');
+  }
   if (!admin && !(await isWaiter(env, uid))) return answer('🔑 Спершу увійдіть: напишіть боту і введіть пароль офіціанта');
   const edit = (text, markup) => tg(env, 'editMessageText', { chat_id: chat, message_id: mid, text, parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: markup || { inline_keyboard: [] } });
   const send = async (v) => {
