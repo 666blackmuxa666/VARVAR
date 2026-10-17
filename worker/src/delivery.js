@@ -11,8 +11,8 @@ import { siteLink } from './venue.js';
 
 const BILL_TTL = 2 * 86400;
 // ⚙️ налаштування доставки (окремо від cfg — тут є текст і час)
-export const GO_DEF = { on: 1, del: 1, pick: 1, from: '10:00', to: '22:00', min: 0, fee: 60, free: 600, prep: 30, phone: '', zone: '', cash: 5, bmax: 30, cpay: 0, onl: 0, qrpay: 0 }; // onl — 🌐 онлайн-оплата замовлень; qrpay — оплата рахунку столу з QR (обидва — лише з ключами LiqPay закладу)
-const NUM = { on: [0, 1], del: [0, 1], pick: [0, 1], min: [0, 10000], fee: [0, 2000], free: [0, 100000], prep: [5, 240], cash: [0, 50], bmax: [0, 100], cpay: [0, 2000], onl: [0, 1], qrpay: [0, 1] };
+export const GO_DEF = { on: 1, del: 1, pick: 1, from: '10:00', to: '22:00', min: 0, fee: 60, free: 600, prep: 30, phone: '', zone: '', cash: 5, bmax: 30, cpay: 0, onl: 0, qrpay: 0, track: 0 }; // onl — 🌐 онлайн-оплата замовлень; qrpay — оплата рахунку столу з QR (обидва — лише з ключами LiqPay закладу)
+const NUM = { on: [0, 1], del: [0, 1], pick: [0, 1], min: [0, 10000], fee: [0, 2000], free: [0, 100000], prep: [5, 240], cash: [0, 50], bmax: [0, 100], cpay: [0, 2000], onl: [0, 1], qrpay: [0, 1], track: [0, 1] };
 export const getGoCfg = async env => ({ ...GO_DEF, ...((await env.DB.get('gocfg', 'json')) || {}) });
 export async function setGoCfg(env, k, v) {
   if (NUM[k]) { v = Math.round(+v); const [lo, hi] = NUM[k]; if (!(v >= lo && v <= hi)) return { error: `Від ${lo} до ${hi}` }; }
@@ -69,7 +69,7 @@ export async function goSet(env, t, st, who, { pay, cour } = {}) {
   if (st === 'done') {
     const g = b0.go, p = pay || (g.pay === 'card' ? 'card' : 'cash'); /* оплачене онлайн рахує _closeTable (go.paid); доплату — обраним способом */
     const r = await closeTable(env, t, who, p); if (!r) return null;
-    await markOrd(env, g.oid, 'done');
+    await markOrd(env, g.oid, 'done', { loc: undefined }); // 📍 точка кур'єра не зберігається після видачі
     return { ...r, done: 1 };
   }
   const b = await L(env, 'bills', async () => { const b = await getBill(env, t); if (!b.go) return null; b.go.st = st; if (st === 'road' && !b.go.roadAt) b.go.roadAt = Date.now(); if (cour !== undefined && cour !== b.go.cour) { b.go.cour = cour || ''; if (cour) b.go.takeAt ||= Date.now(); } await putBill(env, t, b); return b; });
@@ -198,9 +198,11 @@ export async function goAttach(env, t, go) {
 export async function goList(env, open) {
   return open.filter(r => isGo(r.t) && r.b.go).map(r => ({ t: r.t, ...r.b.go, sum: payable(r.b) }));
 }
+// 📍 жива точка кур'єра (лише під час road і якщо вмикнено gocfg.track): «N хв тому» + посилання на карту
+export const locLine = g => g?.loc && g.st === 'road' ? ` · <a href="https://www.openstreetmap.org/?mlat=${g.loc.la}&mlon=${g.loc.lo}#map=16/${g.loc.la}/${g.loc.lo}">📍 ${Math.max(0, Math.round((Date.now() - g.loc.ts) / 60e3))} хв тому</a>` : '';
 export function goText(list) {
   if (!list.length) return '🛵 Активних доставок і самовивозів немає.';
-  return ['🛵 <b>Доставка і з собою</b>', ...list.map(g => `\n<b>${tn(g.t)}</b> · ${goStLabel(g.st)} · ${g.sum} грн${g.when ? ` · на ${g.when}` : ''}\n👤 ${esc(g.name)} ${fmtPhone(g.phone)}${g.kind === 'del' ? `\n📍 ${esc(g.addr)}` : ''}${g.cour ? `\n🛵 ${esc(g.cour)}` : ''}`)].join('\n');
+  return ['🛵 <b>Доставка і з собою</b>', ...list.map(g => `\n<b>${tn(g.t)}</b> · ${goStLabel(g.st)} · ${g.sum} грн${g.when ? ` · на ${g.when}` : ''}\n👤 ${esc(g.name)} ${fmtPhone(g.phone)}${g.kind === 'del' ? `\n📍 ${esc(g.addr)}` : ''}${g.cour ? `\n🛵 ${esc(g.cour)}${locLine(g)}` : ''}`)].join('\n');
 }
 export const goButtons = g => [[...(g.st !== 'road' && g.kind === 'del' ? [{ text: `🛵 ${tn(g.t)} поїхав`, callback_data: `gos:${g.t}:road` }] : []), ...(g.st !== 'ready' && g.st !== 'road' ? [{ text: '🍽 Готово', callback_data: `gos:${g.t}:ready` }] : []), { text: `🤝 ${tn(g.t)} видано`, callback_data: `gos:${g.t}:done` }]];
 
@@ -235,7 +237,7 @@ export async function upsFor(env, name) { // до 4 назв: правила в�
 // публічні дані для сайту: налаштування (без зайвого) і баланс бонусів
 export async function goInfo(env, ph, tok) {
   const c = await getGoCfg(env), cli = ph && tok && (await (await import('./site.js')).meSess(env, tok)) === normPhone(ph) ? await getCli(env, normPhone(ph)) : null; // 🔐 баланс — лише власнику (сесія кабінету), не за одним номером
-  return { on: c.on, del: c.del, pick: c.pick, from: c.from, to: c.to, open: isOpen(c), min: c.min, fee: c.fee, free: c.free, prep: c.prep, phone: c.phone, zone: c.zone, cash: c.cash, bmax: c.bmax, onl: c.onl && lpKeys(env) ? 1 : 0, ...(isMem(cli) ? { bal: cli.bal || 0 } : {}), ...(ph ? {} : { pr: (await (await import('./promo.js')).promoShow(env).catch(() => [])).filter(r => !r.w || r.w.some(w => w !== 'hall')) }) }; // адреси — лише в касі (не світимо за номером)
+  return { on: c.on, del: c.del, pick: c.pick, from: c.from, to: c.to, open: isOpen(c), min: c.min, fee: c.fee, free: c.free, prep: c.prep, phone: c.phone, zone: c.zone, cash: c.cash, bmax: c.bmax, onl: c.onl && lpKeys(env) ? 1 : 0, track: c.track ? 1 : 0, ...(isMem(cli) ? { bal: cli.bal || 0 } : {}), ...(ph ? {} : { pr: (await (await import('./promo.js')).promoShow(env).catch(() => [])).filter(r => !r.w || r.w.some(w => w !== 'hall')) }) }; // адреси — лише в касі (не світимо за номером)
 }
 
 // ---------- 🖥 API каси: go* / cli* ----------
