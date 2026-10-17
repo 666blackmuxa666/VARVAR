@@ -146,6 +146,9 @@ export async function courAct(env, t, name, act, arg) {
   const b = await getBill(env, t); if (!b.go) return { error: 'Доставку вже закрито' }; await fillPromo(env, b);
   if (b.go.st === 'new' && ['take', 'road', 'done'].includes(act)) return { error: 'Замовлення ще не прийняте закладом' }; // гість замовив, заклад не підтвердив — кур'єр не рухає
   if (b.go.cour && b.go.cour !== name && act !== 'take') return { error: 'Це доставка ' + b.go.cour };
+  if (['eta', 'prob', 'km'].includes(act) && b.go.cour !== name) return { error: 'Спершу візьміть доставку ✋' }; // 🔒 повідомлення гостю/кухні/адміну — лише від кур'єра, який її взяв
+  if (act === 'eta' && Date.now() - (b.go.etaS || 0) < 20e3) return { error: 'Щойно надсилали — зачекайте' }; // не спамити гостя повтором
+  if (act === 'eta') await mark(env, t, 'etaS', Date.now());
   if (act === 'take') {
     const g = await L(env, 'bills', async () => { const x = await getBill(env, t); if (!x.go) return { error: 'Закрито' }; if (x.go.cour && x.go.cour !== name) return { error: 'Вже взяв ' + x.go.cour }; x.go.cour = name; x.go.takeAt = Date.now(); await putBill(env, t, x); return x.go; });
     if (g.error) return g;

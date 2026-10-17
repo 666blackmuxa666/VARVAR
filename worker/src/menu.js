@@ -61,7 +61,7 @@ export async function saveMenu(env, menu) {
 
 // id → { n: назва, p: ціна | {варіант: ціна} }; приховані (стоп-лист) не продаються
 export function priceMap(menu) {
-  const m = {};
+  const m = Object.create(null); // без прототипу: id «constructor» / «__proto__» не знаходить «страву»
   menu.categories.forEach(c => c.items.forEach(it => {
     if (it.hidden) return;
     m[it.id] = { n: it.name.uk, s: it.size, p: it.variants ? Object.fromEntries(it.variants.map(v => [v.v, v.p])) : it.price };

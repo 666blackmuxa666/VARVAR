@@ -817,8 +817,9 @@ export async function dayRecord(env, day, total, who) {
     const again = r?.d === day, prev = again ? r.prev : r?.sum || 0, nr = { sum: total, d: day, prev, at: Date.now() };
     await env.DB.put('rec:day', JSON.stringify(nr));
     const bonus = (await getCfg(env)).recBonus || 0, P = await import('./pay.js');
-    if (r && !again && prev > 0 && bonus > 0) { const att = (await P.getAtt(env, day.slice(0, 7)))[day] || {};
-      for (const n of Object.keys(att).filter(n => att[n]?.in)) await P.payOp(env, { n, t: 'bonus', sum: bonus, note: `🏆 рекорд дня ${total} грн`, day }, who || 'система').catch(() => {}); }
+    const paidK = 'rec:paid:' + day, paid = await env.DB.get(paidK); // один раз за день: повторний Z після рекорду наступного дня премію вдруге не платить
+    if (r && !again && !paid && prev > 0 && bonus > 0) { const att = (await P.getAtt(env, day.slice(0, 7)))[day] || {}; await env.DB.put(paidK, '1', { expirationTtl: 40 * 86400 });
+      for (const n of Object.keys(att).filter(n => att[n]?.in && att[n].ok !== -1)) await P.payOp(env, { n, t: 'bonus', sum: bonus, note: `🏆 рекорд дня ${total} грн`, day }, who || 'система').catch(() => {}); }
     if (r && !again) await notify(env, `🏆 <b>Новий рекорд закладу за день: ${money(total)}</b> (було ${money(prev)})${bonus > 0 ? `\n➕ Премія ${money(bonus)} кожному на зміні` : ''}`).catch(() => {});
     return { ...nr, beat: r ? 1 : 0 };
   });
