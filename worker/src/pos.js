@@ -214,7 +214,7 @@ export async function posApi(b, req, env) {
     }
     // 💬 чат закладу: повідомлення = подія k:'chat' у стрічці (коментарі/реакції — як під будь-якою подією)
     case 'chatSay': { const text = String(b.text || '').trim().slice(0, 500); if (!text) return [{ error: 'Порожнє повідомлення' }, 400]; const m = [...new Set((text.match(/@[^\s@,.!?]{2,24}/g) || []).map(x => x.slice(1)))].slice(0, 5); return ok({ e: await logEvent(env, { k: 'chat', by: who, text, seen: [who], ...(m.length ? { m } : {}) }) }); }
-    case 'jsErr': console.log('JSERR', env.VENUE || 'main', who, String(b.m || '').slice(0, 300), String(b.st || '').slice(0, 1500)); return ok(); // 🩺 помилка запуску каси — у wrangler tail
+    case 'jsErr': { const k = 'jserr:' + String(who).slice(0, 40), n = +(await env.DB.get(k)) || 0; if (n < 20) { await env.DB.put(k, String(n + 1), { expirationTtl: 600 }); console.log('JSERR', env.VENUE || 'main', JSON.stringify([String(who).slice(0, 40), String(b.m || '').slice(0, 300), String(b.st || '').slice(0, 1500)])); } return ok(); } // 🩺 помилка запуску каси — у wrangler tail
     case 'evVoiceGet': { const v = /^[a-f0-9-]{12}$/.test(String(b.v)) && await env.DB.get('vc:' + b.v, 'json'); return v ? ok(v) : [{ error: 'Голосове вже видалено (зберігаються 3 дні)' }, 404]; }
     case 'evNames': return ok({ list: (await getStaff(env)).map(s => s.name).concat('Кухня') });
     case 'printClear': { if (!admin) return needAdmin(); const r = await printClear(env, b.id ? String(b.id) : ''); if (r.n) await notify(env, `🖥 🗑 Черга друку: ${b.id ? 'видалено 1 завдання' : `очищено (${r.n})`} — ${esc(who)}`).catch(() => {}); return ok(r); }

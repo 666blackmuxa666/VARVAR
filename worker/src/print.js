@@ -189,10 +189,14 @@ async function nextReceiptNo(env) {
   return `${d}${m}${y.slice(2)}-${String(n).padStart(3, '0')}`;
 }
 
+const eqSafe = (a, b) => { a = String(a || ''); b = String(b || ''); let d = a.length ^ b.length; for (let i = 0; i < b.length; i++) d |= (a.charCodeAt(i) || 0) ^ b.charCodeAt(i); return d === 0; };
+
 // API для програми друку: GET /api/print/pull?key=… → завдання; POST /api/print/ack {key, ids}
 export async function printApi(req, env, url) {
   const key = req.headers.get('x-print-key') || url.searchParams.get('key') || (req.method === 'POST' ? (await req.clone().json().catch(() => ({}))).key : '');
-  if (!env.PRINT_KEY || key !== env.PRINT_KEY) return new Response('forbidden', { status: 403 });
+  const ip = req.headers.get('CF-Connecting-IP') || '', rk = 'prfail:' + ip.slice(0, 64); // 🛡 підбір ключа друку: 30 хибних за 10 хв з IP — стоп; порівняння без витоку за часом
+  if ((+(await env.DB.get(rk)) || 0) >= 30) return new Response('rate', { status: 429 });
+  if (!env.PRINT_KEY || !eqSafe(key, env.PRINT_KEY)) { await env.DB.put(rk, String((+(await env.DB.get(rk)) || 0) + 1), { expirationTtl: 600 }); return new Response('forbidden', { status: 403 }); }
   if (url.pathname === '/api/print/pull') {
     const r = await qcall(env, '/pull?wait=' + (+url.searchParams.get('wait') || 0));
     return new Response(await r.text(), { headers: { 'content-type': 'application/json; charset=utf-8' } }); // charset — інакше PowerShell ламає кирилицю

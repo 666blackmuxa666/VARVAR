@@ -44,7 +44,7 @@
     for (let i = 0; i < 12; i++) { let r = null; try { r = (await api('/api/tpay?id=' + encodeURIComponent(id))).data; } catch {}
       if (r?.st === 'paid') { try { if (localStorage.getItem('vv_tpay_cart') === id) { cart = {}; save(); localStorage.removeItem('vv_tpay_cart'); } } catch {} show('✅ ' + t('tPayOk'), 1); setTimeout(() => location.reload(), 2500); return; } if (r?.st === 'fail' || r?.st === 'none' && i > 3) break; await new Promise(z => setTimeout(z, i < 4 ? 2500 : 5000)); }
     show('⚠️ ' + t('tPayFail')); })();
-  const GO = qs.has('go'), BOOK = /^\d{8}[a-f0-9]{6}$/.test(qs.get('book') || '') ? qs.get('book') : ''; // BOOK — передзамовлення до броні // 🛵 замовлення за посиланням: лише з собою (самовивіз / доставка)
+  const GO = qs.has('go'), BOOK = /^\d{8}[a-f0-9]{6}(?:[a-f0-9]{6})?$/.test(qs.get('book') || '') ? qs.get('book') : ''; // BOOK — передзамовлення до броні // 🛵 замовлення за посиланням: лише з собою (самовивіз / доставка)
   if (GO) { tw = true; document.body.classList.add('go'); }
   const scanP = qk ? fetch(C.api + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ k: qk, t: qt, device }) })
     .then(r => r.json()).then(d => { if (d.until) { scanUntil = d.until; lockT = d.t || 0; store.set('scan', d.until); store.set('lockT', lockT); if (lockT) { table = String(lockT); store.set('table', table); } } }).catch(() => {}) : Promise.resolve();

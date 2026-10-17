@@ -153,6 +153,11 @@ export async function handle(req, env) {
         const dv = await req.clone().json().then(x => String(x?.device || '').slice(0, 64)).catch(() => ''), tk = 'ipdev:' + ip.slice(0, 64), seen = (await env.DB.get(tk, 'json')) || [];
         if (dv && !seen.includes(dv)) { if (seen.length >= (+env.IPDEV_MAX || 150)) return json({ error: 'rate' }, 429); await env.DB.put(tk, JSON.stringify([...seen, dv]), { expirationTtl: 600 }); }
       }
+      if (req.method === 'GET' && url.pathname.startsWith('/api/') && !['/api/me/poll', '/api/pos/live', '/api/build'].includes(url.pathname) && !url.pathname.startsWith('/api/print/')) { // 🛡 загальний ліміт публічних GET з одного IP (600/хв — вистачить Wi-Fi закладу); /api/cert і /api/book — суворіше (підбір кодів)
+        const tight = url.pathname === '/api/cert' || url.pathname === '/api/book';
+        if (ip && !(await pubRl(env, 'g' + ipKey(ip), 600, 60)) || ip && tight && !(await pubRl(env, 'c' + ipKey(ip), 40, 600))) return json({ error: 'rate' }, 429);
+      }
+      if (req.method === 'POST' && ip && url.pathname === '/api/bookpre' && !(await pubRl(env, 'p' + ipKey(ip), 40, 600))) return json({ error: 'rate' }, 429);
       // 🌐 візитка
       if (url.pathname === '/api/site') return new Response(JSON.stringify(await sitePublic(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
       if (url.pathname === '/site') return Response.redirect(siteLink('about.html'), 302);
@@ -226,6 +231,8 @@ function corsHeaders(req, env) {
   const allowed = (env.ALLOWED_ORIGIN || '').split(',').map(s => s.trim());
   return { 'Access-Control-Allow-Origin': allowed.includes(o) ? o : allowed[0] || '', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'content-type, authorization', Vary: 'Origin' };
 }
+// ліміт у вікні: true — можна, false — забагато (лічильник у базі з TTL)
+const pubRl = async (env, k, max, sec) => { const key = 'prl:' + k, n = (+(await env.DB.get(key)) || 0) + 1; if (n > max) return false; await env.DB.put(key, String(n), { expirationTtl: Math.max(60, sec) }); return true; };
 const tableNum = (v, env) => { const n = parseInt(v, 10); return n >= 1 && n <= +(env.TABLES || 50) ? n : 0; };
 
 // IPv4 — точний збіг, IPv6 — збіг за префіксом /64 (у телефонів у мережі змінюється хвіст адреси)
