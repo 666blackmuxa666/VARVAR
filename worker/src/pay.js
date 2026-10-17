@@ -101,7 +101,7 @@ export async function planCopyWeek(env, from, to) {
 
 // ---------- 💸 операції: премія / штраф / аванс / виплата ----------
 export async function payOp(env, { n, t, sum, src, note, day }, by) {
-  sum = r0(sum); if (!OPS[t] || !(sum > 0) || !n) return { error: 'Потрібні людина, тип і сума' };
+  sum = r0(sum); if (!OPS[t] || !(sum > 0 && sum <= 1e6) || !n) return { error: 'Потрібні людина, тип і сума' };
   const d = dayKey(), money_ = t === 'adv' || t === 'paid', m = !money_ && isDay(day) ? mon(day) : mon(d); /* штраф / премія — у місяць самої зміни */
   src = src === 'card' ? 'card' : 'cash';
   // рух грошей і операція ЗП — під одним замком на обидва ключі; спершу читаємо обидва списки, потім пишемо підряд
@@ -124,7 +124,7 @@ export async function payOpDel(env, month, id, back) {
 export async function setStaffPay(env, id, p) {
   return L(env, 'staff', async () => {
     const l = await getStaff(env), s = l.find(x => x.id === id); if (!s) return null;
-    const num = v => Math.max(0, r0(v)), pf = v => Math.max(0, Math.min(100, Math.round((+v || 0) * 10) / 10));
+    const num = v => Math.min(1e6, Math.max(0, r0(v))), pf = v => Math.max(0, Math.min(100, Math.round((+v || 0) * 10) / 10));
     s.pay = { rate: num(p.rate), pct: pf(p.pct), base: BASES[p.base] ? p.base : 'all', dayRev: num(p.dayRev), dayBonus: num(p.dayBonus), monRev: num(p.monRev), monBonus: num(p.monBonus), ...(p.dlv !== undefined && p.dlv !== '' ? { dlv: num(p.dlv) } : {}) };
     await env.DB.put('staff', JSON.stringify(l)); return s;
   });

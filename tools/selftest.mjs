@@ -312,6 +312,19 @@ async function apiTests() {
     });
   } else rec('кур\'єр не зареєстрований — сценарій пропущено', false);
 
+  sect('🛡 Грошові ліміти: мінус, Infinity, гігантські суми (аудит)');
+  await step('каса: cashMove / expense / reconcile / courCash / zpOp відхиляють сміттєві суми', async () => {
+    const bad = ['1e400', 1e15, -100, 'NaN'], seen = [];
+    for (const v of bad) {
+      const rs = { cashMove: await pos(A, 'cashMove', { type: 'in', sum: v, note: 'qa' }), expense: await pos(A, 'expense', { sum: v, note: 'qa' }), reconcile: await pos(A, 'reconcile', { src: 'cash', actual: v === -100 ? -5 : v }),
+        courCash: await pos(A, 'courCash', { n: users.courier?.me?.name || 'x', sum: v }), zpOp: await pos(A, 'zpOp', { n: users.waiter?.me?.name || 'x', t: 'adv', sum: v, src: 'cash' }) };
+      for (const [k, r] of Object.entries(rs)) if (r.status !== 400) seen.push(`${k}(${v})→${r.status}`);
+    }
+    must(!seen.length, 'прийнято: ' + seen.join(', '));
+    must((await pos(A, 'courCash', { n: 'Немає Такого', sum: 10 })).status === 400, 'courCash неіснуючому кур\'єру');
+    return `${bad.length * 5} перевірок`;
+  });
+
   sect('💳 Онлайн-оплата LiqPay (пісочниця тестового сервера)');
   {
     const { createHash } = await import('node:crypto'), PRIV = 'sandbox_test_private_key';

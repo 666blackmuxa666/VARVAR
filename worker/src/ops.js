@@ -606,8 +606,9 @@ export const MOVE_ALL = { ...MOVE, tipc: '💝 Чайові видано гот�
 export const moveCash = m => m.del ? 0 : ({ in: 1, out: -1, k2c: 1, c2k: -1, tipc: -1, adjc: 1, salc: -1 }[m.type] || 0) * m.sum;
 export const moveCard = m => m.del ? 0 : ({ k2c: -1, c2k: 1, kin: 1, tipk: -1, kout: -1, adjk: 1, salk: -1 }[m.type] || 0) * m.sum;
 export const getMov = async (env, day = dayKey()) => (await env.DB.get('mov:' + day, 'json')) || [];
+export const SUM_MAX = 1e6; // 🛡 стеля однієї грошової операції в касі (грн): відсікає Infinity/1e15/сміття
 async function _addMove(env, m) {
-  if (!MOVE[m.type] || !(m.sum > 0)) return null;
+  if (!MOVE[m.type] || !(m.sum > 0 && m.sum <= SUM_MAX)) return null;
   const k = 'mov:' + dayKey(), l = await getMov(env); const e = { ts: Date.now(), at: hhmm(), type: m.type, sum: Math.round(m.sum), note: String(m.note || '').slice(0, 100), by: m.by || '' };
   l.push(e); await env.DB.put(k, JSON.stringify(l));
   /* у стрічку не пишемо — рухи грошей видно лише в касі */
@@ -636,7 +637,7 @@ export async function balances(env) {
 }
 // ✏️ звірка: вписали фактичний залишок — різниця записується коригуванням
 async function _reconcile(env, src, actual, who) {
-  actual = Math.round(+actual); if (!(actual >= 0)) return null;
+  actual = Math.round(+actual); if (!(actual >= 0 && actual <= 1e8)) return null;
   const b = await balances(env), was = src === 'card' ? b.card : b.cash, diff = actual - was;
   if (!diff) return { diff: 0, was, actual };
   const k = 'mov:' + dayKey(), l = await getMov(env);
@@ -644,7 +645,7 @@ async function _reconcile(env, src, actual, who) {
   await logEvent(env, { k: 'shift', by: who, text: `✏️ Звірка ${src === 'card' ? 'картки' : 'готівки'}: факт ${actual} грн (${diff > 0 ? '+' : ''}${diff})` });
   return { diff, was, actual };
 }
-export const setFloat = (env, n) => bump(env, 'day:' + dayKey(), d => { d.float = Math.round(n); });
+export const setFloat = (env, n) => bump(env, 'day:' + dayKey(), d => { n = Math.round(+n); d.float = n >= 0 && n <= SUM_MAX ? n : 0; });
 export async function cashData(env) {
   const d = (await env.DB.get('day:' + dayKey(), 'json')) || {};
   const exp = await getExp(env); const ex = exp.filter(e => !e.del);
@@ -751,7 +752,7 @@ export async function lastZrec(env) {
 }
 export async function openShift(env, float, who) {
   if (await getShift(env)) return { error: 'Зміна вже відкрита' };
-  const s = { id: crypto.randomUUID().slice(0, 8), opened: Date.now(), by: who || '', float: Math.max(0, Math.round(+float || 0)) };
+  const s = { id: crypto.randomUUID().slice(0, 8), opened: Date.now(), by: who || '', float: Math.min(SUM_MAX, Math.max(0, Math.round(+float || 0))) };
   await env.DB.put('shift', JSON.stringify(s)); await setFloat(env, s.float);
   await logEvent(env, { k: 'shift', by: who, text: `🔓 Касу відкрито · на початок ${s.float} грн` });
   return { s };
@@ -759,7 +760,7 @@ export async function openShift(env, float, who) {
 export async function closeShift(env, counted, who, print = true) {
   if (!(await getShift(env))) return { error: 'Зміна не відкрита' };
   const d = await shiftData(env);
-  if (counted != null && counted !== '' && !Number.isFinite(+counted)) return { error: 'Некоректна сума' };
+  if (counted != null && counted !== '' && !(Math.abs(+counted) <= 1e8)) return { error: 'Некоректна сума' };
   const z = { ...d, closed: Date.now(), closedBy: who || '', counted: counted == null || counted === '' ? null : Math.round(+counted) };
   z.diff = z.counted == null ? null : z.counted - z.inBox;
   const k = 'z:' + dayKey(); const l = (await env.DB.get(k, 'json')) || []; l.push(z); await env.DB.put(k, JSON.stringify(l));

@@ -120,6 +120,7 @@ export async function courOwed(env) {
   return { sum, by: Object.fromEntries(Object.entries(by).map(([n, v]) => [n, Math.max(0, v - (hand[n]?.sum || 0))]).filter(([, v]) => v > 0)) };
 }
 export async function courCashGive(env, name, sum, by) { // адмін: «отримав готівку від кур'єра»
+  if (!(sum > 0 && sum <= 1e6)) return null;
   return L(env, 'ccash:' + dayKey(), async () => { const k = 'ccash:' + dayKey(), h = (await env.DB.get(k, 'json')) || {}; h[name] = { sum: (h[name]?.sum || 0) + Math.round(+sum || 0), by, at: hhmm() }; await env.DB.put(k, JSON.stringify(h), { expirationTtl: 40 * 86400 }); return h[name]; });
 }
 // кінець зміни кур'єра → адміну запит «отримав готівку»
