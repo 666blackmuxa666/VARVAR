@@ -10,7 +10,7 @@
       const b = S.tables[t], at = map ? ` style="left:${mp[t][0]}%;top:${mp[t][1]}%"${S.mapEd ? ` data-mt="${t}"` : ''}` : '', dim = map && !inF.has(t) ? ' dim' : '';
       const bk = (S.books || []).find(x => x.t === t && x.st === 'ok');
       if (!b) return `<button${at} class="tbl${dim}${calls[t] ? ' calling' : ''}${bk ? ' booked' : ''}" data-a="table" data-t="${t}">${bell(t)}<div class="n">${t}</div><div class="st">${bk ? `📅 ${bk.time} · ${esc(bk.name)}` : 'вільний'}</div></button>`;
-      const due = b.paid ? Math.max(0, b.pay2 - (b.paid.net || 0)) : 0, cls = ['busy', b.check ? 'check' : '', pending.has(t) || b.pwait ? 'new' : ''].join(' '); /* 💳 оплачено з QR — червона, доки не підтвердять */
+      const due = b.paid ? Math.max(0, b.pay2 - (b.paid.net || 0)) : 0, cls = ['busy', b.check ? 'check' : '', pending.has(t) || b.pwait ? 'new' : '', b.pwait ? 'pw' : ''].join(' '); /* 💳 оплачено з QR — червона, доки не підтвердять */
       const tag = b.pwait ? '<span class="tag c" title="оплачено онлайн">🌐</span>' : b.check ? `<span class="tag c">🧾 рахунок</span>${b.pay ? `<i class="pay" title="${b.pay === 'online' ? 'оплачено онлайн' : b.pay === 'card' ? 'карта' : 'готівка'}">${b.pay === 'online' ? '🌐' : b.pay === 'card' ? '💳' : '💵'}</i>` : ''}` : pending.has(t) ? '<span class="tag g">нове</span>' : '';
       return `<button${at} class="tbl${dim} ${cls}${calls[t] ? ' calling' : ''}" data-a="table" data-t="${t}">${bell(t)}${tag}<div class="n">${t}</div><div class="st">${b.pwait ? (due ? `оплачено · доплата ${money(due)}` : 'оплачено — підтвердіть') : `${b.orders} замовл.${b.disc ? ` · −${b.disc}%` : ''}`}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">з ${b.opened ? hhmm(b.opened) : '—'}</div></button>`;
     }).join('');
@@ -31,7 +31,7 @@
     const body0 = go ? (goL.length ? `<div class="go-strip go-grid">${goL.map(goTileHTML).join('')}</div>` : '<div class="muted" style="padding:14px">Замовлень зараз немає</div>') : `${S.cfg?.goTabs ? goTile : strip}${map ? floorUI(cur, all, inF, calls, pending) : ''}${map ? '' : `<div class="tables${rng.length > 24 ? ' compact' : ''}">${tiles || `<div class="muted" style="padding:14px">${S.hf === 'mine' ? 'У вас зараз немає столів' : 'Зайнятих столів немає'}</div>`}</div>`}`;
     const body = alerts + body0;
     return `<div class="head"><h1>${V.length > 1 ? `<button class="hall-pick${othHot ? ' hot' : ''}" data-hl="pick">${cur.ic} ${esc(cur.n)} ▾</button>` : 'Зал'}</h1>${tools}
-      ${isCook() || isCour() ? '' : inboxBtn()}${isCook() || isCour() ? '' : S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="Нові броні — підтвердіть">📅 ${S.bkNew} нов.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">📅 ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="Бронювання">📅</button>`}</div>${bar}${body}`;
+      ${isCook() || isCour() ? '' : inboxBtn()}${isCook() || isCour() ? '' : `<button class="btn${(S.wl || []).length ? '' : ' ghost'}" data-a="wl" title="Черга гостей">⏳${(S.wl || []).length ? ' ' + S.wl.length : ''}</button>`}${isCook() || isCour() ? '' : S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="Нові броні — підтвердіть">📅 ${S.bkNew} нов.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">📅 ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="Бронювання">📅</button>`}</div>${bar}${body}`;
   }
 
   // ---------- стрічка ----------
@@ -161,6 +161,13 @@
       const c = S.menu?.categories.find(x => x.items.some(i => i.id === it.id)), gr = c && S.groups?.find(x => x.cats?.includes(c.id)); /* і відкривається розділ цієї страви, а не перша вкладка групи (була «Кава» замість «Пиво») */
       if (c && gr && curGrp() !== 'fav') { S.grp = gr.id; S.cat = c.id; } }
     renderSheet(); if (keepKb && !searching()) $('#search')?.focus();
+    upsHint(it.name.uk, cart);
+  }
+  // 💡 допродаж: правила власника + «часто беруть разом» → підказка після додавання страви (карта вантажиться раз)
+  async function upsHint(name, cart) {
+    if (!S.ups) { S.ups = {}; try { S.ups = (await api('upsMap')).m || {}; } catch {} }
+    const have = new Set(Object.values(cart).map(x => x.name)), l = (S.ups[name] || []).filter(n => !have.has(n)).slice(0, 3);
+    if (l.length) toast('💡 До «' + name + '» пропонуємо: ' + l.join(', '));
   }
   for (const ev of ['change', 'compositionend']) document.addEventListener(ev, e => { if (e.target.id === 'cartCom') S.coms[S.open] = e.target.value; }); // 📝 iPad: підказки клавіатури
   async function sendCart() {
@@ -177,12 +184,18 @@
     const t = S.open, b = S.tables[t]; if (!b) return;
     const v = await choose(`Закрити стіл ${tn(t)}`, `До сплати ${money(b.pay2)}${b.tip ? ` + 💝 чайові ${money(b.tip)} = ${money(b.pay2 + b.tip)}` : ''}${b.pay ? ` · гість хоче ${b.pay === 'card' ? '💳 карткою' : '💵 готівкою'}` : ''}`, [
       { label: '💵 Готівка + 🖨 чек', val: 'cash:1', cls: 'green' }, { label: '💳 Карта + 🖨 чек', val: 'card:1', cls: 'blue' },
-      { label: '💵 Готівка, без чека', val: 'cash:0' }, { label: '💳 Карта, без чека', val: 'card:0' }]);
+      { label: '💵 Готівка, без чека', val: 'cash:0' }, { label: '💳 Карта, без чека', val: 'card:0' }, { label: '➗ Порівну на гостей', val: 'eq' }]);
     if (!v) return;
+    if (v === 'eq') { // підказка: скільки з кожного (оплата — окремо, одним рахунком)
+      const n = Math.round(+await ask('Порівну на скількох?', `Сума ${money(b.pay2 + (b.tip || 0))}`, 'number')); if (!(n >= 2 && n <= 30)) return;
+      const tot = b.pay2 + (b.tip || 0), one = Math.floor(tot / n), rest = tot - one * n;
+      await choose(`➗ Порівну на ${n}`, `З кожного ${money(one)}${rest ? ` (один доплачує ${money(one + rest)})` : ''} · разом ${money(tot)}`, [{ label: 'Гаразд', val: 'ok' }]);
+      return closeFlow();
+    }
     const [pay, pr] = v.split(':');
     const r = await act('close', { t, pay, print: pr === '1' });
     if (r?.queued) { toast(`📴 Стіл ${tn(t)}: немає зв'язку — закриття в черзі, відправимо самі`); closeSheet(); return; }
-    if (r?.r) { toast(`✅ Стіл ${tn(t)} закрито · ${money(r.r.sum)}`); closeSheet(); loadState().catch(() => {}); }
+    if (r?.r) { toast(`✅ Стіл ${tn(t)} закрито · ${money(r.r.sum)}`); closeSheet(); loadState().then(wlFree.bind(null, t)).catch(() => {}); }
   }
   // причина скасування — обовʼязкова, видно у звітах і в закритому рахунку
   const VOID_R = ['Гість передумав', 'Помилка офіціанта', 'Довго чекали', 'Не сподобалось', 'Немає продукту', 'Брак / зіпсовано'];
@@ -289,7 +302,7 @@
     const mp = mapPos(cur), ed = S.mapEd, d = S.mapDraft, key = hk(cur);
     const tables = all.map(t => {
       const b = S.tables[t], bk = !b && (S.books || []).find(x => x.t === t && x.st === 'ok'), [x, y, sh, r] = mp[t];
-      const st = b ? (pending.has(t) || b.pwait ? 's-new' : b.check ? 's-check' : 's-busy') : bk ? 's-book' : '';
+      const st = b ? (pending.has(t) || b.pwait ? 's-new' + (b.pwait ? ' pw' : '') : b.check ? 's-check' : 's-busy') : bk ? 's-book' : '';
       const sub = b ? `<small>${b.pwait ? '🌐 ' : b.check ? '🧾 ' : pending.has(t) ? '🛎 ' : ''}${money(b.pay2)}</small>` : bk ? `<small>📅 ${bk.time}</small>` : '';
       return { t, x, y, sh, r, cls: `${st}${calls[t] ? ' call' : ''}${inF.has(t) ? '' : ' dim'}`, attrs: ed ? '' : `data-a="table" data-t="${t}"`, pin: `<b>${calls[t] ? '🔔' : ''}${t}</b>${sub}` };
     });
@@ -352,3 +365,20 @@
     if (a === 'hf') { S.hf = el.dataset.h; store.set('hf', S.hf); return renderMain(); }
   });
 
+
+  // ⏳ стіл звільнився → пропонуємо покликати першого з черги (місткість столів у системі не зберігається; без автовідправки)
+  function wlFree(t) {
+    const n = (S.wl || []).find(x => x.st === 'wait'); if (!n) return;
+    toast(`⏳ Стіл ${tn(t)} вільний — покликати ${n.name} (${n.people} ос.)?`, { label: '🔔 Покликати', fn: async () => { if (await act('wlAct', { id: n.id, act: 'call' }, '🔔 Покликали')) loadState().catch(() => {}); } });
+  }
+  // ⏳ черга гостей у залі (wl.js; та сама wlAct у боті)
+  async function wlOpen() {
+    const ago = x => Math.max(0, Math.round((Date.now() - x.at) / 60e3));
+    const rows = (S.wl || []).map((x, i) => `<div class="kv" style="flex-wrap:wrap;gap:6px"><span style="min-width:0;overflow-wrap:anywhere">${i + 1}. <b>${esc(x.name)}</b> · ${x.people} ос. · ${ago(x)} хв${x.st === 'called' ? ' · 🔔' : ''}${x.phone ? ` · ${esc(x.phone)}` : ''}</span><span class="row" style="gap:6px"><button class="btn sm" data-mi-v="call:${x.id}">🔔</button><button class="btn sm" data-mi-v="seat:${x.id}">🪑</button><button class="btn sm ghost" data-mi-v="gone:${x.id}">✖</button></span></div>`).join('') || '<div class="muted">Черга порожня</div>';
+    const v = await modal({ title: '⏳ Черга в залі', body: rows, buttons: [{ label: '➕ Додати гостя', val: 'add', cls: 'primary' }, { label: 'Закрити', val: null }] });
+    if (!v) return;
+    if (v === 'add') { const name = await ask('Імʼя гостя'); if (!name) return; const p = await ask('Скільки людей?', '2', 'number'); if (!p) return; const r = await act('wlAdd', { name, people: +p }, '⏳ Додано в чергу'); if (r) { await loadState().catch(() => {}); wlOpen(); } return; }
+    const [a, id] = String(v).split(':'); let tt = 0;
+    if (a === 'seat') { tt = await pickTable('🪑 За який стіл?', ''); if (!tt) return; }
+    if (await act('wlAct', { id, act: a, t: tt }, { call: '🔔 Покликали', seat: '🪑 Посадили', gone: '✖ Прибрано' }[a])) { await loadState().catch(() => {}); if ((S.wl || []).length) wlOpen(); }
+  }

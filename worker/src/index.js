@@ -1,7 +1,7 @@
 import { aiHelp } from './ai.js';
 import { tn } from './tn.js';
 import { BUILD } from './buildid.js';
-import { goOrder, goInfo, reco } from './delivery.js';
+import { goOrder, goInfo, recoAll } from './delivery.js';
 import { promoQuote, promoFill } from './promo.js';
 import { courUpdate } from './courier.js';
 import { guestBot, guestCallback, guestText, guestHello, sitePublic, bookCreate, bookStatus, bookPre, certAsk, certPublic, siteMsg, siteHit, meStart, mePoll, meData, meLogout, cron } from './site.js';
@@ -27,13 +27,13 @@ const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;
 
 // 💸 запити, що працюють з базою, виконуються всередині Durable Object (store.js → Store.fetch):
 // там кожне читання/запис — локальне, а платний «запит до DO» — один на дію, а не 20–50
-const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|goinfo|promo|reco|site|book|bookpre|cert|me|me\/start|me\/poll|me\/logout)$|tg$|tg2$|tg3$|tg4$|__cron$)/;
+const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|goinfo|promo|reco|site|book|bookpre|wl|cert|me|me\/start|me\/poll|me\/logout)$|tg$|tg2$|tg3$|tg4$|__cron$)/;
 // 💾 кеш у пам'яті воркера для однакових для всіх відповідей (на *.workers.dev кеш Cloudflare не працює).
 // Економить запити до Durable Object: меню відкривають сотні гостей, а змінюється воно рідко. Стоп-лист сервер
 // все одно перевіряє при замовленні (priceMap пропускає hidden), тож 20 с затримки безпечні.
 const MEM = new Map(), TTL = { '/api/menu': 20, '/api/site': 60, '/api/reco': 600, '/api/goinfo': 30, '/k': 3600, '/kitchen': 3600 };
 async function cached(req, path, run) {
-  const u = new URL(req.url), ttl = req.method === 'GET' && TTL[path];
+  const u = new URL(req.url), ttl = req.method === 'GET' && (path === '/api/orders' ? u.searchParams.has('g') && 15 : TTL[path]); // 🛵 статус доставки гостя — спільний кеш 15 с (?g=1)
   if (!ttl || u.searchParams.has('ph') || u.searchParams.has('nocache')) return run();
   const key = u.pathname + u.search + '|' + (req.headers.get('Origin') || ''), hit = MEM.get(key);
   if (hit && hit.exp > Date.now()) return new Response(hit.body, { status: 200, headers: { ...hit.headers, 'x-cache': 'HIT' } });
@@ -135,7 +135,7 @@ export async function handle(req, env) {
       if (url.pathname === '/api/orders') { // статуси замовлень гостя: ?ids=a,b
         const ids = (url.searchParams.get('ids') || '').split(',').filter(x => /^[a-z0-9]{6,12}$/.test(x)).slice(0, 20);
         const out = {}, all = ids.length ? await env.DB.getMany(ids.map(id => 'ord:' + id), 'json') : []; // один запит замість N
-        ids.forEach((id, i) => { const o = all[i]; out[id] = o && { s: o.s, t: o.t, by: o.by, at: o.at, ...(o.go ? { g: o.g || o.s, no: tn(o.t), eta: o.eta, gAt: o.gAt, ...(o.etaC ? { etaC: o.etaC } : {}) } : {}) }; });
+        ids.forEach((id, i) => { const o = all[i]; out[id] = o && { s: o.s, t: o.t, by: o.by, at: o.at, ...(o.go ? { g: o.g || o.s, no: tn(o.t), eta: o.eta, gAt: o.gAt, ...(o.cour ? { c: o.cour } : {}), ...(o.etaC ? { etaC: o.etaC } : {}) } : {}) }; });
         return json(out);
       }
       if (url.pathname === '/api/pos/live') return posLive(req, env, url);
@@ -149,9 +149,14 @@ export async function handle(req, env) {
       if (url.pathname === '/api/owner' && req.method === 'POST') return env.VENUE === MAIN ? json(...await ownerApi(req, env)) : json({ error: 'not_found' }, 404); // 👑 кабінет власника
       if (url.pathname.startsWith('/__int/')) return json(...await intApi(req, env, url.pathname)); // заклад ← кабінет (лише зсередини воркера)
       if (url.pathname === '/__cron') return env.INSTORE && req.headers.get('x-cron') && req.headers.get('x-cron') === (env.MASTER_KEY ? await intSecret(env) : '1') ? json(await cron(env)) : json({ error: 'no' }, 403);
+      if (req.method === 'POST' && ip && ['/api/book', '/api/cert', '/api/go', '/api/tpay', '/api/wl'].includes(url.pathname)) { // 🛡 ліміти по device обходяться його зміною: з одного IP — не більше 150 (env.IPDEV_MAX) різних пристроїв за 10 хв (повтори того ж пристрою не рахуються)
+        const dv = await req.clone().json().then(x => String(x?.device || '').slice(0, 64)).catch(() => ''), tk = 'ipdev:' + ip.slice(0, 64), seen = (await env.DB.get(tk, 'json')) || [];
+        if (dv && !seen.includes(dv)) { if (seen.length >= (+env.IPDEV_MAX || 150)) return json({ error: 'rate' }, 429); await env.DB.put(tk, JSON.stringify([...seen, dv]), { expirationTtl: 600 }); }
+      }
       // 🌐 візитка
       if (url.pathname === '/api/site') return new Response(JSON.stringify(await sitePublic(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
       if (url.pathname === '/site') return Response.redirect(siteLink('about.html'), 302);
+      if (url.pathname === '/api/wl') { const W = await import('./wl.js'); if (req.method !== 'POST') return json(await W.wlStatus(env, url.searchParams.get('id')) || { error: 'not_found' }); const b = await req.json().catch(() => null); if (!b || typeof b !== 'object') return json({ error: 'bad_request' }, 400); if (b.cancel) return json(...await W.wlAct(env, b.id, 'cancel')); const ik = 'wlip:' + (ip || 'none').slice(0, 64), ic = +(await env.DB.get(ik)) || 0; if (ic >= 6) return json({ error: 'rate' }, 429); await env.DB.put(ik, String(ic + 1), { expirationTtl: 3600 }); const rk = 'wlrl:' + String(b.device || ip).slice(0, 64), rn = +(await env.DB.get(rk)) || 0; if (rn >= 3) return json({ error: 'rate' }, 429); await env.DB.put(rk, String(rn + 1), { expirationTtl: 3600 }); return json(...await W.wlAdd(env, b)); }
       if (url.pathname === '/api/book' && req.method === 'POST') return json(...await bookCreate(await req.json(), ip, env));
       if (url.pathname === '/api/book') return json(await bookStatus(env, url.searchParams.get('id')) || { error: 'not_found' });
       if (url.pathname === '/api/bookpre' && req.method === 'POST') return json(...await bookPre(await req.json(), env));
@@ -178,7 +183,7 @@ export async function handle(req, env) {
       if (url.pathname === '/api/go' && req.method === 'POST') { const gb = await req.json(); if (gb && typeof gb === 'object') { delete gb._paid; delete gb._oid; } /* 🔐 службові поля лише від LiqPay (delivery.js), не від гостя */ return json(...await goOrder(gb, ip, env)); }
       if (url.pathname === '/api/goinfo') return json(await goInfo(env, url.searchParams.get('ph')));
       if (url.pathname === '/api/promo' && req.method === 'POST') return json(await promoQuote(await req.json(), env)); // 🎁 знижки кошика ?go
-      if (url.pathname === '/api/reco') return json(await reco(env));
+      if (url.pathname === '/api/reco') return json(await recoAll(env));
       if (url.pathname === '/go') return Response.redirect(siteLink('index.html?go') + (url.search ? '&' + url.search.slice(1) : ''), 302);
       if (url.pathname === '/api/call' && req.method === 'POST') return json(...await callWaiter(await req.json(), ip, env));
       if (url.pathname === '/api/order' && req.method === 'POST') return json(...await order(await req.json(), ip, env));
@@ -240,8 +245,8 @@ async function callWaiter(b, ip, env) {
   const sc = await scanInfo(env, b.device);
   if (sc?.t && sc.until > Date.now() && sc.t !== table) return [{ error: 'wrong_table', t: sc.t }, 403];
   if (!(sc?.until > Date.now()) && !(await inVenue(env, ip))) return [{ error: 'not_in_venue' }, 403];
-  const rk = 'callrl:' + String(b.device || ip).slice(0, 64); if (await env.DB.get(rk)) return [{ error: 'wait' }, 429];
-  await env.DB.put(rk, '1', { expirationTtl: 60 });
+  const rk = 'callrl:' + String(b.device || ip).slice(0, 64); // 🔒 під замком: два миттєві запити не дають двох повідомлень у Telegram
+  if (await env.DB.locked(rk, async () => { if (await env.DB.get(rk)) return true; await env.DB.put(rk, '1', { expirationTtl: 60 }); return false; })) return [{ error: 'wait' }, 429];
   const oid = crypto.randomUUID().replace(/-/g, '').slice(0, 10), html = `🔔🔔 <b>Стіл ${tn(table)} кличе офіціанта</b>`;
   const r = await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: html, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '✅ Іду', callback_data: `acc:${table}:${oid}` }]] } });
   const mid = (await r.json().catch(() => ({})))?.result?.message_id;
@@ -408,8 +413,13 @@ async function atomApi(req, env, url) {
       return J({ ok: true });
     }
     if (url.pathname === '/api/demo') { // 📱 демо-каса: адмін-сесія демо-закладу (щоночі скидається)
+      const ct = await env.DB.get('demotok'); if (ct) return J({ ok: true, token: ct, venue: DEMO }); // ♻️ одна спільна демо-сесія на 30 хв (а не нова 12-год адмін-сесія на кожен виклик)
+      const drk = 'demorl:' + (ip || 'none').slice(0, 64); // ліміт створення: одна нова демо-сесія з IP на хвилину
+      if (await env.DB.get(drk)) return J({ error: 'Зачекайте хвилину' }, 429);
+      await env.DB.put(drk, '1', { expirationTtl: 60 });
       if (!(await H.venueGet(DEMO))) return J({ error: 'Демо ще готується' }, 404);
-      const r = await (await import('./owner.js')).demoLogin(env, DEMO); return r.token ? J({ ok: true, token: r.token, venue: DEMO }) : J({ error: r.error || 'Не вдалося' }, 500);
+      const r = await (await import('./owner.js')).demoLogin(env, DEMO); if (!r.token) return J({ error: r.error || 'Не вдалося' }, 500);
+      await env.DB.put('demotok', r.token, { expirationTtl: 1800 }); return J({ ok: true, token: r.token, venue: DEMO });
     }
     return J({ error: 'not found' }, 404);
   } catch (e) { return J({ error: 'Помилка, спробуйте ще раз' }, 500); }

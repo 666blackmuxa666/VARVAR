@@ -43,7 +43,7 @@ export async function posApi(b, req, env) {
   const t = +b.t || 0;
   const needAdmin = () => [{ error: 'admin' }, 403];
   // ⛔ підписку ATOM не оплачено (5+ днів) — каса лише для перегляду: нові замовлення й чеки — ні
-  if (/^(order|close|accept|split|move|discount|precheck|goNew|goSt|tpayOk|tip|tipPay|cashMove|closedEdit|closedReopen|voidBack|tableBack|expense|shiftOpen|menuSave|menuDel|catAdd|menuImport)$/.test(b.op || '') && env.VENUE !== 'varvar' && await env.DB.get('cfg:lock')) return [{ error: '⛔ Підписку ATOM не оплачено — каса в режимі перегляду. Оплатіть у кабінеті власника (💳 Оплата)' }, 402];
+  if (/^(order|close|accept|split|move|discount|precheck|goNew|goSt|tpayOk|tip|tipPay|cashMove|closedEdit|closedReopen|voidBack|tableBack|expense|shiftOpen|menuSave|menuDel|catAdd|menuImport)$/.test(b.op || '') && env.VENUE !== 'varvar') { const lk = await env.DB.get('cfg:lock', 'json'); if (lk) return [{ error: lk.why === 'off' ? '⛔ Заклад вимкнено платформою ATOM — каса в режимі перегляду' : '⛔ Підписку ATOM не оплачено — каса в режимі перегляду. Оплатіть у кабінеті власника (💳 Оплата)' }, 402]; }
   // 📱 демо-каса ATOM (сайт продажу): усе можна спробувати, крім платного ШІ, Telegram, друку, персоналу й кодів
   if (env.VENUE === 'atom-demo' && /Гість демо/.test(me.name || '') && /^(help|aiBench|photo[A-Z]|menuPhoto|menuImport|skInvParse|skCardAi|skDups|print|rcpt|closedPrint|precheck|qrNew|regCode|staff[A-Z]|wifi|courTg|reset|lookVSet|dzSet|site[A-Z]*Ai|aiSite|gbSend|chat|menuSave|menuDel|menuUndo|catAdd|catSet|cfgSet|closedRefund|tpayRefund|closedDel|zDel|bak|go[A-Z]*Cfg|goCfgSet|siteSet|siteDesign|menuDesign)/.test(b.op || '')) return [{ error: '🔒 У демо це вимкнено — підключіть свій заклад' }, 403];
   const ok = (x = {}) => [{ ok: true, ...x }, 200];
@@ -51,10 +51,10 @@ export async function posApi(b, req, env) {
   // 🧮 Розрахунок: склад, техкарти, накладні, інвентаризація — свої права (адмін / кухар)
   if (/^sk[A-Z]/.test(b.op || '')) return stockApi(b, env, me, { invoice: aiInvoice, card: aiCard, dups: aiDups });
   if (/^zp[A-Z]/.test(b.op || '')) return payApi(b, env, me); // 👷 зміни й зарплата
-  if (me.role === 'cook' && !['logout', 'state', 'menu', 'fav', 'order', 'accept', 'reject', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'evCom', 'chatSay', 'jsErr', 'evComDel', 'evRx', 'evSeen', 'evVoice', 'evVoiceGet', 'evNames', 'printTest', 'tabJobs', 'tabAck', 'ideaAdd', 'ideaList', 'ideaDel', 'help', 'taskList', 'taskMark', 'taskPh', 'lookV'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
+  if (me.role === 'cook' && !['logout', 'state', 'zpMy', 'zpIn', 'zpOut', 'zpSwap', 'zpSwapStep', 'zpPeople', 'avatar', 'menu', 'fav', 'order', 'accept', 'reject', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'evCom', 'chatSay', 'jsErr', 'evComDel', 'evRx', 'evSeen', 'evVoice', 'evVoiceGet', 'evNames', 'printTest', 'tabJobs', 'tabAck', 'ideaAdd', 'ideaList', 'ideaDel', 'ideaThr', 'ideaSay', 'ideaSeen', 'help', 'taskList', 'taskMark', 'taskPh', 'lookV'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
 
   // 🛵 кур'єр: лише свої доставки
-  if (me.role === 'courier' && !['logout', 'state', 'goSt', 'goCour', 'zpIn', 'zpOut', 'zpMy', 'ideaAdd', 'ideaList', 'ideaDel', 'help', 'courMe', 'courTg', 'courAct', 'taskList', 'taskMark', 'taskPh', 'lookV'].includes(b.op)) return [{ error: 'Кур\'єр — лише доставки' }, 403];
+  if (me.role === 'courier' && !['logout', 'state', 'avatar', 'goSt', 'goCour', 'zpIn', 'zpOut', 'zpMy', 'ideaAdd', 'ideaList', 'ideaDel', 'ideaThr', 'ideaSay', 'ideaSeen', 'help', 'courMe', 'courTg', 'courAct', 'taskList', 'taskMark', 'taskPh', 'lookV'].includes(b.op)) return [{ error: 'Кур\'єр — лише доставки' }, 403];
   if (/^go[A-Z]|^cli[A-Z]/.test(b.op || '')) return goApi(b, env, me, t);
   if (b.op === 'help') { // 💬 Допомога: з каси будь-якого закладу → власнику платформи в Telegram (група VARVAR)
     const text = String(b.text || '').trim().slice(0, 1500); if (text.length < 3) return [{ error: 'Опишіть проблему' }, 400];
@@ -111,8 +111,10 @@ export async function posApi(b, req, env) {
       const bl = me.role === 'courier' ? [] : await bookList(env, dayKey(), undefined), bkNew = (await bookList(env, dayKey(), new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10))).filter(x => x.st === 'new').length; // 🔔 нові броні на будь-яку дату — лічильник у меню
       const books = bl.filter(x => x.date === dayKey() && ['new', 'ok'].includes(x.st)).map(x => ({ id: x.id, time: x.time, name: x.name, people: x.people, t: x.t || 0, st: x.st, pre: (x.pre || []).length }));
       await promoFillMany(env, rows.map(r => r.b)); // 🎁 акції/рівень — для показу суми на столі
-      return ok({ me, shift, myTip, myAtt, books, bkNew: me.role === 'courier' ? 0 : bkNew, brand: await (async () => { const s = await (await import('./site.js')).getSite(env); return { name: s.name, logo: s.logo || '' }; })(), gInN: ['courier', 'cook'].includes(me.role) ? 0 : await (await import('./guestbot.js')).inOpenN(env), cfg: await getCfg(env), n: tablesCount(env), tables: rows.map(r => ({ t: r.t, ...r.b, items: billItems(r.b), pay2: payable(r.b) })), events: events.slice(-120), printer: pr, now: Date.now() });
+      return ok({ me, shift, myTip, myAtt, books, wl: me.role === 'courier' || me.role === 'cook' ? [] : await (await import('./wl.js')).wlList(env), bkNew: me.role === 'courier' ? 0 : bkNew, brand: await (async () => { const s = await (await import('./site.js')).getSite(env); return { name: s.name, logo: s.logo || '' }; })(), gInN: ['courier', 'cook'].includes(me.role) ? 0 : await (await import('./guestbot.js')).inOpenN(env), cfg: await getCfg(env), n: tablesCount(env), tables: rows.map(r => ({ t: r.t, ...r.b, items: billItems(r.b), pay2: payable(r.b) })), events: events.slice(-120), printer: pr, now: Date.now() });
     }
+    case 'wlAdd': { const [r, c] = await (await import('./wl.js')).wlAdd(env, b, who); return c ? [r, c] : ok(r); }
+    case 'wlAct': { const [r, c] = await (await import('./wl.js')).wlAct(env, b.id, b.act, b.t, who); return c ? [r, c] : ok(r); }
     case 'menu': { const menu = await getMenu(env); return ok({ menu, fav: await getFav(env), groups: GROUPS.map(g => ({ ...g, cats: menu.categories.filter(c => groupOf(c.id) === g.id).map(c => c.id) })) }); }
     case 'fav': { const fav = await toggleFav(env, String(b.id), !!b.on); return ok({ fav }); }
 
@@ -167,7 +169,7 @@ export async function posApi(b, req, env) {
     case 'printQ': return ok({ list: await printList(env) });
     case 'rcptGet': { const P = await import('./print.js'); return ok({ rcpt: await P.getRcpt(env), def: P.RCPT_DEF, dev: await P.allDev(env), route: await P.getRoute(env) }); }
     case 'rcptSet': { if (!admin) return needAdmin(); const P = await import('./print.js'), cur = await P.getRcpt(env), r = P.cleanRcpt({ ...cur, ...(b.rcpt || {}), logoImg: b.rcpt?.logoImg === '' ? '' : cur.logoImg }); if (b.rcpt?.logoImg === '') delete r.logoImg; await env.DB.put('rcpt', JSON.stringify(r)); await notify(env, `🖥 🧾 Змінено вигляд чека — ${esc(who)}`).catch(() => {}); return ok({ rcpt: r }); }
-    case 'rcptLogo': { if (!admin) return needAdmin(); const m = String(b.data || '').match(/^data:image\/(png|jpeg);base64,(.+)$/); if (!m) return [{ error: 'image' }, 400]; const bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0)); if (bytes.length > 1e6) return [{ error: 'too_big' }, 400];
+    case 'rcptLogo': { if (!admin) return needAdmin(); const m = String(b.data || '').match(/^data:image\/(png|jpeg);base64,(.+)$/); if (!m) return [{ error: 'image' }, 400]; let bytes; try { bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0)); } catch { return [{ error: 'audio' }, 400]; } if (bytes.length > 1e6) return [{ error: 'too_big' }, 400];
       const id = 'rl-' + crypto.randomUUID().slice(0, 8); await env.DB.put('img:' + id, bytes.buffer); const P = await import('./print.js'), r = { ...(await P.getRcpt(env)), logoImg: 'img:' + id, logo: 1 }; await env.DB.put('rcpt', JSON.stringify(r)); return ok({ rcpt: r }); }
     case 'rcptTest': { if (!admin) return needAdmin(); const P = await import('./print.js'); await queuePrint(env, 'test', await P.receipt(env, { table: 5, final: false, by: who, bill: { opened: Date.now() - 50 * 60e3, total: 640, log: [{ lines: ['2× Капучино — 130', '1× Бургер класичний — 290', '1× Лимонад — 220'] }] } })); return ok(); }
     case 'printRoute': { if (!admin) return needAdmin(); const P = await import('./print.js'), r = P.cleanRoute(b); await env.DB.put('print_route', JSON.stringify(r)); await notify(env, `🖥 🖨 Змінено розподіл принтерів — ${esc(who)}`).catch(() => {}); return ok({ route: r }); }
@@ -246,7 +248,7 @@ export async function posApi(b, req, env) {
   // ---- далі лише адміністратор ----
   if (!admin) return needAdmin();
   switch (b.op) {
-    case 'shift': { const day = await cashData(env); return ok({ tipbal: await tipBalances(env), tippay: (await env.DB.get('tippay:' + day.day, 'json')) || [], z: await dayZData(env), day, exp: day.exp, mov: day.mov, last: await lastZ(env), bal: await balances(env), closed: await getClosed(env) }); }
+    case 'shift': { const day = await cashData(env); return ok({ tipbal: await tipBalances(env), tippay: (await env.DB.get('tippay:' + day.day, 'json')) || [], z: await dayZData(env), rec: await env.DB.get('rec:day', 'json'), day, exp: day.exp, mov: day.mov, last: await lastZ(env), bal: await balances(env), closed: await getClosed(env) }); }
     case 'zX': { const z = await dayX(env, who); await notify(env, `🖥 🖨 X-звіт надруковано (день не закрито): виручка ${money(z.total)} · чеків ${z.checks} — ${esc(who)}`); return ok({ z }); }
     case 'zDay': { const z = await dayZ(env, who, b.print !== false); await notify(env, `🖥 ${zDayText(z)}\n— ${esc(who)}`); return ok({ z }); }
     case 'tipPay': { const s = await payTips(env, String(b.name), who, b.src); if (!s) return [{ error: 'Нема що видавати' }, 400]; await notify(env, `🖥 💝 Видано чайові: <b>${esc(b.name)}</b> — ${money(s)} ${b.src === 'card' ? '💳 з картки' : '💵 готівкою'} · ${esc(who)}`); return ok({ sum: s }); }

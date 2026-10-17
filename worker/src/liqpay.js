@@ -19,7 +19,9 @@ export async function lpForm(k, p) {
 // callback від LiqPay (application/x-www-form-urlencoded: data, signature) → розібраний JSON або null, якщо підпис не той
 export async function lpVerify(k, data, signature) {
   if (!k || !data || !signature) return null;
-  if ((await sign(k.priv, String(data))) !== String(signature)) return null;
+  const want = await sign(k.priv, String(data)), got = String(signature); // порівняння за постійний час
+  let d = want.length ^ got.length; for (let i = 0; i < want.length; i++) d |= want.charCodeAt(i) ^ (got.charCodeAt(i) || 0);
+  if (d) return null;
   try { return JSON.parse(unb64(String(data))); } catch { return null; }
 }
 export const lpOk = x => ['success', 'sandbox', 'subscribed'].includes(x?.status);

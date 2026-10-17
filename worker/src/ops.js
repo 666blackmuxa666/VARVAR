@@ -234,8 +234,8 @@ async function _addVoid(env, v) { const k = 'void:' + dayKey(), l = await getVoi
 // максимальна знижка для офіціанта (адмін — будь-яка)
 export const WAITER_DISC_MAX = 20;
 // ⚙️ налаштування системи (змінюються в касі «Налаштування» і в боті)
-export const CFG_DEF = { tables: 0, discMax: WAITER_DISC_MAX, scanMin: 60, foodCost: 30, priceAlert: 5, lateMin: 10, lateFine: 0, dayH: 3, autoZ: 0, zPrint: 1, zTg: 1, zRemind: 1, semiCalc: 1, dig: 0 };
-export const CFG_LIM = { tables: [0, 200], discMax: [0, 100], scanMin: [10, 600], foodCost: [5, 90], priceAlert: [1, 100], lateMin: [0, 120], lateFine: [0, 5000], dayH: [0, 8], autoZ: [0, 1], zPrint: [0, 1], zTg: [0, 1], zRemind: [0, 1], semiCalc: [0, 1], dig: [0, 1] };
+export const CFG_DEF = { tables: 0, discMax: WAITER_DISC_MAX, scanMin: 60, foodCost: 30, priceAlert: 5, lateMin: 10, lateFine: 0, dayH: 3, autoZ: 0, zPrint: 1, zTg: 1, zRemind: 1, semiCalc: 1, bankFee: 0, recBonus: 0, dig: 0 };
+export const CFG_LIM = { tables: [0, 200], discMax: [0, 100], scanMin: [10, 600], foodCost: [5, 90], priceAlert: [1, 100], lateMin: [0, 120], lateFine: [0, 5000], dayH: [0, 8], autoZ: [0, 1], zPrint: [0, 1], zTg: [0, 1], zRemind: [0, 1], semiCalc: [0, 1], bankFee: [0, 10], recBonus: [0, 10000], dig: [0, 1] };
 export const getCfg = async env => ({ ...CFG_DEF, ...((await env.DB.get('cfg', 'json')) || {}) });
 // 🏛 зали: [{ n: назва, ic: емодзі, c: столів }] — столи нумеруються підряд (Зал 1: 1–15, Тераса: 16–25…), тож старі номери й QR не ламаються
 export const hallsOf = c => (c.halls?.length ? c.halls : [{ n: 'Зал', ic: '🪑', c: c.tables || 0 }]);
@@ -264,7 +264,7 @@ export async function setMap(env, pos, from, to, deco, floor) {
 }
 export async function setCfg(env, k, v) {
   if (!CFG_LIM[k]) return { error: 'Невідоме налаштування' };
-  v = Math.round(+v); const [lo, hi] = CFG_LIM[k]; if (!(v >= lo && v <= hi)) return { error: `Від ${lo} до ${hi}` };
+  v = k === 'bankFee' ? Math.round(+v * 100) / 100 : Math.round(+v); const [lo, hi] = CFG_LIM[k]; /* комісія банку — до сотих: 1.3 */ if (!(v >= lo && v <= hi)) return { error: `Від ${lo} до ${hi}` };
   return L(env, 'cfg', async () => { const c = await getCfg(env); c[k] = v; await env.DB.put('cfg', JSON.stringify(c)); return c; });
 }
 
@@ -805,9 +805,24 @@ export async function dayZ(env, who, print = true, day = dayKey()) {
   const z = { ...(await dayZData(env, day)), opened: dayStart(Date.parse(day + 'T12:00:00Z')), closed: Date.now(), closedBy: who || '', kind: 'day' };
   const k = 'z:' + day, l = (await env.DB.get(k, 'json')) || []; l.push(z); await env.DB.put(k, JSON.stringify(l));
   if (print) await queuePrint(env, 'z', zDayTicket(z));
+  try { z.rec = await dayRecord(env, day, z.total, who); } catch {} // 🏆 рекорд закладу за день
   await logEvent(env, { k: 'shift', by: who, text: `🧾 Z-звіт за ${day}: ${z.total} грн · чеків ${z.checks}` });
   try { const t = await (await import('./tasks.js')).taskSumText(env, day); if (t) await notify(env, t); } catch {} // 📋 підсумок плану на день
   return z;
+}
+// 🏆 рекорд виручки за день: оновлюється при закритті дня; при побитті — премія кожному, хто був на зміні (cfg.recBonus ₴), один раз за день
+export async function dayRecord(env, day, total, who) {
+  return L(env, 'rec:day', async () => {
+    const r = (await env.DB.get('rec:day', 'json')) || null; if (r && !(total > r.sum)) return { ...r, beat: 0 };
+    const again = r?.d === day, prev = again ? r.prev : r?.sum || 0, nr = { sum: total, d: day, prev, at: Date.now() };
+    await env.DB.put('rec:day', JSON.stringify(nr));
+    const bonus = (await getCfg(env)).recBonus || 0, P = await import('./pay.js');
+    const paidK = 'rec:paid:' + day, paid = await env.DB.get(paidK); // один раз за день: повторний Z після рекорду наступного дня премію вдруге не платить
+    if (r && !again && !paid && prev > 0 && bonus > 0) { const att = (await P.getAtt(env, day.slice(0, 7)))[day] || {}; await env.DB.put(paidK, '1', { expirationTtl: 40 * 86400 });
+      for (const n of Object.keys(att).filter(n => att[n]?.in && att[n].ok !== -1)) await P.payOp(env, { n, t: 'bonus', sum: bonus, note: `🏆 рекорд дня ${total} грн`, day }, who || 'система').catch(() => {}); }
+    if (r && !again) await notify(env, `🏆 <b>Новий рекорд закладу за день: ${money(total)}</b> (було ${money(prev)})${bonus > 0 ? `\n➕ Премія ${money(bonus)} кожному на зміні` : ''}`).catch(() => {});
+    return { ...nr, beat: r ? 1 : 0 };
+  });
 }
 // 🖨 X-звіт: друк поточного Z за день без закриття (запис z: не створюється)
 export async function dayX(env, who, day = dayKey()) {
@@ -821,7 +836,7 @@ export const zDayText = z => [`🧾 <b>Z-звіт за ${dm(z.day)}</b>`, '',
   `Чеків: ${z.checks} · виручка <b>${money(z.total)}</b>`, `💵 Готівка: ${money(z.cash)}`, `💳 Картка: ${money(z.card)}${z.onl ? ` (термінал ${money(z.card - z.onl)} · 🌐 онлайн ${money(z.onl)})` : ''}`,
   z.disc ? `🏷 Знижки: ${money(z.disc)}` : '', z.tip ? `💝 Чайові (не виручка, персоналу): ${money(z.tip)}${Object.keys(z.tipBy || {}).length ? '\n' + Object.entries(z.tipBy).map(([n, s]) => `   👤 ${esc(n)}: ${money(s)}`).join('\n') : ''}` : '', `💸 Витрати: ${money(z.exCash + z.exCard)}${z.exCard ? ` (з картки ${money(z.exCard)})` : ''}`,
   z.mvCash || z.mvCard ? `🔁 Рух коштів: готівка ${z.mvCash >= 0 ? '+' : ''}${money(z.mvCash)}${z.mvCard ? `, картка ${z.mvCard >= 0 ? '+' : ''}${money(z.mvCard)}` : ''}` : '',
-  `📈 Чистими: <b>${money(z.net)}</b>`, z.openTables ? `\n⚠️ Ще відкрито столів: ${z.openTables} (${money(z.openSum)})` : ''].filter(x => x !== '').join('\n');
+  `📈 Чистими: <b>${money(z.net)}</b>`, z.rec?.beat ? `🏆 Новий рекорд закладу за день!` : z.rec?.sum ? `🏆 Рекорд: ${money(z.rec.sum)} (${dm(z.rec.d)})` : '', z.openTables ? `\n⚠️ Ще відкрито столів: ${z.openTables} (${money(z.openSum)})` : ''].filter(x => x !== '').join('\n');
 function zDayTicket(z, x) {
   return [['invb', x ? 'X-ЗВІТ' : 'Z-ЗВІТ'], ['c', dm(z.day)], ['gap'], ['lr', 'Надруковано', fmtDT(z.closed)], ['lr', 'Хто', z.closedBy || '—'], ['dbl'],
     ['lr', 'Чеків', String(z.checks)], ['lr', 'Готівка', `${z.cash} грн`], ['lr', 'Картка', `${z.card} грн`], ...(z.onl ? [['lr', ' з них онлайн', `${z.onl} грн`]] : []), ...(z.disc ? [['lr', 'Знижки', `${z.disc} грн`]] : []), ...(z.tip ? [['lr', '− Чайові (персоналу)', `${z.tip} грн`]] : []),

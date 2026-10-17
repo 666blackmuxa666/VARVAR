@@ -145,7 +145,7 @@
     if (my < stateDone) return; // повільна стара відповідь не затирає новішу (стіл «повертався» після закриття)
     stateDone = my;
     if (!S.tpInit && window.TABP) { S.tpInit = 1; TABP.init({ api, toast, ask, base: API }); } // 📱 принтер планшета (js/tabprint.js)
-    S.me = { ...S.me, ...r.me }; S.myTip = r.myTip; S.myAtt = r.myAtt || null; S.books = r.books || []; S.bkNew = r.bkNew || 0; if (r.brand && JSON.stringify(r.brand) !== JSON.stringify(S.brand)) { S.brand = r.brand; store.set('brand', r.brand); applyBrand(); } S.gInN = r.gInN || 0; S.cfg = r.cfg || S.cfg; S.n = r.n; S.printer = r.printer; S.shift = r.shift;
+    S.me = { ...S.me, ...r.me }; S.myTip = r.myTip; S.myAtt = r.myAtt || null; S.books = r.books || []; S.wl = r.wl || []; S.bkNew = r.bkNew || 0; if (r.brand && JSON.stringify(r.brand) !== JSON.stringify(S.brand)) { S.brand = r.brand; store.set('brand', r.brand); applyBrand(); } S.gInN = r.gInN || 0; S.cfg = r.cfg || S.cfg; S.n = r.n; S.printer = r.printer; S.shift = r.shift;
     S.tables = Object.fromEntries(r.tables.map(b => [b.t, b]));
     const fresh = r.events.filter(e => !S.seen.has(e.id));
     if (S.ready && fresh.some(e => ['guest', 'check', 'call'].includes(e.k) || (!isCook() && ['ready', 'kmsg'].includes(e.k)))) ding();
@@ -263,7 +263,7 @@
       `<button class="feed-btn" data-a="feed"><span class="ic">🔔</span>Стрічка${newCnt ? `<span class="badge">${newCnt}</span>` : S.events.some(evMention) ? '<span class="badge">@</span>' : ''}</button>` +
       `<button class="more-btn ${isAdmin() && !NAV_MAIN.includes(S.view) ? 'on' : ''}" data-a="more"><span class="ic">⋯</span>Ще</button><div class="grow"></div><button class="fs-btn" data-a="fs" title="На весь екран"><span class="ic">⛶</span>Екран</button><button class="me" data-a="zpMy" title="Мій кабінет"><i>${S.me?.av ? `<img src="${esc(S.me.av)}" alt="">` : esc((S.me?.name || '?').slice(0, 1).toUpperCase())}${onShift() ? '<em class="sh-dot"></em>' : ''}</i>${S.taskN ? `<span class="badge" title="Завдань на сьогодні">${S.taskN}</span>` : ''}<b>${esc(S.me?.name)}</b><small>${isAdmin() ? 'адмін' : isCook() ? 'кухар' : isCour() ? 'кур\'єр' : 'офіціант'} · кабінет</small></button>` +
       `<button data-a="switch"><span class="ic">🔒</span>Вийти</button>`);
-    if (nv && nv.scrollWidth > nv.clientWidth) { nv.scrollLeft = nx; const on = nv.querySelector('button.on'); if (on && (on.offsetLeft < nv.scrollLeft || on.offsetLeft + on.offsetWidth > nv.scrollLeft + nv.clientWidth)) nv.scrollLeft = on.offsetLeft - 8; }
+    if (nv && nv.scrollWidth > nv.clientWidth) { nv.scrollLeft = nx; const on = nv.querySelector('button.on'), moved = renderNav.v !== S.view; renderNav.v = S.view; /* до активної кнопки — лише коли змінили вкладку, інакше людина гортає, а меню смикає назад */ if (on && moved && (on.offsetLeft < nv.scrollLeft || on.offsetLeft + on.offsetWidth > nv.scrollLeft + nv.clientWidth)) nv.scrollLeft = on.offsetLeft - 8; }
   }
   function render() { renderNav(); renderFeed(); if (['hall', 'printer', 'kq'].includes(S.view) || (S.view === 'settings' && S.setTab === 'printer')) renderMain(); if (S.open) renderSheet(); }
 
@@ -378,7 +378,7 @@
   }
   setTimeout(() => {}, 0);
   let toastT;
-  function toast(msg) { $('.toast')?.remove(); const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg; document.body.append(d); clearTimeout(toastT); toastT = setTimeout(() => d.remove(), 2600); }
+  function toast(msg, btn) { $('.toast')?.remove(); const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg; if (btn) { const b = document.createElement('button'); b.className = 'btn sm'; b.textContent = btn.label; b.style.marginLeft = '10px'; b.onclick = () => { d.remove(); btn.fn(); }; d.append(b); } document.body.append(d); clearTimeout(toastT); toastT = setTimeout(() => d.remove(), btn ? 9000 : 2600); }
 
   document.addEventListener('change', e => { const el = e.target; if (el.dataset?.a !== 'cDate' || !el.value) return; S.cday = el.value >= S.data.ctoday ? '' : el.value; S.data.closed = null; renderMain(); loadView(); });
   document.addEventListener('change', async e => { const el = e.target; if (el.dataset?.a !== 'bkDate' || !el.value) return; S.bkDay = el.value; if (!S.data.bk?.some(b => b.date === el.value) && (el.value < addD(todayK(), -7) || el.value > addD(todayK(), 60))) { const r = await api('bkList', { from: el.value, to: el.value, all: true }).catch(() => null); if (r) S.data.bk = [...S.data.bk.filter(b => b.date !== el.value), ...r.list]; } renderMain(); });
@@ -433,6 +433,7 @@
       case 'send': sendCart(); break;
       case 'goNew': goNew(); break;
       case 'books': S.view = 'books'; renderNav(); renderMain(); loadView(); break;
+      case 'wl': wlOpen(); break;
       case 'bkDay': S.bkDay = el.dataset.d; renderMain(); break;
       case 'bkAll': S.bkAll = !!el.dataset.v; renderMain(); break;
       case 'bkNew': bkForm(); break;
@@ -463,6 +464,7 @@
       case 'goCourSet': { const n = await ask('👤 Кур\'єр (імʼя)', S.tables[t]?.go?.cour || ''); if (n != null && await act('goCour', { t, n }, '✔')) loadState().catch(() => {}); break; }
       case 'cliT': cliT(t); break;
       case 'cliBon0': { const b = S.tables[t]; if (b?.cert) { if (!(await confirmBox(b.cert.code && b.bonus > b.cert.sum ? '↩️ Прибрати сертифікат і бонуси з рахунку?' : '↩️ Прибрати сертифікат з рахунку?'))) break; if (!(await act('certOff', { t }, '↩️ Прибрано'))) break; if (b.bonus > b.cert.sum && b.cli) await act('cliBonus', { t, sum: 0 }); } else if (!(await act('cliBonus', { t, sum: 0 }))) break; loadState().catch(() => {}); break; }
+      case 'upsEdit': { const r = await api('upsGet'); const v = await askLong('💡 Допродаж — кожен рядок: Страва → що запропонувати, через кому', r.text || 'Піца Маргарита → Лимонад, Соус'); if (v == null) break; const x = await act('upsSet', { text: v }, ''); if (x) { S.ups = null; toast(`💾 Правил: ${x.n}`); } break; }
       case 'goCfg': { const k = el.dataset.k, cur = S.data.gocfg?.[k]; const v = ['on', 'del', 'pick'].includes(k) ? (cur ? 0 : 1) : await ask(el.dataset.l || k, String(cur ?? ''), ['phone', 'zone', 'from', 'to'].includes(k) ? 'text' : 'number'); if (v == null) break;
         const r = await act('goCfgSet', { k, v }, '💾 Збережено'); if (r) { S.data.gocfg = r.cfg; renderMain(); } break; }
       case 'goLink': { const u = (window.VARVAR?.venue ? 'https://posatom.online/' + VARVAR.venue + '/' : 'https://posatom.online/varvar/') + '?go' + (el.dataset.src ? '&src=' + el.dataset.src : ''); try { await navigator.clipboard.writeText(u); toast('📋 Скопійовано: ' + u); } catch { await ask('Посилання', u); } break; }
@@ -547,7 +549,7 @@
         break;
       }
       case 'cfgTgl': { const k = el.dataset.k, cur = S.data.staff?.cfg?.[k] ?? S.cfg?.[k] ?? +(el.dataset.def || 0); if (await act('cfgSet', { k, v: cur ? 0 : 1 }, '⚙️ Збережено')) { loadView(); loadState().catch(() => {}); } break; }
-      case 'cfg': { const k = el.dataset.k, L = { tables: ['Скільки столів у залі', 'від 1 до 200'], discMax: ['Макс. знижка офіціанта, %', 'від 0 до 100'], scanMin: ['Хвилин на замовлення після QR', 'від 10 до 600'], foodCost: ['Цільовий фудкост, %', 'від 5 до 90'], priceAlert: ['Сповіщати про подорожчання від, %', 'від 1 до 100'], lateMin: ['Запізнення — після скількох хвилин', 'від 0 до 120'], lateFine: ['Штраф за запізнення, ₴', '0 — без штрафу'], dayH: ['О котрій закінчується робочий день (година)', 'від 0 до 8, напр. 3'] }[k]; const v = await ask(L[0], L[1], 'number'); if (v != null && v !== '') { await act('cfgSet', { k, v: +v }, '⚙️ Збережено'); loadView(); loadState().catch(() => {}); } break; }
+      case 'cfg': { const k = el.dataset.k, L = { tables: ['Скільки столів у залі', 'від 1 до 200'], discMax: ['Макс. знижка офіціанта, %', 'від 0 до 100'], scanMin: ['Хвилин на замовлення після QR', 'від 10 до 600'], foodCost: ['Цільовий фудкост, %', 'від 5 до 90'], recBonus: ['Премія кожному на зміні за рекорд дня, ₴', '0 — без премії'], bankFee: ['Комісія банку за карту/онлайн, %', 'від 0 до 10, напр. 1.3'], priceAlert: ['Сповіщати про подорожчання від, %', 'від 1 до 100'], lateMin: ['Запізнення — після скількох хвилин', 'від 0 до 120'], lateFine: ['Штраф за запізнення, ₴', '0 — без штрафу'], dayH: ['О котрій закінчується робочий день (година)', 'від 0 до 8, напр. 3'] }[k]; const v = await ask(L[0], L[1], 'number'); if (v != null && v !== '') { await act('cfgSet', { k, v: +String(v).replace(',', '.') }, '⚙️ Збережено'); loadView(); loadState().catch(() => {}); } break; }
       case 'kpct': { const v = await ask('Частка кухні від чайових, %', 'Напр. 20', 'number'); if (v != null) { await act('kitchenPct', { pct: +v }, '👨‍🍳 Збережено'); loadView(); } break; }
       case 'regSet': { const v = await ask(`Новий код реєстрації (${{ admin: 'адмін', cook: 'кухар', courier: 'кур\'єр' }[el.dataset.r] || 'офіціант'})`, '4 цифри', 'number'); if (v) { await act('regCode', { role: el.dataset.r, code: v }, '🆕 Код змінено'); loadView(); } break; }
       case 'staffDel': if (await confirmBox('Видалити працівника?', 'Його PIN перестане працювати')) { await act('staffDel', { id: el.dataset.id }); loadView(); } break;

@@ -24,6 +24,7 @@ export async function callVenue(env, venue, path, body, init) {
 }
 
 // 📱 демо ATOM: адмін-сесія без PIN; заклад atom-demo щоночі повертається до еталону (save — зберегти еталон, reset — повернути)
+const hx = t => String(t ?? '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])); // екранування для Telegram HTML
 export const demoLogin = (env, id) => callVenue(env, id, '/__int/login', { name: 'Гість демо' });
 export const demoSnap = (env, id, op) => callVenue(env, id, '/__int/demosnap', { do: op }).catch(e => ({ error: e.message }));
 
@@ -57,6 +58,7 @@ export async function intApi(req, env, path) {
   if (path === '/__int/aitop') { const sum = Math.round(+b.sum || 0); if (!(sum > 0)) return [{ error: 'sum' }, 400];
     const a = await env.DB.locked('aibal', async () => { const x = (await env.DB.get('aibal', 'json')) || { bal: 0, h: [] }; if (x.h.some(h => h.lp && h.lp === b.lp)) return x; x.bal = Math.round((x.bal + sum) * 100) / 100; x.h = [{ ts: Date.now(), sum, what: '💳 Поповнення LiqPay', lp: String(b.lp || ''), ...(b.test ? { test: 1 } : {}) }, ...x.h].slice(0, 200); await env.DB.put('aibal', JSON.stringify(x)); return x; });
     return [a, 200]; }
+  if (path === '/__int/msgIn') { const r = await (await import('./ideas.js')).thrIn(env, String(b.hid || ''), String(b.text || '')); return [r, r.error ? 404 : 200]; } // 💬 відповідь ATOM у зверненні
   if (path === '/__int/lock') { if (b.on) await env.DB.put('cfg:lock', JSON.stringify({ why: String(b.why || 'sub'), at: Date.now() })); else await env.DB.delete('cfg:lock'); return [{ ok: true }, 200]; } // ⛔ підписка не оплачена — лише перегляд
   if (path === '/__int/whoami') { const s = /^[a-f0-9]{32}$/.test(b.token || '') ? await env.DB.get('pos:' + b.token, 'json') : null; return [{ admin: s?.role === 'admin', name: s?.name || '' }, 200]; }
   if (path === '/__int/secrets') { // 🤖 токени ботів закладу → перевірка getMe, збереження, вебхуки
@@ -164,8 +166,10 @@ async function pnl(env, S) {
     const dim = new Date(+m.slice(0, 4), +m.slice(5, 7), 0).getDate(), a = S.from > m + '-01' ? +S.from.slice(8) : 1, z = S.to < m + '-' + dim ? +S.to.slice(8) : dim, today = dayKey(), elapsed = today.slice(0, 7) === m ? +today.slice(8) : dim;
     pay += p.fund * Math.max(0, Math.min(z, elapsed) - a + 1) / Math.max(1, elapsed);
   }
-  const rev = S.tot.rev || 0, exp = S.tot.exp || 0, profit = rev - cogs - pay - exp, r = x => Math.round(x);
-  return { rev, cogs: r(cogs), noCard: r(noCard), fc: rev ? Math.round(cogs / (rev - noCard || 1) * 1000) / 10 : 0, pay: r(pay), payPct: rev ? Math.round(pay / rev * 1000) / 10 : 0, exp: r(exp), profit: r(profit), margin: rev ? Math.round(profit / rev * 1000) / 10 : 0,
+  // 🏦 комісія банку з безготівки (карта + онлайн) — % з налаштувань каси
+  const bf = (await (await import('./ops.js')).getCfg(env)).bankFee || 0, bank = (S.tot.card || 0) * bf / 100; /* онлайн уже входить у card */
+  const rev = S.tot.rev || 0, exp = S.tot.exp || 0, profit = rev - cogs - pay - exp - bank, r = x => Math.round(x);
+  return { rev, cogs: r(cogs), noCard: r(noCard), fc: rev ? Math.round(cogs / (rev - noCard || 1) * 1000) / 10 : 0, pay: r(pay), payPct: rev ? Math.round(pay / rev * 1000) / 10 : 0, exp: r(exp), bank: r(bank), bankFee: bf, profit: r(profit), margin: rev ? Math.round(profit / rev * 1000) / 10 : 0,
     top: Object.values(top).map(t => ({ ...t, cost: r(t.cost), m: r(t.rev - t.cost) })).sort((a, b) => b.m - a.m).slice(0, 10) };
 }
 
@@ -211,9 +215,13 @@ export async function ownerApi(req, env) {
     case 'codes': { if (!(await may(b.venue))) return bad('Немає доступу', 403); return ok(await callVenue(env, b.venue, '/__int/codes', {})); }
     case 'secrets': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/secrets', b.f || {}); return r.error ? bad(r.error) : ok(r); }
     case 'help': { const text = String(b.text || '').trim().slice(0, 1500); if (text.length < 3) return bad('Опишіть питання');
-      await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `🆘 <b>Допомога з кабінету</b>\n👤 ${me.name} · ${me.email}\n🏪 ${me.venues.join(', ') || '—'}\n\n${text.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}` }).catch(() => {});
+      const hk = 'helprl:' + String(me.email || me.name).slice(0, 60), hn = +(await env.DB.get(hk) || 0); if (hn >= 5) return bad('Забагато звернень — спробуйте за годину'); await env.DB.put(hk, String(hn + 1), { expirationTtl: 3600 });
+      await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `🆘 <b>Допомога з кабінету</b>\n👤 ${hx(me.name)} · ${hx(me.email)}\n🏪 ${hx(me.venues.join(', ') || '—')}\n\n${text.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}` }).catch(() => {});
       await H.msgAdd({ kind: 'help', venue: me.venues[0] || '', vname: '👑 кабінет', by: me.name + ' · ' + me.email, role: me.role, text }); return ok(); }
     case 'inbox': return ok({ list: await H.msgList(plat ? null : me.venues) });
+    case 'inboxSay': { const text = String(b.text || '').trim().slice(0, 1500); if (!text) return bad('Напишіть відповідь'); // 💬 відповідь працівнику закладу
+      const m = await H.msgSay(String(b.id), 'a', text, plat ? null : me.venues); if (m.error) return bad(m.error);
+      if (m.venue) await callVenue(env, m.venue, '/__int/msgIn', { hid: m.id, text }).catch(() => {}); return ok({ m }); }
     case 'inboxSet': { const r = await H.msgSet(String(b.id), { del: !!b.del }, plat ? null : me.venues); return r.error ? bad(r.error) : ok(); }
     case 'ask': { // 🧠 «Запитай у даних»: цифри закладів за цей і минулий місяць → ШІ відповідає лише з них
       const q = String(b.q || '').trim().slice(0, 500); if (q.length < 3) return bad('Напишіть питання');
@@ -253,7 +261,7 @@ ${JSON.stringify(data.filter(Boolean))}
     case 'acctResend': { const x = await H.mailToken(b.email, 'verify'); if (!x) return bad('Немає акаунта'); if (x.error) return bad(x.error); const r = await sendVerify(env, x); return r.error ? bad(r.error) : ok(); }
     case 'acctPass': { const r = await H.acctPass(b.email, b.pass); return r.error ? bad(r.error) : ok(); }
     case 'venueNew': {
-      const v = await H.venueCreate({ id: b.id, name: b.name, owner: b.owner, city: b.city }); if (v.error) return bad(v.error);
+      const v = await H.venueCreate({ id: b.id, name: b.name, owner: b.owner, city: b.city, ref: b.ref }); if (v.error) return bad(v.error);
       const r = await callVenue(env, v.id, '/__int/init', { name: v.name }, true); if (r.error) return bad(r.error);
       return ok({ venue: v, codes: r.codes });
     }
@@ -281,12 +289,24 @@ ${JSON.stringify(data.filter(Boolean))}
       if (b.do === 'save') { const r = await demoSnap(env, 'atom-demo', 'save'); return r.error ? bad(r.error) : ok(r); }
       if (b.do === 'seed') { const r = await demoSnap(env, 'atom-demo', 'seed'); if (r.error) return bad(r.error); await H.venueSet('atom-demo', { name: 'Все за 500' }).catch(() => {}); return ok(r); }
       return bad('unknown'); }
+    case 'ref': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const r = await H.refStat(String(b.venue)); return r.error ? bad(r.error) : ok({ ref: r }); } // 🎁 код і лічильник; назву друга не показуємо
+    case 'refBlock': { if (!plat) return bad('Лише платформа', 403); const r = await H.refBlock(b.code, !!b.on); return r.error ? bad(r.error) : ok(); }
+    case 'refGift': { // 🎁 +1 міс закладу вручну (причина обов'язкова); з кодом — ще й рефері (ліміт 12), один раз на заклад
+      if (!plat) return bad('Лише платформа', 403); const why = String(b.why || '').trim().slice(0, 80); if (!why) return bad('Вкажіть причину');
+      const v = await H.venueGet(String(b.id)); if (!v) return bad('Немає закладу'); const B = await import('./billing.js');
+      const give = async (x, note) => { const d = new Date(Math.max(Date.now(), B.tillOf(x))); d.setMonth(d.getMonth() + 1); await H.venueBill(x.id, { paidTill: d.getTime(), locked: 0, pay: { ts: Date.now(), sum: 0, lp: note } }); await callVenue(env, x.id, '/__int/lock', { on: 0 }).catch(() => {}); return d.getTime(); };
+      let ra = null; if (b.code || v.refBy) { ra = await H.refApply(v.id, b.code); if (ra.error) return bad(ra.error); }
+      const till = await give(v, '🎁 подарунок · ' + why + ' · ' + me.name); let ref = null;
+      if (ra?.referrer) { const rv = await H.venueGet(ra.referrer); if (rv) { await give(rv, '🎁 запросив друга · ' + me.name); ref = rv.name; } }
+      return ok({ till, ref, capped: !!ra?.capped }); }
     case 'billMark': { // 👑 платформа: оплата готівкою/переказом — +N міс вручну, або задати дату
       const v = await H.venueGet(String(b.id)); if (!v) return bad('Немає закладу'); const B = await import('./billing.js');
       let till = B.tillOf(v); if (b.till) till = Date.parse(b.till + 'T23:59:59+03:00'); else { const d = new Date(Math.max(Date.now(), till)); d.setMonth(d.getMonth() + Math.max(1, Math.min(12, +b.months || 1))); till = d.getTime(); }
       if (!(till > 0)) return bad('Невірна дата');
       await H.venueBill(v.id, { paidTill: till, locked: 0, ...(b.till ? {} : { pay: { ts: Date.now(), sum: 0, lp: 'вручну · ' + me.name } }) }); await callVenue(env, v.id, '/__int/lock', { on: 0 }).catch(() => {}); return ok({ till }); }
-    case 'venueSet': { const v = await H.venueSet(String(b.id), b.f || {}); return v.error ? bad(v.error) : ok({ venue: v }); }
+    case 'venueSet': { const v = await H.venueSet(String(b.id), b.f || {}); if (v.error) return bad(v.error);
+      if (b.f?.status) { const on = v.status === 'off' ? 1 : v.locked ? 1 : 0; await callVenue(env, v.id, '/__int/lock', { on, why: v.status === 'off' ? 'off' : 'sub' }).catch(() => {}); } // ⛔ «вимкнено» = каса лише перегляд, сайт не приймає замовлень; увімкнули — знімаємо, якщо не борг
+      return ok({ venue: v }); }
   }
   return bad('unknown');
 }
