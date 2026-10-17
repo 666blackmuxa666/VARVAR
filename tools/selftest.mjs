@@ -600,6 +600,13 @@ async function apiTests() {
       must((await pos(W2(), 'expense', { sum: 1, cat: 'x' })).status === 403, 'expense без права cash = 403');
       must((await pos(W2(), 'staffAdd', { name: 'QA Адм ' + RUN, pin: pin('admin'), role: 'admin' })).status === 403, 'не-адмін не створює адмінів');
       must((await pos(W2(), 'staffPerm', { id: wid, perm: { cash: 1 } })).status === 403, 'не-адмін не видає права');
+      { const adm0 = (await posOk(A, 'staff')).staff.find(x => x.role === 'admin')?.id;
+        must((await pos(W2(), 'regCode', { role: 'admin', code: '7391' })).status === 403, 'regCode admin через elev = 403');
+        must((await posOk(W2(), 'staff')).reg.admin === '', 'elev не бачить reg.admin');
+        must((await pos(W2(), 'staffDel', { id: adm0 })).status === 403, 'staffDel адміна через elev = 403');
+        must((await pos(W2(), 'staffEdit', { id: adm0, pin: pin('admin') })).status === 403, 'staffEdit адміна через elev = 403');
+        must((await pos(W2(), 'reset', {})).status === 403, 'reset через elev = 403');
+        must((await pos(W2(), 'waiterOut', { uid: 1 })).status === 403, 'waiterOut через elev = 403'); }
       // адміну можна зняти право: другий адмін без «reports» → 403 на звіт, але інше працює
       const an = 'QA Адм2 ' + RUN, ap = pin('admin'); must((await pos(A, 'staffAdd', { name: an, pin: ap, role: 'admin' })).status === 200, 'admin2');
       const aid = (await posOk(A, 'staff')).staff.find(x => x.name === an)?.id; must((await pos(A, 'staffPerm', { id: aid, perm: { reports: 0 } })).status === 200, 'зняти reports');

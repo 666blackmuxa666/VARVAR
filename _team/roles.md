@@ -59,6 +59,7 @@
 
 ## ✅ Реалізовано (2026-10-17)
 - `worker/src/perm.js`: каталог з 12 прав (`void, edit_closed, cash, reports, tax, stock, menu, staff, pay, print, delivery, settings`) + `discountMax`; `permOf(op)` (невідомий op — лише admin), `can`, `canList`, `cleanPerm/diffPerm`.
+- Закрито дірки підвищення: elev не ставить regCode адміна і не бачить reg.admin, не чіпає адмінів (staffDel/staffEdit → 403), `reset` і `waiterOut` — лише справжній адмін.
 - Шлюз у `pos.js` (одна перевірка замість заміни ~60 `if(!admin)`): не-адмін з правом на цей запит діє як адмін (`me.elev`), адміну право знімається (`perm[k]=0` → 403). Elev не видає права (`staffPerm`) і не чіпає адмінів/не створює їх.
 - `staffPerm` (ops.js `setPerm`): чутливі права (`void, staff, settings, reports`) — лише з новим PIN 6–8 (`pinRule(role, perm)`), старі PIN не блокуються; лишається ≥1 адмін з `staff`.
 - Знижка: `perm.discountMax` перекриває `cfg.discMax` (`me.dmax` для каси).

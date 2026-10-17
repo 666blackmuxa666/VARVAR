@@ -29,11 +29,11 @@ const MAP = [
   ['tax', /^tax(Get|Set|Done)$/],
   ['stock', /^sk[A-Z]/],
   ['menu', /^(catSet|menuSave|catAdd|menuDel|menuUndo|menuPhoto|menuImport|stGet|stSet|stItem|photo[A-Z]\w*)$/],
-  ['staff', /^(staff|regCode|staffAdd|staffDel|staffEdit|staffPerm|waiterOut)$/],
+  ['staff', /^(staff|regCode|staffAdd|staffDel|staffEdit|staffPerm)$/],
   ['pay', /^zp(Grid|Att|Plan|PlanCopy|Op|OpDel|GridSet|Staff)$/],
   ['print', /^(rcptSet|rcptLogo|rcptTest|printRoute|tabReg|printMove|printClear|printQr|qrInfo|qrNew|dzGet|dzSet)$/],
   ['delivery', /^cour(List|Rep|Cash)$/],
-  ['settings', /^(wifi|wifiAdd|wifiClear|hallsSet|mapSet|cfgSet|kitchenPct|reset|evDrop|alog|onlList)$/],
+  ['settings', /^(wifi|wifiAdd|wifiClear|hallsSet|mapSet|cfgSet|kitchenPct|evDrop|alog|onlList)$/],
 ];
 export const permOf = op => { for (const [k, re] of MAP) if (re.test(op || '')) return k; return ''; };
 

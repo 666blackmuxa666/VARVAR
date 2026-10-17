@@ -45,9 +45,11 @@ export async function posApi(b, req, env) {
   if (me.sid) { const s = (await getStaff(env)).find(x => x.id === me.sid); if (!s || (s.ver || 0) !== (me.ver || 0)) { await env.DB.delete('pos:' + token); return [{ error: 'auth' }, 401]; } me.av = s.av || ''; me.perm = s.perm || {}; } // 👤 аватарка — свіжа з профілю
   let admin = me.role === 'admin'; const who = me.name;
   // 🔑 права з галочками: адміну право можна зняти, іншій ролі — видати (на цей запит працівник діє як адмін; staff.perm — відхилення від шаблону ролі)
+  delete b._elev; // службове: позначка «права видані галочкою» ставиться лише тут
   { const pk = permOf(b.op);
     if (pk && !can(me, pk)) { if (admin) return [{ error: 'admin', perm: pk }, 403]; }
-    else if (pk && !admin) { if (b.op === 'staffPerm') return [{ error: 'admin' }, 403]; me = { ...me, role: 'admin', real: me.role, elev: 1 }; admin = true;
+    else if (pk && !admin) { if (b.op === 'staffPerm') return [{ error: 'admin' }, 403]; me = { ...me, role: 'admin', real: me.role, elev: 1 }; admin = true; b._elev = 1;
+      if (b.op === 'regCode' && b.role === 'admin') return [{ error: 'Код реєстрації адміністратора задає лише адміністратор' }, 403];
       if (/^staff(Add|Edit|Del)$/.test(b.op) && (b.role === 'admin' || (await getStaff(env)).some(x => x.id === String(b.id) && x.role === 'admin'))) return [{ error: 'Адміністраторів змінює лише адміністратор' }, 403]; } }
   const t = +b.t || 0;
   const needAdmin = () => [{ error: 'admin' }, 403];
@@ -331,7 +333,7 @@ async function adminRest(b, env, who, ip, ok) {
     case 'wifiClear': await env.DB.put('venue_ips', '[]'); await notify(env, `🖥 📶 Усі мережі закладу скинуто — ${esc(who)}`); return ok();
 
     // персонал і паролі
-    case 'staff': return ok({ perms: PERMS, sens: SENSITIVE, staff: (await getStaff(env)).map(({ pin, ...s }) => s), waiters: await loggedWaiters(env), reg: { admin: await regCode(env, 'admin'), waiter: await regCode(env, 'waiter'), cook: await regCode(env, 'cook'), courier: await regCode(env, 'courier') }, kpct: await kitchenPct(env), cfg: await getCfg(env), cooks: (await env.DB.get('cooks:' + dayKey(), 'json')) || [] });
+    case 'staff': return ok({ perms: PERMS, sens: SENSITIVE, staff: (await getStaff(env)).map(({ pin, ...s }) => s), waiters: await loggedWaiters(env), reg: { admin: b._elev ? '' : await regCode(env, 'admin'), waiter: await regCode(env, 'waiter'), cook: await regCode(env, 'cook'), courier: await regCode(env, 'courier') }, kpct: await kitchenPct(env), cfg: await getCfg(env), cooks: (await env.DB.get('cooks:' + dayKey(), 'json')) || [] });
     case 'regCode': { const c = String(b.code || '').trim(); if (!/^\d{4,8}$/.test(c)) return [{ error: 'Код — від 4 до 8 цифр' }, 400]; { if (await pinFind(env, await getStaff(env), c)) return [{ error: 'Цей код збігається з PIN працівника — оберіть інший' }, 400]; } await env.DB.put('reg_' + (['admin', 'cook', 'courier'].includes(b.role) ? b.role : 'waiter'), c); return ok(); }
     case 'staffAdd': { const r = await addStaff(env, b.name, b.pin, b.role); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 👥 Додано працівника <b>${esc(r.s.name)}</b> (${ROLE_UA[r.s.role]}) — ${esc(who)}`); return ok(); }
     case 'alog': return ok({ list: await (await import('./ops.js')).alogGet(env, String(b.m || '')) }); // 📜 журнал дій
