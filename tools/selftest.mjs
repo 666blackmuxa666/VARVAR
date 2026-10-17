@@ -433,6 +433,16 @@ async function apiTests() {
     if (!tok) { rec(`${role} ✗ ${op}`, false, 'немає токена'); continue; }
     await step(`${role} ✗ ${op}`, async () => { const r = await pos(tok, op, b); must(r.status === 403, `статус ${r.status} ${JSON.stringify(r.j).slice(0, 100)}`); });
   }
+  for (const [tok, role] of [[K, 'cook'], [C, 'courier'], [W, 'waiter']]) {
+    if (!tok) continue;
+    await step(`${role} ✓ avatar (прибрати) і zpMy; avatar зі сміттям → 400`, async () => {
+      const a = await pos(tok, 'avatar', { data: '' }); must(a.status === 200, 'avatar → ' + a.status + ' ' + JSON.stringify(a.j).slice(0, 100));
+      const b = await pos(tok, 'avatar', { data: 'not-an-image' }); must(b.status === 400, 'сміття → ' + b.status);
+      const z = await pos(tok, 'zpMy'); must(z.status === 200, 'zpMy → ' + z.status + ' ' + JSON.stringify(z.j).slice(0, 100)); });
+  }
+  if (C) await step('courier ✓ zpPeople (список колег), zpSwap без колеги → не 403', async () => { must((await pos(C, 'zpPeople')).status === 200, 'zpPeople'); const r = await pos(C, 'zpSwap', {}); must(r.status !== 403 && r.status < 500, 'zpSwap → ' + r.status); });
+  if (C) for (const op of ['zpGrid', 'zpPay']) await step(`courier ✗ ${op}`, async () => { const r = await pos(C, op, {}); must(r.status === 403, 'статус ' + r.status); });
+  if (K) for (const op of ['cashMove', 'zDay', 'zpGrid']) await step(`cook ✗ ${op}`, async () => { const r = await pos(K, op, {}); must(r.status === 403, 'статус ' + r.status); });
   if (G2) await pos(A, 'delete', { t: G2, reason: 'QA тест' });
   await step('📸 ШІ-фото: стиль зберігається; без платного ключа генерація → 503', async () => {
     const s1 = await pos(A, 'photoStyleSet', { prompt: 'QA стиль' }); must(s1.status === 200 && s1.j.prompt === 'QA стиль' && s1.j.free === 20, JSON.stringify(s1.j).slice(0, 200));
@@ -651,6 +661,19 @@ async function loyTests(A, W, dish) {
     } finally { must((await ownT(PT, 'venueSet', { id: VID, f: { status: 'active' } })).j.ok, 'venueSet active'); }
     const r2 = await ord(); must(r2.status === 200, 'order після увімкнення → ' + r2.status + ' ' + JSON.stringify(r2.j).slice(0, 120));
     await vpos(VA, 'delete', { t: 4, reason: 'QA' }); });
+  await step('🏆 рекорд дня: Z створює rec:day, повторний Z того ж дня не платить премію, нижча виручка не затирає', async () => {
+    const it = (await http(`/v/${VID}/api/menu`)).j.categories.flatMap(c => c.items).find(i => typeof i.price === 'number'), sale = async (t, q) => { must((await vpos(VA, 'order', { t, items: [{ id: it.id, q }] })).status === 200, 'order'); const c = await vpos(VA, 'close', { t, pay: 'cash' }); must(c.status === 200, 'close ' + JSON.stringify(c.j).slice(0, 100)); };
+    must((await vpos(VA, 'cfgSet', { k: 'recBonus', v: 50 })).status === 200, 'recBonus 50');
+    must(!(await vpos(VA, 'shift')).j.rec, 'rec до першого Z вже є');
+    await sale(4, 2); const z1 = await vpos(VA, 'zDay', { print: false }); must(z1.status === 200 && z1.j.z.total > 0, 'zDay#1 ' + JSON.stringify(z1.j).slice(0, 120));
+    must(z1.j.z.rec && z1.j.z.rec.beat === 0 && z1.j.z.rec.sum === z1.j.z.total, 'перший Z: beat=0, sum=total: ' + JSON.stringify(z1.j.z.rec));
+    const r1 = (await vpos(VA, 'shift')).j.rec; must(r1 && r1.sum === z1.j.z.total && r1.d, 'shift.rec ' + JSON.stringify(r1));
+    await sale(5, 3); const z2 = await vpos(VA, 'zDay', { print: false }); must(z2.j.z.total > z1.j.z.total, 'total не виріс');
+    const r2 = (await vpos(VA, 'shift')).j.rec; must(r2.sum === z2.j.z.total && r2.d === r1.d, 'rec не оновився: ' + JSON.stringify(r2));
+    const bon = JSON.stringify((await vpos(VA, 'zpMy')).j); must(!/рекорд дня/.test(bon), 'премія за рекорд того ж дня: ' + bon.slice(0, 200));
+    const z3 = await vpos(VA, 'zDay', { print: false }); must(z3.j.z.total === z2.j.z.total, 'сума Z змінилась');
+    const r3 = (await vpos(VA, 'shift')).j.rec; must(r3.sum === r2.sum, 'рівна виручка змінила рекорд'); must(z3.j.z.rec.beat === 0, 'рівна виручка = beat');
+    must((await vpos(VA, 'cfgSet', { k: 'recBonus', v: 0 })).status === 200, 'recBonus reset'); return `рекорд ${r3.sum} ₴`; });
   await step('невідомий заклад → 404', async () => { const r = await http('/v/nope-' + VID.slice(-5) + '/api/menu'); must(r.status === 404, String(r.status)); });
   await step('кабінет власника: свої заклади, аналітика, вхід у касу', async () => {
     const l = await own({ op: 'login', email: OE, pass: 'owner-pass-123' }); OT = l.j.token; must(OT, 'вхід');
