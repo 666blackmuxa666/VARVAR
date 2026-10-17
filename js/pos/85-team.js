@@ -174,14 +174,27 @@
   // 👥 Працівники: ✏️ імʼя · 🔑 PIN · 🔄 роль (сервер staffEdit: перейменування переносить графік, ЗП, чайові; сесії працівника закриваються)
   const ROLES = [['admin', '🔐 Адміністратор'], ['waiter', '🧑‍🍳 Офіціант'], ['cook', '👨‍🍳 Кухар'], ['courier', '🛵 Кур\'єр']];
   document.addEventListener('click', async e => {
-    const el = e.target.closest('[data-a]'); if (!el || !/^stf(Name|Pin|Role)$/.test(el.dataset.a)) return;
+    const el = e.target.closest('[data-a]'); if (!el || !/^stf(Name|Pin|Role|Perm)$/.test(el.dataset.a)) return;
     const s = (S.data.staff?.staff || []).find(x => x.id === el.dataset.id); if (!s) return;
+    if (el.dataset.a === 'stfPerm') return staffPerms(s);
     let f = null;
     if (el.dataset.a === 'stfName') { const v = await askVal('✏️ Нове імʼя (графік, зарплата й чайові перейдуть)', s.name); if (v && v.trim() !== s.name) f = { name: v.trim() }; }
     if (el.dataset.a === 'stfPin') { const v = await ask(`🔑 Новий PIN: ${s.name}`, '4 цифри (адмін — 6–8) · працівника вийде з каси', 'tel'); if (v) f = { pin: String(v) }; }
     if (el.dataset.a === 'stfRole') { const v = await choose(`🔄 Роль: ${s.name}`, 'Працівника вийде з каси — увійде знову з новими правами', ROLES.filter(([r]) => r !== (s.role || 'waiter')).map(([val, label]) => ({ label, val }))); if (v) f = { role: v }; }
     if (f && await act('staffEdit', { id: s.id, ...f }, f.name ? '✏️ Імʼя змінено' : f.pin ? '🔑 PIN змінено' : '🔄 Роль змінено')) loadView();
   });
+  // 🛡 Права з галочками (сервер staffPerm): роль — шаблон; адміну права знімаємо, іншим — додаємо. Чутливі (видалення, персонал, налаштування, звіти) — разом із новим PIN 6–8 цифр
+  async function staffPerms(s) {
+    const P = S.data.staff?.perms || [], SENS = S.data.staff?.sens || [], cur = s.perm || {}, adm = s.role === 'admin', on = k => adm ? cur[k] !== 0 : cur[k] === 1;
+    const body = `<div class="scrollbox" style="max-height:55vh">${P.map(p => `<div class="kv"><span>${p.e} ${esc(p.n)}${SENS.includes(p.k) && !adm ? ' <small class="muted">· з PIN 6+</small>' : ''}</span><label class="switch"><input type="checkbox" data-pk="${p.k}" ${on(p.k) ? 'checked' : ''}><i></i></label></div>`).join('')}
+      <div class="kv"><span>🏷 Макс. знижка, %<br><small class="muted">порожньо — за налаштуванням закладу</small></span><input id="pkDisc" type="number" min="0" max="100" inputmode="numeric" value="${cur.discountMax ?? ''}" style="width:80px"></div></div>`;
+    const v = await modal({ title: `🔑 Права: ${s.name}`, text: adm ? 'Адміністратор має всі права — зніміть зайве.' : 'Роль дає звичні дії; галочки додають понад них. Зміна діє одразу.', body, buttons: [{ label: '💾 Зберегти', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
+    if (v !== 'ok') return;
+    const perm = {}; document.querySelectorAll('#modal [data-pk]').forEach(i => { perm[i.dataset.pk] = i.checked ? 1 : 0; });
+    const dm = $('#pkDisc')?.value; if (dm !== '' && dm != null) perm.discountMax = +dm; closeModal();
+    let pin; if (!adm && SENS.some(k => perm[k] === 1 && cur[k] !== 1)) { pin = await ask(`🔑 Новий PIN: ${s.name}`, 'Для таких прав — 6–8 цифр · працівника вийде з каси', 'tel'); if (!pin) return; }
+    if (await act('staffPerm', { id: s.id, perm, ...(pin ? { pin: String(pin) } : {}) }, '🔑 Права збережено')) loadView();
+  }
   // 📱 графік на телефоні: одразу сьогоднішній день по центру (а після тапу по клітинці — там, де гортали)
   const zpSL = {};
   new MutationObserver(() => document.querySelectorAll('.zp-grid:not([data-c])').forEach(g => {
