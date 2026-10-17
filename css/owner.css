@@ -304,3 +304,17 @@ tr.sum td { font-weight: 700; border-bottom: 0; }
 .ib-say{display:flex;gap:6px;margin:8px 0}.ib-say input{flex:1;min-width:0;padding:8px 10px;border-radius:10px;border:1px solid var(--line,#ffffff2a);background:transparent;color:inherit;font:inherit}
 .sb-ph { display: grid; gap: 10px; } .sb-ph .sb-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } .sb-ph .sb-chips button { text-align: center; min-height: 40px; } .sb-lbl { font-size: 12px; color: var(--muted); }
 @media (max-width: 520px) { .sb-lib { grid-template-columns: repeat(4, 1fr); } }
+
+/* 📊 Деталі закладу (owner-an.js) */
+.an-grid { display: grid; gap: 12px; margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.an-grid > .card { overflow: hidden; }
+.an-sel { width: auto; max-width: 100%; margin-left: 8px; font-size: 14px; padding: 6px 10px; }
+.an-d { font-weight: 600; } .an-d.up { color: #4cd964; } .an-d.dn { color: #ff6b6b; }
+.an-bar { display: grid; grid-template-columns: minmax(80px, 38%) 1fr auto; gap: 8px; align-items: center; padding: 4px 0; font-size: 13px; }
+.an-bar .l { overflow-wrap: anywhere; } .an-bar .b { height: 8px; border-radius: 6px; background: var(--card2); overflow: hidden; }
+.an-bar .b i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), #f2c14e88); border-radius: 6px; }
+.an-bar b { white-space: nowrap; font-size: 13px; }
+.an-heat { display: grid; gap: 3px; align-items: center; font-size: 10px; }
+.an-heat small { color: var(--muted); text-align: center; }
+.an-heat i { display: block; aspect-ratio: 1; min-height: 10px; border-radius: 3px; background: var(--accent); }
+@media (max-width: 480px) { .an-grid { grid-template-columns: 1fr; } .an-bar { grid-template-columns: 1fr auto; } .an-bar .b { grid-column: 1 / -1; order: 3; } }

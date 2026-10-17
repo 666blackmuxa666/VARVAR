@@ -117,6 +117,7 @@ export async function intApi(req, env, path) {
     if (b.do === 'restore') return [await B.backupRestore(env, String(b.tag), String(b.who || '')), 200];
     return [{ error: 'unknown' }, 400]; }
   if (path === '/__int/dig') { const D = await import('./digest.js'); return [b.do === 'chat' ? await D.digChat(env, b.chat) : b.do === 'now' ? (await D.digRun(env, dayKey(), false), await D.digList(env)) : await D.digList(env), 200]; }
+  if (path === '/__int/an') { const { anData } = await import('./analytics.js'); const r = await anData(env, isDay(b.from) ? b.from : dayKey(), isDay(b.to) ? b.to : dayKey()); return [r, r.error ? 400 : 200]; }
   if (path === '/__int/sum') { const r = await venueSum(env, b.from, b.to); if (b.pnl) r.pnl = await pnl(env, r).catch(e => ({ error: e.message })); return [r, 200]; }
   if (path === '/__int/codes') return [{ codes: Object.fromEntries(await Promise.all(['admin', 'waiter', 'cook', 'courier'].map(async r => [r, await env.DB.get('reg_' + r)]))) }, 200];
   return [{ error: 'unknown' }, 404];
@@ -251,6 +252,9 @@ export async function ownerApi(req, env) {
       const out = await Promise.all(vs.map(async v => ({ ...(await callVenue(env, v.id, '/__int/sum', { from: b.from, to: b.to, pnl: !!b.pnl }).catch(e => ({ error: e.message }))), id: v.id, name: v.name, status: v.status })));
       return ok({ list: out });
     }
+    case 'an': { // 📊 розширена аналітика одного закладу (кеш 5 хв у закладі)
+      if (!isVenueId(b.venue) || !(await may(b.venue))) return bad('Немає доступу', 403);
+      const r = await callVenue(env, b.venue, '/__int/an', { from: b.from, to: b.to }); return r.error ? bad(r.error) : ok(r); }
     case 'enter': { if (!isVenueId(b.venue) || !(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/login', { name: me.name, email: me.email }); await H.seen(b.venue); return r.token ? ok({ token: r.token, me: r.me, venue: b.venue }) : bad(r.error || 'Не вдалось'); }
     case 'brand': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/brand', {}); return r.error ? bad(r.error) : ok(r); }
     case 'bots': { if (!(await may(b.venue))) return bad('Немає доступу', 403); return ok(await callVenue(env, b.venue, '/__int/bots', { test: !!b.test })); }

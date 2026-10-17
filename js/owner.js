@@ -166,6 +166,7 @@
       <div style="margin-top:12px">${chart}</div>
       ${(() => { const R = S.sum.flatMap(v => (v.risk || []).map(r => [r.lvl, `<b>${esc(v.name)}</b>: ${esc(r.text)}`])); return `<h2>🚨 Ризики за період ${R.length ? `<span class="muted">(${R.length})</span>` : ''}</h2>${R.length ? R.map(([c, t]) => `<div class="alert ${c}">${t}</div>`).join('') : '<div class="card muted">Підозрілих дій не знайдено 👌</div>'}`; })()}
       ${pnlHTML()}
+      ${window.OWNAN ? OWNAN.view({ api, money, kpi, render, venues: S.venues }, [f, t]) : ''}
       <h2>🏆 Порівняння закладів</h2><div class="card tbl"><table><thead><tr><th>Заклад</th><th>Виручка</th><th>Чеків</th><th>Сер. чек</th><th>Чайові</th><th>Знижки</th><th>🛵</th><th>✏️ Відміни</th><th>🗑 Видал.</th><th>Витрати</th></tr></thead>
       <tbody>${rank.map((v, i) => row(`${['🥇', '🥈', '🥉'][i] || ''} ${esc(v.name)}`, v.tot || {})).join('')}${S.sum.length > 1 ? row('Разом', T, 'sum') : ''}</tbody></table></div>
       <div class="muted" style="font-size:12px;margin-top:8px">Період: ${f.split('-').reverse().join('.')} – ${t.split('-').reverse().join('.')}. Прибуток: собівартість — за техкартами складу, зарплата — фонд місяця пропорційно дням (≈), витрати — з каси.</div>`;
@@ -253,6 +254,7 @@
   // 💬 відповідь у зверненні — працівник побачить її в касі (Профіль → 💬 Звернення)
   document.addEventListener('submit', async e => { const f = e.target.closest('.ib-say'); if (!f) return; e.preventDefault(); const t = f.t.value.trim(); if (!t) return;
     f.querySelector('button').disabled = true; try { const r = await api('inboxSay', { id: f.dataset.id, text: t }); const i = S.ib.findIndex(x => x.id === f.dataset.id); if (i >= 0) S.ib[i] = r.m; toast('💬 Надіслано'); render(); } catch (er) { toast('⚠️ ' + er.message); f.querySelector('button').disabled = false; } });
+  document.addEventListener('change', e => { const el = e.target.closest('[data-a="anV"]'); if (el) { OWNAN.pick(el.value); render(); } });
   document.addEventListener('click', async e => {
     const el = e.target.closest('[data-a]'); if (!el) return; const a = el.dataset.a, d = el.dataset;
     const reload = async () => { S.plat = null; await start(); S.tab = 'plat'; render(); };
@@ -266,7 +268,7 @@
     if (a === 'digTg') { const v = (S.dig || []).find(x => x.id === d.v), c = prompt('Ваш особистий Telegram chat id (число; дізнатись — бот @userinfobot; спершу натисніть Start у боті закладу). Порожнє — вимкнути:', ''); if (c == null) return; try { await api('dig', { venue: d.v, chat: c.trim() }); if (v) v.tg = !!c.trim(); toast(c.trim() ? '✈️ Підсумок надходитиме вам особисто' : 'Telegram вимкнено'); } catch (x) { toast('⚠️ ' + x.message); } return render(); }
     if (a === 'tab' && d.t === 'inbox') S.ib = null;
     if (a === 'tab') { S.cfgV = null; S.tab = d.t; store.set('tab', d.t); if (d.t === 'home' || d.t === 'an') return load(); return render(); }
-    if (a === 'reload') { S.plat = null; window.OWNCRM?.reset(); return start(); }
+    if (a === 'reload') { OWNAN.reset(); S.plat = null; window.OWNCRM?.reset(); return start(); }
     if (a === 'per') { S.per = d.p; if (d.p === 'own') return render(); return load(); }
     if (a === 'perGo') { S.from = $('#pf').value; S.to = $('#pt').value; if (S.from > S.to) [S.from, S.to] = [S.to, S.from]; return load(); }
     if (a === 'enter') { el.disabled = true; try { await goPos(d.v, d.set); } catch (x) { toast('⚠️ ' + x.message); el.disabled = false; } return; }
