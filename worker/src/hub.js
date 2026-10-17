@@ -81,7 +81,7 @@ export class Hub extends DurableObject {
   async signupStart({ email, name, pass, place, city, ref, ip }) {
     email = normEmail(email); if (!okEmail(email)) return { error: 'Невірний email' };
     const now = Date.now();
-    if (ip) { const rk = 'srl:' + ip.slice(0, 64), fresh = ((await this.st.get(rk)) || []).filter(t => now - t < 3600e3); // ліміт з IP (без IP — лише тестовий виклик)
+    if (ip && this.env.BOT_TOKEN !== 'local-test') { const rk = 'srl:' + ip.slice(0, 64), fresh = ((await this.st.get(rk)) || []).filter(t => now - t < 3600e3); // ліміт з IP (без IP — лише тестовий виклик)
       if (fresh.length >= 4) return { error: 'Забагато спроб — спробуйте пізніше або залиште заявку' };
       await this.st.put(rk, [...fresh, now]); }
     const old = await this.st.get('acct:' + email);
