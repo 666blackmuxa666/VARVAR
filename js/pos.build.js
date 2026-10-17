@@ -418,6 +418,7 @@ var __objRest = (source, exclude) => {
     S.myTip = r.myTip;
     S.myAtt = r.myAtt || null;
     S.books = r.books || [];
+    S.wl = r.wl || [];
     S.bkNew = r.bkNew || 0;
     if (r.brand && JSON.stringify(r.brand) !== JSON.stringify(S.brand)) {
       S.brand = r.brand;
@@ -1214,6 +1215,9 @@ var __objRest = (source, exclude) => {
         renderNav();
         renderMain();
         loadView();
+        break;
+      case "wl":
+        wlOpen();
         break;
       case "bkDay":
         S.bkDay = el.dataset.d;
@@ -2205,7 +2209,7 @@ var __objRest = (source, exclude) => {
     const body0 = go ? goL.length ? `<div class="go-strip go-grid">${goL.map(goTileHTML).join("")}</div>` : '<div class="muted" style="padding:14px">\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u044C \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454</div>' : `${((_c = S.cfg) == null ? void 0 : _c.goTabs) ? goTile : strip}${map ? floorUI(cur, all, inF, calls, pending) : ""}${map ? "" : `<div class="tables${rng.length > 24 ? " compact" : ""}">${tiles || `<div class="muted" style="padding:14px">${S.hf === "mine" ? "\u0423 \u0432\u0430\u0441 \u0437\u0430\u0440\u0430\u0437 \u043D\u0435\u043C\u0430\u0454 \u0441\u0442\u043E\u043B\u0456\u0432" : "\u0417\u0430\u0439\u043D\u044F\u0442\u0438\u0445 \u0441\u0442\u043E\u043B\u0456\u0432 \u043D\u0435\u043C\u0430\u0454"}</div>`}</div>`}`;
     const body = alerts + body0;
     return `<div class="head"><h1>${V2.length > 1 ? `<button class="hall-pick${othHot ? " hot" : ""}" data-hl="pick">${cur.ic} ${esc(cur.n)} \u25BE</button>` : "\u0417\u0430\u043B"}</h1>${tools}
-      ${isCook() || isCour() ? "" : inboxBtn()}${isCook() || isCour() ? "" : S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="\u041D\u043E\u0432\u0456 \u0431\u0440\u043E\u043D\u0456 \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C">\u{1F4C5} ${S.bkNew} \u043D\u043E\u0432.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">\u{1F4C5} ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="\u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F">\u{1F4C5}</button>`}</div>${bar}${body}`;
+      ${isCook() || isCour() ? "" : inboxBtn()}${isCook() || isCour() ? "" : `<button class="btn${(S.wl || []).length ? "" : " ghost"}" data-a="wl" title="\u0427\u0435\u0440\u0433\u0430 \u0433\u043E\u0441\u0442\u0435\u0439">\u23F3${(S.wl || []).length ? " " + S.wl.length : ""}</button>`}${isCook() || isCour() ? "" : S.bkNew ? `<button class="btn red bk-blink" data-a="books" title="\u041D\u043E\u0432\u0456 \u0431\u0440\u043E\u043D\u0456 \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C">\u{1F4C5} ${S.bkNew} \u043D\u043E\u0432.</button>` : (S.books || []).length ? `<button class="btn" data-a="books">\u{1F4C5} ${S.books.length}</button>` : `<button class="btn ghost" data-a="books" title="\u0411\u0440\u043E\u043D\u044E\u0432\u0430\u043D\u043D\u044F">\u{1F4C5}</button>`}</div>${bar}${body}`;
   }
   const evTitle = (e) => ({
     guest: `\u{1F6CE} \u0421\u0442\u0456\u043B ${tn(e.t)} \u2014 ${esc((e.kind || "\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F").toLowerCase())}`,
@@ -2847,6 +2851,36 @@ var __objRest = (source, exclude) => {
       return renderMain();
     }
   });
+  async function wlOpen() {
+    const ago = (x) => Math.max(0, Math.round((Date.now() - x.at) / 6e4));
+    const rows = (S.wl || []).map((x, i) => `<div class="kv" style="flex-wrap:wrap;gap:6px"><span style="min-width:0;overflow-wrap:anywhere">${i + 1}. <b>${esc(x.name)}</b> \xB7 ${x.people} \u043E\u0441. \xB7 ${ago(x)} \u0445\u0432${x.st === "called" ? " \xB7 \u{1F514}" : ""}${x.phone ? ` \xB7 ${esc(x.phone)}` : ""}</span><span class="row" style="gap:6px"><button class="btn sm" data-mi-v="call:${x.id}">\u{1F514}</button><button class="btn sm" data-mi-v="seat:${x.id}">\u{1FA91}</button><button class="btn sm ghost" data-mi-v="gone:${x.id}">\u2716</button></span></div>`).join("") || '<div class="muted">\u0427\u0435\u0440\u0433\u0430 \u043F\u043E\u0440\u043E\u0436\u043D\u044F</div>';
+    const v = await modal({ title: "\u23F3 \u0427\u0435\u0440\u0433\u0430 \u0432 \u0437\u0430\u043B\u0456", body: rows, buttons: [{ label: "\u2795 \u0414\u043E\u0434\u0430\u0442\u0438 \u0433\u043E\u0441\u0442\u044F", val: "add", cls: "primary" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+    if (!v) return;
+    if (v === "add") {
+      const name = await ask("\u0406\u043C\u02BC\u044F \u0433\u043E\u0441\u0442\u044F");
+      if (!name) return;
+      const p = await ask("\u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u043B\u044E\u0434\u0435\u0439?", "2", "number");
+      if (!p) return;
+      const r = await act("wlAdd", { name, people: +p }, "\u23F3 \u0414\u043E\u0434\u0430\u043D\u043E \u0432 \u0447\u0435\u0440\u0433\u0443");
+      if (r) {
+        await loadState().catch(() => {
+        });
+        wlOpen();
+      }
+      return;
+    }
+    const [a, id] = String(v).split(":");
+    let tt = 0;
+    if (a === "seat") {
+      tt = await pickTable("\u{1FA91} \u0417\u0430 \u044F\u043A\u0438\u0439 \u0441\u0442\u0456\u043B?", "");
+      if (!tt) return;
+    }
+    if (await act("wlAct", { id, act: a, t: tt }, { call: "\u{1F514} \u041F\u043E\u043A\u043B\u0438\u043A\u0430\u043B\u0438", seat: "\u{1FA91} \u041F\u043E\u0441\u0430\u0434\u0438\u043B\u0438", gone: "\u2716 \u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E" }[a])) {
+      await loadState().catch(() => {
+      });
+      if ((S.wl || []).length) wlOpen();
+    }
+  }
   const RXS = ["\u{1F44D}", "\u2705", "\u{1F525}", "\u2764\uFE0F", "\u{1F602}", "\u{1F62E}"];
   const QUICK = ["\u{1F3C3} \u0406\u0434\u0443", "\u23F1 5 \u0445\u0432", "\u26D4 \u041D\u0435\u043C\u0430 \u0432 \u043D\u0430\u044F\u0432\u043D\u043E\u0441\u0442\u0456", "\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432", "\u{1F37D} \u0413\u043E\u0442\u043E\u0432\u043E", "\u{1F44C} \u041E\u043A"];
   S.evRead = store.get("evRead", {});

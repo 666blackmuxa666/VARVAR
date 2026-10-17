@@ -100,12 +100,12 @@ const billSum = b => b.disc || b.promo?.sum ? `${money(payable(b))} <i>(${[b.dis
 const promoTxt = b => (b.promo?.lines || []).filter(l => l.amt || !l.info).map(l => `\n🎁 ${esc(l.n)}${l.amt ? ` −${money(l.amt)}` : ''}`).join(''); // акції й рівень (promo.js)
 async function tablesView(env) {
   const rows = await openTables(env);
-  if (!rows.length) return { text: '📋 Відкритих столів немає' };
+  if (!rows.length) return { text: '📋 Відкритих столів немає', markup: { inline_keyboard: [[{ text: '⏳ Черга', callback_data: 'wl:list' }]] } };
   await promoFillMany(env, rows.map(r => r.b));
   const sum = rows.reduce((s, r) => s + payable(r.b), 0);
   return {
     text: `📋 <b>Відкриті столи</b>\n` + rows.map(r => `🪑 Стіл ${tn(r.t)} — <b>${billSum(r.b)}</b> · замовлень: ${r.b.orders}${r.b.opened ? ` · з ${hhmm(r.b.opened)}` : ''}${r.b.check ? ' · 🧾 чек' : ''}`).join('\n') + `\n\nРазом у залі: <b>${money(sum)}</b>`,
-    markup: { inline_keyboard: chunk(rows.map(r => ({ text: `Стіл ${tn(r.t)}`, callback_data: 'tbl:' + r.t })), 4) },
+    markup: { inline_keyboard: [...chunk(rows.map(r => ({ text: `Стіл ${tn(r.t)}`, callback_data: 'tbl:' + r.t })), 4), [{ text: '⏳ Черга', callback_data: 'wl:list' }]] },
   };
 }
 async function tableView(env, t) {
@@ -431,6 +431,7 @@ export async function handleUpdate(u, env) {
       await notify(env, `👥 Новий працівник: <b>${esc(r.s.name)}</b> (${ROLE_ONE[role]}) — зареєструвався в Telegram-боті`).catch(() => {});
       return send({ text: `👋 Вітаю, ${esc(r.s.name)}! PIN збережено — ним же входите в касу.\n\n` + await helpFor(env, role) }, await tgLogin(env, uid, r.s, chat));
     }
+    if (state?.startsWith('wls:') && waiter) { const [r] = await (await import('./wl.js')).wlAct(env, state.slice(4), 'seat', +text, who); return send({ text: r.error ? '⚠️ ' + r.error : `🪑 ${esc(r.name)} — стіл ${+text}` }); }
     if (state?.startsWith('bkc:') && waiter) { const r = await bookSet(env, state.slice(4), 'came', who, { t: +text }); return send({ text: r?.error ? '⚠️ ' + r.error : `🪑 Гості прийшли · стіл ${+text}` }); }
     if (state?.startsWith('bkt:') && waiter) { const r = await bookSet(env, state.slice(4), 'kit', who, { t: +text }); return send({ text: r?.error ? '⚠️ ' + r.error : `🔥 Передзамовлення відправлено на кухню · стіл ${+text}` }); }
     if (state.startsWith('goe:') && admin) { // ✏️ доставка: та сама goEdit, що й у касі
@@ -562,6 +563,8 @@ export async function handleUpdate(u, env) {
   if (low === '/learn' || low === 'навчання') return send({ text: '🎓 <b>Навчання</b>\nУроки для вашої ролі: що натискати й де — з підсвіткою справжніх кнопок у касі.', markup: LEARN });
   if (low === '/start' || low === '/help' || text === W.help || low === 'допомога' || low === 'help') return send({ text: (admin ? ADMIN_HELP(env) : HELP(env)) + '\n\n🎓 Навчання з підказками в касі — /learn' });
   if (text === W.order || low === '/order' || low === 'замовлення') return send(await tablePick(env, (await openTables(env)).map(r => r.t), tablesCount(env)));
+  if (low === '/wl' || low === 'черга' || text === '⏳ Черга') { const Wl = await import('./wl.js'), l = await Wl.wlList(env); return send({ text: Wl.wlText(l) + '\n\nДодати гостя: <code>/wl Імʼя 4</code>', markup: Wl.wlKb(l) }); }
+  if (low.startsWith('/wl ')) { const m = text.slice(4).trim().match(/^(.+?)\s+(\d{1,2})$/); if (!m) return send({ text: 'Формат: <code>/wl Імʼя 4</code>' }); const [r] = await (await import('./wl.js')).wlAdd(env, { name: m[1], people: m[2] }, who); return send({ text: r.error ? '⚠️ ' + r.error : `⏳ ${esc(r.name)} у черзі — №${r.pos}` }); }
   if (low === '/tables' || text === W.tables || low === 'столи') return send(await tablesView(env));
   if ((x = low.match(/^(?:\/table|стіл|стол)\s+(\d+)$/))) return send(await tableView(env, +x[1]));
   if ((x = low.match(/^(?:\/close|закрити|закрий)\s+(\d+)$/))) return send(await closeAsk(env, +x[1]));
@@ -683,6 +686,13 @@ async function handleCallback(q, env) {
   const who = q.from?.first_name || '';
   const confirm = (text, yes) => send({ text, markup: { inline_keyboard: [[{ text: '✅ Так', callback_data: yes }, { text: 'Ні', callback_data: 'no' }]] } });
 
+  if (act === 'wl') { // ⏳ черга в залі — та сама wlAct, що й у касі
+    const W = await import('./wl.js');
+    if (arg === 'list') { const l = await W.wlList(env); await edit(W.wlText(l), W.wlKb(l)); return answer(''); }
+    if (arg === 'seat') { await env.DB.put('st:' + uid, 'wls:' + oid, { expirationTtl: 600 }); await send({ text: '🪑 За який стіл посадили? Номер:' }); return answer(''); }
+    const [r] = await W.wlAct(env, oid, arg, 0, who); if (r.error) return answer('⚠️ ' + r.error);
+    const l = await W.wlList(env); await edit(W.wlText(l), W.wlKb(l)); return answer(arg === 'call' ? '🔔 Покликали' : 'Готово');
+  }
   if (act === 'atk' || act === 'swk' || act === 'zpb' || act === 'zpbs') { // 👷 зміни й зарплата
     if (!admin) return answer('🔐 Лише для адміністратора');
     if (act === 'atk') { const n = (await getStaff(env)).find(z => z.id === oid)?.name; const x = n && await attConfirm(env, arg, n, opt, who); if (!x) return answer('Не знайдено');

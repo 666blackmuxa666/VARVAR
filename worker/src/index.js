@@ -33,7 +33,7 @@ const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|g
 // все одно перевіряє при замовленні (priceMap пропускає hidden), тож 20 с затримки безпечні.
 const MEM = new Map(), TTL = { '/api/menu': 20, '/api/site': 60, '/api/reco': 600, '/api/goinfo': 30, '/k': 3600, '/kitchen': 3600 };
 async function cached(req, path, run) {
-  const u = new URL(req.url), ttl = req.method === 'GET' && TTL[path];
+  const u = new URL(req.url), ttl = req.method === 'GET' && (path === '/api/orders' ? u.searchParams.has('g') && 15 : TTL[path]); // 🛵 статус доставки гостя — спільний кеш 15 с (?g=1)
   if (!ttl || u.searchParams.has('ph') || u.searchParams.has('nocache')) return run();
   const key = u.pathname + u.search + '|' + (req.headers.get('Origin') || ''), hit = MEM.get(key);
   if (hit && hit.exp > Date.now()) return new Response(hit.body, { status: 200, headers: { ...hit.headers, 'x-cache': 'HIT' } });
@@ -135,7 +135,7 @@ export async function handle(req, env) {
       if (url.pathname === '/api/orders') { // статуси замовлень гостя: ?ids=a,b
         const ids = (url.searchParams.get('ids') || '').split(',').filter(x => /^[a-z0-9]{6,12}$/.test(x)).slice(0, 20);
         const out = {}, all = ids.length ? await env.DB.getMany(ids.map(id => 'ord:' + id), 'json') : []; // один запит замість N
-        ids.forEach((id, i) => { const o = all[i]; out[id] = o && { s: o.s, t: o.t, by: o.by, at: o.at, ...(o.go ? { g: o.g || o.s, no: tn(o.t), eta: o.eta, gAt: o.gAt, ...(o.etaC ? { etaC: o.etaC } : {}) } : {}) }; });
+        ids.forEach((id, i) => { const o = all[i]; out[id] = o && { s: o.s, t: o.t, by: o.by, at: o.at, ...(o.go ? { g: o.g || o.s, no: tn(o.t), eta: o.eta, gAt: o.gAt, ...(o.cour ? { c: o.cour } : {}), ...(o.etaC ? { etaC: o.etaC } : {}) } : {}) }; });
         return json(out);
       }
       if (url.pathname === '/api/pos/live') return posLive(req, env, url);
@@ -149,13 +149,14 @@ export async function handle(req, env) {
       if (url.pathname === '/api/owner' && req.method === 'POST') return env.VENUE === MAIN ? json(...await ownerApi(req, env)) : json({ error: 'not_found' }, 404); // 👑 кабінет власника
       if (url.pathname.startsWith('/__int/')) return json(...await intApi(req, env, url.pathname)); // заклад ← кабінет (лише зсередини воркера)
       if (url.pathname === '/__cron') return env.INSTORE && req.headers.get('x-cron') && req.headers.get('x-cron') === (env.MASTER_KEY ? await intSecret(env) : '1') ? json(await cron(env)) : json({ error: 'no' }, 403);
-      if (req.method === 'POST' && ip && ['/api/book', '/api/cert', '/api/go', '/api/tpay'].includes(url.pathname)) { // 🛡 ліміти по device обходяться його зміною: з одного IP — не більше 40 різних пристроїв за 10 хв (повтори того ж пристрою не рахуються)
+      if (req.method === 'POST' && ip && ['/api/book', '/api/cert', '/api/go', '/api/tpay', '/api/wl'].includes(url.pathname)) { // 🛡 ліміти по device обходяться його зміною: з одного IP — не більше 40 різних пристроїв за 10 хв (повтори того ж пристрою не рахуються)
         const dv = await req.clone().json().then(x => String(x?.device || '').slice(0, 64)).catch(() => ''), tk = 'ipdev:' + ip.slice(0, 64), seen = (await env.DB.get(tk, 'json')) || [];
         if (dv && !seen.includes(dv)) { if (seen.length >= 150) return json({ error: 'rate' }, 429); await env.DB.put(tk, JSON.stringify([...seen, dv]), { expirationTtl: 600 }); }
       }
       // 🌐 візитка
       if (url.pathname === '/api/site') return new Response(JSON.stringify(await sitePublic(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
       if (url.pathname === '/site') return Response.redirect(siteLink('about.html'), 302);
+      if (url.pathname === '/api/wl') { const W = await import('./wl.js'); if (req.method !== 'POST') return json(await W.wlStatus(env, url.searchParams.get('id')) || { error: 'not_found' }); const b = await req.json(); if (b.cancel) return json(...await W.wlAct(env, b.id, 'cancel')); const rk = 'wlrl:' + String(b.device || ip).slice(0, 64), rn = +(await env.DB.get(rk)) || 0; if (rn >= 3) return json({ error: 'rate' }, 429); await env.DB.put(rk, String(rn + 1), { expirationTtl: 3600 }); return json(...await W.wlAdd(env, b)); }
       if (url.pathname === '/api/book' && req.method === 'POST') return json(...await bookCreate(await req.json(), ip, env));
       if (url.pathname === '/api/book') return json(await bookStatus(env, url.searchParams.get('id')) || { error: 'not_found' });
       if (url.pathname === '/api/bookpre' && req.method === 'POST') return json(...await bookPre(await req.json(), env));

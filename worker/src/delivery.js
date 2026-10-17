@@ -53,7 +53,7 @@ async function goAlloc(env, kind) {
 // статус для гостя: new → acc → cook → ready → road → done | rej
 const ST = { new: '🆕 нове', acc: '✅ прийнято', cook: '🔥 готується', ready: '🍽 готово', road: '🛵 в дорозі', done: '🤝 видано', rej: '❌ відхилено' };
 export const goStLabel = s => ST[s] || s;
-async function markOrd(env, oid, st, extra = {}) {
+export async function markOrd(env, oid, st, extra = {}) {
   if (!oid) return; await L(env, 'ord:' + oid, async () => { const o = await env.DB.get('ord:' + oid, 'json'); if (o) await env.DB.put('ord:' + oid, JSON.stringify({ ...o, g: st, gAt: Date.now(), ...extra }), { expirationTtl: BILL_TTL }); });
 }
 // 🛵 доставку скасовано в касі / боті (стіл видалено, відхилено, усе прибрано) — гість бачить «скасовано» і може замовити знову
@@ -74,7 +74,7 @@ export async function goSet(env, t, st, who, { pay, cour } = {}) {
   }
   const b = await L(env, 'bills', async () => { const b = await getBill(env, t); if (!b.go) return null; b.go.st = st; if (st === 'road' && !b.go.roadAt) b.go.roadAt = Date.now(); if (cour !== undefined && cour !== b.go.cour) { b.go.cour = cour || ''; if (cour) b.go.takeAt ||= Date.now(); } await putBill(env, t, b); return b; });
   if (!b) return null;
-  await markOrd(env, b.go.oid, st);
+  await markOrd(env, b.go.oid, st, { cour: b.go.cour || '' }); // кур'єр — для сторінки гостя
   if (b0.go.st !== st) await (await import('./guestbot.js')).goStatusMsg(env, t, b.go, st).catch(() => {}); // 🤖 гостю в Telegram
   if (st === 'road' || st === 'ready') await logEvent(env, { k: 'go', t, by: who, s: 'acc', text: `${st === 'road' ? '🛵' : '🍽'} ${tn(t)} ${b.go.name || ''} — ${goStLabel(st)}${b.go.cour ? ' · ' + b.go.cour : ''}` });
   return b.go;
