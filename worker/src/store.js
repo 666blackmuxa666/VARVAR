@@ -81,12 +81,14 @@ export class Store extends DurableObject {
   async del(k) { await this.ctx.storage.delete(k); this.changed([k]); }
   async wipe() { await this.ctx.storage.deleteAll(); } // 🗑 видалення закладу (лише з консолі платформи)
   // 💾 бекап / відновлення: увесь вміст сховища закладу як є (з терміном життя записів)
-  async dump() { return [...(await this.ctx.storage.list())].filter(([k]) => !k.startsWith('__')); }
+  // 🔐 у бекап не йдуть сесії/токени входу й лічильники ліміти (вони короткоживучі; копія бекапу не має давати доступ до каси чи кабінету гостя)
+  static volatile = k => k.startsWith('__') || k === 'failall' || /^(pos|gs|gl|glu|qid|ipdev|prl|prfail|jserr|gorl|wlrl|lrl|gchrl|callrl|fail):/.test(k);
+  async dump() { return [...(await this.ctx.storage.list())].filter(([k]) => !Store.volatile(k)); }
   async restore(entries) {
     // спершу записуємо новий вміст, лише потім прибираємо зайве: збій посередині лишає суміш, а не порожню базу (deleteAll не атомарний)
-    entries = entries.filter(e => Array.isArray(e) && typeof e[0] === 'string' && !e[0].startsWith('__'));
+    entries = entries.filter(e => Array.isArray(e) && typeof e[0] === 'string' && !Store.volatile(e[0]));
     for (let i = 0; i < entries.length; i += 128) await this.ctx.storage.put(Object.fromEntries(entries.slice(i, i + 128)));
-    const want = new Set(entries.map(e => e[0])), stale = [...(await this.ctx.storage.list()).keys()].filter(k => !k.startsWith('__') && !want.has(k));
+    const want = new Set(entries.map(e => e[0])), stale = [...(await this.ctx.storage.list()).keys()].filter(k => !Store.volatile(k) && !want.has(k));
     for (let i = 0; i < stale.length; i += 128) await this.ctx.storage.delete(stale.slice(i, i + 128));
     this.schema = undefined; // старий бекап → міграції пройдуть знову
     this.changed(['bill:', 'menu', 'staff', 'closed:', 'day:']); return entries.length;

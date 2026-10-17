@@ -290,3 +290,6 @@ export async function aiSite(env, b) {
     return { error: 'do?' };
   } catch (e) { console.log('aiSite', e.message); return { error: 'Помічник зараз не відповідає — спробуйте пізніше' }; }
 }
+
+// 💬 чат на сайті ATOM: асистент для заявок. Ланцюжок загальний (Gemini → Groq → Kimi); ключі лише з env
+export const aiChat = (env, prompt) => gemini(env, prompt, { schema: { type: 'OBJECT', properties: { reply: { type: 'STRING' }, hot: { type: 'BOOLEAN' }, name: { type: 'STRING' }, phone: { type: 'STRING' }, place: { type: 'STRING' }, city: { type: 'STRING' } }, required: ['reply'] }, temperature: 0.4, timeout: 15000, free: true });

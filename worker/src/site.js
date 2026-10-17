@@ -120,7 +120,7 @@ export async function bookCreate(b, ip, env) {
   const today = dayKey(), max = new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10);
   if (date < today || date > max || (date === today && time < hhmm())) return [{ error: 'date' }, 400];
   const rk = 'bkrl:' + String(b.device || ip).slice(0, 64), rn = +(await env.DB.get(rk)) || 0; if (rn >= 3) return [{ error: 'rate' }, 429];
-  const x = { id: date.replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 6), kind: b.kind === 'banquet' ? 'banquet' : 'table', name, phone, date, time, people, comment: String(b.comment || '').trim().slice(0, 300), st: 'new', at: Date.now() };
+  const x = { id: date.replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 12), kind: b.kind === 'banquet' ? 'banquet' : 'table', name, phone, date, time, people, comment: String(b.comment || '').trim().slice(0, 300), st: 'new', at: Date.now() };
   { const tw = parseInt(b.tw, 10); if (tw > 0 && tw <= (+env.TABLES || 999)) x.tw = tw; } /* 🗺 бажаний стіл зі схеми — адмін підтверджує і садить */
   await L(env, 'book:' + date.slice(0, 7), async () => { const l = await getBk(env, date.slice(0, 7)); l.push(x); await env.DB.put('book:' + date.slice(0, 7), JSON.stringify(l)); });
   await env.DB.put(rk, String(rn + 1), { expirationTtl: 3600 });
@@ -133,7 +133,7 @@ export async function bookCreate(b, ip, env) {
 }
 // передзамовлення до броні (без оплати): ціни — з меню на сервері
 export async function bookPre(b, env) {
-  const id = String(b.id || ''); if (!/^\d{8}[a-f0-9]{6}$/.test(id)) return [{ error: 'bad' }, 400];
+  const id = String(b.id || ''); if (!/^\d{8}[a-f0-9]{6}(?:[a-f0-9]{6})?$/.test(id)) return [{ error: 'bad' }, 400];
   const P = priceMap(await getMenu(env)), lines = [];
   for (const it of (Array.isArray(b.items) ? b.items : []).slice(0, 40)) { const p = P[it.id], q = Math.min(30, Math.max(0, parseInt(it.q, 10) || 0)); if (!p || !q) continue;
     const price = typeof p.p === 'number' ? p.p : Object.hasOwn(p.p, String(it.v)) ? p.p[it.v] : 0; if (!(price > 0)) continue; lines.push(`${q}× ${p.n}${typeof p.p === 'number' ? '' : ` ${it.v} ${p.s || 'л'}`} — ${price * q}`); }
@@ -145,9 +145,9 @@ export async function bookPre(b, env) {
   return [{ ok: true, n: lines.length }, 200];
 }
 // пошук броні за id (з індексом bkm:) — для бота, без обмеження «14 днів»
-export const bookGet = (env, id) => /^\d{8}[a-f0-9]{6}$/.test(id || '') ? bkFind(env, id) : null;
+export const bookGet = (env, id) => /^\d{8}[a-f0-9]{6}(?:[a-f0-9]{6})?$/.test(id || '') ? bkFind(env, id) : null;
 export async function bookStatus(env, id) {
-  if (!/^\d{8}[a-f0-9]{6}$/.test(id || '')) return null; const x = await bkFind(env, id);
+  if (!/^\d{8}[a-f0-9]{6}(?:[a-f0-9]{6})?$/.test(id || '')) return null; const x = await bkFind(env, id);
   return x && { st: x.st, date: x.date, time: x.time, people: x.people, kind: x.kind, pre: x.pre || [] };
 }
 // зміна статусу (каса / бот). kit — передзамовлення на кухню (потрібен стіл)
@@ -208,7 +208,7 @@ export async function bookEditFields(env, id, f, who) {
 export async function bookManual(env, f, who) {
   const phone = normPhone(f.phone), name = String(f.name || '').trim().slice(0, 40);
   if (!phone || !name) return { error: "Вкажіть ім'я і телефон" }; if (!vDate(f.date) || !vTime(f.time)) return { error: 'Вкажіть дату й час' };
-  const x = { id: f.date.replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 6), kind: f.kind === 'banquet' ? 'banquet' : 'table', name, phone, date: f.date, time: f.time.padStart(5, '0'), people: Math.max(1, Math.min(60, parseInt(f.people, 10) || 2)), comment: String(f.comment || '').trim().slice(0, 300), note: String(f.note || '').trim().slice(0, 300), t: +f.t || 0, st: 'ok', at: Date.now(), src: 'каса', by: who };
+  const x = { id: f.date.replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 12), kind: f.kind === 'banquet' ? 'banquet' : 'table', name, phone, date: f.date, time: f.time.padStart(5, '0'), people: Math.max(1, Math.min(60, parseInt(f.people, 10) || 2)), comment: String(f.comment || '').trim().slice(0, 300), note: String(f.note || '').trim().slice(0, 300), t: +f.t || 0, st: 'ok', at: Date.now(), src: 'каса', by: who };
   if (x.t) { if (!(x.t >= 1 && x.t <= (+env.TABLES || 999))) return { error: 'Немає такого стола' }; const c = await tblClash(env, x, x.t); if (c) return { error: `Стіл ${x.t} уже заброньовано на ${c.time} (${c.name})` }; }
   await L(env, 'book:' + f.date.slice(0, 7), async () => { const l = await getBk(env, f.date.slice(0, 7)); l.push(x); await env.DB.put('book:' + f.date.slice(0, 7), JSON.stringify(l)); });
   await cliTouch(env, phone, c => { if (!c.name) c.name = name; });
@@ -218,7 +218,7 @@ export async function bookManual(env, f, who) {
 }
 
 // ---------- 🎁 сертифікати ----------
-const certCode = () => 'VV-' + Array.from(crypto.getRandomValues(new Uint8Array(5)), x => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[x % 32]).join('');
+const certCode = () => 'VV-' + Array.from(crypto.getRandomValues(new Uint8Array(8)), x => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[x % 32]).join('');
 export async function certAsk(b, ip, env) {
   const s = await getSite(env); if (!s.certOn) return [{ error: 'off' }, 403];
   const phone = normPhone(b.phone), sum = Math.round(+b.sum || 0), from = String(b.from || '').trim().slice(0, 40), to = String(b.to || '').trim().slice(0, 40);

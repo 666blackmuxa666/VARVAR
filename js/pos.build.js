@@ -706,7 +706,7 @@ var __objRest = (source, exclude) => {
   const NAV_MAIN = ["hall", "kq", "cash", "books"];
   const NAV_W = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["books", "\u{1F4C5}", "\u0411\u0440\u043E\u043D\u0456"], ["closed", "\u{1F9FE}", "\u0427\u0435\u043A\u0438"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["course", "\u{1F393}", "\u041D\u0430\u0432\u0447\u0430\u043D\u043D\u044F"]];
   const NAV_COUR = [["go", "\u{1F6F5}", "\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0438"], ["course", "\u{1F393}", "\u041D\u0430\u0432\u0447\u0430\u043D\u043D\u044F"]];
-  const navList = () => (isCour() ? NAV_COUR : isCook() ? NAV_COOK : isAdmin() ? NAV_A : NAV_W).filter((n) => n[0] !== "course" || courseLeft());
+  const navList = () => isCour() ? NAV_COUR : isCook() ? NAV_COOK : isAdmin() ? NAV_A : NAV_W;
   const NAV = [["hall", "\u{1FA91}", "\u0417\u0430\u043B"], ["closed", "\u{1F4DC}", "\u0417\u0430\u043A\u0440\u0438\u0442\u0456"], ["stop", "\u26D4", "\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442"], ["cash", "\u{1F4B0}", "\u041A\u0430\u0441\u0430", 1], ["reports", "\u{1F4CA}", "\u0417\u0432\u0456\u0442\u0438", 1], ["kq", "\u{1F468}\u200D\u{1F373}", "\u041A\u0443\u0445\u043D\u044F", 1], ["calc", "\u{1F9EE}", "\u0420\u043E\u0437\u0440\u0430\u0445\u0443\u043D\u043E\u043A", 1], ["settings", "\u2699\uFE0F", "\u041D\u0430\u043B\u0430\u0448\u0442.", 1]];
   function renderNav() {
     var _a2, _b, _c;
@@ -2193,7 +2193,7 @@ var __objRest = (source, exclude) => {
     const tiles = map ? "" : all.map((t) => {
       const b = S.tables[t], at = map ? ` style="left:${mp[t][0]}%;top:${mp[t][1]}%"${S.mapEd ? ` data-mt="${t}"` : ""}` : "", dim = map && !inF.has(t) ? " dim" : "";
       const bk = (S.books || []).find((x) => x.t === t && x.st === "ok");
-      if (!b) return `<button${at} class="tbl${dim}${calls[t] ? " calling" : ""}${bk ? " booked" : ""}" data-a="table" data-t="${t}">${bell(t)}<div class="n">${t}</div><div class="st">${bk ? `\u{1F4C5} ${bk.time} \xB7 ${esc(bk.name)}` : "\u0432\u0456\u043B\u044C\u043D\u0438\u0439"}</div></button>`;
+      if (!b) return `<button${at} class="tbl${dim}${pending.has(t) ? " new" : ""}${calls[t] ? " calling" : ""}${bk ? " booked" : ""}" data-a="table" data-t="${t}">${bell(t)}${pending.has(t) ? '<span class="tag g">\u043D\u043E\u0432\u0435</span>' : ""}<div class="n">${t}</div><div class="st">${pending.has(t) ? "\u{1F6CE} \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C" : bk ? `\u{1F4C5} ${bk.time} \xB7 ${esc(bk.name)}` : "\u0432\u0456\u043B\u044C\u043D\u0438\u0439"}</div></button>`;
       const due = b.paid ? Math.max(0, b.pay2 - (b.paid.net || 0)) : 0, cls = ["busy", b.check ? "check" : "", pending.has(t) || b.pwait ? "new" : "", b.pwait ? "pw" : ""].join(" ");
       const tag = b.pwait ? '<span class="tag c" title="\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u043E\u043D\u043B\u0430\u0439\u043D">\u{1F310}</span>' : b.check ? `<span class="tag c">\u{1F9FE} \u0440\u0430\u0445\u0443\u043D\u043E\u043A</span>${b.pay ? `<i class="pay" title="${b.pay === "online" ? "\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u043E\u043D\u043B\u0430\u0439\u043D" : b.pay === "card" ? "\u043A\u0430\u0440\u0442\u0430" : "\u0433\u043E\u0442\u0456\u0432\u043A\u0430"}">${b.pay === "online" ? "\u{1F310}" : b.pay === "card" ? "\u{1F4B3}" : "\u{1F4B5}"}</i>` : ""}` : pending.has(t) ? '<span class="tag g">\u043D\u043E\u0432\u0435</span>' : "";
       return `<button${at} class="tbl${dim} ${cls}${calls[t] ? " calling" : ""}" data-a="table" data-t="${t}">${bell(t)}${tag}<div class="n">${t}</div><div class="st">${b.pwait ? due ? `\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \xB7 \u0434\u043E\u043F\u043B\u0430\u0442\u0430 ${money(due)}` : "\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C" : `${b.orders} \u0437\u0430\u043C\u043E\u0432\u043B.${b.disc ? ` \xB7 \u2212${b.disc}%` : ""}`}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">\u0437 ${b.opened ? hhmm(b.opened) : "\u2014"}</div></button>`;
@@ -2602,9 +2602,9 @@ var __objRest = (source, exclude) => {
     const l = S.data.closed;
     if (!l) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
     const isToday = !S.data.cday || S.data.cday === S.data.ctoday, dTitle = isToday ? "\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : S.data.cday.split("-").reverse().join(".");
-    const gone = (x) => x.del || x.rm, ok = l.filter((x) => !gone(x)), sum = (f) => money(ok.reduce((s, x) => s + f(x), 0)), onl = ok.some((x) => x.onl);
+    const gone = (x) => x.del || x.rm, ok2 = l.filter((x) => !gone(x)), sum = (f) => money(ok2.reduce((s, x) => s + f(x), 0)), onl = ok2.some((x) => x.onl);
     const nav = `<div class="c-day"><button class="c-arr" data-a="cDay" data-v="-1">\u2039</button><label class="c-date">\u{1F4C5} ${isToday ? "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : dTitle}<input type="date" data-a="cDate" value="${S.data.cday || S.data.ctoday || ""}" max="${S.data.ctoday || ""}"></label><button class="c-arr" data-a="cDay" data-v="1" ${isToday ? "disabled" : ""}>\u203A</button></div>`;
-    const top = `<div class="c-top">${nav}<div class="c-tot"><div class="c-big"><small>\u0420\u0430\u0437\u043E\u043C \xB7 ${ok.length} \u0447\u0435\u043A.</small><b class="money">${sum((x) => x.sum)}</b></div><div class="c-split"><span>\u{1F4B5} ${sum((x) => {
+    const top = `<div class="c-top">${nav}<div class="c-tot"><div class="c-big"><small>\u0420\u0430\u0437\u043E\u043C \xB7 ${ok2.length} \u0447\u0435\u043A.</small><b class="money">${sum((x) => x.sum)}</b></div><div class="c-split"><span>\u{1F4B5} ${sum((x) => {
       var _a2;
       return (_a2 = x.cash) != null ? _a2 : x.sum;
     })}</span><span>\u{1F4B3} ${sum((x) => (x.card || 0) - (x.onl || 0))}</span>${onl ? `<span>\u{1F310} ${sum((x) => x.onl || 0)}</span>` : ""}</div></div></div>`;
@@ -2701,7 +2701,7 @@ var __objRest = (source, exclude) => {
     const mp2 = mapPos(cur), ed = S.mapEd, d = S.mapDraft, key = hk(cur);
     const tables = all.map((t) => {
       const b = S.tables[t], bk = !b && (S.books || []).find((x2) => x2.t === t && x2.st === "ok"), [x, y, sh, r] = mp2[t];
-      const st2 = b ? pending.has(t) || b.pwait ? "s-new" + (b.pwait ? " pw" : "") : b.check ? "s-check" : "s-busy" : bk ? "s-book" : "";
+      const st2 = pending.has(t) || (b == null ? void 0 : b.pwait) ? "s-new pw" : b ? b.check ? "s-check" : "s-busy" : bk ? "s-book" : "";
       const sub = b ? `<small>${b.pwait ? "\u{1F310} " : b.check ? "\u{1F9FE} " : pending.has(t) ? "\u{1F6CE} " : ""}${money(b.pay2)}</small>` : bk ? `<small>\u{1F4C5} ${bk.time}</small>` : "";
       return { t, x, y, sh, r, cls: `${st2}${calls[t] ? " call" : ""}${inF.has(t) ? "" : " dim"}`, attrs: ed ? "" : `data-a="table" data-t="${t}"`, pin: `<b>${calls[t] ? "\u{1F514}" : ""}${t}</b>${sub}` };
     });
@@ -4342,8 +4342,8 @@ var __objRest = (source, exclude) => {
   })();
   function printerCards() {
     var _a2;
-    const p = S.printer || {}, ok = p.seen && Date.now() - p.seen < 6e4;
-    return `<div class="cards"><div class="card"><div class="big">${ok ? "\u2705 \u043D\u0430 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : p.seen ? "\u274C \u043D\u0435\u043C\u0430\u0454 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : "\u274C \u043F\u0440\u043E\u0433\u0440\u0430\u043C\u0430 \u0434\u0440\u0443\u043A\u0443 \u043D\u0435 \u0437\u0430\u043F\u0443\u0449\u0435\u043D\u0430"}</div>
+    const p = S.printer || {}, ok2 = p.seen && Date.now() - p.seen < 6e4;
+    return `<div class="cards"><div class="card"><div class="big">${ok2 ? "\u2705 \u043D\u0430 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : p.seen ? "\u274C \u043D\u0435\u043C\u0430\u0454 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : "\u274C \u043F\u0440\u043E\u0433\u0440\u0430\u043C\u0430 \u0434\u0440\u0443\u043A\u0443 \u043D\u0435 \u0437\u0430\u043F\u0443\u0449\u0435\u043D\u0430"}</div>
       <div class="muted">${p.seen ? "\u041E\u0441\u0442\u0430\u043D\u043D\u0456\u0439 \u0437\u0432\u02BC\u044F\u0437\u043E\u043A: " + hhmm(p.seen) : ""} \xB7 \u0443 \u0447\u0435\u0440\u0437\u0456: ${(_a2 = p.q) != null ? _a2 : 0}</div>${p.q && isAdmin() ? '<div class="btnrow" style="margin-top:10px"><button class="btn sm" data-a="pQList">\u{1F4CB} \u0429\u043E \u0432 \u0447\u0435\u0440\u0437\u0456</button><button class="btn sm red" data-a="pQClear">\u{1F5D1} \u041E\u0447\u0438\u0441\u0442\u0438\u0442\u0438 \u0447\u0435\u0440\u0433\u0443</button></div>' : ""}</div>
       <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">\u{1F5A8} \u0422\u0435\u0441\u0442\u043E\u0432\u0438\u0439 \u0434\u0440\u0443\u043A</button><button class="btn" data-a="pQr">\u{1F533} QR \u043C\u0435\u043D\u044E \u0434\u043B\u044F \u0441\u0442\u043E\u043B\u0443</button><button class="btn" data-a="qrPanel">\u{1F533} \u0423\u0441\u0456 QR-\u043A\u043E\u0434\u0438</button></div></div>${prnCard()}`;
   }
@@ -4915,10 +4915,10 @@ var __objRest = (source, exclude) => {
       i.onchange = () => i.parentElement.classList.toggle("on", i.checked);
     });
     let v = await p;
-    for (; v === "ok"; v = await new Promise((ok) => {
+    for (; v === "ok"; v = await new Promise((ok2) => {
       modalResolve = (x) => {
         if (x == null) closeModal();
-        ok(x);
+        ok2(x);
       };
     })) {
       const all = (n) => [...document.querySelectorAll(`#modal input[name=${n}]:checked`)].map((i) => i.value);
@@ -5432,9 +5432,9 @@ var __objRest = (source, exclude) => {
   }
   async function skShare(gi) {
     var _a2;
-    const B = S.data.skBuy, gs = gi === "" || gi == null ? B.list : [B.list[+gi]];
+    const B = S.data.skBuy, gs2 = gi === "" || gi == null ? B.list : [B.list[+gi]];
     const text = `\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F ${((_a2 = S.brand) == null ? void 0 : _a2.name) || "VARVAR"}:
-${gs.map((g) => `${gs.length > 1 ? `
+${gs2.map((g) => `${gs2.length > 1 ? `
 ${g.sup}:
 ` : ""}${g.items.map((i) => `\u2022 ${i.n} \u2014 ${fq(i.need, i.u)}`).join("\n")}`).join("\n")}`;
     try {
@@ -7008,7 +7008,7 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
       tkLoad();
       return '<div class="muted">\u2026</div>';
     }
-    const l = D.list, ok = l.filter((t) => t.st === "done").length, past = day < todayK(), shift = (n) => {
+    const l = D.list, ok2 = l.filter((t) => t.st === "done").length, past = day < todayK(), shift = (n) => {
       const d = /* @__PURE__ */ new Date(day + "T12:00:00Z");
       d.setUTCDate(d.getUTCDate() + n);
       return d.toISOString().slice(0, 10);
@@ -7024,7 +7024,7 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
       <span class="tk-b">${t.ph ? `<button class="btn sm" data-a="tkPh" data-id="${t.id}">\u{1F4F7}</button>` : ""}${t.st ? "" : `<button class="btn sm green" data-a="tkMarkA" data-id="${t.id}" data-st="done" title="\u0412\u0456\u0434\u043C\u0456\u0442\u0438\u0442\u0438 \u0437\u0430 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430">\u2705</button>`}${past ? "" : `<button class="btn sm ghost" data-a="tkDel" data-id="${t.id}">\u{1F5D1}</button>`}</span></div>`;
     const tpl = D.tpl || [];
     return `<div class="card"><div class="zp-top"><button class="btn sm" data-a="tkDay" data-d="${shift(-1)}">\u25C0</button><b>${day === todayK() ? "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : day === shift(0) && day > todayK() ? "\u0417\u0430\u0432\u0442\u0440\u0430" : ""} ${tkDm(day)} ${TK_WD[((/* @__PURE__ */ new Date(day + "T12:00:00Z")).getUTCDay() + 6) % 7]}</b><button class="btn sm" data-a="tkDay" data-d="${shift(1)}">\u25B6</button></div>
-        ${l.length ? `<div class="kpis"><div class="kpi accent"><span>\u0412\u0438\u043A\u043E\u043D\u0430\u043D\u043E</span><b>${ok} \u0437 ${l.length}</b><small class="muted">${Math.round(ok / l.length * 100)}%</small></div>${Object.entries(by).map(([n, [a, b]]) => `<div class="kpi"><span>${esc(n)}</span><b>${a}/${b}</b></div>`).join("")}</div>` : ""}
+        ${l.length ? `<div class="kpis"><div class="kpi accent"><span>\u0412\u0438\u043A\u043E\u043D\u0430\u043D\u043E</span><b>${ok2} \u0437 ${l.length}</b><small class="muted">${Math.round(ok2 / l.length * 100)}%</small></div>${Object.entries(by).map(([n, [a, b]]) => `<div class="kpi"><span>${esc(n)}</span><b>${a}/${b}</b></div>`).join("")}</div>` : ""}
         ${l.length ? l.map(row).join("") : '<div class="muted">\u041D\u0430 \u0446\u0435\u0439 \u0434\u0435\u043D\u044C \u0437\u0430\u0432\u0434\u0430\u043D\u044C \u043D\u0435\u043C\u0430\u0454</div>'}
         ${past ? "" : '<div class="btnrow" style="margin-top:10px"><button class="btn primary" data-a="tkAdd">\u2795 \u0417\u0430\u0432\u0434\u0430\u043D\u043D\u044F</button></div>'}</div>
       <div class="card"><h3>\u{1F501} \u0429\u043E\u0434\u0435\u043D\u043D\u0456 \u0448\u0430\u0431\u043B\u043E\u043D\u0438</h3><div class="muted set-note">\u0414\u043E\u0434\u0430\u044E\u0442\u044C\u0441\u044F \u0432 \u043F\u043B\u0430\u043D \u0441\u0430\u043C\u0456: \u0449\u043E\u0434\u043D\u044F \u0430\u0431\u043E \u0432 \u043E\u0431\u0440\u0430\u043D\u0456 \u0434\u043D\u0456 \u0442\u0438\u0436\u043D\u044F. \u041D\u0430\u043F\u0440. \xAB\u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0442\u044F \u0437\u0430\u043B\u0438\xBB, \xAB\u0413\u0435\u043D\u0435\u0440\u0430\u043B\u044C\u043D\u0435 \u043F\u0440\u0438\u0431\u0438\u0440\u0430\u043D\u043D\u044F \u2014 \u0447\u0442\xBB.</div>
@@ -7173,74 +7173,74 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
       { t: "\u0417\u0440\u043E\u0431\u0438\u043B\u0438 \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0443 \u2014 \xAB\u{1F373} \u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438\xBB: \u0441\u043A\u043B\u0430\u0434 \u0441\u0430\u043C \u0441\u043F\u0438\u0448\u0435 \u0441\u0438\u0440\u043E\u0432\u0438\u043D\u0443.", go: T("skTab", "t", "prod") }
     ] },
     // ---------- 👑 адмін: перший тиждень ----------
-    { id: "a-site", r: "a", g: "\u0414\u0435\u043D\u044C 1 \xB7 \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", ic: "\u{1F310}", n: "\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0437 \u0441\u0430\u0439\u0442\u0443 \u0439 QR", s: [
+    { id: "a-site", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 1 \xB7 \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", ic: "\u{1F310}", n: "\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0437 \u0441\u0430\u0439\u0442\u0443 \u0439 QR", s: [
       { t: "\u041D\u043E\u0432\u0456 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0437 \u0441\u0430\u0439\u0442\u0443 \u043F\u0440\u0438\u0445\u043E\u0434\u044F\u0442\u044C \u0443 \xAB\u{1F514} \u0421\u0442\u0440\u0456\u0447\u043A\u0443\xBB \u0437\u0456 \u0437\u0432\u0443\u043A\u043E\u043C.", sel: ".feed-btn" },
       { t: "\xAB\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432\xBB \u2014 \u0433\u0456\u0441\u0442\u044C \u0431\u0430\u0447\u0438\u0442\u044C, \u0449\u043E \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0440\u0438\u0439\u043D\u044F\u0442\u0435. \u0412\u0456\u0434\u0445\u0438\u043B\u0438\u0442\u0438 \u2014 \u0437 \u043F\u0440\u0438\u0447\u0438\u043D\u043E\u044E.", sel: '[data-a="accept"]' }
     ] },
-    { id: "a-del", r: "a", g: "\u0414\u0435\u043D\u044C 1 \xB7 \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", ic: "\u{1F6F5}", n: "\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0438 \u0439 \u043A\u0443\u0440'\u0454\u0440\u0438", s: [
+    { id: "a-del", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 1 \xB7 \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", ic: "\u{1F6F5}", n: "\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0438 \u0439 \u043A\u0443\u0440'\u0454\u0440\u0438", s: [
       { t: "\u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0438 \u2014 \u0443 \u0432\u043A\u043B\u0430\u0434\u0446\u0456 \xAB\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u043D\u044F\xBB, \u0437\u043D\u0438\u0437\u0443 \xAB\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0438\xBB: \u043D\u043E\u0432\u0456, \u0432 \u0434\u043E\u0440\u043E\u0437\u0456, \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456.", go: V("kq"), sel: ".cr-cols" },
       { t: "\xAB\u{1F464} \u041F\u0440\u0438\u0437\u043D\u0430\u0447\u0438\u0442\u0438\xBB \u2014 \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u043A\u0443\u0440'\u0454\u0440\u0430. \u0412\u0456\u043D \u043E\u0442\u0440\u0438\u043C\u0430\u0454 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0443 \u0432 \u043A\u0430\u0441\u0456 \u0439 Telegram.", sel: '[data-a="goCourSet"]' },
       { t: "\xAB\u{1F5FA} \u041A\u0430\u0440\u0442\u0430\xBB \u2014 \u0443\u0441\u0456 \u0430\u0434\u0440\u0435\u0441\u0438 \u043D\u0430 \u043E\u0434\u043D\u0456\u0439 \u043A\u0430\u0440\u0442\u0456.", sel: '[data-a="goMap"]' }
     ] },
-    { id: "a-book", r: "a", g: "\u0414\u0435\u043D\u044C 1 \xB7 \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", ic: "\u{1F4C5}", n: "\u0411\u0440\u043E\u043D\u0456", s: [
+    { id: "a-book", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 1 \xB7 \u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", ic: "\u{1F4C5}", n: "\u0411\u0440\u043E\u043D\u0456", s: [
       { t: "\u0411\u0440\u043E\u043D\u0456 \u0437 \u0441\u0430\u0439\u0442\u0443 \u0439 \u043F\u043E \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0443. \u0421\u0442\u0440\u0456\u0447\u043A\u0430 \u0434\u043D\u0456\u0432 \u0437\u0432\u0435\u0440\u0445\u0443.", go: V("books") },
       { t: "\xAB\u2795 \u0411\u0440\u043E\u043D\u044C\xBB \u2014 \u0437\u0430\u043F\u0438\u0441\u0430\u0442\u0438 \u0433\u043E\u0441\u0442\u044F, \u044F\u043A\u0438\u0439 \u043F\u043E\u0434\u0437\u0432\u043E\u043D\u0438\u0432.", sel: '[data-a="bkNew"]' },
       { t: "\u0413\u043E\u0441\u0442\u0456 \u043F\u0440\u0438\u0439\u0448\u043B\u0438 \u2014 \xAB\u{1FA91} \u041F\u0440\u0438\u0439\u0448\u043B\u0438\xBB \u0439 \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u0441\u0442\u0456\u043B: \u043F\u0435\u0440\u0435\u0434\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043E\u0434\u0440\u0430\u0437\u0443 \u043F\u0456\u0434\u0435 \u043D\u0430 \u043A\u0443\u0445\u043D\u044E.", sel: '[data-a="bkCame"]' }
     ] },
-    { id: "a-cash", r: "a", g: "\u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u{1F4B0}", n: "\u041A\u0430\u0441\u0430: \u0432\u043D\u0435\u0441\u0435\u043D\u043D\u044F, \u0432\u0438\u043B\u0443\u0447\u0435\u043D\u043D\u044F, \u0432\u0438\u0442\u0440\u0430\u0442\u0438", s: [
+    { id: "a-cash", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u{1F4B0}", n: "\u041A\u0430\u0441\u0430: \u0432\u043D\u0435\u0441\u0435\u043D\u043D\u044F, \u0432\u0438\u043B\u0443\u0447\u0435\u043D\u043D\u044F, \u0432\u0438\u0442\u0440\u0430\u0442\u0438", s: [
       { t: "\u0412\u043A\u043B\u0430\u0434\u043A\u0430 \xAB\u{1F4B0} \u041A\u0430\u0441\u0430\xBB \u2014 \u0441\u043A\u0456\u043B\u044C\u043A\u0438 \u0433\u0440\u043E\u0448\u0435\u0439 \u0443 \u0448\u0443\u0445\u043B\u044F\u0434\u0456 \u0437\u0430\u0440\u0430\u0437.", go: V("cash") },
       { t: "\xAB\u2795 \u0412\u043D\u0435\u0441\u0442\u0438\xBB \u2014 \u0440\u043E\u0437\u043C\u0456\u043D \u0437\u0440\u0430\u043D\u043A\u0443. \xAB\u2796 \u0412\u0438\u043B\u0443\u0447\u0438\u0442\u0438\xBB \u2014 \u0456\u043D\u043A\u0430\u0441\u0430\u0446\u0456\u044F.", sel: '[data-a="cMove"]' },
       { t: "\xAB\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0430\xBB \u2014 \u043A\u0443\u043F\u0438\u043B\u0438 \u0449\u043E\u0441\u044C \u0437\u0430 \u0433\u043E\u0442\u0456\u0432\u043A\u0443 \u0437 \u043A\u0430\u0441\u0438 (\u0437 \u0444\u043E\u0442\u043E \u0447\u0435\u043A\u0430).", sel: '[data-a="expense"]' }
     ] },
-    { id: "a-z", r: "a", g: "\u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u{1F9FE}", n: "\u041A\u0456\u043D\u0435\u0446\u044C \u0434\u043D\u044F: Z-\u0437\u0432\u0456\u0442", danger: 1, s: [
+    { id: "a-z", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u{1F9FE}", n: "\u041A\u0456\u043D\u0435\u0446\u044C \u0434\u043D\u044F: Z-\u0437\u0432\u0456\u0442", danger: 1, s: [
       { t: "\u041F\u0435\u0440\u0435\u0434 \u0437\u0430\u043A\u0440\u0438\u0442\u0442\u044F\u043C \u0443\u0441\u0456 \u0441\u0442\u043E\u043B\u0438 \u043C\u0430\u044E\u0442\u044C \u0431\u0443\u0442\u0438 \u0437\u0430\u043A\u0440\u0438\u0442\u0456.", go: V("cash") },
       { t: "\xAB\u{1F9FE} Z-\u0437\u0432\u0456\u0442\xBB \u2014 \u043F\u0456\u0434\u0441\u0443\u043C\u043E\u043A \u0434\u043D\u044F. \xAB\u{1F5A8} \u041D\u0430\u0434\u0440\u0443\u043A\u0443\u0432\u0430\u0442\u0438\xBB \u043B\u0438\u0448\u0435 \u043F\u043E\u043A\u0430\u0437\u0443\u0454 (X-\u0437\u0432\u0456\u0442). \xAB\u{1F512} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0434\u0435\u043D\u044C\xBB \u2014 \u0444\u0456\u043D\u0430\u043B\u044C\u043D\u043E, \u043F\u0456\u0434\u0435 \u0432 Telegram.", sel: '[data-a="zDay"]' }
     ] },
-    { id: "a-checks", r: "a", g: "\u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u{1F9FE}", n: "\u0427\u0435\u043A\u0438: \u0432\u0438\u043F\u0440\u0430\u0432\u0438\u0442\u0438 \u043E\u043F\u043B\u0430\u0442\u0443, \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F", s: [
+    { id: "a-checks", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u{1F9FE}", n: "\u0427\u0435\u043A\u0438: \u0432\u0438\u043F\u0440\u0430\u0432\u0438\u0442\u0438 \u043E\u043F\u043B\u0430\u0442\u0443, \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F", s: [
       { t: "\xAB\u{1F9FE} \u0427\u0435\u043A\u0438\xBB \u2014 \u0443\u0441\u0456 \u0437\u0430\u043A\u0440\u0438\u0442\u0456 \u0440\u0430\u0445\u0443\u043D\u043A\u0438 \u0437\u0430 \u0434\u0435\u043D\u044C.", go: T("cashTab", "t", "checks") },
       { t: "\u0412\u0456\u0434\u043A\u0440\u0438\u0439\u0442\u0435 \u0447\u0435\u043A, \u0449\u043E\u0431 \u0437\u043C\u0456\u043D\u0438\u0442\u0438 \u0441\u043F\u043E\u0441\u0456\u0431 \u043E\u043F\u043B\u0430\u0442\u0438, \u043F\u0435\u0440\u0435\u0434\u0440\u0443\u043A\u0443\u0432\u0430\u0442\u0438 \u0430\u0431\u043E \u043E\u0444\u043E\u0440\u043C\u0438\u0442\u0438 \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F.", sel: '[data-a="cEdit"]' }
     ] },
-    { id: "a-rep", r: "a", g: "\u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u{1F4CA}", n: "\u0417\u0432\u0456\u0442\u0438", s: [
+    { id: "a-rep", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u{1F4CA}", n: "\u0417\u0432\u0456\u0442\u0438", s: [
       { t: "\u0412\u0438\u0440\u0443\u0447\u043A\u0430, \u0441\u0435\u0440\u0435\u0434\u043D\u0456\u0439 \u0447\u0435\u043A, \u0449\u043E \u043F\u0440\u043E\u0434\u0430\u0454\u0442\u044C\u0441\u044F, \u0433\u043E\u0434\u0438\u043D\u0438 \u043F\u0456\u043A, \u0444\u0443\u0434\u043A\u043E\u0441\u0442.", go: V("reports"), sel: '[data-a="rSec"]' }
     ] },
-    { id: "a-inv", r: "a", g: "\u0414\u0435\u043D\u044C 3 \xB7 \u0421\u043A\u043B\u0430\u0434", ic: "\u{1F9FE}", n: "\u041F\u0440\u0438\u0445\u0456\u0434 \u0442\u043E\u0432\u0430\u0440\u0443", s: [
+    { id: "a-inv", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 3 \xB7 \u0421\u043A\u043B\u0430\u0434", ic: "\u{1F9FE}", n: "\u041F\u0440\u0438\u0445\u0456\u0434 \u0442\u043E\u0432\u0430\u0440\u0443", s: [
       { t: "\u041F\u0440\u0438\u0432\u0435\u0437\u043B\u0438 \u0442\u043E\u0432\u0430\u0440 \u2014 \xAB\u{1F9FE} \u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0456\xBB: \u0441\u0444\u043E\u0442\u043E\u0433\u0440\u0430\u0444\u0443\u0439\u0442\u0435 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0443, \u0428\u0406 \u0441\u0430\u043C \u0440\u043E\u0437\u043F\u0456\u0437\u043D\u0430\u0454 \u043F\u043E\u0437\u0438\u0446\u0456\u0457.", go: T("skTab", "t", "inv") }
     ] },
-    { id: "a-stock", r: "a", g: "\u0414\u0435\u043D\u044C 3 \xB7 \u0421\u043A\u043B\u0430\u0434", ic: "\u{1F4E6}", n: "\u0417\u0430\u043B\u0438\u0448\u043A\u0438 \u0439 \u0437\u0430\u043A\u0443\u043F\u0456\u0432\u043B\u044F", s: [
+    { id: "a-stock", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 3 \xB7 \u0421\u043A\u043B\u0430\u0434", ic: "\u{1F4E6}", n: "\u0417\u0430\u043B\u0438\u0448\u043A\u0438 \u0439 \u0437\u0430\u043A\u0443\u043F\u0456\u0432\u043B\u044F", s: [
       { t: "\xAB\u{1F4E6} \u0417\u0430\u043B\u0438\u0448\u043A\u0438\xBB \u2014 \u0449\u043E \u0454 \u043D\u0430 \u0441\u043A\u043B\u0430\u0434\u0456. \u0427\u0435\u0440\u0432\u043E\u043D\u0435 \u2014 \u043D\u0438\u0436\u0447\u0435 \u043C\u0456\u043D\u0456\u043C\u0443\u043C\u0443.", go: T("skTab", "t", "stock") },
       { t: "\xAB\u{1F6D2} \u0417\u0430\u043A\u0443\u043F\u0456\u0432\u043B\u044F\xBB \u2014 \u0441\u043F\u0438\u0441\u043E\u043A, \u0449\u043E \u0434\u043E\u043A\u0443\u043F\u0438\u0442\u0438, \u043F\u043E \u043F\u043E\u0441\u0442\u0430\u0447\u0430\u043B\u044C\u043D\u0438\u043A\u0430\u0445. \u041C\u043E\u0436\u043D\u0430 \u043E\u0434\u0440\u0430\u0437\u0443 \u043D\u0430\u0434\u0456\u0441\u043B\u0430\u0442\u0438 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F.", go: T("skTab", "t", "buy") }
     ] },
-    { id: "a-cards", r: "a", g: "\u0414\u0435\u043D\u044C 3 \xB7 \u0421\u043A\u043B\u0430\u0434", ic: "\u{1F4CB}", n: "\u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0438 \u0439 \u0441\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C", s: [
+    { id: "a-cards", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 3 \xB7 \u0421\u043A\u043B\u0430\u0434", ic: "\u{1F4CB}", n: "\u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0438 \u0439 \u0441\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C", s: [
       { t: "\xAB\u{1F4CB} \u0422\u0435\u0445\u043A\u0430\u0440\u0442\u0438\xBB \u2014 \u0437 \u0447\u043E\u0433\u043E \u0441\u043A\u043B\u0430\u0434\u0430\u0454\u0442\u044C\u0441\u044F \u0441\u0442\u0440\u0430\u0432\u0430. \u0421\u043A\u043B\u0430\u0434 \u0441\u043F\u0438\u0441\u0443\u0454\u0442\u044C\u0441\u044F \u0441\u0430\u043C \u043F\u0440\u0438 \u043F\u0440\u043E\u0434\u0430\u0436\u0456.", go: T("skTab", "t", "cards") }
     ] },
-    { id: "a-count", r: "a", g: "\u0414\u0435\u043D\u044C 3 \xB7 \u0421\u043A\u043B\u0430\u0434", ic: "\u{1F4DD}", n: "\u0406\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u044F", s: [
+    { id: "a-count", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 3 \xB7 \u0421\u043A\u043B\u0430\u0434", ic: "\u{1F4DD}", n: "\u0406\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u044F", s: [
       { t: "\xAB\u{1F4DD} \u0406\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u0438\u0437\u0430\u0446\u0456\u044F\xBB \u2014 \u043F\u0435\u0440\u0435\u0440\u0430\u0445\u0443\u0439\u0442\u0435 \u0444\u0430\u043A\u0442\u0438\u0447\u043D\u0456 \u0437\u0430\u043B\u0438\u0448\u043A\u0438. \u0420\u0456\u0437\u043D\u0438\u0446\u044F \u043F\u043E\u0442\u0440\u0430\u043F\u0438\u0442\u044C \u0443 \xAB\u041F\u043B\u044E\u0441\u0438 / \u043C\u0456\u043D\u0443\u0441\u0438\xBB.", go: T("skTab", "t", "count") }
     ] },
-    { id: "a-sup", r: "a", g: "\u0414\u0435\u043D\u044C 3 \xB7 \u0421\u043A\u043B\u0430\u0434", ic: "\u{1F3ED}", n: "\u041F\u043E\u0441\u0442\u0430\u0447\u0430\u043B\u044C\u043D\u0438\u043A\u0438 \u0439 \u0431\u043E\u0440\u0433\u0438", s: [
+    { id: "a-sup", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 3 \xB7 \u0421\u043A\u043B\u0430\u0434", ic: "\u{1F3ED}", n: "\u041F\u043E\u0441\u0442\u0430\u0447\u0430\u043B\u044C\u043D\u0438\u043A\u0438 \u0439 \u0431\u043E\u0440\u0433\u0438", s: [
       { t: "\xAB\u{1F3ED} \u041F\u043E\u0441\u0442\u0430\u0447\u0430\u043B\u044C\u043D\u0438\u043A\u0438\xBB \u2014 \u043A\u043E\u043D\u0442\u0430\u043A\u0442\u0438, \u0431\u043E\u0440\u0433\u0438, \u043E\u043F\u043B\u0430\u0442\u0438, \u0430\u043A\u0442\u0438 \u0437\u0432\u0456\u0440\u043A\u0438.", go: T("skTab", "t", "sup") }
     ] },
-    { id: "a-grid", r: "a", g: "\u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u{1F4C5}", n: "\u0413\u0440\u0430\u0444\u0456\u043A \u0437\u043C\u0456\u043D", s: [
+    { id: "a-grid", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u{1F4C5}", n: "\u0413\u0440\u0430\u0444\u0456\u043A \u0437\u043C\u0456\u043D", s: [
       { t: "\xAB\u{1F465} \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\xBB \u2192 \xAB\u{1F4C5} \u0413\u0440\u0430\u0444\u0456\u043A\xBB \u2014 \u0445\u0442\u043E \u043A\u043E\u043B\u0438 \u043F\u0440\u0430\u0446\u044E\u0454. \u041D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \u043A\u043B\u0456\u0442\u0438\u043D\u043A\u0443, \u0449\u043E\u0431 \u043F\u043E\u0441\u0442\u0430\u0432\u0438\u0442\u0438 \u0437\u043C\u0456\u043D\u0443.", go: T("zpTab", "t", "grid") }
     ] },
-    { id: "a-pay", r: "a", g: "\u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u{1F4B0}", n: "\u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430", s: [
+    { id: "a-pay", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u{1F4B0}", n: "\u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430", s: [
       { t: "\xAB\u{1F4B0} \u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430\xBB \u2014 \u043D\u0430\u0440\u0430\u0445\u0443\u0432\u0430\u043D\u043D\u044F \u0437\u0430 \u0437\u043C\u0456\u043D\u0438, \u0432\u0456\u0434\u0441\u043E\u0442\u043A\u0438, \u0447\u0430\u0439\u043E\u0432\u0456, \u0430\u0432\u0430\u043D\u0441\u0438 \u0439 \u0448\u0442\u0440\u0430\u0444\u0438.", go: T("zpTab", "t", "pay") }
     ] },
-    { id: "a-plan", r: "a", g: "\u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u{1F4CB}", n: "\u041F\u043B\u0430\u043D \u043D\u0430 \u0434\u0435\u043D\u044C", s: [
+    { id: "a-plan", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u{1F4CB}", n: "\u041F\u043B\u0430\u043D \u043D\u0430 \u0434\u0435\u043D\u044C", s: [
       { t: "\xAB\u{1F4CB} \u041F\u043B\u0430\u043D\xBB \u2014 \u0437\u0430\u0432\u0434\u0430\u043D\u043D\u044F \u043D\u0430 \u0434\u0435\u043D\u044C (\u043F\u0440\u0438\u0431\u0438\u0440\u0430\u043D\u043D\u044F, \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438). \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0438 \u0432\u0456\u0434\u043C\u0456\u0447\u0430\u044E\u0442\u044C \u0443 \u0441\u0432\u043E\u0454\u043C\u0443 \u043A\u0430\u0431\u0456\u043D\u0435\u0442\u0456 \u0430\u0431\u043E \u0432 \u0431\u043E\u0442\u0456.", go: T("zpTab", "t", "plan") }
     ] },
-    { id: "a-people", r: "a", g: "\u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u{1F465}", n: "\u041D\u043E\u0432\u0438\u0439 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A", s: [
+    { id: "a-people", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u{1F465}", n: "\u041D\u043E\u0432\u0438\u0439 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A", s: [
       { t: "\xAB\u{1F465} \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0438\xBB \u2014 \u0434\u043E\u0434\u0430\u0442\u0438 \u043B\u044E\u0434\u0438\u043D\u0443, \u0440\u043E\u043B\u044C \u0456 PIN. PIN \u0432\u0456\u043D \u0432\u0432\u043E\u0434\u0438\u0442\u044C \u043D\u0430 \u0432\u0445\u043E\u0434\u0456 \u0432 \u043A\u0430\u0441\u0443.", go: T("zpTab", "t", "people") }
     ] },
-    { id: "a-loy", r: "a", g: "\u0414\u0435\u043D\u044C 5 \xB7 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F", ic: "\u{1F381}", n: "\u0410\u043A\u0446\u0456\u0457 \u0439 \u0431\u043E\u043D\u0443\u0441\u0438", s: [
+    { id: "a-loy", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 5 \xB7 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F", ic: "\u{1F381}", n: "\u0410\u043A\u0446\u0456\u0457 \u0439 \u0431\u043E\u043D\u0443\u0441\u0438", s: [
       { t: "\xAB\u2699\uFE0F \u041D\u0430\u043B\u0430\u0448\u0442.\xBB \u2192 \xAB\u{1F381} \u041B\u043E\u044F\u043B\u044C\u043D\u0456\u0441\u0442\u044C\xBB \u2014 \u0440\u0456\u0432\u043D\u0456 \u0433\u043E\u0441\u0442\u0435\u0439, \u0431\u043E\u043D\u0443\u0441\u0438, \u0430\u043A\u0446\u0456\u0457, \u0449\u043E \u0441\u0430\u043C\u0456 \u0440\u0430\u0445\u0443\u044E\u0442\u044C\u0441\u044F \u0432 \u0447\u0435\u043A\u0443.", go: T("setTab", "s", "loy") }
     ] },
-    { id: "a-gocfg", r: "a", g: "\u0414\u0435\u043D\u044C 5 \xB7 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F", ic: "\u{1F6F5}", n: "\u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0438", s: [
+    { id: "a-gocfg", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 5 \xB7 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F", ic: "\u{1F6F5}", n: "\u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0438", s: [
       { t: "\xAB\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430\xBB \u2014 \u0437\u043E\u043D\u0438, \u0446\u0456\u043D\u0430 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0438, \u043C\u0456\u043D\u0456\u043C\u0430\u043B\u044C\u043D\u0430 \u0441\u0443\u043C\u0430, \u0447\u0430\u0441.", go: T("setTab", "s", "go") }
     ] },
-    { id: "a-rules", r: "a", g: "\u0414\u0435\u043D\u044C 5 \xB7 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F", ic: "\u2699\uFE0F", n: "\u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438", s: [
+    { id: "a-rules", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 5 \xB7 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F", ic: "\u2699\uFE0F", n: "\u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438", s: [
       { t: "\xAB\u2699\uFE0F \u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438\xBB \u2014 \u0441\u0442\u043E\u043B\u0438, \u0441\u0435\u0440\u0432\u0456\u0441, \u0437\u043D\u0438\u0436\u043A\u0438, \u0449\u043E \u043C\u043E\u0436\u0435 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442 \u0431\u0435\u0437 \u0430\u0434\u043C\u0456\u043D\u0430.", go: T("setTab", "s", "rules") }
     ] },
-    { id: "a-prn", r: "a", g: "\u0414\u0435\u043D\u044C 5 \xB7 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F", ic: "\u{1F5A8}", n: "\u041F\u0440\u0438\u043D\u0442\u0435\u0440", s: [
+    { id: "a-prn", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 5 \xB7 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F", ic: "\u{1F5A8}", n: "\u041F\u0440\u0438\u043D\u0442\u0435\u0440", s: [
       { t: "\xAB\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440\xBB \u2014 \u0441\u0442\u0430\u043D \u043F\u0440\u0438\u043D\u0442\u0435\u0440\u0430 \u0439 \u0442\u0435\u0441\u0442\u043E\u0432\u0438\u0439 \u0434\u0440\u0443\u043A. \u041D\u0435 \u0434\u0440\u0443\u043A\u0443\u0454? \u041F\u043E\u0447\u043D\u0456\u0442\u044C \u0437 \xAB\u0422\u0435\u0441\u0442\xBB.", go: T("setTab", "s", "printer") }
     ] },
     // ---------- дописано сканом функцій ----------
@@ -7251,39 +7251,39 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     { id: "w-closed", r: "w", g: "\u042F", ic: "\u{1F9FE}", n: "\u0417\u0430\u043A\u0440\u0438\u0442\u0456 \u0447\u0435\u043A\u0438 \u0437\u0430 \u0434\u0435\u043D\u044C", s: [
       { t: "\u0422\u0443\u0442 \u0443\u0441\u0456 \u0437\u0430\u043A\u0440\u0438\u0442\u0456 \u0440\u0430\u0445\u0443\u043D\u043A\u0438: \u0441\u0443\u043C\u0430, \u0441\u043F\u043E\u0441\u0456\u0431 \u043E\u043F\u043B\u0430\u0442\u0438, \u0445\u0442\u043E \u0437\u0430\u043A\u0440\u0438\u0432. \u041A\u043E\u0440\u0438\u0441\u043D\u043E, \u044F\u043A\u0449\u043E \u0433\u0456\u0441\u0442\u044C \u043F\u0438\u0442\u0430\u0454 \u0447\u0435\u043A.", go: V("closed") }
     ] },
-    { id: "a-tips", r: "a", g: "\u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u{1F49D}", n: "\u0427\u0430\u0439\u043E\u0432\u0456: \u0432\u0438\u043F\u043B\u0430\u0442\u0430 \u043A\u043E\u043C\u0430\u043D\u0434\u0456", s: [
+    { id: "a-tips", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u{1F49D}", n: "\u0427\u0430\u0439\u043E\u0432\u0456: \u0432\u0438\u043F\u043B\u0430\u0442\u0430 \u043A\u043E\u043C\u0430\u043D\u0434\u0456", s: [
       { t: "\u0427\u0430\u0439\u043E\u0432\u0456 \u0437 \u043A\u0430\u0440\u0442\u043E\u043A \u043D\u0430\u043A\u043E\u043F\u0438\u0447\u0443\u044E\u0442\u044C\u0441\u044F \u0437\u0430 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u043E\u043C. \u041A\u043E\u043B\u0438 \u0432\u0456\u0434\u0434\u0430\u0454\u0442\u0435 \u0433\u043E\u0442\u0456\u0432\u043A\u043E\u044E \u2014 \u043F\u043E\u0437\u043D\u0430\u0447\u0442\u0435 \xAB\u0412\u0438\u0434\u0430\u043D\u043E\xBB.", go: V("cash"), sel: '[data-a="tipPay"]', opt: 1 }
     ] },
-    { id: "a-exch", r: "a", g: "\u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u{1F501}", n: "\u041E\u0431\u043C\u0456\u043D \u043C\u0456\u0436 \u043A\u0430\u0441\u0430\u043C\u0438", s: [
+    { id: "a-exch", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u{1F501}", n: "\u041E\u0431\u043C\u0456\u043D \u043C\u0456\u0436 \u043A\u0430\u0441\u0430\u043C\u0438", s: [
       { t: "\xAB\u{1F501} \u041E\u0431\u043C\u0456\u043D\xBB \u2014 \u043F\u0435\u0440\u0435\u043A\u043B\u0430\u043B\u0438 \u0433\u0440\u043E\u0448\u0456 \u0437 \u043A\u0430\u0441\u0438 \u0432 \u0441\u0435\u0439\u0444 \u0447\u0438 \u043C\u0456\u0436 \u0441\u043F\u043E\u0441\u043E\u0431\u0430\u043C\u0438 (\u043D\u0430\u043F\u0440. \u0433\u043E\u0442\u0456\u0432\u043A\u0430 \u2192 \u043A\u0430\u0440\u0442\u0430). \u0420\u0443\u0445 \u0444\u0456\u043A\u0441\u0443\u0454\u0442\u044C\u0441\u044F \u0432 \u0436\u0443\u0440\u043D\u0430\u043B\u0456.", go: V("cash"), sel: '[data-a="cMove"]' }
     ] },
-    { id: "a-rfil", r: "a", g: "\u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u2699\uFE0F", n: "\u0424\u0456\u043B\u044C\u0442\u0440\u0438 \u0439 \u043F\u0435\u0440\u0456\u043E\u0434\u0438 \u0437\u0432\u0456\u0442\u0456\u0432", s: [
+    { id: "a-rfil", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 2 \xB7 \u0413\u0440\u043E\u0448\u0456", ic: "\u2699\uFE0F", n: "\u0424\u0456\u043B\u044C\u0442\u0440\u0438 \u0439 \u043F\u0435\u0440\u0456\u043E\u0434\u0438 \u0437\u0432\u0456\u0442\u0456\u0432", s: [
       { t: "\u041E\u0431\u0435\u0440\u0456\u0442\u044C \u043F\u0435\u0440\u0456\u043E\u0434 (\u0434\u0435\u043D\u044C / \u0442\u0438\u0436\u0434\u0435\u043D\u044C / \u043C\u0456\u0441\u044F\u0446\u044C) \u0456 \u0440\u043E\u0437\u0434\u0456\u043B \u0437\u0432\u0456\u0442\u0443.", go: V("reports"), sel: '[data-a="rp"],[data-a="rSec"]' },
       { t: "\xAB\u2699\uFE0F \u0424\u0456\u043B\u044C\u0442\u0440\u0438\xBB \u2014 \u043F\u043E \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0443, \u0441\u043F\u043E\u0441\u043E\u0431\u0443 \u043E\u043F\u043B\u0430\u0442\u0438, \u0437\u0430\u043B\u0443. \xAB\u2715 \u0421\u043A\u0438\u043D\u0443\u0442\u0438\xBB \u043F\u043E\u0432\u0435\u0440\u0442\u0430\u0454 \u0432\u0441\u0435.", sel: '[data-a="rFo"]', opt: 1 }
     ] },
-    { id: "a-ops", r: "a", g: "\u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u{1F9FE}", n: "\u041F\u0440\u0435\u043C\u0456\u044F, \u0448\u0442\u0440\u0430\u0444, \u0430\u0432\u0430\u043D\u0441", s: [
+    { id: "a-ops", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u{1F9FE}", n: "\u041F\u0440\u0435\u043C\u0456\u044F, \u0448\u0442\u0440\u0430\u0444, \u0430\u0432\u0430\u043D\u0441", s: [
       { t: "\xAB\u{1F9FE} \u041E\u043F\u0435\u0440\u0430\u0446\u0456\u0457\xBB \u2014 \u043F\u0440\u0435\u043C\u0456\u0457, \u0448\u0442\u0440\u0430\u0444\u0438 \u0439 \u0430\u0432\u0430\u043D\u0441\u0438. \u0412\u043E\u043D\u0438 \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u043D\u043E \u043F\u043E\u0442\u0440\u0430\u043F\u043B\u044F\u0442\u044C \u0443 \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0443.", go: T("zpTab", "t", "ops") },
       { t: "\u041F\u043E\u043C\u0438\u043B\u0438\u043B\u0438\u0441\u044C \u2014 \u{1F5D1} \u043F\u0440\u0438\u0431\u0438\u0440\u0430\u0454 \u0437\u0430\u043F\u0438\u0441, \u21A9\uFE0F \u043F\u043E\u0432\u0435\u0440\u0442\u0430\u0454.", sel: '[data-a="zpOpDel"]', opt: 1 }
     ] },
-    { id: "a-tasks", r: "a", g: "\u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u2705", n: "\u0417\u0430\u0432\u0434\u0430\u043D\u043D\u044F \u0439 \u0448\u0430\u0431\u043B\u043E\u043D\u0438", s: [
+    { id: "a-tasks", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u2705", n: "\u0417\u0430\u0432\u0434\u0430\u043D\u043D\u044F \u0439 \u0448\u0430\u0431\u043B\u043E\u043D\u0438", s: [
       { t: "\xAB\u{1F4CB} \u041F\u043B\u0430\u043D\xBB \u2192 \xAB\u2795 \u0417\u0430\u0432\u0434\u0430\u043D\u043D\u044F\xBB \u2014 \u0440\u0430\u0437\u043E\u0432\u0430 \u0437\u0430\u0434\u0430\u0447\u0430 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0443 (\u0437 \u0444\u043E\u0442\u043E-\u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F\u043C, \u044F\u043A\u0449\u043E \u0442\u0440\u0435\u0431\u0430).", go: T("zpTab", "t", "plan"), sel: '[data-a="tkAdd"]' },
       { t: "\xAB\u2795 \u0428\u0430\u0431\u043B\u043E\u043D\xBB \u2014 \u0437\u0430\u0432\u0434\u0430\u043D\u043D\u044F, \u0449\u043E \u043F\u043E\u0432\u0442\u043E\u0440\u044E\u0454\u0442\u044C\u0441\u044F \u0449\u043E\u0434\u043D\u044F (\u043F\u0440\u0438\u0431\u0438\u0440\u0430\u043D\u043D\u044F, \u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0438).", sel: '[data-a="tkTplEd"]', opt: 1 },
       { t: "\u2705 / \u274C \u2014 \u0432\u0456\u0434\u043C\u0456\u0442\u0438\u0442\u0438 \u0432\u0438\u043A\u043E\u043D\u0430\u043D\u043D\u044F \u0437\u0430 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430.", sel: '[data-a="tkMarkA"]', opt: 1 }
     ] },
-    { id: "a-ideas", r: "a", g: "\u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u{1F4A1}", n: "\u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F \u043A\u043E\u043C\u0430\u043D\u0434\u0438", s: [
+    { id: "a-ideas", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 4 \xB7 \u041A\u043E\u043C\u0430\u043D\u0434\u0430", ic: "\u{1F4A1}", n: "\u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F \u043A\u043E\u043C\u0430\u043D\u0434\u0438", s: [
       { t: "\u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0438 \u043B\u0438\u0448\u0430\u044E\u0442\u044C \u043F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F \u0437 \u043A\u0430\u0431\u0456\u043D\u0435\u0442\u0443. \u0412\u0438\u043A\u043E\u043D\u0430\u043B\u0438 \u2014 \u2705.", go: T("zpTab", "t", "ideas") }
     ] },
-    { id: "a-cli", r: "a", g: "\u0414\u0435\u043D\u044C 5 \xB7 \u0413\u043E\u0441\u0442\u0456", ic: "\u{1F465}", n: "\u041A\u043B\u0456\u0454\u043D\u0442\u0438 \u0439 \u0431\u043E\u043D\u0443\u0441\u0438", s: [
+    { id: "a-cli", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 5 \xB7 \u0413\u043E\u0441\u0442\u0456", ic: "\u{1F465}", n: "\u041A\u043B\u0456\u0454\u043D\u0442\u0438 \u0439 \u0431\u043E\u043D\u0443\u0441\u0438", s: [
       { t: "\xAB\u{1F465} \u041A\u043B\u0456\u0454\u043D\u0442\u0438\xBB \u2014 \u0431\u0430\u0437\u0430 \u0433\u043E\u0441\u0442\u0435\u0439: \u0440\u0456\u0432\u0435\u043D\u044C, \u0431\u043E\u043D\u0443\u0441\u0438, \u0432\u0456\u0437\u0438\u0442\u0438. \u0417\u043D\u0430\u0439\u0434\u0456\u0442\u044C \u0437\u0430 \u043D\u043E\u043C\u0435\u0440\u043E\u043C \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0443.", go: T("setTab", "s", "loy"), sel: '[data-a="loyTab"][data-s="cli"]' }
     ] },
-    { id: "a-lrule", r: "a", g: "\u0414\u0435\u043D\u044C 5 \xB7 \u0413\u043E\u0441\u0442\u0456", ic: "\u{1F3AF}", n: "\u0410\u043A\u0446\u0456\u0457 (happy hour, \u043A\u043E\u043C\u0431\u043E)", s: [
+    { id: "a-lrule", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 5 \xB7 \u0413\u043E\u0441\u0442\u0456", ic: "\u{1F3AF}", n: "\u0410\u043A\u0446\u0456\u0457 (happy hour, \u043A\u043E\u043C\u0431\u043E)", s: [
       { t: "\xAB\u{1F3AF} \u0410\u043A\u0446\u0456\u0457\xBB \u2014 \u043F\u0440\u0430\u0432\u0438\u043B\u0430, \u0449\u043E \u0441\u0430\u043C\u0456 \u0437\u0430\u0441\u0442\u043E\u0441\u043E\u0432\u0443\u044E\u0442\u044C\u0441\u044F \u0432 \u0447\u0435\u043A\u0443: \u0437\u043D\u0438\u0436\u043A\u0430 \u0437\u0430 \u0447\u0430\u0441\u043E\u043C, \u043A\u043E\u043C\u0431\u043E, \u0434\u0435\u043D\u044C \u043D\u0430\u0440\u043E\u0434\u0436\u0435\u043D\u043D\u044F.", go: T("setTab", "s", "loy"), sel: '[data-a="loyTab"][data-s="rules"]' },
       { t: "\xAB\u2795 \u0421\u0442\u0432\u043E\u0440\u0438\u0442\u0438\xBB \u2014 \u043D\u043E\u0432\u0435 \u043F\u0440\u0430\u0432\u0438\u043B\u043E; \u043F\u0435\u0440\u0435\u043C\u0438\u043A\u0430\u0447 \u0432\u043C\u0438\u043A\u0430\u0454/\u0432\u0438\u043C\u0438\u043A\u0430\u0454 \u0431\u0435\u0437 \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043D\u044F.", sel: '[data-a="loyRule"]', opt: 1 }
     ] },
-    { id: "a-cert", r: "a", g: "\u0414\u0435\u043D\u044C 5 \xB7 \u0413\u043E\u0441\u0442\u0456", ic: "\u{1F39F}", n: "\u041F\u043E\u0434\u0430\u0440\u0443\u043D\u043A\u043E\u0432\u0456 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438", s: [
+    { id: "a-cert", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 5 \xB7 \u0413\u043E\u0441\u0442\u0456", ic: "\u{1F39F}", n: "\u041F\u043E\u0434\u0430\u0440\u0443\u043D\u043A\u043E\u0432\u0456 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438", s: [
       { t: "\xAB\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438\xBB \u2014 \u043F\u0440\u043E\u0434\u0430\u0436 \u0456 \u043F\u043E\u0433\u0430\u0448\u0435\u043D\u043D\u044F. \u041E\u043F\u043B\u0430\u0442\u0443 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C \xAB\u{1F4B5} \u041E\u043F\u043B\u0430\u0447\u0435\u043D\u043E\xBB \u0430\u0431\u043E \u043A\u0430\u0440\u0442\u043A\u043E\u044E.", go: T("setTab", "s", "loy"), sel: '[data-a="certs"]' }
     ] },
-    { id: "a-cast", r: "a", g: "\u0414\u0435\u043D\u044C 5 \xB7 \u0413\u043E\u0441\u0442\u0456", ic: "\u{1F4E3}", n: "\u0420\u043E\u0437\u0441\u0438\u043B\u043A\u0430 \u0433\u043E\u0441\u0442\u044F\u043C", s: [
+    { id: "a-cast", r: "a", g: "\u041F\u0435\u0440\u0448\u0438\u0439 \u0442\u0438\u0436\u0434\u0435\u043D\u044C \u0430\u0434\u043C\u0456\u043D\u0430 \xB7 \u0414\u0435\u043D\u044C 5 \xB7 \u0413\u043E\u0441\u0442\u0456", ic: "\u{1F4E3}", n: "\u0420\u043E\u0437\u0441\u0438\u043B\u043A\u0430 \u0433\u043E\u0441\u0442\u044F\u043C", s: [
       { t: "\u041D\u0430\u043B\u0430\u0448\u0442. \u2192 \xAB\u{1F381} \u041B\u043E\u044F\u043B\u044C\u043D\u0456\u0441\u0442\u044C\xBB \u2192 \xAB\u{1F916} \u0411\u043E\u0442 \u0433\u043E\u0441\u0442\u0435\u0439\xBB.", go: T("setTab", "s", "loy"), sel: '[data-a="loyTab"][data-s="bot"]' },
       { t: "\xAB\u{1F4E3} \u041D\u043E\u0432\u0430 \u0440\u043E\u0437\u0441\u0438\u043B\u043A\u0430\xBB \u2014 \u043F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u043D\u044F \u0432 \u0431\u043E\u0442 \u0433\u043E\u0441\u0442\u0435\u0439: \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u0441\u0435\u0433\u043C\u0435\u043D\u0442 (\u0443\u0441\u0456, \u043D\u0435 \u0431\u0443\u043B\u0438 30+ \u0434\u043D\u0456\u0432, \u0414\u041D).", go: T("loyTab", "s", "bot"), sel: '[data-a="gbCast"]', opt: 1 },
       { t: "\xAB\u2709\uFE0F\xBB \u2014 \u0433\u043E\u0441\u0442\u0456 \u043F\u0438\u0448\u0443\u0442\u044C \u0431\u043E\u0442\u0443; \u0442\u0443\u0442 \u0432\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u0430\u0454\u0442\u0435 \u0457\u043C.", sel: '[data-a="gbInbox"]', opt: 1 }
@@ -7316,21 +7316,22 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
   const crVid = new Set(COURSE_VID);
   window.__CR = CR;
   function courseHTML() {
-    const L = crList(), D = crDone(), ok = L.filter((l) => D[l.id]).length, gs = [...new Set(L.map((l) => l.g))];
+    const L = crList(), D = crDone(), fl = TR.f;
+    TR.f = "", ok = L.filter((l) => D[l.id]).length, gs = [...new Set(L.map((l) => l.g))];
     const pct = L.length ? Math.round(ok / L.length * 100) : 0;
     return `<div class="rhead"><div><h1>\u{1F393} \u041D\u0430\u0432\u0447\u0430\u043D\u043D\u044F</h1><span class="muted">${ok} \u0437 ${L.length} \u0443\u0440\u043E\u043A\u0456\u0432 \xB7 \u25B6\uFE0F \xAB\u0421\u043F\u0440\u043E\u0431\u0443\u0432\u0430\u0442\u0438\xBB \u043F\u043E\u043A\u0430\u0436\u0435, \u043A\u0443\u0434\u0438 \u043D\u0430\u0442\u0438\u0441\u043A\u0430\u0442\u0438</span></div></div>
       <div class="card"><div class="cr-prog"><i style="width:${pct}%"></i></div>${ok === L.length && L.length ? "<b>\u{1F3C5} \u041A\u0443\u0440\u0441 \u043F\u0440\u043E\u0439\u0434\u0435\u043D\u043E!</b>" : `<span class="muted">\u0406\u0434\u0456\u0442\u044C \u043F\u043E \u043F\u043E\u0440\u044F\u0434\u043A\u0443 \u2014 \u043D\u0430\u0441\u0442\u0443\u043F\u043D\u0438\u0439 \u0443\u0440\u043E\u043A \u043F\u0456\u0434\u0441\u0432\u0456\u0447\u0435\u043D\u043E.</span>`}</div>
       ${gs.map((g) => `<h3 style="margin:16px 0 6px">${esc(g)}</h3><div class="cr-grid">${L.filter((l) => l.g === g).map((l) => {
       const next = !D[l.id] && L.find((x) => !D[x.id]) === l;
-      return `<div class="card cr-l${D[l.id] ? " done" : ""}${next ? " next" : ""}"><div class="cr-lh"><span class="cr-ic">${D[l.id] ? "\u2705" : l.ic}</span><b>${esc(l.n)}</b></div>
+      return `<div class="card cr-l${D[l.id] ? " done" : ""}${next || fl === l.id ? " next" : ""}" id="cr-${l.id}"><div class="cr-lh"><span class="cr-ic">${D[l.id] ? "\u2705" : l.ic}</span><b>${esc(l.n)}</b></div>
           ${crVid.has(l.id) ? `<video class="cr-v" src="img/course/${l.id}.mp4" poster="img/course/${l.id}.jpg" preload="none" muted playsinline controls></video>` : ""}
           <ol class="cr-s">${l.s.map((s) => `<li>${esc(s.t)}</li>`).join("")}</ol>
           ${l.danger ? '<div class="muted" style="font-size:12px">\u26A0\uFE0F \u0421\u043F\u0440\u0430\u0432\u0436\u043D\u0456 \u0433\u0440\u043E\u0448\u0456 \u2014 \u0442\u0443\u0440 \u043B\u0438\u0448\u0435 \u043F\u043E\u043A\u0430\u0437\u0443\u0454, \u043D\u0456\u0447\u043E\u0433\u043E \u043D\u0435 \u043D\u0430\u0442\u0438\u0441\u043A\u0430\u0454 \u0441\u0430\u043C.</div>' : ""}
           <div class="btnrow"><button class="btn sm primary" data-a="crGo" data-id="${l.id}">\u25B6\uFE0F \u0421\u043F\u0440\u043E\u0431\u0443\u0432\u0430\u0442\u0438</button><button class="btn sm${D[l.id] ? " ghost" : ""}" data-a="crOk" data-id="${l.id}">${D[l.id] ? "\u21A9\uFE0F" : "\u2705 \u0417\u0440\u043E\u0437\u0443\u043C\u0456\u0432"}</button></div></div>`;
     }).join("")}</div>`).join("")}
-      <h3 style="margin:22px 0 6px">\u2753 \u0429\u043E \u0440\u043E\u0431\u0438\u0442\u0438, \u044F\u043A\u0449\u043E\u2026</h3><div class="card">${FAQ.map(([q, a]) => `<details class="cr-faq"><summary>${esc(q)}</summary><div class="muted">${esc(a)}</div></details>`).join("")}</div>`;
+      <h3 style="margin:22px 0 6px">\u2753 \u0429\u043E \u0440\u043E\u0431\u0438\u0442\u0438, \u044F\u043A\u0449\u043E\u2026</h3><div class="card"><input id="crQ" class="inp" type="search" placeholder="\u{1F50D} \u041F\u043E\u0448\u0443\u043A: \u043F\u0440\u0438\u043D\u0442\u0435\u0440, PIN, \u043A\u0430\u0441\u0430\u2026" style="width:100%;margin-bottom:8px">${FAQ.map(([q, a]) => `<details class="cr-faq" data-q="${esc((q + " " + a).toLowerCase())}"><summary>${esc(q)}</summary><div class="muted">${esc(a)}</div></details>`).join("")}</div>`;
   }
-  const TR = { l: null, i: 0, tm: 0 };
+  const TR = { l: null, i: 0, tm: 0, f: "" };
   window.__TR = TR;
   function crNav(go) {
     const b = document.createElement("button");
@@ -7456,6 +7457,50 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
       renderMain();
     }
   });
+  document.addEventListener("input", (e) => {
+    if (e.target.id !== "crQ") return;
+    const q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll(".cr-faq").forEach((d) => {
+      const hit = !q || d.dataset.q.includes(q);
+      d.hidden = !hit;
+      d.open = !!q && hit;
+    });
+  });
+  const CR_TAB = { hall: "w-table", closed: "w-closed", stop: "w-stop", go: "c-take", cash: "a-cash", reports: "a-rep", calc: "a-inv", team: "a-grid", books: "a-book", settings: "a-rules" };
+  const crFor = (v) => {
+    const L = crList();
+    if (v === "kq") return L.find((l) => l.id === (isAdmin() ? "a-del" : "k-q"));
+    if (v === "calc" && isCook()) return L.find((l) => l.id === "k-stock");
+    if (v === "stop" && isCook()) return L.find((l) => l.id === "k-stop");
+    return L.find((l) => l.id === CR_TAB[v]);
+  };
+  function crHelpBtn() {
+    const m = $("#main");
+    if (!m || !S.view || S.view === "course" || TR.l) return;
+    const l = crFor(S.view);
+    if (!l) return;
+    const b = document.createElement("button");
+    b.className = "btn sm ghost cr-q";
+    b.dataset.a = "crHelp";
+    b.dataset.id = l.id;
+    b.title = "\u0423\u0440\u043E\u043A: " + l.n;
+    b.textContent = "\u2753";
+    b.style.cssText = "position:fixed;right:12px;bottom:84px;z-index:50;border-radius:50%;width:40px;height:40px;padding:0";
+    m.append(b);
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest('[data-a="crHelp"]');
+    if (!b) return;
+    e.stopPropagation();
+    TR.f = b.dataset.id;
+    S.view = "course";
+    renderNav();
+    renderMain();
+    setTimeout(() => {
+      var _a2;
+      return (_a2 = $("#cr-" + b.dataset.id)) == null ? void 0 : _a2.scrollIntoView({ block: "center" });
+    }, 50);
+  }, true);
   if (S.token) start();
   else showLogin();
 })();

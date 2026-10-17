@@ -17,7 +17,7 @@ import {
   L, tg, esc, hhmm, dayKey, money, TZ, tablesCount, getBill, openTables, billItems, payable, discAmt, addWaiterOrder, removeOne, closeTable, payLabel,
   precheck, setDiscount, splitTable, restoreVoid, getVoids, setTip, moveTable, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData,
   reportsData, topData, setHidden, getShift, shiftData, openShift, closeShift, lastZ, tipBalances, payTips, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenPct, rejectOrder, kitchenStats, getKq, kitchenDone, kitchenStart, restoreClosed, reopenClosed, restoreTable, restoreExpense, balances, reconcile, WAITER_DISC_MAX, getCfg, setCfg, CFG_LIM, zText, reportBreakdown, regRole, isAdmin, isWaiter, getStaff, addStaff, delStaff, editStaff, loggedWaiters, resetAll, acceptOrder, logEvent,
-  getMov, delMove, restoreMove, delZ, restoreZ, pinHash, isDay,editClosed, dayX, notify, getEvents,
+  getMov, delMove, restoreMove, delZ, restoreZ, pinHash, pinFind, pinIs, isDay,editClosed, dayX, notify, getEvents,
 } from './ops.js';
 export { tg, esc, hhmm, getBill } from './ops.js';
 export { addStat, addDishes } from './ops.js';
@@ -25,12 +25,12 @@ export { addStat, addDishes } from './ops.js';
 const ADMIN_TTL = 12 * 3600;
 
 // ---------- клавіатури ----------
-const W = { loy: '🎁 Гості й акції', order: '➕ Замовлення', kitchen: '👨‍🍳 Кухня', tables: '📋 Столи', close: '🧾 Закрити стіл', stop: '⛔ Стоп-лист', help: '❓ Допомога', plan: '📋 Мій план', admin: '🔐 Адмін', go: '🛵 Доставка', book: '📅 Броні' };
+const W = { loy: '🎁 Гості й акції', order: '➕ Замовлення', kitchen: '👨‍🍳 Кухня', tables: '📋 Столи', close: '🧾 Закрити стіл', stop: '⛔ Стоп-лист', help: '❓ Допомога', plan: '📋 Мій план', admin: '🔐 Адмін', go: '🛵 Доставка', book: '📅 Броні', learn: '🎓 Навчання' };
 const A = { cash: '💰 Каса', expense: '💸 Витрата', reports: '📊 Звіти', closed: '📜 Закриті сьогодні', top: '🏆 Топ страв', del: '🗑 Видалити стіл', menu: '📖 Редагувати меню', wifi: '📶 Wi‑Fi',
   staff: '👥 Персонал', waiter: '⬅️ Режим офіціанта', logout: '🚪 Вийти',
   calc: '🧮 Розрахунок', pay: '👷 Зарплата', delClosed: '🧹 Видалити закритий', reset: '♻️ Обнулити все' }; // ТЕСТ: delClosed і reset — прибрати, коли скаже власник
 const kb = rows => ({ keyboard: rows.map(r => r.map(text => ({ text }))), resize_keyboard: true, is_persistent: true });
-export const KEYBOARD = kb([[W.order], [W.tables, W.close], [W.kitchen, W.go], [W.stop, W.book], [W.loy, W.plan], [W.help, W.admin]]);
+export const KEYBOARD = kb([[W.order], [W.tables, W.close], [W.kitchen, W.go], [W.stop, W.book], [W.loy, W.plan], [W.help, W.admin], [W.learn]]);
 const ADMIN_KB = kb([[W.order], [A.cash, A.expense], [A.reports, A.closed], [A.calc, A.pay], [A.top, A.del], [W.tables, W.stop], [W.kitchen, W.go], [W.book, W.loy], [A.menu, A.wifi], [A.staff, W.plan], [A.delClosed, A.reset], [A.waiter, A.logout]]);
 
 export const COMMANDS = [
@@ -416,7 +416,7 @@ export async function handleUpdate(u, env) {
       const keep = async t => { await env.DB.put('st:' + uid, 'pin', { expirationTtl: 3600 }); return send({ text: t }, { remove_keyboard: true }); };
       if (!/^\d{4}$/.test(text)) return keep('Введіть 4 цифри — свій PIN (або код реєстрації):');
       if (!(await pinTry())) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' }, { remove_keyboard: true });
-      const h = await pinHash(text), me = (await getStaff(env)).find(z => z.pin === h); // спершу PIN працівника — код реєстрації не має його перекривати
+      const me = await pinFind(env, await getStaff(env), text); // спершу PIN працівника — код реєстрації не має його перекривати
       const role = !me && await regRole(env, text);
       if (role) { await env.DB.put('st:' + uid, 'regn:' + role, { expirationTtl: 900 }); return send({ text: `🆕 Реєстрація (${ROLE_ONE[role]}). Напишіть своє імʼя:` }, { remove_keyboard: true }); }
       if (!me) { await fail(); return keep('❌ Невірний PIN. Введіть ще раз:'); }
@@ -447,7 +447,7 @@ export async function handleUpdate(u, env) {
     if (state.startsWith('tgpin:') && waiter) { // 👤 привʼязка до працівника: PIN каси
       const s = (await getStaff(env)).find(z => z.id === state.slice(6)); if (!s) return send({ text: 'Не знайдено' });
       if (!(await pinTry())) return send({ text: '⛔ Забагато спроб. Спробуйте через 15 хвилин.' });
-      if (s.pin !== await pinHash(text)) { return send({ text: '❌ PIN не підходить. Напишіть «зміна», щоб спробувати ще раз.' }); }
+      if (!(await pinIs(env, s, text))) { return send({ text: '❌ PIN не підходить. Напишіть «зміна», щоб спробувати ще раз.' }); }
       await pinOk(); await env.DB.put('tgs:' + uid, s.id);
       return send({ text: `✅ Ви — <b>${esc(s.name)}</b>. Тепер «зміна» починає / закінчує вашу зміну.` });
     }
@@ -560,7 +560,7 @@ export async function handleUpdate(u, env) {
   // --- офіціант ---
   const LEARN = { inline_keyboard: [[{ text: '🎓 Навчання: уроки з підказками', url: POS_URL(env) + '#course' }]] }; // 🎓 курс — у касі (уроки візуальні)
   if (/^\/chat(@\w+)?(\s|$)/i.test(text)) { const t = text.replace(/^\/chat(@\w+)?/i, '').trim().slice(0, 500); if (!t) { const l = (await getEvents(env)).filter(e => e.k === 'chat').slice(-15); return send({ text: `💬 <b>Чат закладу</b> (сьогодні)\n${l.map(e => `<b>${esc(e.by || '')}</b> ${e.at || ''}: ${esc(e.text || '')}`).join('\n') || 'Поки тихо'}\n\nНаписати: <code>/chat текст</code>` }); } await logEvent(env, { k: 'chat', by: who, text: t, seen: [who] }); return send({ text: '💬 Надіслано в чат каси' }); }
-  if (low === '/learn' || low === 'навчання') return send({ text: '🎓 <b>Навчання</b>\nУроки для вашої ролі: що натискати й де — з підсвіткою справжніх кнопок у касі.', markup: LEARN });
+  if (low === '/learn' || low === 'навчання' || text === W.learn) return send({ text: '🎓 <b>Навчання</b>\nУроки для вашої ролі: що натискати й де — з підсвіткою справжніх кнопок у касі.', markup: LEARN });
   if (low === '/start' || low === '/help' || text === W.help || low === 'допомога' || low === 'help') return send({ text: (admin ? ADMIN_HELP(env) : HELP(env)) + '\n\n🎓 Навчання з підказками в касі — /learn' });
   if (text === W.order || low === '/order' || low === 'замовлення') return send(await tablePick(env, (await openTables(env)).map(r => r.t), tablesCount(env)));
   if (low === '/wl' || low === 'черга' || text === '⏳ Черга') { const Wl = await import('./wl.js'), l = await Wl.wlList(env); return send({ text: Wl.wlText(l) + '\n\nДодати гостя: <code>/wl Імʼя 4</code>', markup: Wl.wlKb(l) }); }

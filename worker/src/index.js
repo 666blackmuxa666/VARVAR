@@ -17,6 +17,7 @@ export { PrintQ } from './print.js';
 export { Store } from './store.js';
 export { Hub } from './hub.js';
 import { hub } from './hub.js';
+import { chatTurn } from './chat.js';
 import { ownerApi, intApi, intSecret } from './owner.js';
 import { storeDB } from './store.js';
 import { qrKey, tableKey, qrRoute } from './qr.js';
@@ -157,6 +158,11 @@ export async function handle(req, env) {
         const dv = await req.clone().json().then(x => String(x?.device || '').slice(0, 64)).catch(() => ''), tk = 'ipdev:' + ip.slice(0, 64), seen = (await env.DB.get(tk, 'json')) || [];
         if (dv && !seen.includes(dv)) { if (seen.length >= (+env.IPDEV_MAX || 150)) return json({ error: 'rate' }, 429); await env.DB.put(tk, JSON.stringify([...seen, dv]), { expirationTtl: 600 }); }
       }
+      if (req.method === 'GET' && url.pathname.startsWith('/api/') && !['/api/me/poll', '/api/pos/live', '/api/build'].includes(url.pathname) && !url.pathname.startsWith('/api/print/')) { // 🛡 загальний ліміт публічних GET з одного IP (600/хв — вистачить Wi-Fi закладу); /api/cert і /api/book — суворіше (підбір кодів)
+        const tight = url.pathname === '/api/cert' || url.pathname === '/api/book';
+        if (ip && !(await pubRl(env, 'g' + ipKey(ip), 600, 60)) || ip && tight && !(await pubRl(env, 'c' + ipKey(ip), 40, 600))) return json({ error: 'rate' }, 429);
+      }
+      if (req.method === 'POST' && ip && url.pathname === '/api/bookpre' && !(await pubRl(env, 'p' + ipKey(ip), 40, 600))) return json({ error: 'rate' }, 429);
       // 🌐 візитка
       if (url.pathname === '/api/site') return new Response(JSON.stringify(await sitePublic(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
       if (url.pathname === '/site') return Response.redirect(siteLink('about.html'), 302);
@@ -234,6 +240,8 @@ function corsHeaders(req, env) {
   const allowed = (env.ALLOWED_ORIGIN || '').split(',').map(s => s.trim());
   return { 'Access-Control-Allow-Origin': allowed.includes(o) ? o : allowed[0] || '', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'content-type, authorization', Vary: 'Origin' };
 }
+// ліміт у вікні: true — можна, false — забагато (лічильник у базі з TTL)
+const pubRl = async (env, k, max, sec) => { const key = 'prl:' + k, n = (+(await env.DB.get(key)) || 0) + 1; if (n > max) return false; await env.DB.put(key, String(n), { expirationTtl: Math.max(60, sec) }); return true; };
 const tableNum = (v, env) => { const n = parseInt(v, 10); return n >= 1 && n <= +(env.TABLES || 50) ? n : 0; };
 
 // IPv4 — точний збіг, IPv6 — збіг за префіксом /64 (у телефонів у мережі змінюється хвіст адреси)
@@ -377,6 +385,8 @@ async function atomSite(req, env) {
   let url = new URL(req.url);
   if (url.hostname === 'www.posatom.online') return Response.redirect('https://posatom.online' + url.pathname + url.search, 301);
   if (url.pathname.startsWith('/api/')) return atomApi(req, env, url);
+  if (url.pathname === '/robots.txt') return new Response('User-agent: *\nAllow: /\nDisallow: /v/\nDisallow: /api/\nSitemap: https://posatom.online/sitemap.xml\n', { headers: { 'content-type': 'text/plain', 'cache-control': 'public, max-age=86400' } }); // 🔎 Гугл: знаходить «ATOM каса» і кабінет
+  if (url.pathname === '/sitemap.xml') return new Response('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://posatom.online/</loc></url><url><loc>https://posatom.online/owner/</loc></url></urlset>', { headers: { 'content-type': 'application/xml', 'cache-control': 'public, max-age=86400' } });
   if (url.pathname === '/' || url.pathname === '/atom.html') { if (url.pathname === '/atom.html') return Response.redirect('https://posatom.online/', 301); url = new URL('https://posatom.online/atom/' + url.search); }
 
   const m = url.pathname.match(/^\/([a-z0-9][a-z0-9-]{1,30})(\/.*)?$/); if (!m) return new Response('Not found', { status: 404 });
@@ -406,7 +416,7 @@ async function atomApi(req, env, url) {
   try {
     if (url.pathname === '/api/atom' && req.method === 'GET') { // 🎁 скільки місць за акцією лишилось — з реальних закладів
       const n = await H.venueCount(); // з пам'яті реєстру, без перебору всіх закладів
-      return new Response(JSON.stringify({ left: Math.max(0, ATOM_FREE - n), total: ATOM_FREE, demo: !!(await H.venueGet(DEMO)), contacts: await H.atomCfg() }), { headers: { ...h, 'cache-control': 'public, max-age=300' } });
+      return new Response(JSON.stringify({ left: Math.max(0, ATOM_FREE - n), total: ATOM_FREE, demo: !!(await H.venueGet(DEMO)), contacts: await H.atomCfg(), chat: !!(await H.chatCfg()).on }), { headers: { ...h, 'cache-control': 'public, max-age=300' } });
     }
     if (req.method !== 'POST') return J({ error: 'method' }, 405);
     const b = await req.json().catch(() => ({}));
@@ -420,6 +430,7 @@ async function atomApi(req, env, url) {
       await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `🚀 <b>Заявка ATOM</b>\n👤 ${e(x.name)} · ${e(x.phone)}\n🏪 ${e(x.place) || '—'}${x.city ? ' · ' + e(x.city) : ''}${x.msg ? '\n💬 ' + e(x.msg) : ''}\n\nКабінет → 🚀 Продажі` }).catch(() => {});
       return J({ ok: true });
     }
+    if (url.pathname === '/api/chat') { const [d, st] = await chatTurn(env, H, b, ip); return J(d, st); } // 💬 чат-асистент (вимикач — кабінет платформи)
     if (url.pathname === '/api/demo') { // 📱 демо-каса: адмін-сесія демо-закладу (щоночі скидається)
       const ct = await env.DB.get('demotok'); if (ct) return J({ ok: true, token: ct, venue: DEMO }); // ♻️ одна спільна демо-сесія на 30 хв (а не нова 12-год адмін-сесія на кожен виклик)
       const drk = 'demorl:' + (ip || 'none').slice(0, 64); // ліміт створення: одна нова демо-сесія з IP на хвилину
