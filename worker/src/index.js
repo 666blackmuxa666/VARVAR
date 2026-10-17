@@ -27,7 +27,7 @@ const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;
 
 // 💸 запити, що працюють з базою, виконуються всередині Durable Object (store.js → Store.fetch):
 // там кожне читання/запис — локальне, а платний «запит до DO» — один на дію, а не 20–50
-const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|goinfo|promo|reco|site|book|bookpre|cert|me|me\/start|me\/poll|me\/logout)$|tg$|tg2$|tg3$|tg4$|__cron$)/;
+const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|goinfo|promo|reco|site|book|bookpre|wl|cert|me|me\/start|me\/poll|me\/logout)$|tg$|tg2$|tg3$|tg4$|__cron$)/;
 // 💾 кеш у пам'яті воркера для однакових для всіх відповідей (на *.workers.dev кеш Cloudflare не працює).
 // Економить запити до Durable Object: меню відкривають сотні гостей, а змінюється воно рідко. Стоп-лист сервер
 // все одно перевіряє при замовленні (priceMap пропускає hidden), тож 20 с затримки безпечні.
@@ -149,14 +149,14 @@ export async function handle(req, env) {
       if (url.pathname === '/api/owner' && req.method === 'POST') return env.VENUE === MAIN ? json(...await ownerApi(req, env)) : json({ error: 'not_found' }, 404); // 👑 кабінет власника
       if (url.pathname.startsWith('/__int/')) return json(...await intApi(req, env, url.pathname)); // заклад ← кабінет (лише зсередини воркера)
       if (url.pathname === '/__cron') return env.INSTORE && req.headers.get('x-cron') && req.headers.get('x-cron') === (env.MASTER_KEY ? await intSecret(env) : '1') ? json(await cron(env)) : json({ error: 'no' }, 403);
-      if (req.method === 'POST' && ip && ['/api/book', '/api/cert', '/api/go', '/api/tpay', '/api/wl'].includes(url.pathname)) { // 🛡 ліміти по device обходяться його зміною: з одного IP — не більше 40 різних пристроїв за 10 хв (повтори того ж пристрою не рахуються)
+      if (req.method === 'POST' && ip && ['/api/book', '/api/cert', '/api/go', '/api/tpay', '/api/wl'].includes(url.pathname)) { // 🛡 ліміти по device обходяться його зміною: з одного IP — не більше 150 (env.IPDEV_MAX) різних пристроїв за 10 хв (повтори того ж пристрою не рахуються)
         const dv = await req.clone().json().then(x => String(x?.device || '').slice(0, 64)).catch(() => ''), tk = 'ipdev:' + ip.slice(0, 64), seen = (await env.DB.get(tk, 'json')) || [];
-        if (dv && !seen.includes(dv)) { if (seen.length >= 150) return json({ error: 'rate' }, 429); await env.DB.put(tk, JSON.stringify([...seen, dv]), { expirationTtl: 600 }); }
+        if (dv && !seen.includes(dv)) { if (seen.length >= (+env.IPDEV_MAX || 150)) return json({ error: 'rate' }, 429); await env.DB.put(tk, JSON.stringify([...seen, dv]), { expirationTtl: 600 }); }
       }
       // 🌐 візитка
       if (url.pathname === '/api/site') return new Response(JSON.stringify(await sitePublic(env)), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } });
       if (url.pathname === '/site') return Response.redirect(siteLink('about.html'), 302);
-      if (url.pathname === '/api/wl') { const W = await import('./wl.js'); if (req.method !== 'POST') return json(await W.wlStatus(env, url.searchParams.get('id')) || { error: 'not_found' }); const b = await req.json(); if (b.cancel) return json(...await W.wlAct(env, b.id, 'cancel')); const rk = 'wlrl:' + String(b.device || ip).slice(0, 64), rn = +(await env.DB.get(rk)) || 0; if (rn >= 3) return json({ error: 'rate' }, 429); await env.DB.put(rk, String(rn + 1), { expirationTtl: 3600 }); return json(...await W.wlAdd(env, b)); }
+      if (url.pathname === '/api/wl') { const W = await import('./wl.js'); if (req.method !== 'POST') return json(await W.wlStatus(env, url.searchParams.get('id')) || { error: 'not_found' }); const b = await req.json().catch(() => null); if (!b || typeof b !== 'object') return json({ error: 'bad_request' }, 400); if (b.cancel) return json(...await W.wlAct(env, b.id, 'cancel')); const ik = 'wlip:' + (ip || 'none').slice(0, 64), ic = +(await env.DB.get(ik)) || 0; if (ic >= 6) return json({ error: 'rate' }, 429); await env.DB.put(ik, String(ic + 1), { expirationTtl: 3600 }); const rk = 'wlrl:' + String(b.device || ip).slice(0, 64), rn = +(await env.DB.get(rk)) || 0; if (rn >= 3) return json({ error: 'rate' }, 429); await env.DB.put(rk, String(rn + 1), { expirationTtl: 3600 }); return json(...await W.wlAdd(env, b)); }
       if (url.pathname === '/api/book' && req.method === 'POST') return json(...await bookCreate(await req.json(), ip, env));
       if (url.pathname === '/api/book') return json(await bookStatus(env, url.searchParams.get('id')) || { error: 'not_found' });
       if (url.pathname === '/api/bookpre' && req.method === 'POST') return json(...await bookPre(await req.json(), env));

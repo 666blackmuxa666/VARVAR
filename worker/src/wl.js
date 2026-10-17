@@ -19,7 +19,7 @@ export async function wlAdd(env, b, by) {
   await L(env, [K()], async () => {
     const l = await get(env);
     if (l.filter(live).length >= 60) { res = [{ error: 'full' }, 409]; return; }
-    if (phone && l.some(y => live(y) && y.phone === phone)) { res = [{ ok: true, ...pub(l, l.find(y => live(y) && y.phone === phone)) }]; return; }
+    if (phone && l.some(y => live(y) && y.phone === phone)) { const o = pub(l, l.find(y => live(y) && y.phone === phone)); res = [{ ok: true, dup: 1, ...(by ? o : { st: o.st, pos: o.pos }) }]; return; } // 🔒 гостю чужий id не віддаємо: id = ключ скасування, телефон знати може хто завгодно
     l.push(x); await env.DB.put(K(), JSON.stringify(l.slice(-200)), { expirationTtl: TTL });
     res = [{ ok: true, ...pub(l, x) }];
   });
