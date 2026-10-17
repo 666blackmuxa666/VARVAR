@@ -674,6 +674,35 @@ async function loyTests(A, W, dish) {
     const z3 = await vpos(VA, 'zDay', { print: false }); must(z3.j.z.total === z2.j.z.total, 'сума Z змінилась');
     const r3 = (await vpos(VA, 'shift')).j.rec; must(r3.sum === r2.sum, 'рівна виручка змінила рекорд'); must(z3.j.z.rec.beat === 0, 'рівна виручка = beat');
     must((await vpos(VA, 'cfgSet', { k: 'recBonus', v: 0 })).status === 200, 'recBonus reset'); return `рекорд ${r3.sum} ₴`; });
+  await step('⏳ черга в залі (wl): гість /api/wl — створення, дубль за телефоном, статус, скасування, ліміт 3/пристрій', async () => {
+    const dev = 'qa-wl-' + Date.now(), ph = n => '067' + String(Date.now()).slice(-6) + n;
+    must((await http('/api/wl', { name: '', people: 2, phone: ph(0), device: dev + 'x' })).status === 400, 'без імені');
+    must((await http('/api/wl', { name: 'QA', people: 2, device: dev + 'x' })).status === 400, 'гість без телефону');
+    const p1 = ph(1), r1 = await http('/api/wl', { name: 'QA Черга', people: 3, phone: p1, device: dev }); must(r1.status === 200 && r1.j.id && r1.j.st === 'wait' && r1.j.pos >= 1, JSON.stringify(r1.j).slice(0, 150));
+    const r1b = await http('/api/wl', { name: 'QA Черга', people: 3, phone: p1, device: dev }); must(r1b.j.id === r1.j.id, 'дубль за телефоном створив нового');
+    const st = await http('/api/wl?id=' + r1.j.id); must(st.j.st === 'wait' && st.j.name === 'QA Черга' && !('phone' in st.j), 'статус ' + JSON.stringify(st.j));
+    must((await http('/api/wl?id=nope')).j.error === 'not_found', 'статус чужого id');
+    must((await http('/api/wl', { cancel: 1, id: r1.j.id })).j.st === 'gone', 'cancel');
+    must((await http('/api/wl?id=' + r1.j.id)).j.st === 'gone', 'після cancel не gone');
+    const r2 = await http('/api/wl', { name: 'QA Два', people: 2, phone: ph(2), device: dev }); must(r2.status === 200, 'друга за пристроєм ' + r2.status);
+    // ліміт рахує кожен запит пристрою (дубль за телефоном теж): r1, r1b, r2 = 3 → наступний 429
+    const r3 = await http('/api/wl', { name: 'QA Три', people: 2, phone: ph(3), device: dev }); must(r3.status === 429, 'четвертий запит пристрою → ' + r3.status);
+    await http('/api/wl', { cancel: 1, id: r2.j.id }); });
+  await step('⏳ черга в залі (wl): каса wlAdd/wlAct — call, повторний call < 2 хв → 429, seat, зайнятий стіл → 409, gone; права', async () => {
+    const W = users.waiter?.token, A = users.admin?.token, K = users.cook?.token, C = users.courier?.token, TW = 100 + Math.floor(Math.random() * 800);
+    const a = await pos(W, 'wlAdd', { name: 'QA Зал', people: 4 }); must(a.status === 200 && a.j.id, 'wlAdd ' + a.status + JSON.stringify(a.j).slice(0, 100));
+    const id = a.j.id, wl = async tok => (await posOk(tok, 'state')).wl;
+    must((await wl(W)).some(x => x.id === id), 'офіціант не бачить у state.wl');
+    if (K) must((await wl(K)).length === 0, 'кухар бачить чергу'); if (C) must((await wl(C)).length === 0, "кур'єр бачить чергу");
+    must((await pos(W, 'wlAct', { id, act: 'xxx' })).status === 400, 'невідома дія'); must((await pos(W, 'wlAct', { id: 'nope', act: 'call' })).status === 404, 'невідомий id');
+    const c1 = await pos(W, 'wlAct', { id, act: 'call' }); must(c1.status === 200 && c1.j.st === 'called', 'call ' + JSON.stringify(c1.j).slice(0, 100));
+    const c2 = await pos(W, 'wlAct', { id, act: 'call' }); must(c2.status === 429, 'повторний call → ' + c2.status);
+    const s1 = await pos(W, 'wlAct', { id, act: 'seat', t: TW }); must(s1.status === 200 && s1.j.st === 'seated' && s1.j.t === TW, 'seat ' + JSON.stringify(s1.j).slice(0, 100));
+    must(!(await wl(W)).some(x => x.id === id), 'посаджений лишився в черзі');
+    const b = await pos(W, 'wlAdd', { name: 'QA Зал 2', people: 2 }); must(b.status === 200, 'wlAdd 2');
+    const s2 = await pos(W, 'wlAct', { id: b.j.id, act: 'seat', t: TW }); must(s2.status === 409, 'посадка на зайнятий стіл → ' + s2.status);
+    must((await pos(A, 'wlAct', { id: b.j.id, act: 'gone' })).j.st === 'gone', 'gone');
+    for (const [tok, role] of [[K, 'cook'], [C, 'courier']]) if (tok) for (const [op, bb] of [['wlAdd', { name: 'X', people: 2 }], ['wlAct', { id, act: 'call' }]]) must((await pos(tok, op, bb)).status === 403, `${role} ✗ ${op}`); });
   await step('невідомий заклад → 404', async () => { const r = await http('/v/nope-' + VID.slice(-5) + '/api/menu'); must(r.status === 404, String(r.status)); });
   await step('кабінет власника: свої заклади, аналітика, вхід у касу', async () => {
     const l = await own({ op: 'login', email: OE, pass: 'owner-pass-123' }); OT = l.j.token; must(OT, 'вхід');
