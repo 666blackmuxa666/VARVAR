@@ -86,6 +86,18 @@
     <div class="done" id="bookDone" hidden></div>
   </section>
 
+  <section class="formbox" id="wl" hidden>
+    <h2>⏳ <span data-t="wlH"></span></h2>
+    <button type="button" class="btn alt" id="wlOpen" data-t="wlBtn"></button>
+    <form id="wlF" hidden>
+      <div class="row2"><input name="name" required autocomplete="name" data-ph="fName"><input name="phone" type="tel" required autocomplete="tel" inputmode="tel" data-ph="fPhone"></div>
+      <input name="people" type="number" min="1" max="30" value="2" required>
+      <button class="btn" type="submit" data-t="wlSend"></button>
+      <div class="msg" id="wlMsg"></div>
+    </form>
+    <div class="done" id="wlDone" hidden></div>
+  </section>
+
   <section class="formbox cert" id="cert">
     <h2>🎟 <span data-t="hCert"></span></h2>
     <p class="muted" data-t="certTxt"></p>
@@ -119,6 +131,6 @@
 <script src="js/about-design.js?v=5"></script>
 <script src="js/avatar.js?v=1"></script>
 <script src="js/floor3d.js?v=6"></script>
-<script src="js/about.js?v=18"></script>
+<script src="js/about.js?v=19"></script>
 </body>
 </html>

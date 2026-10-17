@@ -64,3 +64,6 @@
 - Статус замовлення: `goSet` (зміна st) і `acceptOrder` → `goStatusMsg`. Бонуси: `cliClose` → `bonusMsg`. 🔁 `cli.lastGo` → `index.html?go&rep=id|v*q,…`.
 - Чат: гість → група (`gchm:<mid>` → тел.) + стрічка `k:'gchat'`; відповідь — reply у групі (bot.js → `staffReply`) або «↩️ Відповісти» в стрічці (`gbReply`).
 - Розсилка: каса `gbCast` / бот персоналу «розсилка <текст>» (`lcs:`), пауза `gcastAt` + gap. Щодня (cron 11–20) `gbDaily`: ДН і «сплячі» (+бонуси, `cli.sleepAt`).
+
+## ⏳ Черга в залі — гість (about.html)
+- Секція `#wl` (видима, коли `bookOn`): кнопка «Зал повний», форма ім'я/тел./людей → `POST /api/wl`; `wlId` у store гостя; статус `GET /api/wl?id` — «№N у черзі» / «🔔 Вас кличуть»; оновлення не частіше 45 с, лише видима вкладка (таймер 46 с + visibilitychange) і кнопка; «Скасувати» → `{id, cancel:1}`. `/api/wl` додано в `IN_STORE` (index.js).
