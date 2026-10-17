@@ -60,13 +60,13 @@
   async function renderLogin() {
     const hp = new URLSearchParams(location.hash.slice(1)), pos = hp.get('pos') || '', mt = hp.get('verify') ? 'verify' : hp.get('reset') ? 'reset' : '';
     if (hp.get('signup')) { // ⚡ підтвердження самореєстрації: пошта підтверджується, заклад створюється
-      app.innerHTML = '<div class="login"><img class="logo" src="img/icon.png" alt=""><h1>⏳ Створюємо ваш заклад…</h1><div class="err" id="serr"></div></div>';
+      app.innerHTML = '<div class="login"><img class="logo" src="img/app/pos.svg" alt="ATOM"><div class="brandw">ATOM</div><h1>⏳ Створюємо ваш заклад…</h1><div class="err" id="serr"></div></div>';
       try { const r = await api('signupOk', { t: hp.get('signup') }); S.token = r.token; store.set('token', r.token); history.replaceState(null, '', location.pathname + location.search); toast(r.venue ? '🎉 Заклад створено — пробний місяць увімкнено' : '✅ Пошту підтверджено'); return start(); }
       catch (x) { $('#serr').textContent = x.message; return; }
     }
     if (mt) return renderSetPass(mt, hp.get(mt));
     let boot = false; try { boot = (await api('canBoot')).boot; } catch {}
-    app.innerHTML = `<div class="login"><img class="logo" src="img/icon.png" alt=""><h1>${boot ? 'Перший запуск платформи' : 'Кабінет власника'}</h1>
+    app.innerHTML = `<div class="login"><img class="logo" src="img/app/pos.svg" alt="ATOM"><div class="brandw">ATOM</div><h1>${boot ? 'Перший запуск платформи' : 'Кабінет власника'}</h1>
       <p class="muted">${boot ? (pos ? 'Створіть головний акаунт — він бачитиме всі заклади й керуватиме платформою.' : 'Відкрийте цю сторінку з каси VARVAR: ⚙️ Налаштування → 👑 Кабінет власника.') : 'Усі ваші заклади, аналітика й керування — в одному місці.'}</p>
       ${boot && !pos ? '' : `<form id="lf">${boot ? '<input name="name" placeholder="Ваше ім\'я" autocomplete="name">' : ''}<input name="email" type="email" placeholder="Email" autocomplete="username" required><input name="pass" type="password" placeholder="Пароль${boot ? ' (від 8 символів)' : ''}" autocomplete="${boot ? 'new-password' : 'current-password'}" required minlength="${boot ? 8 : 1}">
       <button class="btn primary">${boot ? '🚀 Створити й увійти' : 'Увійти'}</button><div class="err" id="lerr"></div>${boot ? '' : '<a href="#" class="muted lnk" id="forgot">Забули пароль?</a>'}</form>`}</div>`;
@@ -79,7 +79,7 @@
     });
   }
   function renderSetPass(kind, t) { // ✉️ посилання з листа
-    app.innerHTML = `<div class="login"><img class="logo" src="img/icon.png" alt=""><h1>${kind === 'verify' ? '✅ Підтвердження пошти' : '🔑 Новий пароль'}</h1><p class="muted">Придумайте пароль для входу в кабінет (від 8 символів).</p>
+    app.innerHTML = `<div class="login"><img class="logo" src="img/app/pos.svg" alt="ATOM"><div class="brandw">ATOM</div><h1>${kind === 'verify' ? '✅ Підтвердження пошти' : '🔑 Новий пароль'}</h1><p class="muted">Придумайте пароль для входу в кабінет (від 8 символів).</p>
       <form id="pf"><input name="p" type="password" placeholder="Новий пароль" autocomplete="new-password" required minlength="8"><input name="p2" type="password" placeholder="Ще раз" autocomplete="new-password" required minlength="8"><button class="btn primary">💾 Зберегти й увійти</button><div class="err" id="perr"></div></form></div>`;
     $('#pf').addEventListener('submit', async e => { e.preventDefault(); const f = e.target, err = $('#perr'); if (f.p.value !== f.p2.value) { err.textContent = 'Паролі не збігаються'; return; } err.textContent = '…';
       try { const r = await api(kind, { t, pass: f.p.value }); S.token = r.token; store.set('token', r.token); history.replaceState(null, '', location.pathname + location.search); toast(kind === 'verify' ? '✅ Пошту підтверджено' : '✅ Пароль змінено'); start(); } catch (x) { err.textContent = x.message; } });

@@ -331,3 +331,16 @@ tr.sum td { font-weight: 700; border-bottom: 0; }
 .top .icogrp .icobtn { border: 0 !important; background: transparent !important; border-radius: 999px !important; width: 34px; height: 34px; transition: background .15s, transform .15s; }
 .top .icogrp .icobtn:hover { background: rgba(242,193,78,.14) !important; transform: translateY(-1px); }
 @media (max-width: 560px) { .top .in > b { font-size: 15px; } .top .who { display: none; } .top .in > img { width: 34px; height: 34px; } }
+
+/* ⚛️ Вікно входу ATOM */
+body:has(.login) { background: radial-gradient(900px 600px at 50% -10%, #2a1a52 0, transparent 60%), radial-gradient(700px 500px at 100% 110%, #3b2a0c55 0, transparent 60%), #0b0814; min-height: 100vh; }
+.login { margin: 8vh auto; padding: 32px 22px 26px; max-width: 400px; width: calc(100% - 32px); box-sizing: border-box; background: linear-gradient(180deg, #1b1330e6, #120c22e6); border: 1px solid #2e2350; border-radius: 24px; box-shadow: 0 30px 80px #0008, inset 0 1px 0 #ffffff12; position: relative; }
+.login::before { content: ''; position: absolute; top: 0; left: 15%; right: 15%; height: 2px; background: linear-gradient(90deg, transparent, #f2c14e, transparent); }
+.login .logo { width: 88px; height: 88px; border-radius: 24px; background: none; margin: 0 auto 10px; box-shadow: 0 0 40px #f2c14e40, 0 0 0 1px #f2c14e33; animation: atomGlow 4s ease-in-out infinite; }
+@keyframes atomGlow { 50% { box-shadow: 0 0 60px #b794ff55, 0 0 0 1px #b794ff44; } }
+@media (prefers-reduced-motion: reduce) { .login .logo { animation: none; } }
+.login .brandw { text-align: center; font: 800 13px/1 system-ui, sans-serif; letter-spacing: 6px; color: #f2c14e; margin-bottom: 14px; }
+.login h1 { background: linear-gradient(90deg, #ffdf8a, #f3eefc 60%, #b794ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.login input { background: #0f0b1acc; border-color: #2e2350; }
+.login input:focus { border-color: #f2c14e; outline: none; box-shadow: 0 0 0 3px #f2c14e22; }
+.login .btn.primary { background: linear-gradient(135deg, #ffdf8a, #f2c14e); color: #1a1206; border: 0; font-weight: 800; }
