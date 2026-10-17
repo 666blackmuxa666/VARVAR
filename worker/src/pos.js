@@ -325,6 +325,7 @@ async function adminRest(b, env, who, ip, ok) {
     case 'alog': return ok({ list: await (await import('./ops.js')).alogGet(env, String(b.m || '')) }); // 📜 журнал дій
     case 'hallsSet': { const c = await setHalls(env, b.halls, b.go); if (c.error) return [{ error: c.error }, 400]; await notify(env, `🖥 🏛 Зали: ${c.halls ? c.halls.map(h => `${h.ic} ${esc(h.n)} (${h.c})`).join(', ') : `один зал (${c.tables || tablesCount(env)})`} — ${esc(who)}`); return ok({ cfg: c }); }
     case 'mapSet': { const c = await setMap(env, b.pos, b.from, b.to, b.deco, b.floor); return ok({ cfg: c }); } // 🗺 без повідомлення в групу
+    case 'digGet': { try { const D = await import('./digest.js'), o = await import('./ops.js'); const d = await D.digData(env, /^\d{4}-\d{2}-\d{2}$/.test(b.day || '') ? b.day : o.dayKey()); return ok({ d, text: D.digText(d) }); } catch (e) { return [{ error: 'dig: ' + e.message }, 500]; } } // 🌙 підсумок дня «зараз» (без Telegram)
     case 'cfgSet': { const c = await setCfg(env, String(b.k), b.v); if (c.error) return [{ error: c.error }, 400]; await notify(env, `🖥 ⚙️ Налаштування: ${esc(String(b.k))} = <b>${c[b.k]}</b> — ${esc(who)}`); return ok({ cfg: c }); }
     case 'kitchenPct': { const v = Math.round(+b.pct); if (!(v >= 0 && v <= 100)) return [{ error: 'Від 0 до 100' }, 400]; await env.DB.put('kitchen_pct', String(v)); await notify(env, `🖥 👨‍🍳 Частка кухні від чайових: <b>${v}%</b> — ${esc(who)}`); return ok(); }
     case 'staffDel': await delStaff(env, String(b.id)); return ok();
