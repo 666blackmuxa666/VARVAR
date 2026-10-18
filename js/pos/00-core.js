@@ -537,7 +537,7 @@
   async function checkVer() {
     try {
       const h = await (await fetch('pos.html?u=' + Date.now(), { cache: 'no-store' })).text();
-      const v = (h.match(/pos\.build\.js\?v=(\d+)/) || [])[1];
+      const v = (h.match(/pos\.build\.js\?v=(\w+)/) || [])[1];
       if (v && myVer && v !== myVer && !S.open && !$('#modal')) location.replace(location.pathname + '?v=' + v);
     } catch {}
   }
@@ -613,4 +613,5 @@
     document.body.classList.toggle('cook', isCook()); document.body.classList.toggle('adm', isAdmin()); document.body.classList.toggle('cour', isCour());
     if (isCook()) { S.view = 'kq'; renderNav(); loadKq().catch(() => {}); kitchenGate(); }
     if (isCour()) { S.view = 'go'; renderNav(); loadCour().catch(() => {}); }
+    else if (!isCook() && S.view !== 'hall') loadView(); // 🔁 після повторного входу лишилась інша вкладка (каса, звіти…) — підтягнути її дані, а не «Завантаження…»
   }
