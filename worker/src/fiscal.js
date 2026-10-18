@@ -48,7 +48,7 @@ async function call(env, m, path, body) {
 async function ensureShift(env) {
   let r = await call(env, 'GET', '/cashier/shift');
   if (r.j?.status === 'OPENED') return;
-  if (!r.j || r.j.status === 'CLOSED') { const o = await call(env, 'POST', '/shifts', {}); if (o.status >= 300) throw new Error('Зміна Checkbox не відкрилась: ' + errOf(o)); }
+  if (!r.j || r.j.status === 'CLOSED') { let o = await call(env, 'POST', '/shifts', { auto_close_at: new Date(Date.now() + 23.5 * 3600e3).toISOString() }); if (o.status === 422 || o.status === 400) o = await call(env, 'POST', '/shifts', {}); /* ⏰ ліміт зміни 24 год — Checkbox закриє сам, якщо забули Z */ if (o.status >= 300) throw new Error('Зміна Checkbox не відкрилась: ' + errOf(o)); }
   for (let i = 0; i < 4; i++) { r = await call(env, 'GET', '/cashier/shift'); if (r.j?.status === 'OPENED') return; await new Promise(f => setTimeout(f, 1500)); }
   throw new Error('Зміна Checkbox ще відкривається — повторіть за хвилину');
 }
@@ -63,7 +63,6 @@ export function receiptOf(x) {
   for (const [n, q, s] of x.dishes || []) { const a = m.get(n) || [0, 0]; m.set(n, [a[0] + q, a[1] + s]); }
   if (!m.size && x.sum - (x.tip || 0) > 0) m.set('Замовлення', [1, (x.gross ?? x.sum - (x.tip || 0))]); // старий/«схудлий» запис без страв
   for (const [n, [q, s]] of m) if (q > 0 && s >= 0) goods.push(K(s) % q ? { good: { code: code(n), name: `${q}× ${n}`.slice(0, 120), price: K(s) }, quantity: 1000 } : { good: { code: code(n), name: n.slice(0, 120), price: K(s) / q }, quantity: q * 1000 });
-  if (x.fee) goods.push({ good: { code: 'fee', name: 'Доставка', price: K(x.fee) }, quantity: 1000 });
   if (x.tip) goods.push({ good: { code: 'tip', name: 'Чайові', price: K(x.tip) }, quantity: 1000 });
   const total = goods.reduce((a, g) => a + g.good.price * g.quantity / 1000, 0), paid = K(x.sum), body = { goods, payments: [] };
   if (total > paid) body.discounts = [{ type: 'DISCOUNT', mode: 'VALUE', value: total - paid, name: 'Знижка' }];
@@ -140,7 +139,7 @@ export async function fisRetry(env, day = dayKey()) {
 export async function fisCheck(env, lic, pin) {
   const e = { ...env, CHECKBOX_LICENSE: lic, CHECKBOX_PIN: pin };
   const s = await raw(e, 'POST', '/cashier/signinPinCode', { pin_code: pin });
-  if (!s.j?.access_token) return { error: s.status === 401 || s.status === 403 || s.status === 422 ? 'Checkbox не приймає ключ каси або PIN касира' : errOf(s) };
+  if (!s.j?.access_token) return { error: 'Checkbox: ' + (s.j?.message || (s.status === 422 ? 'невірний формат PIN' : errOf(s))) };
   const i = await raw(e, 'GET', '/cash-registers/info', null, s.j.access_token);
   return i.status >= 300 ? { error: 'Ключ каси: ' + errOf(i) } : { title: i.j?.title || '', test: !!i.j?.is_test };
 }
