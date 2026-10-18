@@ -6,7 +6,7 @@
 //  5) обірвані ланцюжки (tools/audit-static.mjs): кнопка без обробника, op без case на сервері;
 //  6) сервер: забутий import у частинах ops-*/bot-* (tools/undef.mjs) — інакше ReferenceError лише на живому запиті.
 // node tools/check.mjs → код 1, якщо щось не так.
-import { readFileSync, readdirSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -26,6 +26,13 @@ eb(readdirSync(R + 'js').filter(f => f.endsWith('.js') && f !== 'pos.build.js').
 
 // 5) обірвані ланцюжки
 for (const t of ['audit-static', 'undef']) try { execSync(`node tools/${t}.mjs`, { cwd: R, stdio: 'pipe' }); } catch (e) { bad.push(String(e.stdout).trim()); }
+
+// 6) 📴 каса без звʼязку: кожен файл, який підвантажує pos.html, має бути в передкеші pos-sw.js (інакше перезавантаження офлайн ламає касу)
+{ const sw = readFileSync(R + 'pos-sw.js', 'utf8'), pre = new Set(JSON.parse(sw.match(/const PRE = (\[[^\]]*\])/)[1].replace(/'/g, '"')));
+  const need = [...readFileSync(R + 'pos.html', 'utf8').matchAll(/(?:src|href)="([^"#:]+?)(?:\?[^"]*)?"/g)].map(m => m[1]).filter(f => !pre.has(f));
+  const gone = [...pre].filter(f => !existsSync(R + f));
+  if (need.length) bad.push('❌ pos-sw.js: немає в передкеші (додайте в PRE): ' + need.join(', '));
+  if (gone.length) bad.push('❌ pos-sw.js: у передкеші неіснуючі файли: ' + gone.join(', ')); }
 
 try { execSync('node tools/map.mjs', { cwd: R, stdio: 'pipe' }); } catch {} // 🗺 оновити карту коду
 rmSync(T, { recursive: true, force: true });

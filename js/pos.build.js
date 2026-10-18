@@ -171,12 +171,14 @@ var __objRest = (source, exclude) => {
       el.innerHTML = html;
     }
   };
-  const QOPS = /* @__PURE__ */ new Set(["order", "close"]), qidNew = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  const QOPS = /* @__PURE__ */ new Set(["order", "close", "remove", "move", "split", "discount", "kDone", "kStart", "evAck"]), qidNew = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  const QN = { order: "\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", close: "\u0437\u0430\u043A\u0440\u0438\u0442\u0442\u044F", remove: "\u0441\u043A\u0430\u0441\u0443\u0432\u0430\u043D\u043D\u044F", move: "\u043F\u0435\u0440\u0435\u043D\u0435\u0441\u0435\u043D\u043D\u044F", split: "\u0440\u043E\u0437\u0434\u0456\u043B\u0435\u043D\u043D\u044F", discount: "\u0437\u043D\u0438\u0436\u043A\u0430", kDone: "\u0433\u043E\u0442\u043E\u0432\u043E", kStart: "\u043A\u0443\u0445\u043D\u044F", evAck: "\u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F" };
   const offQ = () => store.get("offq", []), offSave = (q) => {
     store.set("offq", q);
     offBanner();
   };
   const netErr = (e) => e instanceof TypeError || /не відповідає|fetch|network|load failed/i.test((e == null ? void 0 : e.message) || "");
+  const offNow = () => S.offline || navigator.onLine === false;
   function offBanner() {
     const n = offQ().length;
     let el = $("#offq");
@@ -189,17 +191,109 @@ var __objRest = (source, exclude) => {
       el.id = "offq";
       document.body.append(el);
     }
-    el.textContent = `\u{1F4F4} ${S.offline ? "\u041D\u0435\u043C\u0430\u0454 \u0437\u0432'\u044F\u0437\u043A\u0443 \u0437 \u0441\u0435\u0440\u0432\u0435\u0440\u043E\u043C" : "\u0412\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u044F\u044E\u2026"}${n ? ` \xB7 \u0443 \u0447\u0435\u0440\u0437\u0456 ${n} ${n === 1 ? "\u0434\u0456\u044F" : n < 5 ? "\u0434\u0456\u0457" : "\u0434\u0456\u0439"} \u2014 \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u0438\u043C\u043E \u0441\u0430\u043C\u0456` : ""}`;
+    const at = S.offline && S.cacheAt ? ` \xB7 \u0434\u0430\u043D\u0456 \u043D\u0430 ${new Date(S.cacheAt).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })}` : "";
+    el.textContent = `\u{1F4F4} ${S.offline ? "\u041D\u0435\u043C\u0430\u0454 \u0437\u0432'\u044F\u0437\u043A\u0443 \u2014 \u043A\u0430\u0441\u0430 \u043F\u0440\u0430\u0446\u044E\u0454" : "\u0412\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u044F\u044E\u2026"}${n ? ` \xB7 \u0443 \u0447\u0435\u0440\u0437\u0456 ${n} ${n === 1 ? "\u0434\u0456\u044F" : n < 5 ? "\u0434\u0456\u0457" : "\u0434\u0456\u0439"} \u2014 \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u0438\u043C\u043E \u0441\u0430\u043C\u0456` : ""}${at}`;
+  }
+  function offOverlay() {
+    var _a2;
+    const q = offQ();
+    if (!q.length || !S.tables) return;
+    const by = {};
+    (((_a2 = S.menu) == null ? void 0 : _a2.categories) || []).forEach((c) => c.items.forEach((i) => {
+      by[i.id] = i;
+    }));
+    const tb = (t) => {
+      var _a3;
+      return (_a3 = S.tables)[t] || (_a3[t] = { t, total: 0, pay2: 0, items: [], log: [], orders: 0, opened: Date.now() });
+    };
+    const add = (b, name, q2, sum) => {
+      const k = b.total ? b.pay2 / b.total : 1, r = b.items.find((z) => z.name === name);
+      if (r) {
+        r.q += q2;
+        r.sum += sum;
+        r.off = 1;
+      } else b.items.push({ name, q: q2, sum, off: 1 });
+      b.total += sum;
+      b.pay2 = Math.round(b.pay2 + sum * k);
+      b.off = 1;
+    };
+    const sub = (b, name, q2) => {
+      const r = b.items.find((z) => z.name === name);
+      if (!r) return 0;
+      q2 = Math.min(q2, r.q);
+      const u = Math.round(r.sum / r.q), k = b.total ? b.pay2 / b.total : 1;
+      r.q -= q2;
+      r.sum -= u * q2;
+      b.total -= u * q2;
+      b.pay2 = Math.round(b.pay2 - u * q2 * k);
+      if (r.q <= 0) b.items = b.items.filter((z) => z !== r);
+      b.off = 1;
+      return u * q2;
+    };
+    for (const x of q) {
+      const d = x.data || {}, t = +d.t;
+      if (x.op === "order" && t > 0) {
+        const b = tb(t), lines = [];
+        for (const it of d.items || []) {
+          const m = by[it.id];
+          if (!m) continue;
+          const v = m.variants ? m.variants.find((z) => z.v === it.v) || m.variants[0] : null, name = m.name.uk + (v ? ` ${v.v} ${m.size || "\u043B"}`.trimEnd() : ""), sum = (v ? v.p : m.price) * it.q;
+          add(b, name, it.q, sum);
+          lines.push(`${it.q}\xD7 ${name} \u2014 ${sum}`);
+        }
+        b.log = [...b.log || [], { lines, comment: d.comment || "", off: 1, at: x.at }];
+        b.orders = (b.orders || 0) + 1;
+      } else if (!S.tables[t]) continue;
+      else if (x.op === "remove") sub(S.tables[t], d.name, 1);
+      else if (x.op === "close") delete S.tables[t];
+      else if (x.op === "discount") {
+        const b = S.tables[t];
+        b.disc = +d.pct || 0;
+        b.pay2 = Math.round(b.total * (1 - b.disc / 100));
+        b.off = 1;
+      } else if (x.op === "move" && +d.to) {
+        const a = S.tables[t];
+        delete S.tables[t];
+        const b = S.tables[+d.to];
+        if (b) {
+          a.items.forEach((z) => add(b, z.name, z.q, z.sum));
+          b.log = [...b.log || [], ...a.log || []];
+        } else S.tables[+d.to] = __spreadProps(__spreadValues({}, a), { t: +d.to, off: 1 });
+      } else if (x.op === "split" && +d.to) {
+        const a = S.tables[t], b = tb(+d.to);
+        for (const z of d.items || []) {
+          const s = sub(a, z.name, z.q);
+          if (s) add(b, z.name, z.q, s);
+        }
+        if (!a.items.length) delete S.tables[t];
+      }
+    }
+  }
+  async function offPre(t) {
+    var _a2, _b2, _c;
+    const b = S.tables[t];
+    if (!((_a2 = b == null ? void 0 : b.items) == null ? void 0 : _a2.length)) return toast("\u0421\u0442\u0456\u043B \u043F\u043E\u0440\u043E\u0436\u043D\u0456\u0439");
+    const now = (/* @__PURE__ */ new Date()).toLocaleString("uk-UA", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }), due = b.pay2 + (b.tip || 0);
+    const lines = [["cfg", 80, 100, 120], ["big", ((_b2 = S.brand) == null ? void 0 : _b2.name) || "\u0420\u0430\u0445\u0443\u043D\u043E\u043A"], ["c", `\u0421\u0442\u0456\u043B ${tn(t)} \xB7 ${now}`], ["c", "\u041F\u0420\u0415\u0427\u0415\u041A \xB7 \u043D\u0435 \u0444\u0456\u0441\u043A\u0430\u043B\u044C\u043D\u0438\u0439 \u0447\u0435\u043A"], ["hr"], ...b.items.map((it) => ["item", `${it.q}\xD7 ${it.name}`, money(it.sum)]), ["hr"], ...b.disc ? [["lr", `\u0417\u043D\u0438\u0436\u043A\u0430 ${b.disc}%`, "\u2212" + money(b.total - b.pay2)]] : [], ...b.tip ? [["lr", "\u0427\u0430\u0439\u043E\u0432\u0456", money(b.tip)]] : [], ["total", "\u0414\u041E \u0421\u041F\u041B\u0410\u0422\u0418", money(due)], ["gap"], ["gap"]];
+    let pr = "";
+    if ((_c = window.TABP) == null ? void 0 : _c.has()) try {
+      await TABP.print(lines);
+      pr = "\u{1F5A8} \u041D\u0430\u0434\u0440\u0443\u043A\u043E\u0432\u0430\u043D\u043E \u043D\u0430 \u043F\u0440\u0438\u043D\u0442\u0435\u0440\u0456 \u043F\u043B\u0430\u043D\u0448\u0435\u0442\u0430. ";
+    } catch (e) {
+      pr = "\u26A0\uFE0F \u041F\u0440\u0438\u043D\u0442\u0435\u0440: " + e.message + ". ";
+    }
+    modal({ title: `\u{1F9FE} \u041F\u0440\u0435\u0447\u0435\u043A \xB7 \u0441\u0442\u0456\u043B ${tn(t)}`, text: `\u{1F4F4} \u041D\u0435\u043C\u0430\u0454 \u0437\u0432'\u044F\u0437\u043A\u0443 \u0437 \u0441\u0435\u0440\u0432\u0435\u0440\u043E\u043C. ${pr}\u041F\u043E\u043A\u0430\u0436\u0456\u0442\u044C \u0433\u043E\u0441\u0442\u044E \u0435\u043A\u0440\u0430\u043D.`, body: `<div class="rows">${b.items.map((it) => `<div class="row"><div class="nm">${esc(it.name)}<small>${it.q} \xD7 ${Math.round(it.sum / it.q)} \u20B4</small></div><b class="money">${money(it.sum)}</b></div>`).join("")}${b.disc ? `<div class="row"><div class="nm">\u0417\u043D\u0438\u0436\u043A\u0430 ${b.disc}%</div><b class="money">\u2212${money(b.total - b.pay2)}</b></div>` : ""}<div class="row"><div class="nm"><b>\u0414\u043E \u0441\u043F\u043B\u0430\u0442\u0438</b></div><b class="money" style="font-size:1.3em">${money(due)}</b></div></div>`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: 1 }] });
   }
   let flushing = false;
   async function offFlush() {
     if (flushing || !offQ().length || !S.token) return;
     flushing = true;
+    let sent = 0;
     try {
       for (const x of offQ()) {
         let r;
         try {
-          r = await withTimeout(fetch(API + "/api/pos", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + S.token }, body: JSON.stringify(__spreadValues({ op: x.op }, x.data)) }), 1e4);
+          r = await withTimeout(fetch(API + "/api/pos", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + S.token }, body: JSON.stringify(__spreadValues({ op: x.op }, x.data)) }), 15e3);
         } catch (e) {
           S.offline = true;
           offBanner();
@@ -211,46 +305,74 @@ var __objRest = (source, exclude) => {
           return;
         }
         offSave(offQ().filter((y) => y.data.qid !== x.data.qid));
+        sent++;
         if (!r.ok) {
           const j = await r.json().catch(() => ({}));
-          toast(`\u26A0\uFE0F \u0417 \u0447\u0435\u0440\u0433\u0438 \u043D\u0435 \u043F\u0440\u043E\u0439\u0448\u043B\u043E (${x.op === "close" ? "\u0437\u0430\u043A\u0440\u0438\u0442\u0442\u044F" : "\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F"} \u0441\u0442\u0456\u043B ${tn(x.data.t)}): ${errText(j.error || r.status)}`);
+          toast(`\u26A0\uFE0F \u0417 \u0447\u0435\u0440\u0433\u0438 \u043D\u0435 \u043F\u0440\u043E\u0439\u0448\u043B\u043E (${QN[x.op] || x.op}${x.data.t ? " \u0441\u0442\u0456\u043B " + tn(x.data.t) : ""}): ${errText(j.error || r.status)}`);
         }
       }
-      toast("\u{1F4F6} \u0417\u0432'\u044F\u0437\u043E\u043A \u0454 \u2014 \u0447\u0435\u0440\u0433\u0430 \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0430");
+      if (sent) toast("\u{1F4F6} \u0417\u0432'\u044F\u0437\u043E\u043A \u0454 \u2014 \u0447\u0435\u0440\u0433\u0430 \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0430");
       loadState().catch(() => {
+      });
+      if (S.view === "kq" || isCook()) loadKq().catch(() => {
       });
     } finally {
       flushing = false;
       offBanner();
     }
   }
-  addEventListener("online", () => offFlush());
+  const offKick = () => {
+    if (offQ().length) offFlush();
+    else if (S.offline && S.token) loadState().catch(() => {
+    });
+  };
+  addEventListener("online", offKick);
+  addEventListener("offline", () => {
+    S.offline = true;
+    offBanner();
+  });
   setInterval(() => {
     if (offQ().length) offFlush();
   }, 2e4);
+  const queue = (op, data) => {
+    S.offline = true;
+    offSave([...offQ(), { op, data, at: Date.now() }]);
+    try {
+      offOverlay();
+      render();
+    } catch (e) {
+    }
+    return { ok: true, queued: true };
+  };
   async function api(op, data = {}, ms = 12e3) {
     if (QOPS.has(op) && !data.qid) data = __spreadProps(__spreadValues({}, data), { qid: qidNew() });
+    if (QOPS.has(op) && offNow() && !(op === "order" && !data.t)) {
+      const r2 = queue(op, data);
+      setTimeout(offFlush, 500);
+      return r2;
+    }
     let r;
     try {
-      r = await withTimeout(fetch(API + "/api/pos", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + S.token }, body: JSON.stringify(__spreadValues({ op }, data)) }), ms);
+      r = await withTimeout(fetch(API + "/api/pos", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + S.token }, body: JSON.stringify(__spreadValues({ op }, data)) }), QOPS.has(op) ? 8e3 : ms);
     } catch (e) {
-      if (QOPS.has(op) && netErr(e)) {
-        S.offline = true;
-        offSave([...offQ(), { op, data, at: Date.now() }]);
-        return { ok: true, queued: true };
-      }
+      if (QOPS.has(op) && netErr(e) && !(op === "order" && !data.t)) return queue(op, data);
       if (netErr(e)) {
         S.offline = true;
         offBanner();
         if (op === "state" || op === "menu") {
           const c = store.get("cache_" + op, null);
-          if (c) return c;
+          if (c) {
+            if (op === "state") S.cacheAt = c._at || 0;
+            offBanner();
+            return c;
+          }
         }
       }
       throw e;
     }
     if (S.offline) {
       S.offline = false;
+      S.cacheAt = 0;
       offBanner();
       if (offQ().length) setTimeout(offFlush, 300);
     }
@@ -272,7 +394,7 @@ var __objRest = (source, exclude) => {
       throw e;
     }
     if ((op === "state" || op === "menu") && r.ok) try {
-      store.set("cache_" + op, j);
+      store.set("cache_" + op, op === "state" ? __spreadProps(__spreadValues({}, j), { _at: Date.now() }) : j);
     } catch (e) {
     }
     return j;
@@ -280,7 +402,8 @@ var __objRest = (source, exclude) => {
   const act = async (op, data, okMsg) => {
     try {
       const r = await api(op, data);
-      if (okMsg) toast(okMsg);
+      if ((r == null ? void 0 : r.queued) && op !== "order" && op !== "close") toast(`\u{1F4F4} ${okMsg || QN[op] || "\u0414\u0456\u044F"} \u2014 \u0431\u0435\u0437 \u0437\u0432'\u044F\u0437\u043A\u0443, \u0443 \u0447\u0435\u0440\u0437\u0456, \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u0438\u043C\u043E \u0441\u0430\u043C\u0456`);
+      else if (okMsg) toast(okMsg);
       return r;
     } catch (e) {
       if (e.message !== "auth") toast("\u26A0\uFE0F " + errText(e.message));
@@ -442,6 +565,7 @@ var __objRest = (source, exclude) => {
     S.printer = r.printer;
     S.shift = r.shift;
     S.tables = Object.fromEntries(r.tables.map((b) => [b.t, b]));
+    offOverlay();
     const fresh = r.events.filter((e) => !S.seen.has(e.id));
     if (S.ready && fresh.some((e) => ["guest", "check", "call"].includes(e.k) || !isCook() && ["ready", "kmsg"].includes(e.k))) ding();
     r.events.forEach((e) => S.seen.add(e.id));
@@ -475,10 +599,12 @@ var __objRest = (source, exclude) => {
     S.menu = r.menu;
     S.fav = r.fav || [];
     S.groups = r.groups || [];
+    if (offQ().length && S.ready) loadState().catch(() => {
+    });
     if (S.open) renderSheet();
     if (["stop", "menu", "reports", "calc"].includes(S.view)) renderMain();
   }
-  let ws, wsTimer, pingT, reloadT, lastMsg = 0;
+  let ws, wsTimer, pingT, reloadT, lastMsg = 0, wsBack = 2e3;
   const pendKeys = /* @__PURE__ */ new Set();
   function revive() {
     if (!S.token) return;
@@ -500,8 +626,10 @@ var __objRest = (source, exclude) => {
     ws = new WebSocket(API.replace(/^http/, "ws") + "/api/pos/live?token=" + S.token);
     ws.onopen = () => {
       S.live = true;
+      wsBack = 2e3;
       lastMsg = Date.now();
       liveDot();
+      if (offQ().length) offFlush();
       clearInterval(pingT);
       pingT = setInterval(() => {
         if (Date.now() - lastMsg > 45e3) return revive();
@@ -548,7 +676,10 @@ var __objRest = (source, exclude) => {
       liveDot();
       clearInterval(pingT);
       clearTimeout(wsTimer);
-      if (S.token) wsTimer = setTimeout(connect, 2e3);
+      if (S.token) {
+        wsTimer = setTimeout(connect, wsBack);
+        wsBack = Math.min(wsBack * 2, 3e4);
+      }
     };
   }
   const liveDot = () => {
@@ -1122,7 +1253,11 @@ var __objRest = (source, exclude) => {
         break;
       }
       case "pre":
-        act("precheck", { t }, "\u{1F5A8} \u041F\u0440\u0435\u0447\u0435\u043A \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u043E");
+        if (offNow()) {
+          offPre(t);
+          break;
+        }
+        api("precheck", { t }).then(() => toast("\u{1F5A8} \u041F\u0440\u0435\u0447\u0435\u043A \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u043E"), (e2) => netErr(e2) ? offPre(t) : e2.message !== "auth" && toast("\u26A0\uFE0F " + errText(e2.message)));
         break;
       case "tip": {
         const b = S.tables[t];
@@ -1729,7 +1864,7 @@ var __objRest = (source, exclude) => {
       if (!b) return `<button${at} class="tbl${dim}${pending.has(t) ? " new" : ""}${calls[t] ? " calling" : ""}${bk ? " booked" : ""}" data-a="table" data-t="${t}">${bell(t)}${pending.has(t) ? '<span class="tag g">\u043D\u043E\u0432\u0435</span>' : ""}<div class="n">${t}</div><div class="st">${pending.has(t) ? "\u{1F6CE} \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C" : bk ? `\u{1F4C5} ${bk.time} \xB7 ${esc(bk.name)}` : "\u0432\u0456\u043B\u044C\u043D\u0438\u0439"}</div></button>`;
       const due = b.paid ? Math.max(0, b.pay2 - (b.paid.net || 0)) : 0, cls = ["busy", b.check ? "check" : "", pending.has(t) || b.pwait ? "new" : "", b.pwait ? "pw" : ""].join(" ");
       const tag = b.pwait ? '<span class="tag c" title="\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u043E\u043D\u043B\u0430\u0439\u043D">\u{1F310}</span>' : b.check ? `<span class="tag c">\u{1F9FE} \u0440\u0430\u0445\u0443\u043D\u043E\u043A</span>${b.pay ? `<i class="pay" title="${b.pay === "online" ? "\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u043E\u043D\u043B\u0430\u0439\u043D" : b.pay === "card" ? "\u043A\u0430\u0440\u0442\u0430" : "\u0433\u043E\u0442\u0456\u0432\u043A\u0430"}">${b.pay === "online" ? "\u{1F310}" : b.pay === "card" ? "\u{1F4B3}" : "\u{1F4B5}"}</i>` : ""}` : pending.has(t) ? '<span class="tag g">\u043D\u043E\u0432\u0435</span>' : "";
-      return `<button${at} class="tbl${dim} ${cls}${calls[t] ? " calling" : ""}" data-a="table" data-t="${t}">${bell(t)}${tag}<div class="n">${t}</div><div class="st">${b.pwait ? due ? `\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \xB7 \u0434\u043E\u043F\u043B\u0430\u0442\u0430 ${money(due)}` : "\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C" : `${b.orders} \u0437\u0430\u043C\u043E\u0432\u043B.${b.disc ? ` \xB7 \u2212${b.disc}%` : ""}`}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">\u0437 ${b.opened ? hhmm(b.opened) : "\u2014"}</div></button>`;
+      return `<button${at} class="tbl${dim} ${cls}${calls[t] ? " calling" : ""}" data-a="table" data-t="${t}">${bell(t)}${tag}<div class="n">${t}</div><div class="st">${b.pwait ? due ? `\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \xB7 \u0434\u043E\u043F\u043B\u0430\u0442\u0430 ${money(due)}` : "\u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u2014 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0456\u0442\u044C" : `${b.off ? "\u23F3 " : ""}${b.orders} \u0437\u0430\u043C\u043E\u0432\u043B.${b.disc ? ` \xB7 \u2212${b.disc}%` : ""}`}</div><div class="sum money">${money(b.pay2)}</div><div class="tm">\u0437 ${b.opened ? hhmm(b.opened) : "\u2014"}</div></button>`;
     }).join("");
     const gos = list.filter((b) => b.t > 1e3 && b.go);
     const goTileHTML = (b) => {
@@ -1874,7 +2009,7 @@ var __objRest = (source, exclude) => {
     const pend = S.events.filter((e) => e.k === "guest" && e.s === "new" && +e.t === t);
     setHTML($("#shPend"), (G ? goBlock(t, G, b) : "") + pend.map((e) => `<div class="pend"><div><b>\u{1F6CE} \u041D\u043E\u0432\u0435 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0433\u043E\u0441\u0442\u044F \xB7 ${e.at}</b><div class="lines">${(e.lines || []).map(esc).join("<br>")}</div>${e.comment ? `<div class="com">\u{1F4AC} ${esc(e.comment)}</div>` : ""}</div><button class="btn green" data-a="accept" data-oid="${e.oid}">\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432</button></div>`).join(""));
     $("#shBody").className = "sheet-body" + (S.mobileMenu ? " show-menu" : "");
-    const billRows = b ? b.items.map((it) => `<div class="row"><div class="nm">${esc(it.name)}<small>${it.q} \xD7 ${Math.round(it.sum / it.q)} \u20B4</small></div><b class="money">${it.sum}</b><button class="rb minus" data-a="rm" data-name="${esc(it.name)}" title="\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 1">\u2212</button></div>`).join("") : '<div class="muted" style="padding:8px 4px">\u0420\u0430\u0445\u0443\u043D\u043E\u043A \u043F\u043E\u0440\u043E\u0436\u043D\u0456\u0439 \u2014 \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u0441\u0442\u0440\u0430\u0432\u0438 \u0432 \u043C\u0435\u043D\u044E</div>';
+    const billRows = b ? b.items.map((it) => `<div class="row"><div class="nm">${esc(it.name)}<small>${it.q} \xD7 ${Math.round(it.sum / it.q)} \u20B4${it.off ? " \xB7 \u23F3 \u0449\u0435 \u043D\u0435 \u043D\u0430 \u0441\u0435\u0440\u0432\u0435\u0440\u0456" : ""}</small></div><b class="money">${it.sum}</b><button class="rb minus" data-a="rm" data-name="${esc(it.name)}" title="\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 1">\u2212</button></div>`).join("") : '<div class="muted" style="padding:8px 4px">\u0420\u0430\u0445\u0443\u043D\u043E\u043A \u043F\u043E\u0440\u043E\u0436\u043D\u0456\u0439 \u2014 \u043E\u0431\u0435\u0440\u0456\u0442\u044C \u0441\u0442\u0440\u0430\u0432\u0438 \u0432 \u043C\u0435\u043D\u044E</div>';
     const discRow = (b == null ? void 0 : b.disc) ? `<div class="row"><div class="nm">\u0417\u043D\u0438\u0436\u043A\u0430 ${b.disc}%</div><b class="money" style="color:var(--green)">\u2212${b.discSum != null ? Math.min(b.total, b.discSum) : Math.round(b.total * b.disc / 100)}</b><button class="rb minus" data-a="discSet" data-p="0">\xD7</button></div>` : "";
     const promoRow = (b == null ? void 0 : b.promoOff) ? `<div class="row"><div class="nm muted">\u{1F381} \u0410\u043A\u0446\u0456\u0457 \u043D\u0430 \u0441\u0442\u043E\u043B\u0456 \u0432\u0438\u043C\u043A\u043D\u0435\u043D\u043E</div>${isAdmin() ? '<button class="rb plus" data-a="loyOff" data-off="0" title="\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438">\u21BA</button>' : ""}</div>` : (((_b2 = b == null ? void 0 : b.promo) == null ? void 0 : _b2.lines) || []).filter((l) => l.amt || !l.info).map((l, i) => `<div class="row"><div class="nm">${esc(l.n)}</div><b class="money" style="color:var(--green)">${l.amt ? "\u2212" + l.amt : ""}</b>${isAdmin() && i === 0 ? '<button class="rb minus" data-a="loyOff" data-off="1" title="\u0411\u0435\u0437 \u0430\u043A\u0446\u0456\u0439">\xD7</button>' : ""}</div>`).join("");
     const bonRow = (b == null ? void 0 : b.bonus) ? `<div class="row"><div class="nm">${b.cert ? `\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 ${esc(b.cert.code)}${b.bonus > b.cert.sum ? " + \u{1F381} \u0431\u043E\u043D\u0443\u0441\u0438" : ""}` : "\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438"}</div><b class="money" style="color:var(--green)">\u2212${b.bonus}</b><button class="rb minus" data-a="cliBon0">\xD7</button></div>` : "";
@@ -2098,6 +2233,14 @@ var __objRest = (source, exclude) => {
     const to = await pickTable(`\u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0442\u0438 \u0441\u0442\u0456\u043B ${tn(t)}`, "\u041D\u0430 \u0437\u0430\u0439\u043D\u044F\u0442\u0438\u0439 \u0441\u0442\u0456\u043B (\u0436\u043E\u0432\u0442\u0438\u0439) \u2014 \u0440\u0430\u0445\u0443\u043D\u043A\u0438 \u043E\u0431\u02BC\u0454\u0434\u043D\u0430\u044E\u0442\u044C\u0441\u044F", t);
     if (!to) return;
     const r = await act("move", { t, to }, "");
+    if (r == null ? void 0 : r.queued) {
+      S.carts[to] = __spreadValues(__spreadValues({}, S.carts[to] || {}), cartOf(t));
+      S.carts[t] = {};
+      saveCarts();
+      S.open = to;
+      render();
+      return;
+    }
     if (r == null ? void 0 : r.r) {
       toast((r.r.merged ? `\u{1F517} \u041E\u0431\u02BC\u0454\u0434\u043D\u0430\u043D\u043E \u0437\u0456 \u0441\u0442\u043E\u043B\u043E\u043C ${tn(to)}` : `\u2194\uFE0F \u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0435\u043D\u043E \u043D\u0430 \u0441\u0442\u0456\u043B ${tn(to)}`) + (r.r.released ? " \xB7 \u{1F381} \u0431\u043E\u043D\u0443\u0441\u0438 / \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 \u0437\u043D\u044F\u0442\u043E \u2014 \u0437\u0430\u0441\u0442\u043E\u0441\u0443\u0439\u0442\u0435 \u0437\u043D\u043E\u0432\u0443" : ""));
       S.carts[to] = __spreadValues(__spreadValues({}, S.carts[to] || {}), cartOf(t));
@@ -3644,6 +3787,19 @@ var __objRest = (source, exclude) => {
     certT(t);
     return;
   });
+  function kOff(id, i) {
+    var _a2;
+    const e = (_a2 = S.kq) == null ? void 0 : _a2.find((z) => z.id === id);
+    if (!e) return;
+    if (i === -1) e.start = 1;
+    else if (i >= 0) {
+      if (e.items[i]) e.items[i].done = !e.items[i].done;
+    } else e.items.forEach((x) => {
+      if (!x.cancel) x.done = 1;
+    });
+    if (e.items.every((x) => x.done || x.cancel)) e.done = 1;
+    if (S.view === "kq") renderMain();
+  }
   async function loadKq() {
     const r = await api("kitchen", S.kst ? { st: S.kst } : {});
     const list = r.list || [];
@@ -3823,7 +3979,8 @@ var __objRest = (source, exclude) => {
   on("kItem", async (el, e, a, t) => {
     {
       const r = await act("kDone", { id: el.dataset.id, i: +el.dataset.i, st: S.kst || void 0 });
-      if (r) loadKq();
+      if (r == null ? void 0 : r.queued) kOff(el.dataset.id, +el.dataset.i);
+      else if (r) loadKq();
       return;
     }
   });
@@ -3832,14 +3989,16 @@ var __objRest = (source, exclude) => {
     {
       (_a2 = el.closest(".kc")) == null ? void 0 : _a2.classList.add("bye");
       const r = await act("kDone", { id: el.dataset.id, st: S.kst || void 0 });
-      if (r) setTimeout(loadKq, 250);
+      if (r == null ? void 0 : r.queued) kOff(el.dataset.id);
+      else if (r) setTimeout(loadKq, 250);
       return;
     }
   });
   on("kStart", async (el, e, a, t) => {
     {
-      await act("kStart", { id: el.dataset.id });
-      loadKq();
+      const r = await act("kStart", { id: el.dataset.id });
+      if (r == null ? void 0 : r.queued) kOff(el.dataset.id, -1);
+      else loadKq();
       return;
     }
   });

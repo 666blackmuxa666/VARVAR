@@ -36,44 +36,79 @@
   const setHTML = (el, html) => { if (el && el._h !== html) { el._h = html; el.innerHTML = html; } };
 
   // ---------- API ----------
-  // 📴 офлайн: замовлення й закриття без зв'язку стають у чергу на пристрої (з qid — сервер не виконає двічі) і відправляються, щойно зв'язок повернеться
-  const QOPS = new Set(['order', 'close']), qidNew = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  // 📴 офлайн: основні дії залу й кухні без зв'язку стають у чергу на пристрої (з qid — сервер не виконає двічі) і відправляються по черзі, щойно зв'язок повернеться.
+  // Поки дія в черзі, стіл показується вже зміненим (⏳) — офіціант бачить замовлене, а не порожній стіл.
+  const QOPS = new Set(['order', 'close', 'remove', 'move', 'split', 'discount', 'kDone', 'kStart', 'evAck']), qidNew = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  const QN = { order: 'замовлення', close: 'закриття', remove: 'скасування', move: 'перенесення', split: 'розділення', discount: 'знижка', kDone: 'готово', kStart: 'кухня', evAck: 'підтвердження' };
   const offQ = () => store.get('offq', []), offSave = q => { store.set('offq', q); offBanner(); };
   const netErr = e => e instanceof TypeError || /не відповідає|fetch|network|load failed/i.test(e?.message || '');
+  const offNow = () => S.offline || navigator.onLine === false;
   function offBanner() {
     const n = offQ().length; let el = $('#offq'); if (!n && !S.offline) { el?.remove(); return; }
     if (!el) { el = document.createElement('div'); el.id = 'offq'; document.body.append(el); }
-    el.textContent = `📴 ${S.offline ? 'Немає зв\'язку з сервером' : 'Відправляю…'}${n ? ` · у черзі ${n} ${n === 1 ? 'дія' : n < 5 ? 'дії' : 'дій'} — відправимо самі` : ''}`;
+    const at = S.offline && S.cacheAt ? ` · дані на ${new Date(S.cacheAt).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}` : '';
+    el.textContent = `📴 ${S.offline ? 'Немає зв\'язку — каса працює' : 'Відправляю…'}${n ? ` · у черзі ${n} ${n === 1 ? 'дія' : n < 5 ? 'дії' : 'дій'} — відправимо самі` : ''}${at}`;
+  }
+  // ⏳ накласти дії з черги на останній відомий стан залу (кеш або свіжий — сервер їх ще не бачив)
+  function offOverlay() {
+    const q = offQ(); if (!q.length || !S.tables) return; const by = {}; (S.menu?.categories || []).forEach(c => c.items.forEach(i => { by[i.id] = i; }));
+    const tb = t => S.tables[t] ||= { t, total: 0, pay2: 0, items: [], log: [], orders: 0, opened: Date.now() };
+    const add = (b, name, q, sum) => { const k = b.total ? b.pay2 / b.total : 1, r = b.items.find(z => z.name === name); if (r) { r.q += q; r.sum += sum; r.off = 1; } else b.items.push({ name, q, sum, off: 1 }); b.total += sum; b.pay2 = Math.round(b.pay2 + sum * k); b.off = 1; };
+    const sub = (b, name, q) => { const r = b.items.find(z => z.name === name); if (!r) return 0; q = Math.min(q, r.q); const u = Math.round(r.sum / r.q), k = b.total ? b.pay2 / b.total : 1; r.q -= q; r.sum -= u * q; b.total -= u * q; b.pay2 = Math.round(b.pay2 - u * q * k); if (r.q <= 0) b.items = b.items.filter(z => z !== r); b.off = 1; return u * q; };
+    for (const x of q) { const d = x.data || {}, t = +d.t;
+      if (x.op === 'order' && t > 0) { const b = tb(t), lines = [];
+        for (const it of d.items || []) { const m = by[it.id]; if (!m) continue; const v = m.variants ? m.variants.find(z => z.v === it.v) || m.variants[0] : null, name = m.name.uk + (v ? ` ${v.v} ${m.size || 'л'}`.trimEnd() : ''), sum = (v ? v.p : m.price) * it.q; add(b, name, it.q, sum); lines.push(`${it.q}× ${name} — ${sum}`); }
+        b.log = [...(b.log || []), { lines, comment: d.comment || '', off: 1, at: x.at }]; b.orders = (b.orders || 0) + 1; }
+      else if (!S.tables[t]) continue;
+      else if (x.op === 'remove') sub(S.tables[t], d.name, 1);
+      else if (x.op === 'close') delete S.tables[t];
+      else if (x.op === 'discount') { const b = S.tables[t]; b.disc = +d.pct || 0; b.pay2 = Math.round(b.total * (1 - b.disc / 100)); b.off = 1; }
+      else if (x.op === 'move' && +d.to) { const a = S.tables[t]; delete S.tables[t]; const b = S.tables[+d.to]; if (b) { a.items.forEach(z => add(b, z.name, z.q, z.sum)); b.log = [...(b.log || []), ...(a.log || [])]; } else S.tables[+d.to] = { ...a, t: +d.to, off: 1 }; }
+      else if (x.op === 'split' && +d.to) { const a = S.tables[t], b = tb(+d.to); for (const z of d.items || []) { const s = sub(a, z.name, z.q); if (s) add(b, z.name, z.q, s); } if (!a.items.length) delete S.tables[t]; }
+    }
+  }
+  // 🧾 пречек без зв'язку: на екрані (показати гостю) і на принтер цього планшета, якщо підключено
+  async function offPre(t) {
+    const b = S.tables[t]; if (!b?.items?.length) return toast('Стіл порожній');
+    const now = new Date().toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }), due = b.pay2 + (b.tip || 0);
+    const lines = [['cfg', 80, 100, 120], ['big', S.brand?.name || 'Рахунок'], ['c', `Стіл ${tn(t)} · ${now}`], ['c', 'ПРЕЧЕК · не фіскальний чек'], ['hr'], ...b.items.map(it => ['item', `${it.q}× ${it.name}`, money(it.sum)]), ['hr'], ...(b.disc ? [['lr', `Знижка ${b.disc}%`, '−' + money(b.total - b.pay2)]] : []), ...(b.tip ? [['lr', 'Чайові', money(b.tip)]] : []), ['total', 'ДО СПЛАТИ', money(due)], ['gap'], ['gap']];
+    let pr = ''; if (window.TABP?.has()) try { await TABP.print(lines); pr = '🖨 Надруковано на принтері планшета. '; } catch (e) { pr = '⚠️ Принтер: ' + e.message + '. '; }
+    modal({ title: `🧾 Пречек · стіл ${tn(t)}`, text: `📴 Немає зв'язку з сервером. ${pr}Покажіть гостю екран.`, body: `<div class="rows">${b.items.map(it => `<div class="row"><div class="nm">${esc(it.name)}<small>${it.q} × ${Math.round(it.sum / it.q)} ₴</small></div><b class="money">${money(it.sum)}</b></div>`).join('')}${b.disc ? `<div class="row"><div class="nm">Знижка ${b.disc}%</div><b class="money">−${money(b.total - b.pay2)}</b></div>` : ''}<div class="row"><div class="nm"><b>До сплати</b></div><b class="money" style="font-size:1.3em">${money(due)}</b></div></div>`, buttons: [{ label: 'Закрити', val: 1 }] });
   }
   let flushing = false;
   async function offFlush() {
-    if (flushing || !offQ().length || !S.token) return; flushing = true;
+    if (flushing || !offQ().length || !S.token) return; flushing = true; let sent = 0;
     try {
       for (const x of offQ()) {
-        let r; try { r = await withTimeout(fetch(API + '/api/pos', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + S.token }, body: JSON.stringify({ op: x.op, ...x.data }) }), 10000); } catch (e) { S.offline = true; offBanner(); return; }
+        let r; try { r = await withTimeout(fetch(API + '/api/pos', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + S.token }, body: JSON.stringify({ op: x.op, ...x.data }) }), 15000); } catch (e) { S.offline = true; offBanner(); return; }
         S.offline = false;
         if (r.status === 401 || r.status >= 500) { offBanner(); return; } // не увійшли / сервер оновлюється — дія лишається в черзі, спробуємо пізніше
-        offSave(offQ().filter(y => y.data.qid !== x.data.qid));
-        if (!r.ok) { const j = await r.json().catch(() => ({})); toast(`⚠️ З черги не пройшло (${x.op === 'close' ? 'закриття' : 'замовлення'} стіл ${tn(x.data.t)}): ${errText(j.error || r.status)}`); }
+        offSave(offQ().filter(y => y.data.qid !== x.data.qid)); sent++;
+        if (!r.ok) { const j = await r.json().catch(() => ({})); toast(`⚠️ З черги не пройшло (${QN[x.op] || x.op}${x.data.t ? ' стіл ' + tn(x.data.t) : ''}): ${errText(j.error || r.status)}`); }
       }
-      toast('📶 Зв\'язок є — черга відправлена'); loadState().catch(() => {});
+      if (sent) toast('📶 Зв\'язок є — черга відправлена'); loadState().catch(() => {}); if (S.view === 'kq' || isCook()) loadKq().catch(() => {});
     } finally { flushing = false; offBanner(); }
   }
-  addEventListener('online', () => offFlush()); setInterval(() => { if (offQ().length) offFlush(); }, 20000); // перевірка — лише коли є черга
+  const offKick = () => { if (offQ().length) offFlush(); else if (S.offline && S.token) loadState().catch(() => {}); };
+  addEventListener('online', offKick); addEventListener('offline', () => { S.offline = true; offBanner(); });
+  setInterval(() => { if (offQ().length) offFlush(); }, 20000); // перевірка — лише коли є черга
+  const queue = (op, data) => { S.offline = true; offSave([...offQ(), { op, data, at: Date.now() }]); try { offOverlay(); render(); } catch {} return { ok: true, queued: true }; };
   async function api(op, data = {}, ms = 12000) {
     if (QOPS.has(op) && !data.qid) data = { ...data, qid: qidNew() };
+    // 📴 уже відомо, що зв'язку нема, — у чергу одразу (не чекати 12 с на кожну дію); зв'язок перевірить сама черга
+    if (QOPS.has(op) && offNow() && !(op === 'order' && !data.t)) { const r = queue(op, data); setTimeout(offFlush, 500); return r; }
     let r;
-    try { r = await withTimeout(fetch(API + '/api/pos', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + S.token }, body: JSON.stringify({ op, ...data }) }), ms); }
-    catch (e) { if (QOPS.has(op) && netErr(e)) { S.offline = true; offSave([...offQ(), { op, data, at: Date.now() }]); return { ok: true, queued: true }; } if (netErr(e)) { S.offline = true; offBanner(); if (op === 'state' || op === 'menu') { const c = store.get('cache_' + op, null); if (c) return c; } } throw e; } // без зв'язку — останній відомий стан залу й меню
-    if (S.offline) { S.offline = false; offBanner(); if (offQ().length) setTimeout(offFlush, 300); }
+    try { r = await withTimeout(fetch(API + '/api/pos', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + S.token }, body: JSON.stringify({ op, ...data }) }), QOPS.has(op) ? 8000 : ms); }
+    catch (e) { if (QOPS.has(op) && netErr(e) && !(op === 'order' && !data.t)) return queue(op, data); if (netErr(e)) { S.offline = true; offBanner(); if (op === 'state' || op === 'menu') { const c = store.get('cache_' + op, null); if (c) { if (op === 'state') S.cacheAt = c._at || 0; offBanner(); return c; } } } throw e; } // без зв'язку — останній відомий стан залу й меню
+    if (S.offline) { S.offline = false; S.cacheAt = 0; offBanner(); if (offQ().length) setTimeout(offFlush, 300); }
     if (r.status === 404 && VENUE) { try { localStorage.removeItem('pos_venue2'); } catch {} location.replace(location.pathname); } // 🏪 заклад не знайдено — назад до VARVAR
     const j = await r.json().catch(() => ({}));
     if (r.status === 401 && op !== 'login') { logout(true); throw new Error('auth'); }
     if (!r.ok) { const e = new Error(j.error || 'error'); e.data = j; throw e; }
-    if ((op === 'state' || op === 'menu') && r.ok) try { store.set('cache_' + op, j); } catch {} // 📴 для запуску без інтернету
+    if ((op === 'state' || op === 'menu') && r.ok) try { store.set('cache_' + op, op === 'state' ? { ...j, _at: Date.now() } : j); } catch {} // 📴 для запуску без інтернету
     return j;
   }
-  const act = async (op, data, okMsg) => { try { const r = await api(op, data); if (okMsg) toast(okMsg); return r; } catch (e) { if (e.message !== 'auth') toast('⚠️ ' + errText(e.message)); return null; } };
+  const act = async (op, data, okMsg) => { try { const r = await api(op, data); if (r?.queued && op !== 'order' && op !== 'close') toast(`📴 ${okMsg || QN[op] || 'Дія'} — без зв'язку, у черзі, відправимо самі`); else if (okMsg) toast(okMsg); return r; } catch (e) { if (e.message !== 'auth') toast('⚠️ ' + errText(e.message)); return null; } };
   const errText = e => ({ admin: 'Лише для адміністратора', empty: 'Нічого не вибрано', table: 'Невірний стіл', nothing: 'Нема що відміняти' })[e] || e;
 
   const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('Сервер не відповідає (перевірте інтернет / дату й час на компʼютері)')), ms))]);
@@ -149,7 +184,7 @@
     stateDone = my;
     if (!S.tpInit && window.TABP) { S.tpInit = 1; TABP.init({ api, toast, ask, base: API }); } // 📱 принтер планшета (js/tabprint.js)
     S.me = { ...S.me, ...r.me }; S.myTip = r.myTip; S.myAtt = r.myAtt || null; S.books = r.books || []; S.wl = r.wl || []; S.bkNew = r.bkNew || 0; if (r.brand && JSON.stringify(r.brand) !== JSON.stringify(S.brand)) { S.brand = r.brand; store.set('brand', r.brand); applyBrand(); } S.gInN = r.gInN || 0; S.cfg = r.cfg || S.cfg; S.n = r.n; S.printer = r.printer; S.shift = r.shift;
-    S.tables = Object.fromEntries(r.tables.map(b => [b.t, b]));
+    S.tables = Object.fromEntries(r.tables.map(b => [b.t, b])); offOverlay(); // ⏳ дії з офлайн-черги — на екрані вже зараз
     const fresh = r.events.filter(e => !S.seen.has(e.id));
     if (S.ready && fresh.some(e => ['guest', 'check', 'call'].includes(e.k) || (!isCook() && ['ready', 'kmsg'].includes(e.k)))) ding();
     r.events.forEach(e => S.seen.add(e.id));
@@ -157,14 +192,14 @@
     if (isCour() && S.view === 'go') renderMain(); // 🛵 нові доставки й «готово» — одразу на екрані кур'єра
     render();
   }
-  async function loadMenu() { const r = await api('menu'); S.menu = r.menu; S.fav = r.fav || []; S.groups = r.groups || []; if (S.open) renderSheet(); if (['stop', 'menu', 'reports', 'calc'].includes(S.view)) renderMain(); }
-  let ws, wsTimer, pingT, reloadT, lastMsg = 0; const pendKeys = new Set();
+  async function loadMenu() { const r = await api('menu'); S.menu = r.menu; S.fav = r.fav || []; S.groups = r.groups || []; if (offQ().length && S.ready) loadState().catch(() => {}); /* ⏳ назви й ціни страв із черги */ if (S.open) renderSheet(); if (['stop', 'menu', 'reports', 'calc'].includes(S.view)) renderMain(); }
+  let ws, wsTimer, pingT, reloadT, lastMsg = 0, wsBack = 2000; const pendKeys = new Set();
   // iPhone «на головному екрані» присипляє застосунок: зʼєднання тихо вмирає — перепідключаємось і перечитуємо стан
   function revive() { if (!S.token) return; S.live = false; liveDot(); try { ws.onclose = null; ws.close(); } catch {} clearInterval(pingT); connect(); }
   function connect() {
     try { ws?.close(); } catch {}
     ws = new WebSocket(API.replace(/^http/, 'ws') + '/api/pos/live?token=' + S.token);
-    ws.onopen = () => { S.live = true; lastMsg = Date.now(); liveDot(); clearInterval(pingT); pingT = setInterval(() => { if (Date.now() - lastMsg > 45000) return revive(); ws.readyState === 1 && ws.send('ping'); }, 15000); loadState().catch(() => {}); };
+    ws.onopen = () => { S.live = true; wsBack = 2000; lastMsg = Date.now(); liveDot(); if (offQ().length) offFlush(); clearInterval(pingT); pingT = setInterval(() => { if (Date.now() - lastMsg > 45000) return revive(); ws.readyState === 1 && ws.send('ping'); }, 15000); loadState().catch(() => {}); };
     ws.onmessage = e => {
       lastMsg = Date.now();
       if (e.data === 'pong') return;
@@ -186,7 +221,7 @@
         if (['closed', 'reports', 'settings', 'cash'].includes(S.view) && m.keys.some(k => ['closed', 'day', 'exp', 'staff', 'shift', 'z', 'mov', 'tipbal', 'tippay', 'void', 'kq'].includes(k) || (k === 'bill' && S.view === 'cash'))) loadView(true);
       }, 120);
     };
-    ws.onclose = () => { S.live = false; liveDot(); clearInterval(pingT); clearTimeout(wsTimer); if (S.token) wsTimer = setTimeout(connect, 2000); };
+    ws.onclose = () => { S.live = false; liveDot(); clearInterval(pingT); clearTimeout(wsTimer); if (S.token) { wsTimer = setTimeout(connect, wsBack); wsBack = Math.min(wsBack * 2, 30000); } }; // без звʼязку — рідше: 2→4→…→30 с
   }
   const liveDot = () => { $('#live').className = 'live' + (S.live ? ' on' : ''); };
   setInterval(() => { if (S.token && !S.live && document.visibilityState === 'visible') loadState().catch(() => {}); }, 15000); // запасний варіант без WebSocket
@@ -417,7 +452,7 @@
       case 'goTake': if (await act('goCour', { t: +el.dataset.t }, '✋ Ваша доставка')) { await loadState().catch(() => {}); renderMain(); } break;
       case 'goRoad': if (await act('goSt', { t: +el.dataset.t, st: 'road' }, '🛵 В дорозі')) { await loadState().catch(() => {}); renderMain(); } break;
       case 'goCourSet': { const n = await ask('👤 Кур\'єр (імʼя)', S.tables[t]?.go?.cour || ''); if (n != null && await act('goCour', { t, n }, '✔')) loadState().catch(() => {}); break; }
-      case 'pre': act('precheck', { t }, '🖨 Пречек відправлено'); break;
+      case 'pre': if (offNow()) { offPre(t); break; } api('precheck', { t }).then(() => toast('🖨 Пречек відправлено'), e => netErr(e) ? offPre(t) : e.message !== 'auth' && toast('⚠️ ' + errText(e.message))); break;
       case 'tip': { const b = S.tables[t]; if (!b) break; const v = await choose(`💝 Чайові — стіл ${tn(t)}`, `До сплати ${money(b.pay2)}`, [...[5, 10, 15].map(p => ({ label: `${p}% · ${money(Math.round(b.pay2 * p / 100))}`, val: String(Math.round(b.pay2 * p / 100)) })), { label: '✏️ Своя сума', val: 'own' }, ...(b.tip ? [{ label: 'Прибрати чайові', val: '0', cls: 'red' }] : [])]);
         if (v == null) break; let sum = v; if (v === 'own') { sum = await ask('Сума чайових, ₴', 'напр. 100', 'number'); if (sum == null) break; }
         await act('tip', { t, sum: +sum }, +sum ? `💝 Чайові ${money(+sum)}` : 'Чайові прибрано'); break; }

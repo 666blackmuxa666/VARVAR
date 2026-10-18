@@ -122,6 +122,7 @@
   window.TABP = {
     init(h) { H = h; if (ld()) { wake(); check(); } },
     check,
+    has: () => !!ld(), print: lines => out(lines), // 📴 друк прямо з каси (пречек без зв'язку)
     html() {
       const c = ld();
       if (c) return `<div class="kv"><span>${TN[c.type]} · <b>${E(c.name)}</b><br><small class="muted">${link ? '✅ підключено' : c.type === 'bt' ? 'підключиться при першому друці' : 'готовий'} · друкує все, що призначено на «📱 ${E(c.name)}»</small></span></div>

@@ -1,3 +1,5 @@
+  // 📴 без звʼязку: дія кухні стоїть у черзі — показуємо результат одразу (i: страва, -1: «готую», без i: усе)
+  function kOff(id, i) { const e = S.kq?.find(z => z.id === id); if (!e) return; if (i === -1) e.start = 1; else if (i >= 0) { if (e.items[i]) e.items[i].done = !e.items[i].done; } else e.items.forEach(x => { if (!x.cancel) x.done = 1; }); if (e.items.every(x => x.done || x.cancel)) e.done = 1; if (S.view === 'kq') renderMain(); }
   async function loadKq() {
     const r = await api('kitchen', S.kst ? { st: S.kst } : {}); const list = r.list || []; S.ksts = r.sts || []; if (S.kst && !S.ksts.some(z => z.id === S.kst)) S.kst = '';
     const ids = list.filter(e => !e.done).map(e => e.id), canc = list.flatMap(e => e.items.filter(x => x.cancel || x.canc).map(x => e.id + x.n + (x.canc || 0)));
@@ -73,9 +75,9 @@
 
   // ---------- 🖱 кнопки розділу (data-a) ----------
   on('kSt', async (el, e, a, t) => { S.kst = el.dataset.v || ''; store.set('kst', S.kst); loadKq(); return; });
-  on('kItem', async (el, e, a, t) => { { const r = await act('kDone', { id: el.dataset.id, i: +el.dataset.i, st: S.kst || undefined }); if (r) loadKq(); return; } });
-  on('kAll', async (el, e, a, t) => { { el.closest('.kc')?.classList.add('bye'); const r = await act('kDone', { id: el.dataset.id, st: S.kst || undefined }); if (r) setTimeout(loadKq, 250); return; } });
-  on('kStart', async (el, e, a, t) => { { await act('kStart', { id: el.dataset.id }); loadKq(); return; } });
+  on('kItem', async (el, e, a, t) => { { const r = await act('kDone', { id: el.dataset.id, i: +el.dataset.i, st: S.kst || undefined }); if (r?.queued) kOff(el.dataset.id, +el.dataset.i); else if (r) loadKq(); return; } });
+  on('kAll', async (el, e, a, t) => { { el.closest('.kc')?.classList.add('bye'); const r = await act('kDone', { id: el.dataset.id, st: S.kst || undefined }); if (r?.queued) kOff(el.dataset.id); else if (r) setTimeout(loadKq, 250); return; } });
+  on('kStart', async (el, e, a, t) => { { const r = await act('kStart', { id: el.dataset.id }); if (r?.queued) kOff(el.dataset.id, -1); else loadKq(); return; } });
   on('kUndo', async (el, e, a, t) => { { await act('kUndo', { id: el.dataset.id }, '↩️ Повернуто в чергу'); loadKq(); return; } });
   on('kMsg', async (el, e, a, t) => { { let v = await choose('Повідомлення в зал', 'Офіціанти побачать у стрічці', ['❗ Немає продукту', '⏱ Ще +10 хв', '🙋 Підійди на кухню', '🔥 Вже майже готово'].map(x => ({ label: x, val: x })).concat([{ label: '✏️ Своє…', val: 'own' }]));
         if (v === 'own') v = await ask('Повідомлення в зал', 'Напр.: замінимо фрі на пюре?'); if (v) await act('kMsg', { id: el.dataset.id, text: v }, '📨 Надіслано'); loadKq(); return; }

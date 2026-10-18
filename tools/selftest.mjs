@@ -1343,6 +1343,31 @@ async function uiTests() {
       }
       rec(`натиснуто ${clicked} кнопок у ${views.length} розділах`, !bad.length, bad.slice(0, 5).join(' | '));
     }
+    // 📴 офлайн: без мережі замовлення стає в чергу на пристрої, стіл показує ⏳, з появою звʼязку черга сама йде на сервер (один раз)
+    if (users.admin && (!ONLY_ROLES || ONLY_ROLES.includes('admin')) && (!ONLY_VIEWS || ONLY_VIEWS.includes('hall'))) await step('📴 офлайн: замовлення в черзі → ⏳ на столі → звʼязок → на сервері один раз', async () => {
+      const A = users.admin.token, s0 = await posOk(A, 'state'), busy = new Set(s0.tables.map(x => x.t)); let t;
+      await b.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false }); await login(users.admin);
+      const n0 = b.errs.length; await b.send('Network.enable');
+      await b.send('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 }); await sleep(600);
+      try {
+        await b.ev(`(() => { document.querySelector('[data-a="view"][data-v="hall"]')?.click(); return 1; })()`); await sleep(900);
+        t = (await b.ev(`[...document.querySelectorAll('[data-a="table"]')].map(x => +x.dataset.t)`)).find(x => !busy.has(x)); must(t, 'немає вільного столу');
+        must(await b.ev(`(() => { const x = document.querySelector('[data-a="table"][data-t="${t}"]'); x?.click(); return !!x; })()`), 'немає столу ' + t + ': ' + (await b.ev(`[...document.querySelectorAll('[data-a="table"]')].map(x => x.dataset.t).join(',')`))); await sleep(900);
+        must(await b.ev(`(() => { const x = document.querySelector('#shItems [data-a="add"]:not(.off)'); if (!x) return 0; x.click(); return 1; })()`), 'немає страви в меню столу'); await sleep(300);
+        must(await b.ev(`(() => { const x = document.querySelector('[data-a="send"]'); x?.click(); return !!x; })()`), 'немає кнопки «надіслати»'); await sleep(1500);
+        const txt = await b.ev(`document.body.innerText`);
+        must(/📴/.test(txt) && /у черзі/.test(txt), 'немає плашки «📴 … у черзі»');
+        must(/⏳/.test(txt), 'на столі немає ⏳ (замовлення з черги не видно)');
+        must(!(await posOk(A, 'state')).tables.some(x => x.t === t), 'без мережі замовлення не мало дійти');
+      } finally { await b.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 }); }
+      let bill; for (let i = 0; i < 20 && !bill; i++) { await sleep(700); bill = (await posOk(A, 'state')).tables.find(x => x.t === t); }
+      must(bill, 'після звʼязку черга не відправилась');
+      await sleep(1500); const q = await b.ev(`Object.keys(localStorage).filter(k => /offq$/.test(k)).map(k => JSON.parse(localStorage[k]).length).reduce((a, x) => a + x, 0)`);
+      must(q === 0, 'черга не очистилась: ' + q);
+      const again = (await posOk(A, 'state')).tables.find(x => x.t === t); must(again.items.reduce((a, x) => a + x.q, 0) === 1, 'замовлення задвоїлось: ' + JSON.stringify(again.items));
+      const errs = b.errs.slice(n0).filter(x => /^exception/.test(x)); must(!errs.length, errs[0]);
+      await pos(A, 'close', { t, pay: 'cash', print: false });
+    });
     if (DESIGN) await designPages(b);
   } finally { b.close();
     if (DESIGN) { const { writeFileSync } = await import('node:fs'); writeFileSync(new URL('../_team/design-report.md', import.meta.url), `# 🎨 Діагностика кнопок · ${new Date().toISOString().slice(0, 16)}\n\nЗнайдено: ${designLog.size}\n\n` + [...designLog].map(([k, v]) => `- ${k}  \n  _${v.join(' · ')}_`).join('\n') + '\n'); console.log('🎨 design-report: ' + designLog.size); } }
