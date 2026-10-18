@@ -157,6 +157,7 @@ export async function receipt(env, { table, bill, final, pay, by }) {
   const fmt = t => new Date(t).toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '');
   const count = [...agg.values()].reduce((s, a) => s + a.q, 0);
   const pr = (bill.promo?.lines || []).filter(l => l.amt || (!final && / \(додайте в рахунок\)$/.test(l.n))).map(l => final ? { ...l, n: l.n.replace(/ \(додайте в рахунок\)$/, '') } : l); // 🎁 підказка «додайте» — лише на пречеку
+  const g = +table > 1000 && bill.go || {};
   const rc = await getRcpt(env), qrn = rc.qr ? await (await import('./qr.js')).qrImg(env, 0) : '';
   return [
     ...(rc.logo ? [['logo']] : []),
@@ -165,6 +166,8 @@ export async function receipt(env, { table, bill, final, pay, by }) {
     ...(final || !rc.preNote ? [] : [['s', rc.preNote]]),
     ['gap'],
     ['lr', +table > 2000 ? 'Самовивіз' : +table > 1000 ? 'Доставка' : 'Стіл', String(tn(table))],
+    ...(g.name ? [['lr', 'Гість', String(g.name)]] : []), ...(g.phone ? [['lr', 'Телефон', String(g.phone)]] : []), // 🛍 з собою / доставка з сайту: хто замовив (касир без гостя — як і було)
+    ...(g.addr && +table > 1000 && +table <= 2000 ? [['s', '📍 ' + [g.addr, g.ent].filter(Boolean).join(', ')]] : []),
     ...(bill.opened && rc.opened ? [['lr', 'Відкрито', fmt(bill.opened)]] : []),
     ...(by && rc.waiter ? [['lr', 'Обслуговував', String(by)]] : []),
     ['lr', final ? 'Закрито' : 'Надруковано', fmt(Date.now())],

@@ -112,13 +112,13 @@ window.OWNV = ctx => {
       const ai = d.ai ? `<div class="kv"><span>🤖 Баланс ШІ</span><b class="money">${d.ai.bal} ₴</b></div><div class="muted" style="font-size:13px;margin:6px 0">20 ШІ-фото на місяць безкоштовно, далі — 2 ₴ за фото з балансу.</div>
         ${d.lp ? `<div class="btnrow">${(d.tops || []).map(n => `<button class="btn sm" data-a="vbTop" data-n="${n}">➕ ${n} ₴</button>`).join('')}</div>` : ''}
         ${d.ai.h?.length ? `<details style="margin-top:10px"><summary class="muted">Рух балансу</summary>${d.ai.h.map(h => `<div class="kv"><span>${dt(h.ts)} · ${esc(h.what)}${h.test ? ' 🧪' : ''}</span><b>${h.sum > 0 ? '+' : ''}${h.sum} ₴</b></div>`).join('')}</details>` : ''}` : '<div class="muted">VARVAR — ШІ без оплати.</div>';
-      const refCard = (r, plat, free) => !r || free ? '' : `<div class="card"><h3>🎁 Запросити друга</h3>
-        <div class="muted" style="font-size:13px;margin-bottom:8px">Приведіть інший заклад: коли він уперше заплатить — <b>місяць ATOM у подарунок</b> вам обом.</div>
+      const refCard = (r, plat, free) => !r ? '' : `<h3 style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line, #333)">🎁 Реферальна програма</h3>
+        <div class="muted" style="font-size:13px;margin-bottom:8px">${free ? 'Приведіть інший заклад за своїм посиланням: коли він уперше заплатить — <b>місяць ATOM у подарунок</b> йому.' : 'Приведіть інший заклад: коли він уперше заплатить — <b>місяць ATOM у подарунок</b> вам обом.'}</div>
         <div class="kv"><span>Ваше посилання</span><b style="word-break:break-all">posatom.online/?ref=${esc(r.code)}</b></div>
         <div class="btnrow" style="margin-top:8px"><button class="btn sm" data-a="vrefCopy" data-v="https://posatom.online/?ref=${esc(r.code)}">📋 Копіювати</button>${plat ? '<button class="btn sm ghost" data-a="vrefGift">🎁 +1 міс</button><button class="btn sm ghost" data-a="vrefBlock" data-code="' + esc(r.code) + '" data-on="' + (r.blocked ? 0 : 1) + '">' + (r.blocked ? '✅ Розблокувати код' : '🚫 Заблокувати код') + '</button>' : ''}</div>
         ${r.leads ? '' : '<div class="muted" style="font-size:13px;margin-top:8px">Поки що ніхто не прийшов за вашим посиланням. Надішліть його колезі — і місяць ваш.</div>'}
         <div class="kv"><span>Заявок за вашим кодом</span><b>${r.leads}</b></div>
-        <div class="kv"><span>Подаровано місяців</span><b>${r.n} із 12</b></div>${r.blocked ? '<div class="alert red" style="margin-top:8px">🚫 Код заблоковано. Напишіть нам, якщо це помилка.</div>' : ''}</div>`;
+        <div class="kv"><span>Подаровано місяців</span><b>${r.n} із 12</b></div>${r.blocked ? '<div class="alert red" style="margin-top:8px">🚫 Код заблоковано. Напишіть нам, якщо це помилка.</div>' : ''}`;
       const g = d.go || {}, gl = d.glp; /* 💳 прийом оплат від гостей — ключі цього закладу */
       const acq = `<div class="card"><h3>💳 Прийом оплат від гостей</h3>
         <div class="muted" style="font-size:13px;margin-bottom:8px">Гості платять карткою онлайн (замовлення, доставка, сертифікати, рахунок столу з QR) — гроші йдуть одразу на рахунок закладу. У касі онлайн видно окремо: 💵 готівка · 💳 термінал · 🌐 онлайн.</div>
@@ -153,7 +153,7 @@ window.OWNV = ctx => {
           <div class="btnrow" style="margin-top:8px">${fi.bad || fi.wait ? '<button class="btn sm" data-a="vfisRetry">🔁 Досилати чеки</button>' : ''}<button class="btn sm red" data-a="vfisDel">🗑 Відключити ПРРО</button></div>`
         : `<ol class="muted" style="font-size:13px;padding-left:18px;margin:8px 0"><li>Зареєструйте ПРРО в <a href="https://checkbox.ua" target="_blank" rel="noopener">Checkbox</a> зі своїм КЕП (ми КЕП не беремо).</li><li>Кабінет Checkbox → <b>Каси</b> → ключ ліцензії; <b>Касири</b> → PIN-код касира.</li><li>Для перевірки — тестова каса й тестовий касир з того ж кабінету.</li></ol>
           <form id="vfisf" style="display:grid;gap:8px"><input name="CHECKBOX_LICENSE" placeholder="Ключ ліцензії каси" autocomplete="off"><input name="CHECKBOX_PIN" type="password" placeholder="PIN касира" autocomplete="off" inputmode="numeric"><button class="btn sm primary">💾 Підключити</button><div class="err" id="vfiserr"></div></form>`}</div>`;
-      return `<div class="grid">${acq}${fis}${onl}<div class="card"><h3>💳 Підписка ATOM · ${s.price || 500} ₴/міс</h3>${sub}</div><div class="card"><h3>🤖 Баланс ШІ</h3>${ai}</div>${refCard(d.ref, plat, s.free)}</div>`;
+      return `<div class="grid">${acq}${fis}${onl}<div class="card"><h3>💳 Підписка ATOM · ${s.price || 500} ₴/міс</h3>${sub}</div><div class="card"><h3>🤖 Баланс ШІ</h3>${ai}${refCard(d.ref, plat, s.free)}</div></div>`;
     },
     staff(v) {
       const d = v.d, R = { admin: '👑 Адмін', waiter: '🧑‍🍳 Офіціант', cook: '👨‍🍳 Кухар', courier: '🛵 Кур\'єр' }, link = window.VVPUB(v.id, 'pos.html');

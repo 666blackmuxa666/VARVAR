@@ -613,4 +613,5 @@
     document.body.classList.toggle('cook', isCook()); document.body.classList.toggle('adm', isAdmin()); document.body.classList.toggle('cour', isCour());
     if (isCook()) { S.view = 'kq'; renderNav(); loadKq().catch(() => {}); kitchenGate(); }
     if (isCour()) { S.view = 'go'; renderNav(); loadCour().catch(() => {}); }
+    else if (!isCook() && S.view !== 'hall') loadView(); // 🔁 після повторного входу лишилась інша вкладка (каса, звіти…) — підтягнути її дані, а не «Завантаження…»
   }

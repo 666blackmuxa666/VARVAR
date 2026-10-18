@@ -1708,7 +1708,7 @@ var __objRest = (source, exclude) => {
       renderNav();
       loadCour().catch(() => {
       });
-    }
+    } else if (!isCook() && S.view !== "hall") loadView();
   }
   function hallHTML() {
     var _a2, _b2, _c;
@@ -4619,8 +4619,8 @@ var __objRest = (source, exclude) => {
     const R = S.txR, T2 = R.tax, dm2 = (d) => d.split("-").reverse().slice(0, 2).join(".");
     return hd + `<div class="muted" style="font-size:13px;margin-bottom:8px">\u041E\u0431\u0435\u0440\u0456\u0442\u044C \u0444\u043E\u0440\u043C\u0443 \u2014 \u0441\u0438\u0441\u0442\u0435\u043C\u0430 \u043D\u0430\u0433\u0430\u0434\u0430\u0454 \u0432 Telegram \u043F\u0440\u043E \u0437\u0432\u0456\u0442\u0438 \u0439 \u043F\u043B\u0430\u0442\u0435\u0436\u0456 \u0442\u0430 \u0434\u0430\u0441\u0442\u044C \u043F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F \u043D\u0430 \u043A\u0430\u0431\u0456\u043D\u0435\u0442 \u043F\u043B\u0430\u0442\u043D\u0438\u043A\u0430. \u041C\u0438 \u043D\u0435 \u043F\u043E\u0434\u0430\u0454\u043C\u043E \u0437\u0432\u0456\u0442\u0438 \u0439 \u043D\u0435 \u043C\u0430\u0454\u043C\u043E \u0434\u043E\u0441\u0442\u0443\u043F\u0443 \u0434\u043E \u0440\u0430\u0445\u0443\u043D\u043A\u0456\u0432. \u26A0\uFE0F \u0414\u0430\u0442\u0438 \u0439 \u0441\u0443\u043C\u0438 \u043E\u0440\u0456\u0454\u043D\u0442\u043E\u0432\u043D\u0456 \u2014 \u0437\u0432\u0456\u0440\u0442\u0435 \u0437 \u0431\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u043E\u043C.</div>
       <div class="kv"><span>\u0424\u043E\u0440\u043C\u0430</span><button class="btn sm ${T2.kind ? "primary" : ""}" data-tx="kind">${esc(R.kinds[T2.kind] || "\u041D\u0435 \u043E\u0431\u0440\u0430\u043D\u043E")}</button></div>
-      ${T2.kind === "tov" ? `<div class="kv"><span>\u041F\u043B\u0430\u0442\u043D\u0438\u043A \u041F\u0414\u0412</span><label class="switch"><input type="checkbox" data-tx="pdv" ${T2.pdv ? "checked" : ""}><i></i></label></div>` : ""}
-      ${T2.kind ? `<div class="kv"><span>\u{1F514} \u041D\u0430\u0433\u0430\u0434\u0443\u0432\u0430\u043D\u043D\u044F \u0432 Telegram</span><label class="switch"><input type="checkbox" data-tx="on" ${T2.on ? "checked" : ""}><i></i></label></div>
+      ${T2.kind === "tov" ? `<div class="kv"><span>\u041F\u043B\u0430\u0442\u043D\u0438\u043A \u041F\u0414\u0412</span><span class="switch press ${T2.pdv ? "on" : ""}" data-txs="pdv" role="switch" aria-checked="${T2.pdv ? "true" : "false"}"></span></div>` : ""}
+      ${T2.kind ? `<div class="kv"><span>\u{1F514} \u041D\u0430\u0433\u0430\u0434\u0443\u0432\u0430\u043D\u043D\u044F \u0432 Telegram</span><span class="switch press ${T2.on ? "on" : ""}" data-txs="on" role="switch" aria-checked="${T2.on ? "true" : "false"}"></span></div>
       <div class="kv"><span>\u041D\u0430\u0433\u0430\u0434\u0443\u0432\u0430\u0442\u0438 \u0437\u0430 (\u0434\u043D\u0456\u0432)</span><button class="btn sm" data-tx="lead">${T2.lead}</button></div>
       <div class="kv"><span>\u0421\u0442\u0430\u0432\u043A\u0438 \u0439 \u043C\u0456\u043D\u0456\u043C\u0443\u043C\u0438</span><button class="btn sm" data-tx="rates">\u270F\uFE0F \u0417\u043C\u0456\u043D\u0438\u0442\u0438</button></div>
       <h3 class="muted" style="margin:14px 0 6px;font-size:14px">\u041D\u0430\u0439\u0431\u043B\u0438\u0436\u0447\u0456 \u0441\u0442\u0440\u043E\u043A\u0438</h3>
@@ -4656,9 +4656,12 @@ var __objRest = (source, exclude) => {
       renderMain();
     }
   });
-  document.addEventListener("change", async (e) => {
-    const el = e.target.closest("input[data-tx]");
-    if (el && S.txR) await taxDo({ [el.dataset.tx]: el.checked ? 1 : 0 });
+  document.addEventListener("click", async (e) => {
+    const el = e.target.closest("[data-txs]");
+    if (!el || !S.txR) return;
+    const k = el.dataset.txs, on2 = S.txR.tax[k] ? 0 : 1;
+    el.classList.toggle("on", !!on2);
+    await taxDo({ [k]: on2 });
   });
   function prnCard() {
     if (!isAdmin() || !window.PRN) return "";
