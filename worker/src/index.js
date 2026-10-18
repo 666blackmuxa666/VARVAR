@@ -384,7 +384,7 @@ async function admin(b, ip, env) {
 
 // 🌐 posatom.online/<заклад>/… → файли сайту (GitHub Pages) без змін; заклад береться зі шляху (js/config.js).
 // /<заклад>/ — візитка; /<заклад>/?t=…&k=… (QR столу) — меню; /owner/ — кабінет власника; / — поки VARVAR
-const ATOM_SEO = { '/pos-kafe': '/seo-pos-kafe.html', '/kasa-restoran': '/seo-kasa-restoran.html', '/qr-menu': '/seo-qr-menu.html' };
+const ATOM_SEO = { '/pos-kafe': '/seo-pos-kafe.html', '/kasa-restoran': '/seo-kasa-restoran.html', '/qr-menu': '/seo-qr-menu.html', '/blog': '/blog.html' };
 async function atomSite(req, env) {
   let url = new URL(req.url);
   if (url.hostname === 'www.posatom.online') return Response.redirect('https://posatom.online' + url.pathname + url.search, 301);
@@ -426,6 +426,7 @@ async function atomApi(req, env, url) {
     }
     if (req.method !== 'POST') return J({ error: 'method' }, 405);
     const b = await req.json().catch(() => ({}));
+    if (url.pathname === '/api/atomev') { const e = ['try', 'lead_form', 'signup'].includes(b.e) ? b.e : ''; if (e && ip) { const k = 'aev:' + e + ':' + ip.slice(0, 64); if (!(await env.DB.get(k))) { await env.DB.put(k, '1', { expirationTtl: 600 }); await H.hit(e); } } return J({ ok: true }); } // 📈 воронка: клік «Спробувати касу», заявка, самореєстрація (раз на 10 хв з IP)
     if (url.pathname === '/api/atomhit') { if (ip) await H.hitOnce(ip); return J({ ok: true }); }
     if (url.pathname === '/api/lead') {
       if (b.web) return J({ ok: true }); // 🍯 пастка для ботів

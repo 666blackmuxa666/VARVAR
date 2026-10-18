@@ -446,9 +446,10 @@ footer a { color: var(--muted); }
     if (d.chat && !PV) chatInit();
     if (d.left == null) return; $('#pLeft').textContent = d.left; $('#pTot').textContent = d.total; $('#pBar').style.width = Math.round((d.total - d.left) / d.total * 100) + '%'; }).catch(() => {});
   if (!PV) try { if (!sessionStorage.getItem('ah')) { sessionStorage.setItem('ah', 1); fetch('/api/atomhit', { method: 'POST', body: '{}' }).catch(() => {}); } } catch {}
+  const ev = e => { if (!PV) fetch('/api/atomev', { method: 'POST', body: JSON.stringify({ e }) }).catch(() => {}); }; // 📈 події воронки
   // 📱 демо-каса
   document.querySelectorAll('[data-demo]').forEach(b => b.addEventListener('click', async () => {
-    const m = $('#demoMsg'); if (PV) { m.textContent = '👁 Це перегляд конструктора — демо відкривається на сайті.'; return; } b.disabled = true; const t = b.textContent; b.textContent = '⏳ Відкриваю…';
+    const m = $('#demoMsg'); if (PV) { m.textContent = '👁 Це перегляд конструктора — демо відкривається на сайті.'; return; } ev('try'); b.disabled = true; const t = b.textContent; b.textContent = '⏳ Відкриваю…';
     try { const r = await fetch('/api/demo', { method: 'POST', body: '{}' }).then(r => r.json()); if (!r.token) throw new Error(r.error || 'Демо недоступне');
       location.href = `/${r.venue}/pos.html?venue=${r.venue}#tok=${r.token}&me=${encodeURIComponent(JSON.stringify({ name: 'Гість демо', role: 'admin' }))}`;
     } catch (e) { m.textContent = '⚠️ ' + e.message + ' — подивіться живий сайт або залиште заявку, покажемо особисто.'; document.getElementById('demo').scrollIntoView(); b.disabled = false; b.textContent = t; }
@@ -478,7 +479,7 @@ footer a { color: var(--muted); }
     if ((d.pass || '').length < 8) { m.className = 'msg err'; m.textContent = 'Пароль — щонайменше 8 символів'; return f.pass.focus(); }
     const btn = f.querySelector('button'); btn.disabled = true; m.textContent = 'Реєструю…';
     try { const r = await fetch('/api/owner', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'signup', ...d, ref: refCode() }) }).then(r => r.json()); if (!r.ok) throw new Error(r.error || 'Не вдалося');
-      f.reset(); m.className = 'msg ok'; m.textContent = '✉️ Лист надіслано — натисніть кнопку в ньому (перевірте «Спам»), і заклад буде створено.';
+      ev('signup'); f.reset(); m.className = 'msg ok'; m.textContent = '✉️ Лист надіслано — натисніть кнопку в ньому (перевірте «Спам»), і заклад буде створено.';
     } catch (x) { m.className = 'msg err'; m.textContent = '⚠️ ' + x.message; }
     btn.disabled = false;
   });
@@ -489,7 +490,7 @@ footer a { color: var(--muted); }
     if (!/^\+?\d{9,13}$/.test((d.phone || '').replace(/[\s()-]/g, ''))) { m.className = 'msg err'; m.textContent = 'Вкажіть телефон, напр. +380 67 123 45 67'; f.phone.focus(); return; }
     const btn = f.querySelector('button'); btn.disabled = true; m.textContent = 'Надсилаю…';
     try { const r = await fetch('/api/lead', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...d, src: location.hash.slice(1) || 'site', ref: refCode() }) }).then(r => r.json()); if (!r.ok) throw new Error(r.error || 'Не вдалося');
-      f.reset(); m.className = 'msg ok'; m.textContent = '✅ Дякуємо! Передзвонимо найближчим часом.';
+      ev('lead_form'); f.reset(); m.className = 'msg ok'; m.textContent = '✅ Дякуємо! Передзвонимо найближчим часом.';
     } catch (x) { m.className = 'msg err'; m.textContent = '⚠️ ' + x.message + '. Або напишіть у Telegram.'; }
     btn.disabled = false;
   });
