@@ -34,7 +34,13 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | `menu.js` | 271 | Меню в KV + редагування через Telegram звичайними фразами. |
 | `migrate.js` | 17 | 🧬 Міграції даних закладу: коли змінюється формат даних, кожен заклад САМ оновлюється при першому зверненні |
 | `mono.js` | 61 | 💳 monobank (еквайринг): рахунок (invoice/create), вебхук з перевіркою ECDSA-підпису (X-Sign + pubkey), повернення (cancel). |
-| `ops.js` | 1215 | Спільна логіка закладу для Telegram-бота і касової програми (POS). |
+| `ops-bill.js` | 366 | 🍽 Стіл: замовлення (гість/офіціант), прийняти/відхилити, скасування страв, закриття й оплата, знижка, чайові, перенесення, розділення, вида |
+| `ops-closed.js` | 152 | 🧾 Закриті рахунки: список, видалення/повернення, редагування, повторне відкриття, відновлення стола, передрук |
+| `ops-core.js` | 183 | 🧱 Ядро закладу: дата/робочий день, гроші, рахунки столів (get/put), замки L(), стрічка подій, статистика, налаштування, зали й схема, групи |
+| `ops-kitchen.js` | 118 | 👨‍🍳 Кухня: цехи (станції), черга кухонного екрана, готовність, статистика кухні |
+| `ops-money.js` | 301 | 💰 Гроші й звіти: витрати, рух коштів, залишки, звірка, зміна, Z/X-звіти, рекорд дня, звіти за період |
+| `ops-staff.js` | 135 | 👥 Доступ і персонал: паролі, PIN, коди реєстрації, працівники, права, перейменування, аватарки |
+| `ops.js` | 10 | Спільна логіка закладу для Telegram-бота і касової програми (POS). |
 | `orderui.js` | 131 | Замовлення офіціанта кнопками: стіл → категорія → страва → (розмір) → кількість → знову категорії. |
 | `owner.js` | 380 | 👑 Кабінет власника мережі й консоль платформи: /api/owner (поза закладом) + внутрішні виклики закладів /__int/* (всередині Store). |
 | `pay.js` | 232 | 👷 Графік змін і зарплата: прихід «Почати зміну» → адмін підтверджує → ✅ у графіку; ставка за зміну + % від виручки + бонус за план; |
@@ -307,15 +313,15 @@ _Ключ — префікс до «:» (`bill:`, `att:`…)._
 | Ключ | Файли |
 |---|---|
 | `acct:` | hub.js |
-| `adm:` | bot.js, ops.js, pos.js |
+| `adm:` | bot.js, ops-staff.js, pos.js |
 | `admmsg:` | bot.js |
 | `ai:` | ai.js |
 | `ait:` | aitest.js |
-| `alog:` | ops.js |
+| `alog:` | ops-core.js |
 | `att:` | pay.js, push.js |
 | `bak:` | owner.js |
-| `bfprev:` | ops.js |
-| `bill:` | ops.js |
+| `bfprev:` | ops-core.js |
+| `bill:` | ops-bill.js, ops-core.js, ops-staff.js |
 | `bkm:` | site.js |
 | `book:` | demoseed.js, site.js |
 | `brand:` | brand.js |
@@ -323,16 +329,16 @@ _Ключ — префікс до «:» (`bill:`, `att:`…)._
 | `cert:` | site.js |
 | `cfg:` | delivery.js, index.js, lpay.js, owner.js, photoai.js, pos.js, store.js, venue.js |
 | `cli:` | delivery.js, promo.js |
-| `closed:` | ops.js, pos.js |
+| `closed:` | ops-bill.js, ops-closed.js, ops-core.js, pos.js |
 | `cnt:` | stock.js |
-| `cooks:` | ops.js, pay.js, pos.js |
+| `cooks:` | ops-bill.js, pay.js, pos.js |
 | `cph:` | courier.js |
 | `ctl:` | courier.js |
-| `day:` | ops.js, site.js |
-| `dish:` | ops.js |
+| `day:` | ops-money.js, site.js |
+| `dish:` | ops-money.js |
 | `draft:` | bot.js |
-| `ev:` | ops.js |
-| `exp:` | ops.js |
+| `ev:` | ops-core.js |
+| `exp:` | ops-money.js |
 | `expd:` | bot.js |
 | `fail:` | bot.js |
 | `gav:` | site.js |
@@ -345,30 +351,30 @@ _Ключ — префікс до «:» (`bill:`, `att:`…)._
 | `gridx:` | pay.js |
 | `gs:` | site.js |
 | `gst:` | guestbot.js |
-| `img:` | brand.js, index.js, menu.js, ops.js, photoai.js, pos.js, site.js, siteapi.js |
+| `img:` | brand.js, index.js, menu.js, ops-staff.js, photoai.js, pos.js, site.js, siteapi.js |
 | `inv:` | stock.js |
 | `invd:` | stockbot.js |
 | `invl:` | suppliers.js |
 | `kbm:` | kitbot.js |
 | `kbw:` | bot.js |
 | `kfail:` | kitbot.js |
-| `kq:` | courier.js, ops.js |
+| `kq:` | courier.js, ops-core.js, ops-kitchen.js |
 | `lcs:` | promo.js |
 | `lead:` | hub.js |
 | `lfail:` | pos.js |
 | `lk:` | index.js |
-| `mov:` | ops.js, pay.js |
+| `mov:` | ops-money.js, pay.js |
 | `msg:` | hub.js |
 | `nsT:` | index.js |
 | `ob:` | orderui.js |
 | `okip:` | pos.js |
-| `ord:` | courier.js, delivery.js, index.js, ops.js |
+| `ord:` | courier.js, delivery.js, index.js, ops-bill.js |
 | `pay:` | pay.js |
 | `plan:` | pay.js |
 | `pos:` | owner.js, pos.js |
 | `push:` | push.js |
 | `rate:` | site.js |
-| `rec:` | ops.js, pos.js |
+| `rec:` | ops-money.js, pos.js |
 | `rl:` | index.js |
 | `rvph:` | site.js |
 | `rvtxt:` | site.js |
@@ -381,14 +387,14 @@ _Ключ — префікс до «:» (`bill:`, `att:`…)._
 | `sup:` | suppliers.js |
 | `sv:` | site.js |
 | `task:` | tasks.js |
-| `tgs:` | bot.js, ops.js |
+| `tgs:` | bot.js, ops-staff.js |
 | `tippay:` | pos.js |
 | `tph:` | tasks.js |
 | `tpp:` | lpay.js |
 | `vc:` | pos.js |
 | `venue:` | hub.js |
-| `void:` | ops.js |
-| `wlog:` | bot.js, ops.js, pos.js |
+| `void:` | ops-bill.js, ops-closed.js |
+| `wlog:` | bot.js, ops-staff.js, pos.js |
 | `zpbs:` | bot.js |
 
 ## Фронт (не каса)
