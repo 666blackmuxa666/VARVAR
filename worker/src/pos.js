@@ -148,10 +148,17 @@ export async function posApi(b, req, env) {
     }
     case 'remove': { const r = await removeOne(env, t, String(b.name), who, b.reason); if (r?.error) return [{ error: r.error }, 400]; if (r) await notify(env, `🖥 ✏️ Стіл ${tn(t)}: скасовано 1× ${esc(r.name)} (−${r.unit} грн)\n❓ Причина: <i>${esc(r.reason)}</i> — ${esc(who)}`); return ok({ r }); }
     case 'precheck': return ok({ done: await precheck(env, t, who) });
+    case 'ibanQr': { // 🏦 QR НБУ для оплати переказом на рахунок закладу (банківський застосунок гостя)
+      const F = await import('./fiscal.js'), v = await F.ibanGet(env); if (!v) return [{ error: 'Рахунок для переказу не вказано — власник додає його в кабінеті (💳 Оплата)' }, 400];
+      const bl = await getBill(env, t); if (!bl.total) return [{ error: 'Стіл порожній' }, 400];
+      const sum = payable(bl) + (bl.tip || 0) + (bl.ktip || 0) - Math.round(bl.go?.paid?.sum || bl.paid?.sum || 0); if (!(sum > 0)) return [{ error: 'Усе вже оплачено' }, 400];
+      const url = F.ibanQr(v, sum, `Оплата за замовлення, стіл ${tn(t)}`), png = await (await import('./qr.js')).qrPng(url, 6);
+      return ok({ sum, n: v.n || '', iban: v.iban, img: 'data:image/png;base64,' + btoa(String.fromCharCode(...png)) }); }
     case 'close': {
-      if (b.pay && !['card', 'cash'].includes(b.pay)) return [{ error: 'Невідомий спосіб оплати' }, 400];
-      const r = await closeTable(env, t, who, b.pay === 'card' ? 'card' : 'cash', b.print !== false);
-      if (r) await notify(env, `🖥 ✅ <b>Стіл ${tn(t)} закрито</b> — ${money(r.sum)}${r.disc ? ` (знижка ${money(r.disc)})` : ''} · ${payLabel(r.cash, r.card)}${b.print === false ? ' · без чека' : ''} — ${esc(who)}`);
+      if (b.pay && !['card', 'cash', 'iban'].includes(b.pay)) return [{ error: 'Невідомий спосіб оплати' }, 400];
+      if (b.pay === 'iban' && !(await (await import('./fiscal.js')).ibanGet(env))) return [{ error: 'Рахунок для переказу не вказано — власник додає його в кабінеті (💳 Оплата)' }, 400];
+      const r = await closeTable(env, t, who, ['card', 'iban'].includes(b.pay) ? b.pay : 'cash', b.print !== false);
+      if (r) await notify(env, `🖥 ✅ <b>Стіл ${tn(t)} закрито</b> — ${money(r.sum)}${r.disc ? ` (знижка ${money(r.disc)})` : ''} · ${payLabel(r.cash, r.card, r.ib)}${b.print === false ? ' · без чека' : ''} — ${esc(who)}`);
       return ok({ r });
     }
     case 'discount': { const r = await setDiscount(env, t, b.pct, who, me.perm?.discountMax != null ? discLimit(me) : admin); if (r?.error) return [{ error: r.error }, 400]; if (r) await notify(env, `🖥 % Стіл ${tn(t)}: ${r.disc ? `знижка ${r.disc}% — до сплати ${money(payable(r))}` : 'знижку прибрано'} — ${esc(who)}`); return ok(); }
@@ -250,7 +257,7 @@ export async function posApi(b, req, env) {
     case 'closedReopen': { if (!admin) return needAdmin(); const x = await reopenClosed(env, String(b.ref), who, b.day); if (x) await notify(env, `🖥 ↩️ <b>Стіл ${tn(x.t)}</b>: закритий рахунок (${money(x.sum)}, ${x.at}) відкрито знову — ${esc(who)}`, tgBtns(x.t)); return ok({ x }); }
     case 'tableBack': { if (!admin) return needAdmin(); const x = await restoreTable(env, String(b.ref), who, b.day); if (x) await notify(env, `🖥 ↩️ <b>Стіл ${tn(x.t)}</b> відновлено (${money(x.sum)}) — ${esc(who)}`, tgBtns(x.t)); return ok({ x }); }
     case 'closedEdit': { if (!admin) return needAdmin(); const r = await editClosed(env, String(b.ref), b.p, who, b.day); if (r.error) return [{ error: r.error }, 400];
-      if (r.what.length) await notify(env, `🖥 ✏️ <b>Чек стола ${tn(r.x.t)}</b> (${r.x.at}${isDay(b.day) && b.day !== dayKey() ? ', ' + b.day : ''}) змінено: ${esc(r.what.join(', '))}\nБуло ${money(r.was)} → <b>${money(r.x.sum)}</b> · ${payLabel(r.x.cash, r.x.card)} — ${esc(who)}`); return ok({ x: r.x, what: r.what }); }
+      if (r.what.length) await notify(env, `🖥 ✏️ <b>Чек стола ${tn(r.x.t)}</b> (${r.x.at}${isDay(b.day) && b.day !== dayKey() ? ', ' + b.day : ''}) змінено: ${esc(r.what.join(', '))}\nБуло ${money(r.was)} → <b>${money(r.x.sum)}</b> · ${payLabel(r.x.cash, r.x.card, r.x.ib)} — ${esc(who)}`); return ok({ x: r.x, what: r.what }); }
     case 'closedRefund': { // ↩️ закритий чек оплачено онлайн → повернути гостю через LiqPay і зняти чек з виручки
       if (!admin) return needAdmin(); const day = b.day || dayKey(), x = (await getClosed(env, day)).find(c => c.id === String(b.ref));
       if (!x?.lpo?.length) return [{ error: 'Цей чек не оплачувався онлайн' }, 400]; if (x.del || x.rm) return [{ error: 'Чек уже знято з виручки' }, 400];

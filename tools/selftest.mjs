@@ -907,22 +907,66 @@ async function loyTests(A, W, dish) {
       { const o = await vpos(VA, 'order', { t: 6, items: [{ id: it.id, q: 2 }] }); must(o.status === 200, 'order ' + JSON.stringify(o.j).slice(0, 160)); }
       const c = await vpos(VA, 'close', { t: 6, pay: 'card' }); must(c.status === 200, 'close ' + JSON.stringify(c.j).slice(0, 100));
       let x; for (let i = 0; i < 20 && !x?.fis; i++) { await sleep(150); x = (await vpos(VA, 'closed')).j.list.filter(r => r.t === 6 && !r.rm).pop(); }
-      must(x?.fis?.st === 'ok' && x.fis.id, 'фіскальний стан: ' + JSON.stringify(x?.fis));
+      must(x?.fis?.st === 'ok' && x.fis.r?.a?.id, 'фіскальний стан: ' + JSON.stringify(x?.fis));
       let m = (await vpos(VA, 'fisInfo')).j.mock, sell = m.filter(q => q.path === '/receipts/sell').pop()?.body;
       must(m.some(q => q.path === '/shifts'), 'зміна Checkbox не відкрилась');
-      must(sell?.id === x.fis.id && sell.goods[0].quantity === 2000 && sell.goods.reduce((a, g) => a + g.good.price * g.quantity / 1000, 0) - (sell.discounts?.[0]?.value || 0) === x.sum * 100, 'тіло чека: ' + JSON.stringify(sell).slice(0, 200));
+      must(sell?.id === x.fis.r.a.id && sell.goods[0].quantity === 2000 && sell.goods.reduce((a, g) => a + g.good.price * g.quantity / 1000, 0) - (sell.discounts?.[0]?.value || 0) === x.sum * 100, 'тіло чека: ' + JSON.stringify(sell).slice(0, 200));
       must(sell.payments.length === 1 && sell.payments[0].type === 'CASHLESS' && sell.payments[0].value === x.sum * 100, 'оплата карткою: ' + JSON.stringify(sell.payments));
-      must((await vpos(VA, 'fisRetry', { ref: x.id })).j.id === x.fis.id, 'повтор без змін створив новий чек');
+      must((await vpos(VA, 'fisRetry', { ref: x.id })).j.r?.a?.id === x.fis.r.a.id, 'повтор без змін створив новий чек');
       must((await vpos(VA, 'closedDel', { ref: x.id })).status === 200, 'closedDel');
-      let y; for (let i = 0; i < 20 && !y?.fis?.ret; i++) { await sleep(150); y = (await vpos(VA, 'closed')).j.list.find(r => r.id === x.id); }
+      let y; for (let i = 0; i < 20 && !y?.fis?.r?.a?.ret; i++) { await sleep(150); y = (await vpos(VA, 'closed')).j.list.find(r => r.id === x.id); }
       m = (await vpos(VA, 'fisInfo')).j.mock; const ret = m.filter(q => q.path === '/receipts/sell').pop()?.body;
-      must(y?.fis?.ret?.length === 1 && !y.fis.id && ret.goods.every(g => g.is_return) && ret.related_receipt_id === x.fis.id, 'повернення: ' + JSON.stringify(y?.fis));
+      must(y?.fis?.r?.a?.ret?.length === 1 && !y.fis.r.a.id && ret.goods.every(g => g.is_return) && ret.related_receipt_id === x.fis.r.a.id, 'повернення: ' + JSON.stringify(y?.fis));
       must((await vpos(VA, 'cashMove', { type: 'in', sum: 100, note: 'QA' })).status === 200, 'cashMove');
       m = (await vpos(VA, 'fisInfo')).j.mock; must(m.some(q => q.path === '/receipts/service' && q.body.payment.value === 10000), 'службове внесення');
       const z = await vpos(VA, 'zDay', { print: false }); must(z.j.z.fis?.ok, 'Z у Checkbox: ' + JSON.stringify(z.j.z.fis));
       m = (await vpos(VA, 'fisInfo')).j.mock; must(m.some(q => q.path === '/shifts/close'), 'зміна Checkbox не закрита');
     } finally { await ownT(PT, 'secrets', { venue: VID, f: { CHECKBOX_LICENSE: '' } }); }
     must((await vpos(VA, 'fisInfo')).j.on === 0, 'ПРРО не відключився');
+  });
+  await step('🏪 ПРРО: два ФОП (чек ділиться за розділами, ліміт року), обрив відповіді Checkbox без дубля, 🏦 переказ за QR без чека, сторно службового', async () => {
+    const vok = async (op, b) => { const r = await vpos(VA, op, b); must(r.status === 200 && r.j.ok, `${op} → ${r.status} ${JSON.stringify(r.j).slice(0, 200)}`); return r.j; };
+    const sec = f => ownT(PT, 'secrets', { venue: VID, f }), mockL = async () => (await vok('fisInfo')).mock || [];
+    const waitFis = async (t, ok) => { let x; for (let i = 0; i < 25; i++) { await sleep(150); x = (await vpos(VA, 'closed')).j.list.filter(r => r.t === t && !r.rm).pop(); if (x?.fis && (!ok || ok(x.fis))) break; } return x; };
+    const ib = (() => { const bban = '305299' + String(Date.now()).padStart(19, '0').slice(-19), cc = 98n - BigInt(bban + '301000') % 97n; return 'UA' + String(cc).padStart(2, '0') + bban; })();
+    must((await sec({ FOP: { n: 'QA', lic: 'mock-test-x', pin: '1234' } })).status === 400, 'ФОП без головної каси');
+    must((await sec({ CHECKBOX_LICENSE: 'mock-test', CHECKBOX_PIN: '1234' })).j.ok, 'головна каса');
+    try {
+      const cats = (await http(`/v/${VID}/api/menu`)).j.categories.filter(c => c.items.some(i => typeof i.price === 'number' && !i.hidden)); must(cats.length >= 2, 'потрібно 2 розділи меню');
+      const pick = c => c.items.find(i => typeof i.price === 'number' && !i.hidden), i1 = pick(cats[0]), i2 = pick(cats[1]);
+      must((await sec({ FOP: { n: 'QA ФОП Б', g: 2, cats: [cats[1].id], lic: 'mock-test', pin: '1234' } })).status === 400, 'та сама каса двічі');
+      const fb = await sec({ FOP: { n: 'QA ФОП Б', g: 2, cats: [cats[1].id], lic: 'mock-test-drop-' + RUN, pin: '1234' } }); must(fb.j.ok, 'ФОП Б: ' + JSON.stringify(fb.j).slice(0, 150));
+      must((await sec({ FOP: { k: 'a', n: 'QA ФОП А', g: 1, base: 1000 } })).j.ok, 'опис головної каси');
+      let fi = await vok('fisInfo'); const [ka, kb] = fi.kasas || [];
+      must(fi.kasas?.length === 2 && kb.k === 'b' && kb.cats[0] === cats[1].id && ka.lim === 1444049 && ka.inc >= 1000 && kb.lim === 7211598, 'каси: ' + JSON.stringify(fi.kasas).slice(0, 250));
+      { const o = await vpos(VA, 'order', { t: 6, items: [{ id: i1.id, q: 1 }, { id: i2.id, q: 2 }] }); must(o.status === 200, 'order ' + JSON.stringify(o.j).slice(0, 160)); }
+      must((await vpos(VA, 'close', { t: 6, pay: 'cash' })).status === 200, 'close');
+      let x = await waitFis(6); must(x?.fis?.st === 'err' && x.fis.r?.b?.unk, 'обрив не позначено: ' + JSON.stringify(x?.fis).slice(0, 200));
+      const r = await vok('fisRetry', { ref: x.id }); must(r.st === 'ok' && r.r.a.id && r.r.b.id && !r.r.b.unk, 'повтор після обриву: ' + JSON.stringify(r).slice(0, 200));
+      let m = await mockL(); const sells = k => m.filter(q => q.path === '/receipts/sell' && q.k === k), sa = sells('a').pop()?.body, sb = sells('b');
+      must(sb.length === 1, 'після обриву чек ФОП Б надіслано двічі: ' + sb.length);
+      must(sa.goods.every(g => g.good.name !== i2.name.uk) && sb[0].body.goods.every(g => g.good.name === i2.name.uk || g.good.name.startsWith(i2.name.uk)), 'розділи не поділились');
+      must((sa.payments[0].value + sb[0].body.payments[0].value) === x.sum * 100, 'суми кас ≠ чек');
+      fi = await vok('fisInfo'); must(fi.kasas[1].inc > kb.inc && fi.kasas[0].inc > ka.inc && fi.fis >= x.sum, 'річний дохід / звірка: ' + JSON.stringify(fi).slice(0, 250));
+      must((await vpos(VA, 'ibanQr', { t: 7 })).status === 400, 'QR без рахунку');
+      must((await sec({ IBAN_PAY: { n: 'ФОП QA', iban: ib.slice(0, -1) + ((+ib.at(-1) + 1) % 10), ipn: '1234567890' } })).status === 400, 'IBAN з помилкою прийнято');
+      must((await sec({ IBAN_PAY: { n: 'ФОП QA', iban: ib, ipn: '1234567890' } })).j.ok, 'IBAN');
+      must((await vpos(VA, 'order', { t: 7, items: [{ id: i1.id, q: 1 }] })).status === 200, 'order 9');
+      const q = await vok('ibanQr', { t: 7 }); must(q.sum > 0 && q.iban === ib && /^data:image\/png;base64,/.test(q.img), 'QR: ' + JSON.stringify(q).slice(0, 120));
+      must((await vpos(VA, 'close', { t: 7, pay: 'iban', print: false })).status === 200, 'close iban');
+      let y = await waitFis(7); must(y?.ib === q.sum && y.fis?.ibc === q.sum * 100 && !Object.values(y.fis.r || {}).some(z => z.id), 'переказ без чека: ' + JSON.stringify(y).slice(0, 250));
+      must((await sec({ FIS_IB: 1 })).j.ok, 'FIS_IB'); const r2 = await vok('fisRetry', { ref: y.id });
+      m = await mockL(); const s9 = m.filter(q => q.path === '/receipts/sell').pop()?.body;
+      must(r2.r?.a?.id && !r2.ibc && s9.payments[0].label === 'Переказ на рахунок', 'переказ у чеку: ' + JSON.stringify(s9?.payments));
+      must((await vpos(VA, 'cashMove', { type: 'in', sum: 50, note: 'QA FOP' })).status === 200, 'cashMove');
+      const mv = (await vok('shift')).mov, i = mv.findIndex(e => e.note === 'QA FOP' && !e.del); must(mv[i]?.fs === 1, 'службове: ' + JSON.stringify(mv[i]));
+      await vok('moveDel', { i }); m = await mockL(); must(m.filter(q => q.path === '/receipts/service').pop()?.body.payment.value === -5000, 'сторно службового не надіслано');
+      const z = await vpos(VA, 'zDay', { print: false }); must(z.j.z.fis?.ok && z.j.z.fisDay, 'Z: ' + JSON.stringify(z.j.z.fis));
+      m = await mockL(); must(['a', 'b'].every(k => m.some(q => q.path === '/shifts/close' && q.k === k)), 'Z не закрив обидві каси');
+      must((await sec({ FOP_DEL: 'b' })).j.ok && (await vok('fisInfo')).kasas.length === 1, 'прибрати ФОП Б');
+    } finally { await sec({ IBAN_PAY: '' }); await sec({ FIS_IB: 0 }); await sec({ CHECKBOX_LICENSE: '' }); }
+    must(!(await vok('fisInfo')).iban, 'IBAN не прибрано');
+    return 'А+Б, обрив, QR, сторно';
   });
   await step('🍾 акциз: марки пляшок → продаж не більше марок, марка в чеку раз на пляшку, дубль/прибрати, повернення чека', async () => {
     const sv = await ownT(PT, 'secrets', { venue: VID, f: { CHECKBOX_LICENSE: 'mock-test', CHECKBOX_PIN: '1234' } }); must(sv.j.ok, 'ПРРО: ' + JSON.stringify(sv.j).slice(0, 120));

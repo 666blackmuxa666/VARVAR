@@ -71,7 +71,7 @@ async function _editClosed(env, ref, p, who, day = dayKey()) {
   const oSplit = tipSplitOf(x); let split = oSplit;
   if (tip !== oTip || w !== (x.w || x.by || '')) { const kt = Math.min(x.ktip || 0, tip); split = tip ? await splitTip(env, w, tip - kt, kt) : {}; }
   const oOnl = x.onl || 0, onl = Math.min(oOnl, card); /* 🌐 онлайн не може бути більшим за безготівку */
-  Object.assign(x, { t, w, sum, cash, card, dishes }); if (onl) x.onl = onl; else delete x.onl;
+  Object.assign(x, { t, w, sum, cash, card, dishes }); if (onl) x.onl = onl; else delete x.onl; if (x.ib) { x.ib = Math.min(x.ib, card); if (!x.ib) delete x.ib; } /* 🏦 переказ — частина безготівки */
   if (pct) Object.assign(x, { disc: pct, discSum, gross }); else { delete x.disc; delete x.discSum; delete x.gross; }
   if (tip) Object.assign(x, { tip, tipSplit: split }); else { delete x.tip; delete x.tipSplit; delete x.ktip; }
   if (x.ktip && x.ktip > tip) x.ktip = tip;

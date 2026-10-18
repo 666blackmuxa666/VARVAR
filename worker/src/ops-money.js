@@ -1,6 +1,6 @@
 // 💰 Гроші й звіти: витрати, рух коштів, залишки, звірка, зміна, Z/X-звіти, рекорд дня, звіти за період
 // (частина ops.js — інші файли імпортують з ops.js, як і раніше)
-import { fisOn, fisRetry, fisService, fisZ } from './fiscal.js';
+import { fisOn, fisRetry, fisMov, fisZ, fisDay } from './fiscal.js';
 import { courOwed } from './courier.js';
 import { getMenu } from './menu.js';
 import { tipSplitOf } from './ops-bill.js';
@@ -161,17 +161,20 @@ export async function closeShift(env, counted, who, print = true) {
   z.diff = z.counted == null ? null : z.counted - z.inBox;
   const k = 'z:' + dayKey(); const l = (await env.DB.get(k, 'json')) || []; l.push(z); await env.DB.put(k, JSON.stringify(l));
   await env.DB.delete('shift');
-  if (fisOn(env)) { await fisRetry(env).catch(() => {}); z.fis = await fisZ(env); await L(env, k, async () => { const l2 = (await env.DB.get(k, 'json')) || [], y = l2.find(q => q.closed === z.closed); if (y) { y.fis = z.fis; await env.DB.put(k, JSON.stringify(l2)); } }); } // 🧾 Z у Checkbox (спершу — досилаємо невідправлені чеки)
+  if (fisOn(env)) { await fisRetry(env).catch(() => {}); z.fis = await fisZ(env); z.fisDay = await fisDayOf(env, dayKey()); await L(env, k, async () => { const l2 = (await env.DB.get(k, 'json')) || [], y = l2.find(q => q.closed === z.closed); if (y) { y.fis = z.fis; y.fisDay = z.fisDay; await env.DB.put(k, JSON.stringify(l2)); } }); } // 🧾 Z у Checkbox (спершу — досилаємо невідправлені чеки)
   if (print) await queuePrint(env, 'z', zTicket(z));
   await logEvent(env, { k: 'shift', by: who, text: `🔒 Касу закрито · ${z.total} грн · в касі ${z.inBox} грн${z.diff ? ` · різниця ${z.diff > 0 ? '+' : ''}${z.diff}` : ''}` });
   return { z };
 }
+const fisDayOf = async (env, day) => { const [c, m] = await Promise.all([env.DB.get('closed:' + day, 'json'), env.DB.get('mov:' + day, 'json')]); return fisDay(c || [], m || []); };
+// 🧾 рядок ПРРО у Z (каса, бот, друк)
+export const fisZLine = z => !z.fis ? '' : `🧾 ПРРО: у чеках ${money(z.fisDay?.fis ?? 0)}${z.fisDay?.ib ? ` · 🏦 переказом ${money(z.fisDay.ib)}` : ''}${z.fisDay?.gap ? ` · ⚠️ без чека ${money(z.fisDay.gap)}` : ''}${z.fis.error ? ` · ⚠️ Z: ${z.fis.error}` : ' · Z ✅'}`;
 const fmtDT = t => new Date(t).toLocaleString('uk-UA', { timeZone: TZ, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '');
 export const zText = z => [`🔒 <b>Касу закрито</b> (${fmtDT(z.opened)} — ${fmtDT(z.closed)})`, '',
   `Чеків: ${z.checks} · виручка <b>${money(z.total)}</b>`, `💵 ${money(z.cash)} · 💳 ${money(z.card)}${z.onl ? ` (🌐 ${money(z.onl)})` : ''}${z.disc ? ` · знижки ${money(z.disc)}` : ''}`, z.tip ? `💝 Чайові (не виручка, персоналу): ${money(z.tip)}` : '', '',
   `На початок ${money(z.float)} + готівка ${money(z.cash)} − витрати ${money(z.exCash)}${z.mvCash ? ` ${z.mvCash > 0 ? '+' : '−'} рух коштів ${money(Math.abs(z.mvCash))}` : ''}`, `= <b>має бути в касі ${money(z.inBox)}</b>`,
   z.counted != null ? `Пораховано: ${money(z.counted)} · ${z.diff ? `<b>різниця ${z.diff > 0 ? '+' : ''}${money(z.diff)}</b>` : 'збігається ✅'}` : '',
-  z.fis ? (z.fis.error ? `⚠️ Z у Checkbox не пройшов: ${z.fis.error}` : '🧾 Z у Checkbox ✅') : '',
+  fisZLine(z),
   z.openTables ? `\n⚠️ Ще відкрито столів: ${z.openTables} (${money(z.openSum)})` : ''].filter(x => x !== '').join('\n');
 function zTicket(z) {
   return [['invb', 'Z-ЗВІТ'], ['c', 'Закриття каси'], ['gap'],
@@ -204,7 +207,7 @@ export async function dayZData(env, day = dayKey()) {
 }
 export async function dayZ(env, who, print = true, day = dayKey()) {
   const z = { ...(await dayZData(env, day)), opened: dayStart(Date.parse(day + 'T12:00:00Z')), closed: Date.now(), closedBy: who || '', kind: 'day' };
-  if (fisOn(env)) { await fisRetry(env, day).catch(() => {}); z.fis = await fisZ(env); } // 🧾 Z у Checkbox (спершу — досилаємо невідправлені чеки)
+  if (fisOn(env)) { await fisRetry(env, day).catch(() => {}); z.fis = await fisZ(env); z.fisDay = await fisDayOf(env, day); } // 🧾 Z у Checkbox (спершу — досилаємо невідправлені чеки)
   const k = 'z:' + day, l = (await env.DB.get(k, 'json')) || []; l.push(z); await env.DB.put(k, JSON.stringify(l));
   if (print) await queuePrint(env, 'z', zDayTicket(z));
   try { z.rec = await dayRecord(env, day, z.total, who); } catch {} // 🏆 рекорд закладу за день
@@ -235,7 +238,7 @@ export async function dayX(env, who, day = dayKey()) {
 }
 const dm = d => d.split('-').reverse().join('.');
 export const zDayText = z => [`🧾 <b>Z-звіт за ${dm(z.day)}</b>`, '',
-  z.fis ? (z.fis.error ? `⚠️ Z у Checkbox не пройшов: ${z.fis.error}\n` : '🧾 Z у Checkbox ✅\n') : '',
+  z.fis ? fisZLine(z) + '\n' : '',
   `Чеків: ${z.checks} · виручка <b>${money(z.total)}</b>`, `💵 Готівка: ${money(z.cash)}`, `💳 Картка: ${money(z.card)}${z.onl ? ` (термінал ${money(z.card - z.onl)} · 🌐 онлайн ${money(z.onl)})` : ''}`,
   z.disc ? `🏷 Знижки: ${money(z.disc)}` : '', z.tip ? `💝 Чайові (не виручка, персоналу): ${money(z.tip)}${Object.keys(z.tipBy || {}).length ? '\n' + Object.entries(z.tipBy).map(([n, s]) => `   👤 ${esc(n)}: ${money(s)}`).join('\n') : ''}` : '', `💸 Витрати: ${money(z.exCash + z.exCard)}${z.exCard ? ` (з картки ${money(z.exCard)})` : ''}`,
   z.mvCash || z.mvCard ? `🔁 Рух коштів: готівка ${z.mvCash >= 0 ? '+' : ''}${money(z.mvCash)}${z.mvCard ? `, картка ${z.mvCard >= 0 ? '+' : ''}${money(z.mvCard)}` : ''}` : '',
@@ -299,12 +302,12 @@ export async function delZ(env, i, day) { day = cDay(day); return L(env, 'z:' + 
 export async function restoreZ(env, i, day) { day = cDay(day); return L(env, 'z:' + day, () => _flagRec(env, 'z:', day, i, false)); }
 export async function addMove(env, ...a) {
   const e = await L(env, 'mov:' + dayKey(), () => _addMove(env, ...a));
-  const sg = { in: 1, out: -1, salc: -1, tipc: -1 }[e?.type]; // 🧾 готівка зайшла/вийшла з каси → службовий чек Checkbox
-  if (sg && fisOn(env)) { const r = await fisService(env, sg * e.sum); if (r?.error) { e.fisErr = r.error; await L(env, 'mov:' + dayKey(), async () => { const l = await getMov(env), y = l.find(x => x.ts === e.ts && x.sum === e.sum); if (y) { y.fisErr = r.error; await env.DB.put('mov:' + dayKey(), JSON.stringify(l)); } }); } }
+  if (e && fisOn(env)) { const r = await fisMov(env, dayKey(), e.ts, true); if (r?.fisErr) e.fisErr = r.fisErr; } // 🧾 готівка зайшла/вийшла з каси → службовий чек Checkbox
   return e;
 }
-export async function delMove(env, i, day, pay = true) { day = cDay(day); const r = await L(env, 'mov:' + day, () => _flagRec(env, 'mov:', day, i, true)); if (r && pay) await movPay(env, day, +i, true); return r; }
-export async function restoreMove(env, i, day, pay = true) { day = cDay(day); const r = await L(env, 'mov:' + day, () => _flagRec(env, 'mov:', day, i, false)); if (r && pay) await movPay(env, day, +i, false); return r; }
+const movFis = async (env, day, i) => { if (!fisOn(env)) return; const e = ((await env.DB.get('mov:' + day, 'json')) || [])[+i]; if (e) await fisMov(env, day, e.ts); }; // 🧾 скасували/відновили рух → зворотний службовий чек
+export async function delMove(env, i, day, pay = true) { day = cDay(day); const r = await L(env, 'mov:' + day, () => _flagRec(env, 'mov:', day, i, true)); if (r && pay) await movPay(env, day, +i, true); if (r) await movFis(env, day, i); return r; }
+export async function restoreMove(env, i, day, pay = true) { day = cDay(day); const r = await L(env, 'mov:' + day, () => _flagRec(env, 'mov:', day, i, false)); if (r && pay) await movPay(env, day, +i, false); if (r) await movFis(env, day, i); return r; }
 // 💵 аванс / виплату видалили в «Русі грошей» (каса чи бот) — та сама операція ЗП теж видаляється (і повертається), інакше лишається в профілі людини
 async function movPay(env, day, i, del) { const k = 'pay:' + day.slice(0, 7); await L(env, k, async () => { const l = (await env.DB.get(k, 'json')) || [], x = l.find(o => o.mov && o.mov.d === day && o.mov.i === i); if (!x || !!x.del === del) return; if (del) x.del = 1; else delete x.del; await env.DB.put(k, JSON.stringify(l)); }); }
 export async function reconcile(env, ...a) { return L(env, 'mov:' + dayKey(), () => _reconcile(env, ...a)); }

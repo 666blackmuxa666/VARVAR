@@ -184,8 +184,15 @@
     const t = S.open, b = S.tables[t]; if (!b) return;
     const v = await choose(`Закрити стіл ${tn(t)}`, `До сплати ${money(b.pay2)}${b.tip ? ` + 💝 чайові ${money(b.tip)} = ${money(b.pay2 + b.tip)}` : ''}${b.pay ? ` · гість хоче ${b.pay === 'card' ? '💳 карткою' : '💵 готівкою'}` : ''}`, [
       { label: '💵 Готівка + 🖨 чек', val: 'cash:1', cls: 'green' }, { label: '💳 Карта + 🖨 чек', val: 'card:1', cls: 'blue' },
-      { label: '💵 Готівка, без чека', val: 'cash:0' }, { label: '💳 Карта, без чека', val: 'card:0' }, { label: '➗ Порівну на гостей', val: 'eq' }]);
+      { label: '💵 Готівка, без чека', val: 'cash:0' }, { label: '💳 Карта, без чека', val: 'card:0' }, ...(S.cfg?.iban ? [{ label: '🏦 Переказ на рахунок', val: 'iban' }] : []), { label: '➗ Порівну на гостей', val: 'eq' }]);
     if (!v) return;
+    if (v === 'iban') { // 🏦 гість сканує QR своїм банком і переказує на рахунок закладу; закриваємо, коли гроші прийшли
+      const q = await api('ibanQr', { t }).catch(e => (toast('⚠️ ' + errText(e.message)), null)); if (!q) return;
+      const ok = await modal({ title: `🏦 Переказ · стіл ${tn(t)}`, body: `<div style="text-align:center"><img src="${q.img}" alt="QR" style="width:min(260px,70vw);image-rendering:pixelated;background:#fff;padding:8px;border-radius:10px"><div style="margin-top:8px;font-size:20px"><b>${money(q.sum)}</b></div>
+        <div class="muted" style="font-size:13px;margin-top:6px;overflow-wrap:anywhere">${esc(q.n)}<br>${esc(q.iban)}</div><div class="muted" style="font-size:12px;margin-top:8px">Гість сканує камерою телефону або в застосунку банку. Закрийте стіл, коли переказ надійшов на рахунок.</div></div>`,
+        buttons: [{ label: '✅ Гроші прийшли — закрити', val: 1, cls: 'primary' }, { label: 'Скасувати', val: null }] });
+      if (!ok) return; const r = await act('close', { t, pay: 'iban', print: false });
+      if (r?.r) { toast(`✅ Стіл ${tn(t)} закрито · 🏦 ${money(r.r.sum)}`); closeSheet(); loadState().then(wlFree.bind(null, t)).catch(() => {}); } return; }
     if (v === 'eq') { // підказка: скільки з кожного (оплата — окремо, одним рахунком)
       const n = Math.round(+await ask('Порівну на скількох?', `Сума ${money(b.pay2 + (b.tip || 0))}`, 'number')); if (!(n >= 2 && n <= 30)) return;
       const tot = b.pay2 + (b.tip || 0), one = Math.floor(tot / n), rest = tot - one * n;
@@ -251,10 +258,19 @@
     }
     return best;
   }
-  const payL = x => x.onl ? (x.onl < x.sum ? `🌐 онлайн ${money(x.onl)} + ${x.card > x.onl ? '💳' : '💵'} ${money(x.sum - x.onl)}` : '🌐 онлайн') : x.card && (x.cash ?? 0) ? `💵 ${money(x.cash)} + 💳 ${money(x.card)}` : x.card ? '💳 карта' : '💵 готівка';
+  const payL = x => x.onl ? (x.onl < x.sum ? `🌐 онлайн ${money(x.onl)} + ${x.card > x.onl ? '💳' : '💵'} ${money(x.sum - x.onl)}` : '🌐 онлайн') : x.card && (x.cash ?? 0) ? `💵 ${money(x.cash)} + 💳 ${money(x.card)}` : x.ib && x.ib >= x.card ? '🏦 переказ' : x.card ? '💳 карта' : '💵 готівка';
   // 🧾 ПРРО Checkbox: стан фіскального чека закритого рахунку
-  const fisNote = (x, ref) => !x.fis ? '' : x.fis.st === 'err' ? `<div class="c-note" style="color:var(--red,#e66)">🧾⚠️ Checkbox: ${esc(x.fis.err || 'помилка')}${isAdmin() ? ` <button class="c-b" data-a="cFis" data-ref="${ref}" data-d="${S.data.cday || ''}">🔁 Повторити</button>` : ''}</div>`
-    : x.fis.id ? `<div class="c-note">🧾 Фіскальний чек: <a href="https://check.checkbox.ua/${esc(x.fis.id)}" target="_blank" rel="noopener">відкрити</a>${x.fis.ret?.length ? ` · ↩️ повернень ${x.fis.ret.length}` : ''}</div>` : x.fis.ret?.length ? `<div class="c-note">🧾 Фіскальний чек повернено</div>` : '';
+  // 🧾 фіскальний стан: x.fis.r { каса: { id, h, s, ret } } (старий формат — x.fis.id/ret)
+  const fisR = f => Object.values(f.r || (f.id || f.ret ? { a: { id: f.id, ret: f.ret, h: f.h } } : {}));
+  const fisNote = (x, ref) => { const f = x.fis; if (!f) return ''; const R = fisR(f), ids = R.filter(r => r.id), rets = R.reduce((a, r) => a + (r.ret?.length || 0), 0);
+    if (f.st === 'err') return `<div class="c-note" style="color:var(--red,#e66)">🧾⚠️ Checkbox: ${esc(f.err || 'помилка')}${isAdmin() ? ` <button class="c-b" data-a="cFis" data-ref="${ref}" data-d="${S.data.cday || ''}">🔁 Повторити</button>` : ''}</div>`;
+    if (f.ibc) return `<div class="c-note">🏦 Переказ на рахунок — фіскальний чек не потрібен</div>`;
+    return ids.length ? `<div class="c-note">🧾 Фіскальн${ids.length > 1 ? 'і чеки' : 'ий чек'}: ${ids.map((r, i) => `<a href="https://check.checkbox.ua/${esc(r.id)}" target="_blank" rel="noopener">відкрити${ids.length > 1 ? ' ' + (i + 1) : ''}</a>`).join(' · ')}${rets ? ` · ↩️ повернень ${rets}` : ''}</div>` : rets ? `<div class="c-note">🧾 Фіскальний чек повернено</div>` : ''; };
+  // 🧮 звірка дня (з уже завантажених чеків, без запитів): виручка ↔ у фіскальних чеках ↔ переказом
+  const fisDayHTML = l => { if (!isAdmin() || !l.some(x => x.fis)) return ''; let sales = 0, fis = 0, ib = 0, bad = 0, wait = 0;
+    for (const x of l) { if (x.del) continue; if (!x.rm && x.sum > 0) { sales += x.sum; if (!x.fis) wait++; } if (x.fis?.st === 'err') bad++; if (x.fis) { ib += (x.fis.ibc || 0) / 100; for (const r of fisR(x.fis)) if (r.id) { try { fis += r.s != null ? r.s / 100 : JSON.parse(r.h).payments.reduce((a, p) => a + p.value, 0) / 100; } catch {} } } }
+    const gap = Math.round(sales - fis - ib);
+    return `<div class="c-note" style="margin:6px 0 10px">🧾 ПРРО: у чеках <b>${money(Math.round(fis))}</b> з ${money(sales)}${ib ? ` · 🏦 переказом ${money(Math.round(ib))}` : ''}${gap > 0 ? ` · <span style="color:var(--red,#e66)">⚠️ без чека ${money(gap)}${bad ? ` (помилок ${bad})` : ''}${wait ? ` (надсилається ${wait})` : ''}</span>` : ' · ✅ усе фіскалізовано'}</div>`; };
   function closedHTML() {
     const l = S.data.closed; if (!l) return '<div class="muted">Завантаження…</div>';
     const isToday = !S.data.cday || S.data.cday === S.data.ctoday, dTitle = isToday ? 'сьогодні' : S.data.cday.split('-').reverse().join('.');
@@ -269,11 +285,11 @@
         adm && x.rm && !x.reopen && !x.del && B('cBack', ref, '↩️ У виручку', 'ok'), adm && x.del && !x.restored && (x.dishes?.length || x.voids?.length) && B('tBack', ref, '↩️ Відновити', 'ok'),
         !g && adm && x.lpo?.length && B('cRefund', ref, `↩️ ${money(x.onl)} на картку`, '', ` data-s="${x.onl}"`), !g && adm && B('cDel', ref, '🗑', 'bad', ' title="Зняти з виручки"')].filter(Boolean).join('');
       const items = (x.dishes || []).map(([n, q, s]) => `<div><span>${q}× ${esc(n)}</span><b>${s}</b></div>`).join('');
-      return `<details class="c-card k-${kind(x)}${g ? ' gone' : ''}"><summary><span class="c-tm">${x.at}</span><span class="c-t">Стіл ${tn(x.t)}</span><span class="c-pay">${stat(x)}${x.disc ? ` · −${x.disc}%` : ''}${x.fis ? x.fis.st === 'err' ? ' · 🧾⚠️' : ' · 🧾' : ''}</span><b class="money c-sum">${money(x.sum)}</b></summary>
+      return `<details class="c-card k-${kind(x)}${g ? ' gone' : ''}"><summary><span class="c-tm">${x.at}</span><span class="c-t">Стіл ${tn(x.t)}</span><span class="c-pay">${stat(x)}${x.disc ? ` · −${x.disc}%` : ''}${x.fis ? x.fis.st === 'err' ? ' · 🧾⚠️' : x.fis.ibc ? ' · 🏦' : ' · 🧾' : ''}</span><b class="money c-sum">${money(x.sum)}</b></summary>
         <div class="c-body">${items ? `<div class="c-items">${items}</div>` : ''}${x.tip ? `<div class="c-note">💝 чайові ${money(x.tip)}</div>` : ''}${x.by ? `<div class="c-note">👤 ${esc(x.by)}${x.edits?.length ? ` · ✏️ змінено ${x.edits.length}× (${esc(x.edits[x.edits.length - 1].by)} ${x.edits[x.edits.length - 1].at})` : ''}</div>` : ''}
         ${x.voids?.length ? `<div class="voids">🚫 Скасовано:${x.voids.map(v => `<div>${v.at} · −${money(v.sum)} ${esc(v.name)} — <i>${esc(v.reason)}</i> <span class="muted">(${esc(v.by)})</span></div>`).join('')}</div>` : ''}${fisNote(x, ref)}${btns ? `<div class="c-btns">${btns}</div>` : ''}</div></details>`; };
     const voids = (S.data.cvoids || []).length ? `<details class="c-card k-rm"><summary><span class="c-tm">🚫</span><span class="c-t">Скасовані страви</span><span class="c-pay">${S.data.cvoids.length} шт.</span><b class="money c-sum">${money(S.data.cvoids.reduce((s, v) => s + (v.sum || 0), 0))}</b></summary><div class="c-body">${[...S.data.cvoids].reverse().map(v => `<div class="kv"><span>${v.at} · стіл ${tn(v.t)} · <b>${esc(v.name)}</b> — <i>${esc(v.reason || '')}</i> <span class="muted">(${esc(v.by || '')})</span></span><span class="kv-r"><b class="money">${money(v.sum)}</b>${isToday && isAdmin() ? `<button class="c-b ok" data-a="vBack" data-ts="${v.ts}">↩️ На стіл</button>` : ''}</span></div>`).join('')}</div></details>` : '';
-    return `${top}<div class="c-list">${[...l].reverse().map(card).join('') || `<div class="c-empty">🧾 ${isToday ? 'Сьогодні закритих рахунків ще немає' : 'Цього дня закритих рахунків немає'}</div>`}${voids}</div>`;
+    return `${top}${fisDayHTML(l)}<div class="c-list">${[...l].reverse().map(card).join('') || `<div class="c-empty">🧾 ${isToday ? 'Сьогодні закритих рахунків ще немає' : 'Цього дня закритих рахунків немає'}</div>`}${voids}</div>`;
   }
 
   // ---------- 🏛 зали (Налаштування → Правила роботи → Зали) ----------

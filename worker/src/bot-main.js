@@ -497,9 +497,18 @@ async function handleCallback(q, env) {
     const r = await (await import('./lpay.js')).tpayApi({ op: act === 'tpok' ? 'tpayOk' : 'tpayRefund', t: +arg, pay: 'cash' }, env, { role: admin ? 'admin' : 'waiter', name: who + ' · бот' });
     if (r[0].error) return answer('⚠️ ' + r[0].error);
     await edit(act === 'tpok' ? `✅ Стіл ${tn(arg)}: онлайн-оплату підтверджено, стіл закрито (${esc(who)})` : `↩️ Стіл ${tn(arg)}: гостю повернуто ${money(r[0].sum)} (${esc(who)})`); return answer(act === 'tpok' ? 'Закрито' : 'Повернуто'); }
-  if (act === 'clsok') { const txt = closedText(await closeTable(env, +arg, who, oid === 'card' ? 'card' : 'cash', opt !== 'np'));
+  if (act === 'ibq') { // 🏦 QR НБУ на переказ → фото в чат, закриття — коли гроші прийшли
+    const F = await import('./fiscal.js'), v = await F.ibanGet(env), b = await getBill(env, +arg); if (!v) return answer('Рахунок для переказу не вказано (кабінет → 💳 Оплата)'); if (!b.total) return answer(`Стіл ${tn(arg)} порожній`);
+    const sum = payable(b) + (b.tip || 0) + (b.ktip || 0) - Math.round(b.go?.paid?.sum || b.paid?.sum || 0); if (!(sum > 0)) return answer('Усе вже оплачено');
+    const fd = new FormData(); fd.append('chat_id', String(chat)); fd.append('parse_mode', 'HTML'); fd.append('caption', `🏦 Стіл ${tn(arg)}: переказ <b>${money(sum)}</b>\n${esc(v.n || '')}\n<code>${esc(v.iban)}</code>\n\nПокажіть QR гостю — він сканує камерою або в застосунку банку.`);
+    fd.append('reply_markup', JSON.stringify({ inline_keyboard: [[{ text: '✅ Гроші прийшли — закрити', callback_data: `clsok:${arg}:iban:np` }], [{ text: 'Скасувати', callback_data: 'no' }]] }));
+    fd.append('photo', new Blob([await (await import('./qr.js')).qrPng(F.ibanQr(v, sum, `Оплата за замовлення, стіл ${tn(arg)}`), 8)], { type: 'image/png' }), 'qr.png');
+    await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd }).catch(() => {}); return answer(''); }
+  if (act === 'clsok') { if (oid === 'iban' && !(await (await import('./fiscal.js')).ibanGet(env))) return answer('Рахунок для переказу не вказано');
+    const txt = closedText(await closeTable(env, +arg, who, ['card', 'iban'].includes(oid) ? oid : 'cash', opt !== 'np'));
     const nx = (await (await import('./wl.js')).wlList(env).catch(() => [])).find(x => x.st === 'wait'); // ⏳ у черзі є гість — пропонуємо покликати (без автовідправки)
-    await edit(nx ? txt + `\n\n⏳ Стіл вільний — у черзі <b>${esc(nx.name)}</b>, ${nx.people} ос.` : txt, nx ? { inline_keyboard: [[{ text: `🔔 Покликати ${nx.name.slice(0, 14)}`, callback_data: 'wl:call:' + nx.id }]] } : undefined); return answer('Закрито'); }
+    if (oid === 'iban') await tg(env, 'editMessageReplyMarkup', { chat_id: chat, message_id: mid, reply_markup: { inline_keyboard: [] } }); // повідомлення з QR — фото, текст не редагується
+    await (oid === 'iban' ? (t, m) => send({ text: t, markup: m }) : edit)(nx ? txt + `\n\n⏳ Стіл вільний — у черзі <b>${esc(nx.name)}</b>, ${nx.people} ос.` : txt, nx ? { inline_keyboard: [[{ text: `🔔 Покликати ${nx.name.slice(0, 14)}`, callback_data: 'wl:call:' + nx.id }]] } : undefined); return answer('Закрито'); }
   if (act === 'pre') return answer(await precheck(env, +arg, who) ? '🖨 Пречек відправлено на принтер' : `Стіл ${tn(arg)} порожній`);
   if (act === 'dsc') { // знижка
     const b = await getBill(env, arg); if (!b.total) return answer(`Стіл ${tn(arg)} порожній`);

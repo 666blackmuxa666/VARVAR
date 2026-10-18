@@ -1,7 +1,8 @@
 // 👑 Кабінет власника мережі й консоль платформи: /api/owner (поза закладом) + внутрішні виклики закладів /__int/* (всередині Store).
 // Власник бачить лише свої заклади (acct.venues); роль platform — усі. Цифри рахує кожен заклад сам (venueSum) — завжди точні.
 import { hub } from './hub.js';
-import { MAIN, doName, isVenueId, saveSecrets } from './venue.js';
+import { MAIN, doName, isVenueId, saveSecrets, getSecrets } from './venue.js';
+import { L } from './ops-core.js';
 import { tg } from './ops.js';
 import { mailOn, sendMail, ownerLink } from './mail.js';
 import { reportRange, openTables, dayKey, getCfg, payable } from './ops.js';
@@ -77,8 +78,30 @@ export async function intApi(req, env, path) {
       const tok = String(b.MONO_TOKEN).trim(); if (!/^[\w-]{10,80}$/.test(tok)) return [{ error: 'Токен monobank: невірний формат' }, 400];
       const M = await import('./mono.js'), r = await M.monoCheck({ mono: 1, token: tok, sandbox: /^mono_test_/.test(tok) });
       if (r.error) return [{ error: 'monobank не приймає токен: ' + r.error }, 400]; f.MONO_TOKEN = tok; f.PAY_PROVIDER = 'mono'; }
-    if (b.CHECKBOX_LICENSE === '') { f.CHECKBOX_LICENSE = ''; f.CHECKBOX_PIN = ''; await env.DB.delete('fis:tok'); } // 🧾 відключити ПРРО
-    else if (b.CHECKBOX_LICENSE != null) { // 🧾 ПРРО Checkbox: ключ ліцензії каси + PIN касира — перевіряємо входом касира
+    if (b.CHECKBOX_LICENSE === '') { f.CHECKBOX_LICENSE = ''; f.CHECKBOX_PIN = ''; f.CHECKBOX_MORE = ''; await env.DB.delete('fis:tok'); } // 🧾 відключити ПРРО (усі каси)
+    if (b.FOP || b.FOP_DEL || b.FIS_IB != null) { // 🏪 ФОП / каси: опис (назва, група, ліміт, дохід до підключення, розділи меню) + ключі другої/третьої каси
+      const F = await import('./fiscal.js'), cur = await getSecrets(env), meta = F.fopMeta({ FOPS: cur.FOPS }), more = F.fopMeta({ FOPS: cur.CHECKBOX_MORE });
+      if (!cur.CHECKBOX_LICENSE && (b.FOP || b.FOP_DEL)) return [{ error: 'Спершу підключіть головну касу Checkbox' }, 400];
+      if (b.FIS_IB != null) meta.ib = b.FIS_IB ? 1 : 0;
+      if (b.FOP_DEL) { const k = String(b.FOP_DEL); if (k === 'a') return [{ error: 'Головну касу відключають кнопкою «Відключити ПРРО»' }, 400]; delete meta[k]; delete more[k]; await env.DB.delete('fis:tok:' + k); }
+      if (b.FOP) { const p = b.FOP, k = p.k ? String(p.k) : ['b', 'c', 'd', 'e'].find(z => !more[z]); if (!/^[a-e]$/.test(k || '')) return [{ error: 'Не більше 5 кас' }, 400];
+        if (k !== 'a' && !more[k] && !p.lic) return [{ error: 'Потрібні ключ ліцензії каси й PIN касира' }, 400];
+        if (p.lic) { const lic = String(p.lic).trim(), pin = String(p.pin || '').trim(); if (k === 'a') return [{ error: 'Ключі головної каси — у формі вище' }, 400];
+          if (!/^[\w-]{6,80}$/.test(lic) || !/^\w{3,20}$/.test(pin)) return [{ error: 'Checkbox: потрібні ключ ліцензії каси й PIN касира' }, 400];
+          if (lic === cur.CHECKBOX_LICENSE || Object.entries(more).some(([z, c]) => z !== k && c.lic === lic)) return [{ error: 'Ця каса вже підключена' }, 400];
+          const r = await F.fisCheck(env, lic, pin); if (r.error) return [{ error: r.error }, 400]; more[k] = { lic, pin }; names.kasa = r.title + (r.test ? ' (тестова)' : ''); await env.DB.delete('fis:tok:' + k); }
+        const cats = Array.isArray(p.cats) ? [...new Set(p.cats.map(String))].slice(0, 60) : meta[k]?.cats || [];
+        if (k !== 'a') for (const [z, m] of Object.entries(meta)) if (z !== k && m?.cats) m.cats = m.cats.filter(c => !cats.includes(c)); // розділ — лише в одній касі
+        meta[k] = { n: String(p.n ?? meta[k]?.n ?? '').trim().slice(0, 60), g: [1, 2, 3].includes(+p.g) ? +p.g : 0, lim: Math.max(0, Math.round(+p.lim || 0)), base: Math.max(0, Math.round(+p.base || 0)), ...(k !== 'a' ? { cats } : {}) }; }
+      f.FOPS = JSON.stringify(meta); f.CHECKBOX_MORE = Object.keys(more).length ? JSON.stringify(more) : ''; }
+    if (b.IBAN_PAY != null) { // 🏦 рахунок для оплати переказом (QR НБУ): отримувач, IBAN, ІПН/ЄДРПОУ — лише власник (не адмін каси: інакше гроші підуть не туди)
+      const F = await import('./fiscal.js'), p = b.IBAN_PAY;
+      if (p === '') f.IBAN_PAY = '';
+      else { const iban = F.ibanOk(p.iban), ipn = String(p.ipn || '').replace(/\D/g, ''), n = String(p.n || '').trim().slice(0, 70);
+        if (!iban) return [{ error: 'IBAN: має бути UA + 27 цифр (перевірте, чи без помилки)' }, 400]; if (!/^(\d{8}|\d{10})$/.test(ipn)) return [{ error: 'ІПН (10 цифр) або ЄДРПОУ (8 цифр)' }, 400]; if (n.length < 3) return [{ error: 'Отримувач: назва ФОП / ТОВ' }, 400];
+        f.IBAN_PAY = JSON.stringify({ n, iban, ipn }); }
+      await L(env, 'cfg', async () => { const c = (await env.DB.get('cfg', 'json')) || {}; if (f.IBAN_PAY) c.iban = 1; else delete c.iban; await env.DB.put('cfg', JSON.stringify(c)); }); } // прапорець для каси/бота (кнопка «🏦 Переказ»)
+    if (b.CHECKBOX_LICENSE) { // 🧾 ПРРО Checkbox: ключ ліцензії каси + PIN касира — перевіряємо входом касира
       const lic = String(b.CHECKBOX_LICENSE).trim(), pin = String(b.CHECKBOX_PIN || '').trim();
       if (!/^[\w-]{6,80}$/.test(lic) || !/^\w{3,20}$/.test(pin)) return [{ error: 'Checkbox: потрібні ключ ліцензії каси й PIN касира' }, 400];
       const r = await (await import('./fiscal.js')).fisCheck(env, lic, pin); if (r.error) return [{ error: r.error }, 400];
@@ -98,7 +121,7 @@ export async function intApi(req, env, path) {
     return [{ ok: true, has, names, brand: br?.out }, 200];
   }
   if (path === '/__int/bots') { /* 🤖 справжній стан ботів: питаємо сам Telegram (getMe, getWebhookInfo, getChat) */
-    const { getSecrets } = await import('./venue.js'), sec = env.VENUE === MAIN ? env : { ...env, ...(await getSecrets(env)) };
+    const sec = env.VENUE === MAIN ? env : { ...env, ...(await getSecrets(env)) };
     const call = async (tok, m, q = {}) => { if (!tok) return null; try { const r = await fetch(`https://api.telegram.org/bot${tok}/${m}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(q), signal: AbortSignal.timeout(6000) }); return await r.json(); } catch (e) { return { ok: false, description: e.message }; } };
     const one = async tok => { if (!tok) return { on: 0 }; const [me, wh] = await Promise.all([call(tok, 'getMe'), call(tok, 'getWebhookInfo')]); if (!me?.ok) return { on: 1, ok: 0, err: me?.description || 'не відповідає' };
       const w = wh?.result || {}; return { on: 1, ok: 1, user: me.result.username, name: me.result.first_name, hook: !!w.url, pending: w.pending_update_count || 0, lastErr: w.last_error_date && Date.now() / 1000 - w.last_error_date < 86400 ? w.last_error_message : '' }; };
@@ -109,7 +132,7 @@ export async function intApi(req, env, path) {
     return [{ staff, guest, courier, group }, 200];
   }
   if (path === '/__int/ready') { // 🚀 чек-лист запуску закладу
-    const { getSecrets } = await import('./venue.js'), sec = env.VENUE === MAIN ? { BOT_TOKEN: env.BOT_TOKEN, GUEST_BOT_TOKEN: env.GUEST_BOT_TOKEN, COURIER_BOT_TOKEN: env.COURIER_BOT_TOKEN, CHAT_ID: env.CHAT_ID } : await getSecrets(env);
+    const sec = env.VENUE === MAIN ? { BOT_TOKEN: env.BOT_TOKEN, GUEST_BOT_TOKEN: env.GUEST_BOT_TOKEN, COURIER_BOT_TOKEN: env.COURIER_BOT_TOKEN, CHAT_ID: env.CHAT_ID } : await getSecrets(env);
     const { getMenu } = await import('./menu.js'), { getSite } = await import('./site.js'), { getGoCfg } = await import('./delivery.js'), { getStaff } = await import('./ops.js');
     const m = await getMenu(env), s = await getSite(env), st = await getStaff(env), pr = await printStatus(env).catch(() => ({})), g = await getGoCfg(env), c = await getCfg(env);
     return [{ name: s.name, logo: !!s.logo, contacts: !!(s.phone && s.addr), items: m.categories.filter(x => !x.tech).reduce((a, x) => a + x.items.length, 0), cats: m.categories.filter(x => !x.tech).length, tables: c.tables || +env.TABLES || 15,

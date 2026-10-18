@@ -2020,6 +2020,7 @@ var __objRest = (source, exclude) => {
     } else if (btn) btn.disabled = false;
   }
   async function closeFlow() {
+    var _a2;
     const t = S.open, b = S.tables[t];
     if (!b) return;
     const v = await choose(`\u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u0441\u0442\u0456\u043B ${tn(t)}`, `\u0414\u043E \u0441\u043F\u043B\u0430\u0442\u0438 ${money(b.pay2)}${b.tip ? ` + \u{1F49D} \u0447\u0430\u0439\u043E\u0432\u0456 ${money(b.tip)} = ${money(b.pay2 + b.tip)}` : ""}${b.pay ? ` \xB7 \u0433\u0456\u0441\u0442\u044C \u0445\u043E\u0447\u0435 ${b.pay === "card" ? "\u{1F4B3} \u043A\u0430\u0440\u0442\u043A\u043E\u044E" : "\u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u043E\u044E"}` : ""}`, [
@@ -2027,9 +2028,29 @@ var __objRest = (source, exclude) => {
       { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u0430 + \u{1F5A8} \u0447\u0435\u043A", val: "card:1", cls: "blue" },
       { label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430, \u0431\u0435\u0437 \u0447\u0435\u043A\u0430", val: "cash:0" },
       { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u0430, \u0431\u0435\u0437 \u0447\u0435\u043A\u0430", val: "card:0" },
+      ...((_a2 = S.cfg) == null ? void 0 : _a2.iban) ? [{ label: "\u{1F3E6} \u041F\u0435\u0440\u0435\u043A\u0430\u0437 \u043D\u0430 \u0440\u0430\u0445\u0443\u043D\u043E\u043A", val: "iban" }] : [],
       { label: "\u2797 \u041F\u043E\u0440\u0456\u0432\u043D\u0443 \u043D\u0430 \u0433\u043E\u0441\u0442\u0435\u0439", val: "eq" }
     ]);
     if (!v) return;
+    if (v === "iban") {
+      const q = await api("ibanQr", { t }).catch((e) => (toast("\u26A0\uFE0F " + errText(e.message)), null));
+      if (!q) return;
+      const ok2 = await modal({
+        title: `\u{1F3E6} \u041F\u0435\u0440\u0435\u043A\u0430\u0437 \xB7 \u0441\u0442\u0456\u043B ${tn(t)}`,
+        body: `<div style="text-align:center"><img src="${q.img}" alt="QR" style="width:min(260px,70vw);image-rendering:pixelated;background:#fff;padding:8px;border-radius:10px"><div style="margin-top:8px;font-size:20px"><b>${money(q.sum)}</b></div>
+        <div class="muted" style="font-size:13px;margin-top:6px;overflow-wrap:anywhere">${esc(q.n)}<br>${esc(q.iban)}</div><div class="muted" style="font-size:12px;margin-top:8px">\u0413\u0456\u0441\u0442\u044C \u0441\u043A\u0430\u043D\u0443\u0454 \u043A\u0430\u043C\u0435\u0440\u043E\u044E \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0443 \u0430\u0431\u043E \u0432 \u0437\u0430\u0441\u0442\u043E\u0441\u0443\u043D\u043A\u0443 \u0431\u0430\u043D\u043A\u0443. \u0417\u0430\u043A\u0440\u0438\u0439\u0442\u0435 \u0441\u0442\u0456\u043B, \u043A\u043E\u043B\u0438 \u043F\u0435\u0440\u0435\u043A\u0430\u0437 \u043D\u0430\u0434\u0456\u0439\u0448\u043E\u0432 \u043D\u0430 \u0440\u0430\u0445\u0443\u043D\u043E\u043A.</div></div>`,
+        buttons: [{ label: "\u2705 \u0413\u0440\u043E\u0448\u0456 \u043F\u0440\u0438\u0439\u0448\u043B\u0438 \u2014 \u0437\u0430\u043A\u0440\u0438\u0442\u0438", val: 1, cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }]
+      });
+      if (!ok2) return;
+      const r2 = await act("close", { t, pay: "iban", print: false });
+      if (r2 == null ? void 0 : r2.r) {
+        toast(`\u2705 \u0421\u0442\u0456\u043B ${tn(t)} \u0437\u0430\u043A\u0440\u0438\u0442\u043E \xB7 \u{1F3E6} ${money(r2.r.sum)}`);
+        closeSheet();
+        loadState().then(wlFree.bind(null, t)).catch(() => {
+        });
+      }
+      return;
+    }
     if (v === "eq") {
       const n = Math.round(+await ask("\u041F\u043E\u0440\u0456\u0432\u043D\u0443 \u043D\u0430 \u0441\u043A\u0456\u043B\u044C\u043A\u043E\u0445?", `\u0421\u0443\u043C\u0430 ${money(b.pay2 + (b.tip || 0))}`, "number"));
       if (!(n >= 2 && n <= 30)) return;
@@ -2129,11 +2150,43 @@ var __objRest = (source, exclude) => {
   }
   const payL = (x) => {
     var _a2;
-    return x.onl ? x.onl < x.sum ? `\u{1F310} \u043E\u043D\u043B\u0430\u0439\u043D ${money(x.onl)} + ${x.card > x.onl ? "\u{1F4B3}" : "\u{1F4B5}"} ${money(x.sum - x.onl)}` : "\u{1F310} \u043E\u043D\u043B\u0430\u0439\u043D" : x.card && ((_a2 = x.cash) != null ? _a2 : 0) ? `\u{1F4B5} ${money(x.cash)} + \u{1F4B3} ${money(x.card)}` : x.card ? "\u{1F4B3} \u043A\u0430\u0440\u0442\u0430" : "\u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u0430";
+    return x.onl ? x.onl < x.sum ? `\u{1F310} \u043E\u043D\u043B\u0430\u0439\u043D ${money(x.onl)} + ${x.card > x.onl ? "\u{1F4B3}" : "\u{1F4B5}"} ${money(x.sum - x.onl)}` : "\u{1F310} \u043E\u043D\u043B\u0430\u0439\u043D" : x.card && ((_a2 = x.cash) != null ? _a2 : 0) ? `\u{1F4B5} ${money(x.cash)} + \u{1F4B3} ${money(x.card)}` : x.ib && x.ib >= x.card ? "\u{1F3E6} \u043F\u0435\u0440\u0435\u043A\u0430\u0437" : x.card ? "\u{1F4B3} \u043A\u0430\u0440\u0442\u0430" : "\u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u0430";
   };
+  const fisR = (f) => Object.values(f.r || (f.id || f.ret ? { a: { id: f.id, ret: f.ret, h: f.h } } : {}));
   const fisNote = (x, ref) => {
-    var _a2, _b2;
-    return !x.fis ? "" : x.fis.st === "err" ? `<div class="c-note" style="color:var(--red,#e66)">\u{1F9FE}\u26A0\uFE0F Checkbox: ${esc(x.fis.err || "\u043F\u043E\u043C\u0438\u043B\u043A\u0430")}${isAdmin() ? ` <button class="c-b" data-a="cFis" data-ref="${ref}" data-d="${S.data.cday || ""}">\u{1F501} \u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0438</button>` : ""}</div>` : x.fis.id ? `<div class="c-note">\u{1F9FE} \u0424\u0456\u0441\u043A\u0430\u043B\u044C\u043D\u0438\u0439 \u0447\u0435\u043A: <a href="https://check.checkbox.ua/${esc(x.fis.id)}" target="_blank" rel="noopener">\u0432\u0456\u0434\u043A\u0440\u0438\u0442\u0438</a>${((_a2 = x.fis.ret) == null ? void 0 : _a2.length) ? ` \xB7 \u21A9\uFE0F \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u044C ${x.fis.ret.length}` : ""}</div>` : ((_b2 = x.fis.ret) == null ? void 0 : _b2.length) ? `<div class="c-note">\u{1F9FE} \u0424\u0456\u0441\u043A\u0430\u043B\u044C\u043D\u0438\u0439 \u0447\u0435\u043A \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043E</div>` : "";
+    const f = x.fis;
+    if (!f) return "";
+    const R = fisR(f), ids = R.filter((r) => r.id), rets = R.reduce((a, r) => {
+      var _a2;
+      return a + (((_a2 = r.ret) == null ? void 0 : _a2.length) || 0);
+    }, 0);
+    if (f.st === "err") return `<div class="c-note" style="color:var(--red,#e66)">\u{1F9FE}\u26A0\uFE0F Checkbox: ${esc(f.err || "\u043F\u043E\u043C\u0438\u043B\u043A\u0430")}${isAdmin() ? ` <button class="c-b" data-a="cFis" data-ref="${ref}" data-d="${S.data.cday || ""}">\u{1F501} \u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0438</button>` : ""}</div>`;
+    if (f.ibc) return `<div class="c-note">\u{1F3E6} \u041F\u0435\u0440\u0435\u043A\u0430\u0437 \u043D\u0430 \u0440\u0430\u0445\u0443\u043D\u043E\u043A \u2014 \u0444\u0456\u0441\u043A\u0430\u043B\u044C\u043D\u0438\u0439 \u0447\u0435\u043A \u043D\u0435 \u043F\u043E\u0442\u0440\u0456\u0431\u0435\u043D</div>`;
+    return ids.length ? `<div class="c-note">\u{1F9FE} \u0424\u0456\u0441\u043A\u0430\u043B\u044C\u043D${ids.length > 1 ? "\u0456 \u0447\u0435\u043A\u0438" : "\u0438\u0439 \u0447\u0435\u043A"}: ${ids.map((r, i) => `<a href="https://check.checkbox.ua/${esc(r.id)}" target="_blank" rel="noopener">\u0432\u0456\u0434\u043A\u0440\u0438\u0442\u0438${ids.length > 1 ? " " + (i + 1) : ""}</a>`).join(" \xB7 ")}${rets ? ` \xB7 \u21A9\uFE0F \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u044C ${rets}` : ""}</div>` : rets ? `<div class="c-note">\u{1F9FE} \u0424\u0456\u0441\u043A\u0430\u043B\u044C\u043D\u0438\u0439 \u0447\u0435\u043A \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043E</div>` : "";
+  };
+  const fisDayHTML = (l) => {
+    var _a2;
+    if (!isAdmin() || !l.some((x) => x.fis)) return "";
+    let sales = 0, fis = 0, ib = 0, bad = 0, wait = 0;
+    for (const x of l) {
+      if (x.del) continue;
+      if (!x.rm && x.sum > 0) {
+        sales += x.sum;
+        if (!x.fis) wait++;
+      }
+      if (((_a2 = x.fis) == null ? void 0 : _a2.st) === "err") bad++;
+      if (x.fis) {
+        ib += (x.fis.ibc || 0) / 100;
+        for (const r of fisR(x.fis)) if (r.id) {
+          try {
+            fis += r.s != null ? r.s / 100 : JSON.parse(r.h).payments.reduce((a, p) => a + p.value, 0) / 100;
+          } catch (e) {
+          }
+        }
+      }
+    }
+    const gap = Math.round(sales - fis - ib);
+    return `<div class="c-note" style="margin:6px 0 10px">\u{1F9FE} \u041F\u0420\u0420\u041E: \u0443 \u0447\u0435\u043A\u0430\u0445 <b>${money(Math.round(fis))}</b> \u0437 ${money(sales)}${ib ? ` \xB7 \u{1F3E6} \u043F\u0435\u0440\u0435\u043A\u0430\u0437\u043E\u043C ${money(Math.round(ib))}` : ""}${gap > 0 ? ` \xB7 <span style="color:var(--red,#e66)">\u26A0\uFE0F \u0431\u0435\u0437 \u0447\u0435\u043A\u0430 ${money(gap)}${bad ? ` (\u043F\u043E\u043C\u0438\u043B\u043E\u043A ${bad})` : ""}${wait ? ` (\u043D\u0430\u0434\u0441\u0438\u043B\u0430\u0454\u0442\u044C\u0441\u044F ${wait})` : ""}</span>` : " \xB7 \u2705 \u0443\u0441\u0435 \u0444\u0456\u0441\u043A\u0430\u043B\u0456\u0437\u043E\u0432\u0430\u043D\u043E"}</div>`;
   };
   function closedHTML() {
     const l = S.data.closed;
@@ -2161,12 +2214,12 @@ var __objRest = (source, exclude) => {
         !g && adm && B("cDel", ref, "\u{1F5D1}", "bad", ' title="\u0417\u043D\u044F\u0442\u0438 \u0437 \u0432\u0438\u0440\u0443\u0447\u043A\u0438"')
       ].filter(Boolean).join("");
       const items = (x.dishes || []).map(([n, q, s]) => `<div><span>${q}\xD7 ${esc(n)}</span><b>${s}</b></div>`).join("");
-      return `<details class="c-card k-${kind(x)}${g ? " gone" : ""}"><summary><span class="c-tm">${x.at}</span><span class="c-t">\u0421\u0442\u0456\u043B ${tn(x.t)}</span><span class="c-pay">${stat(x)}${x.disc ? ` \xB7 \u2212${x.disc}%` : ""}${x.fis ? x.fis.st === "err" ? " \xB7 \u{1F9FE}\u26A0\uFE0F" : " \xB7 \u{1F9FE}" : ""}</span><b class="money c-sum">${money(x.sum)}</b></summary>
+      return `<details class="c-card k-${kind(x)}${g ? " gone" : ""}"><summary><span class="c-tm">${x.at}</span><span class="c-t">\u0421\u0442\u0456\u043B ${tn(x.t)}</span><span class="c-pay">${stat(x)}${x.disc ? ` \xB7 \u2212${x.disc}%` : ""}${x.fis ? x.fis.st === "err" ? " \xB7 \u{1F9FE}\u26A0\uFE0F" : x.fis.ibc ? " \xB7 \u{1F3E6}" : " \xB7 \u{1F9FE}" : ""}</span><b class="money c-sum">${money(x.sum)}</b></summary>
         <div class="c-body">${items ? `<div class="c-items">${items}</div>` : ""}${x.tip ? `<div class="c-note">\u{1F49D} \u0447\u0430\u0439\u043E\u0432\u0456 ${money(x.tip)}</div>` : ""}${x.by ? `<div class="c-note">\u{1F464} ${esc(x.by)}${((_f = x.edits) == null ? void 0 : _f.length) ? ` \xB7 \u270F\uFE0F \u0437\u043C\u0456\u043D\u0435\u043D\u043E ${x.edits.length}\xD7 (${esc(x.edits[x.edits.length - 1].by)} ${x.edits[x.edits.length - 1].at})` : ""}</div>` : ""}
         ${((_g = x.voids) == null ? void 0 : _g.length) ? `<div class="voids">\u{1F6AB} \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E:${x.voids.map((v) => `<div>${v.at} \xB7 \u2212${money(v.sum)} ${esc(v.name)} \u2014 <i>${esc(v.reason)}</i> <span class="muted">(${esc(v.by)})</span></div>`).join("")}</div>` : ""}${fisNote(x, ref)}${btns ? `<div class="c-btns">${btns}</div>` : ""}</div></details>`;
     };
     const voids = (S.data.cvoids || []).length ? `<details class="c-card k-rm"><summary><span class="c-tm">\u{1F6AB}</span><span class="c-t">\u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u0456 \u0441\u0442\u0440\u0430\u0432\u0438</span><span class="c-pay">${S.data.cvoids.length} \u0448\u0442.</span><b class="money c-sum">${money(S.data.cvoids.reduce((s, v) => s + (v.sum || 0), 0))}</b></summary><div class="c-body">${[...S.data.cvoids].reverse().map((v) => `<div class="kv"><span>${v.at} \xB7 \u0441\u0442\u0456\u043B ${tn(v.t)} \xB7 <b>${esc(v.name)}</b> \u2014 <i>${esc(v.reason || "")}</i> <span class="muted">(${esc(v.by || "")})</span></span><span class="kv-r"><b class="money">${money(v.sum)}</b>${isToday && isAdmin() ? `<button class="c-b ok" data-a="vBack" data-ts="${v.ts}">\u21A9\uFE0F \u041D\u0430 \u0441\u0442\u0456\u043B</button>` : ""}</span></div>`).join("")}</div></details>` : "";
-    return `${top}<div class="c-list">${[...l].reverse().map(card).join("") || `<div class="c-empty">\u{1F9FE} ${isToday ? "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0437\u0430\u043A\u0440\u0438\u0442\u0438\u0445 \u0440\u0430\u0445\u0443\u043D\u043A\u0456\u0432 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454" : "\u0426\u044C\u043E\u0433\u043E \u0434\u043D\u044F \u0437\u0430\u043A\u0440\u0438\u0442\u0438\u0445 \u0440\u0430\u0445\u0443\u043D\u043A\u0456\u0432 \u043D\u0435\u043C\u0430\u0454"}</div>`}${voids}</div>`;
+    return `${top}${fisDayHTML(l)}<div class="c-list">${[...l].reverse().map(card).join("") || `<div class="c-empty">\u{1F9FE} ${isToday ? "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0437\u0430\u043A\u0440\u0438\u0442\u0438\u0445 \u0440\u0430\u0445\u0443\u043D\u043A\u0456\u0432 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454" : "\u0426\u044C\u043E\u0433\u043E \u0434\u043D\u044F \u0437\u0430\u043A\u0440\u0438\u0442\u0438\u0445 \u0440\u0430\u0445\u0443\u043D\u043A\u0456\u0432 \u043D\u0435\u043C\u0430\u0454"}</div>`}${voids}</div>`;
   }
   S.hall = store.get("hall", "");
   S.hf = store.get("hf", "all");

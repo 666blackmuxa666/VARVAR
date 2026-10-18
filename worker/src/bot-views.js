@@ -1,4 +1,5 @@
 // 🤖 Бот персоналу — екрани й клавіатури: столи, рахунок, каса, звіти, кухня, закриті, стоп-лист, Wi‑Fi, персонал, броні, рух грошей, Z
+import { fisIds, fisRets } from './fiscal.js';
 // (частина bot.js — інші файли імпортують з bot.js, як і раніше)
 import { fmtPhone } from './delivery.js';
 import { getMenu } from './menu.js';
@@ -126,9 +127,10 @@ export async function closeAsk(env, t) {
   const b = await getBill(env, t);
   if (!b.total) return { text: `Стіл ${tn(t)} вже закритий.` };
   await promoFill(env, b).catch(() => {});
-  return { text: `🧾 Закрити <b>стіл ${tn(t)}</b> на <b>${billSum(b)}</b>?${b.pay ? `\nГість хоче платити: ${PAY_PICK[b.pay]}` : ''}${b.tip ? `\n💝 Чайові: <b>${money(b.tip)}</b> → разом ${money(payable(b) + b.tip)}` : ''}\n\nЯк оплатили?`, markup: payButtons(t) };
+  const m = payButtons(t); if ((await getCfg(env)).iban) m.inline_keyboard.splice(2, 0, [{ text: '🏦 Переказ на рахунок (QR)', callback_data: 'ibq:' + t }]); // 🏦 як у касі
+  return { text: `🧾 Закрити <b>стіл ${tn(t)}</b> на <b>${billSum(b)}</b>?${b.pay ? `\nГість хоче платити: ${PAY_PICK[b.pay]}` : ''}${b.tip ? `\n💝 Чайові: <b>${money(b.tip)}</b> → разом ${money(payable(b) + b.tip)}` : ''}\n\nЯк оплатили?`, markup: m };
 }
-export const closedText = r => r ? `✅ <b>Стіл ${tn(r.t)} закрито</b> — ${money(r.sum)}${r.tip ? ` + 💝 ${money(r.tip)} чайові` : ''}${r.disc ? ` (знижка ${money(r.disc)})` : ''} · ${payLabel(r.cash, r.card)}` : 'Стіл вже закритий.';
+export const closedText = r => r ? `✅ <b>Стіл ${tn(r.t)} закрито</b> — ${money(r.sum)}${r.tip ? ` + 💝 ${money(r.tip)} чайові` : ''}${r.disc ? ` (знижка ${money(r.disc)})` : ''} · ${payLabel(r.cash, r.card, r.ib)}` : 'Стіл вже закритий.';
 export async function pickTable(env, title, act) {
   const rows = await openTables(env);
   if (!rows.length) return { text: 'Відкритих столів немає' };
@@ -212,16 +214,16 @@ export async function closedView(env, day = dayKey()) {
   const vb = day === dayKey() ? (await getVoids(env)).filter(v => !v.table).slice(-15).map(v => ({ text: `↩️ ${v.at} стіл ${tn(v.t)}: ${v.name}`.slice(0, 60), callback_data: 'vbk:' + v.ts })) : [];
   const btns = list.map((x, k) => ({ x, k })).filter(({ x }) => !gone(x) || (x.dishes?.length && !x.reopen && !x.restored)).map(({ x, k }) => ({ text: `${gone(x) ? '🗑' : '🧾'} ${x.at} · стіл ${tn(x.t)} · ${x.sum}`, callback_data: 'cv:' + (x.id || k) }));
   btns.push(...vb);
-  return { markup: btns.length ? { inline_keyboard: chunk(btns, 1) } : undefined, text: `📜 <b>Закриті рахунки за ${day}</b>\n` + list.map(x => `${gone(x) ? '🗑' : '✅'} ${x.at} · стіл ${tn(x.t)} · ${money(x.sum)}${gone(x) ? '' : ' · ' + payLabel(x.cash ?? x.sum, x.card || 0)}${x.by ? ` · ${esc(x.by)}` : ''}${x.reopen ? ' (↩️ відкрито знову)' : x.restored ? ' (↩️ відновлено)' : gone(x) ? ' (видалено)' : ''}`).join('\n') + `\n\nРазом: <b>${money(sum)}</b> · рахунків ${ok.length}\n💵 ${money(ok.reduce((s, x) => s + (x.cash ?? x.sum), 0))} · 💳 ${money(ok.reduce((s, x) => s + (x.card || 0), 0))}` };
+  return { markup: btns.length ? { inline_keyboard: chunk(btns, 1) } : undefined, text: `📜 <b>Закриті рахунки за ${day}</b>\n` + list.map(x => `${gone(x) ? '🗑' : '✅'} ${x.at} · стіл ${tn(x.t)} · ${money(x.sum)}${gone(x) ? '' : ' · ' + payLabel(x.cash ?? x.sum, x.card || 0, x.ib)}${x.by ? ` · ${esc(x.by)}` : ''}${x.reopen ? ' (↩️ відкрито знову)' : x.restored ? ' (↩️ відновлено)' : gone(x) ? ' (видалено)' : ''}`).join('\n') + `\n\nРазом: <b>${money(sum)}</b> · рахунків ${ok.length}\n💵 ${money(ok.reduce((s, x) => s + (x.cash ?? x.sum), 0))} · 💳 ${money(ok.reduce((s, x) => s + (x.card || 0), 0))}` };
 }
 export async function closedOne(env, ref) {
   const x = await closedRec(env, ref);
   if (!x) return { text: 'Рахунок не знайдено.' };
   const lines = (x.dishes || []).map(([n, q, sum]) => `${q}× ${n} — ${sum}`);
   const gone = x.del || x.rm;
-  const fis = !x.fis ? '' : x.fis.st === 'err' ? `\n\n🧾⚠️ Checkbox: ${esc(x.fis.err || 'помилка')}` : x.fis.id ? `\n\n🧾 <a href="https://check.checkbox.ua/${x.fis.id}">Фіскальний чек</a>` : x.fis.ret?.length ? '\n\n🧾 Фіскальний чек повернено' : '';
+  const fi = fisIds(x.fis), fis = !x.fis ? '' : x.fis.st === 'err' ? `\n\n🧾⚠️ Checkbox: ${esc(x.fis.err || 'помилка')}` : x.fis.ibc ? '\n\n🏦 Переказ на рахунок — без фіскального чека' : fi.length ? '\n\n' + fi.map((id, i) => `🧾 <a href="https://check.checkbox.ua/${id}">Фіскальний чек${fi.length > 1 ? ' ' + (i + 1) : ''}</a>`).join(' · ') : fisRets(x.fis) ? '\n\n🧾 Фіскальний чек повернено' : '';
   return {
-    text: `🧾 <b>Стіл ${tn(x.t)}</b> · закрито о ${x.at}${x.by ? ` · ${esc(x.by)}` : ''}\n\n${lines.length ? lines.map(esc).join('\n') : '<i>(перелік страв не збережено — рахунок закрито до оновлення)</i>'}\n\n${x.disc ? `Сума ${money(x.gross)} − знижка ${x.disc}%\n` : ''}Разом: <b>${money(x.sum)}</b>${x.tip ? ` (в т.ч. 💝 чайові ${money(x.tip)})` : ''} · ${payLabel(x.cash ?? x.sum, x.card || 0)}${x.voids?.length ? `\n\n🚫 <b>Скасування:</b>\n${x.voids.map(v => `${v.at} −${v.sum} ${esc(v.name)} — <i>${esc(v.reason)}</i> (${esc(v.by)})`).join('\n')}` : ''}${gone ? '\n\n🗑 Видалено з виручки' : ''}${fis}`,
+    text: `🧾 <b>Стіл ${tn(x.t)}</b> · закрито о ${x.at}${x.by ? ` · ${esc(x.by)}` : ''}\n\n${lines.length ? lines.map(esc).join('\n') : '<i>(перелік страв не збережено — рахунок закрито до оновлення)</i>'}\n\n${x.disc ? `Сума ${money(x.gross)} − знижка ${x.disc}%\n` : ''}Разом: <b>${money(x.sum)}</b>${x.tip ? ` (в т.ч. 💝 чайові ${money(x.tip)})` : ''} · ${payLabel(x.cash ?? x.sum, x.card || 0, x.ib)}${x.voids?.length ? `\n\n🚫 <b>Скасування:</b>\n${x.voids.map(v => `${v.at} −${v.sum} ${esc(v.name)} — <i>${esc(v.reason)}</i> (${esc(v.by)})`).join('\n')}` : ''}${gone ? '\n\n🗑 Видалено з виручки' : ''}${fis}`,
     markup: { inline_keyboard: [[...(lines.length ? [{ text: '🖨 Друкувати чек', callback_data: 'cvp:' + ref }] : []), ...(gone ? [] : [{ text: '🗑 Видалити з виручки', callback_data: 'dc:' + ref }])],
       [...(!x.del && !x.reopen && lines.length ? [{ text: '↩️ Відкрити знову', callback_data: 'cvro:' + ref }] : []), ...(x.rm && !x.reopen && !x.del ? [{ text: '↩️ Повернути у виручку', callback_data: 'cvbk:' + ref }] : []), ...(x.del && !x.restored && lines.length ? [{ text: '↩️ Відновити стіл', callback_data: 'tbk:' + ref }] : [])],
       ...(gone ? [] : [[{ text: '✏️ Редагувати чек', callback_data: 'ce:' + ref }]]),
@@ -233,7 +235,7 @@ export async function closedOne(env, ref) {
 export async function ceView(env, ref, note = '') {
   const x = await closedRec(env, ref); if (!x || x.del || x.rm) return { text: 'Чек не знайдено або знято з виручки.' };
   const d = x.dishes || [];
-  return { text: `${note ? note + '\n\n' : ''}✏️ <b>Чек стола ${tn(x.t)}</b> · ${x.at}\n\n${d.map(([n, q, s], i) => `${i + 1}. ${q}× ${esc(n)} — ${s}`).join('\n')}\n\nРазом: <b>${money(x.sum)}</b>${x.tip ? ` (💝 ${money(x.tip)})` : ''} · ${payLabel(x.cash ?? x.sum, x.card || 0)}${x.edits?.length ? '\n\n' + x.edits.slice(-5).map(e => `✏️ ${e.at} ${esc(e.by)}: ${esc(e.what)}`).join('\n') : ''}\n\n<i>Додати страву, знижку, чайові, офіціанта, стіл — у касі (Каса → Чеки → ✏️).</i>`,
+  return { text: `${note ? note + '\n\n' : ''}✏️ <b>Чек стола ${tn(x.t)}</b> · ${x.at}\n\n${d.map(([n, q, s], i) => `${i + 1}. ${q}× ${esc(n)} — ${s}`).join('\n')}\n\nРазом: <b>${money(x.sum)}</b>${x.tip ? ` (💝 ${money(x.tip)})` : ''} · ${payLabel(x.cash ?? x.sum, x.card || 0, x.ib)}${x.edits?.length ? '\n\n' + x.edits.slice(-5).map(e => `✏️ ${e.at} ${esc(e.by)}: ${esc(e.what)}`).join('\n') : ''}\n\n<i>Додати страву, знижку, чайові, офіціанта, стіл — у касі (Каса → Чеки → ✏️).</i>`,
     markup: { inline_keyboard: [...d.slice(0, 20).map(([n, q], i) => [{ text: `${i + 1}. ${n}`.slice(0, 30), callback_data: 'cv:' + ref }, ...(q > 1 ? [{ text: '➖ 1', callback_data: `cem:${ref}:${i}` }] : []), ...(d.length > 1 ? [{ text: '✕', callback_data: `cex:${ref}:${i}` }] : [])]),
       [{ text: '💵 Готівка', callback_data: `cep:${ref}:cash` }, { text: '💳 Картка', callback_data: `cep:${ref}:card` }], [{ text: '⬅️ До чека', callback_data: 'cv:' + ref }]] } };
 }

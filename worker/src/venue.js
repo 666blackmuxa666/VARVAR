@@ -43,7 +43,7 @@ async function hookSecret(env, venue) {
   const k = await crypto.subtle.importKey('raw', enc.encode(env.MASTER_KEY), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   return [...new Uint8Array(await crypto.subtle.sign('HMAC', k, enc.encode('tg:' + venue)))].slice(0, 24).map(x => x.toString(16).padStart(2, '0')).join('');
 }
-export const SECRET_KEYS = ['BOT_TOKEN', 'GUEST_BOT_TOKEN', 'COURIER_BOT_TOKEN', 'KITCHEN_BOT_TOKEN', 'TEST_AI_1', 'TEST_AI_2', 'TEST_AI_3', 'CHAT_ID', 'PRINT_KEY', 'LIQPAY_PUBLIC', 'LIQPAY_PRIVATE', 'MONO_TOKEN', 'PAY_PROVIDER', 'CHECKBOX_LICENSE', 'CHECKBOX_PIN']; // 💳 LiqPay — свій у кожного закладу
+export const SECRET_KEYS = ['BOT_TOKEN', 'GUEST_BOT_TOKEN', 'COURIER_BOT_TOKEN', 'KITCHEN_BOT_TOKEN', 'TEST_AI_1', 'TEST_AI_2', 'TEST_AI_3', 'CHAT_ID', 'PRINT_KEY', 'LIQPAY_PUBLIC', 'LIQPAY_PRIVATE', 'MONO_TOKEN', 'PAY_PROVIDER', 'CHECKBOX_LICENSE', 'CHECKBOX_PIN', 'CHECKBOX_MORE', 'FOPS', 'IBAN_PAY']; // 💳 LiqPay — свій у кожного закладу; 🧾 ще каси (ФОП), їх опис, 🏦 рахунок для переказу
 
 // env закладу: для VARVAR — як є (секрети wrangler); для інших — секрети з його сховища, свої адреси
 export async function venueEnv(env, venue, DB) {
