@@ -8,6 +8,7 @@ import { getSite } from './site.js';
 import { promoFill } from './promo.js';
 import { lpKeys, lpForm, lpOk } from './liqpay.js';
 import { siteLink } from './venue.js';
+import { exCheck } from './excise.js';
 
 const BILL_TTL = 2 * 86400;
 // ⚙️ налаштування доставки (окремо від cfg — тут є текст і час)
@@ -128,6 +129,7 @@ export async function goOrder(b, ip, env) {
   if (!lines.length) return [{ error: 'empty' }, 400];
   if (!b._paid && sum < c.min) return [{ error: 'min', min: c.min }, 400];
   if (sum > 30000) return [{ error: 'too_big' }, 400];
+  if (!b._paid) { const exe = await exCheck(env, sold); if (exe) return [{ error: 'excise', msg: exe }, 409]; } // 🍾 оплачене онлайн — уже не блокуємо
   const fee = kind === 'del' && !(c.free && sum >= c.free) ? c.fee : 0;
   const cli = await getCli(env, phone), bonus = Math.min(Math.max(0, Math.round(+b.bonus || 0)), isMem(cli) && (b._paid || b._me === phone) ? cli.bal || 0 : 0, /* 🔐 списати бонуси може лише власник телефону (сесія кабінету) */ Math.floor(sum * c.bmax / 100));
   const pay = ['cash', 'card', 'online'].includes(b.pay) ? b.pay : 'cash', change = pay === 'cash' ? Math.max(0, Math.min(10000, Math.round(+b.change || 0))) : 0;

@@ -6,20 +6,21 @@
     if (t === 'inv' && !K.draft) S.data.skInv = await api('skInvList', { months: 12 });
     if ((t === 'cards' || t === 'prod') && isAdmin()) { if (!S.menu) await loadMenu(); S.data.skCost = await api('skCost'); }
     if (t === 'tech') S.data.skTech = await api('skTech');
+    if (t === 'ex') S.data.skEx = await api('skEx', K.exId ? { id: K.exId } : {});
     if (t === 'count') { const [c, l] = await Promise.all([api('skCount', { wh: K.cwh }), api('skCountList')]); S.data.skCount = c; S.data.skCnts = l.list; K.cf = Object.fromEntries(Object.entries(c.draft.f || {}).map(([k, v]) => [k, String(v)])); }
     if ((t === 'menu' || t === 'stop') && !S.menu) await loadMenu();
     if (t === 'rep') { const [from, to] = perRange(K.p); S.data.skRep = null; renderMain(); S.data.skRep = await api('skReport', { from, to }, 30000); }
   }
   function calcHTML() {
     const K = S.sk, tabs = SK_TABS(); if (!tabs.some(x => x[0] === K.tab)) K.tab = tabs[0][0];
-    const sub = { sup: 'профілі, борги, оплата, замовлення, акти звірки', stock: 'залишки на складах Кухня і Бар', buy: 'що докупити — по постачальниках', inv: 'прихід товару: фото, код або вручну', cards: 'калькуляційні карти й собівартість страв', tech: 'склад і грамовка страв', prod: 'напівфабрикати: соуси, тісто, заготовки', count: 'перерахунок фактичних залишків', menu: 'страви, ціни, фото', stop: 'що зараз не продається', rep: 'фудкост, прибуток страв, нестачі й списання' }[K.tab];
+    const sub = { ex: 'марки пляшок алкоголю: прихід, відкриті пляшки, чек', sup: 'профілі, борги, оплата, замовлення, акти звірки', stock: 'залишки на складах Кухня і Бар', buy: 'що докупити — по постачальниках', inv: 'прихід товару: фото, код або вручну', cards: 'калькуляційні карти й собівартість страв', tech: 'склад і грамовка страв', prod: 'напівфабрикати: соуси, тісто, заготовки', count: 'перерахунок фактичних залишків', menu: 'страви, ціни, фото', stop: 'що зараз не продається', rep: 'фудкост, прибуток страв, нестачі й списання' }[K.tab];
     const head = `<div class="rhead"><div><h1>Склад</h1><span class="muted">${sub}</span></div></div>
       <div class="seg rsec">${tabs.map(([k, l]) => `<button class="${K.tab === k ? 'on' : ''}" data-a="skTab" data-t="${k}">${l}</button>`).join('')}</div>`;
     if (!S.data.sk) return head + '<div class="muted" style="margin:16px 4px">Завантаження…</div>';
     if (K.card && (K.tab === 'cards' || K.tab === 'prod')) return head + `<div class="sk">${skCardEdHTML()}</div>`;
     if (K.tab === 'menu') return head + `<div class="sk sk-emb">${menuHTML()}</div>`;
     if (K.tab === 'stop') return head + `<div class="sk sk-emb">${stopHTML()}</div>`;
-    return head + `<div class="sk">${{ stock: skStockHTML, buy: skBuyHTML, inv: skInvHTML, sup: skSupHTML, cards: skCardsHTML, tech: skTechHTML, prod: skProdHTML, count: skCountHTML, rep: skRepHTML }[K.tab]()}</div>`;
+    return head + `<div class="sk">${{ stock: skStockHTML, buy: skBuyHTML, inv: skInvHTML, sup: skSupHTML, cards: skCardsHTML, tech: skTechHTML, prod: skProdHTML, count: skCountHTML, rep: skRepHTML, ex: skExHTML }[K.tab]()}</div>`;
   }
   // 📦 склад
   function skStockHTML() {
@@ -39,7 +40,7 @@
     const rowH = x => { if (x.grp) { const m = x.grp.map(id => D.ing.find(y => y.id === id)).filter(Boolean);
         return `<div class="sk-row"><div class="sk-n${adm ? ' press' : ''}" ${adm ? `data-a="skGrp" data-id="${x.id}"` : ''}><b>🥬 ${esc(x.n)}</b><small class="muted">група-замінник: ${m.map(y => esc(y.n)).join(', ')}</small></div><div class="sk-q"><b>${fq(gq(x), x.u)}</b><small class="muted">разом</small></div><div class="sk-act"></div></div>`; }
       const t = totQ(x), lo = x.min > 0 && t < x.min, both = (x.st?.k || 0) && (x.st?.b || 0);
-      return `<div class="sk-row${lo ? ' low' : ''}${x.off ? ' off' : ''}"><div class="sk-n${adm ? ' press' : ''}" ${adm ? `data-a="skIng" data-id="${x.id}"` : ''}><b>${x.semi ? '🍳 ' : ''}${esc(x.n)}</b><small class="muted">${x.min ? `мін ${fq(x.min, x.u)}` : ''}${adm && x.cost ? `${x.min ? ' · ' : ''}${money(x.cost)} / ${x.u}` : ''}${adm && !x.cost ? `${x.min ? ' · ' : ''}<span class="warn">немає ціни</span>` : ''}</small></div>
+      return `<div class="sk-row${lo ? ' low' : ''}${x.off ? ' off' : ''}"><div class="sk-n${adm ? ' press' : ''}" ${adm ? `data-a="skIng" data-id="${x.id}"` : ''}><b>${x.semi ? '🍳 ' : ''}${x.ex ? '🍾 ' : ''}${esc(x.n)}</b><small class="muted">${x.min ? `мін ${fq(x.min, x.u)}` : ''}${adm && x.cost ? `${x.min ? ' · ' : ''}${money(x.cost)} / ${x.u}` : ''}${adm && !x.cost ? `${x.min ? ' · ' : ''}<span class="warn">немає ціни</span>` : ''}</small></div>
         <div class="sk-q"><b class="${t < 0 ? 'neg' : ''}">${fq(t, x.u)}</b><small class="muted">${both ? `К ${fq(x.st.k, x.u)} · Б ${fq(x.st.b, x.u)}` : (x.st?.b ? WHN.b : x.st?.k ? WHN.k : WHN[x.home || 'k'])}</small></div>
         <div class="sk-act">${adm ? `<button class="rb plus" data-a="skAdd" data-id="${x.id}" title="Оприбуткувати">+</button>` : ''}<button class="rb minus" data-a="skOff" data-id="${x.id}" title="Списати">−</button><button class="rb" data-a="skMv" data-id="${x.id}" title="Перемістити між складами">⇄</button></div></div>`; };
     const groups = {}; list.forEach(x => (groups[x.cat || 'Інше'] ||= []).push(x));
@@ -59,7 +60,9 @@
         ${x.semi ? '' : `<label>Ціна за ${x.u}, ₴ <small>${x.lp ? '(середня з накладних — можна змінити)' : ''}</small><input id="iCost" inputmode="decimal" value="${x.cost || ''}"></label>`}</div>
       <label>Одиниці закупівлі <small>напр.: ящик=12, уп=2.5 (скільки ${x.u} в одній)</small><input id="iPk" value="${esc((x.pk || []).map(p => `${p.n}=${p.f}`).join(', '))}" placeholder="ящик=12"></label>
       <label>Штрихкоди <small>через кому — або відскануйте сканером у це поле</small><input id="iBc" value="${esc((x.bc || []).join(', '))}"></label>
-      <label class="chk"><input type="checkbox" id="iS" ${x.semi ? 'checked' : ''}> 🍳 Заготовка — готуємо самі (соус, тісто…), має свою техкарту</label></div>`;
+      <label class="chk"><input type="checkbox" id="iS" ${x.semi ? 'checked' : ''}> 🍳 Заготовка — готуємо самі (соус, тісто…), має свою техкарту</label>
+      ${x.semi ? '' : `<label class="chk"><input type="checkbox" id="iEx" ${x.ex ? 'checked' : ''} onchange="document.getElementById('iExF').hidden=!this.checked"> 🍾 Акцизний (алкоголь, тютюн) — марка кожної пляшки, продаж не більше, ніж є марок</label>
+      <div class="frow" id="iExF"${x.ex ? '' : ' hidden'}><label>Обʼєм пляшки <small>(в ${x.u || 'од.'}, напр. 0.5)</small><input id="iVol" inputmode="decimal" value="${x.vol || ''}" placeholder="0.5"></label><label>Код УКТ ЗЕД <small>(для чека)</small><input id="iUk" inputmode="numeric" value="${esc(x.uk || '')}" placeholder="2208300000"></label></div>`}</div>`;
     const v = await modal({ title: x.id ? '📦 ' + x.n : '➕ Новий продукт', body, buttons: [{ label: '💾 Зберегти', val: 'save', cls: 'primary' }, ...(x.id && !x.off ? [{ label: '🔗 Обʼєднати', val: 'merge' }] : []), ...(x.id ? [{ label: x.off ? '↩️ Повернути' : '🗑 Сховати', val: 'del', cls: x.off ? '' : 'red' }] : []), { label: 'Скасувати', val: null }], keep: true });
     if (v === 'merge') { closeModal(); return skMergeUI(x); }
     if (v === 'del') { closeModal(); if (await act('skIngDel', { id: x.id, back: !!x.off }, x.off ? '↩️ Повернуто' : '🗑 Сховано')) loadView(); return null; }
@@ -67,7 +70,7 @@
     const num = i => +String($('#' + i)?.value || '').replace(',', '.') || 0;
     const d = { id: x.id, n: $('#iN').value, u: $('#iU').value, home: $('#iH').value, cat: $('#iC').value, min: num('iMin'), par: num('iPar'), loss: num('iL'), semi: $('#iS').checked,
       pk: $('#iPk').value.split(',').map(s => s.split(/[=:]/).map(z => z.trim())).filter(p => p[0] && +String(p[1] || '').replace(',', '.') > 0).map(([n, f]) => ({ n, f: +f.replace(',', '.') })),
-      bc: $('#iBc').value.split(/[,\s]+/).filter(Boolean), ...($('#iCost') && num('iCost') !== (x.cost || 0) ? { cost: num('iCost'), setCost: 1 } : {}) };
+      bc: $('#iBc').value.split(/[,\s]+/).filter(Boolean), ...($('#iEx') ? { ex: $('#iEx').checked, vol: num('iVol'), uk: $('#iUk').value } : {}), ...($('#iCost') && num('iCost') !== (x.cost || 0) ? { cost: num('iCost'), setCost: 1 } : {}) };
     closeModal();
     const r = await act('skIngSave', { x: d }, '💾 Збережено'); if (!r) return null;
     S.data.sk = await api('skData').catch(() => S.data.sk); renderMain(); return r.x;
@@ -220,6 +223,7 @@
     if (bad >= 0) return toast(`⚠️ Рядок ${bad + 1}: оберіть продукт і кількість (або приберіть рядок ✕)`);
     const inv = { sup: $('#dSup')?.value.trim() || d.sup, no: $('#dNo')?.value.trim() || d.no, date: $('#dDate')?.value.trim() || d.date, pay, src: d.src, ...(d.req ? { req: d.req } : {}), lines: d.lines.map(l => ({ id: l.id || null, q: +l.q, f: +l.f || 1, sum: +l.sum || 0, src: l.n || '', ...(l.chk ? { chk: 1 } : {}), ...(l.add ? { add: l.add } : {}) })) };
     const r = await act('skInvSave', { inv }, '🧾 Накладну записано'); if (!r) return;
+    if (inv.lines.some(l => S.data.sk?.ing.find(y => y.id === l.id)?.ex)) await exAfterInv(inv.lines, inv.no); // 🍾 одразу марки пляшок
     S.sk.draft = null; S.data.sk = null;
     if (r.alerts?.length) modal({ title: '🔺 Подорожчання', text: r.alerts.map(a => `${a.n}: ${money(a.from)} → ${money(a.to)} / ${a.u} (+${a.pct}%)`).join(' · '), buttons: [{ label: 'Зрозуміло', val: 1, cls: 'primary' }] });
     loadView();
@@ -280,17 +284,17 @@
     if (!$('#modal')) renderMain();
   }
   const loadScript = src => new Promise((res, rej) => { if (document.querySelector(`script[src="${src}"]`)) return res(); const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('сканер не завантажився')); document.head.append(s); });
-  async function skCam() {
+  async function skCam(on = skCode) {
     const box = $('#scCam'), v = $('#scV'); if (!box || camStop) return; box.hidden = false;
     try {
       if ('BarcodeDetector' in window) {
         const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); v.srcObject = st; await v.play();
         const bd = new BarcodeDetector(); let on = true, last = '', lt = 0; camStop = () => { on = false; st.getTracks().forEach(t => t.stop()); };
-        const loop = async () => { if (!on) return; if (!$('#scV')) return camStop?.(); try { const r = await bd.detect(v); const t = r[0]?.rawValue; if (t && (t !== last || Date.now() - lt > 2500)) { last = t; lt = Date.now(); skCode(t); } } catch {} setTimeout(loop, 250); }; loop();
+        const loop = async () => { if (!on) return; if (!$('#scV')) return camStop?.(); try { const r = await bd.detect(v); const t = r[0]?.rawValue; if (t && (t !== last || Date.now() - lt > 2500)) { last = t; lt = Date.now(); on(t); } } catch {} setTimeout(loop, 250); }; loop();
       } else {
         await loadScript('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/zxing-browser.min.js');
         const rd = new ZXingBrowser.BrowserMultiFormatReader(); let last = '', lt = 0;
-        const c = await rd.decodeFromVideoDevice(undefined, v, r => { if (!r) return; const t = r.getText(); if (t !== last || Date.now() - lt > 2500) { last = t; lt = Date.now(); skCode(t); } });
+        const c = await rd.decodeFromVideoDevice(undefined, v, r => { if (!r) return; const t = r.getText(); if (t !== last || Date.now() - lt > 2500) { last = t; lt = Date.now(); on(t); } });
         camStop = () => { try { c.stop(); } catch {} };
       }
     } catch (e) { toast('⚠️ Камера недоступна: ' + (e.message || e)); box.hidden = true; camStop = null; }

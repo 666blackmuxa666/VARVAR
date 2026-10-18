@@ -303,6 +303,7 @@
       if (status === 403 && data.error === 'wrong_table') { $('#msg').textContent = `📷 ${t('table')} ${data.t}`; return; }
       if (status === 403) { inVenue = false; $('#wifiBanner').hidden = false; showWifi(); $('#msg').textContent = ''; return; }
       if (status === 429) { $('#msg').textContent = t('wait'); return; }
+      if (status === 409 && data.error === 'excise') { $('#msg').textContent = t('exSold'); return; }
       if (status !== 200) throw 0;
       if (items.length) { hist.orders.push({ items, total: data.orderTotal, id: data.id, s: 'new', at: new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' }) }); }
       hist.ts = Date.now();
@@ -434,7 +435,7 @@
     try {
       const { status, data } = await api('/api/go', { kind: gf.kind, name: gf.name, phone: gf.phone, addr: gf.addr, ent: gf.ent, when: gf.when, cut: gf.cut, pay: gf.pay, change: gf.change, bonus: goBonus(), comment: $('#comment').value, device, src: qs.get('src') || '',
         items: [...items.map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; }), ...(packId && packQty() ? [{ id: packId, q: packQty() }] : [])] });
-      if (status !== 200) { m.textContent = { closed: `${t('goClosed')} ${data.from}–${data.to}`, min: `${t('goMinSum')} ${money(data.min || 0)}`, rate: t('wait'), contact: t('goNeedContact'), addr: t('goNeedAddr'), off: t('goOff') }[data.error] || t('error'); return; }
+      if (status !== 200) { m.textContent = { closed: `${t('goClosed')} ${data.from}–${data.to}`, min: `${t('goMinSum')} ${money(data.min || 0)}`, rate: t('wait'), contact: t('goNeedContact'), addr: t('goNeedAddr'), off: t('goOff'), excise: t('exSold') }[data.error] || t('error'); return; }
       if (data.pay) { /* 🌐 онлайн: кошик лишається до підтвердження оплати; замовлення зʼявиться в закладі після оплати */
         store.set('goPend', { id: data.id, sum: data.sum, ts: Date.now(), items: items.map(([k, q]) => [k, q]) }); m.textContent = t('goPayGo'); location.href = data.pay; return; }
       goHist.push({ id: data.id, no: data.no, ts: Date.now(), at: new Date().toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' }), sum: data.sum, items: items.map(([k, q]) => [k, q]), g: 'new', eta: Date.now() + data.eta * 60e3, ...(gf.dst && gf.kind === 'del' ? { dst: gf.dst } : {}) }); gf.dst = null;

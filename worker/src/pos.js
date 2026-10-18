@@ -11,6 +11,7 @@ import { queuePrint, printStatus, printList, printClear } from './print.js';
 import { QR_PRINT, TEST_JOB } from './bot.js';
 import { storeStub } from './store.js';
 import { stockApi } from './stock.js';
+import { exCheck } from './excise.js';
 import { acctExport } from './acct.js';
 import { taxView, taxSet, taxDone } from './tax.js';
 import { setPerm } from './ops.js';
@@ -133,6 +134,7 @@ export async function posApi(b, req, env) {
     // ---- столи ----
     case 'order': {
       const items = await itemsFromMenu(env, b.items);
+      const exe = await exCheck(env, items); if (exe) return [{ error: exe }, 409]; // 🍾 не продати більше, ніж є пляшок з марками
       const comment = String(b.comment || '').trim().slice(0, 200);
       let T = t, go = null;
       if (!T && b.go) ({ t: T, go } = await goFromPos(env, b.go, who)); // ☎️ нова доставка/самовивіз з каси

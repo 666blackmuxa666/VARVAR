@@ -4,6 +4,7 @@
 // Ідемпотентність: id чека Checkbox — похідний від заклад+рахунок+версія, тож повтор не створить дубль.
 import { MAIN, seal, unseal } from './venue.js';
 import { L, dayKey } from './ops-core.js';
+import { exReceipt, exBack } from './excise.js';
 
 const API = 'https://api.checkbox.ua/api/v1';
 export const fisOn = env => !env.NOFIS && env.VENUE && env.VENUE !== MAIN && !!(env.CHECKBOX_LICENSE && env.CHECKBOX_PIN);
@@ -58,11 +59,13 @@ const code = n => 'a' + [...n].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0
 const K = g => Math.round(g * 100); // грн → копійки
 
 // запис «closed:» → тіло чека: страви, чайові окремим рядком (так радить Checkbox), знижки/бонуси — знижкою на чек, оплати готівка+картка
-export function receiptOf(x) {
+// ex (excise.js): страва → { uk — код УКТ ЗЕД, c — марки пляшок, відкритих цим продажем }
+const exGood = (g, e) => { if (!e) return g; if (e.uk) g.uktzed = e.uk; const b = (e.c || []).filter(z => !z[2]).map(z => z[1]), el = (e.c || []).filter(z => z[2]).map(z => z[1]); if (b.length) g.excise_barcodes = b; if (el.length) g.e_excise_barcodes = el; return g; };
+export function receiptOf(x, ex = {}) {
   const goods = [], m = new Map();
   for (const [n, q, s] of x.dishes || []) { const a = m.get(n) || [0, 0]; m.set(n, [a[0] + q, a[1] + s]); }
   if (!m.size && x.sum - (x.tip || 0) > 0) m.set('Замовлення', [1, (x.gross ?? x.sum - (x.tip || 0))]); // старий/«схудлий» запис без страв
-  for (const [n, [q, s]] of m) if (q > 0 && s >= 0) goods.push(K(s) % q ? { good: { code: code(n), name: `${q}× ${n}`.slice(0, 120), price: K(s) }, quantity: 1000 } : { good: { code: code(n), name: n.slice(0, 120), price: K(s) / q }, quantity: q * 1000 });
+  for (const [n, [q, s]] of m) if (q > 0 && s >= 0) goods.push(K(s) % q ? { good: exGood({ code: code(n), name: `${q}× ${n}`.slice(0, 120), price: K(s) }, ex[n]), quantity: 1000 } : { good: exGood({ code: code(n), name: n.slice(0, 120), price: K(s) / q }, ex[n]), quantity: q * 1000 });
   if (x.tip) goods.push({ good: { code: 'tip', name: 'Чайові', price: K(x.tip) }, quantity: 1000 });
   const total = goods.reduce((a, g) => a + g.good.price * g.quantity / 1000, 0), paid = K(x.sum), body = { goods, payments: [] };
   if (total > paid) body.discounts = [{ type: 'DISCOUNT', mode: 'VALUE', value: total - paid, name: 'Знижка' }];
@@ -72,7 +75,6 @@ export function receiptOf(x) {
   if (card > 0) body.payments.push({ type: 'CASHLESS', value: card, label: x.onl && x.onl >= (x.card || 0) ? 'Онлайн' : 'Картка' });
   return body;
 }
-const hashOf = x => JSON.stringify(receiptOf(x));
 
 // ⚙️ привести фіскальний стан запису до самого запису (закрили / зняли з виручки / виправили / повернули)
 export async function fisSync(env, day, id) {
@@ -80,7 +82,8 @@ export async function fisSync(env, day, id) {
   return L(env, 'fis:' + day, async () => { // один чек за раз — без дублів при подвійному натисканні
     const get = async () => ((await env.DB.get('closed:' + day, 'json')) || []).find(c => c.id === id);
     const x = await get(); if (!x) return null;
-    const f = x.fis || {}, want = x.rm || x.del || !(x.sum > 0) ? '' : hashOf(x);
+    const f = x.fis || {}, off = x.rm || x.del || !(x.sum > 0);
+    let want = off ? '' : JSON.stringify(receiptOf(x, await exReceipt(env, day, x, f.ex || {})));
     if ((f.h || '') === want && f.st !== 'err') return f;
     const nf = { ...f, at: Date.now() };
     try {
@@ -91,7 +94,9 @@ export async function fisSync(env, day, id) {
         if (r.status >= 300 && !/вже існує|already exists/i.test(errOf(r))) throw new Error('Повернення: ' + errOf(r));
         nf.ret = [...(f.ret || []), rid]; delete nf.id; nf.h = '';
       }
+      if (off && nf.ex) { await exBack(env, nf.ex); delete nf.ex; } // 🍾 марки знятого чека — у наступний продаж з цих пляшок
       if (want) {
+        const ex = await exReceipt(env, day, x, f.ex || {}, true); nf.ex = ex; want = JSON.stringify(receiptOf(x, ex)); // 🍾 нові марки відкритих пляшок — лише в чек, що справді йде
         const v = (f.v || 0) + (nf.h === '' && f.id ? 1 : 0), rid = await uuid(`${env.VENUE}:${id}:sell:${v}`);
         const r = await call(env, 'POST', '/receipts/sell', { id: rid, ...JSON.parse(want), ...(x.by ? { cashier_name: String(x.by).slice(0, 60) } : {}) });
         if (r.status >= 300 && !/вже існує|already exists/i.test(errOf(r))) throw new Error(errOf(r));

@@ -913,6 +913,35 @@ async function loyTests(A, W, dish) {
     } finally { await ownT(PT, 'secrets', { venue: VID, f: { CHECKBOX_LICENSE: '' } }); }
     must((await vpos(VA, 'fisInfo')).j.on === 0, 'ПРРО не відключився');
   });
+  await step('🍾 акциз: марки пляшок → продаж не більше марок, марка в чеку раз на пляшку, дубль/прибрати, повернення чека', async () => {
+    const sv = await ownT(PT, 'secrets', { venue: VID, f: { CHECKBOX_LICENSE: 'mock-test', CHECKBOX_PIN: '1234' } }); must(sv.j.ok, 'ПРРО: ' + JSON.stringify(sv.j).slice(0, 120));
+    const vok = async (op, b) => { const r = await vpos(VA, op, b); must(r.status === 200 && r.j.ok, `${op} → ${r.status} ${JSON.stringify(r.j).slice(0, 200)}`); return r.j; };
+    const it = (await http(`/v/${VID}/api/menu`)).j.categories.flatMap(c => c.items).filter(i => typeof i.price === 'number' && !i.hidden).at(-1);
+    const id = (await vok('skIngSave', { x: { n: 'QA Віскі ' + RUN, u: 'л', cat: 'Інше', home: 'b', ex: true, vol: 0.5, uk: '2208301100' } })).x.id, c1 = String(Date.now()) + '01', c2 = String(Date.now()) + '02';
+    try {
+      await vok('skCardSave', { key: it.id, name: it.name.uk, card: { items: [{ id, q: 0.05 }] } });
+      let o = await vpos(VA, 'order', { t: 7, items: [{ id: it.id, q: 1 }] }); must(o.status === 409 && /марок/.test(o.j.error || ''), 'без марок продалось: ' + o.status + JSON.stringify(o.j).slice(0, 120));
+      must((await vok('skExAdd', { id, codes: [c1] })).added === 1, 'марка не додалась');
+      must((await vok('skExAdd', { id, codes: [c1] })).dup.length === 1, 'дубль марки прийнято');
+      must((await vpos(VA, 'order', { t: 7, items: [{ id: it.id, q: 11 }] })).status === 409, '11 × 50 мл з пляшки 0,5 л прийнято');
+      o = await vpos(VA, 'order', { t: 7, items: [{ id: it.id, q: 10 }] }); must(o.status === 200, '10 порцій: ' + JSON.stringify(o.j).slice(0, 160));
+      let e = await vok('skEx', { id }); must(e.b[0]?.c === c1 && e.b[0].d && e.x.cap === 0 && e.x.q === 1, 'пляшка: ' + JSON.stringify(e).slice(0, 250));
+      must((await vpos(VA, 'order', { t: 7, items: [{ id: it.id, q: 1 }] })).status === 409, 'понад марки продалось');
+      must((await vpos(VA, 'state')).j.events?.some(x => /Нова пляшка/.test(x.text) && x.text.includes(c1.slice(-6))), 'у стрічці немає «🍾 Нова пляшка»');
+      must((await vpos(VA, 'close', { t: 7, pay: 'card' })).status === 200, 'close');
+      let x; for (let i = 0; i < 20 && !x?.fis; i++) { await sleep(150); x = (await vpos(VA, 'closed')).j.list.filter(r => r.t === 7 && !r.rm).pop(); }
+      must(x?.fis?.st === 'ok', 'фіскальний: ' + JSON.stringify(x?.fis));
+      const sell = (await vpos(VA, 'fisInfo')).j.mock.filter(q => q.path === '/receipts/sell').pop()?.body, g = sell?.goods.find(z => z.good.excise_barcodes);
+      must(g && JSON.stringify(g.good.excise_barcodes) === JSON.stringify([c1]) && g.good.uktzed === '2208301100' && sell.goods.filter(z => z.good.excise_barcodes).length === 1, 'марка в чеку: ' + JSON.stringify(sell?.goods).slice(0, 250));
+      must((await vok('skEx', { id })).x.q === 0, 'марка лишилась у черзі після чека');
+      must((await vpos(VA, 'closedDel', { ref: x.id })).status === 200, 'closedDel');
+      let q = 0; for (let i = 0; i < 20 && !q; i++) { await sleep(150); q = (await vok('skEx', { id })).x.q; } must(q === 1, 'після повернення чека марка не повернулась у чергу');
+      const cap0 = (await vok('skEx', { id })).x.cap; await vok('skExAdd', { id, codes: [c2] }); must((await vok('skEx', { id })).x.cap === cap0 + 0.5, 'друга пляшка');
+      must((await vpos(VA, 'skExOff', { id, c: c1, rm: 1 })).status === 400, 'прибрано використану пляшку');
+      must((await vok('skExOff', { id, c: c2, rm: 1 })).x.cap === cap0, 'прибрати помилкову марку');
+    } finally { await vpos(VA, 'skCardSave', { key: it.id, card: null }); await vpos(VA, 'skIngDel', { id }); await ownT(PT, 'secrets', { venue: VID, f: { CHECKBOX_LICENSE: '' } }); }
+    return 'пляшка 0,5 л = 10 порцій, 11-та заблокована';
+  });
   await step('⏳ черга в залі (wl): гість /api/wl — створення, дубль за телефоном, статус, скасування, ліміт 3/пристрій', async () => {
     const dev = 'qa-wl-' + Date.now(), ph = n => '067' + String(Date.now()).slice(-6) + n;
     // 🛡 index.js: wlip — не більше 6 POST /api/wl за годину з одного IP (спільний IP тестів вичерпується) → тест чесно пропускається

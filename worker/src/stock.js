@@ -2,7 +2,8 @@
 // Спільне для каси (POS) і бота. Усі зміни складу — під замком «ing» (порядок замків: bills → ing, ніколи навпаки).
 import { getMenu } from './menu.js';
 import { index, matchOne } from './match.js';
-import { L, dayKey, hhmm, esc, money, notify, groupOf, getCfg, addExpense, delExpense, restoreExpense, reportRange, isDay } from './ops.js';
+import { L, dayKey, hhmm, esc, money, notify, groupOf, getCfg, addExpense, delExpense, restoreExpense, reportRange, isDay, logEvent } from './ops.js';
+import { getExm, putExm, exP, exTake, exTail } from './exmark.js';
 
 export const WH = { k: '🍳 Кухня', b: '🍹 Бар' };
 export const UNITS = ['кг', 'л', 'шт'];
@@ -46,6 +47,15 @@ async function sendLow(env, low) {
   await notify(env, `⚠️ <b>Закінчується:</b>\n${low.map(x => `• ${esc(x.n)} — ${fq(tot(x), x.u)} (мін. ${fq(x.min, x.u)})`).join('\n')}\n\n🛒 Список закупівлі — «🧮 Розрахунок».`).catch(() => {});
 }
 
+// 🍾 акцизні продукти: обʼєм з пляшок (exmark.js) — у тому ж замку «ing»; відкриті пляшки → стрічка каси
+async function exApply(env, im, exd) {
+  if (!exd.size) return [];
+  const m = await getExm(env), opened = [];
+  for (const [id, q] of exd) { const x = im.get(id); if (x) for (const y of exTake(m, x, q)) opened.push({ x, y }); }
+  await putExm(env, m); return opened;
+}
+const exSay = (env, l) => Promise.all((l || []).map(({ x, y }) => logEvent(env, { k: 'shift', by: 'склад', text: `🍾 Нова пляшка: ${x.n} — марка ${exTail(y.c)}` }).catch(() => {})));
+
 // ---------- довідник продуктів ----------
 export async function ingSave(env, d, who) {
   const n = String(d.n || '').trim().slice(0, 60); if (!n) return { error: 'Потрібна назва' };
@@ -61,6 +71,11 @@ export async function ingSave(env, d, who) {
     if (Array.isArray(d.bc)) x.bc = [...new Set(d.bc.map(s => String(s).replace(/\D/g, '')).filter(s => s.length >= 6))].slice(0, 10);
     if (Array.isArray(d.pk)) x.pk = d.pk.map(p => ({ n: String(p.n || '').trim().slice(0, 20), f: r3(p.f) })).filter(p => p.n && p.f > 0).slice(0, 5);
     if (d.semi != null) { if (d.semi) x.semi = 1; else delete x.semi; }
+    if (d.ex != null) { // 🍾 акцизний: обʼєм пляшки (в одиницях продукту) і код УКТ ЗЕД для фіскального чека
+      if (d.ex) { x.ex = 1; x.vol = +d.vol > 0 ? r3(Math.min(100, +d.vol)) : (u === 'л' ? 0.5 : 1); const uk = String(d.uk || '').replace(/\D/g, '').slice(0, 10); if (uk) x.uk = uk; else delete x.uk;
+        const m = await getExm(env); if (!m[x.id]) { exP(m, x.id); await putExm(env, m); } }
+      else { delete x.ex; delete x.vol; delete x.uk; }
+    }
     if (d.cost != null && who && d.setCost) x.cost = Math.max(0, r2(d.cost)); // ручна ціна (поки не було накладних)
     lowCheck(l, new Set([x.id]));
     await putIng(env, l); return { x };
@@ -70,13 +85,14 @@ export async function ingDel(env, id, back = false) {
   return lk(env, async () => { const l = await getIng(env), x = l.find(y => y.id === id); if (!x) return null; if (back) delete x.off; else x.off = 1; await putIng(env, l); return x; });
 }
 // ➕ оприбуткувати / ➖ списати (q > 0 — додати, q < 0 — списати) з причиною
-export async function adjust(env, { id, wh, q, note }, who) {
+export async function adjust(env, { id, wh, q, note, noEx }, who) {
   q = r3(q); if (!q) return { error: 'Вкажіть кількість' };
   wh = wh === 'b' ? 'b' : wh === 'k' ? 'k' : null;
   const r = await lk(env, async () => {
     const l = await getIng(env), x = l.find(y => y.id === id); if (!x) return { error: 'Продукт не знайдено' }; if (x.grp) return { error: 'Це група-замінник — оберіть конкретний продукт' };
     const w = wh || x.home || 'k';
     x.st[w] = r3((x.st[w] || 0) + q);
+    if (x.ex && q < 0 && !noEx) await exApply(env, new Map([[x.id, x]]), new Map([[x.id, -q]])); // 🍾 розлили / списали порцію — з відкритої пляшки
     await jr(env, [row(q > 0 ? 'add' : 'off', x, w, q, who, String(note || '').slice(0, 80))]);
     const low = lowCheck(l, new Set([id])); await putIng(env, l); return { x, low };
   });
@@ -105,7 +121,7 @@ export const purchaseText = list => list.length ? list.map(g => `<b>${esc(g.sup)
 export async function jrUndo(env, day, i, me, ts) {
   day = isDay(day) && day <= dayKey() ? day : dayKey(); const k = 'stk:' + day;
   return lk(env, async () => {
-    const jl = (await env.DB.get(k, 'json')) || [], y = jl[+i]; if (!y || !['add', 'off'].includes(y.t) || /^(🔗|↩️)/.test(y.note || '')) return { error: 'Скасувати можна лише ручне додавання чи списання' }; if (ts && y.ts !== +ts) return { error: 'Журнал змінився — відкрийте його ще раз' };
+    const jl = (await env.DB.get(k, 'json')) || [], y = jl[+i]; if (!y || !['add', 'off'].includes(y.t) || /^(🔗|↩️|🍾)/.test(y.note || '')) return { error: 'Скасувати можна лише ручне додавання чи списання' }; if (ts && y.ts !== +ts) return { error: 'Журнал змінився — відкрийте його ще раз' };
     if (y.undo) return { error: 'Вже скасовано' }; if (me.role !== 'admin' && (y.by !== me.name || day !== dayKey())) return { error: 'Скасувати може адмін або автор — того ж дня' };
     const l = await getIng(env), x = l.find(z => z.id === y.id); if (!x) return { error: 'Продукт не знайдено' };
     x.st[y.wh] = r3((x.st[y.wh] || 0) - y.q); y.undo = { by: me.name, at: hhmm() };
@@ -203,41 +219,41 @@ export async function consume(env, items) {
   for (const { n, q } of items) { const r = res(n), f = cardFor(cards, r); if (f && !f.card.draft && q) todo.push({ r, card: f.card, k: f.k * q }); }
   if (!todo.length) return;
   const low = await lk(env, async () => {
-    const l = await getIng(env), im = new Map(l.map(x => [x.id, x])), uk = 'use:' + dayKey(), use = (await env.DB.get(uk, 'json')) || {}, ch = new Set();
+    const l = await getIng(env), im = new Map(l.map(x => [x.id, x])), uk = 'use:' + dayKey(), use = (await env.DB.get(uk, 'json')) || {}, ch = new Set(), exd = new Map();
     const calc = (await getCfg(env)).semiCalc ?? 1;
     // 📐 режим «розрахунок»: заготовка (соус, тісто) не тримається на складі — при продажі розкладається на продукти свого рецепту
     const eat = (id, qq, w, depth = 0) => {
       let x = im.get(id); if (x?.grp) x = grpPick(x, w, im, qq); if (!x) return; id = x.id; const sc = x.semi && calc && depth < 3 && cards['semi:' + id];
       if (sc && sc.yield > 0 && sc.items?.length) { const k2 = qq / sc.yield; for (const z of sc.items) eat(z.id, r3((+z.q || 0) * k2), z.wh || sc.wh || w, depth + 1); return; }
-      const c = unitCost(x.id, im, cards); x.st[w] = r3((x.st[w] || 0) - qq); ch.add(x.id);
+      const c = unitCost(x.id, im, cards); x.st[w] = r3((x.st[w] || 0) - qq); ch.add(x.id); if (x.ex) exd.set(x.id, r3((exd.get(x.id) || 0) + qq));
       const key = x.id + '@' + w, a = use[key] || [0, 0]; use[key] = [r3(a[0] + qq), r2(a[1] + qq * c)];
     };
     for (const { r, card, k } of todo) {
       const dw = card.wh || whOfCat(r.cat);
       for (const ln of card.items || []) eat(ln.id, r3((+ln.q || 0) * k), ln.wh || dw);
     }
-    const low = lowCheck(l, ch);
+    const low = lowCheck(l, ch), opened = await exApply(env, im, exd);
     await Promise.all([putIng(env, l), env.DB.put(uk, JSON.stringify(use), { expirationTtl: 400 * 86400 })]);
-    return low;
+    return { low, opened };
   });
-  await sendLow(env, low);
+  await Promise.all([sendLow(env, low.low), exSay(env, low.opened)]);
 }
 // 🗑 скасували вже приготовану страву: продукти не повертаються — списання «брак» з причиною
 export async function wasteDish(env, items, reason, who) {
   const cards = await getCards(env); if (!Object.keys(cards).length) return;
   const res = cardResolver(await getMenu(env));
   await lk(env, async () => {
-    const l = await getIng(env), im = new Map(l.map(x => [x.id, x])), rows = [], calc = (await getCfg(env)).semiCalc ?? 1;
+    const l = await getIng(env), im = new Map(l.map(x => [x.id, x])), rows = [], calc = (await getCfg(env)).semiCalc ?? 1, exd = new Map();
     for (const { n, q } of items) {
       const r = res(n), f = cardFor(cards, r); if (!f || f.card.draft) continue;
       const note = `скасовано: ${n} · ${String(reason || '').slice(0, 50)}`;
       const eat = (id, qq, w, depth = 0) => { let x = im.get(id); if (x?.grp) x = grpPick(x, w, im, qq); if (!x) return; id = x.id; const sc = x.semi && calc && depth < 3 && cards['semi:' + id]; // 📐 як у consume
         if (sc && sc.yield > 0 && sc.items?.length) { for (const z of sc.items) eat(z.id, r3((+z.q || 0) * qq / sc.yield), z.wh || sc.wh || w, depth + 1); return; }
-        x.st[w] = r3((x.st[w] || 0) - qq); rows.push(row('off', x, w, -qq, who, note)); };
+        x.st[w] = r3((x.st[w] || 0) - qq); rows.push(row('off', x, w, -qq, who, note)); if (x.ex) exd.set(x.id, r3((exd.get(x.id) || 0) + qq)); };
       for (const ln of f.card.items || []) eat(ln.id, r3((+ln.q || 0) * f.k * q), ln.wh || f.card.wh || whOfCat(r.cat));
     }
-    if (rows.length) { await jr(env, rows); await putIng(env, l); }
-  });
+    if (rows.length) { await jr(env, rows); await putIng(env, l); return exApply(env, im, exd); }
+  }).then(o => exSay(env, o));
 }
 // техкарта: { out, wh?, perL?, yield? (заготовка), draft?, items: [{ id, q (брутто), loss }] }
 export async function cardSave(env, key, d) {
@@ -509,6 +525,11 @@ export async function stockApi(b, env, me, ai) {
     case 'skIngDel': return R(await ingDel(env, String(b.id), !!b.back));
     case 'skAdj': { if (cook && !(+b.q < 0)) return bad('Кухар може лише списувати'); const r = await adjust(env, b, who); if (r?.x && +b.q < 0 && !admin) await notify(env, `🗑 Списання (${esc(who)}): ${esc(r.x.n)} ${fq(-b.q, r.x.u)} — ${esc(b.note || '')}`).catch(() => {}); return R(r); }
     case 'skMove': return R(await transfer(env, b, who));
+    // 🍾 акцизні марки (excise.js)
+    case 'skEx': return R(await (await import('./excise.js')).exList(env, b.id ? String(b.id) : ''));
+    case 'skExAdd': return R(await (await import('./excise.js')).exAdd(env, String(b.id), b.codes, b.inv, who));
+    case 'skExOpen': return R(await (await import('./excise.js')).exOpen(env, String(b.id), b.c));
+    case 'skExOff': return R(await (await import('./excise.js')).exOff(env, String(b.id), b.c, b.note, who, !!b.rm));
     case 'skBuy': { const list = await purchaseList(env); return ok({ list, text: purchaseText(list).replace(/<\/?b>/g, '') }); }
     case 'skMerge': if (!admin) return bad('Лише адмін'); return R(await ingMerge(env, String(b.to || ''), b.from, b.f || {}, who));
     case 'skGrp': if (!admin) return bad('Лише адмін'); return R(await grpSave(env, b.x || {}));

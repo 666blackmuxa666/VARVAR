@@ -3,6 +3,8 @@ import { esc, money, tg, dayKey, L } from './ops.js';
 import { getMenu } from './menu.js';
 import { WH, fq, norm, getIng, getCards, purchaseList, purchaseText, adjust, transfer, produce, invoiceSave, invList, invPay, matchLines, countSave, countFinish, countGet, ingSave, cardSave, cardResolver, cardCost, unitCost, costReport, r3 } from './stock.js';
 import { aiInvoice } from './ai.js';
+import { exList, exAdd, exOpen, exOff } from './excise.js';
+import { exCode } from './exmark.js';
 
 export const CALC_HELP = `🧮 <b>Розрахунок — команди</b>
 📷 Фото з підписом <code>накладна</code> — розпізнаю й запишу на склад (кілька сторінок — кілька фото підряд)
@@ -13,7 +15,7 @@ export const CALC_HELP = `🧮 <b>Розрахунок — команди</b>
 <code>інв кухня філе 14.5</code> … <code>інв кухня кінець</code>
 <code>техкарта Курочка: коржик 1, філе 130 г, салат 30 г</code>
 <code>штрихкод 4820000123456 сир фета</code> — привʼязати (без назви — знайти продукт)
-<code>залишки</code> · <code>закупівля</code>
+<code>залишки</code> · <code>закупівля</code> · <code>марки</code> — 🍾 акцизні пляшки
 Кількість можна в г / мл: <code>250 г</code>`;
 
 const tot = x => r3((x.st?.k || 0) + (x.st?.b || 0));
@@ -38,7 +40,7 @@ export async function calcView(env) {
     low.length ? `⚠️ Нижче мінімуму: ${low.slice(0, 8).map(i => esc(i.n)).join(', ')}${low.length > 8 ? '…' : ''}` : '✅ Усього вистачає',
     debts.length ? `💸 Борги постачальникам: ${debts.map(([n, s]) => `${esc(n)} ${money(s.debt)}`).join(', ')}` : '', '', CALC_HELP].filter(x => x !== '').join('\n'),
     markup: { inline_keyboard: [[{ text: '📦 Залишки', callback_data: 'skst' }, { text: '🛒 Закупівля', callback_data: 'skbuy' }], [{ text: '🧾 Накладні', callback_data: 'skinvl' }, { text: '📊 Фудкост · 7 днів', callback_data: 'skrep:w' }],
-      [{ text: '📝 Інвентаризація', callback_data: 'skcnm' }, { text: '🍳 Заготовки', callback_data: 'skprl' }], [{ text: '🔗 Штрихкод', callback_data: 'skbc' }]] } };
+      [{ text: '📝 Інвентаризація', callback_data: 'skcnm' }, { text: '🍳 Заготовки', callback_data: 'skprl' }], [{ text: '🔗 Штрихкод', callback_data: 'skbc' }, { text: '🍾 Акциз', callback_data: 'skex' }]] } };
 }
 export async function stockText(env) {
   const l = (await getIng(env)).filter(x => !x.off && !x.grp).sort((a, b) => (a.cat || '').localeCompare(b.cat || '') || a.n.localeCompare(b.n));
@@ -52,6 +54,7 @@ export async function stockText(env) {
 export async function stockCmd(text, env, who) {
   const t = text.trim(), low = t.toLowerCase(); let m;
   if (/^(залишки|склад)$/.test(low)) return stockText(env);
+  if (/^(марки|акциз)$/.test(low)) return exBot(env);
   if (/^(закупівля|закупка|що купити)$/.test(low)) return { text: '🛒 <b>Закупівля</b>\n\n' + purchaseText(await purchaseList(env)) };
   if (/^(розрахунок|техкарти|калькуляція)$/.test(low)) return calcView(env);
   if ((m = t.match(/^(?:списати|спиши)\s+(.+)$/i))) {
@@ -186,8 +189,25 @@ async function bcBind(env, code, name, who) {
   const r = await ingSave(env, { ...x, bc: [...(x.bc || []), code] }, who); if (r.error) return { text: '⚠️ ' + r.error };
   return { text: `🔗 Штрихкод ${code} привʼязано: <b>${esc(r.x.n)}</b>` };
 }
+// 🍾 акциз у боті — як «🧮 Розрахунок → 🍾 Акциз» у касі
+const tl = c => '…' + String(c).slice(-6);
+async function exBot(env, id) {
+  const r = await exList(env, id);
+  if (!id) { if (!r.list.length) return { text: '🍾 Акцизних продуктів немає. У касі: 📦 Залишки → продукт → «🍾 Акцизний» (обʼєм пляшки, УКТ ЗЕД).' };
+    return { text: ['🍾 <b>Акциз</b> — пляшки з марками', ...r.list.map(x => `${x.short ? '⚠️' : x.cap ? '•' : '🔴'} ${esc(x.n)} — нових ${x.n0}${x.open ? ` · відкрита ${tl(x.open.c)} (${fq(x.open.left, x.u)})` : ''}${x.short ? ` · продано понад марки ${fq(x.short, x.u)}` : ''}`)].join('\n'),
+      markup: { inline_keyboard: r.list.slice(0, 30).map(x => [{ text: `🍾 ${x.n}`, callback_data: 'skexp:' + x.id }]) } };
+  }
+  if (r.error) return { text: '⚠️ ' + r.error }; const x = r.x;
+  return { text: [`🍾 <b>${esc(x.n)}</b>`, `Можна продати за марками: <b>${fq(x.cap, x.u)}</b> · на складі ${fq(x.st, x.u)}`, `Відкрита: ${x.open ? `${tl(x.open.c)} — лишилось ${fq(x.open.left, x.u)}` : '—'} · нових пляшок: ${x.n0}`,
+      x.short ? `⚠️ Продано понад марки: ${fq(x.short, x.u)}` : '', x.uk ? `УКТ ЗЕД ${x.uk}` : '⚠️ Без УКТ ЗЕД (вкажіть у касі)', '', ...r.b.filter(y => !y.d).slice(0, 15).map(y => `${y.o ? '🍾' : '🆕'} ${tl(y.c)} — ${fq(y.left, x.u)}`)].filter(s => s !== '').join('\n'),
+    markup: { inline_keyboard: [[{ text: '➕ Додати марки', callback_data: 'skexa:' + x.id }, { text: '🍾 Відкрили іншу', callback_data: 'skexo:' + x.id }], [{ text: '🗑 Списати / прибрати', callback_data: 'skexw:' + x.id }, { text: '← Усі', callback_data: 'skex' }]] } };
+}
 // кнопки (з записом стану очікування вводу st:<uid>)
 export async function stockCallbackX(act, arg, env, uid, who) {
+  if (act === 'skex') return exBot(env);
+  if (act === 'skexp') return exBot(env, arg);
+  if (act === 'skexa' || act === 'skexo' || act === 'skexw') { await env.DB.put('st:' + uid, act + ':' + arg, ST_TTL);
+    return { text: { skexa: '➕ Надішліть марки пляшок — кожну з нового рядка (сканер у Telegram теж підходить). Можна кількома повідомленнями.', skexo: '🍾 Надішліть марку пляшки, яку відкрили', skexw: '🗑 Надішліть: <code>марка причина</code> — списати залишок пляшки зі складу\nабо <code>марка прибрати</code> — помилково відсканована нова пляшка' }[act] }; }
   if (act === 'skcnm') return { text: '📝 Інвентаризація — який склад?', markup: { inline_keyboard: [[{ text: WH.k, callback_data: 'skcn:k' }, { text: WH.b, callback_data: 'skcn:b' }]] } };
   if (act === 'skcn') { const wh = arg === 'b' ? 'b' : 'k'; await env.DB.put('st:' + uid, 'skcn:' + wh, ST_TTL); return countView(env, wh); }
   if (act === 'skcf') { const wh = arg === 'b' ? 'b' : 'k', r = await countFinish(env, wh, who); if (r.error) return { text: '⚠️ ' + r.error }; await env.DB.delete('st:' + uid);
@@ -218,5 +238,12 @@ export async function stockState(state, text, env, uid, who) {
     return { text: `🍳 Приготовано: <b>${esc(r.x.n)}</b> +${fq(q, x.u)} · собівартість ${money(r.cost)} (сировина списана за техкартою)\nЗалишок: ${fq(tot(r.x), r.x.u)}` };
   }
   if (k === 'skbc') { const m = text.match(/^(\d{6,})\s*(.*)$/); if (!m) return null; return bcBind(env, m[1], m[2].trim(), who); }
+  if (k === 'skexa') { const cs = text.split('\n').map(exCode).filter(Boolean); if (!cs.length) return null;
+    const r = await exAdd(env, a, cs, '', who); if (r.error) return { text: '⚠️ ' + r.error }; await env.DB.put('st:' + uid, state, ST_TTL);
+    return { text: `🍾 Додано марок: <b>${r.added}</b>${r.dup.length ? ` · уже були: ${r.dup.map(d => tl(d.c)).join(', ')}` : ''}\nНових пляшок: ${r.x.n0} · можна продати ${fq(r.x.cap, r.x.u)}\nНадсилайте ще або будь-який інший текст — вийти.` }; }
+  if (k === 'skexo') { const c = exCode(text); if (!c) return null; const r = await exOpen(env, a, c); if (r.error) return { text: '⚠️ ' + r.error }; return { text: `🍾 Відкрита пляшка ${tl(c)} — марка піде в наступний чек` }; }
+  if (k === 'skexw') { const m = text.trim().match(/^(\S{6,200})\s+(.+)$/); if (!m) return { text: 'Формат: <code>марка причина</code> або <code>марка прибрати</code>' };
+    const rm = /^прибрати$/i.test(m[2].trim()), r = await exOff(env, a, m[1], m[2], who, rm); if (r.error) return { text: '⚠️ ' + r.error };
+    return { text: rm ? `✕ Марку ${tl(m[1])} прибрано` : `🗑 Пляшку ${tl(m[1])} списано зі складу` }; }
   return null;
 }

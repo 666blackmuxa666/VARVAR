@@ -12,6 +12,7 @@ import { getRoute, printClear, printList, printMove, printStatus, queuePrint } f
 import { loyBotCb, loyBotText } from './promo.js';
 import { bkLabel, bookGet, bookSet, certPay, getSite, setSite } from './site.js';
 import { calcView, invLink, invPhoto, stockCallback, stockCallbackW, stockCallbackX, stockCmd, stockState } from './stockbot.js';
+import { exCheck } from './excise.js';
 import { isGo, tn } from './tn.js';
 import { siteLink } from './venue.js';
 import { draftText, parseWaiterOrder } from './waiter.js';
@@ -484,6 +485,7 @@ async function handleCallback(q, env) {
   if (act === 'wok') { // підтвердження замовлення офіціанта (текстом)
     const d = await env.DB.get('draft:' + arg, 'json');
     if (!d) { await edit('⌛ Чернетка застаріла або вже додана. Надішліть замовлення ще раз.'); return answer(''); }
+    const exe = await exCheck(env, d.items); if (exe) { await edit('⚠️ ' + esc(exe)); return answer('🍾 Не вистачає марок'); }
     await env.DB.delete('draft:' + arg);
     const r = await addWaiterOrder(env, d, who);
     if (!r) { await edit('Нічого додати.'); return answer(''); }

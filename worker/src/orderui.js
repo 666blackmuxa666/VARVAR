@@ -117,7 +117,9 @@ export async function obCallback(env, uid, p) {
   }
   if (a === 'com') return { comment: true, ob };
   if (a === 'send') {
-    if (!ob.items.length) return { toast: 'Кошик порожній' }; await env.DB.delete('ob:' + uid);
+    if (!ob.items.length) return { toast: 'Кошик порожній' };
+    const exe = await (await import('./excise.js')).exCheck(env, ob.items); if (exe) return { toast: exe.split('. Додайте')[0].slice(0, 190) }; // 🍾 марок менше, ніж замовлено
+    await env.DB.delete('ob:' + uid);
     if (ob.tw) { // з собою: 1 упаковка на кожну страву з кухні
       const menu = await getMenu(env), FOOD = (await import('./menu.js')).foodCats(menu);
       const food = new Set(menu.categories.filter(c => FOOD.includes(c.id)).flatMap(c => c.items.map(i => i.name.uk)));

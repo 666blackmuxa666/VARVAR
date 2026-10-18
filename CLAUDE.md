@@ -84,6 +84,6 @@
 | ПРРО (фіскальні чеки) | `10-hall.js` (🧾 у «Закритих») | `fiscal.js` (Checkbox; лише заклади платформи), план `_team/prro-plan.md` |
 | Налаштування | `70-settings.js` | — |
 | Гості й акції | `75-loyalty.js` | `promo.js` (рівні клієнтів, акції), `delivery.js` (cli:) |
-| Склад | `80-calc.js` | `stock.js`, `stockbot.js`, `ai.js` |
+| Склад | `80-calc.js`, `81-excise.js` (🍾 акциз) | `stock.js`, `stockbot.js`, `ai.js`, `excise.js` + `exmark.js` (марки пляшок) |
 | Персонал і ЗП | `85-team.js` | `pay.js`, `ops-staff.js` (PIN, працівники, права) |
 | Бот персоналу | — | `bot-main.js` (повідомлення, кнопки), `bot-views.js` (екрани), `orderui.js`, `waiter.js`, `menu.js` |

@@ -1,5 +1,6 @@
 import { aiHelp } from './ai.js';
 import { tn } from './tn.js';
+import { exCheck } from './excise.js';
 import { BUILD } from './buildid.js';
 import { goOrder, goInfo, recoAll } from './delivery.js';
 import { promoQuote, promoFill } from './promo.js';
@@ -312,6 +313,7 @@ async function orderRaw(b, ip, env) {
   }
   if (type !== 'check' && !lines.length) return [{ error: 'empty' }, 400];
   if (sum > MAX_ORDER) return [{ error: 'too_big' }, 400];
+  const exe = await exCheck(env, sold); if (exe) return [{ error: 'excise', msg: exe }, 409]; // 🍾 марок менше, ніж замовив гість
 
   const bill = await getBill(env, table);
   const prevItems = billItems(bill).map(x => `${x.q}× ${x.name}`);
