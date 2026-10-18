@@ -4,9 +4,9 @@ import { fmtPhone } from './delivery.js';
 import { getMenu } from './menu.js';
 import { L, MOVE_ALL, TZ, balances, billItems, closedRec, dayKey, dayZData, delClosed, discAmt, esc, getBill, getCfg, getClosed, getExp, getKq, getMov, getStaff, getVoids, hhmm, isDay, kitchenPct, kitchenStats, loggedWaiters, money, openTables, payLabel, payable, reportBreakdown, reportsData, tablesCount, tg, tipBalances, topData } from './ops.js';
 import { getAtt, shiftIn, shiftOut } from './pay.js';
-import { SENSITIVE } from './perm.js';
+import { PERMS, SENSITIVE } from './perm.js';
 import { promoFill, promoFillMany } from './promo.js';
-import { bkLabel, bookEditFields, bookList, bookManual } from './site.js';
+import { bkButtons, bkLabel, bookEditFields, bookList, bookManual } from './site.js';
 import { tn } from './tn.js';
 import { siteLink } from './venue.js';
 
@@ -291,7 +291,7 @@ export const staffEdited = r => r.error ? { text: '⚠️ ' + r.error } : { text
 export const TEST_PRINT = () => [['logo'], ['big', 'ТЕСТ ДРУКУ'], ['c', hhmm()], ['hr'], ['l', 'Українські літери: Іі Її Єє Ґґ'], ['lr', '2 × Мєско', '760'], ['lr2', 'Всього', '760 грн'], ['hr'], ['gap']];
 export const QR_PRINT = (t, img) => [['logo'], ...(t ? [['invb', `СТІЛ ${t}`]] : []), ['inv', 'МЕНЮ ТА ЗАМОВЛЕННЯ'], ['gap'], ['img', img, 220], ['c', 'Скануйте камерою телефона'], ...(t ? [['b', `Замовлення одразу на стіл ${tn(t)}`]] : []), ['s', 'Замовлення доступне 1 годину після сканування'], ['gap']];
 export const TEST_JOB = TEST_PRINT;
-const tablesGrid = (env, act, skip) => chunk(Array.from({ length: tablesCount(env) }, (_, i) => i + 1).filter(n => n !== skip).map(n => ({ text: String(n), callback_data: `${act}:${n}` })), 5);
+export const tablesGrid = (env, act, skip) => chunk(Array.from({ length: tablesCount(env) }, (_, i) => i + 1).filter(n => n !== skip).map(n => ({ text: String(n), callback_data: `${act}:${n}` })), 5);
 
 // ---------- повідомлення ----------
 // ---------- 📅 броні: дати, ➕ по телефону, ✏️ редагування (ті самі bookManual / bookEditFields, що й у касі) ----------

@@ -3,7 +3,8 @@
 //  2) каса: синтаксис усіх розділів;
 //  3) сервер: синтаксис і імпорти — import { X } з файлу, де X немає (впало б лише на живому запиті);
 //  4) фронт (js/*.js): синтаксис;
-//  5) обірвані ланцюжки (tools/audit-static.mjs): кнопка без обробника, op без case на сервері.
+//  5) обірвані ланцюжки (tools/audit-static.mjs): кнопка без обробника, op без case на сервері;
+//  6) сервер: забутий import у частинах ops-*/bot-* (tools/undef.mjs) — інакше ReferenceError лише на живому запиті.
 // node tools/check.mjs → код 1, якщо щось не так.
 import { readFileSync, readdirSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -24,9 +25,9 @@ eb(`worker/src/index.js --bundle --format=esm --platform=neutral '--external:clo
 eb(readdirSync(R + 'js').filter(f => f.endsWith('.js') && f !== 'pos.build.js').map(f => 'js/' + f).join(' '), 'фронт js/*.js: синтаксис');
 
 // 5) обірвані ланцюжки
-try { execSync('node tools/audit-static.mjs', { cwd: R, stdio: 'pipe' }); } catch (e) { bad.push(String(e.stdout).trim()); }
+for (const t of ['audit-static', 'undef']) try { execSync(`node tools/${t}.mjs`, { cwd: R, stdio: 'pipe' }); } catch (e) { bad.push(String(e.stdout).trim()); }
 
 try { execSync('node tools/map.mjs', { cwd: R, stdio: 'pipe' }); } catch {} // 🗺 оновити карту коду
 rmSync(T, { recursive: true, force: true });
-console.log(bad.length ? bad.join('\n\n') + `\n\n🛡 Перевірка: ❌ ${bad.length}` : `🛡 Перевірка: ✅ (розділів каси ${parts.length}, сервер, фронт, ланцюжки)`);
+console.log(bad.length ? bad.join('\n\n') + `\n\n🛡 Перевірка: ❌ ${bad.length}` : `🛡 Перевірка: ✅ (розділів каси ${parts.length}, сервер, імпорти, фронт, ланцюжки)`);
 process.exit(bad.length ? 1 : 0);

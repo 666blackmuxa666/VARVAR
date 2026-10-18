@@ -65,7 +65,7 @@ for (const s of st) {
   }
 }
 for (const s of st) if (s.wrapOf) s.mod = owner[s.wrapOf].mod;
-const ids = t => new Set([...strip(t).matchAll(/(?<![.\w$])([A-Za-z_$][\w$]*)/g)].map(m => m[1]));
+const ids = t => new Set([...strip(t).matchAll(/(?<![\w$])(?<!(?<!\.\.)\.)([A-Za-z_$][\w$]*)/g)].map(m => m[1]));
 const mods = Object.keys(P.mods), out = {}, needExport = new Set(), warn = [];
 for (const mod of mods) {
   const my = st.filter(s => s.mod === mod), body = my.map(s => s.lines.join('\n')).join('\n'), used = ids(body), local = new Set(my.flatMap(s => s.names));

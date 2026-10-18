@@ -47,8 +47,8 @@ function pin(role) { let p; do { p = role === 'admin' ? String(100000 + Math.flo
 async function register(role, code) {
   for (let i = 0; i < 8; i++) { // PIN може збігтися з чужим (база накопичує працівників); відповідь може загубитись при обриві DO → нове імʼя
     const name = `QA ${role} ${RUN}` + (i ? ` ${i}` : '');
-    const r = await http('/api/pos', { op: 'register', code, name, pin: pin(role) });
-    if (r.status === 200 && r.j.token) { users[role] = { token: r.j.token, me: r.j.me }; must(r.j.me.role === role, `роль ${r.j.me.role} ≠ ${role}`); return r.j.me.name; }
+    const pn = pin(role), r = await http('/api/pos', { op: 'register', code, name, pin: pn });
+    if (r.status === 200 && r.j.token) { users[role] = { token: r.j.token, me: r.j.me, pin: pn }; must(r.j.me.role === role, `роль ${r.j.me.role} ≠ ${role}`); return r.j.me.name; }
     if (!/PIN|імʼ|bad_request/.test(r.j.error || '')) throw new Error(`${r.status} ${JSON.stringify(r.j)}`);
   }
   throw new Error('не вдалося зареєструватись');
@@ -640,6 +640,32 @@ async function smokeOps(A) {
   rec(`${ops.length} дій з порожніми даними`, !bad.length, bad.length ? 'впали (500): ' + bad.join(', ') : '');
 }
 
+// 🤖 Димовий тест бота персоналу: адмін входить за PIN, натискає кожну кнопку клавіатури і безпечні inline-кнопки (без аргументів).
+// Падіння обробника → сервер відповідає 400 bad_request. Кнопки, що видаляють/закривають/змінюють налаштування, — пропускаються.
+async function botSmoke(pinA) {
+  sect('🤖 Бот персоналу: кнопки не падають');
+  const { readdirSync, readFileSync } = await import('node:fs'), D = new URL('../worker/src/', import.meta.url);
+  const bv = readFileSync(new URL('bot-views.js', D), 'utf8'), obj = k => Object.fromEntries([...bv.match(new RegExp(`export const ${k} = \\{([\\s\\S]*?)\\};`))[1].matchAll(/(\w+): '([^']+)'/g)].map(m => [m[1], m[2]]));
+  const W = obj('W'), A = obj('A');
+  const uid = 7e9 + Math.floor(Math.random() * 1e8); let n = 1;
+  const tg = async u => (await fetch(API + '/tg', { method: 'POST', headers: { 'content-type': 'application/json', 'X-Telegram-Bot-Api-Secret-Token': 'x' }, body: JSON.stringify({ update_id: n++, ...u }) })).status;
+  const msg = text => tg({ message: { message_id: n, chat: { id: uid, type: 'private' }, from: { id: uid, first_name: 'QA' }, text } });
+  const cb = data => tg({ callback_query: { id: 'q' + n, data, from: { id: uid, first_name: 'QA' }, message: { message_id: 1, chat: { id: uid } } } });
+  const ok = await step('вхід адміна за PIN', async () => { must((await msg('/admin')) === 200, '/admin'); must((await msg(pinA)) === 200, 'PIN'); });
+  if (!ok) return;
+  const bad = [], skipT = new Set([A.logout, A.reset, A.delClosed, A.waiter]);
+  const texts = ['/start', '/help', ...Object.values(W), ...Object.values(A).filter(t => !skipT.has(t))];
+  for (const t of texts) { const s = await msg(t); if (s !== 200) bad.push(`«${t}» ${s}`); }
+  rec(`${texts.length} кнопок і команд`, !bad.length, bad.join(', '));
+  // inline: усі префікси callback_data з коду бота, з порожніми аргументами
+  const src = readdirSync(D).filter(f => f.endsWith('.js')).map(f => readFileSync(new URL(f, D), 'utf8')).join('\n');
+  const danger = /^(stfdel|stfdq|exdel|pdel|rm|rmq|dc|clsok|cls|exy|exs|gos|cep|cex|ce|cem|eqn|eq|rp|pclr|cfg|stfr|stfro|stfp|stfn|tgl|del|reset|delc|cmv|spl|spli|dsc|dscs|dscc|kdn|kst|mv|o|ed|prm|prt|pmt|ptest|rcn|bke|bkef|goe|goef|ob|atk|swk|zpb|zpbs|wl|tk|zdel|zdx|zdz|zdzn|zdzp|rej|skbuy|wout|tkd)$/;
+  const cbs = [...new Set([...src.matchAll(/callback_data:\s*[`']([a-z]+)[:`']/g)].map(m => m[1]))].filter(c => !danger.test(c)).sort(), badC = [];
+  for (const c of cbs) { const s = await cb(c); if (s !== 200) badC.push(`${c} ${s}`); }
+  rec(`${cbs.length} inline-кнопок (${cbs.join(' ')})`, !badC.length, badC.join(', '));
+  await msg(A.logout);
+}
+
 // 🎁 лояльність (promo.js): рівень → автознижка, без складання з ручною, щасливі години, кошик сайту, звіт
 async function loyTests(A, W, dish) {
   sect('🎁 Лояльність: рівні й акції');
@@ -1228,7 +1254,7 @@ async function designPages(b) {
   let ok = true;
   try {
     if (!ARGS.includes('--ui-only')) ok = await apiTests();
-    if (ok !== false && !ARGS.includes('--ui-only') && users.admin?.token) await smokeOps(users.admin.token);
+    if (ok !== false && !ARGS.includes('--ui-only') && users.admin?.token) { await smokeOps(users.admin.token); if (users.admin.pin) await botSmoke(users.admin.pin); }
     if (ok !== false && !ARGS.includes('--api-only')) {
       if (!users.waiter) await step('реєстрація waiter для UI', () => register('waiter', '1112'));
       await uiTests();
