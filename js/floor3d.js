@@ -36,7 +36,7 @@
     else if (k === 'plant') o = shadow(46, 46) + box(26, 26, 24, 'pot') + disc(40, 40, 'leaf l1') + disc(30, 54, 'leaf l2') + disc(18, 64, 'leaf l3');
     else if (k === 'tree') o = shadow(90, 90) + box(30, 30, 26, 'pot') + disc(80, 70, 'leaf l1') + disc(64, 92, 'leaf l2') + disc(42, 110, 'leaf l3') + disc(20, 122, 'leaf l3');
     else if (k === 'umb') o = '<b class="f3-sh round" style="width:120px;height:120px;left:-60px;top:-60px"></b>' + box(6, 6, 96, 'pole') + disc(124, 98, 'canopy');
-    else if (k === 'rug') o = '<b class="f3-rug" style="width:' + px(L) + ';height:' + px(Math.round(L * .62)) + ';left:' + px(-L / 2) + ';top:' + px(-L * .31) + '"></b>';
+    else if (k === 'rug') o = '<b class="f3-rug" style="width:' + px(L) + ';height:' + px(Math.round(L * .62)) + ';left:' + px(-L / 2) + ';top:' + px(-L * .31) + ';transform:translateZ(1.5px)"></b>'; // піднято над підлогою — інакше блимає (z-fighting)
     else if (k === 'stage') o = shadow(L + 20, 140) + box(L, 120, 16, 'stage');
     else if (k === 'stairs') { for (var j = 0; j < 5; j++) o += '<i class="f3-p" style="top:' + px(-40 + j * 20) + '">' + box(90, 20, 50 - j * 10, 'step') + '</i>'; }
     else if (k === 'fire') o = shadow(110, 60) + box(96, 44, 90, 'mfire') + '<i class="f3-p" style="top:23px">' + box(44, 2, 34, 'flame') + '</i>';

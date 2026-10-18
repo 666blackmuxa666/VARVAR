@@ -68,13 +68,13 @@ export async function pushUnsub(env, sid, e) {
 }
 
 // 📣 надіслати працівникам (sids) — msg: { title, body, tag?, go? }; urgent → гучно (🔴)
-export async function pushTo(env, sids, msg, urgent = false) {
+export async function pushTo(env, sids, msg, urgent = false, out = null) {
   if (!pushOn(env)) return 0;
   let n = 0;
   for (const sid of [...new Set(sids)].filter(Boolean)) {
     const key = 'push:' + sid, l = (await env.DB.get(key, 'json')) || []; if (!l.length) continue;
     const dead = [];
-    await Promise.all(l.map(async s => { try { const st = await sendOne(env, s, { ...msg, urgent: !!urgent }, urgent); if (st === 404 || st === 410) dead.push(s.e); else if (st < 300) n++; } catch {} }));
+    await Promise.all(l.map(async s => { try { const st = await sendOne(env, s, { ...msg, urgent: !!urgent }, urgent); out?.push(st); if (st === 404 || st === 410) dead.push(s.e); else if (st < 300) n++; } catch (e) { out?.push(String(e?.message || e).slice(0, 60)); } }));
     if (dead.length) await env.DB.locked(key, async () => { const c = ((await env.DB.get(key, 'json')) || []).filter(x => !dead.includes(x.e)); if (c.length) await env.DB.put(key, JSON.stringify(c)); else await env.DB.delete(key); });
   }
   return n;
@@ -86,6 +86,6 @@ export async function pushApi(b, env, me) {
   if (!pushOn(env)) return [{ error: 'Сповіщення ще не налаштовані на сервері' }, 400];
   if (b.op === 'pushSub') { const r = await pushSub(env, me.sid, b.sub); return [r, r.error ? 400 : 200]; }
   if (b.op === 'pushUnsub') return [await pushUnsub(env, me.sid, b.e), 200];
-  if (b.op === 'pushTest') { const n = await pushTo(env, [me.sid], { title: '🔔 ATOM', body: `Сповіщення працюють, ${me.name}!`, tag: 'test' }, true); return n ? [{ ok: true, n }, 200] : [{ error: 'Не вдалося надіслати — увімкніть сповіщення ще раз' }, 400]; }
+  if (b.op === 'pushTest') { const st = [], n = await pushTo(env, [me.sid], { title: '🔔 ATOM', body: `Сповіщення працюють, ${me.name}!`, tag: 'test' }, true, st); return n ? [{ ok: true, n }, 200] : [{ error: `Не вдалося надіслати${st.length ? ` (${st.join(', ')})` : ' — на цьому акаунті немає підписаних пристроїв'}. Вимкніть і увімкніть сповіщення ще раз` }, 400]; }
   return [{ error: 'op' }, 400];
 }

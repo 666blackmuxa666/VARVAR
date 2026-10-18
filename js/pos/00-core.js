@@ -672,8 +672,10 @@
   const installHow = () => isIOS() ? '1. Відкрийте касу в Safari\n2. Натисніть «Поділитися» (квадрат зі стрілкою)\n3. «На початковий екран» → «Додати»\n4. Відкрийте касу з іконки й увімкніть сповіщення' : '1. Відкрийте касу в Chrome\n2. Меню ⋮ → «Встановити додаток» або «Додати на головний екран»\n3. Відкрийте касу з іконки';
   const u8 = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0));
   async function pushSubNow() {
-    const k = await api('pushKey'); if (!k.on) throw new Error('Сповіщення ще не налаштовані на сервері');
-    if ((await Notification.requestPermission()) !== 'granted') throw new Error('Сповіщення заборонені — дозвольте їх у налаштуваннях телефона для каси');
+    // iPhone: дозвіл — одразу після натискання (до будь-якого запиту до сервера), інакше Safari його мовчки відхиляє
+    const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+    if (perm !== 'granted') throw new Error('Сповіщення заборонені — дозвольте їх у налаштуваннях телефона для каси');
+    const k = S.pushK || (S.pushK = await api('pushKey')); if (!k.on) throw new Error('Сповіщення ще не налаштовані на сервері');
     const reg = await navigator.serviceWorker.register('pos-sw.js'); await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
     if (sub && sub.options?.applicationServerKey && btoa(String.fromCharCode(...new Uint8Array(sub.options.applicationServerKey))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') !== k.key) { await sub.unsubscribe(); sub = null; }
@@ -681,6 +683,7 @@
     await api('pushSub', { sub: sub.toJSON() }); return sub;
   }
   async function pushMenu() {
+    if (!S.pushK) api('pushKey').then(k => { S.pushK = k; }).catch(() => {});
     if (isIOS() && !isApp()) return modal({ title: '📲 Спершу встановіть касу', text: 'На iPhone сповіщення працюють лише в касі, встановленій на екран (iOS 16.4+).\n\n' + installHow(), buttons: [{ label: 'Зрозуміло', val: null }] });
     if (!pushCan()) return modal({ title: '🔔 Сповіщення', text: 'Цей браузер не підтримує сповіщення. Встановіть касу як додаток:\n\n' + installHow(), buttons: [{ label: 'Зрозуміло', val: null }] });
     const reg = await navigator.serviceWorker.getRegistration(), sub = await reg?.pushManager.getSubscription(), on = !!sub && Notification.permission === 'granted';
@@ -694,6 +697,7 @@
   // 📲 одна акуратна плашка: встановити касу / увімкнути сповіщення — дві кнопки, закривається назавжди
   async function pushBanner() {
     $('#pushAsk')?.remove(); if (store.get('pushAsk') || !S.me?.sid) return;
+    api('pushKey').then(k => { S.pushK = k; }).catch(() => {});
     try { if (pushCan() && Notification.permission === 'granted' && await (await navigator.serviceWorker.getRegistration())?.pushManager.getSubscription()) return; } catch {}
     const ios = isIOS() && !isApp(), d = document.createElement('div'); d.id = 'pushAsk'; d.className = 'push-ask';
     d.innerHTML = `<div class="pa-t">🔔 ${ios ? 'Замовлення — у шторку' : 'Увімкнути сповіщення?'}</div><div class="pa-s">${ios ? 'Встановіть касу на екран телефона' : 'Нові замовлення навіть на заблокованому екрані'}</div><div class="pa-b"><button class="btn sm" data-p="no">Не зараз</button><button class="btn sm pa-ok" data-p="on">${ios ? 'Як?' : 'Увімкнути'}</button></div>`;
@@ -702,7 +706,7 @@
   }
   // ⚙️ перемикач у Налаштуваннях → Цей пристрій
   async function pushSwSync() {
-    const el = $('#pushSw'); if (!el) return;
+    const el = $('#pushSw'); if (!el) return; if (!S.pushK) api('pushKey').then(k => { S.pushK = k; }).catch(() => {});
     let on = false; try { on = pushCan() && Notification.permission === 'granted' && !!(await (await navigator.serviceWorker.getRegistration())?.pushManager.getSubscription()); } catch {}
     el.classList.toggle('on', on); const row = $('#pushRow'); if (!row) return;
     row.onclick = async () => {
