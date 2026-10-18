@@ -691,14 +691,28 @@
       else if (v === 'off') { await api('pushUnsub', { e: sub.endpoint }); await sub.unsubscribe(); toast('🔕 Вимкнено'); }
     } catch (e) { toast('⚠️ ' + (e.message || e)); }
   }
-  // 📲 одна ненав'язлива плашка: встановити касу / увімкнути сповіщення (закривається назавжди)
+  // 📲 одна акуратна плашка: встановити касу / увімкнути сповіщення — дві кнопки, закривається назавжди
   async function pushBanner() {
     $('#pushAsk')?.remove(); if (store.get('pushAsk') || !S.me?.sid) return;
     try { if (pushCan() && Notification.permission === 'granted' && await (await navigator.serviceWorker.getRegistration())?.pushManager.getSubscription()) return; } catch {}
-    const d = document.createElement('div'); d.id = 'pushAsk'; d.className = 'toast'; d.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:min(92vw,420px)';
-    d.innerHTML = `<span style="flex:1;min-width:0">${isIOS() && !isApp() ? '📲 Встановіть касу на екран — і отримуйте замовлення в шторку' : '🔔 Отримуйте нові замовлення в шторку телефона'}</span><button class="btn sm" data-p="on">${isIOS() && !isApp() ? 'Як?' : 'Увімкнути'}</button><button class="btn sm" data-p="no">✕</button>`;
-    d.onclick = e => { const p = e.target.dataset.p; if (!p) return; d.remove(); store.set('pushAsk', 1); if (p === 'on') pushMenu(); };
+    const ios = isIOS() && !isApp(), d = document.createElement('div'); d.id = 'pushAsk'; d.className = 'push-ask';
+    d.innerHTML = `<div class="pa-t">🔔 ${ios ? 'Замовлення — у шторку' : 'Увімкнути сповіщення?'}</div><div class="pa-s">${ios ? 'Встановіть касу на екран телефона' : 'Нові замовлення навіть на заблокованому екрані'}</div><div class="pa-b"><button class="btn sm" data-p="no">Не зараз</button><button class="btn sm pa-ok" data-p="on">${ios ? 'Як?' : 'Увімкнути'}</button></div>`;
+    d.onclick = e => { const p = e.target.dataset.p; if (!p) return; d.remove(); store.set('pushAsk', 1); if (p === 'on') ios ? pushMenu() : pushSubNow().then(() => { toast('🔔 Увімкнено'); api('pushTest').catch(() => {}); pushSwSync(); }).catch(er => toast('⚠️ ' + (er.message || er))); };
     document.body.append(d);
+  }
+  // ⚙️ перемикач у Налаштуваннях → Цей пристрій
+  async function pushSwSync() {
+    const el = $('#pushSw'); if (!el) return;
+    let on = false; try { on = pushCan() && Notification.permission === 'granted' && !!(await (await navigator.serviceWorker.getRegistration())?.pushManager.getSubscription()); } catch {}
+    el.classList.toggle('on', on); const row = $('#pushRow'); if (!row) return;
+    row.onclick = async () => {
+      if (isIOS() && !isApp() || !pushCan()) return pushMenu();
+      try {
+        if (!on) { await pushSubNow(); store.set('pushAsk', 1); $('#pushAsk')?.remove(); toast('🔔 Увімкнено'); api('pushTest').catch(() => {}); }
+        else { const sub = await (await navigator.serviceWorker.getRegistration())?.pushManager.getSubscription(); if (sub) { await api('pushUnsub', { e: sub.endpoint }).catch(() => {}); await sub.unsubscribe(); } toast('🔕 Вимкнено'); }
+      } catch (e) { toast('⚠️ ' + (e.message || e)); }
+      pushSwSync();
+    };
   }
   try { navigator.serviceWorker?.addEventListener('message', e => { const go = e.data?.push && e.data.go; if (go?.view) { S.view = go.view; renderNav(); renderMain(); loadView(); } }); } catch {}
 

@@ -2219,19 +2219,61 @@ var __objRest = (source, exclude) => {
       if (pushCan() && Notification.permission === "granted" && await ((_c = await navigator.serviceWorker.getRegistration()) == null ? void 0 : _c.pushManager.getSubscription())) return;
     } catch (e) {
     }
-    const d = document.createElement("div");
+    const ios = isIOS() && !isApp(), d = document.createElement("div");
     d.id = "pushAsk";
-    d.className = "toast";
-    d.style.cssText = "display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:min(92vw,420px)";
-    d.innerHTML = `<span style="flex:1;min-width:0">${isIOS() && !isApp() ? "\u{1F4F2} \u0412\u0441\u0442\u0430\u043D\u043E\u0432\u0456\u0442\u044C \u043A\u0430\u0441\u0443 \u043D\u0430 \u0435\u043A\u0440\u0430\u043D \u2014 \u0456 \u043E\u0442\u0440\u0438\u043C\u0443\u0439\u0442\u0435 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0432 \u0448\u0442\u043E\u0440\u043A\u0443" : "\u{1F514} \u041E\u0442\u0440\u0438\u043C\u0443\u0439\u0442\u0435 \u043D\u043E\u0432\u0456 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0432 \u0448\u0442\u043E\u0440\u043A\u0443 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0430"}</span><button class="btn sm" data-p="on">${isIOS() && !isApp() ? "\u042F\u043A?" : "\u0423\u0432\u0456\u043C\u043A\u043D\u0443\u0442\u0438"}</button><button class="btn sm" data-p="no">\u2715</button>`;
+    d.className = "push-ask";
+    d.innerHTML = `<div class="pa-t">\u{1F514} ${ios ? "\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u2014 \u0443 \u0448\u0442\u043E\u0440\u043A\u0443" : "\u0423\u0432\u0456\u043C\u043A\u043D\u0443\u0442\u0438 \u0441\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F?"}</div><div class="pa-s">${ios ? "\u0412\u0441\u0442\u0430\u043D\u043E\u0432\u0456\u0442\u044C \u043A\u0430\u0441\u0443 \u043D\u0430 \u0435\u043A\u0440\u0430\u043D \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0430" : "\u041D\u043E\u0432\u0456 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043D\u0430\u0432\u0456\u0442\u044C \u043D\u0430 \u0437\u0430\u0431\u043B\u043E\u043A\u043E\u0432\u0430\u043D\u043E\u043C\u0443 \u0435\u043A\u0440\u0430\u043D\u0456"}</div><div class="pa-b"><button class="btn sm" data-p="no">\u041D\u0435 \u0437\u0430\u0440\u0430\u0437</button><button class="btn sm pa-ok" data-p="on">${ios ? "\u042F\u043A?" : "\u0423\u0432\u0456\u043C\u043A\u043D\u0443\u0442\u0438"}</button></div>`;
     d.onclick = (e) => {
       const p = e.target.dataset.p;
       if (!p) return;
       d.remove();
       store.set("pushAsk", 1);
-      if (p === "on") pushMenu();
+      if (p === "on") ios ? pushMenu() : pushSubNow().then(() => {
+        toast("\u{1F514} \u0423\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u043E");
+        api("pushTest").catch(() => {
+        });
+        pushSwSync();
+      }).catch((er) => toast("\u26A0\uFE0F " + (er.message || er)));
     };
     document.body.append(d);
+  }
+  async function pushSwSync() {
+    var _a2;
+    const el = $("#pushSw");
+    if (!el) return;
+    let on = false;
+    try {
+      on = pushCan() && Notification.permission === "granted" && !!await ((_a2 = await navigator.serviceWorker.getRegistration()) == null ? void 0 : _a2.pushManager.getSubscription());
+    } catch (e) {
+    }
+    el.classList.toggle("on", on);
+    const row = $("#pushRow");
+    if (!row) return;
+    row.onclick = async () => {
+      var _a3, _b2;
+      if (isIOS() && !isApp() || !pushCan()) return pushMenu();
+      try {
+        if (!on) {
+          await pushSubNow();
+          store.set("pushAsk", 1);
+          (_a3 = $("#pushAsk")) == null ? void 0 : _a3.remove();
+          toast("\u{1F514} \u0423\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u043E");
+          api("pushTest").catch(() => {
+          });
+        } else {
+          const sub = await ((_b2 = await navigator.serviceWorker.getRegistration()) == null ? void 0 : _b2.pushManager.getSubscription());
+          if (sub) {
+            await api("pushUnsub", { e: sub.endpoint }).catch(() => {
+            });
+            await sub.unsubscribe();
+          }
+          toast("\u{1F515} \u0412\u0438\u043C\u043A\u043D\u0435\u043D\u043E");
+        }
+      } catch (e) {
+        toast("\u26A0\uFE0F " + (e.message || e));
+      }
+      pushSwSync();
+    };
   }
   try {
     (_b = navigator.serviceWorker) == null ? void 0 : _b.addEventListener("message", (e) => {
@@ -4698,8 +4740,9 @@ var __objRest = (source, exclude) => {
         applyLook();
       }
     }));
+    setTimeout(pushSwSync, 0);
     return `<div class="grid2 set"><div class="card" style="grid-column:1/-1"><h3>\u{1F3A8} \u0421\u0442\u0443\u0434\u0456\u044F \u0432\u0438\u0433\u043B\u044F\u0434\u0443</h3>${st}</div>
-      <div class="card"><h3>\u{1F4F1} \u0426\u0435\u0439 \u043F\u0440\u0438\u0441\u0442\u0440\u0456\u0439</h3><div class="set-note muted">\u0420\u043E\u0437\u043C\u0456\u0440</div><div class="lk-row">${[85, 92, 100, 110, 120].map((z) => opt("size", z, z === 100 ? "\u0417\u0432\u0438\u0447\u0430\u0439\u043D\u0438\u0439" : z + "%")).join("")}</div>
+      <div class="card"><h3>\u{1F4F1} \u0426\u0435\u0439 \u043F\u0440\u0438\u0441\u0442\u0440\u0456\u0439</h3><div class="kv" id="pushRow" style="cursor:pointer"><span style="min-width:0">\u{1F514} \u0421\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F \u0432 \u0448\u0442\u043E\u0440\u043A\u0443</span><span class="switch" id="pushSw"></span></div><div class="set-note muted">\u0420\u043E\u0437\u043C\u0456\u0440</div><div class="lk-row">${[85, 92, 100, 110, 120].map((z) => opt("size", z, z === 100 ? "\u0417\u0432\u0438\u0447\u0430\u0439\u043D\u0438\u0439" : z + "%")).join("")}</div>
         <div class="set-note muted" style="margin-top:10px">\u0410\u043D\u0456\u043C\u0430\u0446\u0456\u0457</div><div class="lk-row">${opt("anim", 1, "\u2728 \u0423\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u0456")}${opt("anim", 0, "\u26A1 \u0412\u0438\u043C\u043A\u043D\u0435\u043D\u0456 (\u0448\u0432\u0438\u0434\u0448\u0435 \u043D\u0430 \u0441\u043B\u0430\u0431\u043A\u0438\u0445)")}</div>
         <div class="btnrow" style="margin-top:12px"><button class="btn sm" data-a="lookReset">\u21BA \u0421\u043A\u0438\u043D\u0443\u0442\u0438 \u043F\u0440\u0438\u0441\u0442\u0440\u0456\u0439 \u0434\u043E \u0432\u0438\u0433\u043B\u044F\u0434\u0443 \u0437\u0430\u043A\u043B\u0430\u0434\u0443</button></div></div>
       <div class="card"><h3>\u{1F50A} \u0417\u0432\u0443\u043A \u0441\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u044C</h3><div class="lk-row">${Object.entries(SOUNDS).map(([k, [l]]) => opt("sound", k, (k === "off" ? "\u{1F507} " : "\u25B6 ") + l)).join("")}</div>

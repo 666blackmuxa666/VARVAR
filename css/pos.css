@@ -1112,3 +1112,10 @@ body.noanim .tables .tbl.new::after,body.noanim .ev.wait::after{animation:none!i
 @media (max-width:700px){.zp-det .zp-det-b{grid-template-columns:1fr 1fr!important}}
 .zp-hist{margin-top:10px;border-top:1px solid var(--line,#333);padding-top:8px}.zp-hist summary{cursor:pointer;font-weight:600;margin-bottom:6px}
 @media (max-width:700px){.btnrow>.catH{flex:1 0 100%!important}} /* назва розділу меню — окремим рядком над кнопками */
+/* 🔔 плашка «Увімкнути сповіщення» */
+.push-ask { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom)); width: min(calc(100vw - 32px), 360px); box-sizing: border-box; background: var(--card2, #2c2c2e); border: 1px solid #ffffff1a; border-radius: 18px; padding: 14px 16px; z-index: 61; box-shadow: 0 12px 40px #0008; display: grid; gap: 4px; }
+.push-ask .pa-t { font-weight: 700; font-size: 15px; }
+.push-ask .pa-s { font-size: 13px; opacity: .7; line-height: 1.35; }
+.push-ask .pa-b { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.push-ask .pa-b .btn { width: 100%; justify-content: center; }
+.push-ask .pa-ok { background: var(--accent); color: #000; }
