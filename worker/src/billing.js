@@ -62,7 +62,10 @@ export async function billPaid(env, kind, x) {
   // розблокування: 3 спроби; не вдалось — тривога платформі й позначка, щоб щоденна перевірка повторила
   let un = 0; for (let i = 0; i < 3 && !un; i++) un = await (await import('./owner.js')).callVenue(env, vid, '/__int/lock', { on: 0 }).then(() => 1, () => 0);
   if (!un) await H.venueBill(vid, { unlockErr: 1 });
-  await say(env, `💳 <b>Оплата ATOM</b> · ${esc(v.name)}: ${sum} грн → оплачено до ${ymd(till)}${test ? ' · 🧪 тест' : ''}${un ? '' : '\n⚠️ <b>Касу НЕ розблоковано</b> — повторю завтра о 10:00 або розблокуйте вручну'}`);
+  // 🎁 реферал: перша справжня оплата приведеного закладу (після безкоштовного місяця) → рефері одразу +1 міс (один раз на заклад, ліміт 12 — у refApply)
+  let gift = ''; if (v.refBy && !v.refPaid && sum > 0 && !test) { const ra = await H.refApply(vid).catch(() => null), rv = ra?.referrer && await H.venueGet(ra.referrer);
+    if (rv) { const rt = addMonth(Math.max(Date.now(), tillOf(rv))); await H.venueBill(rv.id, { paidTill: rt, locked: 0, pay: { ts: Date.now(), sum: 0, lp: '🎁 запросив друга · ' + v.name } }); await (await import('./owner.js')).callVenue(env, rv.id, '/__int/lock', { on: 0 }).catch(() => {}); gift = `\n🎁 «${esc(rv.name)}» +1 міс за запрошення → до ${ymd(rt)}`; } }
+  await say(env, `💳 <b>Оплата ATOM</b> · ${esc(v.name)}: ${sum} грн → оплачено до ${ymd(till)}${test ? ' · 🧪 тест' : ''}${un ? '' : '\n⚠️ <b>Касу НЕ розблоковано</b> — повторю завтра о 10:00 або розблокуйте вручну'}${gift}`);
   return { ok: true };
 }
 

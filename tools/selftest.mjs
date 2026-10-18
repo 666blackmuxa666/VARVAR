@@ -1027,8 +1027,8 @@ async function loyTests(A, W, dish) {
     must((await ownT(PT, 'chat', { id: CL[0] })).status === 400, 'розмова лишилась після видалення ліда');
     await ownT(PT, 'chatCfg', { set: 1, f: { on: 0 } }); });
 
-  sect('🎁 Реферальна програма (етап 1, вручну)');
-  const FE = `qa-ref-${VID}@test.local`, FV = [], phone = '+3809' + String(Date.now()).slice(-8);
+  sect('🎁 Реферальна програма');
+  const FE = `qa-ref-${VID}@test.local`, FV = [], phone = '+3809' + String(Date.now()).slice(-8); let FE2 = '';
   await step('?ref= з лендингу → lead.ref (очищений: a–z0–9); код закладу стабільний', async () => {
     const r = await ownT(PT, 'leadNew', { name: 'QA реф', phone, place: 'QA', ref: 'QA-Ref_1!' }); must(r.j.ok, JSON.stringify(r.j)); // /api/lead живе лише на домені posatom.online, тож перевіряємо ту саму leadAdd через кабінет
     const L = (await ownT(PT, 'leads', { days: 7 })).j.list.find(x => x.phone === phone); must(L && L.ref === 'qaref1', 'ref=' + L?.ref);
@@ -1055,6 +1055,18 @@ async function loyTests(A, W, dish) {
     }
     const st = (await ownT(PT, 'ref', { venue: VID })).j.ref; must(st.n === 12, 'n=' + st.n);
     must((await ownT(PT, 'refBlock', { code, on: 1 })).j.ok && (await ownT(PT, 'ref', { venue: VID })).j.ref.blocked, 'блок'); await ownT(PT, 'refBlock', { code, on: 0 }); });
+  await step('🎁 авто: перша оплата приведеного (після безкоштовного місяця) → рефері +1 міс одразу, повторна оплата — без подарунка', async () => {
+    const { createHash } = await import('node:crypto'), PRIV = 'sandbox_test_private_key';
+    const cb = async obj => { const data = Buffer.from(JSON.stringify(obj)).toString('base64'), signature = createHash('sha1').update(PRIV + data + PRIV).digest('base64');
+      return (await fetch(API + '/api/lp/sub', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ data, signature }).toString() })).json(); };
+    const R = `${VID}-f1`, QE = `qa-ref2-${VID}@test.local`, G = `${VID}-g1`, till = async id => (await ownT(PT, 'bill', { venue: id })).j.sub.till;
+    must((await ownT(PT, 'acctNew', { email: QE, pass: 'friend-pass-123', name: 'QA друг 2' })).j.ok, 'acctNew'); FE2 = QE;
+    const code = (await ownT(PT, 'ref', { venue: R })).j.ref.code; must((await ownT(PT, 'venueNew', { id: G, name: 'QA друг G', owner: QE, ref: code })).j.ok, 'venueNew'); FV.push(G);
+    const t0 = await till(R), pid = 'qaref' + Date.now();
+    await cb({ order_id: `sub-${G}-x1`, status: 'subscribed', action: 'subscribe', amount: 500, payment_id: pid });
+    const t1 = await till(R), d = Math.round((t1 - t0) / 864e5); must(d >= 28 && d <= 31, `рефері +${d} дн`); must((await ownT(PT, 'ref', { venue: R })).j.ref.n === 1, 'лічильник');
+    await cb({ order_id: `sub-${G}-x1`, status: 'subscribed', action: 'subscribe', amount: 500, payment_id: pid + 'b' });
+    must(await till(R) === t1, 'подарунок двічі'); return `+${d} дн рефері`; });
   { const SE = 'qa-self@test.local'; let sv = null;
   await step('⚡ самореєстрація: бот-пастка/коротка назва/слабкий пароль → відмова, акаунт не створено', async () => {
     must((await own({ op: 'signup', web: 'x', email: SE, place: 'Кав\'ярня', pass: 'selfpass-123' })).j.test === undefined, 'пастка');
@@ -1078,7 +1090,7 @@ async function loyTests(A, W, dish) {
   await step('⚡ самореєстрація: той самий email вдруге → «вже зареєстровано»', async () => {
     const r = await own({ op: 'signup', email: SE, place: 'Інша', pass: 'selfpass-123' }); must(r.status === 400 && /уже зареєстровано/.test(r.j.error || ''), JSON.stringify(r.j)); });
   await step('⚡ самореєстрація: прибирання', async () => { await ownT(PT, 'venueDel', { id: sv.venue, pass: PP }); await ownT(PT, 'acctDel', { email: SE }); }); }
-  await step('прибирання: тестові заклади й власник-друг', async () => { for (const id of FV) await ownT(PT, 'venueDel', { id, pass: PP }); await ownT(PT, 'acctDel', { email: FE }); });
+  await step('прибирання: тестові заклади й власник-друг', async () => { for (const id of FV) await ownT(PT, 'venueDel', { id, pass: PP }); await ownT(PT, 'acctDel', { email: FE }); if (FE2) await ownT(PT, 'acctDel', { email: FE2 }); });
   await step('платформа: доступ керуючому, зміна власника, видалення', async () => {
     const ME = `qa-mgr-${VID}@test.local`; must((await ownT(PT, 'acctNew', { email: ME, pass: 'manager-pass-1', name: 'QA керуючий' })).j.ok, 'acctNew');
     must((await ownT(PT, 'grant', { venue: VID, email: ME, on: true })).j.ok, 'grant');
