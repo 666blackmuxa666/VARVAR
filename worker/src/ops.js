@@ -1123,7 +1123,7 @@ export async function resetAll(env) {
 // ---------- обгортки із замками (див. L) ----------
 export async function bump(env, ...a) { return L(env, a[0], () => _bump(env, ...a)); }
 async function logClosed(env, ...a) { return L(env, 'closed:' + dayKey(), () => _logClosed(env, ...a)); }
-export async function logEvent(env, ...a) { return L(env, 'ev:' + dayKey(), () => _logEvent(env, ...a)); }
+export async function logEvent(env, ...a) { const e = await L(env, 'ev:' + dayKey(), () => _logEvent(env, ...a)); if (env.VAPID_PUB) await (await import('./push.js')).pushEvent(env, e).catch(() => {}); return e; } // 🔔 подія → шторка
 export async function acceptOrder(env, ...a) {
   const ok = await L(env, 'ord:' + a[0], () => _acceptOrder(env, ...a));
   // хто прийняв замовлення гостя — офіціант стола (якщо ще не призначений); окремо від замка ord: — без взаємного блокування з rejectOrder

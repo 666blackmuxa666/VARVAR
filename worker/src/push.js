@@ -89,3 +89,36 @@ export async function pushApi(b, env, me) {
   if (b.op === 'pushTest') { const st = [], n = await pushTo(env, [me.sid], { title: '🔔 ATOM', body: `Сповіщення працюють, ${me.name}!`, tag: 'test' }, true, st); return n ? [{ ok: true, n }, 200] : [{ error: `Не вдалося надіслати${st.length ? ` (${st.join(', ')})` : ' — на цьому акаунті немає підписаних пристроїв'}. Вимкніть і увімкніть сповіщення ще раз` }, 400]; }
   return [{ error: 'op' }, 400];
 }
+
+// 🎯 подія стрічки каси → сповіщення потрібним людям (викликається з logEvent). Хто сам зробив дію — не отримує.
+const strip = s => String(s || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 180);
+export async function pushEvent(env, e) {
+  if (!pushOn(env) || !e?.k) return;
+  const O = await import('./ops.js'), tn = (await import('./tn.js')).tn;
+  const staff = (await O.getStaff(env)).filter(s => s.id && s.role);
+  const d = O.dayKey(), att = (await env.DB.get('att:' + d.slice(0, 7), 'json')) || {}, day = att[d] || {};
+  const on = s => { const x = day[s.name]; return !!(x && x.in && !x.out); };
+  const role = (r, shiftOnly = true) => { const l = staff.filter(s => s.role === r); const w = shiftOnly ? l.filter(on) : l; return w.length || r !== 'admin' ? w : l; }; // адміна — хоч когось, навіть не на зміні
+  const T = e.t ? (x => /^\d+$/.test(String(x)) ? 'Стіл ' + x : x)(tn(e.t)) : '';
+  const waiterOf = async () => { if (!e.t) return []; const b = await O.getBill(env, e.t); const w = b.waiter && staff.find(s => s.name === b.waiter); return w ? [w] : role('waiter'); };
+  let to = [], msg = null, urgent = false;
+  switch (e.k) {
+    case 'guest': to = [...role('admin'), ...role('waiter')]; urgent = true; msg = { title: `🆕 Нове замовлення · ${T}`, body: strip(`${e.kind || ''} ${(e.lines || []).map?.(x => typeof x === 'string' ? x : `${x.q || 1}× ${x.n || x.name || ''}`).join(', ') || ''}`), tag: 'g' + (e.oid || e.t), go: { view: 'hall' } }; break;
+    case 'call': to = e.oid && String(e.oid).startsWith('p') ? role('admin') : [...(await waiterOf()), ...role('admin')]; urgent = true; msg = { title: e.text ? '⚠️ Проблема з доставкою' : `🖐 Гість кличе · ${T}`, body: strip(e.text || 'Підійдіть до столу'), tag: 'c' + e.t, go: { view: 'hall' } }; break;
+    case 'check': to = [...(await waiterOf()), ...role('admin')]; urgent = true; msg = { title: `🧾 Гість просить рахунок · ${T}`, body: e.pay ? `Оплата: ${strip(e.pay)}` : 'Підійдіть до столу', tag: 'k' + e.t, go: { view: 'hall' } }; break;
+    case 'ready': if (e.part) return; to = await waiterOf(); urgent = true; msg = { title: `✅ Готово · ${T}`, body: strip(e.text), tag: 'r' + e.kid, go: { view: 'hall' } }; break;
+    case 'go': if (!/^🍽/.test(e.text || '')) return; to = role('courier'); urgent = true; msg = { title: '🛵 Доставка готова', body: strip(e.text), tag: 'd' + e.t, go: { view: 'go' } }; break;
+    case 'book': to = role('admin'); msg = { title: '📅 Нова бронь', body: strip(e.text), tag: 'b' + e.bid, go: { view: 'books' } }; break;
+    case 'tpay': to = [...(await waiterOf()), ...role('admin')]; msg = { title: `💳 Оплачено онлайн · ${T}`, body: `${e.sum} грн${e.tip ? ` · чайові ${e.tip} грн` : ''}`, tag: 'p' + e.t, go: { view: 'hall' } }; break;
+    case 'gchat': if (e.out) return; to = role('admin'); msg = { title: '💬 Гість пише', body: strip(e.text), tag: 'gc' + (e.ph || ''), go: { view: 'hall' } }; break;
+    default: return;
+  }
+  const sids = [...new Set(to.filter(s => s && s.name !== e.by).map(s => s.id))];
+  if (sids.length) await pushTo(env, sids, msg, urgent);
+}
+// 📊 підсумок дня — адмінам (усім, не лише на зміні)
+export async function pushDigest(env, text) {
+  if (!pushOn(env)) return;
+  const O = await import('./ops.js'), sids = (await O.getStaff(env)).filter(s => s.role === 'admin' && s.id).map(s => s.id);
+  if (sids.length) await pushTo(env, sids, { title: '📊 Підсумок дня', body: strip(text).slice(0, 170), tag: 'dig', go: { view: 'reports' } });
+}

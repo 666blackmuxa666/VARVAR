@@ -49,6 +49,7 @@ export async function digDaily(env) {
 export async function digRun(env, day, tgSend) {
   const d = await digData(env, day), log = ((await env.DB.get('digl', 'json')) || []).filter(x => x.day !== day);
   log.push(d); await env.DB.put('digl', JSON.stringify(log.sort((a, b) => a.day < b.day ? -1 : 1).slice(-14)));
+  if (tgSend) await (await import('./push.js')).pushDigest(env, digText(d)).catch(() => {}); // 🔔 адмінам у шторку
   const chat = tgSend && await env.DB.get('digchat'); if (chat && env.BOT_TOKEN) await (await import('./ops.js')).tg(env, 'sendMessage', { chat_id: chat, text: digText(d), parse_mode: 'HTML' }).catch(() => {});
   return d;
 }
