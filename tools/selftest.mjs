@@ -457,6 +457,17 @@ async function apiTests() {
       const b = (await posOk(A, 'state')).tables.find(x => x.t === T9); must(b?.pay2 === r.j.sum && b.paid?.sum === r.j.sum && b.pwait, 'рахунок: ' + JSON.stringify({ pay2: b?.pay2, paid: b?.paid }));
       must((await posOk(A, 'kitchen')).list.some(e => e.t === T9 && !e.done), 'не пішло на кухню');
       await posOk(A, 'tpayOk', { t: T9, print: false }); return r.j.sum + ' грн'; });
+    await step('🍾 /api/tpay з items: не більше марок (409 excise); «з собою» → у коментарі «З СОБОЮ»', async () => {
+      const T9 = 9, k9 = new URL((await posOk(A, 'qrInfo')).list.find(x => x.t === T9).url).searchParams.get('k');
+      const id = (await posOk(A, 'skIngSave', { x: { n: 'QA Віскі tp ' + RUN, u: 'л', cat: 'Інше', home: 'b', ex: true, vol: 0.5 } })).x.id;
+      try {
+        await posOk(A, 'skCardSave', { key: dish.id, name: dish.name.uk, card: { items: [{ id, q: 0.05 }] } });
+        const no = await http('/api/tpay', { t: T9, k: k9, items: [{ id: dish.id, q: 1 }], tipSum: 0 }); must(no.status === 409 && no.j.error === 'excise', `без марок: ${no.status} ${JSON.stringify(no.j).slice(0, 160)}`);
+      } finally { await posOk(A, 'skCardSave', { key: dish.id, card: null }); await posOk(A, 'skIngDel', { id }); }
+      const ok = await http('/api/tpay', { t: T9, k: k9, items: [{ id: dish.id, q: 1 }], comment: 'З СОБОЮ · QA', tipSum: 0 }); must(ok.status === 200 && ok.j.pay, `успіх: ${ok.status} ${JSON.stringify(ok.j).slice(0, 160)}`);
+      const c = await lpPost('/api/lp/table', lpSign({ order_id: 'tb-varvar-' + ok.j.id, status: 'sandbox', amount: ok.j.sum, payment_id: 32 })); must(c.j.ok, JSON.stringify(c.j));
+      const kit = (await posOk(A, 'kitchen')).list.find(e => e.t === T9 && !e.done && /QA/.test(e.comment || '')); must(kit?.tw, 'на кухні немає «З СОБОЮ»: ' + JSON.stringify(kit).slice(0, 200));
+      await posOk(A, 'tpayOk', { t: T9, print: false }); return 'ок'; });
     await posOk(A, 'goCfgSet', { k: 'qrpay', v: 0 });
   }
 

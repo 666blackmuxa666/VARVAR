@@ -9,6 +9,7 @@ import { tableKey } from './qr.js';
 import { siteLink } from './venue.js';
 import { promoFill } from './promo.js';
 import { tn } from './tn.js';
+import { exCheck } from './excise.js';
 
 const TIPS = [0, 5, 10, 15];
 // скільки ще сплатити за стіл (без чайових): рахунок мінус уже оплачене онлайн
@@ -33,6 +34,7 @@ export async function tpayStart(env, b, at) {
   if (PR) for (const it of b.items.slice(0, 60)) { const p = PR[it.id], q = Math.min(50, Math.max(0, parseInt(it.q, 10) || 0)); if (!p || !q) continue;
     const price = typeof p.p === 'number' ? p.p : Object.hasOwn(p.p, String(it.v)) ? p.p[it.v] : 0; if (!(price > 0)) continue;
     items.push({ name: p.n + (typeof p.p === 'number' ? '' : ` ${it.v} ${p.s || 'л'}`), price, q }); }
+  if (items.length) { const exe = await exCheck(env, items); if (exe) return [{ error: 'excise', msg: exe }, 409]; } // 🍾 марок менше, ніж замовив гість
   const extra = items.reduce((a, i) => a + i.price * i.q, 0);
   if (extra > 30000) return [{ error: 'too_big' }, 400]; // стеля як у /api/order (MAX_ORDER)
   if (!bill?.total && !extra) return [{ error: 'empty' }, 400];

@@ -33,7 +33,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | `kitbot.js` | 146 | 👨‍🍳 Бот кухні (KITCHEN_BOT_TOKEN, вебхук /tg4): кухарі отримують нові замовлення на телефон, |
 | `kitchen.js` | 133 | 👨‍🍳 Легкий кухонний екран для старих планшетів (iPad 2 / iOS 9): відкривається по http://…workers.dev/kitchen |
 | `liqpay.js` | 50 | 💳 LiqPay (ПриватБанк): форма оплати, перевірка підпису callback, серверні запити (статус, повернення, відписка). |
-| `lpay.js` | 110 | 💳 Оплата рахунку столу з QR (LiqPay закладу) + callback для сертифікатів / підписки ATOM / балансу ШІ. |
+| `lpay.js` | 112 | 💳 Оплата рахунку столу з QR (LiqPay закладу) + callback для сертифікатів / підписки ATOM / балансу ШІ. |
 | `mail.js` | 14 | ✉️ Листи власникам (підтвердження пошти, відновлення пароля) — через Brevo (безкоштовно 300 листів/добу, без власного домену). |
 | `match.js` | 73 | 🔎 Зіставлення рядка накладної з продуктом складу (чиста логіка, без бази — тестується `node tools/stock-match-bench.mjs`). |
 | `menu.js` | 271 | Меню в KV + редагування через Telegram звичайними фразами. |
@@ -52,7 +52,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | `perm.js` | 59 | 🔑 Ролі й права з галочками (_team/roles.md). |
 | `photoai.js` | 94 | 📸 ШІ-фото страв в одному стилі закладу: Gemini Image (платний ключ GEMINI_IMG_KEY — лише тут; решта ШІ — безкоштовний ключ). |
 | `pos.js` | 433 | API касової програми (pos.html). POST /api/pos {op, ...} з заголовком Authorization: Bearer <token>. |
-| `print.js` | 220 | Черга друку для принтера в закладі (XP-80C через програму printer/varvar-print.ps1 на Windows). |
+| `print.js` | 223 | Черга друку для принтера в закладі (XP-80C через програму printer/varvar-print.ps1 на Windows). |
 | `promo.js` | 306 | 🎁 Лояльність: рівні постійних клієнтів (знижка / кешбек) і акції-правила (категорія, щасливі години, N-та в подарунок, |
 | `push.js` | 125 | 🔔 Push-сповіщення в шторку (Web Push, VAPID + aes128gcm, RFC 8291/8292) — без бібліотек, лише WebCrypto. |
 | `qr.js` | 47 | 🔳 QR-коди меню: ключ закладу (qr_key) → ключ кожного столу; PNG генерується на сервері (для принтера чеків і для друкарні). |
@@ -72,7 +72,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 
 ## Каса — розділи і функції
 
-- **00-core.js** (617) — applyBrand:24, offBanner:43, offFlush:49, api:63, showLogin:83, tryLogin:88, pinKey:107, showReg:115, logout:137, loadState:146, loadMenu:160, revive:163, connect:164, ding:224, applyLook:236, applySkin:247, loadLookV:248, renderNav:267, render:279, loadView:291, renderMain:306, modal:354, askVal:368, askLong:372, ask:376, pickTable:380, toast:392, on:399, goBack:509, checkVer:537, pushSubNow:552, pushMenu:563, pushBanner:576, pushSwSync:586, start:603
+- **00-core.js** (618) — applyBrand:24, offBanner:43, offFlush:49, api:63, showLogin:83, tryLogin:88, pinKey:107, showReg:115, logout:137, loadState:146, loadMenu:160, revive:163, connect:164, ding:224, applyLook:236, applySkin:247, loadLookV:248, renderNav:267, render:279, loadView:291, renderMain:306, modal:354, askVal:368, askLong:372, ask:376, pickTable:380, toast:392, on:399, goBack:509, checkVer:537, pushSubNow:552, pushMenu:563, pushBanner:576, pushSwSync:586, start:603
 - **10-hall.js** (437) — hallHTML:1, renderFeed:45, openTable:77, closeSheet:84, menuItems:89, renderSheet:97, paintCounts:142, addItem:147, upsHint:167, sendCart:173, closeFlow:183, voidReason:202, discFlow:207, moveFlow:216, splitRender:225, splitFlow:231, hallGrid:244, closedHTML:258, hallViews:282, mapPos:294, mapStart:300, mapSave:302, floorUI:303, mapEdit:333, hallPick:346, myHalls:351, wlFree:373, wlOpen:378
 - **12-evcom.js** (110) — evFoot:12, evList:18, chatSay:26, evNotify:28, evcOpen:35, evcClose:45, evcRender:46, evcDo:58, evcSend:59, evcMent:61, evcPutMent:68, evRecStart:71, evRecStop:83, evPlay:85
 - **20-delivery.js** (191) — goBlock:1, goNew:12, goDone:45, cliT:51, loadCour:71, goHTML:73, goCtlHTML:102, courCard:120, goSetHTML:124, goTileInfo:141, goEdit:143, goMap:153, loadCourRep:155, courRepHTML:156
@@ -288,8 +288,8 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | taxSet | pos.js:353 | 70-settings.js |
 | tip | pos.js:158 | 00-core.js, 10-hall.js |
 | tipPay | pos.js:273 | 00-core.js |
-| tpayOk | lpay.js:87, pos.js:89 | 10-hall.js |
-| tpayRefund | lpay.js:92, pos.js:89 | 10-hall.js |
+| tpayOk | lpay.js:89, pos.js:89 | 10-hall.js |
+| tpayRefund | lpay.js:94, pos.js:89 | 10-hall.js |
 | upsGet | delivery.js:287 | 70-settings.js |
 | upsMap | delivery.js:286 | 10-hall.js |
 | upsSet | delivery.js:288 | 70-settings.js |
