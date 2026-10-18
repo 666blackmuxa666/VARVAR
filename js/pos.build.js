@@ -616,9 +616,9 @@ var __objRest = (source, exclude) => {
     document.addEventListener("touchend", () => {
       var _a2;
       if (!d) return;
-      const { m, dy, on } = d;
+      const { m, dy, on: on2 } = d;
       d = null;
-      if (!on) return;
+      if (!on2) return;
       if (dy > Math.min(120, m.offsetHeight * 0.25)) {
         const bg = m.parentNode;
         m.style.transition = "transform .18s";
@@ -739,9 +739,9 @@ var __objRest = (source, exclude) => {
     if (nv && ny) nv.scrollTop = ny;
     if (nv && nv.scrollWidth > nv.clientWidth) {
       nv.scrollLeft = nx;
-      const on = nv.querySelector("button.on"), moved = renderNav.v !== S.view;
+      const on2 = nv.querySelector("button.on"), moved = renderNav.v !== S.view;
       renderNav.v = S.view;
-      if (on && moved && (on.offsetLeft < nv.scrollLeft || on.offsetLeft + on.offsetWidth > nv.scrollLeft + nv.clientWidth)) nv.scrollLeft = on.offsetLeft - 8;
+      if (on2 && moved && (on2.offsetLeft < nv.scrollLeft || on2.offsetLeft + on2.offsetWidth > nv.scrollLeft + nv.clientWidth)) nv.scrollLeft = on2.offsetLeft - 8;
     }
   }
   function render() {
@@ -1019,11 +1019,19 @@ var __objRest = (source, exclude) => {
     }
     renderMain();
   });
+  const ACT = {};
+  function on(names, fn) {
+    for (const x of [].concat(names)) {
+      if (ACT[x]) console.error("\u{1F5B1} \u0434\u0443\u0431\u043B\u044C \u043E\u0431\u0440\u043E\u0431\u043D\u0438\u043A\u0430 \u043A\u043D\u043E\u043F\u043A\u0438", x);
+      ACT[x] = fn;
+    }
+  }
   document.addEventListener("click", async (e) => {
-    var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B;
+    var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k;
     const el = e.target.closest("[data-a]");
     if (!el) return;
     const a = el.dataset.a, t = S.open;
+    if (ACT[a]) return ACT[a](el, e, a, t);
     switch (a) {
       case "view":
         S.view = el.dataset.v;
@@ -1038,9 +1046,9 @@ var __objRest = (source, exclude) => {
         $("#feed").classList.toggle("open");
         break;
       case "fs": {
-        const on = !document.fullscreenElement;
-        store.set("fs", on);
-        on ? (_b2 = (_a2 = document.documentElement).requestFullscreen) == null ? void 0 : _b2.call(_a2).catch(() => {
+        const on2 = !document.fullscreenElement;
+        store.set("fs", on2);
+        on2 ? (_b2 = (_a2 = document.documentElement).requestFullscreen) == null ? void 0 : _b2.call(_a2).catch(() => {
         }) : (_c = document.exitFullscreen) == null ? void 0 : _c.call(document);
         break;
       }
@@ -1062,261 +1070,19 @@ var __objRest = (source, exclude) => {
       case "switch":
         if (await confirmBox("\u0412\u0438\u0439\u0442\u0438?", "\u041D\u0430\u0441\u0442\u0443\u043F\u043D\u0438\u0439 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A \u0443\u0432\u0456\u0439\u0434\u0435 \u0441\u0432\u043E\u0457\u043C PIN")) logout();
         break;
-      case "table":
-        $("#feed").classList.remove("open");
-        openTable(el.dataset.t);
-        break;
-      case "newOrder": {
-        const n = await pickTable("\u041D\u043E\u0432e \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", "\u041E\u0431\u0435\u0440\u0456\u0442\u044C \u0441\u0442\u0456\u043B", 0, true);
-        if (n === "pick" || n === "del") goNew(n);
-        else if (n) {
-          openTable(n);
-          S.mobileMenu = true;
-          renderSheet();
-        }
-        break;
-      }
-      case "closeSheet":
-        closeSheet();
-        break;
-      case "tab":
-        S.mobileMenu = el.dataset.m === "1";
-        renderSheet();
-        break;
-      case "mobileMenu":
-        S.mobileMenu = true;
-        renderSheet();
-        break;
-      case "cat":
-        S.cat = el.dataset.c;
-        S.q = "";
-        renderSheet();
-        $("#shItems").scrollTop = 0;
-        break;
-      case "grp":
-        S.grp = el.dataset.g;
-        S.cat = "";
-        S.q = "";
-        store.set("grp", S.grp);
-        renderSheet();
-        $("#shItems").scrollTop = 0;
-        break;
-      case "fav": {
-        const on = !S.fav.includes(el.dataset.id);
-        S.fav = on ? [...S.fav, el.dataset.id] : S.fav.filter((x) => x !== el.dataset.id);
-        renderSheet();
-        act("fav", { id: el.dataset.id, on }, on ? "\u2B50 \u0414\u043E\u0434\u0430\u043D\u043E \u0432 \u043E\u0431\u0440\u0430\u043D\u0456" : "\u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E \u0437 \u043E\u0431\u0440\u0430\u043D\u0438\u0445");
-        break;
-      }
-      case "tw": {
-        if (t === -1 || t > 1e3) {
-          S.tw[t] = !S.tw[t];
-          S.packAdj[t] = 0;
-          renderSheet();
-          break;
-        }
-        const k = await choose("\u{1F961} \u0417 \u0441\u043E\u0431\u043E\u044E", "\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0434\u0435 \u043E\u043A\u0440\u0435\u043C\u0438\u043C \u0447\u0435\u043A\u043E\u043C; \u0441\u0442\u0456\u043B \u043D\u0435 \u0437\u0430\u0439\u043C\u0430\u0454\u0442\u044C\u0441\u044F", [{ label: "\u{1F961} \u0421\u0430\u043C\u043E\u0432\u0438\u0432\u0456\u0437", val: "pick", cls: "primary" }, { label: "\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430", val: "del", cls: "primary" }]);
-        if (k) goNew(k, t);
-        break;
-      }
-      case "ur":
-        S.ur[t] = !S.ur[t];
-        renderSheet();
-        break;
-      case "kSt":
-        S.kst = el.dataset.v || "";
-        store.set("kst", S.kst);
-        loadKq();
-        break;
-      case "kItem": {
-        const r = await act("kDone", { id: el.dataset.id, i: +el.dataset.i, st: S.kst || void 0 });
-        if (r) loadKq();
-        break;
-      }
-      case "kAll": {
-        (_d = el.closest(".kc")) == null ? void 0 : _d.classList.add("bye");
-        const r = await act("kDone", { id: el.dataset.id, st: S.kst || void 0 });
-        if (r) setTimeout(loadKq, 250);
-        break;
-      }
-      case "kStart": {
-        await act("kStart", { id: el.dataset.id });
-        loadKq();
-        break;
-      }
-      case "kUndo": {
-        await act("kUndo", { id: el.dataset.id }, "\u21A9\uFE0F \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E \u0432 \u0447\u0435\u0440\u0433\u0443");
-        loadKq();
-        break;
-      }
-      case "kMsg": {
-        let v = await choose("\u041F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u043D\u044F \u0432 \u0437\u0430\u043B", "\u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0438 \u043F\u043E\u0431\u0430\u0447\u0430\u0442\u044C \u0443 \u0441\u0442\u0440\u0456\u0447\u0446\u0456", ["\u2757 \u041D\u0435\u043C\u0430\u0454 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0443", "\u23F1 \u0429\u0435 +10 \u0445\u0432", "\u{1F64B} \u041F\u0456\u0434\u0456\u0439\u0434\u0438 \u043D\u0430 \u043A\u0443\u0445\u043D\u044E", "\u{1F525} \u0412\u0436\u0435 \u043C\u0430\u0439\u0436\u0435 \u0433\u043E\u0442\u043E\u0432\u043E"].map((x) => ({ label: x, val: x })).concat([{ label: "\u270F\uFE0F \u0421\u0432\u043E\u0454\u2026", val: "own" }]));
-        if (v === "own") v = await ask("\u041F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u043D\u044F \u0432 \u0437\u0430\u043B", "\u041D\u0430\u043F\u0440.: \u0437\u0430\u043C\u0456\u043D\u0438\u043C\u043E \u0444\u0440\u0456 \u043D\u0430 \u043F\u044E\u0440\u0435?");
-        if (v) await act("kMsg", { id: el.dataset.id, text: v }, "\u{1F4E8} \u041D\u0430\u0434\u0456\u0441\u043B\u0430\u043D\u043E");
-        loadKq();
-        break;
-      }
       case "kFont":
         S.kFont = S.kFont % 3 + 1;
         store.set("kfont", S.kFont);
         renderMain();
         break;
-      case "kGo":
-        kitchenStart();
-        break;
-      case "kSnd":
-        kSndPick();
-        break;
-      case "kSndTry":
-        kPlay(el.dataset.k);
-        break;
-      case "pk": {
-        const cur = packQ(t);
-        if (cur + +el.dataset.d >= 0) S.packAdj[t] = (S.packAdj[t] || 0) + +el.dataset.d;
-        renderSheet();
-        break;
-      }
-      case "photos":
-        S.photos = !S.photos;
-        store.set("photos", S.photos);
-        renderSheet();
-        break;
-      case "zDay":
-        zDay();
-        break;
-      case "shOpen":
-        shOpen();
-        break;
-      case "rAcct":
-        acctExport();
-        break;
       case "rp":
         S.rep.p = el.dataset.p;
         loadView();
         break;
-      case "rTab":
-        S.rep.tab = el.dataset.t;
-        ((_e = S.rep).last || (_e.last = {}))[SECS.find((x) => x[2].includes(el.dataset.t))[0]] = el.dataset.t;
-        renderMain();
-        break;
-      case "rSec": {
-        const sc = SECS.find((x) => x[0] === el.dataset.s);
-        S.rep.tab = (S.rep.last || {})[sc[0]] || sc[2][0];
-        renderMain();
-        if (S.rep.tab === "plus" || !S.data.range) loadView();
-        break;
-      }
       case "rFo":
         S.rep.fo = !S.rep.fo;
         renderMain();
         break;
-      case "rDay":
-        if (matchMedia("(hover: none)").matches && !el.classList.contains("on")) {
-          el.parentNode.querySelectorAll(".c.on").forEach((x) => x.classList.remove("on"));
-          el.classList.add("on");
-          el.parentNode.previousElementSibling.textContent = el.title + " \xB7 \u0449\u0435 \u0440\u0430\u0437 \u2014 \u0437\u0432\u0456\u0442 \u0437\u0430 \u0434\u0435\u043D\u044C";
-          break;
-        }
-        Object.assign(S.rep, { p: "c", from: el.dataset.d, to: el.dataset.d });
-        loadView();
-        $("#main").scrollTop = 0;
-        break;
-      case "rSort":
-        S.rep.sort = el.dataset.s;
-        renderMain();
-        break;
-      case "rReset":
-        Object.assign(S.rep, { pay: "", by: "", grp: "", cat: "", t: "", q: "" });
-        renderMain();
-        break;
-      case "add":
-        addItem(el.dataset.id);
-        break;
-      case "cq": {
-        const c = cartOf(t), x = c[el.dataset.k];
-        if (x) {
-          x.q += +el.dataset.d;
-          if (x.q <= 0) delete c[el.dataset.k];
-        }
-        saveCarts();
-        renderSheet();
-        break;
-      }
-      case "cartClear":
-        S.carts[t] = {};
-        saveCarts();
-        renderSheet();
-        break;
-      case "send":
-        sendCart();
-        break;
-      case "goNew":
-        goNew();
-        break;
-      case "books":
-        S.view = "books";
-        renderNav();
-        renderMain();
-        loadView();
-        break;
-      case "wl":
-        wlOpen();
-        break;
-      case "bkDay":
-        S.bkDay = el.dataset.d;
-        renderMain();
-        break;
-      case "bkAll":
-        S.bkAll = !!el.dataset.v;
-        renderMain();
-        break;
-      case "bkNew":
-        bkForm();
-        break;
-      case "bkEd":
-        bkForm(S.data.bk.find((x) => x.id === el.dataset.id));
-        break;
-      case "bkCame": {
-        const b = S.data.bk.find((x) => x.id === el.dataset.id);
-        let tt = b.t;
-        if (!tt) {
-          tt = await pickTable(`\u{1FA91} ${b.name}: \u0437\u0430 \u044F\u043A\u0438\u0439 \u0441\u0442\u0456\u043B?`, "\u0411\u0440\u043E\u043D\u044C \u0437\u0430\u043A\u0440\u0438\u0454\u0442\u044C\u0441\u044F \u044F\u043A \xAB\u043F\u0440\u0438\u0439\u0448\u043B\u0438\xBB");
-          if (!tt) break;
-        }
-        if (await act("bkSet", { id: b.id, st: "came", t: tt }, "\u{1FA91} \u0413\u043E\u0441\u0442\u0456 \u043F\u0440\u0438\u0439\u0448\u043B\u0438")) {
-          await loadBooks();
-          loadState().catch(() => {
-          });
-          if (((_f = b.pre) == null ? void 0 : _f.length) && !b.preSent && await confirmBox("\u{1F37D} \u041F\u0435\u0440\u0435\u0434\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", "\u0412\u0456\u0434\u043F\u0440\u0430\u0432\u0438\u0442\u0438 \u043D\u0430 \u043A\u0443\u0445\u043D\u044E \u0437\u0430\u0440\u0430\u0437?")) await act("bkSet", { id: b.id, st: "kit" }, "\u{1F525} \u041D\u0430 \u043A\u0443\u0445\u043D\u0456");
-          S.view = "hall";
-          renderNav();
-          renderMain();
-          openTable(tt);
-        }
-        break;
-      }
-      case "bkSet": {
-        if (el.dataset.s === "cancel" && !await confirmBox("\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438 \u0431\u0440\u043E\u043D\u044C?")) break;
-        if (await act("bkSet", { id: el.dataset.id, st: el.dataset.s }, BKS[el.dataset.s] || "\u{1F525} \u041D\u0430 \u043A\u0443\u0445\u043D\u044E")) {
-          loadState().catch(() => {
-          });
-          if (S.view === "books") {
-            await loadBooks();
-            renderMain();
-          }
-        }
-        break;
-      }
-      case "bkTbl": {
-        const n = await pickTable("\u{1FA91} \u0421\u0442\u0456\u043B \u0434\u043B\u044F \u0431\u0440\u043E\u043D\u0456", "\u041F\u043B\u0438\u0442\u043A\u0430 \u0441\u0442\u043E\u043B\u0430 \u043F\u043E\u043A\u0430\u0436\u0435 \u0447\u0430\u0441 \u0431\u0440\u043E\u043D\u0456");
-        if (n && await act("bkEdit", { id: el.dataset.id, f: { t: n } }, "\u{1FA91} \u0421\u0442\u0456\u043B \u043F\u0440\u0438\u0437\u043D\u0430\u0447\u0435\u043D\u043E")) {
-          loadState().catch(() => {
-          });
-          await loadBooks();
-          renderMain();
-        }
-        break;
-      }
       case "certPay":
         if (await act("certPay", { code: el.dataset.c, how: el.dataset.h }, el.dataset.h === "no" ? "\u274C \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E" : "\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 \u0430\u043A\u0442\u0438\u0432\u043E\u0432\u0430\u043D\u043E")) loadState().catch(() => {
         });
@@ -1325,93 +1091,14 @@ var __objRest = (source, exclude) => {
         const code = el.dataset.c;
         if (!await choose("\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442?", code + " \u2014 \u043A\u043E\u0434 \u043F\u0435\u0440\u0435\u0441\u0442\u0430\u043D\u0435 \u0434\u0456\u044F\u0442\u0438. \u0426\u0435 \u043D\u0435 \u043C\u043E\u0436\u043D\u0430 \u0441\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438.", [{ label: "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438", val: 1, cls: "red" }, { label: "\u041D\u0456", val: 0 }])) break;
         if (await act("certDel", { code }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) {
-          (_g = el.closest(".kv")) == null ? void 0 : _g.remove();
+          (_d = el.closest(".kv")) == null ? void 0 : _d.remove();
         }
-        break;
-      }
-      case "certT":
-        certT(t);
-        break;
-      case "bonCert": {
-        const v = await choose("\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438 \xB7 \u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442", ((_h = S.tables[t]) == null ? void 0 : _h.cli) ? "\u0413\u0456\u0441\u0442\u044C \u0437\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u043E\u043C \u0443\u0436\u0435 \u0432\u043A\u0430\u0437\u0430\u043D\u0438\u0439" : "\u0429\u043E \u0437\u0430\u0441\u0442\u043E\u0441\u0443\u0432\u0430\u0442\u0438 \u0434\u043E \u0440\u0430\u0445\u0443\u043D\u043A\u0443?", [{ label: ((_i = S.tables[t]) == null ? void 0 : _i.cli) ? "\u{1F381} \u0413\u0456\u0441\u0442\u044C \u0456 \u0431\u043E\u043D\u0443\u0441\u0438" : "\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438 \u0433\u043E\u0441\u0442\u044F (\u0437\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u043E\u043C)", val: "cli", cls: "primary" }, { label: "\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 (\u043A\u043E\u0434)", val: "cert" }, { label: "\u{1F382} \u041F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A \u043D\u0430 \u0414\u041D", val: "bd" }]);
-        if (v === "cli") cliT(t);
-        else if (v === "cert") certT(t);
-        else if (v === "bd") bdGiftT(t);
         break;
       }
       case "certs": {
         const r = await api("certList").catch(() => null);
         if (!r) break;
         await modal({ title: "\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438", body: `<div class="bk-list">${r.list.map((c) => `<div class="kv"><span><b>${c.code}</b> \xB7 ${money(c.sum)}${c.left !== c.sum ? ` \xB7 \u0437\u0430\u043B\u0438\u0448\u043E\u043A ${money(c.left)}` : ""}<br><small class="muted">\u0432\u0456\u0434 ${esc(c.from)}${c.to ? " \u0434\u043B\u044F " + esc(c.to) : ""} \xB7 ${fmtPh(c.phone)} \xB7 ${{ new: "\u23F3 \u043D\u0435 \u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E", ok: "\u2705 \u0430\u043A\u0442\u0438\u0432\u043D\u0438\u0439", no: "\u274C \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E" }[c.st]}</small></span>${c.st === "new" ? `<span class="kv-r"><button class="btn sm green" data-a="certPay" data-c="${c.code}" data-h="cash">\u{1F4B5}</button><button class="btn sm" data-a="certPay" data-c="${c.code}" data-h="card">\u{1F4B3}</button><button class="btn sm red" data-a="certDel" data-c="${c.code}">\u{1F5D1}</button></span>` : `<span class="kv-r"><button class="btn sm red" data-a="certDel" data-c="${c.code}">\u{1F5D1}</button></span>`}</div>`).join("") || '<div class="muted">\u0429\u0435 \u043D\u0435\u043C\u0430\u0454</div>'}</div>`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
-        break;
-      }
-      case "copyLink":
-        try {
-          await navigator.clipboard.writeText(el.dataset.u);
-          toast("\u{1F517} \u0421\u043A\u043E\u043F\u0456\u0439\u043E\u0432\u0430\u043D\u043E");
-        } catch (e2) {
-          prompt("\u0421\u043A\u043E\u043F\u0456\u044E\u0439\u0442\u0435 \u043F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F:", el.dataset.u);
-        }
-        break;
-      case "goSt":
-        if (await act("goSt", { t, st: el.dataset.s }, "\u2714 " + GOST[el.dataset.s])) loadState().catch(() => {
-        });
-        break;
-      case "goDone":
-        goDone(t);
-        break;
-      case "goDoneT":
-        goDone(+el.dataset.t);
-        break;
-      case "crGive": {
-        const v = await askVal(`\u{1F4B5} \u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u043E\u0442\u0440\u0438\u043C\u0430\u043D\u043E \u0432\u0456\u0434 ${el.dataset.n}?`, el.dataset.v, "number");
-        if (!v) break;
-        if (await act("courCash", { n: el.dataset.n, sum: +v }, "\u2705 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E")) loadView();
-        break;
-      }
-      case "crTab":
-        S.courTab = el.dataset.t;
-        renderMain();
-        break;
-      case "crAct": {
-        const x = el.dataset.x;
-        if (await act("courAct", { t: +el.dataset.t, act: x, arg: el.dataset.v }, { take: "\u270B \u0412\u0430\u0448\u0430 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430", road: "\u{1F6F5} \u0412 \u0434\u043E\u0440\u043E\u0437\u0456", eta: "\u23F1 \u0413\u043E\u0441\u0442\u044E \u043D\u0430\u0434\u0456\u0441\u043B\u0430\u043D\u043E", km: "\u{1F4AC} \u041A\u0443\u0445\u043D\u0456 \u043D\u0430\u0434\u0456\u0441\u043B\u0430\u043D\u043E" }[x])) {
-          if (x === "take") S.courTab = "mine";
-          await loadState().catch(() => {
-          });
-          await loadCour().catch(() => {
-          });
-        }
-        break;
-      }
-      case "crDone": {
-        const tt = +el.dataset.t, b = S.tables[tt];
-        const pay = ((_j = b == null ? void 0 : b.go) == null ? void 0 : _j.paid) ? "card" : await choose(`\u{1F91D} ${tn(tt)} \u0432\u0438\u0434\u0430\u043D\u043E`, `\u0414\u043E \u0441\u043F\u043B\u0430\u0442\u0438 ${money(b.pay2)}${b.go.change ? ` \xB7 \u0440\u0435\u0448\u0442\u0430 \u0437 ${b.go.change}` : ""}`, [{ label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430", val: "cash", cls: "green" }, { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u043A\u0430", val: "card", cls: "blue" }]);
-        if (!pay) break;
-        if (await act("courAct", { t: tt, act: "done", arg: pay }, "\u2705 \u0412\u0438\u0434\u0430\u043D\u043E")) {
-          await loadState().catch(() => {
-          });
-          await loadCour().catch(() => {
-          });
-        }
-        break;
-      }
-      case "crProb": {
-        const v = await choose("\u26A0\uFE0F \u0429\u043E \u0441\u0442\u0430\u043B\u043E\u0441\u044C?", "\u0410\u0434\u043C\u0456\u043D \u043E\u0442\u0440\u0438\u043C\u0430\u0454 \u0441\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F", [{ label: "\u{1F4F5} \u0413\u0456\u0441\u0442\u044C \u043D\u0435 \u0432\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u0430\u0454", val: "noans" }, { label: "\u{1F4CD} \u041D\u0435\u0432\u0456\u0440\u043D\u0430 \u0430\u0434\u0440\u0435\u0441\u0430", val: "addr" }, { label: "\u{1F645} \u0413\u0456\u0441\u0442\u044C \u0432\u0456\u0434\u043C\u043E\u0432\u0438\u0432\u0441\u044F", val: "refuse", cls: "red" }, { label: "\u270F\uFE0F \u0406\u043D\u0448\u0435\u2026", val: "own" }]);
-        if (!v) break;
-        const arg = v === "own" ? await ask("\u26A0\uFE0F \u041E\u043F\u0438\u0448\u0456\u0442\u044C \u043F\u0440\u043E\u0431\u043B\u0435\u043C\u0443") : v;
-        if (arg && await act("courAct", { t: +el.dataset.t, act: "prob", arg }, "\u26A0\uFE0F \u0410\u0434\u043C\u0456\u043D\u0430 \u043F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u043E")) loadState().catch(() => {
-        });
-        break;
-      }
-      case "crTg": {
-        const r = await act("courTg");
-        if (r == null ? void 0 : r.url) {
-          window.open(r.url, "_blank");
-          toast("\u2708\uFE0F \u041D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \xABStart\xBB \u0443 \u0431\u043E\u0442\u0456");
-          setTimeout(() => loadCour().catch(() => {
-          }), 15e3);
-        }
         break;
       }
       case "goTake":
@@ -1429,67 +1116,13 @@ var __objRest = (source, exclude) => {
         }
         break;
       case "goCourSet": {
-        const n = await ask("\u{1F464} \u041A\u0443\u0440'\u0454\u0440 (\u0456\u043C\u02BC\u044F)", ((_l = (_k = S.tables[t]) == null ? void 0 : _k.go) == null ? void 0 : _l.cour) || "");
+        const n = await ask("\u{1F464} \u041A\u0443\u0440'\u0454\u0440 (\u0456\u043C\u02BC\u044F)", ((_f = (_e = S.tables[t]) == null ? void 0 : _e.go) == null ? void 0 : _f.cour) || "");
         if (n != null && await act("goCour", { t, n }, "\u2714")) loadState().catch(() => {
         });
         break;
       }
-      case "cliT":
-        cliT(t);
-        break;
-      case "cliBon0": {
-        const b = S.tables[t];
-        if (b == null ? void 0 : b.cert) {
-          if (!await confirmBox(b.cert.code && b.bonus > b.cert.sum ? "\u21A9\uFE0F \u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 \u0456 \u0431\u043E\u043D\u0443\u0441\u0438 \u0437 \u0440\u0430\u0445\u0443\u043D\u043A\u0443?" : "\u21A9\uFE0F \u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 \u0437 \u0440\u0430\u0445\u0443\u043D\u043A\u0443?")) break;
-          if (!await act("certOff", { t }, "\u21A9\uFE0F \u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E")) break;
-          if (b.bonus > b.cert.sum && b.cli) await act("cliBonus", { t, sum: 0 });
-        } else if (!await act("cliBonus", { t, sum: 0 })) break;
-        loadState().catch(() => {
-        });
-        break;
-      }
-      case "upsEdit": {
-        const r = await api("upsGet");
-        const v = await askLong("\u{1F4A1} \u0414\u043E\u043F\u0440\u043E\u0434\u0430\u0436 \u2014 \u043A\u043E\u0436\u0435\u043D \u0440\u044F\u0434\u043E\u043A: \u0421\u0442\u0440\u0430\u0432\u0430 \u2192 \u0449\u043E \u0437\u0430\u043F\u0440\u043E\u043F\u043E\u043D\u0443\u0432\u0430\u0442\u0438, \u0447\u0435\u0440\u0435\u0437 \u043A\u043E\u043C\u0443", r.text || "\u041F\u0456\u0446\u0430 \u041C\u0430\u0440\u0433\u0430\u0440\u0438\u0442\u0430 \u2192 \u041B\u0438\u043C\u043E\u043D\u0430\u0434, \u0421\u043E\u0443\u0441");
-        if (v == null) break;
-        const x = await act("upsSet", { text: v }, "");
-        if (x) {
-          S.ups = null;
-          toast(`\u{1F4BE} \u041F\u0440\u0430\u0432\u0438\u043B: ${x.n}`);
-        }
-        break;
-      }
-      case "goCfg": {
-        const k = el.dataset.k, cur = (_m = S.data.gocfg) == null ? void 0 : _m[k];
-        const v = ["on", "del", "pick", "track"].includes(k) ? cur ? 0 : 1 : await ask(el.dataset.l || k, String(cur != null ? cur : ""), ["phone", "zone", "from", "to"].includes(k) ? "text" : "number");
-        if (v == null) break;
-        const r = await act("goCfgSet", { k, v }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
-        if (r) {
-          S.data.gocfg = r.cfg;
-          renderMain();
-        }
-        break;
-      }
-      case "goLink": {
-        const u = (((_n = window.VARVAR) == null ? void 0 : _n.venue) ? "https://posatom.online/" + VARVAR.venue + "/" : "https://posatom.online/varvar/") + "?go" + (el.dataset.src ? "&src=" + el.dataset.src : "");
-        try {
-          await navigator.clipboard.writeText(u);
-          toast("\u{1F4CB} \u0421\u043A\u043E\u043F\u0456\u0439\u043E\u0432\u0430\u043D\u043E: " + u);
-        } catch (e2) {
-          await ask("\u041F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F", u);
-        }
-        break;
-      }
-      case "rm": {
-        const reason = await voidReason(`\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438 1\xD7 ${el.dataset.name}?`);
-        if (reason) act("remove", { t, name: el.dataset.name, reason }, "\u270F\uFE0F \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E");
-        break;
-      }
       case "pre":
         act("precheck", { t }, "\u{1F5A8} \u041F\u0440\u0435\u0447\u0435\u043A \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u043E");
-        break;
-      case "disc":
-        discFlow();
         break;
       case "tip": {
         const b = S.tables[t];
@@ -1504,12 +1137,6 @@ var __objRest = (source, exclude) => {
         await act("tip", { t, sum: +sum }, +sum ? `\u{1F49D} \u0427\u0430\u0439\u043E\u0432\u0456 ${money(+sum)}` : "\u0427\u0430\u0439\u043E\u0432\u0456 \u043F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
         break;
       }
-      case "tipSet":
-        act("tip", { t, sum: 0 }, "\u0427\u0430\u0439\u043E\u0432\u0456 \u043F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
-        break;
-      case "discSet":
-        act("discount", { t, pct: 0 }, "\u0417\u043D\u0438\u0436\u043A\u0443 \u043F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
-        break;
       case "rDel":
       case "rBack": {
         const k = el.dataset.k, d = el.dataset.d, i = el.dataset.i, del = a === "rDel";
@@ -1521,96 +1148,8 @@ var __objRest = (source, exclude) => {
         }
         break;
       }
-      case "vBack":
-        if (await confirmBox("\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438 \u0441\u0442\u0440\u0430\u0432\u0443 \u043D\u0430 \u0441\u0442\u0456\u043B? \u0412\u043E\u043D\u0430 \u0437\u043D\u043E\u0432\u0443 \u0431\u0443\u0434\u0435 \u0432 \u0440\u0430\u0445\u0443\u043D\u043A\u0443.")) {
-          if (await act("voidBack", { ts: +el.dataset.ts }, "\u21A9\uFE0F \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E \u043D\u0430 \u0441\u0442\u0456\u043B")) loadView();
-        }
-        break;
-      case "setTab":
-        S.setTab = el.dataset.s;
-        renderMain();
-        break;
-      case "look": {
-        const k = el.dataset.k, v = ["size", "vol", "anim"].includes(k) ? +el.dataset.v : el.dataset.v;
-        setLook(k, v);
-        if (k === "sound" || k === "vol") ding();
-        break;
-      }
-      case "lookReset":
-        {
-          const _o = look(), { own, sk, theme, accent, skin } = _o, rest = __objRest(_o, ["own", "sk", "theme", "accent", "skin"]);
-          store.set("look", rest);
-          applyLook();
-          renderMain();
-          toast("\u21BA \u042F\u043A \u0443 \u0437\u0430\u043A\u043B\u0430\u0434\u0443");
-        }
-        break;
-      case "cashTab":
-        S.cashTab = el.dataset.t;
-        renderMain();
-        loadView();
-        break;
-      case "move":
-        moveFlow();
-        break;
-      case "split":
-        splitFlow();
-        break;
-      case "spq": {
-        const i = +el.dataset.i, it = S.spl.items[i];
-        S.spl.q[i] = Math.max(0, Math.min(it.q, (S.spl.q[i] || 0) + +el.dataset.d));
-        splitRender();
-        break;
-      }
-      case "closeT":
-        closeFlow();
-        break;
-      case "delTable": {
-        const pb = S.tables[t], pp = ((_p = pb == null ? void 0 : pb.paid) == null ? void 0 : _p.sum) || (((_q = pb == null ? void 0 : pb.go) == null ? void 0 : _q.paid) && !pb.go.paid.ref ? pb.go.paid.sum : 0);
-        if (pp) {
-          if (!isAdmin()) {
-            toast("\u{1F4B3} \u041E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u043E\u043D\u043B\u0430\u0439\u043D \u2014 \u0432\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u043C\u043E\u0436\u0435 \u043B\u0438\u0448\u0435 \u0430\u0434\u043C\u0456\u043D (\u0437 \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F\u043C \u0433\u0440\u043E\u0448\u0435\u0439)");
-            break;
-          }
-          if (!await confirmBox(`\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438 \u0433\u043E\u0441\u0442\u044E ${money(pp)} \u043D\u0430 \u043A\u0430\u0440\u0442\u043A\u0443?`, "\u0421\u0442\u0456\u043B \u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u043E\u043D\u043B\u0430\u0439\u043D. \u0421\u043F\u0435\u0440\u0448\u0443 \u043F\u043E\u0432\u0435\u0440\u0442\u0430\u0454\u043C\u043E \u0433\u0440\u043E\u0448\u0456 \u0447\u0435\u0440\u0435\u0437 LiqPay, \u043F\u043E\u0442\u0456\u043C \u2014 \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043D\u044F.")) break;
-          if (!await act("tpayRefund", { t }, "\u21A9\uFE0F \u0413\u0440\u043E\u0448\u0456 \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E")) break;
-        }
-        const reason = await voidReason(`\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0432\u0435\u0441\u044C \u0441\u0442\u0456\u043B ${tn(t)}? \u0421\u0443\u043C\u0430 \u041D\u0415 \u043F\u0456\u0434\u0435 \u0443 \u0432\u0438\u0440\u0443\u0447\u043A\u0443`);
-        if (reason) {
-          const r = await act("delete", { t, reason }, `\u{1F5D1} \u0421\u0442\u0456\u043B ${tn(t)} \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E`);
-          if (r) closeSheet();
-        }
-        break;
-      }
-      case "evAck":
-        act("evAck", { id: el.dataset.id }, "\u2705 \u0412\u0438 \u0439\u0434\u0435\u0442\u0435 \u0434\u043E \u0433\u043E\u0441\u0442\u044F");
-        break;
-      case "tpayOk": {
-        const tt = +el.dataset.t, b = S.tables[tt];
-        const due = (b == null ? void 0 : b.paid) ? Math.max(0, b.pay2 - (b.paid.net || 0)) : 0;
-        let pay = "cash";
-        if (due > 0) {
-          pay = await choose(`\u0421\u0442\u0456\u043B ${tn(tt)}: \u0434\u043E\u043F\u043B\u0430\u0442\u0430 ${money(due)}`, "\u0413\u0456\u0441\u0442\u044C \u043E\u043F\u043B\u0430\u0442\u0438\u0432 \u043E\u043D\u043B\u0430\u0439\u043D \u043D\u0435 \u0432\u0441\u0435 (\u0434\u043E\u0434\u0430\u043B\u0438 \u0441\u0442\u0440\u0430\u0432\u0438). \u042F\u043A \u0434\u043E\u043F\u043B\u0430\u0442\u0438\u043B\u0438?", [{ label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430", val: "cash" }, { label: "\u{1F4B3} \u0422\u0435\u0440\u043C\u0456\u043D\u0430\u043B", val: "card" }]);
-          if (!pay) break;
-        }
-        const r = await act("tpayOk", { t: tt, pay }, `\u2705 \u0421\u0442\u0456\u043B ${tn(tt)} \u0437\u0430\u043A\u0440\u0438\u0442\u043E \u2014 \u{1F310} \u043E\u043D\u043B\u0430\u0439\u043D`);
-        if (r && S.open === tt) closeSheet();
-        break;
-      }
-      case "tpayRefund": {
-        const tt = +el.dataset.t, b = S.tables[tt];
-        if (await confirmBox(`\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438 \u0433\u043E\u0441\u0442\u044E ${money(((_r = b == null ? void 0 : b.paid) == null ? void 0 : _r.sum) || 0)} \u043D\u0430 \u043A\u0430\u0440\u0442\u043A\u0443?`, `\u0421\u0442\u0456\u043B ${tn(tt)} \u043B\u0438\u0448\u0438\u0442\u044C\u0441\u044F \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u0438\u043C. \u041F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F \u0447\u0435\u0440\u0435\u0437 LiqPay \u2014 \u0433\u0440\u043E\u0448\u0456 \u043F\u0440\u0438\u0439\u0434\u0443\u0442\u044C \u0433\u043E\u0441\u0442\u044E \u0437\u0430 1\u20137 \u0434\u043D\u0456\u0432.`)) await act("tpayRefund", { t: tt }, "\u21A9\uFE0F \u0413\u0440\u043E\u0448\u0456 \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E \u0433\u043E\u0441\u0442\u044E");
-        break;
-      }
       case "accept":
         act("accept", { oid: el.dataset.oid }, "\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0442\u043E \u2014 \u043F\u0456\u0448\u043B\u043E \u043D\u0430 \u043A\u0443\u0445\u043D\u044E");
-        break;
-      case "reject":
-        if (await confirmBox("\u0412\u0456\u0434\u0445\u0438\u043B\u0438\u0442\u0438 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0433\u043E\u0441\u0442\u044F?", "\u041F\u043E\u0437\u0438\u0446\u0456\u0457 \u043F\u0440\u0438\u0431\u0435\u0440\u0443\u0442\u044C\u0441\u044F \u0437 \u0440\u0430\u0445\u0443\u043D\u043A\u0443, \u043D\u0430 \u043A\u0443\u0445\u043D\u044E \u043D\u0435 \u043F\u0456\u0434\u0435, \u0433\u0456\u0441\u0442\u044C \u043F\u043E\u0431\u0430\u0447\u0438\u0442\u044C \xAB\u0432\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E\xBB")) {
-          await act("reject", { oid: el.dataset.oid }, "\u274C \u0412\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E");
-          loadState().catch(() => {
-          });
-        }
         break;
       case "cBack":
         if (await confirmBox("\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438 \u0440\u0430\u0445\u0443\u043D\u043E\u043A \u0443 \u0432\u0438\u0440\u0443\u0447\u043A\u0443?", "\u0421\u0443\u043C\u0430, \u0441\u0442\u0440\u0430\u0432\u0438 \u0439 \u0447\u0430\u0439\u043E\u0432\u0456 \u0437\u043D\u043E\u0432\u0443 \u0437\u0430\u0440\u0430\u0445\u0443\u044E\u0442\u044C\u0441\u044F")) {
@@ -1618,52 +1157,9 @@ var __objRest = (source, exclude) => {
           loadView();
         }
         break;
-      case "cReopen":
-        if (await confirmBox("\u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u0440\u0430\u0445\u0443\u043D\u043E\u043A \u0437\u043D\u043E\u0432\u0443?", "\u0412\u0456\u043D \u0437\u043D\u0456\u043C\u0435\u0442\u044C\u0441\u044F \u0437 \u0432\u0438\u0440\u0443\u0447\u043A\u0438 \u0439 \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u0442\u044C\u0441\u044F \u043D\u0430 \u0441\u0442\u0456\u043B \u2014 \u0432\u0438\u043F\u0440\u0430\u0432\u0438\u0442\u0435 \u0439 \u0437\u0430\u043A\u0440\u0438\u0454\u0442\u0435 \u0437\u0430\u043D\u043E\u0432\u043E")) {
-          const r = await act("closedReopen", { ref: el.dataset.ref, day: S.data.cday }, "\u21A9\uFE0F \u0420\u0430\u0445\u0443\u043D\u043E\u043A \u0437\u043D\u043E\u0432\u0443 \u043D\u0430 \u0441\u0442\u043E\u043B\u0456");
-          loadView();
-          loadState().catch(() => {
-          });
-          if (r == null ? void 0 : r.x) openTable(r.x.t);
-        }
-        break;
-      case "tBack":
-        if (await confirmBox("\u0412\u0456\u0434\u043D\u043E\u0432\u0438\u0442\u0438 \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u0438\u0439 \u0441\u0442\u0456\u043B?", "\u0421\u0442\u0440\u0430\u0432\u0438 \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u043D\u0430 \u0441\u0442\u0456\u043B")) {
-          const r = await act("tableBack", { ref: el.dataset.ref, day: S.data.cday }, "\u21A9\uFE0F \u0421\u0442\u0456\u043B \u0432\u0456\u0434\u043D\u043E\u0432\u043B\u0435\u043D\u043E");
-          loadView();
-          loadState().catch(() => {
-          });
-          if (r == null ? void 0 : r.x) openTable(r.x.t);
-        }
-        break;
-      case "movBack":
-        await act("moveBack", { i: +el.dataset.i }, "\u21A9\uFE0F \u0412\u0456\u0434\u043D\u043E\u0432\u043B\u0435\u043D\u043E");
-        loadView();
-        break;
-      case "expBack":
-        await act("expenseBack", { i: +el.dataset.i }, "\u21A9\uFE0F \u0412\u0456\u0434\u043D\u043E\u0432\u043B\u0435\u043D\u043E");
-        loadView();
-        break;
-      case "cEdit":
-        cEdit(el.dataset.ref, el.dataset.d || void 0);
-        break;
       case "cPrint":
         act("closedPrint", { ref: el.dataset.ref, day: S.data.cday }, "\u{1F5A8} \u0427\u0435\u043A \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u043E");
         break;
-      case "cDay": {
-        const v = +el.dataset.v, base = S.data.cday || S.data.ctoday;
-        if (!v || !base) S.cday = "";
-        else {
-          const d = /* @__PURE__ */ new Date(base + "T12:00:00Z");
-          d.setUTCDate(d.getUTCDate() + v);
-          const k = d.toISOString().slice(0, 10);
-          S.cday = k >= S.data.ctoday ? "" : k;
-        }
-        S.data.closed = null;
-        renderMain();
-        loadView();
-        break;
-      }
       case "cRefund":
         if (await confirmBox(`\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438 \u0433\u043E\u0441\u0442\u044E ${money(+el.dataset.s)} \u043D\u0430 \u043A\u0430\u0440\u0442\u043A\u0443?`, "\u0413\u0440\u043E\u0448\u0456 \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u0447\u0435\u0440\u0435\u0437 LiqPay (1\u20137 \u0434\u043D\u0456\u0432), \u0447\u0435\u043A \u0437\u043D\u0456\u043C\u0435\u0442\u044C\u0441\u044F \u0437 \u0432\u0438\u0440\u0443\u0447\u043A\u0438")) await act("closedRefund", { ref: el.dataset.ref, day: S.data.cday }, "\u21A9\uFE0F \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E \u0433\u043E\u0441\u0442\u044E");
         loadView();
@@ -1672,36 +1168,8 @@ var __objRest = (source, exclude) => {
         if (await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0440\u0430\u0445\u0443\u043D\u043E\u043A \u0437 \u0432\u0438\u0440\u0443\u0447\u043A\u0438?", "\u0421\u0443\u043C\u0430, \u0441\u0442\u0440\u0430\u0432\u0438 \u0439 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0432\u0456\u0434\u043D\u0456\u043C\u0443\u0442\u044C\u0441\u044F \u0437\u0456 \u0437\u0432\u0456\u0442\u0456\u0432")) await act("closedDel", { ref: el.dataset.ref, day: S.data.cday }, "\u{1F9F9} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E \u0437 \u0432\u0438\u0440\u0443\u0447\u043A\u0438");
         loadView();
         break;
-      case "stopOff":
-        S.stopOff = !S.stopOff;
-        renderMain();
-        break;
-      case "stopT":
-        await act("stop", { id: el.dataset.id, hidden: el.dataset.h === "1" });
-        break;
-      case "pTest":
-        act("printTest", {}, "\u{1F5A8} \u0422\u0435\u0441\u0442 \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u043E");
-        break;
-      case "pQClear":
-        if (await confirmBox("\u{1F5D1} \u041E\u0447\u0438\u0441\u0442\u0438\u0442\u0438 \u0432\u0441\u044E \u0447\u0435\u0440\u0433\u0443 \u0434\u0440\u0443\u043A\u0443?", "\u0427\u0435\u043A\u0438 \u0439 \u043A\u0443\u0445\u043E\u043D\u043D\u0456 \u043A\u0432\u0438\u0442\u043A\u0438, \u044F\u043A\u0456 \u0449\u0435 \u043D\u0435 \u043D\u0430\u0434\u0440\u0443\u043A\u0443\u0432\u0430\u043B\u0438\u0441\u044C, \u0431\u0443\u0434\u0435 \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E \u2014 \u043F\u0440\u0438\u043D\u0442\u0435\u0440 \u0457\u0445 \u043D\u0435 \u043D\u0430\u0434\u0440\u0443\u043A\u0443\u0454.")) {
-          const r = await act("printClear", {});
-          if (r) {
-            toast(`\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E: ${r.n}`);
-            loadState().catch(() => {
-            });
-          }
-        }
-        break;
-      case "pQList": {
-        const r = await act("printQ", {});
-        if (!r) break;
-        const K = { kitchen: "\u{1F468}\u200D\u{1F373}", receipt: "\u{1F9FE}", test: "\u{1F9EA}", z: "\u{1F4CA}", qr: "\u{1F533}" };
-        modal({ title: `\u{1F5A8} \u0427\u0435\u0440\u0433\u0430 \u0434\u0440\u0443\u043A\u0443 (${r.list.length})`, body: `<div class="muted set-note">\u041F\u0440\u0438\u043D\u0442\u0435\u0440 \u0434\u0440\u0443\u043A\u0443\u0454 \u043F\u043E \u0447\u0435\u0440\u0437\u0456. \u042F\u043A\u0449\u043E \u0449\u043E\u0441\u044C \u0437\u0430\u0441\u0442\u0440\u044F\u0433\u043B\u043E \u0430\u0431\u043E \u0432\u0436\u0435 \u043D\u0435 \u043F\u043E\u0442\u0440\u0456\u0431\u043D\u0435 \u2014 \u{1F5D1} (\u0434\u0432\u0456\u0447\u0456).</div>${r.list.map((j) => `<div class="kv" data-pq="${j.id}"><span style="min-width:0;overflow-wrap:anywhere">${K[j.kind] || "\u{1F5A8}"} ${esc(j.txt || j.kind)}<br><small class="muted">${j.at ? hhmm(j.at) : ""}${j.sn ? " \xB7 \u{1F5A8} " + esc(j.sn) : ""}</small></span><span class="kv-r"><button class="btn sm" data-a="pQMove" data-id="${j.id}" title="\u041D\u0430 \u0456\u043D\u0448\u0438\u0439 \u043F\u0440\u0438\u043D\u0442\u0435\u0440">\u{1F501}</button><button class="btn sm red" data-a="pQDel" data-id="${j.id}">\u{1F5D1}</button></span></div>`).join("") || '<div class="muted">\u0427\u0435\u0440\u0433\u0430 \u043F\u043E\u0440\u043E\u0436\u043D\u044F</div>'}`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] }).then(() => loadState().catch(() => {
-        }));
-        break;
-      }
       case "pQMove": {
-        const r = await api("rcptGet", {}).catch(() => null), st = ((_s = r == null ? void 0 : r.route) == null ? void 0 : _s.st) || [];
+        const r = await api("rcptGet", {}).catch(() => null), st = ((_g = r == null ? void 0 : r.route) == null ? void 0 : _g.st) || [];
         if (!st.length) {
           toast("\u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440\u0438 \u0449\u0435 \u043D\u0435 \u0440\u043E\u0437\u043F\u043E\u0434\u0456\u043B\u0435\u043D\u0456 \u2014 \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F \u2192 \u{1F5A8} \u041F\u0440\u0438\u043D\u0442\u0435\u0440");
           break;
@@ -1709,7 +1177,7 @@ var __objRest = (source, exclude) => {
         closeModal();
         const sid = await choose("\u{1F501} \u041D\u0430\u0434\u0440\u0443\u043A\u0443\u0432\u0430\u0442\u0438 \u043D\u0430 \u0456\u043D\u0448\u043E\u043C\u0443", "\u0417\u0430\u0432\u0434\u0430\u043D\u043D\u044F \u043F\u0435\u0440\u0435\u0439\u0434\u0435 \u043D\u0430 \u0432\u0438\u0431\u0440\u0430\u043D\u0438\u0439 \u043F\u0440\u0438\u043D\u0442\u0435\u0440", st.map((x) => ({ label: "\u{1F5A8} " + x.name, val: x.id })));
         if (sid && await act("printMove", { id: el.dataset.id, st: sid }, "\u{1F501} \u041F\u0435\u0440\u0435\u043D\u0435\u0441\u0435\u043D\u043E")) {
-          const sm = (_t = el.closest("[data-pq]")) == null ? void 0 : _t.querySelector("small");
+          const sm = (_h = el.closest("[data-pq]")) == null ? void 0 : _h.querySelector("small");
           if (sm) sm.textContent = sm.textContent.replace(/ · 🖨 .*$/, "") + " \xB7 \u{1F5A8} " + st.find((x) => x.id === sid).name;
         }
         break;
@@ -1726,12 +1194,7 @@ var __objRest = (source, exclude) => {
           }, 3e3);
           break;
         }
-        if (await act("printClear", { id: el.dataset.id }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) (_u = el.closest("[data-pq]")) == null ? void 0 : _u.remove();
-        break;
-      }
-      case "pQr": {
-        const n = await pickTable("QR \u043C\u0435\u043D\u044E", "\u0423 \u043A\u043E\u0436\u043D\u043E\u0433\u043E \u0441\u0442\u043E\u043B\u0443 \u0441\u0432\u0456\u0439 QR \u2014 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043E\u0434\u0440\u0430\u0437\u0443 \u043D\u0430 \u0446\u0435\u0439 \u0441\u0442\u0456\u043B");
-        if (n) act("printQr", { t: n }, `\u{1F5A8} QR \u0441\u0442\u043E\u043B\u0443 ${tn(n)}`);
+        if (await act("printClear", { id: el.dataset.id }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) (_i = el.closest("[data-pq]")) == null ? void 0 : _i.remove();
         break;
       }
       case "float": {
@@ -1744,7 +1207,7 @@ var __objRest = (source, exclude) => {
       }
       case "expense": {
         const v = await modal({ title: "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0430", body: '<div class="form"><input id="eSum" inputmode="decimal" placeholder="\u0421\u0443\u043C\u0430, \u20B4"><input id="eNote" placeholder="\u041D\u0430 \u0449\u043E (\u043D\u0430\u043F\u0440. \u043E\u0432\u043E\u0447\u0456 \u043D\u0430 \u0440\u0438\u043D\u043A\u0443)">' + (isAdmin() ? `<label class="muted" style="font-size:13px">\u{1F4C5} \u0417\u0430 \u0434\u0435\u043D\u044C<input id="eDay" type="date" value="${todayK()}" max="${todayK()}"></label>` : "") + "</div>", buttons: [{ label: "\u{1F4B5} \u0417 \u043A\u0430\u0441\u0438", val: "cash", cls: "primary" }, { label: "\u{1F4B3} \u0417 \u043A\u0430\u0440\u0442\u0438", val: "card" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
-        const sum = v && +$("#eSum").value.replace(",", "."), note = v && $("#eNote").value, day = v && ((_v = $("#eDay")) == null ? void 0 : _v.value) !== todayK() ? ((_w = $("#eDay")) == null ? void 0 : _w.value) || "" : "";
+        const sum = v && +$("#eSum").value.replace(",", "."), note = v && $("#eNote").value, day = v && ((_j = $("#eDay")) == null ? void 0 : _j.value) !== todayK() ? ((_k = $("#eDay")) == null ? void 0 : _k.value) || "" : "";
         closeModal();
         if (v && sum) {
           await act("expense", __spreadValues({ sum, note, src: v }, day ? { day } : {}), day ? `\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0443 \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u043E \u0437\u0430 ${day.split("-").reverse().join(".")}` : "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0443 \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u043E");
@@ -1756,75 +1219,6 @@ var __objRest = (source, exclude) => {
         const src = await choose(`\u{1F49D} \u0412\u0438\u0434\u0430\u0442\u0438 \u0447\u0430\u0439\u043E\u0432\u0456: ${el.dataset.n}`, "\u0417\u0432\u0456\u0434\u043A\u0438 \u0441\u043F\u0438\u0441\u0430\u0442\u0438? \u0421\u0443\u043C\u0430 \u0432\u0456\u0434\u043D\u0456\u043C\u0435\u0442\u044C\u0441\u044F \u0437 \u0433\u043E\u0442\u0456\u0432\u043A\u0438 \u0430\u0431\u043E \u043A\u0430\u0440\u0442\u043A\u0438", [{ label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u043E\u044E \u0437 \u043A\u0430\u0441\u0438", val: "cash", cls: "green" }, { label: "\u{1F4B3} \u0417 \u043A\u0430\u0440\u0442\u043A\u0438", val: "card", cls: "blue" }]);
         if (src) {
           await act("tipPay", { name: el.dataset.n, src }, "\u{1F49D} \u0412\u0438\u0434\u0430\u043D\u043E");
-          loadView();
-          loadState().catch(() => {
-          });
-        }
-        break;
-      }
-      case "cMove":
-        cashMove(el.dataset.t);
-        break;
-      case "balInfo":
-        balInfo(el.dataset.s);
-        break;
-      case "movDel":
-        if (await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0437\u0430\u043F\u0438\u0441?")) {
-          await act("moveDel", { i: +el.dataset.i });
-          loadView();
-        }
-        break;
-      case "expDel":
-        if (await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0432\u0438\u0442\u0440\u0430\u0442\u0443?")) {
-          await act("expenseDel", { i: +el.dataset.i });
-          loadView();
-        }
-        break;
-      case "menuEdit":
-        menuEdit(el.dataset.id);
-        break;
-      case "phPanel":
-        phPanel();
-        break;
-      case "qrPanel":
-        qrPanel();
-        break;
-      case "catG": {
-        const c = S.menu.categories.find((x) => x.id === el.dataset.id);
-        if (!c) break;
-        const g = await choose("\u{1F4C2} " + c.name.uk, "\u041A\u0443\u0434\u0438 \u0439\u0434\u0443\u0442\u044C \u0441\u0442\u0440\u0430\u0432\u0438 \u0446\u044C\u043E\u0433\u043E \u0440\u043E\u0437\u0434\u0456\u043B\u0443?", [{ label: "\u{1F373} \u041A\u0443\u0445\u043D\u044F", val: "kitchen" }, { label: "\u{1F379} \u0411\u0430\u0440", val: "bar" }, { label: "\u{1F4A8} \u041A\u0430\u043B\u044C\u044F\u043D", val: "hookah" }]);
-        if (g && g !== c.g && await act("catSet", { id: c.id, g }, "\u{1F4C2} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) loadMenu().catch(() => {
-        });
-        break;
-      }
-      case "catPack": {
-        const c = S.menu.categories.find((x) => x.id === el.dataset.id);
-        if (c && await act("catSet", { id: c.id, nopack: !c.nopack }, c.nopack ? "\u{1F961} \u0423\u043F\u0430\u043A\u043E\u0432\u043A\u0430 \u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F" : "\u{1F6AB} \u0411\u0435\u0437 \u0443\u043F\u0430\u043A\u043E\u0432\u043A\u0438")) loadMenu().catch(() => {
-        });
-        break;
-      }
-      case "catAdd": {
-        const v = await ask("\u{1F4C2} \u041D\u043E\u0432\u0438\u0439 \u0440\u043E\u0437\u0434\u0456\u043B \u043C\u0435\u043D\u044E", "\u041D\u0430\u0437\u0432\u0430, \u043D\u0430\u043F\u0440. \u0423\u043F\u0430\u043A\u0443\u0432\u0430\u043D\u043D\u044F");
-        if (v && await act("catAdd", { name: v }, "\u{1F4C2} \u0420\u043E\u0437\u0434\u0456\u043B \u0434\u043E\u0434\u0430\u043D\u043E \u0432 \u043A\u0456\u043D\u0435\u0446\u044C \u043C\u0435\u043D\u044E")) loadMenu().catch(() => {
-        });
-        break;
-      }
-      case "menuUndo":
-        if (await confirmBox("\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438 \u043E\u0441\u0442\u0430\u043D\u043D\u044E \u0437\u043C\u0456\u043D\u0443 \u043C\u0435\u043D\u044E?")) act("menuUndo", {}, "\u21A9\uFE0F \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E");
-        break;
-      case "staffAdd": {
-        const v = await modal({ title: "\u2795 \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A", body: '<div class="form"><input id="sName" placeholder="\u0406\u043C\u02BC\u044F"><input id="sPin" inputmode="numeric" maxlength="8" placeholder="PIN \u2014 4 \u0446\u0438\u0444\u0440\u0438 (\u0430\u0434\u043C\u0456\u043D \u2014 6\u20138)"></div>', buttons: [{ label: "\u{1F9D1}\u200D\u{1F373} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442", val: "waiter", cls: "primary" }, { label: "\u{1F510} \u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440", val: "admin" }, { label: "\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u0430\u0440", val: "cook" }, { label: "\u{1F6F5} \u041A\u0443\u0440'\u0454\u0440", val: "courier" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
-        const name = v && $("#sName").value, p = v && $("#sPin").value;
-        closeModal();
-        if (v) {
-          await act("staffAdd", { name, pin: p, role: v }, "\u{1F465} \u0414\u043E\u0434\u0430\u043D\u043E");
-          loadView();
-        }
-        break;
-      }
-      case "cfgTgl": {
-        const k = el.dataset.k, cur = (_B = (_A = (_y = (_x = S.data.staff) == null ? void 0 : _x.cfg) == null ? void 0 : _y[k]) != null ? _A : (_z = S.cfg) == null ? void 0 : _z[k]) != null ? _B : +(el.dataset.def || 0);
-        if (await act("cfgSet", { k, v: cur ? 0 : 1 }, "\u2699\uFE0F \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
           loadView();
           loadState().catch(() => {
           });
@@ -1858,34 +1252,6 @@ var __objRest = (source, exclude) => {
         }
         break;
       }
-      case "staffDel":
-        if (await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430?", "\u0419\u043E\u0433\u043E PIN \u043F\u0435\u0440\u0435\u0441\u0442\u0430\u043D\u0435 \u043F\u0440\u0430\u0446\u044E\u0432\u0430\u0442\u0438")) {
-          await act("staffDel", { id: el.dataset.id });
-          loadView();
-        }
-        break;
-      case "wOut":
-        await act("waiterOut", { uid: el.dataset.uid }, "\u0412\u0438\u0439\u0448\u043E\u0432 \u0456\u0437 \u0431\u043E\u0442\u0430");
-        loadView();
-        break;
-      case "wifiAdd":
-        await act("wifiAdd", {}, "\u{1F4F6} \u041C\u0435\u0440\u0435\u0436\u0443 \u0434\u043E\u0434\u0430\u043D\u043E");
-        loadView();
-        break;
-      case "wifiClear":
-        if (await confirmBox("\u0421\u043A\u0438\u043D\u0443\u0442\u0438 \u0432\u0441\u0456 \u043C\u0435\u0440\u0435\u0436\u0456?", "\u0413\u043E\u0441\u0442\u0456 \u043D\u0435 \u0437\u043C\u043E\u0436\u0443\u0442\u044C \u0437\u0430\u043C\u043E\u0432\u043B\u044F\u0442\u0438, \u043F\u043E\u043A\u0438 \u043D\u0435 \u0434\u043E\u0434\u0430\u0441\u0442\u0435 \u043C\u0435\u0440\u0435\u0436\u0443")) {
-          await act("wifiClear");
-          loadView();
-        }
-        break;
-      case "reset":
-        if (await confirmBox("\u267B\uFE0F \u041E\u0431\u043D\u0443\u043B\u0438\u0442\u0438 \u0432\u0441\u0435?", "\u0417\u0432\u0456\u0442\u0438, \u043A\u0430\u0441\u0430, \u0437\u0430\u043A\u0440\u0438\u0442\u0456, \u0442\u043E\u043F \u0441\u0442\u0440\u0430\u0432, \u0441\u0442\u0440\u0456\u0447\u043A\u0430 \u0456 \u0412\u0421\u0406 \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u0456 \u0441\u0442\u043E\u043B\u0438")) {
-          if (await confirmBox("\u0422\u043E\u0447\u043D\u043E? \u0426\u0435 \u043D\u0435 \u043C\u043E\u0436\u043D\u0430 \u0441\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438.")) {
-            await act("reset", {}, "\u267B\uFE0F \u041E\u0431\u043D\u0443\u043B\u0435\u043D\u043E");
-            loadView();
-          }
-        }
-        break;
     }
   });
   document.addEventListener("input", (e) => {
@@ -2195,8 +1561,8 @@ var __objRest = (source, exclude) => {
     });
     if (isIOS() && !isApp()) return modal({ title: "\u{1F4F2} \u0421\u043F\u0435\u0440\u0448\u0443 \u0432\u0441\u0442\u0430\u043D\u043E\u0432\u0456\u0442\u044C \u043A\u0430\u0441\u0443", text: "\u041D\u0430 iPhone \u0441\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F \u043F\u0440\u0430\u0446\u044E\u044E\u0442\u044C \u043B\u0438\u0448\u0435 \u0432 \u043A\u0430\u0441\u0456, \u0432\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0456\u0439 \u043D\u0430 \u0435\u043A\u0440\u0430\u043D (iOS 16.4+).\n\n" + installHow(), buttons: [{ label: "\u0417\u0440\u043E\u0437\u0443\u043C\u0456\u043B\u043E", val: null }] });
     if (!pushCan()) return modal({ title: "\u{1F514} \u0421\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F", text: "\u0426\u0435\u0439 \u0431\u0440\u0430\u0443\u0437\u0435\u0440 \u043D\u0435 \u043F\u0456\u0434\u0442\u0440\u0438\u043C\u0443\u0454 \u0441\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F. \u0412\u0441\u0442\u0430\u043D\u043E\u0432\u0456\u0442\u044C \u043A\u0430\u0441\u0443 \u044F\u043A \u0434\u043E\u0434\u0430\u0442\u043E\u043A:\n\n" + installHow(), buttons: [{ label: "\u0417\u0440\u043E\u0437\u0443\u043C\u0456\u043B\u043E", val: null }] });
-    const reg = await navigator.serviceWorker.getRegistration(), sub = await (reg == null ? void 0 : reg.pushManager.getSubscription()), on = !!sub && Notification.permission === "granted";
-    const v = await modal({ title: on ? "\u{1F514} \u0421\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F \u0443\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u0456" : "\u{1F514} \u0421\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F \u0432 \u0448\u0442\u043E\u0440\u043A\u0443", text: on ? "\u041D\u043E\u0432\u0456 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0439 \u0432\u0430\u0436\u043B\u0438\u0432\u0456 \u043F\u043E\u0434\u0456\u0457 \u043F\u0440\u0438\u0445\u043E\u0434\u0438\u0442\u0438\u043C\u0443\u0442\u044C \u043D\u0430 \u0446\u0435\u0439 \u0442\u0435\u043B\u0435\u0444\u043E\u043D, \u043D\u0430\u0432\u0456\u0442\u044C \u043A\u043E\u043B\u0438 \u0432\u0456\u043D \u0437\u0430\u0431\u043B\u043E\u043A\u043E\u0432\u0430\u043D\u0438\u0439." : "\u041E\u0442\u0440\u0438\u043C\u0443\u0439\u0442\u0435 \u043D\u043E\u0432\u0456 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0439 \u0432\u0430\u0436\u043B\u0438\u0432\u0456 \u043F\u043E\u0434\u0456\u0457 \u043D\u0430 \u0446\u0435\u0439 \u0442\u0435\u043B\u0435\u0444\u043E\u043D \u2014 \u043D\u0430\u0432\u0456\u0442\u044C \u043D\u0430 \u0437\u0430\u0431\u043B\u043E\u043A\u043E\u0432\u0430\u043D\u0438\u0439 \u0435\u043A\u0440\u0430\u043D." + (isApp() ? "" : "\n\n\u{1F4A1} \u041A\u0440\u0430\u0449\u0435 \u0432\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u0438 \u043A\u0430\u0441\u0443 \u044F\u043A \u0434\u043E\u0434\u0430\u0442\u043E\u043A:\n" + installHow()), buttons: on ? [{ label: "\u{1F4E8} \u0422\u0435\u0441\u0442\u043E\u0432\u0435", val: "test" }, { label: "\u{1F515} \u0412\u0438\u043C\u043A\u043D\u0443\u0442\u0438", val: "off", cls: "red" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] : [{ label: "\u{1F514} \u0423\u0432\u0456\u043C\u043A\u043D\u0443\u0442\u0438", val: "on" }, { label: "\u041F\u0456\u0437\u043D\u0456\u0448\u0435", val: null }] });
+    const reg = await navigator.serviceWorker.getRegistration(), sub = await (reg == null ? void 0 : reg.pushManager.getSubscription()), on2 = !!sub && Notification.permission === "granted";
+    const v = await modal({ title: on2 ? "\u{1F514} \u0421\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F \u0443\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u0456" : "\u{1F514} \u0421\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F \u0432 \u0448\u0442\u043E\u0440\u043A\u0443", text: on2 ? "\u041D\u043E\u0432\u0456 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0439 \u0432\u0430\u0436\u043B\u0438\u0432\u0456 \u043F\u043E\u0434\u0456\u0457 \u043F\u0440\u0438\u0445\u043E\u0434\u0438\u0442\u0438\u043C\u0443\u0442\u044C \u043D\u0430 \u0446\u0435\u0439 \u0442\u0435\u043B\u0435\u0444\u043E\u043D, \u043D\u0430\u0432\u0456\u0442\u044C \u043A\u043E\u043B\u0438 \u0432\u0456\u043D \u0437\u0430\u0431\u043B\u043E\u043A\u043E\u0432\u0430\u043D\u0438\u0439." : "\u041E\u0442\u0440\u0438\u043C\u0443\u0439\u0442\u0435 \u043D\u043E\u0432\u0456 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0439 \u0432\u0430\u0436\u043B\u0438\u0432\u0456 \u043F\u043E\u0434\u0456\u0457 \u043D\u0430 \u0446\u0435\u0439 \u0442\u0435\u043B\u0435\u0444\u043E\u043D \u2014 \u043D\u0430\u0432\u0456\u0442\u044C \u043D\u0430 \u0437\u0430\u0431\u043B\u043E\u043A\u043E\u0432\u0430\u043D\u0438\u0439 \u0435\u043A\u0440\u0430\u043D." + (isApp() ? "" : "\n\n\u{1F4A1} \u041A\u0440\u0430\u0449\u0435 \u0432\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u0438 \u043A\u0430\u0441\u0443 \u044F\u043A \u0434\u043E\u0434\u0430\u0442\u043E\u043A:\n" + installHow()), buttons: on2 ? [{ label: "\u{1F4E8} \u0422\u0435\u0441\u0442\u043E\u0432\u0435", val: "test" }, { label: "\u{1F515} \u0412\u0438\u043C\u043A\u043D\u0443\u0442\u0438", val: "off", cls: "red" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] : [{ label: "\u{1F514} \u0423\u0432\u0456\u043C\u043A\u043D\u0443\u0442\u0438", val: "on" }, { label: "\u041F\u0456\u0437\u043D\u0456\u0448\u0435", val: null }] });
     try {
       if (v === "on") {
         await pushSubNow();
@@ -2254,19 +1620,19 @@ var __objRest = (source, exclude) => {
       S.pushK = k;
     }).catch(() => {
     });
-    let on = false;
+    let on2 = false;
     try {
-      on = pushCan() && Notification.permission === "granted" && !!await ((_a2 = await navigator.serviceWorker.getRegistration()) == null ? void 0 : _a2.pushManager.getSubscription());
+      on2 = pushCan() && Notification.permission === "granted" && !!await ((_a2 = await navigator.serviceWorker.getRegistration()) == null ? void 0 : _a2.pushManager.getSubscription());
     } catch (e) {
     }
-    el.classList.toggle("on", on);
+    el.classList.toggle("on", on2);
     const row = $("#pushRow");
     if (!row) return;
     row.onclick = async () => {
       var _a3, _b2;
       if (isIOS() && !isApp() || !pushCan()) return pushMenu();
       try {
-        if (!on) {
+        if (!on2) {
           await pushSubNow();
           store.set("pushAsk", 1);
           (_a3 = $("#pushAsk")) == null ? void 0 : _a3.remove();
@@ -3068,6 +2434,285 @@ var __objRest = (source, exclude) => {
       if ((S.wl || []).length) wlOpen();
     }
   }
+  on("table", async (el, e, a, t) => {
+    $("#feed").classList.remove("open");
+    openTable(el.dataset.t);
+    return;
+  });
+  on("newOrder", async (el, e, a, t) => {
+    {
+      const n = await pickTable("\u041D\u043E\u0432e \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", "\u041E\u0431\u0435\u0440\u0456\u0442\u044C \u0441\u0442\u0456\u043B", 0, true);
+      if (n === "pick" || n === "del") goNew(n);
+      else if (n) {
+        openTable(n);
+        S.mobileMenu = true;
+        renderSheet();
+      }
+      return;
+    }
+  });
+  on("closeSheet", async (el, e, a, t) => {
+    closeSheet();
+    return;
+  });
+  on("tab", async (el, e, a, t) => {
+    S.mobileMenu = el.dataset.m === "1";
+    renderSheet();
+    return;
+  });
+  on("mobileMenu", async (el, e, a, t) => {
+    S.mobileMenu = true;
+    renderSheet();
+    return;
+  });
+  on("cat", async (el, e, a, t) => {
+    S.cat = el.dataset.c;
+    S.q = "";
+    renderSheet();
+    $("#shItems").scrollTop = 0;
+    return;
+  });
+  on("grp", async (el, e, a, t) => {
+    S.grp = el.dataset.g;
+    S.cat = "";
+    S.q = "";
+    store.set("grp", S.grp);
+    renderSheet();
+    $("#shItems").scrollTop = 0;
+    return;
+  });
+  on("fav", async (el, e, a, t) => {
+    {
+      const on2 = !S.fav.includes(el.dataset.id);
+      S.fav = on2 ? [...S.fav, el.dataset.id] : S.fav.filter((x) => x !== el.dataset.id);
+      renderSheet();
+      act("fav", { id: el.dataset.id, on: on2 }, on2 ? "\u2B50 \u0414\u043E\u0434\u0430\u043D\u043E \u0432 \u043E\u0431\u0440\u0430\u043D\u0456" : "\u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E \u0437 \u043E\u0431\u0440\u0430\u043D\u0438\u0445");
+      return;
+    }
+  });
+  on("tw", async (el, e, a, t) => {
+    {
+      if (t === -1 || t > 1e3) {
+        S.tw[t] = !S.tw[t];
+        S.packAdj[t] = 0;
+        renderSheet();
+        return;
+      }
+      const k = await choose("\u{1F961} \u0417 \u0441\u043E\u0431\u043E\u044E", "\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043F\u0456\u0434\u0435 \u043E\u043A\u0440\u0435\u043C\u0438\u043C \u0447\u0435\u043A\u043E\u043C; \u0441\u0442\u0456\u043B \u043D\u0435 \u0437\u0430\u0439\u043C\u0430\u0454\u0442\u044C\u0441\u044F", [{ label: "\u{1F961} \u0421\u0430\u043C\u043E\u0432\u0438\u0432\u0456\u0437", val: "pick", cls: "primary" }, { label: "\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430", val: "del", cls: "primary" }]);
+      if (k) goNew(k, t);
+      return;
+    }
+  });
+  on("ur", async (el, e, a, t) => {
+    S.ur[t] = !S.ur[t];
+    renderSheet();
+    return;
+  });
+  on("pk", async (el, e, a, t) => {
+    {
+      const cur = packQ(t);
+      if (cur + +el.dataset.d >= 0) S.packAdj[t] = (S.packAdj[t] || 0) + +el.dataset.d;
+      renderSheet();
+      return;
+    }
+  });
+  on("photos", async (el, e, a, t) => {
+    S.photos = !S.photos;
+    store.set("photos", S.photos);
+    renderSheet();
+    return;
+  });
+  on("add", async (el, e, a, t) => {
+    addItem(el.dataset.id);
+    return;
+  });
+  on("cq", async (el, e, a, t) => {
+    {
+      const c = cartOf(t), x = c[el.dataset.k];
+      if (x) {
+        x.q += +el.dataset.d;
+        if (x.q <= 0) delete c[el.dataset.k];
+      }
+      saveCarts();
+      renderSheet();
+      return;
+    }
+  });
+  on("cartClear", async (el, e, a, t) => {
+    S.carts[t] = {};
+    saveCarts();
+    renderSheet();
+    return;
+  });
+  on("send", async (el, e, a, t) => {
+    sendCart();
+    return;
+  });
+  on("books", async (el, e, a, t) => {
+    S.view = "books";
+    renderNav();
+    renderMain();
+    loadView();
+    return;
+  });
+  on("bonCert", async (el, e, a, t) => {
+    var _a2, _b2;
+    {
+      const v = await choose("\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438 \xB7 \u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442", ((_a2 = S.tables[t]) == null ? void 0 : _a2.cli) ? "\u0413\u0456\u0441\u0442\u044C \u0437\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u043E\u043C \u0443\u0436\u0435 \u0432\u043A\u0430\u0437\u0430\u043D\u0438\u0439" : "\u0429\u043E \u0437\u0430\u0441\u0442\u043E\u0441\u0443\u0432\u0430\u0442\u0438 \u0434\u043E \u0440\u0430\u0445\u0443\u043D\u043A\u0443?", [{ label: ((_b2 = S.tables[t]) == null ? void 0 : _b2.cli) ? "\u{1F381} \u0413\u0456\u0441\u0442\u044C \u0456 \u0431\u043E\u043D\u0443\u0441\u0438" : "\u{1F381} \u0411\u043E\u043D\u0443\u0441\u0438 \u0433\u043E\u0441\u0442\u044F (\u0437\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u043E\u043C)", val: "cli", cls: "primary" }, { label: "\u{1F39F} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 (\u043A\u043E\u0434)", val: "cert" }, { label: "\u{1F382} \u041F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A \u043D\u0430 \u0414\u041D", val: "bd" }]);
+      if (v === "cli") cliT(t);
+      else if (v === "cert") certT(t);
+      else if (v === "bd") bdGiftT(t);
+      return;
+    }
+  });
+  on("cliBon0", async (el, e, a, t) => {
+    {
+      const b = S.tables[t];
+      if (b == null ? void 0 : b.cert) {
+        if (!await confirmBox(b.cert.code && b.bonus > b.cert.sum ? "\u21A9\uFE0F \u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 \u0456 \u0431\u043E\u043D\u0443\u0441\u0438 \u0437 \u0440\u0430\u0445\u0443\u043D\u043A\u0443?" : "\u21A9\uFE0F \u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442 \u0437 \u0440\u0430\u0445\u0443\u043D\u043A\u0443?")) return;
+        if (!await act("certOff", { t }, "\u21A9\uFE0F \u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E")) return;
+        if (b.bonus > b.cert.sum && b.cli) await act("cliBonus", { t, sum: 0 });
+      } else if (!await act("cliBonus", { t, sum: 0 })) return;
+      loadState().catch(() => {
+      });
+      return;
+    }
+  });
+  on("rm", async (el, e, a, t) => {
+    {
+      const reason = await voidReason(`\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438 1\xD7 ${el.dataset.name}?`);
+      if (reason) act("remove", { t, name: el.dataset.name, reason }, "\u270F\uFE0F \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E");
+      return;
+    }
+  });
+  on("disc", async (el, e, a, t) => {
+    discFlow();
+    return;
+  });
+  on("tipSet", async (el, e, a, t) => {
+    act("tip", { t, sum: 0 }, "\u0427\u0430\u0439\u043E\u0432\u0456 \u043F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
+    return;
+  });
+  on("discSet", async (el, e, a, t) => {
+    act("discount", { t, pct: 0 }, "\u0417\u043D\u0438\u0436\u043A\u0443 \u043F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
+    return;
+  });
+  on("vBack", async (el, e, a, t) => {
+    if (await confirmBox("\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438 \u0441\u0442\u0440\u0430\u0432\u0443 \u043D\u0430 \u0441\u0442\u0456\u043B? \u0412\u043E\u043D\u0430 \u0437\u043D\u043E\u0432\u0443 \u0431\u0443\u0434\u0435 \u0432 \u0440\u0430\u0445\u0443\u043D\u043A\u0443.")) {
+      if (await act("voidBack", { ts: +el.dataset.ts }, "\u21A9\uFE0F \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E \u043D\u0430 \u0441\u0442\u0456\u043B")) loadView();
+    }
+    return;
+  });
+  on("move", async (el, e, a, t) => {
+    moveFlow();
+    return;
+  });
+  on("split", async (el, e, a, t) => {
+    splitFlow();
+    return;
+  });
+  on("spq", async (el, e, a, t) => {
+    {
+      const i = +el.dataset.i, it = S.spl.items[i];
+      S.spl.q[i] = Math.max(0, Math.min(it.q, (S.spl.q[i] || 0) + +el.dataset.d));
+      splitRender();
+      return;
+    }
+  });
+  on("closeT", async (el, e, a, t) => {
+    closeFlow();
+    return;
+  });
+  on("delTable", async (el, e, a, t) => {
+    var _a2, _b2;
+    {
+      const pb = S.tables[t], pp = ((_a2 = pb == null ? void 0 : pb.paid) == null ? void 0 : _a2.sum) || (((_b2 = pb == null ? void 0 : pb.go) == null ? void 0 : _b2.paid) && !pb.go.paid.ref ? pb.go.paid.sum : 0);
+      if (pp) {
+        if (!isAdmin()) {
+          toast("\u{1F4B3} \u041E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u043E\u043D\u043B\u0430\u0439\u043D \u2014 \u0432\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u043C\u043E\u0436\u0435 \u043B\u0438\u0448\u0435 \u0430\u0434\u043C\u0456\u043D (\u0437 \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F\u043C \u0433\u0440\u043E\u0448\u0435\u0439)");
+          return;
+        }
+        if (!await confirmBox(`\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438 \u0433\u043E\u0441\u0442\u044E ${money(pp)} \u043D\u0430 \u043A\u0430\u0440\u0442\u043A\u0443?`, "\u0421\u0442\u0456\u043B \u043E\u043F\u043B\u0430\u0447\u0435\u043D\u043E \u043E\u043D\u043B\u0430\u0439\u043D. \u0421\u043F\u0435\u0440\u0448\u0443 \u043F\u043E\u0432\u0435\u0440\u0442\u0430\u0454\u043C\u043E \u0433\u0440\u043E\u0448\u0456 \u0447\u0435\u0440\u0435\u0437 LiqPay, \u043F\u043E\u0442\u0456\u043C \u2014 \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043D\u044F.")) return;
+        if (!await act("tpayRefund", { t }, "\u21A9\uFE0F \u0413\u0440\u043E\u0448\u0456 \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E")) return;
+      }
+      const reason = await voidReason(`\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0432\u0435\u0441\u044C \u0441\u0442\u0456\u043B ${tn(t)}? \u0421\u0443\u043C\u0430 \u041D\u0415 \u043F\u0456\u0434\u0435 \u0443 \u0432\u0438\u0440\u0443\u0447\u043A\u0443`);
+      if (reason) {
+        const r = await act("delete", { t, reason }, `\u{1F5D1} \u0421\u0442\u0456\u043B ${tn(t)} \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E`);
+        if (r) closeSheet();
+      }
+      return;
+    }
+  });
+  on("evAck", async (el, e, a, t) => {
+    act("evAck", { id: el.dataset.id }, "\u2705 \u0412\u0438 \u0439\u0434\u0435\u0442\u0435 \u0434\u043E \u0433\u043E\u0441\u0442\u044F");
+    return;
+  });
+  on("tpayOk", async (el, e, a, t) => {
+    {
+      const tt = +el.dataset.t, b = S.tables[tt];
+      const due = (b == null ? void 0 : b.paid) ? Math.max(0, b.pay2 - (b.paid.net || 0)) : 0;
+      let pay = "cash";
+      if (due > 0) {
+        pay = await choose(`\u0421\u0442\u0456\u043B ${tn(tt)}: \u0434\u043E\u043F\u043B\u0430\u0442\u0430 ${money(due)}`, "\u0413\u0456\u0441\u0442\u044C \u043E\u043F\u043B\u0430\u0442\u0438\u0432 \u043E\u043D\u043B\u0430\u0439\u043D \u043D\u0435 \u0432\u0441\u0435 (\u0434\u043E\u0434\u0430\u043B\u0438 \u0441\u0442\u0440\u0430\u0432\u0438). \u042F\u043A \u0434\u043E\u043F\u043B\u0430\u0442\u0438\u043B\u0438?", [{ label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430", val: "cash" }, { label: "\u{1F4B3} \u0422\u0435\u0440\u043C\u0456\u043D\u0430\u043B", val: "card" }]);
+        if (!pay) return;
+      }
+      const r = await act("tpayOk", { t: tt, pay }, `\u2705 \u0421\u0442\u0456\u043B ${tn(tt)} \u0437\u0430\u043A\u0440\u0438\u0442\u043E \u2014 \u{1F310} \u043E\u043D\u043B\u0430\u0439\u043D`);
+      if (r && S.open === tt) closeSheet();
+      return;
+    }
+  });
+  on("tpayRefund", async (el, e, a, t) => {
+    var _a2;
+    {
+      const tt = +el.dataset.t, b = S.tables[tt];
+      if (await confirmBox(`\u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u0438 \u0433\u043E\u0441\u0442\u044E ${money(((_a2 = b == null ? void 0 : b.paid) == null ? void 0 : _a2.sum) || 0)} \u043D\u0430 \u043A\u0430\u0440\u0442\u043A\u0443?`, `\u0421\u0442\u0456\u043B ${tn(tt)} \u043B\u0438\u0448\u0438\u0442\u044C\u0441\u044F \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u0438\u043C. \u041F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F \u0447\u0435\u0440\u0435\u0437 LiqPay \u2014 \u0433\u0440\u043E\u0448\u0456 \u043F\u0440\u0438\u0439\u0434\u0443\u0442\u044C \u0433\u043E\u0441\u0442\u044E \u0437\u0430 1\u20137 \u0434\u043D\u0456\u0432.`)) await act("tpayRefund", { t: tt }, "\u21A9\uFE0F \u0413\u0440\u043E\u0448\u0456 \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E \u0433\u043E\u0441\u0442\u044E");
+      return;
+    }
+  });
+  on("reject", async (el, e, a, t) => {
+    if (await confirmBox("\u0412\u0456\u0434\u0445\u0438\u043B\u0438\u0442\u0438 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0433\u043E\u0441\u0442\u044F?", "\u041F\u043E\u0437\u0438\u0446\u0456\u0457 \u043F\u0440\u0438\u0431\u0435\u0440\u0443\u0442\u044C\u0441\u044F \u0437 \u0440\u0430\u0445\u0443\u043D\u043A\u0443, \u043D\u0430 \u043A\u0443\u0445\u043D\u044E \u043D\u0435 \u043F\u0456\u0434\u0435, \u0433\u0456\u0441\u0442\u044C \u043F\u043E\u0431\u0430\u0447\u0438\u0442\u044C \xAB\u0432\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E\xBB")) {
+      await act("reject", { oid: el.dataset.oid }, "\u274C \u0412\u0456\u0434\u0445\u0438\u043B\u0435\u043D\u043E");
+      loadState().catch(() => {
+      });
+    }
+    return;
+  });
+  on("cReopen", async (el, e, a, t) => {
+    if (await confirmBox("\u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438 \u0440\u0430\u0445\u0443\u043D\u043E\u043A \u0437\u043D\u043E\u0432\u0443?", "\u0412\u0456\u043D \u0437\u043D\u0456\u043C\u0435\u0442\u044C\u0441\u044F \u0437 \u0432\u0438\u0440\u0443\u0447\u043A\u0438 \u0439 \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u0442\u044C\u0441\u044F \u043D\u0430 \u0441\u0442\u0456\u043B \u2014 \u0432\u0438\u043F\u0440\u0430\u0432\u0438\u0442\u0435 \u0439 \u0437\u0430\u043A\u0440\u0438\u0454\u0442\u0435 \u0437\u0430\u043D\u043E\u0432\u043E")) {
+      const r = await act("closedReopen", { ref: el.dataset.ref, day: S.data.cday }, "\u21A9\uFE0F \u0420\u0430\u0445\u0443\u043D\u043E\u043A \u0437\u043D\u043E\u0432\u0443 \u043D\u0430 \u0441\u0442\u043E\u043B\u0456");
+      loadView();
+      loadState().catch(() => {
+      });
+      if (r == null ? void 0 : r.x) openTable(r.x.t);
+    }
+    return;
+  });
+  on("tBack", async (el, e, a, t) => {
+    if (await confirmBox("\u0412\u0456\u0434\u043D\u043E\u0432\u0438\u0442\u0438 \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u0438\u0439 \u0441\u0442\u0456\u043B?", "\u0421\u0442\u0440\u0430\u0432\u0438 \u043F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F \u043D\u0430 \u0441\u0442\u0456\u043B")) {
+      const r = await act("tableBack", { ref: el.dataset.ref, day: S.data.cday }, "\u21A9\uFE0F \u0421\u0442\u0456\u043B \u0432\u0456\u0434\u043D\u043E\u0432\u043B\u0435\u043D\u043E");
+      loadView();
+      loadState().catch(() => {
+      });
+      if (r == null ? void 0 : r.x) openTable(r.x.t);
+    }
+    return;
+  });
+  on("cDay", async (el, e, a, t) => {
+    {
+      const v = +el.dataset.v, base = S.data.cday || S.data.ctoday;
+      if (!v || !base) S.cday = "";
+      else {
+        const d = /* @__PURE__ */ new Date(base + "T12:00:00Z");
+        d.setUTCDate(d.getUTCDate() + v);
+        const k = d.toISOString().slice(0, 10);
+        S.cday = k >= S.data.ctoday ? "" : k;
+      }
+      S.data.closed = null;
+      renderMain();
+      loadView();
+      return;
+    }
+  });
   const RXS = ["\u{1F44D}", "\u2705", "\u{1F525}", "\u2764\uFE0F", "\u{1F602}", "\u{1F62E}"];
   const QUICK = ["\u{1F3C3} \u0406\u0434\u0443", "\u23F1 5 \u0445\u0432", "\u26D4 \u041D\u0435\u043C\u0430 \u0432 \u043D\u0430\u044F\u0432\u043D\u043E\u0441\u0442\u0456", "\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432", "\u{1F37D} \u0413\u043E\u0442\u043E\u0432\u043E", "\u{1F44C} \u041E\u043A"];
   S.evRead = store.get("evRead", {});
@@ -3355,7 +3000,7 @@ var __objRest = (source, exclude) => {
       const d2 = new Date(Date.now() + m * 6e4);
       return `${d2.getHours()}:${String(d2.getMinutes()).padStart(2, "0")}`;
     };
-    const chip = (grp, v2, l, on) => `<button class="chip sm${on ? " on" : ""}" data-g="${grp}" data-v="${v2}">${l}</button>`;
+    const chip = (grp, v2, l, on2) => `<button class="chip sm${on2 ? " on" : ""}" data-g="${grp}" data-v="${v2}">${l}</button>`;
     const body = `<div class="gof"><div class="seg" id="gKind"><button class="${kind0 === "pick" ? "on" : ""}" data-k="pick">\u{1F961} \u0421\u0430\u043C\u043E\u0432\u0438\u0432\u0456\u0437</button><button class="${kind0 === "del" ? "on" : ""}" data-k="del">\u{1F6F5} \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430</button></div>
       <div class="gof-r"><input id="gP" type="tel" inputmode="tel" placeholder="\u{1F4DE} \u0422\u0435\u043B\u0435\u0444\u043E\u043D 050 123 45 67" autocomplete="off"><input id="gN" placeholder="\u{1F464} \u0406\u043C\u02BC\u044F"></div>
       <div id="gCli" class="gof-cli" hidden></div>
@@ -3651,6 +3296,117 @@ var __objRest = (source, exclude) => {
     else if (a === "crRepM") loadCourRep(el.dataset.m);
     else if (a === "goEdit") goEdit(S.open);
   });
+  on("goNew", async (el, e, a, t) => {
+    goNew();
+    return;
+  });
+  on("goSt", async (el, e, a, t) => {
+    if (await act("goSt", { t, st: el.dataset.s }, "\u2714 " + GOST[el.dataset.s])) loadState().catch(() => {
+    });
+    return;
+  });
+  on("goDone", async (el, e, a, t) => {
+    goDone(t);
+    return;
+  });
+  on("goDoneT", async (el, e, a, t) => {
+    goDone(+el.dataset.t);
+    return;
+  });
+  on("crGive", async (el, e, a, t) => {
+    {
+      const v = await askVal(`\u{1F4B5} \u0421\u043A\u0456\u043B\u044C\u043A\u0438 \u043E\u0442\u0440\u0438\u043C\u0430\u043D\u043E \u0432\u0456\u0434 ${el.dataset.n}?`, el.dataset.v, "number");
+      if (!v) return;
+      if (await act("courCash", { n: el.dataset.n, sum: +v }, "\u2705 \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E")) loadView();
+      return;
+    }
+  });
+  on("crTab", async (el, e, a, t) => {
+    S.courTab = el.dataset.t;
+    renderMain();
+    return;
+  });
+  on("crAct", async (el, e, a, t) => {
+    {
+      const x = el.dataset.x;
+      if (await act("courAct", { t: +el.dataset.t, act: x, arg: el.dataset.v }, { take: "\u270B \u0412\u0430\u0448\u0430 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430", road: "\u{1F6F5} \u0412 \u0434\u043E\u0440\u043E\u0437\u0456", eta: "\u23F1 \u0413\u043E\u0441\u0442\u044E \u043D\u0430\u0434\u0456\u0441\u043B\u0430\u043D\u043E", km: "\u{1F4AC} \u041A\u0443\u0445\u043D\u0456 \u043D\u0430\u0434\u0456\u0441\u043B\u0430\u043D\u043E" }[x])) {
+        if (x === "take") S.courTab = "mine";
+        await loadState().catch(() => {
+        });
+        await loadCour().catch(() => {
+        });
+      }
+      return;
+    }
+  });
+  on("crDone", async (el, e, a, t) => {
+    var _a2;
+    {
+      const tt = +el.dataset.t, b = S.tables[tt];
+      const pay = ((_a2 = b == null ? void 0 : b.go) == null ? void 0 : _a2.paid) ? "card" : await choose(`\u{1F91D} ${tn(tt)} \u0432\u0438\u0434\u0430\u043D\u043E`, `\u0414\u043E \u0441\u043F\u043B\u0430\u0442\u0438 ${money(b.pay2)}${b.go.change ? ` \xB7 \u0440\u0435\u0448\u0442\u0430 \u0437 ${b.go.change}` : ""}`, [{ label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430", val: "cash", cls: "green" }, { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u043A\u0430", val: "card", cls: "blue" }]);
+      if (!pay) return;
+      if (await act("courAct", { t: tt, act: "done", arg: pay }, "\u2705 \u0412\u0438\u0434\u0430\u043D\u043E")) {
+        await loadState().catch(() => {
+        });
+        await loadCour().catch(() => {
+        });
+      }
+      return;
+    }
+  });
+  on("crProb", async (el, e, a, t) => {
+    {
+      const v = await choose("\u26A0\uFE0F \u0429\u043E \u0441\u0442\u0430\u043B\u043E\u0441\u044C?", "\u0410\u0434\u043C\u0456\u043D \u043E\u0442\u0440\u0438\u043C\u0430\u0454 \u0441\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F", [{ label: "\u{1F4F5} \u0413\u0456\u0441\u0442\u044C \u043D\u0435 \u0432\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u0430\u0454", val: "noans" }, { label: "\u{1F4CD} \u041D\u0435\u0432\u0456\u0440\u043D\u0430 \u0430\u0434\u0440\u0435\u0441\u0430", val: "addr" }, { label: "\u{1F645} \u0413\u0456\u0441\u0442\u044C \u0432\u0456\u0434\u043C\u043E\u0432\u0438\u0432\u0441\u044F", val: "refuse", cls: "red" }, { label: "\u270F\uFE0F \u0406\u043D\u0448\u0435\u2026", val: "own" }]);
+      if (!v) return;
+      const arg = v === "own" ? await ask("\u26A0\uFE0F \u041E\u043F\u0438\u0448\u0456\u0442\u044C \u043F\u0440\u043E\u0431\u043B\u0435\u043C\u0443") : v;
+      if (arg && await act("courAct", { t: +el.dataset.t, act: "prob", arg }, "\u26A0\uFE0F \u0410\u0434\u043C\u0456\u043D\u0430 \u043F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u043E")) loadState().catch(() => {
+      });
+      return;
+    }
+  });
+  on("crTg", async (el, e, a, t) => {
+    {
+      const r = await act("courTg");
+      if (r == null ? void 0 : r.url) {
+        window.open(r.url, "_blank");
+        toast("\u2708\uFE0F \u041D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \xABStart\xBB \u0443 \u0431\u043E\u0442\u0456");
+        setTimeout(() => loadCour().catch(() => {
+        }), 15e3);
+      }
+      return;
+    }
+  });
+  on("cliT", async (el, e, a, t) => {
+    cliT(t);
+    return;
+  });
+  on("goCfg", async (el, e, a, t) => {
+    var _a2;
+    {
+      const k = el.dataset.k, cur = (_a2 = S.data.gocfg) == null ? void 0 : _a2[k];
+      const v = ["on", "del", "pick", "track"].includes(k) ? cur ? 0 : 1 : await ask(el.dataset.l || k, String(cur != null ? cur : ""), ["phone", "zone", "from", "to"].includes(k) ? "text" : "number");
+      if (v == null) return;
+      const r = await act("goCfgSet", { k, v }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
+      if (r) {
+        S.data.gocfg = r.cfg;
+        renderMain();
+      }
+      return;
+    }
+  });
+  on("goLink", async (el, e, a, t) => {
+    var _a2;
+    {
+      const u = (((_a2 = window.VARVAR) == null ? void 0 : _a2.venue) ? "https://posatom.online/" + VARVAR.venue + "/" : "https://posatom.online/varvar/") + "?go" + (el.dataset.src ? "&src=" + el.dataset.src : "");
+      try {
+        await navigator.clipboard.writeText(u);
+        toast("\u{1F4CB} \u0421\u043A\u043E\u043F\u0456\u0439\u043E\u0432\u0430\u043D\u043E: " + u);
+      } catch (e2) {
+        await ask("\u041F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F", u);
+      }
+      return;
+    }
+  });
   async function loadBooks() {
     S.bkDay || (S.bkDay = todayK());
     const from = addD(todayK(), -7), to = addD(todayK(), 60);
@@ -3752,6 +3508,80 @@ var __objRest = (source, exclude) => {
       });
     }
   }
+  on("wl", async (el, e, a, t) => {
+    wlOpen();
+    return;
+  });
+  on("bkDay", async (el, e, a, t) => {
+    S.bkDay = el.dataset.d;
+    renderMain();
+    return;
+  });
+  on("bkAll", async (el, e, a, t) => {
+    S.bkAll = !!el.dataset.v;
+    renderMain();
+    return;
+  });
+  on("bkNew", async (el, e, a, t) => {
+    bkForm();
+    return;
+  });
+  on("bkEd", async (el, e, a, t) => {
+    bkForm(S.data.bk.find((x) => x.id === el.dataset.id));
+    return;
+  });
+  on("bkCame", async (el, e, a, t) => {
+    var _a2;
+    {
+      const b = S.data.bk.find((x) => x.id === el.dataset.id);
+      let tt = b.t;
+      if (!tt) {
+        tt = await pickTable(`\u{1FA91} ${b.name}: \u0437\u0430 \u044F\u043A\u0438\u0439 \u0441\u0442\u0456\u043B?`, "\u0411\u0440\u043E\u043D\u044C \u0437\u0430\u043A\u0440\u0438\u0454\u0442\u044C\u0441\u044F \u044F\u043A \xAB\u043F\u0440\u0438\u0439\u0448\u043B\u0438\xBB");
+        if (!tt) return;
+      }
+      if (await act("bkSet", { id: b.id, st: "came", t: tt }, "\u{1FA91} \u0413\u043E\u0441\u0442\u0456 \u043F\u0440\u0438\u0439\u0448\u043B\u0438")) {
+        await loadBooks();
+        loadState().catch(() => {
+        });
+        if (((_a2 = b.pre) == null ? void 0 : _a2.length) && !b.preSent && await confirmBox("\u{1F37D} \u041F\u0435\u0440\u0435\u0434\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", "\u0412\u0456\u0434\u043F\u0440\u0430\u0432\u0438\u0442\u0438 \u043D\u0430 \u043A\u0443\u0445\u043D\u044E \u0437\u0430\u0440\u0430\u0437?")) await act("bkSet", { id: b.id, st: "kit" }, "\u{1F525} \u041D\u0430 \u043A\u0443\u0445\u043D\u0456");
+        S.view = "hall";
+        renderNav();
+        renderMain();
+        openTable(tt);
+      }
+      return;
+    }
+  });
+  on("bkSet", async (el, e, a, t) => {
+    {
+      if (el.dataset.s === "cancel" && !await confirmBox("\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438 \u0431\u0440\u043E\u043D\u044C?")) return;
+      if (await act("bkSet", { id: el.dataset.id, st: el.dataset.s }, BKS[el.dataset.s] || "\u{1F525} \u041D\u0430 \u043A\u0443\u0445\u043D\u044E")) {
+        loadState().catch(() => {
+        });
+        if (S.view === "books") {
+          await loadBooks();
+          renderMain();
+        }
+      }
+      return;
+    }
+  });
+  on("bkTbl", async (el, e, a, t) => {
+    {
+      const n = await pickTable("\u{1FA91} \u0421\u0442\u0456\u043B \u0434\u043B\u044F \u0431\u0440\u043E\u043D\u0456", "\u041F\u043B\u0438\u0442\u043A\u0430 \u0441\u0442\u043E\u043B\u0430 \u043F\u043E\u043A\u0430\u0436\u0435 \u0447\u0430\u0441 \u0431\u0440\u043E\u043D\u0456");
+      if (n && await act("bkEdit", { id: el.dataset.id, f: { t: n } }, "\u{1FA91} \u0421\u0442\u0456\u043B \u043F\u0440\u0438\u0437\u043D\u0430\u0447\u0435\u043D\u043E")) {
+        loadState().catch(() => {
+        });
+        await loadBooks();
+        renderMain();
+      }
+      return;
+    }
+  });
+  on("certT", async (el, e, a, t) => {
+    certT(t);
+    return;
+  });
   async function loadKq() {
     const r = await api("kitchen", S.kst ? { st: S.kst } : {});
     const list = r.list || [];
@@ -3922,6 +3752,63 @@ var __objRest = (source, exclude) => {
       ${stb}<div class="kq f${S.kFont}">${act0.length ? act0.map(card).join("") : '<div class="kempty">\u2705 \u0427\u0435\u0440\u0433\u0430 \u043F\u043E\u0440\u043E\u0436\u043D\u044F</div>'}</div>
       ${done.length ? `<h3 class="muted" style="margin:18px 0 8px">\u041E\u0441\u0442\u0430\u043D\u043D\u0456 \u0433\u043E\u0442\u043E\u0432\u0456</h3><div class="kdone">${done.map((e) => `<div class="kd">\u0421\u0442\u0456\u043B ${tn(e.t)} \xB7 ${e.items.filter((x) => !x.cancel).map((x) => `${x.q}\xD7 ${esc(x.n)}`).join(", ")}${e.cancelled ? " \xB7 \u274C \u0441\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E" : ` \xB7 ${Math.round((e.doneAt - e.ts) / 6e4)} \u0445\u0432`} <button class="btn sm" data-a="kUndo" data-id="${e.id}">\u21A9\uFE0F</button></div>`).join("")}</div>` : ""}${isAdmin() ? goCtlHTML() : ""}`;
   }
+  on("kSt", async (el, e, a, t) => {
+    S.kst = el.dataset.v || "";
+    store.set("kst", S.kst);
+    loadKq();
+    return;
+  });
+  on("kItem", async (el, e, a, t) => {
+    {
+      const r = await act("kDone", { id: el.dataset.id, i: +el.dataset.i, st: S.kst || void 0 });
+      if (r) loadKq();
+      return;
+    }
+  });
+  on("kAll", async (el, e, a, t) => {
+    var _a2;
+    {
+      (_a2 = el.closest(".kc")) == null ? void 0 : _a2.classList.add("bye");
+      const r = await act("kDone", { id: el.dataset.id, st: S.kst || void 0 });
+      if (r) setTimeout(loadKq, 250);
+      return;
+    }
+  });
+  on("kStart", async (el, e, a, t) => {
+    {
+      await act("kStart", { id: el.dataset.id });
+      loadKq();
+      return;
+    }
+  });
+  on("kUndo", async (el, e, a, t) => {
+    {
+      await act("kUndo", { id: el.dataset.id }, "\u21A9\uFE0F \u041F\u043E\u0432\u0435\u0440\u043D\u0443\u0442\u043E \u0432 \u0447\u0435\u0440\u0433\u0443");
+      loadKq();
+      return;
+    }
+  });
+  on("kMsg", async (el, e, a, t) => {
+    {
+      let v = await choose("\u041F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u043D\u044F \u0432 \u0437\u0430\u043B", "\u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0438 \u043F\u043E\u0431\u0430\u0447\u0430\u0442\u044C \u0443 \u0441\u0442\u0440\u0456\u0447\u0446\u0456", ["\u2757 \u041D\u0435\u043C\u0430\u0454 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0443", "\u23F1 \u0429\u0435 +10 \u0445\u0432", "\u{1F64B} \u041F\u0456\u0434\u0456\u0439\u0434\u0438 \u043D\u0430 \u043A\u0443\u0445\u043D\u044E", "\u{1F525} \u0412\u0436\u0435 \u043C\u0430\u0439\u0436\u0435 \u0433\u043E\u0442\u043E\u0432\u043E"].map((x) => ({ label: x, val: x })).concat([{ label: "\u270F\uFE0F \u0421\u0432\u043E\u0454\u2026", val: "own" }]));
+      if (v === "own") v = await ask("\u041F\u043E\u0432\u0456\u0434\u043E\u043C\u043B\u0435\u043D\u043D\u044F \u0432 \u0437\u0430\u043B", "\u041D\u0430\u043F\u0440.: \u0437\u0430\u043C\u0456\u043D\u0438\u043C\u043E \u0444\u0440\u0456 \u043D\u0430 \u043F\u044E\u0440\u0435?");
+      if (v) await act("kMsg", { id: el.dataset.id, text: v }, "\u{1F4E8} \u041D\u0430\u0434\u0456\u0441\u043B\u0430\u043D\u043E");
+      loadKq();
+      return;
+    }
+  });
+  on("kGo", async (el, e, a, t) => {
+    kitchenStart();
+    return;
+  });
+  on("kSnd", async (el, e, a, t) => {
+    kSndPick();
+    return;
+  });
+  on("kSndTry", async (el, e, a, t) => {
+    kPlay(el.dataset.k);
+    return;
+  });
   function cashHTML() {
     const ctab = S.cashTab || "day", cseg = `<div class="seg rsec cseg">${[["day", "\u{1F4B0} \u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456"], ["checks", "\u{1F9FE} \u0427\u0435\u043A\u0438"]].map(([k, l]) => `<button class="${ctab === k ? "on" : ""}" data-a="cashTab" data-t="${k}">${l}</button>`).join("")}</div>`;
     if (ctab === "checks") return cseg + closedHTML();
@@ -4148,6 +4035,56 @@ var __objRest = (source, exclude) => {
       loadView();
     }
   }
+  on("zDay", async (el, e, a, t) => {
+    zDay();
+    return;
+  });
+  on("shOpen", async (el, e, a, t) => {
+    shOpen();
+    return;
+  });
+  on("cashTab", async (el, e, a, t) => {
+    S.cashTab = el.dataset.t;
+    renderMain();
+    loadView();
+    return;
+  });
+  on("movBack", async (el, e, a, t) => {
+    await act("moveBack", { i: +el.dataset.i }, "\u21A9\uFE0F \u0412\u0456\u0434\u043D\u043E\u0432\u043B\u0435\u043D\u043E");
+    loadView();
+    return;
+  });
+  on("expBack", async (el, e, a, t) => {
+    await act("expenseBack", { i: +el.dataset.i }, "\u21A9\uFE0F \u0412\u0456\u0434\u043D\u043E\u0432\u043B\u0435\u043D\u043E");
+    loadView();
+    return;
+  });
+  on("cEdit", async (el, e, a, t) => {
+    cEdit(el.dataset.ref, el.dataset.d || void 0);
+    return;
+  });
+  on("cMove", async (el, e, a, t) => {
+    cashMove(el.dataset.t);
+    return;
+  });
+  on("balInfo", async (el, e, a, t) => {
+    balInfo(el.dataset.s);
+    return;
+  });
+  on("movDel", async (el, e, a, t) => {
+    if (await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0437\u0430\u043F\u0438\u0441?")) {
+      await act("moveDel", { i: +el.dataset.i });
+      loadView();
+    }
+    return;
+  });
+  on("expDel", async (el, e, a, t) => {
+    if (await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0432\u0438\u0442\u0440\u0430\u0442\u0443?")) {
+      await act("expenseDel", { i: +el.dataset.i });
+      loadView();
+    }
+    return;
+  });
   function perRange(p) {
     var _a2, _b2;
     const now = new Date(Date.now() - ((_b2 = (_a2 = S.cfg) == null ? void 0 : _a2.dayH) != null ? _b2 : 3) * 36e5), day = 864e5, y = now.getFullYear(), mo = now.getMonth();
@@ -4517,6 +4454,48 @@ var __objRest = (source, exclude) => {
     }
     return head + filters + kpis + pills + nav + `<div class="card">${body}</div>`;
   }
+  on("rAcct", async (el, e, a, t) => {
+    acctExport();
+    return;
+  });
+  on("rTab", async (el, e, a, t) => {
+    var _a2;
+    S.rep.tab = el.dataset.t;
+    ((_a2 = S.rep).last || (_a2.last = {}))[SECS.find((x) => x[2].includes(el.dataset.t))[0]] = el.dataset.t;
+    renderMain();
+    return;
+  });
+  on("rSec", async (el, e, a, t) => {
+    {
+      const sc = SECS.find((x) => x[0] === el.dataset.s);
+      S.rep.tab = (S.rep.last || {})[sc[0]] || sc[2][0];
+      renderMain();
+      if (S.rep.tab === "plus" || !S.data.range) loadView();
+      return;
+    }
+  });
+  on("rDay", async (el, e, a, t) => {
+    if (matchMedia("(hover: none)").matches && !el.classList.contains("on")) {
+      el.parentNode.querySelectorAll(".c.on").forEach((x) => x.classList.remove("on"));
+      el.classList.add("on");
+      el.parentNode.previousElementSibling.textContent = el.title + " \xB7 \u0449\u0435 \u0440\u0430\u0437 \u2014 \u0437\u0432\u0456\u0442 \u0437\u0430 \u0434\u0435\u043D\u044C";
+      return;
+    }
+    Object.assign(S.rep, { p: "c", from: el.dataset.d, to: el.dataset.d });
+    loadView();
+    $("#main").scrollTop = 0;
+    return;
+  });
+  on("rSort", async (el, e, a, t) => {
+    S.rep.sort = el.dataset.s;
+    renderMain();
+    return;
+  });
+  on("rReset", async (el, e, a, t) => {
+    Object.assign(S.rep, { pay: "", by: "", grp: "", cat: "", t: "", q: "" });
+    renderMain();
+    return;
+  });
   function stopHTML() {
     if (!S.menu) return '<div class="head"><h1>\u0421\u0442\u043E\u043F-\u043B\u0438\u0441\u0442</h1></div><div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
     const q = S.q.trim().toLowerCase(), only = S.stopOff, all = S.menu.categories.filter((c) => !c.tech).flatMap((c) => c.items), off = all.filter((i) => i.hidden);
@@ -5035,6 +5014,191 @@ var __objRest = (source, exclude) => {
       if (g != null) hallsSave(H, +g);
     }
   });
+  on("copyLink", async (el, e, a, t) => {
+    try {
+      await navigator.clipboard.writeText(el.dataset.u);
+      toast("\u{1F517} \u0421\u043A\u043E\u043F\u0456\u0439\u043E\u0432\u0430\u043D\u043E");
+    } catch (e2) {
+      prompt("\u0421\u043A\u043E\u043F\u0456\u044E\u0439\u0442\u0435 \u043F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F:", el.dataset.u);
+    }
+    return;
+  });
+  on("upsEdit", async (el, e, a, t) => {
+    {
+      const r = await api("upsGet");
+      const v = await askLong("\u{1F4A1} \u0414\u043E\u043F\u0440\u043E\u0434\u0430\u0436 \u2014 \u043A\u043E\u0436\u0435\u043D \u0440\u044F\u0434\u043E\u043A: \u0421\u0442\u0440\u0430\u0432\u0430 \u2192 \u0449\u043E \u0437\u0430\u043F\u0440\u043E\u043F\u043E\u043D\u0443\u0432\u0430\u0442\u0438, \u0447\u0435\u0440\u0435\u0437 \u043A\u043E\u043C\u0443", r.text || "\u041F\u0456\u0446\u0430 \u041C\u0430\u0440\u0433\u0430\u0440\u0438\u0442\u0430 \u2192 \u041B\u0438\u043C\u043E\u043D\u0430\u0434, \u0421\u043E\u0443\u0441");
+      if (v == null) return;
+      const x = await act("upsSet", { text: v }, "");
+      if (x) {
+        S.ups = null;
+        toast(`\u{1F4BE} \u041F\u0440\u0430\u0432\u0438\u043B: ${x.n}`);
+      }
+      return;
+    }
+  });
+  on("setTab", async (el, e, a, t) => {
+    S.setTab = el.dataset.s;
+    renderMain();
+    return;
+  });
+  on("look", async (el, e, a, t) => {
+    {
+      const k = el.dataset.k, v = ["size", "vol", "anim"].includes(k) ? +el.dataset.v : el.dataset.v;
+      setLook(k, v);
+      if (k === "sound" || k === "vol") ding();
+      return;
+    }
+  });
+  on("lookReset", async (el, e, a, t) => {
+    {
+      const _a2 = look(), { own, sk, theme, accent, skin } = _a2, rest = __objRest(_a2, ["own", "sk", "theme", "accent", "skin"]);
+      store.set("look", rest);
+      applyLook();
+      renderMain();
+      toast("\u21BA \u042F\u043A \u0443 \u0437\u0430\u043A\u043B\u0430\u0434\u0443");
+    }
+    return;
+  });
+  on("stopOff", async (el, e, a, t) => {
+    S.stopOff = !S.stopOff;
+    renderMain();
+    return;
+  });
+  on("stopT", async (el, e, a, t) => {
+    await act("stop", { id: el.dataset.id, hidden: el.dataset.h === "1" });
+    return;
+  });
+  on("pTest", async (el, e, a, t) => {
+    act("printTest", {}, "\u{1F5A8} \u0422\u0435\u0441\u0442 \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u043E");
+    return;
+  });
+  on("pQClear", async (el, e, a, t) => {
+    if (await confirmBox("\u{1F5D1} \u041E\u0447\u0438\u0441\u0442\u0438\u0442\u0438 \u0432\u0441\u044E \u0447\u0435\u0440\u0433\u0443 \u0434\u0440\u0443\u043A\u0443?", "\u0427\u0435\u043A\u0438 \u0439 \u043A\u0443\u0445\u043E\u043D\u043D\u0456 \u043A\u0432\u0438\u0442\u043A\u0438, \u044F\u043A\u0456 \u0449\u0435 \u043D\u0435 \u043D\u0430\u0434\u0440\u0443\u043A\u0443\u0432\u0430\u043B\u0438\u0441\u044C, \u0431\u0443\u0434\u0435 \u0432\u0438\u0434\u0430\u043B\u0435\u043D\u043E \u2014 \u043F\u0440\u0438\u043D\u0442\u0435\u0440 \u0457\u0445 \u043D\u0435 \u043D\u0430\u0434\u0440\u0443\u043A\u0443\u0454.")) {
+      const r = await act("printClear", {});
+      if (r) {
+        toast(`\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E: ${r.n}`);
+        loadState().catch(() => {
+        });
+      }
+    }
+    return;
+  });
+  on("pQList", async (el, e, a, t) => {
+    {
+      const r = await act("printQ", {});
+      if (!r) return;
+      const K = { kitchen: "\u{1F468}\u200D\u{1F373}", receipt: "\u{1F9FE}", test: "\u{1F9EA}", z: "\u{1F4CA}", qr: "\u{1F533}" };
+      modal({ title: `\u{1F5A8} \u0427\u0435\u0440\u0433\u0430 \u0434\u0440\u0443\u043A\u0443 (${r.list.length})`, body: `<div class="muted set-note">\u041F\u0440\u0438\u043D\u0442\u0435\u0440 \u0434\u0440\u0443\u043A\u0443\u0454 \u043F\u043E \u0447\u0435\u0440\u0437\u0456. \u042F\u043A\u0449\u043E \u0449\u043E\u0441\u044C \u0437\u0430\u0441\u0442\u0440\u044F\u0433\u043B\u043E \u0430\u0431\u043E \u0432\u0436\u0435 \u043D\u0435 \u043F\u043E\u0442\u0440\u0456\u0431\u043D\u0435 \u2014 \u{1F5D1} (\u0434\u0432\u0456\u0447\u0456).</div>${r.list.map((j) => `<div class="kv" data-pq="${j.id}"><span style="min-width:0;overflow-wrap:anywhere">${K[j.kind] || "\u{1F5A8}"} ${esc(j.txt || j.kind)}<br><small class="muted">${j.at ? hhmm(j.at) : ""}${j.sn ? " \xB7 \u{1F5A8} " + esc(j.sn) : ""}</small></span><span class="kv-r"><button class="btn sm" data-a="pQMove" data-id="${j.id}" title="\u041D\u0430 \u0456\u043D\u0448\u0438\u0439 \u043F\u0440\u0438\u043D\u0442\u0435\u0440">\u{1F501}</button><button class="btn sm red" data-a="pQDel" data-id="${j.id}">\u{1F5D1}</button></span></div>`).join("") || '<div class="muted">\u0427\u0435\u0440\u0433\u0430 \u043F\u043E\u0440\u043E\u0436\u043D\u044F</div>'}`, buttons: [{ label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] }).then(() => loadState().catch(() => {
+      }));
+      return;
+    }
+  });
+  on("pQr", async (el, e, a, t) => {
+    {
+      const n = await pickTable("QR \u043C\u0435\u043D\u044E", "\u0423 \u043A\u043E\u0436\u043D\u043E\u0433\u043E \u0441\u0442\u043E\u043B\u0443 \u0441\u0432\u0456\u0439 QR \u2014 \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u043E\u0434\u0440\u0430\u0437\u0443 \u043D\u0430 \u0446\u0435\u0439 \u0441\u0442\u0456\u043B");
+      if (n) act("printQr", { t: n }, `\u{1F5A8} QR \u0441\u0442\u043E\u043B\u0443 ${tn(n)}`);
+      return;
+    }
+  });
+  on("menuEdit", async (el, e, a, t) => {
+    menuEdit(el.dataset.id);
+    return;
+  });
+  on("phPanel", async (el, e, a, t) => {
+    phPanel();
+    return;
+  });
+  on("qrPanel", async (el, e, a, t) => {
+    qrPanel();
+    return;
+  });
+  on("catG", async (el, e, a, t) => {
+    {
+      const c = S.menu.categories.find((x) => x.id === el.dataset.id);
+      if (!c) return;
+      const g = await choose("\u{1F4C2} " + c.name.uk, "\u041A\u0443\u0434\u0438 \u0439\u0434\u0443\u0442\u044C \u0441\u0442\u0440\u0430\u0432\u0438 \u0446\u044C\u043E\u0433\u043E \u0440\u043E\u0437\u0434\u0456\u043B\u0443?", [{ label: "\u{1F373} \u041A\u0443\u0445\u043D\u044F", val: "kitchen" }, { label: "\u{1F379} \u0411\u0430\u0440", val: "bar" }, { label: "\u{1F4A8} \u041A\u0430\u043B\u044C\u044F\u043D", val: "hookah" }]);
+      if (g && g !== c.g && await act("catSet", { id: c.id, g }, "\u{1F4C2} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) loadMenu().catch(() => {
+      });
+      return;
+    }
+  });
+  on("catPack", async (el, e, a, t) => {
+    {
+      const c = S.menu.categories.find((x) => x.id === el.dataset.id);
+      if (c && await act("catSet", { id: c.id, nopack: !c.nopack }, c.nopack ? "\u{1F961} \u0423\u043F\u0430\u043A\u043E\u0432\u043A\u0430 \u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F" : "\u{1F6AB} \u0411\u0435\u0437 \u0443\u043F\u0430\u043A\u043E\u0432\u043A\u0438")) loadMenu().catch(() => {
+      });
+      return;
+    }
+  });
+  on("catAdd", async (el, e, a, t) => {
+    {
+      const v = await ask("\u{1F4C2} \u041D\u043E\u0432\u0438\u0439 \u0440\u043E\u0437\u0434\u0456\u043B \u043C\u0435\u043D\u044E", "\u041D\u0430\u0437\u0432\u0430, \u043D\u0430\u043F\u0440. \u0423\u043F\u0430\u043A\u0443\u0432\u0430\u043D\u043D\u044F");
+      if (v && await act("catAdd", { name: v }, "\u{1F4C2} \u0420\u043E\u0437\u0434\u0456\u043B \u0434\u043E\u0434\u0430\u043D\u043E \u0432 \u043A\u0456\u043D\u0435\u0446\u044C \u043C\u0435\u043D\u044E")) loadMenu().catch(() => {
+      });
+      return;
+    }
+  });
+  on("menuUndo", async (el, e, a, t) => {
+    if (await confirmBox("\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438 \u043E\u0441\u0442\u0430\u043D\u043D\u044E \u0437\u043C\u0456\u043D\u0443 \u043C\u0435\u043D\u044E?")) act("menuUndo", {}, "\u21A9\uFE0F \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E");
+    return;
+  });
+  on("staffAdd", async (el, e, a, t) => {
+    {
+      const v = await modal({ title: "\u2795 \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A", body: '<div class="form"><input id="sName" placeholder="\u0406\u043C\u02BC\u044F"><input id="sPin" inputmode="numeric" maxlength="8" placeholder="PIN \u2014 4 \u0446\u0438\u0444\u0440\u0438 (\u0430\u0434\u043C\u0456\u043D \u2014 6\u20138)"></div>', buttons: [{ label: "\u{1F9D1}\u200D\u{1F373} \u041E\u0444\u0456\u0446\u0456\u0430\u043D\u0442", val: "waiter", cls: "primary" }, { label: "\u{1F510} \u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440", val: "admin" }, { label: "\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u0430\u0440", val: "cook" }, { label: "\u{1F6F5} \u041A\u0443\u0440'\u0454\u0440", val: "courier" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+      const name = v && $("#sName").value, p = v && $("#sPin").value;
+      closeModal();
+      if (v) {
+        await act("staffAdd", { name, pin: p, role: v }, "\u{1F465} \u0414\u043E\u0434\u0430\u043D\u043E");
+        loadView();
+      }
+      return;
+    }
+  });
+  on("cfgTgl", async (el, e, a, t) => {
+    var _a2, _b2, _c, _d, _e;
+    {
+      const k = el.dataset.k, cur = (_e = (_d = (_b2 = (_a2 = S.data.staff) == null ? void 0 : _a2.cfg) == null ? void 0 : _b2[k]) != null ? _d : (_c = S.cfg) == null ? void 0 : _c[k]) != null ? _e : +(el.dataset.def || 0);
+      if (await act("cfgSet", { k, v: cur ? 0 : 1 }, "\u2699\uFE0F \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
+        loadView();
+        loadState().catch(() => {
+        });
+      }
+      return;
+    }
+  });
+  on("staffDel", async (el, e, a, t) => {
+    if (await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430?", "\u0419\u043E\u0433\u043E PIN \u043F\u0435\u0440\u0435\u0441\u0442\u0430\u043D\u0435 \u043F\u0440\u0430\u0446\u044E\u0432\u0430\u0442\u0438")) {
+      await act("staffDel", { id: el.dataset.id });
+      loadView();
+    }
+    return;
+  });
+  on("wOut", async (el, e, a, t) => {
+    await act("waiterOut", { uid: el.dataset.uid }, "\u0412\u0438\u0439\u0448\u043E\u0432 \u0456\u0437 \u0431\u043E\u0442\u0430");
+    loadView();
+    return;
+  });
+  on("wifiAdd", async (el, e, a, t) => {
+    await act("wifiAdd", {}, "\u{1F4F6} \u041C\u0435\u0440\u0435\u0436\u0443 \u0434\u043E\u0434\u0430\u043D\u043E");
+    loadView();
+    return;
+  });
+  on("wifiClear", async (el, e, a, t) => {
+    if (await confirmBox("\u0421\u043A\u0438\u043D\u0443\u0442\u0438 \u0432\u0441\u0456 \u043C\u0435\u0440\u0435\u0436\u0456?", "\u0413\u043E\u0441\u0442\u0456 \u043D\u0435 \u0437\u043C\u043E\u0436\u0443\u0442\u044C \u0437\u0430\u043C\u043E\u0432\u043B\u044F\u0442\u0438, \u043F\u043E\u043A\u0438 \u043D\u0435 \u0434\u043E\u0434\u0430\u0441\u0442\u0435 \u043C\u0435\u0440\u0435\u0436\u0443")) {
+      await act("wifiClear");
+      loadView();
+    }
+    return;
+  });
+  on("reset", async (el, e, a, t) => {
+    if (await confirmBox("\u267B\uFE0F \u041E\u0431\u043D\u0443\u043B\u0438\u0442\u0438 \u0432\u0441\u0435?", "\u0417\u0432\u0456\u0442\u0438, \u043A\u0430\u0441\u0430, \u0437\u0430\u043A\u0440\u0438\u0442\u0456, \u0442\u043E\u043F \u0441\u0442\u0440\u0430\u0432, \u0441\u0442\u0440\u0456\u0447\u043A\u0430 \u0456 \u0412\u0421\u0406 \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u0456 \u0441\u0442\u043E\u043B\u0438")) {
+      if (await confirmBox("\u0422\u043E\u0447\u043D\u043E? \u0426\u0435 \u043D\u0435 \u043C\u043E\u0436\u043D\u0430 \u0441\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438.")) {
+        await act("reset", {}, "\u267B\uFE0F \u041E\u0431\u043D\u0443\u043B\u0435\u043D\u043E");
+        loadView();
+      }
+    }
+    return;
+  });
   const LOY_W = { hall: "\u{1FA91} \u0437\u0430\u043B", pick: "\u{1F961} \u0437 \u0441\u043E\u0431\u043E\u044E", del: "\u{1F6F5} \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0430" }, LOY_D = ["", "\u041F\u043D", "\u0412\u0442", "\u0421\u0440", "\u0427\u0442", "\u041F\u0442", "\u0421\u0431", "\u041D\u0434"];
   const bdTxt = (bd) => bd ? `${bd.slice(3)}.${bd.slice(0, 2)}` : "";
   const ruleName = (r) => r.name || ({ cat: `\u2212${r.pct}%`, happy: `\u0429\u0430\u0441\u043B\u0438\u0432\u0456 \u0433\u043E\u0434\u0438\u043D\u0438 \u2212${r.pct}%`, nth: `\u041A\u043E\u0436\u043D\u0430 ${r.n}-\u0442\u0430 \u0432 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A`, sum: r.gift ? `\u0412\u0456\u0434 ${r.min} \u20B4 \u2014 \u043F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A` : `\u0412\u0456\u0434 ${r.min} \u20B4 \u2212${r.pct}%`, bday: `\u0414\u0435\u043D\u044C \u043D\u0430\u0440\u043E\u0434\u0436\u0435\u043D\u043D\u044F \u2212${r.pct}%`, pair: `\u041A\u043E\u0436\u043D\u0430 ${r.n}-\u0442\u0430 \u2212${r.pct}%`, combo: `\u041F\u043E\u0434\u0430\u0440\u0443\u043D\u043E\u043A: ${(r.gifts || []).join(" / ")}`, week: `\u0421\u0442\u0440\u0430\u0432\u0430 \u0442\u0438\u0436\u043D\u044F \u2212${r.pct}%` }[r.type] || "\u0410\u043A\u0446\u0456\u044F");
@@ -5199,7 +5363,7 @@ var __objRest = (source, exclude) => {
   async function loyRuleEdit(id, draft) {
     var _a2, _b2;
     const D = S.data.loy, r = draft || D.cfg.rules.find((x) => x.id === id) || { type: "happy", on: 1, pct: 10, where: [], cats: [], dishes: [], days: [], from: "", to: "", n: 5, min: 1e3, bdays: 3 };
-    const chk = (name, val, on, l) => `<label class="chip sm ${on ? "on" : ""}" style="display:inline-flex;gap:6px;align-items:center;margin:0 6px 6px 0"><input type="checkbox" name="${name}" value="${val}" ${on ? "checked" : ""} style="width:auto;margin:0">${l}</label>`;
+    const chk = (name, val, on2, l) => `<label class="chip sm ${on2 ? "on" : ""}" style="display:inline-flex;gap:6px;align-items:center;margin:0 6px 6px 0"><input type="checkbox" name="${name}" value="${val}" ${on2 ? "checked" : ""} style="width:auto;margin:0">${l}</label>`;
     const body = `<div class="form">
       <label>\u0422\u0438\u043F<select id="rT">${Object.entries(D.T).map(([k, l]) => `<option value="${k}" ${r.type === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>
       <label>\u041D\u0430\u0437\u0432\u0430 \u0432 \u0447\u0435\u043A\u0443 (\u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)<input id="rN" value="${esc(r.name || "")}" placeholder="\u043D\u0430\u043F\u0440. \u2615 \u041A\u043E\u0436\u043D\u0430 5-\u0442\u0430 \u043A\u0430\u0432\u0430"></label>
@@ -5973,14 +6137,14 @@ ${g.sup}:
         v.srcObject = st;
         await v.play();
         const bd = new BarcodeDetector();
-        let on = true, last = "", lt = 0;
+        let on2 = true, last = "", lt = 0;
         camStop = () => {
-          on = false;
+          on2 = false;
           st.getTracks().forEach((t) => t.stop());
         };
         const loop = async () => {
           var _a2;
-          if (!on) return;
+          if (!on2) return;
           if (!$("#scV")) return camStop == null ? void 0 : camStop();
           try {
             const r = await bd.detect(v);
@@ -7267,8 +7431,8 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
   });
   async function staffPerms(s) {
     var _a2, _b2, _c, _d;
-    const P = ((_a2 = S.data.staff) == null ? void 0 : _a2.perms) || [], SENS = ((_b2 = S.data.staff) == null ? void 0 : _b2.sens) || [], cur = s.perm || {}, adm = s.role === "admin", on = (k) => adm ? cur[k] !== 0 : cur[k] === 1;
-    const body = `<div class="scrollbox" style="max-height:55vh">${P.map((p) => `<div class="kv"><span>${p.e} ${esc(p.n)}${SENS.includes(p.k) && !adm ? ' <small class="muted">\xB7 \u0437 PIN 6+</small>' : ""}</span><label class="switch"><input type="checkbox" data-pk="${p.k}" ${on(p.k) ? "checked" : ""}><i></i></label></div>`).join("")}
+    const P = ((_a2 = S.data.staff) == null ? void 0 : _a2.perms) || [], SENS = ((_b2 = S.data.staff) == null ? void 0 : _b2.sens) || [], cur = s.perm || {}, adm = s.role === "admin", on2 = (k) => adm ? cur[k] !== 0 : cur[k] === 1;
+    const body = `<div class="scrollbox" style="max-height:55vh">${P.map((p) => `<div class="kv"><span>${p.e} ${esc(p.n)}${SENS.includes(p.k) && !adm ? ' <small class="muted">\xB7 \u0437 PIN 6+</small>' : ""}</span><label class="switch"><input type="checkbox" data-pk="${p.k}" ${on2(p.k) ? "checked" : ""}><i></i></label></div>`).join("")}
       <div class="kv"><span>\u{1F3F7} \u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430, %<br><small class="muted">\u043F\u043E\u0440\u043E\u0436\u043D\u044C\u043E \u2014 \u0437\u0430 \u043D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F\u043C \u0437\u0430\u043A\u043B\u0430\u0434\u0443</small></span><input id="pkDisc" type="number" min="0" max="100" inputmode="numeric" value="${(_c = cur.discountMax) != null ? _c : ""}" style="width:80px"></div></div>`;
     const v = await modal({ title: `\u{1F511} \u041F\u0440\u0430\u0432\u0430: ${s.name}`, text: adm ? "\u0410\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440 \u043C\u0430\u0454 \u0432\u0441\u0456 \u043F\u0440\u0430\u0432\u0430 \u2014 \u0437\u043D\u0456\u043C\u0456\u0442\u044C \u0437\u0430\u0439\u0432\u0435." : "\u0420\u043E\u043B\u044C \u0434\u0430\u0454 \u0437\u0432\u0438\u0447\u043D\u0456 \u0434\u0456\u0457; \u0433\u0430\u043B\u043E\u0447\u043A\u0438 \u0434\u043E\u0434\u0430\u044E\u0442\u044C \u043F\u043E\u043D\u0430\u0434 \u043D\u0438\u0445. \u0417\u043C\u0456\u043D\u0430 \u0434\u0456\u0454 \u043E\u0434\u0440\u0430\u0437\u0443.", body, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
     if (v !== "ok") return;

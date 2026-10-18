@@ -70,3 +70,16 @@
       ${stb}<div class="kq f${S.kFont}">${act0.length ? act0.map(card).join('') : '<div class="kempty">✅ Черга порожня</div>'}</div>
       ${done.length ? `<h3 class="muted" style="margin:18px 0 8px">Останні готові</h3><div class="kdone">${done.map(e => `<div class="kd">Стіл ${tn(e.t)} · ${e.items.filter(x => !x.cancel).map(x => `${x.q}× ${esc(x.n)}`).join(', ')}${e.cancelled ? ' · ❌ скасовано' : ` · ${Math.round((e.doneAt - e.ts) / 60000)} хв`} <button class="btn sm" data-a="kUndo" data-id="${e.id}">↩️</button></div>`).join('')}</div>` : ''}${isAdmin() ? goCtlHTML() : ''}`;
   }
+
+  // ---------- 🖱 кнопки розділу (data-a) ----------
+  on('kSt', async (el, e, a, t) => { S.kst = el.dataset.v || ''; store.set('kst', S.kst); loadKq(); return; });
+  on('kItem', async (el, e, a, t) => { { const r = await act('kDone', { id: el.dataset.id, i: +el.dataset.i, st: S.kst || undefined }); if (r) loadKq(); return; } });
+  on('kAll', async (el, e, a, t) => { { el.closest('.kc')?.classList.add('bye'); const r = await act('kDone', { id: el.dataset.id, st: S.kst || undefined }); if (r) setTimeout(loadKq, 250); return; } });
+  on('kStart', async (el, e, a, t) => { { await act('kStart', { id: el.dataset.id }); loadKq(); return; } });
+  on('kUndo', async (el, e, a, t) => { { await act('kUndo', { id: el.dataset.id }, '↩️ Повернуто в чергу'); loadKq(); return; } });
+  on('kMsg', async (el, e, a, t) => { { let v = await choose('Повідомлення в зал', 'Офіціанти побачать у стрічці', ['❗ Немає продукту', '⏱ Ще +10 хв', '🙋 Підійди на кухню', '🔥 Вже майже готово'].map(x => ({ label: x, val: x })).concat([{ label: '✏️ Своє…', val: 'own' }]));
+        if (v === 'own') v = await ask('Повідомлення в зал', 'Напр.: замінимо фрі на пюре?'); if (v) await act('kMsg', { id: el.dataset.id, text: v }, '📨 Надіслано'); loadKq(); return; }
+  });
+  on('kGo', async (el, e, a, t) => { kitchenStart(); return; });
+  on('kSnd', async (el, e, a, t) => { kSndPick(); return; });
+  on('kSndTry', async (el, e, a, t) => { kPlay(el.dataset.k); return; });

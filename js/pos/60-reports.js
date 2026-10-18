@@ -204,3 +204,11 @@
     }
     return head + filters + kpis + pills + nav + `<div class="card">${body}</div>`;
   }
+
+  // ---------- 🖱 кнопки розділу (data-a) ----------
+  on('rAcct', async (el, e, a, t) => { acctExport(); return; });
+  on('rTab', async (el, e, a, t) => { S.rep.tab = el.dataset.t; (S.rep.last ||= {})[SECS.find(x => x[2].includes(el.dataset.t))[0]] = el.dataset.t; renderMain(); return; });
+  on('rSec', async (el, e, a, t) => { { const sc = SECS.find(x => x[0] === el.dataset.s); S.rep.tab = (S.rep.last || {})[sc[0]] || sc[2][0]; renderMain(); if (S.rep.tab === 'plus' || !S.data.range) loadView(); return; } });
+  on('rDay', async (el, e, a, t) => { if (matchMedia('(hover: none)').matches && !el.classList.contains('on')) { el.parentNode.querySelectorAll('.c.on').forEach(x => x.classList.remove('on')); el.classList.add('on'); el.parentNode.previousElementSibling.textContent = el.title + ' · ще раз — звіт за день'; return; } Object.assign(S.rep, { p: 'c', from: el.dataset.d, to: el.dataset.d }); loadView(); $('#main').scrollTop = 0; return; });
+  on('rSort', async (el, e, a, t) => { S.rep.sort = el.dataset.s; renderMain(); return; });
+  on('rReset', async (el, e, a, t) => { Object.assign(S.rep, { pay: '', by: '', grp: '', cat: '', t: '', q: '' }); renderMain(); return; });

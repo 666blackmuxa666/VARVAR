@@ -394,9 +394,13 @@
   document.addEventListener('change', e => { const el = e.target; if (el.dataset?.a !== 'cDate' || !el.value) return; S.cday = el.value >= S.data.ctoday ? '' : el.value; S.data.closed = null; renderMain(); loadView(); });
   document.addEventListener('change', async e => { const el = e.target; if (el.dataset?.a !== 'bkDate' || !el.value) return; S.bkDay = el.value; if (!S.data.bk?.some(b => b.date === el.value) && (el.value < addD(todayK(), -7) || el.value > addD(todayK(), 60))) { const r = await api('bkList', { from: el.value, to: el.value, all: true }).catch(() => null); if (r) S.data.bk = [...S.data.bk.filter(b => b.date !== el.value), ...r.list]; } renderMain(); });
   // ---------- кліки ----------
+  // 🖱 кнопки data-a: розділ реєструє свої через on('назва', async (el, e, a, t) => {…}) — поряд зі своїм кодом, ядро не чіпати
+  const ACT = {};
+  function on(names, fn) { for (const x of [].concat(names)) { if (ACT[x]) console.error('🖱 дубль обробника кнопки', x); ACT[x] = fn; } }
   document.addEventListener('click', async e => {
     const el = e.target.closest('[data-a]'); if (!el) return;
     const a = el.dataset.a, t = S.open;
+    if (ACT[a]) return ACT[a](el, e, a, t); // кнопки розділів (on(…) у js/pos/NN-*.js)
     switch (a) {
       case 'view': S.view = el.dataset.v; S.q = ''; renderNav(); renderMain(); loadView(); $('#feed').classList.remove('open'); $('#main').scrollTop = 0; break;
       case 'feed': $('#feed').classList.toggle('open'); break;
@@ -404,137 +408,34 @@
       case 'more': { const v = await choose('Ще', '', (isCook() ? navList() : realAdmin() ? navList().filter(n => !NAV_MAIN.includes(n[0])) : NAV.filter(n => !n[3] && ['stop', 'menu', 'calc'].includes(n[0]))).map(([vv, ic, l]) => ({ label: `${ic} ${l}`, val: vv })).concat([{ label: '🔔 Сповіщення', val: 'push' }, { label: '🔒 Вийти', val: 'logout', cls: 'red' }]));
         if (v === 'push') pushMenu(); else if (v === 'logout') { if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); } else if (v) { S.view = v; S.q = ''; renderNav(); renderMain(); loadView(); $('#main').scrollTop = 0; } break; }
       case 'switch': if (await confirmBox('Вийти?', 'Наступний працівник увійде своїм PIN')) logout(); break;
-      case 'table': $('#feed').classList.remove('open'); openTable(el.dataset.t); break;
-      case 'newOrder': { const n = await pickTable('Новe замовлення', 'Оберіть стіл', 0, true); if (n === 'pick' || n === 'del') goNew(n); else if (n) { openTable(n); S.mobileMenu = true; renderSheet(); } break; }
-      case 'closeSheet': closeSheet(); break;
-      case 'tab': S.mobileMenu = el.dataset.m === '1'; renderSheet(); break;
-      case 'mobileMenu': S.mobileMenu = true; renderSheet(); break;
-      case 'cat': S.cat = el.dataset.c; S.q = ''; renderSheet(); $('#shItems').scrollTop = 0; break;
-      case 'grp': S.grp = el.dataset.g; S.cat = ''; S.q = ''; store.set('grp', S.grp); renderSheet(); $('#shItems').scrollTop = 0; break;
-      case 'fav': { const on = !S.fav.includes(el.dataset.id); S.fav = on ? [...S.fav, el.dataset.id] : S.fav.filter(x => x !== el.dataset.id); renderSheet(); act('fav', { id: el.dataset.id, on }, on ? '⭐ Додано в обрані' : 'Прибрано з обраних'); break; }
-      case 'tw': { // 🥡 з собою: самовивіз або доставка — окремий віртуальний стіл С‑ / Д‑
-        if (t === -1 || t > 1000) { S.tw[t] = !S.tw[t]; S.packAdj[t] = 0; renderSheet(); break; }
-        const k = await choose('🥡 З собою', 'Замовлення піде окремим чеком; стіл не займається', [{ label: '🥡 Самовивіз', val: 'pick', cls: 'primary' }, { label: '🛵 Доставка', val: 'del', cls: 'primary' }]);
-        if (k) goNew(k, t); break; }
-      case 'ur': S.ur[t] = !S.ur[t]; renderSheet(); break;
-      case 'kSt': S.kst = el.dataset.v || ''; store.set('kst', S.kst); loadKq(); break;
-      case 'kItem': { const r = await act('kDone', { id: el.dataset.id, i: +el.dataset.i, st: S.kst || undefined }); if (r) loadKq(); break; }
-      case 'kAll': { el.closest('.kc')?.classList.add('bye'); const r = await act('kDone', { id: el.dataset.id, st: S.kst || undefined }); if (r) setTimeout(loadKq, 250); break; }
-      case 'kStart': { await act('kStart', { id: el.dataset.id }); loadKq(); break; }
-      case 'kUndo': { await act('kUndo', { id: el.dataset.id }, '↩️ Повернуто в чергу'); loadKq(); break; }
-      case 'kMsg': { let v = await choose('Повідомлення в зал', 'Офіціанти побачать у стрічці', ['❗ Немає продукту', '⏱ Ще +10 хв', '🙋 Підійди на кухню', '🔥 Вже майже готово'].map(x => ({ label: x, val: x })).concat([{ label: '✏️ Своє…', val: 'own' }]));
-        if (v === 'own') v = await ask('Повідомлення в зал', 'Напр.: замінимо фрі на пюре?'); if (v) await act('kMsg', { id: el.dataset.id, text: v }, '📨 Надіслано'); loadKq(); break; }
       case 'kFont': S.kFont = (S.kFont % 3) + 1; store.set('kfont', S.kFont); renderMain(); break;
-      case 'kGo': kitchenStart(); break;
-      case 'kSnd': kSndPick(); break;
-      case 'kSndTry': kPlay(el.dataset.k); break;
-      case 'pk': { const cur = packQ(t); if (cur + +el.dataset.d >= 0) S.packAdj[t] = (S.packAdj[t] || 0) + +el.dataset.d; renderSheet(); break; }
-      case 'photos': S.photos = !S.photos; store.set('photos', S.photos); renderSheet(); break;
-      case 'zDay': zDay(); break;
-      case 'shOpen': shOpen(); break;
-      case 'rAcct': acctExport(); break;
       case 'rp': S.rep.p = el.dataset.p; loadView(); break;
-      case 'rTab': S.rep.tab = el.dataset.t; (S.rep.last ||= {})[SECS.find(x => x[2].includes(el.dataset.t))[0]] = el.dataset.t; renderMain(); break;
-      case 'rSec': { const sc = SECS.find(x => x[0] === el.dataset.s); S.rep.tab = (S.rep.last || {})[sc[0]] || sc[2][0]; renderMain(); if (S.rep.tab === 'plus' || !S.data.range) loadView(); break; }
       case 'rFo': S.rep.fo = !S.rep.fo; renderMain(); break;
-      case 'rDay': if (matchMedia('(hover: none)').matches && !el.classList.contains('on')) { el.parentNode.querySelectorAll('.c.on').forEach(x => x.classList.remove('on')); el.classList.add('on'); el.parentNode.previousElementSibling.textContent = el.title + ' · ще раз — звіт за день'; break; } Object.assign(S.rep, { p: 'c', from: el.dataset.d, to: el.dataset.d }); loadView(); $('#main').scrollTop = 0; break;
-      case 'rSort': S.rep.sort = el.dataset.s; renderMain(); break;
-      case 'rReset': Object.assign(S.rep, { pay: '', by: '', grp: '', cat: '', t: '', q: '' }); renderMain(); break;
-      case 'add': addItem(el.dataset.id); break;
-      case 'cq': { const c = cartOf(t), x = c[el.dataset.k]; if (x) { x.q += +el.dataset.d; if (x.q <= 0) delete c[el.dataset.k]; } saveCarts(); renderSheet(); break; }
-      case 'cartClear': S.carts[t] = {}; saveCarts(); renderSheet(); break;
-      case 'send': sendCart(); break;
-      case 'goNew': goNew(); break;
-      case 'books': S.view = 'books'; renderNav(); renderMain(); loadView(); break;
-      case 'wl': wlOpen(); break;
-      case 'bkDay': S.bkDay = el.dataset.d; renderMain(); break;
-      case 'bkAll': S.bkAll = !!el.dataset.v; renderMain(); break;
-      case 'bkNew': bkForm(); break;
-      case 'bkEd': bkForm(S.data.bk.find(x => x.id === el.dataset.id)); break;
-      case 'bkCame': { const b = S.data.bk.find(x => x.id === el.dataset.id); let tt = b.t; if (!tt) { tt = await pickTable(`🪑 ${b.name}: за який стіл?`, 'Бронь закриється як «прийшли»'); if (!tt) break; }
-        if (await act('bkSet', { id: b.id, st: 'came', t: tt }, '🪑 Гості прийшли')) { await loadBooks(); loadState().catch(() => {}); if (b.pre?.length && !b.preSent && await confirmBox('🍽 Передзамовлення', 'Відправити на кухню зараз?')) await act('bkSet', { id: b.id, st: 'kit' }, '🔥 На кухні'); S.view = 'hall'; renderNav(); renderMain(); openTable(tt); } break; }
-      case 'bkSet': { if (el.dataset.s === 'cancel' && !(await confirmBox('Скасувати бронь?'))) break; if (await act('bkSet', { id: el.dataset.id, st: el.dataset.s }, BKS[el.dataset.s] || '🔥 На кухню')) { loadState().catch(() => {}); if (S.view === 'books') { await loadBooks(); renderMain(); } } break; }
-      case 'bkTbl': { const n = await pickTable('🪑 Стіл для броні', 'Плитка стола покаже час броні'); if (n && await act('bkEdit', { id: el.dataset.id, f: { t: n } }, '🪑 Стіл призначено')) { loadState().catch(() => {}); await loadBooks(); renderMain(); } break; }
       case 'certPay': if (await act('certPay', { code: el.dataset.c, how: el.dataset.h }, el.dataset.h === 'no' ? '❌ Скасовано' : '🎟 Сертифікат активовано')) loadState().catch(() => {}); break;
       case 'certDel': { const code = el.dataset.c; if (!(await choose('🗑 Видалити сертифікат?', code + ' — код перестане діяти. Це не можна скасувати.', [{ label: '🗑 Видалити', val: 1, cls: 'red' }, { label: 'Ні', val: 0 }]))) break; if (await act('certDel', { code }, '🗑 Видалено')) { el.closest('.kv')?.remove(); } break; }
-      case 'certT': certT(t); break;
-      case 'bonCert': { const v = await choose('🎁 Бонуси · 🎟 Сертифікат', S.tables[t]?.cli ? 'Гість за телефоном уже вказаний' : 'Що застосувати до рахунку?', [{ label: S.tables[t]?.cli ? '🎁 Гість і бонуси' : '🎁 Бонуси гостя (за телефоном)', val: 'cli', cls: 'primary' }, { label: '🎟 Сертифікат (код)', val: 'cert' }, { label: '🎂 Подарунок на ДН', val: 'bd' }]); if (v === 'cli') cliT(t); else if (v === 'cert') certT(t); else if (v === 'bd') bdGiftT(t); break; }
       case 'certs': { const r = await api('certList').catch(() => null); if (!r) break; await modal({ title: '🎟 Сертифікати', body: `<div class="bk-list">${r.list.map(c => `<div class="kv"><span><b>${c.code}</b> · ${money(c.sum)}${c.left !== c.sum ? ` · залишок ${money(c.left)}` : ''}<br><small class="muted">від ${esc(c.from)}${c.to ? ' для ' + esc(c.to) : ''} · ${fmtPh(c.phone)} · ${{ new: '⏳ не оплачено', ok: '✅ активний', no: '❌ скасовано' }[c.st]}</small></span>${c.st === 'new' ? `<span class="kv-r"><button class="btn sm green" data-a="certPay" data-c="${c.code}" data-h="cash">💵</button><button class="btn sm" data-a="certPay" data-c="${c.code}" data-h="card">💳</button><button class="btn sm red" data-a="certDel" data-c="${c.code}">🗑</button></span>` : `<span class="kv-r"><button class="btn sm red" data-a="certDel" data-c="${c.code}">🗑</button></span>`}</div>`).join('') || '<div class="muted">Ще немає</div>'}</div>`, buttons: [{ label: 'Закрити', val: null }] }); break; }
-      case 'copyLink': try { await navigator.clipboard.writeText(el.dataset.u); toast('🔗 Скопійовано'); } catch { prompt('Скопіюйте посилання:', el.dataset.u); } break;
-      case 'goSt': if (await act('goSt', { t, st: el.dataset.s }, '✔ ' + GOST[el.dataset.s])) loadState().catch(() => {}); break;
-      case 'goDone': goDone(t); break;
-      case 'goDoneT': goDone(+el.dataset.t); break;
-      case 'crGive': { const v = await askVal(`💵 Скільки отримано від ${el.dataset.n}?`, el.dataset.v, 'number'); if (!v) break; if (await act('courCash', { n: el.dataset.n, sum: +v }, '✅ Записано')) loadView(); break; }
-      case 'crTab': S.courTab = el.dataset.t; renderMain(); break;
-      case 'crAct': { const x = el.dataset.x; if (await act('courAct', { t: +el.dataset.t, act: x, arg: el.dataset.v }, { take: '✋ Ваша доставка', road: '🛵 В дорозі', eta: '⏱ Гостю надіслано', km: '💬 Кухні надіслано' }[x])) { if (x === 'take') S.courTab = 'mine'; await loadState().catch(() => {}); await loadCour().catch(() => {}); } break; }
-      case 'crDone': { const tt = +el.dataset.t, b = S.tables[tt]; const pay = b?.go?.paid ? 'card' : await choose(`🤝 ${tn(tt)} видано`, `До сплати ${money(b.pay2)}${b.go.change ? ` · решта з ${b.go.change}` : ''}`, [{ label: '💵 Готівка', val: 'cash', cls: 'green' }, { label: '💳 Картка', val: 'card', cls: 'blue' }]); if (!pay) break;
-        if (await act('courAct', { t: tt, act: 'done', arg: pay }, '✅ Видано')) { await loadState().catch(() => {}); await loadCour().catch(() => {}); } break; }
-      case 'crProb': { const v = await choose('⚠️ Що сталось?', 'Адмін отримає сповіщення', [{ label: '📵 Гість не відповідає', val: 'noans' }, { label: '📍 Невірна адреса', val: 'addr' }, { label: '🙅 Гість відмовився', val: 'refuse', cls: 'red' }, { label: '✏️ Інше…', val: 'own' }]); if (!v) break;
-        const arg = v === 'own' ? await ask('⚠️ Опишіть проблему') : v; if (arg && await act('courAct', { t: +el.dataset.t, act: 'prob', arg }, '⚠️ Адміна повідомлено')) loadState().catch(() => {}); break; }
-      case 'crTg': { const r = await act('courTg'); if (r?.url) { window.open(r.url, '_blank'); toast('✈️ Натисніть «Start» у боті'); setTimeout(() => loadCour().catch(() => {}), 15000); } break; }
       case 'goTake': if (await act('goCour', { t: +el.dataset.t }, '✋ Ваша доставка')) { await loadState().catch(() => {}); renderMain(); } break;
       case 'goRoad': if (await act('goSt', { t: +el.dataset.t, st: 'road' }, '🛵 В дорозі')) { await loadState().catch(() => {}); renderMain(); } break;
       case 'goCourSet': { const n = await ask('👤 Кур\'єр (імʼя)', S.tables[t]?.go?.cour || ''); if (n != null && await act('goCour', { t, n }, '✔')) loadState().catch(() => {}); break; }
-      case 'cliT': cliT(t); break;
-      case 'cliBon0': { const b = S.tables[t]; if (b?.cert) { if (!(await confirmBox(b.cert.code && b.bonus > b.cert.sum ? '↩️ Прибрати сертифікат і бонуси з рахунку?' : '↩️ Прибрати сертифікат з рахунку?'))) break; if (!(await act('certOff', { t }, '↩️ Прибрано'))) break; if (b.bonus > b.cert.sum && b.cli) await act('cliBonus', { t, sum: 0 }); } else if (!(await act('cliBonus', { t, sum: 0 }))) break; loadState().catch(() => {}); break; }
-      case 'upsEdit': { const r = await api('upsGet'); const v = await askLong('💡 Допродаж — кожен рядок: Страва → що запропонувати, через кому', r.text || 'Піца Маргарита → Лимонад, Соус'); if (v == null) break; const x = await act('upsSet', { text: v }, ''); if (x) { S.ups = null; toast(`💾 Правил: ${x.n}`); } break; }
-      case 'goCfg': { const k = el.dataset.k, cur = S.data.gocfg?.[k]; const v = ['on', 'del', 'pick', 'track'].includes(k) ? (cur ? 0 : 1) : await ask(el.dataset.l || k, String(cur ?? ''), ['phone', 'zone', 'from', 'to'].includes(k) ? 'text' : 'number'); if (v == null) break;
-        const r = await act('goCfgSet', { k, v }, '💾 Збережено'); if (r) { S.data.gocfg = r.cfg; renderMain(); } break; }
-      case 'goLink': { const u = (window.VARVAR?.venue ? 'https://posatom.online/' + VARVAR.venue + '/' : 'https://posatom.online/varvar/') + '?go' + (el.dataset.src ? '&src=' + el.dataset.src : ''); try { await navigator.clipboard.writeText(u); toast('📋 Скопійовано: ' + u); } catch { await ask('Посилання', u); } break; }
-      case 'rm': { const reason = await voidReason(`Скасувати 1× ${el.dataset.name}?`); if (reason) act('remove', { t, name: el.dataset.name, reason }, '✏️ Скасовано'); break; }
       case 'pre': act('precheck', { t }, '🖨 Пречек відправлено'); break;
-      case 'disc': discFlow(); break;
       case 'tip': { const b = S.tables[t]; if (!b) break; const v = await choose(`💝 Чайові — стіл ${tn(t)}`, `До сплати ${money(b.pay2)}`, [...[5, 10, 15].map(p => ({ label: `${p}% · ${money(Math.round(b.pay2 * p / 100))}`, val: String(Math.round(b.pay2 * p / 100)) })), { label: '✏️ Своя сума', val: 'own' }, ...(b.tip ? [{ label: 'Прибрати чайові', val: '0', cls: 'red' }] : [])]);
         if (v == null) break; let sum = v; if (v === 'own') { sum = await ask('Сума чайових, ₴', 'напр. 100', 'number'); if (sum == null) break; }
         await act('tip', { t, sum: +sum }, +sum ? `💝 Чайові ${money(+sum)}` : 'Чайові прибрано'); break; }
-      case 'tipSet': act('tip', { t, sum: 0 }, 'Чайові прибрано'); break;
-      case 'discSet': act('discount', { t, pct: 0 }, 'Знижку прибрано'); break;
       case 'rDel': case 'rBack': {
         const k = el.dataset.k, d = el.dataset.d, i = el.dataset.i, del = a === 'rDel';
         if (del && !(await confirmBox(k === 'checks' ? 'Зняти чек з виручки? (можна повернути)' : 'Видалити запис? (можна повернути)'))) break;
         const op = { checks: del ? 'closedDel' : 'closedBack', exp: del ? 'expenseDel' : 'expenseBack', mov: del ? 'moveDel' : 'moveBack', z: del ? 'zDel' : 'zBack' }[k];
         if (await act(op, k === 'checks' ? { ref: i, day: d } : { i: +i, day: d }, del ? '🗑 Видалено' : '↩️ Повернуто')) { S.data.rangeKey = ''; loadView(); }
         break; }
-      case 'vBack': if (await confirmBox('Повернути страву на стіл? Вона знову буде в рахунку.')) { if (await act('voidBack', { ts: +el.dataset.ts }, '↩️ Повернуто на стіл')) loadView(); } break;
-      case 'setTab': S.setTab = el.dataset.s; renderMain(); break;
-      case 'look': { const k = el.dataset.k, v = ['size', 'vol', 'anim'].includes(k) ? +el.dataset.v : el.dataset.v; setLook(k, v); if (k === 'sound' || k === 'vol') ding(); break; }
-      case 'lookReset': { const { own, sk, theme, accent, skin, ...rest } = look(); store.set('look', rest); applyLook(); renderMain(); toast('↺ Як у закладу'); } break;
-      case 'cashTab': S.cashTab = el.dataset.t; renderMain(); loadView(); break;
-      case 'move': moveFlow(); break;
-      case 'split': splitFlow(); break;
-      case 'spq': { const i = +el.dataset.i, it = S.spl.items[i]; S.spl.q[i] = Math.max(0, Math.min(it.q, (S.spl.q[i] || 0) + +el.dataset.d)); splitRender(); break; }
-      case 'closeT': closeFlow(); break;
-      case 'delTable': { const pb = S.tables[t], pp = pb?.paid?.sum || (pb?.go?.paid && !pb.go.paid.ref ? pb.go.paid.sum : 0); /* 💳 оплачено онлайн — спершу повернути гроші */
-        if (pp) { if (!isAdmin()) { toast('💳 Оплачено онлайн — видалити може лише адмін (з поверненням грошей)'); break; } if (!(await confirmBox(`Повернути гостю ${money(pp)} на картку?`, 'Стіл оплачено онлайн. Спершу повертаємо гроші через LiqPay, потім — видалення.'))) break; if (!(await act('tpayRefund', { t }, '↩️ Гроші повернуто'))) break; }
-        const reason = await voidReason(`Видалити весь стіл ${tn(t)}? Сума НЕ піде у виручку`); if (reason) { const r = await act('delete', { t, reason }, `🗑 Стіл ${tn(t)} видалено`); if (r) closeSheet(); } break; }
-      case 'evAck': act('evAck', { id: el.dataset.id }, '✅ Ви йдете до гостя'); break;
-      case 'tpayOk': { const tt = +el.dataset.t, b = S.tables[tt]; const due = b?.paid ? Math.max(0, b.pay2 - (b.paid.net || 0)) : 0; /* 💳 оплачено з QR: доплату — обраним способом */
-        let pay = 'cash'; if (due > 0) { pay = await choose(`Стіл ${tn(tt)}: доплата ${money(due)}`, 'Гість оплатив онлайн не все (додали страви). Як доплатили?', [{ label: '💵 Готівка', val: 'cash' }, { label: '💳 Термінал', val: 'card' }]); if (!pay) break; }
-        const r = await act('tpayOk', { t: tt, pay }, `✅ Стіл ${tn(tt)} закрито — 🌐 онлайн`); if (r && S.open === tt) closeSheet(); break; }
-      case 'tpayRefund': { const tt = +el.dataset.t, b = S.tables[tt]; if (await confirmBox(`Повернути гостю ${money(b?.paid?.sum || 0)} на картку?`, `Стіл ${tn(tt)} лишиться відкритим. Повернення через LiqPay — гроші прийдуть гостю за 1–7 днів.`)) await act('tpayRefund', { t: tt }, '↩️ Гроші повернуто гостю'); break; }
       case 'accept': act('accept', { oid: el.dataset.oid }, '✅ Прийнято — пішло на кухню'); break;
-      case 'reject': if (await confirmBox('Відхилити замовлення гостя?', 'Позиції приберуться з рахунку, на кухню не піде, гість побачить «відхилено»')) { await act('reject', { oid: el.dataset.oid }, '❌ Відхилено'); loadState().catch(() => {}); } break;
       case 'cBack': if (await confirmBox('Повернути рахунок у виручку?', 'Сума, страви й чайові знову зарахуються')) { await act('closedBack', { ref: el.dataset.ref, day: S.data.cday }, '↩️ Повернуто у виручку'); loadView(); } break;
-      case 'cReopen': if (await confirmBox('Відкрити рахунок знову?', 'Він зніметься з виручки й повернеться на стіл — виправите й закриєте заново')) { const r = await act('closedReopen', { ref: el.dataset.ref, day: S.data.cday }, '↩️ Рахунок знову на столі'); loadView(); loadState().catch(() => {}); if (r?.x) openTable(r.x.t); } break;
-      case 'tBack': if (await confirmBox('Відновити видалений стіл?', 'Страви повернуться на стіл')) { const r = await act('tableBack', { ref: el.dataset.ref, day: S.data.cday }, '↩️ Стіл відновлено'); loadView(); loadState().catch(() => {}); if (r?.x) openTable(r.x.t); } break;
-      case 'movBack': await act('moveBack', { i: +el.dataset.i }, '↩️ Відновлено'); loadView(); break;
-      case 'expBack': await act('expenseBack', { i: +el.dataset.i }, '↩️ Відновлено'); loadView(); break;
-      case 'cEdit': cEdit(el.dataset.ref, el.dataset.d || undefined); break;
       case 'cPrint': act('closedPrint', { ref: el.dataset.ref, day: S.data.cday }, '🖨 Чек відправлено'); break;
-      case 'cDay': { const v = +el.dataset.v, base = S.data.cday || S.data.ctoday; if (!v || !base) S.cday = ''; else { const d = new Date(base + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + v); const k = d.toISOString().slice(0, 10); S.cday = k >= S.data.ctoday ? '' : k; } S.data.closed = null; renderMain(); loadView(); break; }
       case 'cRefund': if (await confirmBox(`Повернути гостю ${money(+el.dataset.s)} на картку?`, 'Гроші повернуться через LiqPay (1–7 днів), чек зніметься з виручки')) await act('closedRefund', { ref: el.dataset.ref, day: S.data.cday }, '↩️ Повернуто гостю'); loadView(); break;
       case 'cDel': if (await confirmBox('Видалити рахунок з виручки?', 'Сума, страви й замовлення віднімуться зі звітів')) await act('closedDel', { ref: el.dataset.ref, day: S.data.cday }, '🧹 Видалено з виручки'); loadView(); break;
-      case 'stopOff': S.stopOff = !S.stopOff; renderMain(); break;
-      case 'stopT': await act('stop', { id: el.dataset.id, hidden: el.dataset.h === '1' }); break;
-      case 'pTest': act('printTest', {}, '🖨 Тест відправлено'); break;
-      case 'pQClear': if (await confirmBox('🗑 Очистити всю чергу друку?', 'Чеки й кухонні квитки, які ще не надрукувались, буде видалено — принтер їх не надрукує.')) { const r = await act('printClear', {}); if (r) { toast(`🗑 Видалено: ${r.n}`); loadState().catch(() => {}); } } break;
-      case 'pQList': { const r = await act('printQ', {}); if (!r) break; const K = { kitchen: '👨‍🍳', receipt: '🧾', test: '🧪', z: '📊', qr: '🔳' };
-        modal({ title: `🖨 Черга друку (${r.list.length})`, body: `<div class="muted set-note">Принтер друкує по черзі. Якщо щось застрягло або вже не потрібне — 🗑 (двічі).</div>${r.list.map(j => `<div class="kv" data-pq="${j.id}"><span style="min-width:0;overflow-wrap:anywhere">${K[j.kind] || '🖨'} ${esc(j.txt || j.kind)}<br><small class="muted">${j.at ? hhmm(j.at) : ''}${j.sn ? ' · 🖨 ' + esc(j.sn) : ''}</small></span><span class="kv-r"><button class="btn sm" data-a="pQMove" data-id="${j.id}" title="На інший принтер">🔁</button><button class="btn sm red" data-a="pQDel" data-id="${j.id}">🗑</button></span></div>`).join('') || '<div class="muted">Черга порожня</div>'}`, buttons: [{ label: 'Закрити', val: null }] }).then(() => loadState().catch(() => {})); break; }
       case 'pQMove': { const r = await api('rcptGet', {}).catch(() => null), st = r?.route?.st || []; if (!st.length) { toast('🖨 Принтери ще не розподілені — Налаштування → 🖨 Принтер'); break; }
         closeModal(); /* вікно черги закрити — інакше два #modal і закриється не те */ const sid = await choose('🔁 Надрукувати на іншому', 'Завдання перейде на вибраний принтер', st.map(x => ({ label: '🖨 ' + x.name, val: x.id }))); if (sid && await act('printMove', { id: el.dataset.id, st: sid }, '🔁 Перенесено')) { const sm = el.closest('[data-pq]')?.querySelector('small'); if (sm) sm.textContent = sm.textContent.replace(/ · 🖨 .*$/, '') + ' · 🖨 ' + st.find(x => x.id === sid).name; } break; }
       case 'pQDel': { if (!el.dataset.sure) { el.dataset.sure = 1; el.textContent = '🗑 Точно?'; setTimeout(() => { if (el.isConnected) { delete el.dataset.sure; el.textContent = '🗑'; } }, 3000); break; }
         if (await act('printClear', { id: el.dataset.id }, '🗑 Видалено')) el.closest('[data-pq]')?.remove(); break; }
-      case 'pQr': { const n = await pickTable('QR меню', 'У кожного столу свій QR — замовлення одразу на цей стіл'); if (n) act('printQr', { t: n }, `🖨 QR столу ${tn(n)}`); break; }
       case 'float': { const v = await ask('Розмін на початок дня', 'Сума в касі, ₴', 'number'); if (v != null) { await act('float', { sum: +v.replace(',', '.') }, '🏦 Записано'); loadView(); } break; }
       case 'expense': {
         const v = await modal({ title: '💸 Витрата', body: '<div class="form"><input id="eSum" inputmode="decimal" placeholder="Сума, ₴"><input id="eNote" placeholder="На що (напр. овочі на ринку)">' + (isAdmin() ? `<label class="muted" style="font-size:13px">📅 За день<input id="eDay" type="date" value="${todayK()}" max="${todayK()}"></label>` : '') + '</div>', buttons: [{ label: '💵 З каси', val: 'cash', cls: 'primary' }, { label: '💳 З карти', val: 'card' }, { label: 'Скасувати', val: null }], keep: true });
@@ -544,33 +445,10 @@
       }
       case 'tipPay': { const src = await choose(`💝 Видати чайові: ${el.dataset.n}`, 'Звідки списати? Сума відніметься з готівки або картки', [{ label: '💵 Готівкою з каси', val: 'cash', cls: 'green' }, { label: '💳 З картки', val: 'card', cls: 'blue' }]);
         if (src) { await act('tipPay', { name: el.dataset.n, src }, '💝 Видано'); loadView(); loadState().catch(() => {}); } break; }
-      case 'cMove': cashMove(el.dataset.t); break;
-      case 'balInfo': balInfo(el.dataset.s); break;
-      case 'movDel': if (await confirmBox('Видалити запис?')) { await act('moveDel', { i: +el.dataset.i }); loadView(); } break;
-      case 'expDel': if (await confirmBox('Видалити витрату?')) { await act('expenseDel', { i: +el.dataset.i }); loadView(); } break;
-      case 'menuEdit': menuEdit(el.dataset.id); break;
-      case 'phPanel': phPanel(); break;
-      case 'qrPanel': qrPanel(); break;
-      case 'catG': { const c = S.menu.categories.find(x => x.id === el.dataset.id); if (!c) break; const g = await choose('📂 ' + c.name.uk, 'Куди йдуть страви цього розділу?', [{ label: '🍳 Кухня', val: 'kitchen' }, { label: '🍹 Бар', val: 'bar' }, { label: '💨 Кальян', val: 'hookah' }]); if (g && g !== c.g && await act('catSet', { id: c.id, g }, '📂 Збережено')) loadMenu().catch(() => {}); break; }
-      case 'catPack': { const c = S.menu.categories.find(x => x.id === el.dataset.id); if (c && await act('catSet', { id: c.id, nopack: !c.nopack }, c.nopack ? '🥡 Упаковка рахується' : '🚫 Без упаковки')) loadMenu().catch(() => {}); break; }
-      case 'catAdd': { const v = await ask('📂 Новий розділ меню', 'Назва, напр. Упакування'); if (v && await act('catAdd', { name: v }, '📂 Розділ додано в кінець меню')) loadMenu().catch(() => {}); break; }
-      case 'menuUndo': if (await confirmBox('Скасувати останню зміну меню?')) act('menuUndo', {}, '↩️ Скасовано'); break;
-      case 'staffAdd': {
-        const v = await modal({ title: '➕ Працівник', body: '<div class="form"><input id="sName" placeholder="Імʼя"><input id="sPin" inputmode="numeric" maxlength="8" placeholder="PIN — 4 цифри (адмін — 6–8)"></div>', buttons: [{ label: '🧑‍🍳 Офіціант', val: 'waiter', cls: 'primary' }, { label: '🔐 Адміністратор', val: 'admin' }, { label: '👨‍🍳 Кухар', val: 'cook' }, { label: '🛵 Кур\'єр', val: 'courier' }, { label: 'Скасувати', val: null }], keep: true });
-        const name = v && $('#sName').value, p = v && $('#sPin').value; closeModal();
-        if (v) { await act('staffAdd', { name, pin: p, role: v }, '👥 Додано'); loadView(); }
-        break;
-      }
-      case 'cfgTgl': { const k = el.dataset.k, cur = S.data.staff?.cfg?.[k] ?? S.cfg?.[k] ?? +(el.dataset.def || 0); if (await act('cfgSet', { k, v: cur ? 0 : 1 }, '⚙️ Збережено')) { loadView(); loadState().catch(() => {}); } break; }
       case 'cfg': { const k = el.dataset.k, L = { tables: ['Скільки столів у залі', 'від 1 до 200'], discMax: ['Макс. знижка офіціанта, %', 'від 0 до 100'], scanMin: ['Хвилин на замовлення після QR', 'від 10 до 600'], foodCost: ['Цільовий фудкост, %', 'від 5 до 90'], recBonus: ['Премія кожному на зміні за рекорд дня, ₴', '0 — без премії'], bankFee: ['Комісія банку за карту/онлайн, %', 'від 0 до 10, напр. 1.3'], priceAlert: ['Сповіщати про подорожчання від, %', 'від 1 до 100'], lateMin: ['Запізнення — після скількох хвилин', 'від 0 до 120'], lateFine: ['Штраф за запізнення, ₴', '0 — без штрафу'], dayH: ['О котрій закінчується робочий день (година)', 'від 0 до 8, напр. 3'] }[k]; const v = await ask(L[0], L[1], 'number'); if (v != null && v !== '') { await act('cfgSet', { k, v: +String(v).replace(',', '.') }, '⚙️ Збережено'); loadView(); loadState().catch(() => {}); } break; }
       case 'kpct': { const v = await ask('Частка кухні від чайових, %', 'Напр. 20', 'number'); if (v != null) { await act('kitchenPct', { pct: +v }, '👨‍🍳 Збережено'); loadView(); } break; }
       case 'regSet': { const v = await ask(`Новий код реєстрації (${{ admin: 'адмін', cook: 'кухар', courier: 'кур\'єр' }[el.dataset.r] || 'офіціант'})`, '4 цифри', 'number'); if (v) { await act('regCode', { role: el.dataset.r, code: v }, '🆕 Код змінено'); loadView(); } break; }
-      case 'staffDel': if (await confirmBox('Видалити працівника?', 'Його PIN перестане працювати')) { await act('staffDel', { id: el.dataset.id }); loadView(); } break;
-      case 'wOut': await act('waiterOut', { uid: el.dataset.uid }, 'Вийшов із бота'); loadView(); break;
-      case 'wifiAdd': await act('wifiAdd', {}, '📶 Мережу додано'); loadView(); break;
-      case 'wifiClear': if (await confirmBox('Скинути всі мережі?', 'Гості не зможуть замовляти, поки не додасте мережу')) { await act('wifiClear'); loadView(); } break;
-      case 'reset': if (await confirmBox('♻️ Обнулити все?', 'Звіти, каса, закриті, топ страв, стрічка і ВСІ відкриті столи')) if (await confirmBox('Точно? Це не можна скасувати.')) { await act('reset', {}, '♻️ Обнулено'); loadView(); } break;
-    }
+      }
   });
   document.addEventListener('input', e => {
     if (e.target.id === 'search') { S.q = e.target.value; renderSheet(); }

@@ -167,3 +167,24 @@
   }
   document.addEventListener('click', e => { const el = e.target.closest('[data-a]'); if (!el) return; const a = el.dataset.a;
     if (a === 'goMap') goMap(); else if (a === 'crRepM') loadCourRep(el.dataset.m); else if (a === 'goEdit') goEdit(S.open); });
+
+  // ---------- 🖱 кнопки розділу (data-a) ----------
+  on('goNew', async (el, e, a, t) => { goNew(); return; });
+  on('goSt', async (el, e, a, t) => { if (await act('goSt', { t, st: el.dataset.s }, '✔ ' + GOST[el.dataset.s])) loadState().catch(() => {}); return; });
+  on('goDone', async (el, e, a, t) => { goDone(t); return; });
+  on('goDoneT', async (el, e, a, t) => { goDone(+el.dataset.t); return; });
+  on('crGive', async (el, e, a, t) => { { const v = await askVal(`💵 Скільки отримано від ${el.dataset.n}?`, el.dataset.v, 'number'); if (!v) return; if (await act('courCash', { n: el.dataset.n, sum: +v }, '✅ Записано')) loadView(); return; } });
+  on('crTab', async (el, e, a, t) => { S.courTab = el.dataset.t; renderMain(); return; });
+  on('crAct', async (el, e, a, t) => { { const x = el.dataset.x; if (await act('courAct', { t: +el.dataset.t, act: x, arg: el.dataset.v }, { take: '✋ Ваша доставка', road: '🛵 В дорозі', eta: '⏱ Гостю надіслано', km: '💬 Кухні надіслано' }[x])) { if (x === 'take') S.courTab = 'mine'; await loadState().catch(() => {}); await loadCour().catch(() => {}); } return; } });
+  on('crDone', async (el, e, a, t) => { { const tt = +el.dataset.t, b = S.tables[tt]; const pay = b?.go?.paid ? 'card' : await choose(`🤝 ${tn(tt)} видано`, `До сплати ${money(b.pay2)}${b.go.change ? ` · решта з ${b.go.change}` : ''}`, [{ label: '💵 Готівка', val: 'cash', cls: 'green' }, { label: '💳 Картка', val: 'card', cls: 'blue' }]); if (!pay) return;
+        if (await act('courAct', { t: tt, act: 'done', arg: pay }, '✅ Видано')) { await loadState().catch(() => {}); await loadCour().catch(() => {}); } return; }
+  });
+  on('crProb', async (el, e, a, t) => { { const v = await choose('⚠️ Що сталось?', 'Адмін отримає сповіщення', [{ label: '📵 Гість не відповідає', val: 'noans' }, { label: '📍 Невірна адреса', val: 'addr' }, { label: '🙅 Гість відмовився', val: 'refuse', cls: 'red' }, { label: '✏️ Інше…', val: 'own' }]); if (!v) return;
+        const arg = v === 'own' ? await ask('⚠️ Опишіть проблему') : v; if (arg && await act('courAct', { t: +el.dataset.t, act: 'prob', arg }, '⚠️ Адміна повідомлено')) loadState().catch(() => {}); return; }
+  });
+  on('crTg', async (el, e, a, t) => { { const r = await act('courTg'); if (r?.url) { window.open(r.url, '_blank'); toast('✈️ Натисніть «Start» у боті'); setTimeout(() => loadCour().catch(() => {}), 15000); } return; } });
+  on('cliT', async (el, e, a, t) => { cliT(t); return; });
+  on('goCfg', async (el, e, a, t) => { { const k = el.dataset.k, cur = S.data.gocfg?.[k]; const v = ['on', 'del', 'pick', 'track'].includes(k) ? (cur ? 0 : 1) : await ask(el.dataset.l || k, String(cur ?? ''), ['phone', 'zone', 'from', 'to'].includes(k) ? 'text' : 'number'); if (v == null) return;
+        const r = await act('goCfgSet', { k, v }, '💾 Збережено'); if (r) { S.data.gocfg = r.cfg; renderMain(); } return; }
+  });
+  on('goLink', async (el, e, a, t) => { { const u = (window.VARVAR?.venue ? 'https://posatom.online/' + VARVAR.venue + '/' : 'https://posatom.online/varvar/') + '?go' + (el.dataset.src ? '&src=' + el.dataset.src : ''); try { await navigator.clipboard.writeText(u); toast('📋 Скопійовано: ' + u); } catch { await ask('Посилання', u); } return; } });

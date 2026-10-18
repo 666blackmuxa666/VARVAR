@@ -382,3 +382,51 @@
     if (a === 'seat') { tt = await pickTable('🪑 За який стіл?', ''); if (!tt) return; }
     if (await act('wlAct', { id, act: a, t: tt }, { call: '🔔 Покликали', seat: '🪑 Посадили', gone: '✖ Прибрано' }[a])) { await loadState().catch(() => {}); if ((S.wl || []).length) wlOpen(); }
   }
+
+  // ---------- 🖱 кнопки розділу (data-a) ----------
+  on('table', async (el, e, a, t) => { $('#feed').classList.remove('open'); openTable(el.dataset.t); return; });
+  on('newOrder', async (el, e, a, t) => { { const n = await pickTable('Новe замовлення', 'Оберіть стіл', 0, true); if (n === 'pick' || n === 'del') goNew(n); else if (n) { openTable(n); S.mobileMenu = true; renderSheet(); } return; } });
+  on('closeSheet', async (el, e, a, t) => { closeSheet(); return; });
+  on('tab', async (el, e, a, t) => { S.mobileMenu = el.dataset.m === '1'; renderSheet(); return; });
+  on('mobileMenu', async (el, e, a, t) => { S.mobileMenu = true; renderSheet(); return; });
+  on('cat', async (el, e, a, t) => { S.cat = el.dataset.c; S.q = ''; renderSheet(); $('#shItems').scrollTop = 0; return; });
+  on('grp', async (el, e, a, t) => { S.grp = el.dataset.g; S.cat = ''; S.q = ''; store.set('grp', S.grp); renderSheet(); $('#shItems').scrollTop = 0; return; });
+  on('fav', async (el, e, a, t) => { { const on = !S.fav.includes(el.dataset.id); S.fav = on ? [...S.fav, el.dataset.id] : S.fav.filter(x => x !== el.dataset.id); renderSheet(); act('fav', { id: el.dataset.id, on }, on ? '⭐ Додано в обрані' : 'Прибрано з обраних'); return; } });
+  on('tw', async (el, e, a, t) => { { // 🥡 з собою: самовивіз або доставка — окремий віртуальний стіл С‑ / Д‑
+        if (t === -1 || t > 1000) { S.tw[t] = !S.tw[t]; S.packAdj[t] = 0; renderSheet(); return; }
+        const k = await choose('🥡 З собою', 'Замовлення піде окремим чеком; стіл не займається', [{ label: '🥡 Самовивіз', val: 'pick', cls: 'primary' }, { label: '🛵 Доставка', val: 'del', cls: 'primary' }]);
+        if (k) goNew(k, t); return; }
+  });
+  on('ur', async (el, e, a, t) => { S.ur[t] = !S.ur[t]; renderSheet(); return; });
+  on('pk', async (el, e, a, t) => { { const cur = packQ(t); if (cur + +el.dataset.d >= 0) S.packAdj[t] = (S.packAdj[t] || 0) + +el.dataset.d; renderSheet(); return; } });
+  on('photos', async (el, e, a, t) => { S.photos = !S.photos; store.set('photos', S.photos); renderSheet(); return; });
+  on('add', async (el, e, a, t) => { addItem(el.dataset.id); return; });
+  on('cq', async (el, e, a, t) => { { const c = cartOf(t), x = c[el.dataset.k]; if (x) { x.q += +el.dataset.d; if (x.q <= 0) delete c[el.dataset.k]; } saveCarts(); renderSheet(); return; } });
+  on('cartClear', async (el, e, a, t) => { S.carts[t] = {}; saveCarts(); renderSheet(); return; });
+  on('send', async (el, e, a, t) => { sendCart(); return; });
+  on('books', async (el, e, a, t) => { S.view = 'books'; renderNav(); renderMain(); loadView(); return; });
+  on('bonCert', async (el, e, a, t) => { { const v = await choose('🎁 Бонуси · 🎟 Сертифікат', S.tables[t]?.cli ? 'Гість за телефоном уже вказаний' : 'Що застосувати до рахунку?', [{ label: S.tables[t]?.cli ? '🎁 Гість і бонуси' : '🎁 Бонуси гостя (за телефоном)', val: 'cli', cls: 'primary' }, { label: '🎟 Сертифікат (код)', val: 'cert' }, { label: '🎂 Подарунок на ДН', val: 'bd' }]); if (v === 'cli') cliT(t); else if (v === 'cert') certT(t); else if (v === 'bd') bdGiftT(t); return; } });
+  on('cliBon0', async (el, e, a, t) => { { const b = S.tables[t]; if (b?.cert) { if (!(await confirmBox(b.cert.code && b.bonus > b.cert.sum ? '↩️ Прибрати сертифікат і бонуси з рахунку?' : '↩️ Прибрати сертифікат з рахунку?'))) return; if (!(await act('certOff', { t }, '↩️ Прибрано'))) return; if (b.bonus > b.cert.sum && b.cli) await act('cliBonus', { t, sum: 0 }); } else if (!(await act('cliBonus', { t, sum: 0 }))) return; loadState().catch(() => {}); return; } });
+  on('rm', async (el, e, a, t) => { { const reason = await voidReason(`Скасувати 1× ${el.dataset.name}?`); if (reason) act('remove', { t, name: el.dataset.name, reason }, '✏️ Скасовано'); return; } });
+  on('disc', async (el, e, a, t) => { discFlow(); return; });
+  on('tipSet', async (el, e, a, t) => { act('tip', { t, sum: 0 }, 'Чайові прибрано'); return; });
+  on('discSet', async (el, e, a, t) => { act('discount', { t, pct: 0 }, 'Знижку прибрано'); return; });
+  on('vBack', async (el, e, a, t) => { if (await confirmBox('Повернути страву на стіл? Вона знову буде в рахунку.')) { if (await act('voidBack', { ts: +el.dataset.ts }, '↩️ Повернуто на стіл')) loadView(); } return; });
+  on('move', async (el, e, a, t) => { moveFlow(); return; });
+  on('split', async (el, e, a, t) => { splitFlow(); return; });
+  on('spq', async (el, e, a, t) => { { const i = +el.dataset.i, it = S.spl.items[i]; S.spl.q[i] = Math.max(0, Math.min(it.q, (S.spl.q[i] || 0) + +el.dataset.d)); splitRender(); return; } });
+  on('closeT', async (el, e, a, t) => { closeFlow(); return; });
+  on('delTable', async (el, e, a, t) => { { const pb = S.tables[t], pp = pb?.paid?.sum || (pb?.go?.paid && !pb.go.paid.ref ? pb.go.paid.sum : 0); /* 💳 оплачено онлайн — спершу повернути гроші */
+        if (pp) { if (!isAdmin()) { toast('💳 Оплачено онлайн — видалити може лише адмін (з поверненням грошей)'); return; } if (!(await confirmBox(`Повернути гостю ${money(pp)} на картку?`, 'Стіл оплачено онлайн. Спершу повертаємо гроші через LiqPay, потім — видалення.'))) return; if (!(await act('tpayRefund', { t }, '↩️ Гроші повернуто'))) return; }
+        const reason = await voidReason(`Видалити весь стіл ${tn(t)}? Сума НЕ піде у виручку`); if (reason) { const r = await act('delete', { t, reason }, `🗑 Стіл ${tn(t)} видалено`); if (r) closeSheet(); } return; }
+  });
+  on('evAck', async (el, e, a, t) => { act('evAck', { id: el.dataset.id }, '✅ Ви йдете до гостя'); return; });
+  on('tpayOk', async (el, e, a, t) => { { const tt = +el.dataset.t, b = S.tables[tt]; const due = b?.paid ? Math.max(0, b.pay2 - (b.paid.net || 0)) : 0; /* 💳 оплачено з QR: доплату — обраним способом */
+        let pay = 'cash'; if (due > 0) { pay = await choose(`Стіл ${tn(tt)}: доплата ${money(due)}`, 'Гість оплатив онлайн не все (додали страви). Як доплатили?', [{ label: '💵 Готівка', val: 'cash' }, { label: '💳 Термінал', val: 'card' }]); if (!pay) return; }
+        const r = await act('tpayOk', { t: tt, pay }, `✅ Стіл ${tn(tt)} закрито — 🌐 онлайн`); if (r && S.open === tt) closeSheet(); return; }
+  });
+  on('tpayRefund', async (el, e, a, t) => { { const tt = +el.dataset.t, b = S.tables[tt]; if (await confirmBox(`Повернути гостю ${money(b?.paid?.sum || 0)} на картку?`, `Стіл ${tn(tt)} лишиться відкритим. Повернення через LiqPay — гроші прийдуть гостю за 1–7 днів.`)) await act('tpayRefund', { t: tt }, '↩️ Гроші повернуто гостю'); return; } });
+  on('reject', async (el, e, a, t) => { if (await confirmBox('Відхилити замовлення гостя?', 'Позиції приберуться з рахунку, на кухню не піде, гість побачить «відхилено»')) { await act('reject', { oid: el.dataset.oid }, '❌ Відхилено'); loadState().catch(() => {}); } return; });
+  on('cReopen', async (el, e, a, t) => { if (await confirmBox('Відкрити рахунок знову?', 'Він зніметься з виручки й повернеться на стіл — виправите й закриєте заново')) { const r = await act('closedReopen', { ref: el.dataset.ref, day: S.data.cday }, '↩️ Рахунок знову на столі'); loadView(); loadState().catch(() => {}); if (r?.x) openTable(r.x.t); } return; });
+  on('tBack', async (el, e, a, t) => { if (await confirmBox('Відновити видалений стіл?', 'Страви повернуться на стіл')) { const r = await act('tableBack', { ref: el.dataset.ref, day: S.data.cday }, '↩️ Стіл відновлено'); loadView(); loadState().catch(() => {}); if (r?.x) openTable(r.x.t); } return; });
+  on('cDay', async (el, e, a, t) => { { const v = +el.dataset.v, base = S.data.cday || S.data.ctoday; if (!v || !base) S.cday = ''; else { const d = new Date(base + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + v); const k = d.toISOString().slice(0, 10); S.cday = k >= S.data.ctoday ? '' : k; } S.data.closed = null; renderMain(); loadView(); return; } });

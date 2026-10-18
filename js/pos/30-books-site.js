@@ -50,3 +50,16 @@
     if (!(await confirmBox(`🎟 ${g.c.code} — ${money(g.c.left)} з ${money(g.c.sum)}`, `Від ${g.c.from}${g.c.to ? ' для ' + g.c.to : ''}. Списати на цей рахунок?`))) return;
     const r = await act('certUse', { t, code }); if (r) { toast(`🎟 −${money(r.use)} · залишок ${money(r.left)}`); loadState().catch(() => {}); }
   }
+
+  // ---------- 🖱 кнопки розділу (data-a) ----------
+  on('wl', async (el, e, a, t) => { wlOpen(); return; });
+  on('bkDay', async (el, e, a, t) => { S.bkDay = el.dataset.d; renderMain(); return; });
+  on('bkAll', async (el, e, a, t) => { S.bkAll = !!el.dataset.v; renderMain(); return; });
+  on('bkNew', async (el, e, a, t) => { bkForm(); return; });
+  on('bkEd', async (el, e, a, t) => { bkForm(S.data.bk.find(x => x.id === el.dataset.id)); return; });
+  on('bkCame', async (el, e, a, t) => { { const b = S.data.bk.find(x => x.id === el.dataset.id); let tt = b.t; if (!tt) { tt = await pickTable(`🪑 ${b.name}: за який стіл?`, 'Бронь закриється як «прийшли»'); if (!tt) return; }
+        if (await act('bkSet', { id: b.id, st: 'came', t: tt }, '🪑 Гості прийшли')) { await loadBooks(); loadState().catch(() => {}); if (b.pre?.length && !b.preSent && await confirmBox('🍽 Передзамовлення', 'Відправити на кухню зараз?')) await act('bkSet', { id: b.id, st: 'kit' }, '🔥 На кухні'); S.view = 'hall'; renderNav(); renderMain(); openTable(tt); } return; }
+  });
+  on('bkSet', async (el, e, a, t) => { { if (el.dataset.s === 'cancel' && !(await confirmBox('Скасувати бронь?'))) return; if (await act('bkSet', { id: el.dataset.id, st: el.dataset.s }, BKS[el.dataset.s] || '🔥 На кухню')) { loadState().catch(() => {}); if (S.view === 'books') { await loadBooks(); renderMain(); } } return; } });
+  on('bkTbl', async (el, e, a, t) => { { const n = await pickTable('🪑 Стіл для броні', 'Плитка стола покаже час броні'); if (n && await act('bkEdit', { id: el.dataset.id, f: { t: n } }, '🪑 Стіл призначено')) { loadState().catch(() => {}); await loadBooks(); renderMain(); } return; } });
+  on('certT', async (el, e, a, t) => { certT(t); return; });

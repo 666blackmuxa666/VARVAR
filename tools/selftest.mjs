@@ -1167,6 +1167,34 @@ async function uiTests() {
         for (const v of views) if (!ONLY_VIEWS || ONLY_VIEWS.includes(v)) await checkView(label, w, v);
       }
     }
+    // 🖱 Натиснути кожну кнопку: адмін, 1280, у кожному розділі (і в листі стола) — жодної помилки JS. Ловить «переніс/перейменував функцію — кнопка мовчки зламалась».
+    // Діалоги закриваються Escape (= «Скасувати»). Кнопки, що одразу щось змінюють або стирають, пропускаємо.
+    if (!ONLY_VIEWS && !ONLY_ROLES && users.admin) {
+      sect('🖱 Кожна кнопка каси натискається без помилки');
+      await b.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false }); await login(users.admin);
+      const SKIP = /reset|clear|del|out$|^stop|cfg|tgl|^look|fav|snd|logout|switch|^fs$|ptest|^pq|^k(item|all|start|undo|msg)$|accept|reject|tpay|refund|evack|^send$|closet|^rm$|^cq$|regset|kpct|catpack|catg|undo|wifi|^tip|disc|float|expense|^move|^split|^spq$|bkcame|bkset|^cr(act|done|give|prob)|^go(done|take|road|st|courset)$|^add$|back$|reopen|^c(edit|print|refund|move)$|^ph|qrpanel|menuedit|staffadd|bon|^pay|^z|^tw$|^ur$|^pk$|^table$|^view$|^newOrder$|^feed$|^more$|^shOpen$|^certPay$|copylink|^upsEdit$/i;
+      const views = await b.ev(`[...new Set([...document.querySelectorAll('[data-a="view"][data-v]')].map(x => x.dataset.v))]`);
+      let clicked = 0; const bad = [];
+      for (const v of views) {
+        await b.ev(`(() => { document.querySelector('[data-a="view"][data-v="${v}"]')?.click(); return 1; })()`); await sleep(1500);
+        if (v === 'hall') { await b.ev(`(() => { document.querySelector('[data-a="table"][data-t="1"]')?.click(); return 1; })()`); await sleep(1200); }
+        const scan = () => b.ev(`[...new Map([...document.querySelectorAll('[data-a]')].filter(x => x.offsetParent && !x.closest('#modal')).map(x => [x.dataset.a + JSON.stringify(x.dataset), x.dataset.a])).entries()]`);
+        const seen = new Set(), queue = [];
+        const add = l => { for (const [k, a] of l) if (!seen.has(k) && !SKIP.test(a)) { seen.add(k); queue.push([k, a]); } };
+        add(await scan());
+        for (let n = 0; queue.length && n < 150; n++) {
+          const [k, a] = queue.shift(), n0 = b.errs.length;
+          const hit = await b.ev(`(() => { const x = [...document.querySelectorAll('[data-a]')].find(x => x.dataset.a + JSON.stringify(x.dataset) === ${JSON.stringify(k)}); if (!x || !x.offsetParent) return 0; x.click(); return 1; })()`);
+          if (!hit) continue; await sleep(450);
+          for (let i = 0; i < 3; i++) { await b.ev(`(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); return 1; })()`); await sleep(120); }
+          clicked++; const e2 = b.errs.slice(n0).filter(x => /^(exception|console\.error)/.test(x)); if (e2.length) bad.push(`${v}/${a}: ${e2[0].slice(0, 160)}`);
+          // кнопка могла перевести в інший розділ — повертаємось; нові кнопки (підвкладки) — у чергу
+          await b.ev(`(() => { if (!document.querySelector('[data-a="view"][data-v="${v}"].on')) document.querySelector('[data-a="view"][data-v="${v}"]')?.click(); return 1; })()`);
+          add(await scan());
+        }
+      }
+      rec(`натиснуто ${clicked} кнопок у ${views.length} розділах`, !bad.length, bad.slice(0, 5).join(' | '));
+    }
     if (DESIGN) await designPages(b);
   } finally { b.close();
     if (DESIGN) { const { writeFileSync } = await import('node:fs'); writeFileSync(new URL('../_team/design-report.md', import.meta.url), `# 🎨 Діагностика кнопок · ${new Date().toISOString().slice(0, 16)}\n\nЗнайдено: ${designLog.size}\n\n` + [...designLog].map(([k, v]) => `- ${k}  \n  _${v.join(' · ')}_`).join('\n') + '\n'); console.log('🎨 design-report: ' + designLog.size); } }

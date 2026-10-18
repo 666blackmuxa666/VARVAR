@@ -13,6 +13,11 @@ const uniq = (re, txt) => [...new Set([...txt.matchAll(re)].map(m => m[1]))];
 
 // 1) кнопки каси
 const acts = uniq(/data-a="([A-Za-z0-9_]+)"/g, P), handled = new Set([...uniq(/case '([A-Za-z0-9_]+)'/g, P), ...uniq(/a === '([A-Za-z0-9_]+)'/g, P), ...uniq(/dataset\??\.a !== '([A-Za-z0-9_]+)'/g, P), ...uniq(/closest\('\[data-a="([A-Za-z0-9_]+)"\]'\)/g, P),...uniq(/\[([^\]]*)\]\.includes\(a\)/g, P).flatMap(l => uniq(/'([A-Za-z0-9_]+)'/g, l))]);
+// кнопки розділів: on('x', …) / on(['x', 'y'], …)
+const onNames = [...P.matchAll(/\bon\(\[?([^\]\)]*?)\]?, async/g)].flatMap(m => uniq(/'([A-Za-z0-9_]+)'/g, m[1]));
+for (const x of onNames) handled.add(x);
+{ const cs = new Set(uniq(/case '([A-Za-z0-9_]+)'/g, readFileSync(R + 'js/pos/00-core.js', 'utf8'))), seen = new Set();
+  for (const x of onNames) { if (seen.has(x) || cs.has(x)) out.push(`🖱 каса: кнопка «${x}» має два обробники (on() і ще один) — спрацює лише один`); seen.add(x); } }
 for (const a of acts) if (!handled.has(a)) out.push(`🖱 каса: кнопка data-a="${a}" — не знайдено обробника`);
 
 // 2) кнопки ботів

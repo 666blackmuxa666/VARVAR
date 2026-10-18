@@ -232,3 +232,38 @@
     if (a === 'map') { S.hm = 'map'; store.set('hm', 'map'); S.view = 'hall'; mapStart(); renderNav(); renderMain(); return; }
     if (a === 'go') { const g = await choose('🛵 З собою і доставка', 'Де показувати в касі', [['0', 'У залі — стрічкою'], ['1', 'Одна вкладка'], ['2', 'Дві вкладки']].map(([v, l]) => ({ label: l, val: v }))); if (g != null) hallsSave(H, +g); }
   });
+
+  // ---------- 🖱 кнопки розділу (data-a) ----------
+  on('copyLink', async (el, e, a, t) => { try { await navigator.clipboard.writeText(el.dataset.u); toast('🔗 Скопійовано'); } catch { prompt('Скопіюйте посилання:', el.dataset.u); } return; });
+  on('upsEdit', async (el, e, a, t) => { { const r = await api('upsGet'); const v = await askLong('💡 Допродаж — кожен рядок: Страва → що запропонувати, через кому', r.text || 'Піца Маргарита → Лимонад, Соус'); if (v == null) return; const x = await act('upsSet', { text: v }, ''); if (x) { S.ups = null; toast(`💾 Правил: ${x.n}`); } return; } });
+  on('setTab', async (el, e, a, t) => { S.setTab = el.dataset.s; renderMain(); return; });
+  on('look', async (el, e, a, t) => { { const k = el.dataset.k, v = ['size', 'vol', 'anim'].includes(k) ? +el.dataset.v : el.dataset.v; setLook(k, v); if (k === 'sound' || k === 'vol') ding(); return; } });
+  on('lookReset', async (el, e, a, t) => { { const { own, sk, theme, accent, skin, ...rest } = look(); store.set('look', rest); applyLook(); renderMain(); toast('↺ Як у закладу'); } return; });
+  on('stopOff', async (el, e, a, t) => { S.stopOff = !S.stopOff; renderMain(); return; });
+  on('stopT', async (el, e, a, t) => { await act('stop', { id: el.dataset.id, hidden: el.dataset.h === '1' }); return; });
+  on('pTest', async (el, e, a, t) => { act('printTest', {}, '🖨 Тест відправлено'); return; });
+  on('pQClear', async (el, e, a, t) => { if (await confirmBox('🗑 Очистити всю чергу друку?', 'Чеки й кухонні квитки, які ще не надрукувались, буде видалено — принтер їх не надрукує.')) { const r = await act('printClear', {}); if (r) { toast(`🗑 Видалено: ${r.n}`); loadState().catch(() => {}); } } return; });
+  on('pQList', async (el, e, a, t) => { { const r = await act('printQ', {}); if (!r) return; const K = { kitchen: '👨‍🍳', receipt: '🧾', test: '🧪', z: '📊', qr: '🔳' };
+        modal({ title: `🖨 Черга друку (${r.list.length})`, body: `<div class="muted set-note">Принтер друкує по черзі. Якщо щось застрягло або вже не потрібне — 🗑 (двічі).</div>${r.list.map(j => `<div class="kv" data-pq="${j.id}"><span style="min-width:0;overflow-wrap:anywhere">${K[j.kind] || '🖨'} ${esc(j.txt || j.kind)}<br><small class="muted">${j.at ? hhmm(j.at) : ''}${j.sn ? ' · 🖨 ' + esc(j.sn) : ''}</small></span><span class="kv-r"><button class="btn sm" data-a="pQMove" data-id="${j.id}" title="На інший принтер">🔁</button><button class="btn sm red" data-a="pQDel" data-id="${j.id}">🗑</button></span></div>`).join('') || '<div class="muted">Черга порожня</div>'}`, buttons: [{ label: 'Закрити', val: null }] }).then(() => loadState().catch(() => {})); return; }
+  });
+  on('pQr', async (el, e, a, t) => { { const n = await pickTable('QR меню', 'У кожного столу свій QR — замовлення одразу на цей стіл'); if (n) act('printQr', { t: n }, `🖨 QR столу ${tn(n)}`); return; } });
+  on('menuEdit', async (el, e, a, t) => { menuEdit(el.dataset.id); return; });
+  on('phPanel', async (el, e, a, t) => { phPanel(); return; });
+  on('qrPanel', async (el, e, a, t) => { qrPanel(); return; });
+  on('catG', async (el, e, a, t) => { { const c = S.menu.categories.find(x => x.id === el.dataset.id); if (!c) return; const g = await choose('📂 ' + c.name.uk, 'Куди йдуть страви цього розділу?', [{ label: '🍳 Кухня', val: 'kitchen' }, { label: '🍹 Бар', val: 'bar' }, { label: '💨 Кальян', val: 'hookah' }]); if (g && g !== c.g && await act('catSet', { id: c.id, g }, '📂 Збережено')) loadMenu().catch(() => {}); return; } });
+  on('catPack', async (el, e, a, t) => { { const c = S.menu.categories.find(x => x.id === el.dataset.id); if (c && await act('catSet', { id: c.id, nopack: !c.nopack }, c.nopack ? '🥡 Упаковка рахується' : '🚫 Без упаковки')) loadMenu().catch(() => {}); return; } });
+  on('catAdd', async (el, e, a, t) => { { const v = await ask('📂 Новий розділ меню', 'Назва, напр. Упакування'); if (v && await act('catAdd', { name: v }, '📂 Розділ додано в кінець меню')) loadMenu().catch(() => {}); return; } });
+  on('menuUndo', async (el, e, a, t) => { if (await confirmBox('Скасувати останню зміну меню?')) act('menuUndo', {}, '↩️ Скасовано'); return; });
+  on('staffAdd', async (el, e, a, t) => { {
+        const v = await modal({ title: '➕ Працівник', body: '<div class="form"><input id="sName" placeholder="Імʼя"><input id="sPin" inputmode="numeric" maxlength="8" placeholder="PIN — 4 цифри (адмін — 6–8)"></div>', buttons: [{ label: '🧑‍🍳 Офіціант', val: 'waiter', cls: 'primary' }, { label: '🔐 Адміністратор', val: 'admin' }, { label: '👨‍🍳 Кухар', val: 'cook' }, { label: '🛵 Кур\'єр', val: 'courier' }, { label: 'Скасувати', val: null }], keep: true });
+        const name = v && $('#sName').value, p = v && $('#sPin').value; closeModal();
+        if (v) { await act('staffAdd', { name, pin: p, role: v }, '👥 Додано'); loadView(); }
+        return;
+      }
+  });
+  on('cfgTgl', async (el, e, a, t) => { { const k = el.dataset.k, cur = S.data.staff?.cfg?.[k] ?? S.cfg?.[k] ?? +(el.dataset.def || 0); if (await act('cfgSet', { k, v: cur ? 0 : 1 }, '⚙️ Збережено')) { loadView(); loadState().catch(() => {}); } return; } });
+  on('staffDel', async (el, e, a, t) => { if (await confirmBox('Видалити працівника?', 'Його PIN перестане працювати')) { await act('staffDel', { id: el.dataset.id }); loadView(); } return; });
+  on('wOut', async (el, e, a, t) => { await act('waiterOut', { uid: el.dataset.uid }, 'Вийшов із бота'); loadView(); return; });
+  on('wifiAdd', async (el, e, a, t) => { await act('wifiAdd', {}, '📶 Мережу додано'); loadView(); return; });
+  on('wifiClear', async (el, e, a, t) => { if (await confirmBox('Скинути всі мережі?', 'Гості не зможуть замовляти, поки не додасте мережу')) { await act('wifiClear'); loadView(); } return; });
+  on('reset', async (el, e, a, t) => { if (await confirmBox('♻️ Обнулити все?', 'Звіти, каса, закриті, топ страв, стрічка і ВСІ відкриті столи')) if (await confirmBox('Точно? Це не можна скасувати.')) { await act('reset', {}, '♻️ Обнулено'); loadView(); } return; });

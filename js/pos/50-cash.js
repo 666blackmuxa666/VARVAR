@@ -130,3 +130,15 @@
     const r = await act('closedEdit', { ref: x.id || ref, day: cl.day, p: { items: E.items, disc: E.disc, tip: E.tip, pay: E.pay, cash: E.cash, w: E.w, t: E.t } });
     if (r) { toast(r.what?.length ? '✏️ Чек збережено' : 'Без змін'); S.data.range = null; loadView(); }
   }
+
+  // ---------- 🖱 кнопки розділу (data-a) ----------
+  on('zDay', async (el, e, a, t) => { zDay(); return; });
+  on('shOpen', async (el, e, a, t) => { shOpen(); return; });
+  on('cashTab', async (el, e, a, t) => { S.cashTab = el.dataset.t; renderMain(); loadView(); return; });
+  on('movBack', async (el, e, a, t) => { await act('moveBack', { i: +el.dataset.i }, '↩️ Відновлено'); loadView(); return; });
+  on('expBack', async (el, e, a, t) => { await act('expenseBack', { i: +el.dataset.i }, '↩️ Відновлено'); loadView(); return; });
+  on('cEdit', async (el, e, a, t) => { cEdit(el.dataset.ref, el.dataset.d || undefined); return; });
+  on('cMove', async (el, e, a, t) => { cashMove(el.dataset.t); return; });
+  on('balInfo', async (el, e, a, t) => { balInfo(el.dataset.s); return; });
+  on('movDel', async (el, e, a, t) => { if (await confirmBox('Видалити запис?')) { await act('moveDel', { i: +el.dataset.i }); loadView(); } return; });
+  on('expDel', async (el, e, a, t) => { if (await confirmBox('Видалити витрату?')) { await act('expenseDel', { i: +el.dataset.i }); loadView(); } return; });
