@@ -12,7 +12,9 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | `analytics.js` | 59 | 📊 Розширена аналітика закладу (вкладка «Аналітика» кабінету): один запит за період, результат кешується на 5 хв. |
 | `backup.js` | 40 | 💾 Бекапи закладу: щоночі повна копія сховища (стиснута gzip) у KV на 8 днів: bak:<заклад>:<день>. |
 | `billing.js` | 84 | 💳 Платежі платформи ATOM (ключі LiqPay платформи = VARVAR): |
-| `bot.js` | 1036 | Telegram-бот закладу. Вхід: пароль офіціанта (столи, замовлення, закриття, стоп-лист) |
+| `bot-main.js` | 663 | 🤖 Бот персоналу — обробка повідомлень (handleUpdate) і натискань кнопок (handleCallback) |
+| `bot-views.js` | 377 | 🤖 Бот персоналу — екрани й клавіатури: столи, рахунок, каса, звіти, кухня, закриті, стоп-лист, Wi‑Fi, персонал, броні, рух грошей, Z |
+| `bot.js` | 9 | Telegram-бот закладу. Вхід: пароль офіціанта (столи, замовлення, закриття, стоп-лист) |
 | `brand.js` | 52 | 🎨 Оформлення трьох Telegram-ботів: аватар з емблемою (img/bots/*.png), ім'я, опис, команди. |
 | `buildid.js` | 3 | мітка збірки для tools/test.sh (чекає, поки тестовий сервер перезавантажить саме цей код) |
 | `chat.js` | 45 | 💬 Чат на posatom.online: ШІ-асистент збирає заявку з фактів про ATOM. Розмова — у Hub (chat:<leadId>), у lead лише прапорці chat/hot/last. |
@@ -313,8 +315,8 @@ _Ключ — префікс до «:» (`bill:`, `att:`…)._
 | Ключ | Файли |
 |---|---|
 | `acct:` | hub.js |
-| `adm:` | bot.js, ops-staff.js, pos.js |
-| `admmsg:` | bot.js |
+| `adm:` | bot-main.js, bot-views.js, ops-staff.js, pos.js |
+| `admmsg:` | bot-main.js, bot-views.js |
 | `ai:` | ai.js |
 | `ait:` | aitest.js |
 | `alog:` | ops-core.js |
@@ -336,18 +338,18 @@ _Ключ — префікс до «:» (`bill:`, `att:`…)._
 | `ctl:` | courier.js |
 | `day:` | ops-money.js, site.js |
 | `dish:` | ops-money.js |
-| `draft:` | bot.js |
+| `draft:` | bot-main.js |
 | `ev:` | ops-core.js |
 | `exp:` | ops-money.js |
-| `expd:` | bot.js |
-| `fail:` | bot.js |
+| `expd:` | bot-main.js |
+| `fail:` | bot-main.js |
 | `gav:` | site.js |
 | `gch:` | guestbot.js |
 | `gchm:` | guestbot.js |
 | `gl:` | site.js |
 | `glu:` | site.js |
 | `gop:` | delivery.js |
-| `gopend:` | bot.js |
+| `gopend:` | bot-main.js |
 | `gridx:` | pay.js |
 | `gs:` | site.js |
 | `gst:` | guestbot.js |
@@ -356,7 +358,7 @@ _Ключ — префікс до «:» (`bill:`, `att:`…)._
 | `invd:` | stockbot.js |
 | `invl:` | suppliers.js |
 | `kbm:` | kitbot.js |
-| `kbw:` | bot.js |
+| `kbw:` | bot-main.js, bot-views.js |
 | `kfail:` | kitbot.js |
 | `kq:` | courier.js, ops-core.js, ops-kitchen.js |
 | `lcs:` | promo.js |
@@ -382,20 +384,20 @@ _Ключ — префікс до «:» (`bill:`, `att:`…)._
 | `seen:` | hub.js, pay.js |
 | `sess:` | hub.js |
 | `signup:` | hub.js |
-| `st:` | bot.js, kitbot.js, stockbot.js |
+| `st:` | bot-main.js, kitbot.js, stockbot.js |
 | `stk:` | stock.js |
 | `sup:` | suppliers.js |
 | `sv:` | site.js |
 | `task:` | tasks.js |
-| `tgs:` | bot.js, ops-staff.js |
+| `tgs:` | bot-main.js, bot-views.js, ops-staff.js |
 | `tippay:` | pos.js |
 | `tph:` | tasks.js |
 | `tpp:` | lpay.js |
 | `vc:` | pos.js |
 | `venue:` | hub.js |
 | `void:` | ops-bill.js, ops-closed.js |
-| `wlog:` | bot.js, ops-staff.js, pos.js |
-| `zpbs:` | bot.js |
+| `wlog:` | bot-main.js, bot-views.js, ops-staff.js, pos.js |
+| `zpbs:` | bot-main.js |
 
 ## Фронт (не каса)
 
