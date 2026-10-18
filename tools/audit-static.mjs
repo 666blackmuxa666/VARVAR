@@ -12,7 +12,7 @@ const P = all(pos), S = all(srv), out = [];
 const uniq = (re, txt) => [...new Set([...txt.matchAll(re)].map(m => m[1]))];
 
 // 1) кнопки каси
-const acts = uniq(/data-a="([A-Za-z0-9_]+)"/g, P), handled = new Set([...uniq(/case '([A-Za-z0-9_]+)'/g, P), ...uniq(/a === '([A-Za-z0-9_]+)'/g, P), ...uniq(/dataset\??\.a !== '([A-Za-z0-9_]+)'/g, P), ...uniq(/\[([^\]]*)\]\.includes\(a\)/g, P).flatMap(l => uniq(/'([A-Za-z0-9_]+)'/g, l))]);
+const acts = uniq(/data-a="([A-Za-z0-9_]+)"/g, P), handled = new Set([...uniq(/case '([A-Za-z0-9_]+)'/g, P), ...uniq(/a === '([A-Za-z0-9_]+)'/g, P), ...uniq(/dataset\??\.a !== '([A-Za-z0-9_]+)'/g, P), ...uniq(/closest\('\[data-a="([A-Za-z0-9_]+)"\]'\)/g, P),...uniq(/\[([^\]]*)\]\.includes\(a\)/g, P).flatMap(l => uniq(/'([A-Za-z0-9_]+)'/g, l))]);
 for (const a of acts) if (!handled.has(a)) out.push(`🖱 каса: кнопка data-a="${a}" — не знайдено обробника`);
 
 // 2) кнопки ботів

@@ -628,6 +628,18 @@ async function apiTests() {
   return true;
 }
 
+// 💨 Димовий тест: КОЖНА дія каси (усі api('op') з js/pos/*.js) з порожніми даними — сервер має відповісти помилкою, а не впасти (500).
+// Ловить «нова фіча зламала стару дію» (ReferenceError, undefined.x) там, де окремого тесту ще нема. Дії, що стирають/змінюють налаштування або платні (ШІ), — пропускаємо.
+async function smokeOps(A) {
+  sect('💨 Усі дії каси не падають');
+  const { readdirSync, readFileSync } = await import('node:fs'), D = new URL('../js/pos/', import.meta.url);
+  const src = readdirSync(D).filter(f => /^\d.*\.js$/.test(f)).map(f => readFileSync(new URL(f, D), 'utf8')).join('\n');
+  const skip = /^(reset|logout|jsErr|login|regCode)$|Set$|Save$|Del$|Clear$|Refund$|Merge$|Undo$|Ai$|Parse$|Photo$|Bench$|^push|^shift|Off$|Preset$|Pay$|Out$/;
+  const ops = [...new Set([...src.matchAll(/\b(?:api|act)\('([A-Za-z0-9_]+)'/g)].map(m => m[1]))].filter(o => !skip.test(o)).sort(), bad = [];
+  for (const o of ops) { const r = await pos(A, o, {}); if (r.status >= 500 && r.j.error === 'Помилка, спробуйте ще раз') bad.push(o); }
+  rec(`${ops.length} дій з порожніми даними`, !bad.length, bad.length ? 'впали (500): ' + bad.join(', ') : '');
+}
+
 // 🎁 лояльність (promo.js): рівень → автознижка, без складання з ручною, щасливі години, кошик сайту, звіт
 async function loyTests(A, W, dish) {
   sect('🎁 Лояльність: рівні й акції');
@@ -1188,6 +1200,7 @@ async function designPages(b) {
   let ok = true;
   try {
     if (!ARGS.includes('--ui-only')) ok = await apiTests();
+    if (ok !== false && !ARGS.includes('--ui-only') && users.admin?.token) await smokeOps(users.admin.token);
     if (ok !== false && !ARGS.includes('--api-only')) {
       if (!users.waiter) await step('реєстрація waiter для UI', () => register('waiter', '1112'));
       await uiTests();

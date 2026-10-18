@@ -6,6 +6,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # справжня тестова копія завжди поруч із ГОЛОВНИМ репозиторієм (а не з worktree помічника)
 TEST="$(cd "$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)/../.." && pwd)/.varvar-test"
 [ -d "$TEST/worker/src" ] || { echo "⚠️ не знайдено тестову копію $TEST"; exit 1; }
+# 🛡 спершу — швидка перевірка без сервера і свіжа збірка каси (забута збірка = стара каса в тестах)
+sh "$ROOT/tools/build-pos.sh" >/dev/null && node "$ROOT/tools/check.mjs" || { echo "❌ Перевірка не пройшла — виправ і запусти знову"; exit 1; }
 LOCK=/tmp/varvar-test.lock; WHO="$(basename "$ROOT")"
 i=0; until mkdir "$LOCK" 2>/dev/null; do
   [ $((i % 6)) -eq 0 ] && echo "⏳ тест зайнятий: $(cat $LOCK/who 2>/dev/null) — чекаю…"; i=$((i+1)); sleep 10

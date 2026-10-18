@@ -6,4 +6,5 @@ cd "$(dirname "$0")/.."
 rm -rf worker/.site && mkdir -p worker/.site/__src
 git ls-files --cached --others --exclude-standard | grep -vE '^(worker|tools|_team|\.github|\.claude)/|\.md$|^\.gitignore$|varvar-print\.config\.json$' | while IFS= read -r f; do [ -f "$f" ] && mkdir -p "worker/.site/$(dirname "$f")" && cp "$f" "worker/.site/$f"; done
 cp worker/src/*.js worker/.site/__src/
+node tools/stamp.mjs worker/.site
 echo "📦 Сайт: $(find worker/.site -type f | wc -l | tr -d ' ') файлів"
