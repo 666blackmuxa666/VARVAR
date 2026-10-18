@@ -77,6 +77,12 @@ export async function intApi(req, env, path) {
       const tok = String(b.MONO_TOKEN).trim(); if (!/^[\w-]{10,80}$/.test(tok)) return [{ error: 'Токен monobank: невірний формат' }, 400];
       const M = await import('./mono.js'), r = await M.monoCheck({ mono: 1, token: tok, sandbox: /^mono_test_/.test(tok) });
       if (r.error) return [{ error: 'monobank не приймає токен: ' + r.error }, 400]; f.MONO_TOKEN = tok; f.PAY_PROVIDER = 'mono'; }
+    if (b.CHECKBOX_LICENSE === '') { f.CHECKBOX_LICENSE = ''; f.CHECKBOX_PIN = ''; await env.DB.delete('fis:tok'); } // 🧾 відключити ПРРО
+    else if (b.CHECKBOX_LICENSE != null) { // 🧾 ПРРО Checkbox: ключ ліцензії каси + PIN касира — перевіряємо входом касира
+      const lic = String(b.CHECKBOX_LICENSE).trim(), pin = String(b.CHECKBOX_PIN || '').trim();
+      if (!/^[\w-]{6,80}$/.test(lic) || !/^\w{3,20}$/.test(pin)) return [{ error: 'Checkbox: потрібні ключ ліцензії каси й PIN касира' }, 400];
+      const r = await (await import('./fiscal.js')).fisCheck(env, lic, pin); if (r.error) return [{ error: r.error }, 400];
+      f.CHECKBOX_LICENSE = lic; f.CHECKBOX_PIN = pin; names.kasa = r.title + (r.test ? ' (тестова)' : ''); await env.DB.delete('fis:tok'); }
     if (b.LIQPAY_PUBLIC === '' && b.LIQPAY_PRIVATE === '') { f.LIQPAY_PUBLIC = ''; f.LIQPAY_PRIVATE = ''; } // 🗑 відключити LiqPay закладу
     else if (b.LIQPAY_PUBLIC != null || b.LIQPAY_PRIVATE != null) { // 💳 ключі LiqPay закладу: перевіряємо запитом статусу (неіснуючий order_id → відповідь з підписом прийнята)
       const pub = String(b.LIQPAY_PUBLIC || '').trim(), priv = String(b.LIQPAY_PRIVATE || '').trim();

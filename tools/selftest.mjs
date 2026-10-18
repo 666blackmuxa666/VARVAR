@@ -887,6 +887,32 @@ async function loyTests(A, W, dish) {
     const z3 = await vpos(VA, 'zDay', { print: false }); must(z3.j.z.total === z2.j.z.total, 'сума Z змінилась');
     const r3 = (await vpos(VA, 'shift')).j.rec; must(r3.sum === r2.sum, 'рівна виручка змінила рекорд'); must(z3.j.z.rec.beat === 0, 'рівна виручка = beat');
     must((await vpos(VA, 'cfgSet', { k: 'recBonus', v: 0 })).status === 200, 'recBonus reset'); return `рекорд ${r3.sum} ₴`; });
+  await step('🧾 ПРРО Checkbox (імітація): чек на закриття, повернення при знятті, службове внесення, Z; VARVAR не чіпається', async () => {
+    must((await posOk(A, 'fisInfo')).main === 1, 'VARVAR має бути поза ПРРО');
+    must((await ownT(PT, 'secrets', { venue: VID, f: { CHECKBOX_LICENSE: 'mock-test', CHECKBOX_PIN: 'bad' } })).status === 400, 'невірний PIN прийнято');
+    const sv = await ownT(PT, 'secrets', { venue: VID, f: { CHECKBOX_LICENSE: 'mock-test', CHECKBOX_PIN: '1234' } }); must(sv.j.ok && /Тестова/.test(sv.j.names?.kasa || ''), 'підключення: ' + JSON.stringify(sv.j).slice(0, 160));
+    try {
+      const it = (await http(`/v/${VID}/api/menu`)).j.categories.flatMap(c => c.items).find(i => typeof i.price === 'number');
+      { const o = await vpos(VA, 'order', { t: 6, items: [{ id: it.id, q: 2 }] }); must(o.status === 200, 'order ' + JSON.stringify(o.j).slice(0, 160)); }
+      const c = await vpos(VA, 'close', { t: 6, pay: 'card' }); must(c.status === 200, 'close ' + JSON.stringify(c.j).slice(0, 100));
+      let x; for (let i = 0; i < 20 && !x?.fis; i++) { await sleep(150); x = (await vpos(VA, 'closed')).j.list.filter(r => r.t === 6 && !r.rm).pop(); }
+      must(x?.fis?.st === 'ok' && x.fis.id, 'фіскальний стан: ' + JSON.stringify(x?.fis));
+      let m = (await vpos(VA, 'fisInfo')).j.mock, sell = m.filter(q => q.path === '/receipts/sell').pop()?.body;
+      must(m.some(q => q.path === '/shifts'), 'зміна Checkbox не відкрилась');
+      must(sell?.id === x.fis.id && sell.goods[0].quantity === 2000 && sell.goods.reduce((a, g) => a + g.good.price * g.quantity / 1000, 0) - (sell.discounts?.[0]?.value || 0) === x.sum * 100, 'тіло чека: ' + JSON.stringify(sell).slice(0, 200));
+      must(sell.payments.length === 1 && sell.payments[0].type === 'CASHLESS' && sell.payments[0].value === x.sum * 100, 'оплата карткою: ' + JSON.stringify(sell.payments));
+      must((await vpos(VA, 'fisRetry', { ref: x.id })).j.id === x.fis.id, 'повтор без змін створив новий чек');
+      must((await vpos(VA, 'closedDel', { ref: x.id })).status === 200, 'closedDel');
+      let y; for (let i = 0; i < 20 && !y?.fis?.ret; i++) { await sleep(150); y = (await vpos(VA, 'closed')).j.list.find(r => r.id === x.id); }
+      m = (await vpos(VA, 'fisInfo')).j.mock; const ret = m.filter(q => q.path === '/receipts/sell').pop()?.body;
+      must(y?.fis?.ret?.length === 1 && !y.fis.id && ret.goods.every(g => g.is_return) && ret.related_receipt_id === x.fis.id, 'повернення: ' + JSON.stringify(y?.fis));
+      must((await vpos(VA, 'cashMove', { type: 'in', sum: 100, note: 'QA' })).status === 200, 'cashMove');
+      m = (await vpos(VA, 'fisInfo')).j.mock; must(m.some(q => q.path === '/receipts/service' && q.body.payment.value === 10000), 'службове внесення');
+      const z = await vpos(VA, 'zDay', { print: false }); must(z.j.z.fis?.ok, 'Z у Checkbox: ' + JSON.stringify(z.j.z.fis));
+      m = (await vpos(VA, 'fisInfo')).j.mock; must(m.some(q => q.path === '/shifts/close'), 'зміна Checkbox не закрита');
+    } finally { await ownT(PT, 'secrets', { venue: VID, f: { CHECKBOX_LICENSE: '' } }); }
+    must((await vpos(VA, 'fisInfo')).j.on === 0, 'ПРРО не відключився');
+  });
   await step('⏳ черга в залі (wl): гість /api/wl — створення, дубль за телефоном, статус, скасування, ліміт 3/пристрій', async () => {
     const dev = 'qa-wl-' + Date.now(), ph = n => '067' + String(Date.now()).slice(-6) + n;
     // 🛡 index.js: wlip — не більше 6 POST /api/wl за годину з одного IP (спільний IP тестів вичерпується) → тест чесно пропускається

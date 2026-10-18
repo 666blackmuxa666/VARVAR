@@ -1,0 +1,82 @@
+<!doctype html><html lang="uk"><head><meta charset="utf-8"><title>ATOM 4 — Гість</title><link rel="stylesheet" href="../engine.css"><script src="timing.js"></script><style>
+.timer{width:520px;height:520px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--red) var(--a),#ffffff14 0);box-shadow:0 0 120px #ff453a66;position:relative}
+.timer::before{content:'';position:absolute;inset:26px;border-radius:50%;background:#111}
+.timer div{position:relative;font-size:170px;font-weight:900;letter-spacing:-.05em}
+.timer small{display:block;font-size:50px;color:var(--muted);text-align:center;margin-top:-20px}
+@keyframes arc{from{--a:0deg}to{--a:360deg}}
+.qr{width:420px;height:420px;background:#fff;border-radius:30px;padding:26px;display:grid;grid-template-columns:repeat(21,1fr);gap:0}
+.qr i{background:#111}.qr b{background:transparent}
+.kds{width:900px;background:#141416;border:3px solid #ffffff26;border-radius:40px;padding:30px;box-shadow:0 50px 120px #000;text-align:left}
+.ord{background:var(--gold);color:var(--ink);border-radius:26px;padding:26px 30px;font-size:40px;font-weight:900;line-height:1.3;box-shadow:0 0 80px #f2c14e66}
+.ord small{display:block;font-size:30px;font-weight:700;opacity:.75}
+.trace{position:absolute;inset:0;pointer-events:none}
+.trace path{fill:none;stroke:var(--gold);stroke-width:10;stroke-linecap:round;stroke-dasharray:1500;stroke-dashoffset:1500;filter:drop-shadow(0 0 16px #f2c14e)}
+@keyframes draw{to{stroke-dashoffset:0}}
+.pr{position:relative;display:inline-block}
+.mn{width:280px;height:420px;border-radius:44px;background:#141416;border:3px solid #ffffff26;padding:60px 20px 20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 30px 70px #000}
+.mn div{background:var(--card2);border-radius:16px;padding:14px;font-size:24px;font-weight:700;display:flex;justify-content:space-between}
+@keyframes upd{0%{box-shadow:0 0 0 0 #f2c14e}50%{box-shadow:0 0 0 14px #f2c14e88,0 0 80px #f2c14e}100%{box-shadow:0 30px 70px #000}}
+</style></head>
+<body data-slogan="Гості задоволені — <span class='g'>і ви теж</span>">
+<div id="stage"><div class="bg"></div><div class="grid"></div><div class="blob b1"></div><div class="blob b2"></div>
+
+<section class="sc pain" data-l="0"><div class="wrap"><div class="cam" style="gap:40px">
+  <div style="position:relative"><div class="timer a-zoom" data-an="arc 3.2s linear" data-t="-0.6"><div><span class="cnt a-cnt" data-t="-0.6" style="--to:10;--dur:3s"></span><small>хвилин</small></div></div>
+  <div class="abs emo l-wave a-drop" data-t="-0.5" style="right:-150px;top:-60px;transform-origin:bottom center">🙋</div></div>
+  <div class="col"><div class="hk a-slam" data-t="-0.4">щоб попросити</div><div class="hk r a-slam l-glitch" data-t="40%" style="font-size:190px">рахунок</div></div>
+</div></div></section>
+
+<section class="sc pain" data-l="1" data-cap="Гість не дочекався. *Пішов.*@0|Без десерту і без *чайових*@45%"><div class="wrap"><div class="cam">
+  <div class="rowx" style="gap:40px"><div class="emo a-zoom" data-t="0" data-x="25%" data-xa="away" data-xd="0.9">🚶</div><div class="emo a-zoom" data-t="0" data-x="50%" data-xa="dust" data-xd="1">🍰</div><div class="emo a-zoom" data-t="0" data-x="70%" data-xa="dust" data-xd="1">💸</div></div>
+  <div style="position:relative;width:800px;height:420px" data-stag="0.15" data-t="50%">
+    <div class="stk a-flyup" style="left:60px;top:300px;--dr:-12deg">−160 ₴ десерт</div>
+    <div class="stk a-flyup" style="left:380px;top:320px;--dr:14deg">−100 ₴ чайові</div>
+    <div class="stk a-flyup" style="left:200px;top:340px;--dr:6deg">−⭐</div>
+  </div>
+  <div class="t1 a-slam" data-t="65%">стіл <span class="r">порожній</span></div>
+</div></div></section>
+
+<section class="sc pain" data-l="2" data-cap="На кухні загубився *папірець*@0|Стіл чекає *40 хвилин*@55%"><div class="wrap"><div class="cam">
+  <div class="paper a-zoom l-bob" data-t="0" data-x="35%" data-xa="fall" data-xd="1.2" style="width:500px;rotate:5deg">СТІЛ 7<hr>Бургер ×2<br>Лимонад</div>
+  <div class="emo a-rise l-jit" data-t="40%" style="font-size:200px">🔥</div>
+  <div class="hk r a-stamp l-glitch" data-t="55%" style="--sr:-3deg;font-size:150px">стіл 7 · 40 хв</div>
+</div></div></section>
+
+<section class="sc ok" data-l="3" data-brk data-cap="Гість сканує *QR* і замовляє сам@0.9"><div class="wrap"><div class="cam">
+  <div class="phone a-phone l-bob" data-t="0.9" style="align-items:center">
+    <div class="ph-h">📷 Скануйте меню</div>
+    <div style="position:relative" data-x="62%"><div class="qr" id="qr"></div><div class="scan" style="position:absolute;left:0;right:0;height:8px;background:var(--gold);box-shadow:0 0 30px 10px #f2c14e99;top:0" data-an="scanq 1s ease-in-out" data-t="1.3"></div></div>
+    <div class="col" data-stag="0.2" data-t="64%" style="align-items:stretch;gap:12px;position:absolute;left:34px;right:34px;top:180px">
+      <div class="row a-sr"><span class="i">🍔</span>Бургер<b>290 ₴ ＋</b></div>
+      <div class="row a-sr"><span class="i">🍋</span>Лимонад<b>90 ₴ ＋</b></div>
+      <div class="row a-sr"><span class="i">🍰</span>Тірамісу<b>160 ₴ ＋</b></div>
+      <div class="btn a-zoom" data-t="90%">Замовити · 540 ₴</div>
+    </div>
+    <div class="tap a-tap" data-t="94%" style="left:310px;top:640px"></div>
+  </div>
+</div></div></section>
+
+<section class="sc ok" data-l="4" data-cap="Кухня бачить замовлення *за секунду*"><div class="wrap"><div class="cam" style="justify-content:space-between;padding-top:220px;padding-bottom:640px">
+  <div class="phone sm a-phone" data-t="0" style="width:300px;height:560px;border-radius:50px;padding:80px 18px 20px"><div class="btn" style="font-size:28px;padding:18px">✓ Замовлено</div></div>
+  <svg class="trace" viewBox="0 0 1080 1920"><path d="M540 820 C 900 900, 200 1000, 540 1180" data-an="draw .6s ease-in-out" data-t="0.4"/></svg>
+  <div class="kds a-rise" data-t="0.1"><div class="ph-h" style="margin-bottom:20px">👨‍🍳 Кухня <span class="live">онлайн</span></div>
+    <div class="ord a-stamp" data-t="1.0" style="--sr:0deg">Стіл 7 · Бургер ×1 · Лимонад ×1 · Тірамісу<small>щойно · QR-меню</small></div></div>
+  <div class="abs t1 g a-slam" data-t="1.1" style="top:1180px;right:80px;--sr:-8deg">⚡ 1 с</div>
+</div></div></section>
+
+<section class="sc ok" data-l="5" data-cap="Меню й ціни — *в один тап*"><div class="wrap"><div class="cam" style="gap:60px">
+  <div class="pr a-zoom" data-t="0"><span class="hk">290 ₴</span><div class="strike a-growx" data-t="30%"></div></div>
+  <div class="hk g a-slam" data-t="35%" style="font-size:200px">310 ₴</div>
+  <div class="tap a-tap" data-t="32%" style="left:540px;top:700px"></div>
+  <div class="rowx" data-stag="0.12" data-t="50%">
+    <div class="mn a-pop" data-an="upd .8s ease-out" data-t="55%"><div>Бургер<b>310</b></div><div>Лимонад<b>90</b></div></div>
+    <div class="mn a-pop" data-an="upd .8s ease-out" data-t="60%"><div>Бургер<b>310</b></div><div>Лимонад<b>90</b></div></div>
+    <div class="mn a-pop" data-an="upd .8s ease-out" data-t="65%"><div>Бургер<b>310</b></div><div>Лимонад<b>90</b></div></div>
+  </div>
+</div></div></section>
+
+</div><div id="ov"></div><div id="tr"></div><div class="caps" id="caps"></div><div class="vign"></div><div class="grain"></div>
+<style>@keyframes scanq{from{top:0}to{top:100%}}</style>
+<script>{let q='',sd=5;const r=()=>(sd=sd*16807%2147483647)/2147483647;const f=(x,y)=>[[0,0],[14,0],[0,14]].some(([a,b])=>x>=a&&x<a+7&&y>=b&&y<b+7);const fo=(x,y)=>{for(const[a,b]of[[0,0],[14,0],[0,14]])if(x>=a&&x<a+7&&y>=b&&y<b+7){const i=x-a,j=y-b;return i==0||j==0||i==6||j==6||(i>1&&i<5&&j>1&&j<5)}};for(let y=0;y<21;y++)for(let x=0;x<21;x++)q+=(f(x,y)?fo(x,y):r()>.5)?'<i></i>':'<b></b>';document.getElementById('qr').innerHTML=q}</script>
+<script>window.SFX=[[0,-0.6,"tick"],[0,0,"tick"],[0,0.5,"tick"],[0,1,"tick"],[0,1.5,"tick"],[0,"40%","boom"],[1,"25%","swipe"],[1,"50%","whoosh"],[1,"65%","boom"],[2,"35%","whoosh"],[2,"55%","boom"],[3,1.3,"swipe"],[3,"64%","click"],[3,"94%","click"],[4,0.4,"swipe"],[4,1.0,"ding"],[4,1.1,"boom"],[5,"30%","click"],[5,"35%","boom"],[5,"55%","ding"]];</script>
+<script src="../engine.js"></script></body></html>

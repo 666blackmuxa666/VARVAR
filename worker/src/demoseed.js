@@ -49,6 +49,7 @@ export async function demoArt(env) {
 
 // full — уперше: меню, персонал, сайт. Без full — лише історія (після відновлення еталону).
 export async function demoSeed(env, { full = false, days = 14 } = {}) {
+  env = { ...env, NOFIS: 1 }; // 🧾 видумана історія — без фіскальних чеків
   if (env.VENUE !== 'atom-demo') return { error: 'лише для atom-demo' };
   if (full) {
     await importMenu(env, DEMO_MENU, true);

@@ -219,11 +219,13 @@ export async function closedOne(env, ref) {
   if (!x) return { text: 'Рахунок не знайдено.' };
   const lines = (x.dishes || []).map(([n, q, sum]) => `${q}× ${n} — ${sum}`);
   const gone = x.del || x.rm;
+  const fis = !x.fis ? '' : x.fis.st === 'err' ? `\n\n🧾⚠️ Checkbox: ${esc(x.fis.err || 'помилка')}` : x.fis.id ? `\n\n🧾 <a href="https://check.checkbox.ua/${x.fis.id}">Фіскальний чек</a>` : x.fis.ret?.length ? '\n\n🧾 Фіскальний чек повернено' : '';
   return {
-    text: `🧾 <b>Стіл ${tn(x.t)}</b> · закрито о ${x.at}${x.by ? ` · ${esc(x.by)}` : ''}\n\n${lines.length ? lines.map(esc).join('\n') : '<i>(перелік страв не збережено — рахунок закрито до оновлення)</i>'}\n\n${x.disc ? `Сума ${money(x.gross)} − знижка ${x.disc}%\n` : ''}Разом: <b>${money(x.sum)}</b>${x.tip ? ` (в т.ч. 💝 чайові ${money(x.tip)})` : ''} · ${payLabel(x.cash ?? x.sum, x.card || 0)}${x.voids?.length ? `\n\n🚫 <b>Скасування:</b>\n${x.voids.map(v => `${v.at} −${v.sum} ${esc(v.name)} — <i>${esc(v.reason)}</i> (${esc(v.by)})`).join('\n')}` : ''}${gone ? '\n\n🗑 Видалено з виручки' : ''}`,
+    text: `🧾 <b>Стіл ${tn(x.t)}</b> · закрито о ${x.at}${x.by ? ` · ${esc(x.by)}` : ''}\n\n${lines.length ? lines.map(esc).join('\n') : '<i>(перелік страв не збережено — рахунок закрито до оновлення)</i>'}\n\n${x.disc ? `Сума ${money(x.gross)} − знижка ${x.disc}%\n` : ''}Разом: <b>${money(x.sum)}</b>${x.tip ? ` (в т.ч. 💝 чайові ${money(x.tip)})` : ''} · ${payLabel(x.cash ?? x.sum, x.card || 0)}${x.voids?.length ? `\n\n🚫 <b>Скасування:</b>\n${x.voids.map(v => `${v.at} −${v.sum} ${esc(v.name)} — <i>${esc(v.reason)}</i> (${esc(v.by)})`).join('\n')}` : ''}${gone ? '\n\n🗑 Видалено з виручки' : ''}${fis}`,
     markup: { inline_keyboard: [[...(lines.length ? [{ text: '🖨 Друкувати чек', callback_data: 'cvp:' + ref }] : []), ...(gone ? [] : [{ text: '🗑 Видалити з виручки', callback_data: 'dc:' + ref }])],
       [...(!x.del && !x.reopen && lines.length ? [{ text: '↩️ Відкрити знову', callback_data: 'cvro:' + ref }] : []), ...(x.rm && !x.reopen && !x.del ? [{ text: '↩️ Повернути у виручку', callback_data: 'cvbk:' + ref }] : []), ...(x.del && !x.restored && lines.length ? [{ text: '↩️ Відновити стіл', callback_data: 'tbk:' + ref }] : [])],
       ...(gone ? [] : [[{ text: '✏️ Редагувати чек', callback_data: 'ce:' + ref }]]),
+      ...(x.fis?.st === 'err' ? [[{ text: '🧾 Повторити фіскальний чек', callback_data: 'fsr:' + ref }]] : []),
       [{ text: '⬅️ Назад', callback_data: 'cvb' }]] },
   };
 }

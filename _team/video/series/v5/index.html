@@ -1,0 +1,84 @@
+<!doctype html><html lang="uk"><head><meta charset="utf-8"><title>ATOM 5 — Доставка</title><link rel="stylesheet" href="../engine.css"><script src="timing.js"></script><style>
+.pz{position:relative;width:560px;height:560px}
+.pzb,.sl{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 30% 35%,#c0392b 0 30px,transparent 31px),radial-gradient(circle at 62% 30%,#c0392b 0 30px,transparent 31px),radial-gradient(circle at 45% 62%,#c0392b 0 30px,transparent 31px),radial-gradient(circle at 70% 60%,#c0392b 0 28px,transparent 29px),radial-gradient(circle,#ffcf5a 0 62%,#e7a33a 63% 72%,#c9842a 73%);box-shadow:0 40px 100px #000c}
+.pzb{clip-path:polygon(50% 50%,100% 15%,100% 0,0 0,0 100%,100% 100%,100% 50%)}
+.sl{clip-path:polygon(50% 50%,100% 15%,100% 50%)}
+@keyframes cut{to{translate:280px -200px;rotate:25deg}}
+@keyframes back{from{translate:280px -200px;rotate:25deg}to{translate:0 0;rotate:0deg}}
+.lbl{position:absolute;right:-150px;top:-10px;background:var(--red);color:#fff;font-size:44px;font-weight:900;padding:12px 26px;border-radius:18px;rotate:10deg;white-space:nowrap}
+.map{position:relative;width:940px;height:900px;border-radius:50px;overflow:hidden;background:#13161c;border:2px solid var(--line2);box-shadow:0 50px 120px #000}
+.map::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 46%,#2a2f3a 46% 54%,transparent 54%),linear-gradient(transparent 30%,#2a2f3a 30% 36%,transparent 36%),linear-gradient(transparent 70%,#2a2f3a 70% 75%,transparent 75%),linear-gradient(90deg,transparent 15%,#22262f 15% 19%,transparent 19%),linear-gradient(90deg,transparent 78%,#22262f 78% 82%,transparent 82%)}
+.scoot{position:absolute;font-size:100px;offset-path:path('M450 420 C 700 200, 800 700, 450 650 C 100 600, 200 150, 450 420');offset-rotate:0deg}
+@keyframes mv{to{offset-distance:100%}}
+.therm{width:70px;height:420px;border-radius:40px;background:#ffffff1a;border:4px solid #fff4;position:relative;overflow:hidden}
+.therm i{position:absolute;left:0;right:0;bottom:0;height:90%;background:linear-gradient(#ff8a3d,var(--red))}
+@keyframes cool{to{height:12%;background:linear-gradient(#5ac8fa,#0a84ff)}}
+.stars{font-size:90px;letter-spacing:6px}
+.route{position:absolute;inset:0}
+.route path{fill:none;stroke:var(--gold);stroke-width:12;stroke-linecap:round;stroke-dasharray:1600;stroke-dashoffset:1600;filter:drop-shadow(0 0 18px #f2c14e)}
+@keyframes draw{to{stroke-dashoffset:0}}
+.scoot2{position:absolute;font-size:90px;offset-path:path('M140 780 L 140 640 L 470 640 L 470 290 L 790 290 L 790 130');offset-rotate:0deg}
+</style></head>
+<body data-slogan="Ваша доставка — <span class='g'>ваші гроші</span>">
+<div id="stage"><div class="bg"></div><div class="grid"></div><div class="blob b1"></div><div class="blob b2"></div>
+
+<section class="sc pain" data-l="0"><div class="wrap"><div class="cam" style="gap:60px">
+  <div class="col"><div class="hk a-slam" data-t="-0.6" style="--sx:-500px">Скільки ви</div><div class="hk a-slam" data-t="-0.45" style="--sx:500px">віддаєте</div><div class="hk r a-slam l-glitch" data-t="55%" style="font-size:150px">за доставку?</div></div>
+  <div class="pz a-zoom l-spin" data-t="-0.6" style="animation-duration:12s"><div class="pzb"></div><div class="sl" data-an="cut .7s var(--back)" data-t="35%"><div class="lbl a-stamp" data-t="45%" style="--sr:-10deg">комісія</div></div></div>
+</div></div></section>
+
+<section class="sc pain" data-l="1" data-cap="Вайбер, *дзвінки* і «а куди *їхати?*»"><div class="wrap"><div class="cam">
+  <div class="emo a-zoom l-buzz" data-t="0">📱</div>
+  <div style="position:relative;width:960px;height:720px">
+    <div class="stk gray a-chip l-jit" data-t="5%" style="left:0;top:0;rotate:-5deg">💬 Де моє замовлення?</div>
+    <div class="stk gray a-chip l-jit" data-t="18%" style="left:260px;top:130px;rotate:4deg">📞 Пропущений · 4</div>
+    <div class="stk gray a-chip l-jit" data-t="30%" style="left:40px;top:260px;rotate:-3deg">💬 Яка адреса?</div>
+    <div class="stk gray a-chip l-jit" data-t="42%" style="left:380px;top:390px;rotate:6deg">💬 Передзвоніть!!</div>
+    <div class="stk a-chip l-jit" data-t="62%" style="left:120px;top:530px;rotate:-6deg;font-size:84px">А куди їхати? 🤷</div>
+  </div>
+</div></div></section>
+
+<section class="sc pain" data-l="2" data-cap="Кур'єр *заблукав*. Їжа *охолола*. Гість — *злий*"><div class="wrap"><div class="cam" style="gap:40px">
+  <div class="map a-zoom" data-t="0" style="height:480px"><div class="scoot" data-an="mv 2.2s linear" data-t="0">🛵</div><div class="abs t1 a-stamp" data-t="10%" style="left:40px;top:30px;--sr:-5deg">❓</div></div>
+  <div class="rowx" style="gap:70px">
+    <div class="therm a-pop" style="height:300px" data-t="30%"><i data-an="cool 1.4s ease-in" data-t="35%"></i></div>
+    <div class="emo a-zoom l-jit" data-t="66%" style="font-size:220px">😡</div>
+  </div>
+  <div class="stars"><span class="a-pop" data-t="0" data-x="70%" data-xa="fall" data-xd="1">⭐</span><span class="a-pop" data-t="0" data-x="74%" data-xa="fall" data-xd="1">⭐</span><span class="a-pop" data-t="0" data-x="78%" data-xa="fall" data-xd="1">⭐</span><span class="a-pop" data-t="0" data-x="82%" data-xa="fall" data-xd="1">⭐</span><span class="a-pop" data-t="0">⭐</span></div>
+</div></div></section>
+
+<section class="sc ok" data-l="3" data-brk data-cap="Свій *сайт замовлень*@0.9|Гість замовляє *напряму*@55%"><div class="wrap"><div class="cam">
+  <div class="phone a-phone l-bob" data-t="0.9">
+    <div class="ph-h">🍕 Ваш заклад · доставка</div>
+    <div class="col" data-stag="0.2" data-t="1.4" style="align-items:stretch;gap:14px">
+      <div class="row a-sr"><span class="i">🍕</span><div>Піца «Пепероні»<small>32 см</small></div><b>320 ₴</b></div>
+      <div class="row a-sr"><span class="i">🥗</span><div>Цезар</div><b>190 ₴</b></div>
+      <div class="row a-sr"><span class="i">🥤</span><div>Лимонад</div><b>90 ₴</b></div>
+      <div class="row okk a-sr"><span class="i">📍</span><div>Доставка<small>вул. Шевченка, 12</small></div><b>✓</b></div>
+    </div>
+    <div class="btn a-zoom l-pulse" data-t="70%" style="margin-top:auto">Замовити · 600 ₴</div>
+    <div class="tap a-tap" data-t="85%" style="left:310px;top:1000px"></div>
+  </div>
+  <div class="abs chip okk a-stamp" data-t="88%" style="top:330px;right:50px;--sr:8deg">0% комісії</div>
+</div></div></section>
+
+<section class="sc ok" data-l="4" data-cap="Кур'єр одразу отримує *адресу й маршрут*"><div class="wrap"><div class="cam" style="gap:30px">
+  <div class="nt a-drop" data-t="0"><span class="i">🛵</span><div>Нове замовлення<small>вул. Шевченка, 12 · 600 ₴</small></div><b>зараз</b></div>
+  <div class="map a-zoom" data-t="0.1" style="height:900px">
+    <svg class="route" viewBox="0 0 940 900"><path d="M140 780 L 140 640 L 470 640 L 470 290 L 790 290 L 790 130" data-an="draw 1.6s ease-in-out" data-t="20%"/></svg>
+    <div class="abs emo a-drop" data-t="55%" style="font-size:110px;left:740px;top:20px">📍</div>
+    <div class="scoot2" data-an="mv 2s ease-in-out" data-t="35%">🛵</div>
+  </div>
+</div></div></section>
+
+<section class="sc ok" data-l="5" data-cap="Без хаосу. І без *чужих комісій*"><div class="wrap"><div class="cam" style="gap:50px">
+  <div class="pz a-zoom" data-t="0"><div class="pzb"></div><div class="sl" data-an="back .8s var(--back)" data-t="0.2"></div></div>
+  <div class="col" style="gap:20px">
+    <div class="t1 a-sl" data-t="5%"><span class="check">✓</span> Без хаосу</div>
+    <div class="t1 a-sr" data-t="40%"><span class="check">✓</span> <span class="g">Без комісій</span></div>
+  </div>
+</div></div></section>
+
+</div><div id="ov"></div><div id="tr"></div><div class="caps" id="caps"></div><div class="vign"></div><div class="grain"></div>
+<script>window.SFX=[[0,-0.5,"whoosh"],[0,"35%","swipe"],[0,"45%","boom"],[1,0,"buzz"],[1,"18%","buzz"],[1,"42%","buzz"],[1,"62%","boom"],[2,"30%","whoosh"],[2,"66%","boom"],[2,"70%","tick"],[2,"74%","tick"],[2,"78%","tick"],[2,"82%","tick"],[3,"70%","click"],[3,"85%","click"],[3,"88%","ding"],[4,0,"ding"],[4,"20%","swipe"],[4,"55%","boom"],[5,0.2,"swipe"],[5,"5%","click"],[5,"40%","ding"]];</script>
+<script src="../engine.js"></script></body></html>

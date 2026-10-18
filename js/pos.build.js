@@ -2131,6 +2131,10 @@ var __objRest = (source, exclude) => {
     var _a2;
     return x.onl ? x.onl < x.sum ? `\u{1F310} \u043E\u043D\u043B\u0430\u0439\u043D ${money(x.onl)} + ${x.card > x.onl ? "\u{1F4B3}" : "\u{1F4B5}"} ${money(x.sum - x.onl)}` : "\u{1F310} \u043E\u043D\u043B\u0430\u0439\u043D" : x.card && ((_a2 = x.cash) != null ? _a2 : 0) ? `\u{1F4B5} ${money(x.cash)} + \u{1F4B3} ${money(x.card)}` : x.card ? "\u{1F4B3} \u043A\u0430\u0440\u0442\u0430" : "\u{1F4B5} \u0433\u043E\u0442\u0456\u0432\u043A\u0430";
   };
+  const fisNote = (x, ref) => {
+    var _a2, _b2;
+    return !x.fis ? "" : x.fis.st === "err" ? `<div class="c-note" style="color:var(--red,#e66)">\u{1F9FE}\u26A0\uFE0F Checkbox: ${esc(x.fis.err || "\u043F\u043E\u043C\u0438\u043B\u043A\u0430")}${isAdmin() ? ` <button class="c-b" data-a="cFis" data-ref="${ref}" data-d="${S.data.cday || ""}">\u{1F501} \u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0438</button>` : ""}</div>` : x.fis.id ? `<div class="c-note">\u{1F9FE} \u0424\u0456\u0441\u043A\u0430\u043B\u044C\u043D\u0438\u0439 \u0447\u0435\u043A: <a href="https://check.checkbox.ua/${esc(x.fis.id)}" target="_blank" rel="noopener">\u0432\u0456\u0434\u043A\u0440\u0438\u0442\u0438</a>${((_a2 = x.fis.ret) == null ? void 0 : _a2.length) ? ` \xB7 \u21A9\uFE0F \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u044C ${x.fis.ret.length}` : ""}</div>` : ((_b2 = x.fis.ret) == null ? void 0 : _b2.length) ? `<div class="c-note">\u{1F9FE} \u0424\u0456\u0441\u043A\u0430\u043B\u044C\u043D\u0438\u0439 \u0447\u0435\u043A \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043E</div>` : "";
+  };
   function closedHTML() {
     const l = S.data.closed;
     if (!l) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
@@ -2157,9 +2161,9 @@ var __objRest = (source, exclude) => {
         !g && adm && B("cDel", ref, "\u{1F5D1}", "bad", ' title="\u0417\u043D\u044F\u0442\u0438 \u0437 \u0432\u0438\u0440\u0443\u0447\u043A\u0438"')
       ].filter(Boolean).join("");
       const items = (x.dishes || []).map(([n, q, s]) => `<div><span>${q}\xD7 ${esc(n)}</span><b>${s}</b></div>`).join("");
-      return `<details class="c-card k-${kind(x)}${g ? " gone" : ""}"><summary><span class="c-tm">${x.at}</span><span class="c-t">\u0421\u0442\u0456\u043B ${tn(x.t)}</span><span class="c-pay">${stat(x)}${x.disc ? ` \xB7 \u2212${x.disc}%` : ""}</span><b class="money c-sum">${money(x.sum)}</b></summary>
+      return `<details class="c-card k-${kind(x)}${g ? " gone" : ""}"><summary><span class="c-tm">${x.at}</span><span class="c-t">\u0421\u0442\u0456\u043B ${tn(x.t)}</span><span class="c-pay">${stat(x)}${x.disc ? ` \xB7 \u2212${x.disc}%` : ""}${x.fis ? x.fis.st === "err" ? " \xB7 \u{1F9FE}\u26A0\uFE0F" : " \xB7 \u{1F9FE}" : ""}</span><b class="money c-sum">${money(x.sum)}</b></summary>
         <div class="c-body">${items ? `<div class="c-items">${items}</div>` : ""}${x.tip ? `<div class="c-note">\u{1F49D} \u0447\u0430\u0439\u043E\u0432\u0456 ${money(x.tip)}</div>` : ""}${x.by ? `<div class="c-note">\u{1F464} ${esc(x.by)}${((_f = x.edits) == null ? void 0 : _f.length) ? ` \xB7 \u270F\uFE0F \u0437\u043C\u0456\u043D\u0435\u043D\u043E ${x.edits.length}\xD7 (${esc(x.edits[x.edits.length - 1].by)} ${x.edits[x.edits.length - 1].at})` : ""}</div>` : ""}
-        ${((_g = x.voids) == null ? void 0 : _g.length) ? `<div class="voids">\u{1F6AB} \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E:${x.voids.map((v) => `<div>${v.at} \xB7 \u2212${money(v.sum)} ${esc(v.name)} \u2014 <i>${esc(v.reason)}</i> <span class="muted">(${esc(v.by)})</span></div>`).join("")}</div>` : ""}${btns ? `<div class="c-btns">${btns}</div>` : ""}</div></details>`;
+        ${((_g = x.voids) == null ? void 0 : _g.length) ? `<div class="voids">\u{1F6AB} \u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u043E:${x.voids.map((v) => `<div>${v.at} \xB7 \u2212${money(v.sum)} ${esc(v.name)} \u2014 <i>${esc(v.reason)}</i> <span class="muted">(${esc(v.by)})</span></div>`).join("")}</div>` : ""}${fisNote(x, ref)}${btns ? `<div class="c-btns">${btns}</div>` : ""}</div></details>`;
     };
     const voids = (S.data.cvoids || []).length ? `<details class="c-card k-rm"><summary><span class="c-tm">\u{1F6AB}</span><span class="c-t">\u0421\u043A\u0430\u0441\u043E\u0432\u0430\u043D\u0456 \u0441\u0442\u0440\u0430\u0432\u0438</span><span class="c-pay">${S.data.cvoids.length} \u0448\u0442.</span><b class="money c-sum">${money(S.data.cvoids.reduce((s, v) => s + (v.sum || 0), 0))}</b></summary><div class="c-body">${[...S.data.cvoids].reverse().map((v) => `<div class="kv"><span>${v.at} \xB7 \u0441\u0442\u0456\u043B ${tn(v.t)} \xB7 <b>${esc(v.name)}</b> \u2014 <i>${esc(v.reason || "")}</i> <span class="muted">(${esc(v.by || "")})</span></span><span class="kv-r"><b class="money">${money(v.sum)}</b>${isToday && isAdmin() ? `<button class="c-b ok" data-a="vBack" data-ts="${v.ts}">\u21A9\uFE0F \u041D\u0430 \u0441\u0442\u0456\u043B</button>` : ""}</span></div>`).join("")}</div></details>` : "";
     return `${top}<div class="c-list">${[...l].reverse().map(card).join("") || `<div class="c-empty">\u{1F9FE} ${isToday ? "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0437\u0430\u043A\u0440\u0438\u0442\u0438\u0445 \u0440\u0430\u0445\u0443\u043D\u043A\u0456\u0432 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454" : "\u0426\u044C\u043E\u0433\u043E \u0434\u043D\u044F \u0437\u0430\u043A\u0440\u0438\u0442\u0438\u0445 \u0440\u0430\u0445\u0443\u043D\u043A\u0456\u0432 \u043D\u0435\u043C\u0430\u0454"}</div>`}${voids}</div>`;
@@ -2712,6 +2716,11 @@ var __objRest = (source, exclude) => {
       loadView();
       return;
     }
+  });
+  on("cFis", async (el) => {
+    const r = await api("fisRetry", { ref: el.dataset.ref, day: el.dataset.d || void 0 });
+    toast(r.st === "err" ? "\u26A0\uFE0F " + (r.err || "Checkbox \u043D\u0435 \u043F\u0440\u0438\u0439\u043D\u044F\u0432") : "\u{1F9FE} \u0427\u0435\u043A \u0444\u0456\u0441\u043A\u0430\u043B\u0456\u0437\u043E\u0432\u0430\u043D\u043E");
+    loadView();
   });
   const RXS = ["\u{1F44D}", "\u2705", "\u{1F525}", "\u2764\uFE0F", "\u{1F602}", "\u{1F62E}"];
   const QUICK = ["\u{1F3C3} \u0406\u0434\u0443", "\u23F1 5 \u0445\u0432", "\u26D4 \u041D\u0435\u043C\u0430 \u0432 \u043D\u0430\u044F\u0432\u043D\u043E\u0441\u0442\u0456", "\u2705 \u041F\u0440\u0438\u0439\u043D\u044F\u0432", "\u{1F37D} \u0413\u043E\u0442\u043E\u0432\u043E", "\u{1F44C} \u041E\u043A"];

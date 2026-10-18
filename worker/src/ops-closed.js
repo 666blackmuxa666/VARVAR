@@ -1,6 +1,7 @@
 // 🧾 Закриті рахунки: список, видалення/повернення, редагування, повторне відкриття, відновлення стола, передрук
 // (частина ops.js — інші файли імпортують з ops.js, як і раніше)
 import { cliTouch } from './delivery.js';
+import { fisSafe } from './fiscal.js';
 import { addTipBal, getVoids, splitTip, tipSplitOf } from './ops-bill.js';
 import { L, addDishes, addStat, bump, cDay, dayKey, getBill, hhmm, logEvent, pct, putBill } from './ops-core.js';
 import { queuePrint, receipt } from './print.js';
@@ -144,8 +145,8 @@ export async function reprintClosed(env, ref, who, day = dayKey()) {
   return true;
 }
 async function billBack(env, ...a) { return L(env, 'bills', () => _billBack(env, ...a)); }
-export async function delClosed(env, ref, day) { day = cDay(day); return L(env, 'closed:' + day, () => _delClosed(env, ref, day)); }
-export async function editClosed(env, ref, p, who, day) { day = cDay(day); return L(env, 'closed:' + day, () => _editClosed(env, ref, p || {}, who, day)); }
-export async function restoreClosed(env, ref, who, day) { day = cDay(day); return L(env, 'closed:' + day, () => _restoreClosed(env, ref, who, day)); }
-export async function reopenClosed(env, ref, who, day) { day = cDay(day); return L(env, ['bills', 'closed:' + day], () => _reopenClosed(env, ref, who, day)); }
-export async function restoreTable(env, ref, who, day) { day = cDay(day); return L(env, ['bills', 'closed:' + day, 'void:' + day], () => _restoreTable(env, ref, who, day)); }
+export async function delClosed(env, ref, day) { day = cDay(day); const r = await L(env, 'closed:' + day, () => _delClosed(env, ref, day)); fisSafe(env, day, (r?.x || r)?.id || (typeof ref === 'string' && !/^\d+$/.test(ref) ? ref : '')); return r; }
+export async function editClosed(env, ref, p, who, day) { day = cDay(day); const r = await L(env, 'closed:' + day, () => _editClosed(env, ref, p || {}, who, day)); fisSafe(env, day, (r?.x || r)?.id || (typeof ref === 'string' && !/^\d+$/.test(ref) ? ref : '')); return r; }
+export async function restoreClosed(env, ref, who, day) { day = cDay(day); const r = await L(env, 'closed:' + day, () => _restoreClosed(env, ref, who, day)); fisSafe(env, day, (r?.x || r)?.id || (typeof ref === 'string' && !/^\d+$/.test(ref) ? ref : '')); return r; }
+export async function reopenClosed(env, ref, who, day) { day = cDay(day); const r = await L(env, ['bills', 'closed:' + day], () => _reopenClosed(env, ref, who, day)); fisSafe(env, day, (r?.x || r)?.id || (typeof ref === 'string' && !/^\d+$/.test(ref) ? ref : '')); return r; }
+export async function restoreTable(env, ref, who, day) { day = cDay(day); const r = await L(env, ['bills', 'closed:' + day, 'void:' + day], () => _restoreTable(env, ref, who, day)); fisSafe(env, day, (r?.x || r)?.id || (typeof ref === 'string' && !/^\d+$/.test(ref) ? ref : '')); return r; }

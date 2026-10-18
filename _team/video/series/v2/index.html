@@ -1,0 +1,110 @@
+<!doctype html><html lang="uk"><head><meta charset="utf-8"><title>ATOM 2 — Склад</title><link rel="stylesheet" href="../engine.css"><script src="timing.js"></script><style>
+.fridge{position:relative;width:520px;height:620px;border-radius:36px;background:radial-gradient(circle at 50% 40%,#bfe8ff,#4aa8e0 55%,#0e3b5c);box-shadow:0 0 160px #4aa8e099,inset 0 0 60px #fff8;display:grid;place-items:center;perspective:1400px}
+.door{position:absolute;inset:-6px;border-radius:36px;background:linear-gradient(135deg,#e9edf1,#9aa4ad);border:4px solid #fff6;transform-origin:left;box-shadow:inset -20px 0 40px #0003}
+.door::after{content:'';position:absolute;right:40px;top:200px;width:22px;height:200px;border-radius:12px;background:#6b737a}
+@keyframes open{to{transform:rotateY(-108deg)}}
+.fog{position:absolute;inset:0;border-radius:36px;background:radial-gradient(circle,#ffffff66,transparent 70%);animation:bob 2s ease-in-out infinite}
+.vs{font-size:110px;font-weight:900;color:var(--red)}
+.box{width:440px;padding:40px 20px;border-radius:40px;background:var(--card);border:2px solid var(--line2);display:flex;flex-direction:column;align-items:center;gap:10px;box-shadow:0 40px 90px #000b}
+.box b{font-size:150px;font-weight:900;letter-spacing:-.05em;line-height:1}
+.sheet{position:absolute;width:520px;height:640px;background:#f5f1e8;border-radius:10px;box-shadow:0 20px 50px #000a;left:50%;margin-left:-260px;padding:40px;font:700 30px/1.7 ui-monospace,Menlo;color:#26221c88;text-align:left}
+.clock{width:300px;height:300px;border-radius:50%;border:12px solid #fff;position:relative;background:#111;box-shadow:0 0 80px #ff453a55}
+.clock i{position:absolute;left:50%;bottom:50%;width:12px;margin-left:-6px;border-radius:6px;background:#fff;transform-origin:bottom}
+.clock i:nth-child(1){height:110px;animation:spin .6s linear infinite}.clock i:nth-child(2){height:80px;background:var(--red);animation:spin 7s linear infinite}
+.burger{display:flex;flex-direction:column;align-items:center}
+.lay{display:flex;align-items:center;gap:30px;font-size:150px;line-height:.82;height:120px}
+.lay .q{font-size:56px;font-weight:900;color:var(--red);width:160px;text-align:left}
+@keyframes split{from{margin:-28px 0}to{margin:14px 0}}
+.vf{position:absolute;inset:150px 50px 230px;border:0}
+.vf i{position:absolute;width:80px;height:80px;border:8px solid var(--gold)}
+.vf i:nth-child(1){left:0;top:0;border-right:0;border-bottom:0}.vf i:nth-child(2){right:0;top:0;border-left:0;border-bottom:0}.vf i:nth-child(3){left:0;bottom:0;border-right:0;border-top:0}.vf i:nth-child(4){right:0;bottom:0;border-left:0;border-top:0}
+.scan{position:absolute;left:40px;right:40px;height:6px;background:var(--gold);box-shadow:0 0 30px 8px #f2c14e99;top:160px}
+@keyframes scan{to{top:820px}}
+.camfl{position:absolute;inset:0;background:#fff;opacity:0;z-index:9}
+@keyframes cflash{0%{opacity:0}10%{opacity:1}100%{opacity:0}}
+.mini{width:480px;margin:auto;padding:30px;font:700 26px/1.7 ui-monospace,Menlo;background:#f5f1e8;color:#26221c;border-radius:10px;rotate:-2deg}
+.marg{display:flex;gap:20px;width:100%}
+.marg div{flex:1;background:var(--card2);border-radius:22px;padding:18px;text-align:center;font-size:24px;color:var(--muted);font-weight:700}
+.marg b{display:block;font-size:44px;color:var(--text)}
+</style></head>
+<body data-slogan="Склад, який <span class='g'>не бреше</span>">
+<div id="stage"><div class="bg"></div><div class="grid"></div><div class="blob b1"></div><div class="blob b2"></div>
+
+<section class="sc pain" data-l="0"><div class="wrap"><div class="cam" style="gap:50px">
+  <div class="col">
+    <div class="hk a-slam" data-t="-0.6" style="--sx:-500px">Скільки</div>
+    <div class="hk g a-slam" data-t="-0.4" style="--sx:500px;--sr:6deg;font-size:170px">лосося</div>
+  </div>
+  <div class="fridge a-zoom" data-t="-0.5"><div class="fog"></div><div class="emo l-bob" style="font-size:230px">🐟</div><div class="hk r l-glitch abs" style="font-size:300px;right:-40px;top:-80px">?</div><div class="door" data-an="open 1s var(--ez)" data-t="25%"></div></div>
+  <div class="hk ol a-slam" data-t="60%">насправді?</div>
+</div></div></section>
+
+<section class="sc pain" data-l="1" data-cap="За накладною — *5 кг*@0|А в холодильнику — *3 кг*@48%"><div class="wrap"><div class="cam">
+  <div class="rowx">
+    <div class="box a-sl" data-t="0"><span class="t3">📄 Накладна</span><b>5</b><span class="t3">кг лосося</span></div>
+    <div class="box a-sr" data-t="48%" style="border-color:#ff453a88"><span class="t3">🧊 Холодильник</span><b class="r">3</b><span class="t3">кг лосося</span></div>
+  </div>
+  <div class="vs a-stamp l-pulse" data-t="75%" style="--sr:0deg">−2 кг ?</div>
+</div></div></section>
+
+<section class="sc pain" data-l="2" data-cap="Вечір неділі — з *калькулятором* і стосом накладних"><div class="wrap"><div class="cam" style="gap:60px">
+  <div class="rowx" style="gap:60px"><div class="clock a-zoom" data-t="0"><i></i><i></i></div><div class="emo a-drop l-buzz" data-t="15%">🧮</div></div>
+  <div style="position:relative;width:700px;height:700px" data-stag="0.18" data-t="10%">
+    <div class="sheet a-drop" style="top:300px;--dr:-20deg;rotate:-8deg">ТОВ «М'ясо»<br>Свинина 12кг</div>
+    <div class="sheet a-drop" style="top:250px;--dr:15deg;rotate:6deg">Накладна №118</div>
+    <div class="sheet a-drop" style="top:200px;--dr:-10deg;rotate:-3deg">Овочі ФОП…</div>
+    <div class="sheet a-drop" style="top:150px;--dr:25deg;rotate:9deg">Молочка №44</div>
+    <div class="sheet a-drop" style="top:100px;--dr:-25deg;rotate:-6deg">Риба №7</div>
+    <div class="sheet a-drop" style="top:50px;--dr:10deg;rotate:4deg">Напої №212</div>
+    <div class="sheet a-drop" style="top:0;--dr:-5deg;rotate:-2deg">Накладна №3…</div>
+  </div>
+</div></div></section>
+
+<section class="sc pain" data-l="3" data-cap="А скільки коштує *один бургер?*"><div class="wrap"><div class="cam" style="gap:20px">
+  <div class="burger" data-stag="0.1" data-t="0">
+    <div class="lay a-drop" data-an="split .8s var(--back)" data-t="25%">🍞<span class="q l-glitch">? ₴</span></div>
+    <div class="lay a-drop" data-an="split .8s var(--back)" data-t="27%">🥬<span class="q l-glitch">? ₴</span></div>
+    <div class="lay a-drop" data-an="split .8s var(--back)" data-t="29%">🧀<span class="q l-glitch">? ₴</span></div>
+    <div class="lay a-drop" data-an="split .8s var(--back)" data-t="31%">🍅<span class="q l-glitch">? ₴</span></div>
+    <div class="lay a-drop" data-an="split .8s var(--back)" data-t="33%">🥩<span class="q l-glitch">? ₴</span></div>
+  </div>
+  <div class="t1 a-slam" data-t="60%">собівартість — <span class="r">???</span></div>
+</div></div></section>
+
+<section class="sc ok" data-l="4" data-brk data-cap="📸 Фото накладної → *склад сам*@0.9"><div class="wrap"><div class="cam">
+  <div class="phone a-phone l-bob" data-t="0.9">
+    <div class="ph-h">📸 Накладна → склад</div>
+    <div data-x="52%" data-xa="vanish" style="position:relative;flex:1">
+      <div class="mini">НАКЛАДНА №118<br>Лосось ....... 5 кг<br>Сир ........... 2 кг<br>Булки ....... 40 шт<br>Томати ....... 6 кг</div>
+      <div class="vf" style="inset:-20px 20px"><i></i><i></i><i></i><i></i></div>
+      <div class="scan" data-an="scan 1.1s ease-in-out" data-t="30%" style="top:0"></div>
+      <div class="camfl" data-an="cflash .5s ease-out" data-t="22%"></div>
+    </div>
+    <div class="col" data-stag="0.22" data-t="55%" style="align-items:stretch;gap:14px;position:absolute;left:34px;right:34px;top:180px">
+      <div class="row okk a-sr"><span class="i">🐟</span><div>Лосось</div><b>+5 кг</b></div>
+      <div class="row okk a-sr"><span class="i">🧀</span><div>Сир</div><b>+2 кг</b></div>
+      <div class="row okk a-sr"><span class="i">🍞</span><div>Булки</div><b>+40 шт</b></div>
+      <div class="row okk a-sr"><span class="i">🍅</span><div>Томати</div><b>+6 кг</b></div>
+      <div class="btn a-zoom" data-t="88%">✅ На складі</div>
+    </div>
+  </div>
+</div></div></section>
+
+<section class="sc ok" data-l="5" data-cap="Залишки, списання, *собівартість* — без калькулятора"><div class="wrap"><div class="cam" style="gap:40px">
+  <div class="rowx" data-stag="0.3" data-t="0" style="flex-wrap:wrap;gap:20px"><span class="chip okk a-chip">✅ Залишки</span><span class="chip okk a-chip">✅ Списання</span><span class="chip okk a-chip">✅ Собівартість</span></div>
+  <div class="phone a-phone2" data-t="25%" style="height:820px">
+    <div class="ph-h">🍔 Бургер «Класик»</div>
+    <div class="col" data-stag="0.15" data-t="40%" style="align-items:stretch;gap:12px">
+      <div class="row a-pop"><span class="i">🍞</span><div>Булка</div><b>14 ₴</b></div>
+      <div class="row a-pop"><span class="i">🥩</span><div>Котлета 150 г</div><b>78 ₴</b></div>
+      <div class="row a-pop"><span class="i">🧀</span><div>Сир, овочі, соус</div><b>26 ₴</b></div>
+    </div>
+    <div class="marg a-pop" data-t="70%"><div>собівартість<b>118 ₴</b></div><div>ціна<b>290 ₴</b></div><div>маржа<b class="gr">59%</b></div></div>
+    <div class="ex">приклад</div>
+  </div>
+  <div class="abs emo a-zoom" data-t="80%" style="font-size:150px;right:90px;top:300px">🧮<div class="strike a-growx" data-t="85%"></div></div>
+</div></div></section>
+
+</div><div id="ov"></div><div id="tr"></div><div class="caps" id="caps"></div><div class="vign"></div><div class="grain"></div>
+<script>window.SFX=[[0,-0.5,"boom"],[0,"25%","whoosh"],[0,"60%","boom"],[1,0,"click"],[1,"48%","click"],[1,"75%","boom"],[2,0,"tick"],[2,0.5,"tick"],[2,1,"tick"],[2,1.5,"tick"],[2,"30%","swipe"],[3,"25%","whoosh"],[3,"60%","boom"],[4,"22%","click"],[4,"55%","ding"],[4,"88%","ding"],[5,0,"click"],[5,0.3,"click"],[5,0.6,"click"],[5,"70%","ding"],[5,"85%","swipe"]];</script>
+<script src="../engine.js"></script></body></html>

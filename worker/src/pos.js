@@ -255,6 +255,10 @@ export async function posApi(b, req, env) {
       const LP = await import('./liqpay.js'), k = LP.lpKeys(env); if (!k) return [{ error: 'LiqPay не підключено' }, 400];
       for (const p of x.lpo) { const r = await LP.lpRefund(k, p.o, p.a); if (r.error) return [{ error: 'LiqPay не повернув: ' + r.error }, 400]; }
       await delClosed(env, String(b.ref), day); await env.DB.locked('closed:' + day, async () => { const l = await getClosed(env, day), y = l.find(c => c.id === x.id); if (y) { y.lref = Date.now(); y.lrefBy = who; await env.DB.put('closed:' + day, JSON.stringify(l)); } }).catch(() => {}); await notify(env, `🖥 ↩️ Повернуто гостю онлайн ${money(x.onl)} — стіл ${tn(x.t)} (${x.at}), чек знято з виручки — ${esc(who)}`); return ok({ sum: x.onl }); }
+    case 'fisRetry': { if (!admin) return needAdmin(); const F = await import('./fiscal.js'); if (!F.fisOn(env)) return [{ error: 'ПРРО Checkbox не підключено' }, 400]; // 🧾 повторити фіскалізацію чека (або всіх невдалих за день)
+      const day = isDay(b.day) && b.day <= dayKey() ? b.day : dayKey(); if (!b.ref) return ok(await F.fisRetry(env, day));
+      const x = await closedRec(env, String(b.ref), day); if (!x?.id) return [{ error: 'Чек не знайдено' }, 400]; return ok((await F.fisSync(env, day, x.id)) || {}); }
+    case 'fisInfo': { if (!admin) return needAdmin(); return ok(await (await import('./fiscal.js')).fisInfo(env, !!b.check)); }
     case 'closedDel': { if (!admin) return needAdmin(); const x = await delClosed(env, String(b.ref), b.day); if (x) await notify(env, `🖥 🧹 Закритий рахунок стола ${tn(x.t)} (${money(x.sum)}, ${x.at}) видалено з виручки — ${esc(who)}`); return ok({ x }); }
   }
 

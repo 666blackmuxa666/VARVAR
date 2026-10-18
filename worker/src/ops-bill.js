@@ -1,5 +1,6 @@
 // 🍽 Стіл: замовлення (гість/офіціант), прийняти/відхилити, скасування страв, закриття й оплата, знижка, чайові, перенесення, розділення, видалення
 // (частина ops.js — інші файли імпортують з ops.js, як і раніше)
+import { fisSafe } from './fiscal.js';
 import { courNotify } from './courier.js';
 import { cliClose, goButtons, goGone } from './delivery.js';
 import { getMenu } from './menu.js';
@@ -165,15 +166,16 @@ async function _closeTable(env, t, who, pay = 'cash', print = true) {
   const waiter = bill.waiter || who || ''; // чайові — офіціанту стола (хто першим вибив/прийняв), а не тому, хто закрив
   const tipSplit = tip ? await splitTip(env, waiter, bill.tip || 0, bill.ktip || 0) : null;
   const cbGot = bill.cli ? ((await cliClose(env, bill.cli, sum - tip, (bill.bonus || 0) - (bill.cert?.sum || 0), bill.go?.name, bill.promo?.cash).catch(() => null))?.lastAdd || 0) : 0; // 🎁 бонуси гостя — до запису чека (cb/used — для відкату)
+  const cid = crypto.randomUUID().slice(0, 8);
   await Promise.all([
     kq,
     (async () => { if (tipSplit) for (const [n, v] of Object.entries(tipSplit)) await addTipBal(env, n, v); })(), // один ключ — по черзі
     (async () => { if (bill.cli) { await promoClose(env, bill, sum - tip).catch(() => {}); await reviewQueue(env, bill.cli, sum).catch(() => {}); } })(),
-    logClosed(env, { id: crypto.randomUUID().slice(0, 8), ts: Date.now(), t, sum, cash, card, ...(onl ? { onl, lpo: bill.paid?.list?.length ? bill.paid.list.map(p => ({ o: p.order, a: p.amt })) : bill.go?.paid ? [{ o: `go-${env.VENUE || 'varvar'}-${bill.go.oid}`, a: bill.go.paid.sum }] : [] } : {}), /* 🌐 платежі LiqPay — для повернення з «Закритих» */ ...(bill.cli ? { used: Math.max(0, (bill.bonus || 0) - (bill.cert?.sum || 0)), cb: cbGot } : {}), ...(bill.go ? { go: bill.go.kind, ...(bill.go.cour ? { cour: bill.go.cour } : {}), ...(bill.go.fee ? { fee: bill.go.fee } : {}), gt: { at: bill.go.at, acc: bill.go.accAt, take: bill.go.takeAt, road: bill.go.roadAt, done: Date.now(), when: bill.go.when || '', prob: bill.go.prob?.k || '' } } : {}), ...(bill.bonus ? { bonus: bill.bonus } : {}), ...(bill.cert ? { cert: bill.cert } : {}), ...(bill.cli ? { cli: bill.cli, ...(bill.promo?.nth && Object.keys(bill.promo.nth).length ? { nth: bill.promo.nth } : {}) } : {}), ...(bill.promo?.sum ? { promo: bill.promo.lines.filter(l => l.amt).map(({ k, n, amt }) => ({ k, n, amt })), promoSum: bill.promo.sum } : {}), at: hhmm(), by: who || '', w: waiter, orders: bill.orders || 0, dishes, ...(tip ? { tip, tipSplit, ...(bill.ktip ? { ktip: bill.ktip } : {}) } : {}), ...(bill.voids?.length ? { voids: bill.voids } : {}), ...(bill.promo?.sum && !disc ? { gross: bill.total } : {}), ...(disc ? { gross: bill.total, disc: bill.disc, discSum: disc } : {}) }),
+    logClosed(env, { id: cid, ts: Date.now(), t, sum, cash, card, ...(onl ? { onl, lpo: bill.paid?.list?.length ? bill.paid.list.map(p => ({ o: p.order, a: p.amt })) : bill.go?.paid ? [{ o: `go-${env.VENUE || 'varvar'}-${bill.go.oid}`, a: bill.go.paid.sum }] : [] } : {}), /* 🌐 платежі LiqPay — для повернення з «Закритих» */ ...(bill.cli ? { used: Math.max(0, (bill.bonus || 0) - (bill.cert?.sum || 0)), cb: cbGot } : {}), ...(bill.go ? { go: bill.go.kind, ...(bill.go.cour ? { cour: bill.go.cour } : {}), ...(bill.go.fee ? { fee: bill.go.fee } : {}), gt: { at: bill.go.at, acc: bill.go.accAt, take: bill.go.takeAt, road: bill.go.roadAt, done: Date.now(), when: bill.go.when || '', prob: bill.go.prob?.k || '' } } : {}), ...(bill.bonus ? { bonus: bill.bonus } : {}), ...(bill.cert ? { cert: bill.cert } : {}), ...(bill.cli ? { cli: bill.cli, ...(bill.promo?.nth && Object.keys(bill.promo.nth).length ? { nth: bill.promo.nth } : {}) } : {}), ...(bill.promo?.sum ? { promo: bill.promo.lines.filter(l => l.amt).map(({ k, n, amt }) => ({ k, n, amt })), promoSum: bill.promo.sum } : {}), at: hhmm(), by: who || '', w: waiter, orders: bill.orders || 0, dishes, ...(tip ? { tip, tipSplit, ...(bill.ktip ? { ktip: bill.ktip } : {}) } : {}), ...(bill.voids?.length ? { voids: bill.voids } : {}), ...(bill.promo?.sum && !disc ? { gross: bill.total } : {}), ...(disc ? { gross: bill.total, disc: bill.disc, discSum: disc } : {}) }),
     logEvent(env, { k: 'close', t, by: who, sum, pay, print }),
     bill.paid ? editEv(env, l => { for (const e of l) if (e.k === 'tpay' && +e.t === +t && e.s === 'new') { e.s = 'acc'; e.accBy = who || ''; } }) : null, // 💳 оплачено з QR — подія гасне
   ]);
-  return { t, sum, cash, card, disc, tip };
+  return { t, sum, cash, card, disc, tip, id: cid };
 }
 export const payLabel = (cash, card) => card && cash ? '💵+💳 змішано' : card ? '💳 карта' : '💵 готівка';
 
@@ -347,7 +349,7 @@ export async function removeOne(env, ...a) {
   if (b0?.go && r && !r.error && !(await getBill(env, a[0])).total) { await courNotify(env, a[0], 'gone', '', b0).catch(() => {}); await goGone(env, b0).catch(() => {}); } // прибрали все — доставка скасована
   return r;
 }
-export async function closeTable(env, ...a) { return L(env, 'bills', () => _closeTable(env, ...a)); }
+export async function closeTable(env, ...a) { const day = dayKey(), r = await L(env, 'bills', () => _closeTable(env, ...a)); if (r?.id) fisSafe(env, day, r.id); return r; } // 🧾 фіскальний чек — у фоні, касу не тримає
 export async function setDiscount(env, ...a) { return L(env, 'bills', () => _setDiscount(env, ...a)); }
 export async function setTip(env, ...a) { return L(env, 'bills', () => _setTip(env, ...a)); }
 export async function moveTable(env, ...a) { return L(env, 'bills', () => _moveTable(env, ...a)); }

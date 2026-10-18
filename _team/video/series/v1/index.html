@@ -1,0 +1,102 @@
+<!doctype html><html lang="uk"><head><meta charset="utf-8"><title>ATOM 1 — Де гроші</title><link rel="stylesheet" href="../engine.css"><script src="timing.js"></script><style>
+.coin{width:300px;height:300px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3c4,#f2c14e 40%,#a8701c 75%);border:12px solid #c98a2a;box-shadow:0 0 120px #f2c14e88,inset 0 0 0 16px #ffe29a55;display:grid;place-items:center;font-size:150px;font-weight:900;color:#7a4e10}
+.coin-in{animation:cflip .5s linear infinite}
+@keyframes cflip{50%{scale:.08 1}}
+.loss{font-size:150px;font-weight:900;letter-spacing:-.05em;color:var(--red);text-shadow:0 0 80px #ff453a99}
+.eye{font-size:200px}
+.cl{display:flex;align-items:center;gap:28px;font-size:84px;font-weight:900;letter-spacing:-.04em}
+.map{position:absolute;width:1300px;height:1300px;left:-110px;top:120px;border-radius:50%;border:2px solid #f2c14e22;opacity:.8}
+.map::before,.map::after{content:'';position:absolute;inset:0;border-radius:50%;border:2px solid #f2c14e18;transform:scaleX(.5)}.map::after{transform:scaleY(.5)}
+.pin{position:absolute;font-size:70px}
+</style></head>
+<body data-slogan="Ваші гроші — <span class='g'>під контролем</span>">
+<div id="stage"><div class="bg"></div><div class="grid"></div><div class="blob b1"></div><div class="blob b2"></div>
+
+<!-- 0 ХУК: монета + кінетичний текст -->
+<section class="sc pain" data-l="0"><div class="wrap"><div class="cam" style="gap:30px">
+  <div class="a-drop" data-t="-0.6"><div class="coin"><span class="coin-in">₴</span></div></div>
+  <div class="col">
+    <div class="hk a-slam" data-t="-0.45" style="--sx:-500px">Ваш касир</div>
+    <div class="hk a-slam" data-t="20%" style="--sx:500px;--sr:6deg">заробляє</div>
+    <div class="hk r a-slam l-glitch" data-t="45%" style="font-size:210px">більше</div>
+    <div class="hk ol a-slam" data-t="72%" style="--sx:-500px">за вас?</div>
+  </div>
+</div></div></section>
+
+<!-- 1 чек → скасовано → розсипався -->
+<section class="sc pain" data-l="1" data-cap="Чек пробили. Потім *скасували.*@0|А гроші — *зникли.*@62%"><div class="wrap"><div class="cam">
+  <div style="position:relative" data-x="62%" data-xa="dust" data-xd="1">
+    <div class="paper a-print" data-t="0" style="width:760px;rotate:-3deg">
+      <div style="text-align:center">🧾 СТІЛ 4 · 21:43</div><hr>
+      <div class="ln"><span>Бургер ×2</span><span>580</span></div>
+      <div class="ln"><span>Лимонад ×2</span><span>180</span></div>
+      <div class="ln"><span>Тірамісу</span><span>160</span></div><hr>
+      <div class="ln" style="font-size:46px"><span>РАЗОМ</span><span>920 ₴</span></div>
+    </div>
+    <div class="stamp a-stamp" data-t="30%" style="left:90px;top:220px">Скасовано</div>
+  </div>
+  <div class="loss a-zoom l-glitch" data-t="66%">−920 ₴</div>
+  <div class="t3 a-pop" data-t="75%">і ніхто не знає, хто і коли</div>
+</div></div></section>
+
+<!-- 2 знижки градом -->
+<section class="sc pain" data-l="2" data-cap="Знижка *«для друга».*@0|Ще одна. *І ще.*@40%"><div class="wrap"><div class="cam">
+  <div class="t1 a-slam" data-t="0">«Для друга» 🤝</div>
+  <div style="position:relative;width:940px;height:700px">
+    <div class="stk a-chip l-jit" data-t="10%" style="left:40px;top:40px;rotate:-10deg">−20%</div>
+    <div class="stk gray a-chip l-jit" data-t="25%" style="left:560px;top:10px;rotate:8deg">«своїм»</div>
+    <div class="stk a-chip l-jit" data-t="40%" style="left:420px;top:180px;rotate:6deg;font-size:96px">−50%</div>
+    <div class="stk gray a-chip l-jit" data-t="52%" style="left:10px;top:300px;rotate:-6deg">«за рахунок закладу»</div>
+    <div class="stk a-chip l-jit" data-t="66%" style="left:180px;top:450px;rotate:-4deg;font-size:130px">−100%</div>
+    <div class="stk gray a-chip l-jit" data-t="78%" style="left:640px;top:520px;rotate:12deg">−30%</div>
+  </div>
+  <div class="t2 a-pop" data-t="20%">втрати: <span class="r">−<span class="cnt a-cnt" data-t="20%" style="--to:4870;--dur:2.6s"></span> ₴</span></div>
+</div></div></section>
+
+<!-- 3 Знайомо? — тиша, серце -->
+<section class="sc pain hb" data-l="3" style="--cam:camOut"><div class="wrap"><div class="cam">
+  <div class="emo a-zoom l-pulse" data-t="0" style="font-size:200px">🫀</div>
+  <div class="hk a-slam l-glitch" data-t="0.05" style="font-size:180px;--sr:0deg">Знайомо?</div>
+</div></div></section>
+
+<!-- 4 РОЗЛАМ → журнал дій -->
+<section class="sc ok" data-l="4" data-brk data-cap="В Атомі кожна дія — з *іменем* і *часом*@0.9"><div class="wrap"><div class="cam">
+  <div class="phone a-phone l-bob" data-t="0.9">
+    <div class="ph-h">📋 Журнал дій <span class="live">наживо</span></div>
+    <div class="col" data-stag="0.45" style="align-items:stretch;gap:18px" data-t="1.4">
+      <div class="row red a-sr"><span class="i">❌</span><div>Скасування чека<small>Олег · 21:43 · стіл 4</small></div><b>−920</b></div>
+      <div class="row a-sr"><span class="i">🏷</span><div>Знижка 20%<small>Ірина · 21:51 · стіл 2</small></div><b>−96</b></div>
+      <div class="row a-sr"><span class="i">↩️</span><div>Повернення<small>Олег · 22:05</small></div><b>−180</b></div>
+      <div class="row okk a-sr"><span class="i">💵</span><div>Закриття зміни<small>Ірина · 23:00</small></div><b>✓</b></div>
+    </div>
+    <div class="tap a-tap" data-t="78%" style="left:300px;top:330px"></div>
+  </div>
+</div></div></section>
+
+<!-- 5 все видно -->
+<section class="sc ok" data-l="5" data-cap="Скасування, знижка, повернення — *все видно*"><div class="wrap"><div class="cam" style="gap:34px">
+  <div class="col" style="align-items:flex-start;gap:26px">
+    <div class="cl a-sl" data-t="0"><span class="check a-zoom" data-t="0.3">✓</span>Скасування</div>
+    <div class="cl a-sl" data-t="22%"><span class="check a-zoom" data-t="30%">✓</span>Знижки</div>
+    <div class="cl a-sl" data-t="44%"><span class="check a-zoom" data-t="52%">✓</span>Повернення</div>
+  </div>
+  <div class="rowx a-slam" data-t="66%" style="--sr:0deg"><span class="eye">👁</span><span class="hk g" style="font-size:150px">Все видно</span></div>
+</div></div></section>
+
+<!-- 6 виручка наживо звідусіль -->
+<section class="sc ok" data-l="6" data-cap="Виручку ви бачите *наживо* — з будь-якої точки"><div class="wrap"><div class="cam">
+  <div class="map a-zoom l-spin" data-t="0" style="z-index:-1"></div>
+  <div class="pin a-drop" data-t="45%" style="left:90px;top:420px">📍</div><div class="pin a-drop" data-t="55%" style="right:110px;top:300px">🏖</div><div class="pin a-drop" data-t="65%" style="right:70px;top:1050px">✈️</div>
+  <div class="phone a-phone2" data-t="0" style="height:1000px">
+    <div class="ph-h">💰 Виручка сьогодні <span class="live">наживо</span></div>
+    <div class="ph-v"><span class="cnt a-cnt" data-t="0.5" style="--to:18450;--dur:3s"></span> ₴</div>
+    <div class="ex">приклад</div>
+    <div class="bars" data-stag="0.12" data-t="0.6"><i class="a-grow" style="--h:30%"></i><i class="a-grow" style="--h:45%"></i><i class="a-grow" style="--h:38%"></i><i class="a-grow" style="--h:62%"></i><i class="a-grow" style="--h:55%"></i><i class="a-grow" style="--h:80%"></i><i class="a-grow" style="--h:100%"></i></div>
+    <div class="row a-pop" data-t="50%"><span class="i">🧾</span><div>Чеків<small>середній 486 ₴</small></div><b>38</b></div>
+    <div class="row a-pop" data-t="62%"><span class="i">👥</span><div>На зміні</div><b>5</b></div>
+  </div>
+</div></div></section>
+
+</div><div id="ov"></div><div id="tr"></div><div class="caps" id="caps"></div><div class="vign"></div><div class="grain"></div>
+<script>window.SFX=[[0,-0.55,"coin"],[0,"45%","boom"],[1,0.1,"tick"],[1,"30%","boom"],[1,"62%","whoosh"],[2,"10%","click"],[2,"40%","click"],[2,"66%","boom"],[3,0,"heart"],[3,0.9,"heart"],[4,"78%","click"],[5,0.3,"ding"],[5,"30%","click"],[5,"52%","click"],[5,"66%","boom"],[6,"45%","click"],[6,"55%","click"],[6,"65%","ding"]];</script>
+<script src="../engine.js"></script></body></html>

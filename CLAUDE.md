@@ -81,6 +81,7 @@
 | Доставка й кур'єри | `20-delivery.js` | `delivery.js`, `courier.js`, `tn.js` |
 | Сайт, броні, сертифікати | `30-books-site.js` | `site.js`, `siteapi.js`; фронт `about.*`, `app.js` |
 | Каса-гроші й звіти | `50-cash.js`, `60-reports.js` | `ops-money.js` (зміна, Z, рух грошей, звіти) |
+| ПРРО (фіскальні чеки) | `10-hall.js` (🧾 у «Закритих») | `fiscal.js` (Checkbox; лише заклади платформи), план `_team/prro-plan.md` |
 | Налаштування | `70-settings.js` | — |
 | Гості й акції | `75-loyalty.js` | `promo.js` (рівні клієнтів, акції), `delivery.js` (cli:) |
 | Склад | `80-calc.js` | `stock.js`, `stockbot.js`, `ai.js` |
