@@ -125,8 +125,10 @@
       ${asks.map(s => `<div class="card zp-ask">🔁 <b>${esc(s.from)}</b> просить вийти за нього ${s.day.slice(8)}.${s.day.slice(5, 7)} о ${s.time}<div class="btnrow"><button class="btn sm green" data-a="zpSw" data-id="${s.id}" data-s="agree">Погоджуюсь</button><button class="btn sm red" data-a="zpSw" data-id="${s.id}" data-s="no">Ні</button></div></div>`).join('')}
       <h3 style="margin:14px 0 6px">Графік · ${monName(r.m)}</h3>${gridHTML(r.grid, r.grid.people, false, me)}<div class="muted" style="font-size:11px;margin-top:4px">✅ був · ● заплановано · 🕓 чекає · ⏰ запізнення · 🚫 прогул</div>
       ${r.swaps.filter(s => s.from === me).map(s => `<div class="muted" style="font-size:12px">🔁 ${s.day.slice(8)}.${s.day.slice(5, 7)} → ${esc(s.to)}: ${s.st === 'ask' ? 'чекає згоди' : 'чекає адміна'}</div>`).join('')}`;
-    const v = await modal({ title: `👤 ${me}`, body, buttons: [{ label: '🎨 Мій вигляд', val: 'look' }, { label: '🔁 Попросити обмін', val: 'swap' }, { label: '💡 Побажання', val: 'idea' }, { label: '🆘 Допомога', val: 'help' }, { label: '💬 Звернення', val: 'thr' }, { label: 'Закрити', val: null }] });
+    const v = await modal({ title: `👤 ${me}`, body, buttons: [{ label: '🎨 Мій вигляд', val: 'look' }, { label: '🔁 Попросити обмін', val: 'swap' }, { label: '🔔 Сповіщення', val: 'push' }, { label: '💬 Зв\'язок з ATOM', val: 'atom' }, { label: 'Закрити', val: null }] });
     if (v === 'look') { S.view = 'mylook'; renderNav(); renderMain(); return; } // 🎨 свій колір і стиль — для будь-якої ролі, лише на цьому пристрої
+    if (v === 'push') return pushMenu();
+    if (v === 'atom') { const c = await choose('💬 Зв\'язок з ATOM', 'Розробник відповідає тут, у касі', [{ label: '🆘 Допомога — щось не працює', val: 'help' }, { label: '💡 Побажання — що покращити', val: 'idea' }, { label: '💬 Мої звернення й відповіді', val: 'thr' }]); if (c === 'idea') return ideasMy(); if (c === 'help') return helpAsk(); if (c === 'thr') return thrMy(); return; }
     if (v === 'idea') return ideasMy();
     if (v === 'help') return helpAsk();
     if (v === 'thr') return thrMy();

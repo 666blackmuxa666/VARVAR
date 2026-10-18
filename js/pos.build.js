@@ -7039,11 +7039,19 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
       ${asks.map((s) => `<div class="card zp-ask">\u{1F501} <b>${esc(s.from)}</b> \u043F\u0440\u043E\u0441\u0438\u0442\u044C \u0432\u0438\u0439\u0442\u0438 \u0437\u0430 \u043D\u044C\u043E\u0433\u043E ${s.day.slice(8)}.${s.day.slice(5, 7)} \u043E ${s.time}<div class="btnrow"><button class="btn sm green" data-a="zpSw" data-id="${s.id}" data-s="agree">\u041F\u043E\u0433\u043E\u0434\u0436\u0443\u044E\u0441\u044C</button><button class="btn sm red" data-a="zpSw" data-id="${s.id}" data-s="no">\u041D\u0456</button></div></div>`).join("")}
       <h3 style="margin:14px 0 6px">\u0413\u0440\u0430\u0444\u0456\u043A \xB7 ${monName(r.m)}</h3>${gridHTML(r.grid, r.grid.people, false, me)}<div class="muted" style="font-size:11px;margin-top:4px">\u2705 \u0431\u0443\u0432 \xB7 \u25CF \u0437\u0430\u043F\u043B\u0430\u043D\u043E\u0432\u0430\u043D\u043E \xB7 \u{1F553} \u0447\u0435\u043A\u0430\u0454 \xB7 \u23F0 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F \xB7 \u{1F6AB} \u043F\u0440\u043E\u0433\u0443\u043B</div>
       ${r.swaps.filter((s) => s.from === me).map((s) => `<div class="muted" style="font-size:12px">\u{1F501} ${s.day.slice(8)}.${s.day.slice(5, 7)} \u2192 ${esc(s.to)}: ${s.st === "ask" ? "\u0447\u0435\u043A\u0430\u0454 \u0437\u0433\u043E\u0434\u0438" : "\u0447\u0435\u043A\u0430\u0454 \u0430\u0434\u043C\u0456\u043D\u0430"}</div>`).join("")}`;
-    const v = await modal({ title: `\u{1F464} ${me}`, body, buttons: [{ label: "\u{1F3A8} \u041C\u0456\u0439 \u0432\u0438\u0433\u043B\u044F\u0434", val: "look" }, { label: "\u{1F501} \u041F\u043E\u043F\u0440\u043E\u0441\u0438\u0442\u0438 \u043E\u0431\u043C\u0456\u043D", val: "swap" }, { label: "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F", val: "idea" }, { label: "\u{1F198} \u0414\u043E\u043F\u043E\u043C\u043E\u0433\u0430", val: "help" }, { label: "\u{1F4AC} \u0417\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F", val: "thr" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
+    const v = await modal({ title: `\u{1F464} ${me}`, body, buttons: [{ label: "\u{1F3A8} \u041C\u0456\u0439 \u0432\u0438\u0433\u043B\u044F\u0434", val: "look" }, { label: "\u{1F501} \u041F\u043E\u043F\u0440\u043E\u0441\u0438\u0442\u0438 \u043E\u0431\u043C\u0456\u043D", val: "swap" }, { label: "\u{1F514} \u0421\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F", val: "push" }, { label: "\u{1F4AC} \u0417\u0432'\u044F\u0437\u043E\u043A \u0437 ATOM", val: "atom" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }] });
     if (v === "look") {
       S.view = "mylook";
       renderNav();
       renderMain();
+      return;
+    }
+    if (v === "push") return pushMenu();
+    if (v === "atom") {
+      const c = await choose("\u{1F4AC} \u0417\u0432'\u044F\u0437\u043E\u043A \u0437 ATOM", "\u0420\u043E\u0437\u0440\u043E\u0431\u043D\u0438\u043A \u0432\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u0430\u0454 \u0442\u0443\u0442, \u0443 \u043A\u0430\u0441\u0456", [{ label: "\u{1F198} \u0414\u043E\u043F\u043E\u043C\u043E\u0433\u0430 \u2014 \u0449\u043E\u0441\u044C \u043D\u0435 \u043F\u0440\u0430\u0446\u044E\u0454", val: "help" }, { label: "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F \u2014 \u0449\u043E \u043F\u043E\u043A\u0440\u0430\u0449\u0438\u0442\u0438", val: "idea" }, { label: "\u{1F4AC} \u041C\u043E\u0457 \u0437\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F \u0439 \u0432\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u0456", val: "thr" }]);
+      if (c === "idea") return ideasMy();
+      if (c === "help") return helpAsk();
+      if (c === "thr") return thrMy();
       return;
     }
     if (v === "idea") return ideasMy();
