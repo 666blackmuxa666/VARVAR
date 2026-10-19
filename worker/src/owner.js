@@ -56,6 +56,7 @@ export async function intApi(req, env, path) {
     if (b.do === 'seed') { const r = await S.demoSeed(env, { full: true }); if (r.error) return [r, 400]; await B.backupNow(env, 'demo'); return [r, 200]; } // 🎬 «Все за 500»: меню, персонал, сайт + 14 днів історії → еталон
     if (b.do === 'reset') { const r = await B.backupRestore(env, 'demo', 'нічне скидання демо'); return [{ ...r, seed: await S.demoSeed(env, { full: !!r.error }) }, 200]; } // еталон + свіжа історія «до сьогодні»
     return [{ error: 'unknown' }, 400]; }
+  if (path === '/__int/payer') { const { payerBind } = await import('./ledger.js'); const r = await payerBind(env, b.id ? { id: b.id, n: b.n } : null, String(b.who || '').slice(0, 60)); return [{ payer: r.payer, year: r.sent || null }, 200]; } // 🧾 Ф2: заклад ← платник
   if (path === '/__int/aibal') { const { aiBal } = await import('./photoai.js'); return [await aiBal(env), 200]; } // 🤖 баланс ШІ
   if (path === '/__int/aitop') { const sum = Math.round(+b.sum || 0); if (!(sum > 0)) return [{ error: 'sum' }, 400];
     const a = await env.DB.locked('aibal', async () => { const x = (await env.DB.get('aibal', 'json')) || { bal: 0, h: [] }; if (x.h.some(h => h.lp && h.lp === b.lp)) return x; x.bal = Math.round((x.bal + sum) * 100) / 100; x.h = [{ ts: Date.now(), sum, what: '💳 Поповнення LiqPay', lp: String(b.lp || ''), ...(b.test ? { test: 1 } : {}) }, ...x.h].slice(0, 200); await env.DB.put('aibal', JSON.stringify(x)); return x; });
@@ -322,6 +323,13 @@ ${JSON.stringify(data.filter(Boolean))}
     case 'billPay': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const v = await H.venueGet(b.venue); if (!v) return bad('Немає закладу');
       const r = await (await import('./billing.js')).billLink(env, v, b.kind === 'ai' ? 'ai' : 'sub', { auto: !!b.auto, sum: b.sum }); return r.error ? bad(r.error) : ok({ url: r.url }); }
     case 'billUnsub': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const v = await H.venueGet(b.venue); const r = await (await import('./billing.js')).billUnsub(env, v); return r.error ? bad(r.error) : ok(); }
+    case 'payers': { const y = String(new Date().getFullYear()), list = await H.payerList(plat ? null : me.email), vs = await mine(); // 🧾 платники власника + дохід за рік по закладах
+      return ok({ list: await Promise.all(list.map(async p => ({ ...p, year: await H.payerYear(p.id, y), venues: vs.filter(v => v.payer === p.id).map(v => v.id) }))) }); }
+    case 'payerSet': { const r = await H.payerSet(b.f || {}, plat ? null : me.email); return r.error ? bad(r.error, r.error === 'Немає доступу' ? 403 : 400) : ok({ payer: r }); }
+    case 'payerVenue': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const p = b.payer ? await H.payerGet(String(b.payer)) : null;
+      if (b.payer && (!p || (!plat && p.owner !== me.email))) return bad('Немає доступу', 403);
+      const v = await H.payerVenue(String(b.venue), p?.id || ''); if (v.error) return bad(v.error);
+      const r = await callVenue(env, v.id, '/__int/payer', { id: p?.id || '', n: p?.n || '', who: '👑 ' + me.name }); return r.error ? bad(r.error) : ok({ venue: v, year: r.year }); }
     case 'pass': { const r = await H.acctPass(me.email, b.pass); return r.error ? bad(r.error) : ok(); }
     case 'av': { const r = await H.acctAv(me.email, String(b.data || '')); return r.error ? bad(r.error) : ok({ av: r.av }); }
   }

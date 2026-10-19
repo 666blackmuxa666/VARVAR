@@ -27,12 +27,12 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | `exmark.js` | 57 | 🍾 Акцизні марки: пляшки акцизного продукту (марка → скільки лишилось у пляшці). Чиста логіка без імпортів складу. |
 | `fiscal.js` | 262 | 🧾 ПРРО Checkbox: фіскальний чек на кожен закритий рахунок, повернення, службові внесення/видачі, Z. |
 | `guestbot.js` | 252 | 🤖 Бот гостей (@…GUEST_BOT_TOKEN): меню, статус замовлення, бонуси, день народження, сертифікати, |
-| `hub.js` | 278 | 🌐 HUB — центральна база платформи (один Durable Object): акаунти власників, заклади, сесії кабінету. |
+| `hub.js` | 310 | 🌐 HUB — центральна база платформи (один Durable Object): акаунти власників, заклади, сесії кабінету. |
 | `ideas.js` | 64 | 💡 Побажання розробнику: працівник пише з особистого кабінету (каса) або з бота персоналу. |
 | `index.js` | 464 |  |
 | `kitbot.js` | 146 | 👨‍🍳 Бот кухні (KITCHEN_BOT_TOKEN, вебхук /tg4): кухарі отримують нові замовлення на телефон, |
 | `kitchen.js` | 133 | 👨‍🍳 Легкий кухонний екран для старих планшетів (iPad 2 / iOS 9): відкривається по http://…workers.dev/kitchen |
-| `ledger.js` | 139 | 📒 Облік закладу (фундамент Ф1/Ф3/Ф4/Ф6/Ф7): документи і журнал змін у SQL-таблицях Store (ledgerdb.js). |
+| `ledger.js` | 158 | 📒 Облік закладу (фундамент Ф1/Ф3/Ф4/Ф6/Ф7): документи і журнал змін у SQL-таблицях Store (ledgerdb.js). |
 | `ledgerdb.js` | 23 | 📒 SQL-таблиці обліку в базі закладу (Store на SQLite). Без імпортів — підключається і в store.js, і в ledger.js. |
 | `liqpay.js` | 50 | 💳 LiqPay (ПриватБанк): форма оплати, перевірка підпису callback, серверні запити (статус, повернення, відписка). |
 | `lpay.js` | 112 | 💳 Оплата рахунку столу з QR (LiqPay закладу) + callback для сертифікатів / підписки ATOM / балансу ШІ. |
@@ -49,7 +49,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | `ops-staff.js` | 135 | 👥 Доступ і персонал: паролі, PIN, коди реєстрації, працівники, права, перейменування, аватарки |
 | `ops.js` | 10 | Спільна логіка закладу для Telegram-бота і касової програми (POS). |
 | `orderui.js` | 133 | Замовлення офіціанта кнопками: стіл → категорія → страва → (розмір) → кількість → знову категорії. |
-| `owner.js` | 410 | 👑 Кабінет власника мережі й консоль платформи: /api/owner (поза закладом) + внутрішні виклики закладів /__int/* (всередині Store). |
+| `owner.js` | 418 | 👑 Кабінет власника мережі й консоль платформи: /api/owner (поза закладом) + внутрішні виклики закладів /__int/* (всередині Store). |
 | `pay.js` | 232 | 👷 Графік змін і зарплата: прихід «Почати зміну» → адмін підтверджує → ✅ у графіку; ставка за зміну + % від виручки + бонус за план; |
 | `perm.js` | 59 | 🔑 Ролі й права з галочками (_team/roles.md). |
 | `photoai.js` | 94 | 📸 ШІ-фото страв в одному стилі закладу: Gemini Image (платний ключ GEMINI_IMG_KEY — лише тут; решта ШІ — безкоштовний ключ). |
@@ -161,7 +161,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | goMap | delivery.js:279 | 20-delivery.js |
 | goSt | delivery.js:261, pos.js:88 | 00-core.js, 20-delivery.js |
 | hallsSet | pos.js:359 | 70-settings.js |
-| help | owner.js:294, pos.js:72 | 85-team.js |
+| help | owner.js:295, pos.js:72 | 85-team.js |
 | ibanQr | pos.js:151 | 10-hall.js |
 | ideaAdd | ideas.js:42 | 85-team.js |
 | ideaDel | ideas.js:44 | 85-team.js |
@@ -178,8 +178,8 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | kUndo | pos.js:184 | 40-kitchen.js |
 | kitchen | pos.js:177 | 40-kitchen.js |
 | kitchenPct | pos.js:364 | 00-core.js |
-| login | owner.js:221, pos.js:40 | 00-core.js |
-| logout | owner.js:272, pos.js:107 | 00-core.js |
+| login | owner.js:222, pos.js:40 | 00-core.js |
+| logout | owner.js:273, pos.js:107 | 00-core.js |
 | lookV | pos.js:80 | 00-core.js |
 | lookVSet | pos.js:87 | 70-settings.js |
 | loyCli | promo.js:247 | 75-loyalty.js |
@@ -225,7 +225,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | reject | pos.js:169 | 10-hall.js |
 | remove | pos.js:149 | 10-hall.js |
 | report | pos.js:296 | 60-reports.js |
-| reset | owner.js:235, pos.js:306 | 70-settings.js |
+| reset | owner.js:236, pos.js:306 | 70-settings.js |
 | shift | pos.js:282 | 00-core.js, 50-cash.js |
 | shiftOpen | pos.js:293 | 50-cash.js |
 | skAdj | stock.js:526 | 80-calc.js |
@@ -388,6 +388,7 @@ _Ключ — префікс до «:» (`bill:`, `att:`…)._
 | `okip:` | pos.js |
 | `ord:` | courier.js, delivery.js, index.js, ops-bill.js |
 | `pay:` | pay.js |
+| `payer:` | hub.js |
 | `plan:` | pay.js |
 | `pos:` | owner.js, pos.js |
 | `push:` | push.js |

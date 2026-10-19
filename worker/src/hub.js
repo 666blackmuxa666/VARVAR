@@ -3,8 +3,11 @@
 //   acct:<email>  { email, name, role: platform|owner, hash, salt, venues: [id], at }
 //   venue:<id>    { id, name, owner, status: active|trial|off, plan, city, at }
 //   sess:<token>  { email, exp }
+//   payer:<id>    { id, kind: fop|tov, n, owner, g, lim, base, regs: [{ from, g }], at } — платник податків (Ф2); заклад → venue.payer
+//   pyr:<id>:<рік> { v: { <заклад>: { <день>: копійки } }, w } — дохід платника по закладах (заклади шлють раз на добу)
 import { DurableObject } from 'cloudflare:workers';
 import { MAIN, isVenueId } from './venue.js';
+import { LIM } from './fiscal.js';
 
 const enc = new TextEncoder();
 const hex = u8 => [...new Uint8Array(u8)].map(x => x.toString(16).padStart(2, '0')).join('');
@@ -131,6 +134,28 @@ export class Hub extends DurableObject {
     if (f.owner) { const a = await this.st.get('acct:' + normEmail(f.owner)); if (!a) return { error: 'Немає власника' }; const old = await this.st.get('acct:' + v.owner); if (old) { /* старий власник зберігає доступ як керуючий — забрати можна окремо */ } a.venues = [...new Set([...(a.venues || []), id])]; await this.st.put('acct:' + a.email, a); v.owner = a.email; }
     await this.st.put('venue:' + id, v); return v;
   }
+  // 🧾 Ф2: платники — ФОП/ТОВ, на якого записано дохід одного чи кількох закладів. Ліміт єдиного податку рахується по платнику.
+  async payerList(owner) { return [...(await this.st.list({ prefix: 'payer:' })).values()].filter(p => !owner || p.owner === owner); }
+  async payerGet(id) { return (await this.st.get('payer:' + id)) || null; }
+  async payerSet(f, owner) { // owner = null → платформа
+    const o = f.id ? await this.st.get('payer:' + String(f.id)) : null; if (f.id && !o) return { error: 'Немає платника' }; if (o && owner && o.owner !== owner) return { error: 'Немає доступу' };
+    if (o && f.del) { if ((await this.venueList()).some(v => v.payer === o.id)) return { error: 'Спершу відв\'яжіть заклади' }; await this.st.delete('payer:' + o.id); return { ok: true }; }
+    const kind = (f.kind ?? o?.kind) === 'tov' ? 'tov' : 'fop', n = String(f.n ?? o?.n ?? '').trim().slice(0, 80); if (n.length < 2) return { error: 'Назва платника' };
+    const g = kind === 'fop' ? [0, 1, 2, 3].includes(+(f.g ?? o?.g)) ? +(f.g ?? o?.g) : 0 : 0, num = (x, d) => x == null ? d : Math.max(0, Math.round(+x || 0));
+    const regs = Array.isArray(f.regs) ? f.regs.filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r?.from) && [0, 1, 2, 3].includes(+r.g)).slice(0, 20).map(r => ({ from: r.from, g: +r.g })).sort((a, b) => a.from < b.from ? -1 : 1) : o?.regs || [];
+    const p = { id: o?.id || rnd(6), kind, n, owner: o?.owner || owner || normEmail(f.owner), g, lim: num(f.lim, o?.lim || 0), base: num(f.base, o?.base || 0), regs, at: o?.at || Date.now() };
+    if (!p.owner) return { error: 'Власник платника' }; await this.st.put('payer:' + p.id, p); return p;
+  }
+  async payerVenue(id, pid) { const v = await this.st.get('venue:' + id); if (!v) return { error: 'Немає закладу' }; if (pid) v.payer = pid; else delete v.payer; await this.st.put('venue:' + id, v); return v; }
+  // 📊 заклад шле свої суми за рік { день: копійки } — замінюємо його частину, рахуємо разом; попередження 80/95/100 % — один раз на поріг
+  async payerDays(pid, venue, y, days) {
+    const p = await this.st.get('payer:' + pid), v = await this.st.get('venue:' + venue); if (!p || v?.payer !== pid || !/^\d{4}$/.test(y)) return { error: 'Немає платника' };
+    const k = `pyr:${pid}:${y}`, s = (await this.st.get(k)) || { v: {}, w: 0 }; s.v[venue] = Object.fromEntries(Object.entries(days || {}).filter(([d, x]) => d.startsWith(y) && Number.isInteger(x)).slice(0, 400));
+    const r = yrOf(p, s, y); let warn = '';
+    if (r.step > (s.w || 0)) { s.w = r.step; warn = `${r.step >= 100 ? '🛑' : '⚠️'} <b>${p.n}</b>: дохід за ${y} рік (усі заклади платника) — ${r.pct}% ліміту єдиного податку (${Math.round(r.sum / 100).toLocaleString('uk-UA')} з ${r.lim.toLocaleString('uk-UA')} ₴).${r.step >= 95 ? ' Поговоріть з бухгалтером: перехід на іншу групу чи інший ФОП.' : ''}`; }
+    await this.st.put(k, s); return { ...r, warn };
+  }
+  async payerYear(pid, y) { const p = await this.st.get('payer:' + pid); if (!p) return null; return yrOf(p, (await this.st.get(`pyr:${pid}:${y}`)) || { v: {} }, y); }
   // ---- керування (консоль платформи) ----
   async acctSet(email, f) { const a = await this.st.get('acct:' + normEmail(email)); if (!a) return { error: 'Немає акаунта' }; if (f.name != null) a.name = String(f.name).trim().slice(0, 60) || a.name; await this.st.put('acct:' + a.email, a); return pub(a); }
   async acctDel(email) {
@@ -272,6 +297,13 @@ export class Hub extends DurableObject {
   async hitStats(days) { const out = []; for (let i = days - 1; i >= 0; i--) { const d = new Date(Date.now() - i * 864e5).toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' }); out.push({ d, ...((await this.st.get('ah:' + d)) || {}) }); } return out; }
 }
 
+// група на кінець року: остання зміна режиму з датою ≤ кінця року, інакше p.g; ліміт — свій або за групою (ТОВ — без ліміту)
+const groupOf = (p, y) => [...(p.regs || [])].reverse().find(r => r.from <= y + '-12-31')?.g ?? p.g;
+function yrOf(p, s, y) {
+  const by = Object.fromEntries(Object.entries(s.v || {}).map(([v, d]) => [v, Object.values(d).reduce((a, x) => a + x, 0)]));
+  const sum = Object.values(by).reduce((a, x) => a + x, 0) + (p.base || 0) * 100, g = p.kind === 'fop' ? groupOf(p, y) : 0, lim = p.kind === 'fop' ? (p.lim || LIM[g] || 0) : 0;
+  const pct = lim ? Math.round(sum / 100 / lim * 1000) / 10 : 0; return { y, sum, by, g, lim, pct, step: [100, 95, 80].find(x => pct >= x) || 0 };
+}
 export const hub = env => env.HUB.get(env.HUB.idFromName('hub'));
 // активні заклади (для Cron); VARVAR окремо (MAIN)
 export async function hubVenues(env) { if (!env.HUB) return []; return (await hub(env).venueList()).filter(v => v.id !== MAIN && v.status !== 'off').map(v => v.id);}

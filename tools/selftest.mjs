@@ -1171,6 +1171,26 @@ async function loyTests(A, W, dish) {
     const sv = VID + '-s'; must((await ownT(PT, 'venueNew', { id: sv, name: 'QA свій', owner: OE })).j.ok, 'venueNew'); FV.push(sv);
     const r = await ownT(PT, 'refGift', { id: sv, code, why: 'QA' }); must(r.status === 400 && /Свої/.test(r.j.error || ''), 'заклад того ж власника: ' + JSON.stringify(r.j));
     must((await ownT(PT, 'ref', { venue: VID })).j.ref.n === 0, 'лічильник змінився'); });
+  await step('🧾 платник (Ф2): один ФОП на два заклади — дохід за рік складається; чужий заклад/платник → 403; журнал прив\'язки', async () => {
+    const sv = VID + '-s', T2 = (await ownT(OT, 'enter', { venue: sv })).j.token; must(T2, 'вхід у другий заклад');
+    const svp = (op, b = {}) => http(`/v/${sv}/api/pos`, { op, ...b }, T2);
+    must((await ownT(OT, 'payerSet', { f: { kind: 'fop', n: 'Q' } })).status === 400, 'коротка назва');
+    const P = (await ownT(OT, 'payerSet', { f: { kind: 'fop', n: 'QA ФОП Тест', g: 2, regs: [{ from: '2020-01-01', g: 3 }, { from: new Date().getFullYear() + '-01-01', g: 2 }] } })).j.payer; must(P?.id && P.g === 2, 'payerSet');
+    must((await ownT(OT, 'payerVenue', { venue: 'varvar', payer: P.id })).status === 403, 'прив\'язав чужий заклад');
+    must((await ownT(PT, 'payerSet', { f: { id: P.id, n: 'X' } })).status === 400 && (await ownT(OT, 'payerSet', { f: { id: 'nope' } })).status === 400, 'чужий/неіснуючий id');
+    must((await vpos(VA, 'ldgAdd', { type: 'sale', sum: 100000, ext: 'qa-pay:' + RUN })).status === 200, 'документ у закладі 1');
+    must((await svp('ldgAdd', { type: 'sale', sum: 50000, ext: 'qa-pay2:' + RUN })).status === 200, 'документ у закладі 2');
+    const b1 = await ownT(OT, 'payerVenue', { venue: VID, payer: P.id }), b2 = await ownT(OT, 'payerVenue', { venue: sv, payer: P.id }); must(b1.j.venue?.payer === P.id && b2.j.year, 'прив\'язка ' + JSON.stringify(b2.j).slice(0, 160));
+    const y = b2.j.year; must(y.by[sv] === 50000 && y.by[VID] >= 100000 && y.sum === y.by[VID] + y.by[sv] && y.g === 2 && y.lim > 0, 'сума платника: ' + JSON.stringify(y));
+    const d = (await svp('ldgAdd', { type: 'inc', sum: 2500, ext: 'qa-pay3:' + RUN })).j.doc; must(d?.payer === P.id, 'новий документ без платника: ' + JSON.stringify(d));
+    await ownT(OT, 'payerVenue', { venue: sv, payer: P.id }); const L1 = (await ownT(OT, 'payers')).j.list.find(x => x.id === P.id);
+    must(L1?.year.sum === y.sum + 2500 && L1.venues.length === 2, 'після нового доходу: ' + JSON.stringify(L1?.year));
+    must((await vpos(VA, 'ldgAudit', { ref: 'payer' })).j.list.some(x => x.what === 'payer' && x.now?.id === P.id), 'журнал прив\'язки');
+    must((await ownT(OT, 'payerSet', { f: { id: P.id, del: 1 } })).status === 400, 'видалив платника з закладами');
+    for (const v of [VID, sv]) must((await ownT(OT, 'payerVenue', { venue: v, payer: '' })).j.venue && !(await ownT(OT, 'payerVenue', { venue: v, payer: '' })).j.venue.payer, 'відв\'язка');
+    must((await ownT(OT, 'payerSet', { f: { id: P.id, del: 1 } })).j.payer?.ok, 'видалення');
+    return `разом ${y.sum / 100} ₴ = ${y.by[VID] / 100} + ${y.by[sv] / 100}`;
+  });
   await step('+1 міс другу й рефері, один раз на заклад; ліміт 12 → далі лише другу; блок коду', async () => {
     must((await ownT(PT, 'acctNew', { email: FE, pass: 'friend-pass-123', name: 'QA друг' })).j.ok, 'acctNew');
     const code = (await ownT(PT, 'ref', { venue: VID })).j.ref.code, till = async id => (await ownT(PT, 'bill', { venue: id })).j.sub.till;

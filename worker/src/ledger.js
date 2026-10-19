@@ -50,7 +50,7 @@ const byExt = async (env, ext) => row((await sql(env, ['SELECT * FROM doc WHERE 
 // ➕ новий документ (або той самий за ext: чернетку оновлюємо, проведений повертаємо як є — { doc, same: 1 })
 export async function docAdd(env, d, who = '') {
   if (!has(env)) return { error: 'Облік недоступний' };
-  const c = clean(d || {}); if (c.error) return c;
+  const c = clean(d || {}); if (c.error) return c; if (!c.payer) c.payer = (await payerOf(env))?.id || '';
   return L(env, 'ledger', async () => {
     if (c.ext) { const o = await byExt(env, c.ext); if (o) {
       if (o.st !== 0) return { doc: o, same: 1 };
@@ -127,6 +127,7 @@ export async function ledgerDaily(env) {
   if (!has(env)) return; await backfill(env); const f = 'ldg:' + dayKey(); if (await env.DB.get(f)) return;
   await env.DB.put(f, '1', { expirationTtl: 3 * 86400 });
   for (let i = 1; i <= 3; i++) await saleSync(env, dayKey(Date.now() - i * 86400e3)).catch(e => console.log('saleSync', e.message));
+  await payerPush(env).catch(e => console.log('payerPush', e.message));
 }
 // 🧬 перенесення старих даних: продажі всіх днів з минулого 1 січня попереднього року — частинами по 40 днів за прокидання (ключ ldg:bf)
 async function backfill(env) {
@@ -135,4 +136,22 @@ async function backfill(env) {
     st = { days: (await env.DB.list({ prefix: 'closed:' })).keys.map(k => k.name.slice(7)).filter(d => isDay(d) && d >= from && d < today).sort() }; }
   for (const d of st.days.splice(0, 40)) await saleSync(env, d).catch(e => console.log('backfill', d, e.message));
   await env.DB.put('ldg:bf', JSON.stringify(st.days.length ? st : { done: Date.now() }));
+}
+
+// 🧾 Ф2: платник закладу { id, n } (задає власник у кабінеті; HUB → /__int/payer). Документи без платника отримують його при прив'язці.
+export const payerOf = async env => (await env.DB.get('payer', 'json')) || null;
+export async function payerBind(env, p, who = '') {
+  const was = await payerOf(env);
+  if (!p?.id) { await env.DB.delete('payer'); await audit(env, who, 'payer', 'payer', was, null); return { payer: null }; }
+  const v = { id: cut(p.id, 40), n: cut(p.n, 80) }; await env.DB.put('payer', JSON.stringify(v));
+  if (has(env)) await sql(env, ["UPDATE doc SET payer=? WHERE payer=''", v.id]);
+  await audit(env, who, 'payer', 'payer', was, v); return { payer: v, sent: await payerPush(env) };
+}
+// 📤 суми доходу за рік по днях (продажі + інший дохід, проведені, зі сторно) → HUB; раз на добу (ledgerDaily) і при прив'язці
+export async function payerPush(env) {
+  const p = await payerOf(env); if (!p || !has(env) || !env.HUB) return null;
+  const y = acctDay().slice(0, 4), [r] = await sql(env, ["SELECT day, SUM(sum) AS s FROM doc WHERE st=1 AND type IN ('sale','inc') AND payer=? AND day >= ? GROUP BY day", p.id, y + '-01-01']);
+  const { hub } = await import('./hub.js'), x = await hub(env).payerDays(p.id, env.VENUE || 'varvar', y, Object.fromEntries(r.map(z => [z.day, z.s])));
+  if (x?.warn) { const { notify } = await import('./ops.js'); await notify(env, x.warn).catch(() => {}); }
+  return x;
 }
