@@ -4,6 +4,7 @@
 //  3) сервер: синтаксис і імпорти — import { X } з файлу, де X немає (впало б лише на живому запиті);
 //  4) фронт (js/*.js): синтаксис;
 //  5) обірвані ланцюжки (tools/audit-static.mjs): кнопка без обробника, op без case на сервері;
+//  7) бот: два обробники кнопок з тим самим префіксом (`act === 'x'`) — другий ніколи не спрацює;
 //  6) сервер: забутий import у частинах ops-*/bot-* (tools/undef.mjs) — інакше ReferenceError лише на живому запиті.
 // node tools/check.mjs → код 1, якщо щось не так.
 import { readFileSync, readdirSync, writeFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
@@ -33,6 +34,11 @@ for (const t of ['audit-static', 'undef']) try { execSync(`node tools/${t}.mjs`,
   const gone = [...pre].filter(f => !existsSync(R + f));
   if (need.length) bad.push('❌ pos-sw.js: немає в передкеші (додайте в PRE): ' + need.join(', '));
   if (gone.length) bad.push('❌ pos-sw.js: у передкеші неіснуючі файли: ' + gone.join(', ')); }
+
+// 7) бот: префікс кнопки обробляється один раз — інакше перший обробник «з'їдає» чужі кнопки (так зламались броні через банк)
+{ const src = readFileSync(R + 'worker/src/bot-main.js', 'utf8'), seen = {}, dup = new Set();
+  for (const m of src.matchAll(/^ {2}if \(act === '([\w-]+)'\)/gm)) { if (seen[m[1]]) dup.add(m[1]); seen[m[1]] = 1; }
+  if (dup.size) bad.push('❌ bot-main.js: префікс кнопки обробляється двічі (перейменуйте новий): ' + [...dup].join(', ')); }
 
 try { execSync('node tools/map.mjs', { cwd: R, stdio: 'pipe' }); } catch {} // 🗺 оновити карту коду
 rmSync(T, { recursive: true, force: true });

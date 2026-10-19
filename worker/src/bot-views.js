@@ -63,6 +63,7 @@ ${A.wifi} — мережі закладу для замовлень
 ${A.staff} — PIN-коди працівників для касової програми, хто увійшов у бот
 ${A.delClosed} / ${A.reset} — тестові
 ${A.waiter} — звичайні кнопки (вхід зберігається)
+<code>агрегатори</code> — 🛵 Glovo / Bolt: увімкнути, комісія (<code>агрегатор Glovo 28</code>)
 <code>банк</code> — 🏦 виписка й звірка (надішліть файл виписки .txt / .csv)
 ${A.logout} — вийти з режиму адміністратора
 
@@ -128,10 +129,11 @@ export async function closeAsk(env, t) {
   const b = await getBill(env, t);
   if (!b.total) return { text: `Стіл ${tn(t)} вже закритий.` };
   await promoFill(env, b).catch(() => {});
-  const m = payButtons(t); if ((await getCfg(env)).iban) m.inline_keyboard.splice(2, 0, [{ text: '🏦 Переказ на рахунок (QR)', callback_data: 'ibq:' + t }]); // 🏦 як у касі
+  const m = payButtons(t); if (await (await import('./ops.js')).modOn(env, 'agg')) { const ag = await (await import('./agg.js')).aggOn(env); if (ag.length) m.inline_keyboard.splice(2, 0, ag.slice(0, 4).map(a => ({ text: '🛵 ' + a.n, callback_data: `clsok:${t}:agg-${a.id}:np` }))); } // 🛵 Glovo / Bolt — чек друкує агрегатор
+  if ((await getCfg(env)).iban) m.inline_keyboard.splice(2, 0, [{ text: '🏦 Переказ на рахунок (QR)', callback_data: 'ibq:' + t }]); // 🏦 як у касі
   return { text: `🧾 Закрити <b>стіл ${tn(t)}</b> на <b>${billSum(b)}</b>?${b.pay ? `\nГість хоче платити: ${PAY_PICK[b.pay]}` : ''}${b.tip ? `\n💝 Чайові: <b>${money(b.tip)}</b> → разом ${money(payable(b) + b.tip)}` : ''}\n\nЯк оплатили?`, markup: m };
 }
-export const closedText = r => r ? `✅ <b>Стіл ${tn(r.t)} закрито</b> — ${money(r.sum)}${r.tip ? ` + 💝 ${money(r.tip)} чайові` : ''}${r.disc ? ` (знижка ${money(r.disc)})` : ''} · ${payLabel(r.cash, r.card, r.ib)}` : 'Стіл вже закритий.';
+export const closedText = r => r ? `✅ <b>Стіл ${tn(r.t)} закрито</b> — ${money(r.sum)}${r.tip ? ` + 💝 ${money(r.tip)} чайові` : ''}${r.disc ? ` (знижка ${money(r.disc)})` : ''} · ${payLabel(r.cash, r.card, r.ib, r.agN || r.ag)}` : 'Стіл вже закритий.';
 export async function pickTable(env, title, act) {
   const rows = await openTables(env);
   if (!rows.length) return { text: 'Відкритих столів немає' };
@@ -285,7 +287,7 @@ export async function staffOne(env, id) {
     [{ text: '⬅️ Усі працівники', callback_data: 'stfbk' }]] } };
 }
 // 🛡 Права працівника: перемикачі (паритет із касою). Чутливі права для не-адмінів — лише в касі разом із новим PIN 6–8 цифр
-export const BOT_PERM = { mvl: 'cash', zl: 'cash', zday: 'cash', rp: 'reports', stf: 'staff', stfn: 'staff', stfp: 'staff', stfr: 'staff', stfro: 'staff', stfdq: 'staff', stfdel: 'staff', stfadd: 'staff', prm: 'staff', prt: 'staff', mod: 'settings', bk: 'cash' };
+export const BOT_PERM = { mvl: 'cash', zl: 'cash', zday: 'cash', rp: 'reports', stf: 'staff', stfn: 'staff', stfp: 'staff', stfr: 'staff', stfro: 'staff', stfdq: 'staff', stfdel: 'staff', stfadd: 'staff', prm: 'staff', prt: 'staff', mod: 'settings', bnk: 'cash', agg: 'settings' };
 export async function permView(env, id) {
   const s = (await getStaff(env)).find(x => x.id === id); if (!s) return staffView(env);
   const adm = s.role === 'admin', on = k => adm ? s.perm?.[k] !== 0 : s.perm?.[k] === 1;

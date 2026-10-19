@@ -184,7 +184,7 @@
     const t = S.open, b = S.tables[t]; if (!b) return;
     const v = await choose(`Закрити стіл ${tn(t)}`, `До сплати ${money(b.pay2)}${b.tip ? ` + 💝 чайові ${money(b.tip)} = ${money(b.pay2 + b.tip)}` : ''}${b.pay ? ` · гість хоче ${b.pay === 'card' ? '💳 карткою' : '💵 готівкою'}` : ''}`, [
       { label: '💵 Готівка + 🖨 чек', val: 'cash:1', cls: 'green' }, { label: '💳 Карта + 🖨 чек', val: 'card:1', cls: 'blue' },
-      { label: '💵 Готівка, без чека', val: 'cash:0' }, { label: '💳 Карта, без чека', val: 'card:0' }, ...(S.cfg?.iban ? [{ label: '🏦 Переказ на рахунок', val: 'iban' }] : []), { label: '➗ Порівну на гостей', val: 'eq' }]);
+      { label: '💵 Готівка, без чека', val: 'cash:0' }, { label: '💳 Карта, без чека', val: 'card:0' }, ...(modOn('agg') ? (await aggsLoad()).map(g => ({ label: '🛵 ' + g.n, val: 'agg:' + g.id })) : []), ...(S.cfg?.iban ? [{ label: '🏦 Переказ на рахунок', val: 'iban' }] : []), { label: '➗ Порівну на гостей', val: 'eq' }]);
     if (!v) return;
     if (v === 'iban') { // 🏦 гість сканує QR своїм банком і переказує на рахунок закладу; закриваємо, коли гроші прийшли
       const q = await api('ibanQr', { t }).catch(e => (toast('⚠️ ' + errText(e.message)), null)); if (!q) return;
@@ -199,8 +199,8 @@
       await choose(`➗ Порівну на ${n}`, `З кожного ${money(one)}${rest ? ` (один доплачує ${money(one + rest)})` : ''} · разом ${money(tot)}`, [{ label: 'Гаразд', val: 'ok' }]);
       return closeFlow();
     }
-    const [pay, pr] = v.split(':');
-    const r = await act('close', { t, pay, print: pr === '1' });
+    const [pay, pr] = v.split(':'), isAg = pay === 'agg'; /* 🛵 агрегатор — чек друкує / фіскалізує сам агрегатор, тут без друку */
+    const r = await act('close', { t, pay: isAg ? v : pay, print: !isAg && pr === '1' });
     if (r?.queued) { toast(`📴 Стіл ${tn(t)}: немає зв'язку — закриття в черзі, відправимо самі`); closeSheet(); return; }
     if (r?.r) { toast(`✅ Стіл ${tn(t)} закрито · ${money(r.r.sum)}`); closeSheet(); loadState().then(wlFree.bind(null, t)).catch(() => {}); }
   }

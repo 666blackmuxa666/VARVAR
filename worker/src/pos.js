@@ -155,10 +155,12 @@ export async function posApi(b, req, env) {
       const url = F.ibanQr(v, sum, `Оплата за замовлення, стіл ${tn(t)}`), png = await (await import('./qr.js')).qrPng(url, 6);
       return ok({ sum, n: v.n || '', iban: v.iban, img: 'data:image/png;base64,' + btoa(String.fromCharCode(...png)) }); }
     case 'close': {
-      if (b.pay && !['card', 'cash', 'iban'].includes(b.pay)) return [{ error: 'Невідомий спосіб оплати' }, 400];
+      const A = String(b.pay || '').startsWith('agg:') ? await import('./agg.js') : null; /* 🛵 агрегатор: pay = 'agg:<id>' */
+      if (A && (!(await (await import('./ops.js')).modOn(env, 'agg')) || !(await A.aggPay(env, b.pay)))) return [{ error: 'Агрегатор не знайдено або модуль «🛵 Агрегатори» вимкнено' }, 400];
+      if (b.pay && !A && !['card', 'cash', 'iban'].includes(b.pay)) return [{ error: 'Невідомий спосіб оплати' }, 400];
       if (b.pay === 'iban' && !(await (await import('./fiscal.js')).ibanGet(env))) return [{ error: 'Рахунок для переказу не вказано — власник додає його в кабінеті (💳 Оплата)' }, 400];
-      const r = await closeTable(env, t, who, ['card', 'iban'].includes(b.pay) ? b.pay : 'cash', b.print !== false);
-      if (r) await notify(env, `🖥 ✅ <b>Стіл ${tn(t)} закрито</b> — ${money(r.sum)}${r.disc ? ` (знижка ${money(r.disc)})` : ''} · ${payLabel(r.cash, r.card, r.ib)}${b.print === false ? ' · без чека' : ''} — ${esc(who)}`);
+      const r = await closeTable(env, t, who, A || ['card', 'iban'].includes(b.pay) ? b.pay : 'cash', b.print !== false);
+      if (r) await notify(env, `🖥 ✅ <b>Стіл ${tn(t)} закрито</b> — ${money(r.sum)}${r.disc ? ` (знижка ${money(r.disc)})` : ''} · ${payLabel(r.cash, r.card, r.ib, r.ag && A ? A.aggName(await A.aggList(env), r.ag) : '')}${b.print === false ? ' · без чека' : ''} — ${esc(who)}`);
       return ok({ r });
     }
     case 'discount': { const r = await setDiscount(env, t, b.pct, who, me.perm?.discountMax != null ? discLimit(me) : admin); if (r?.error) return [{ error: r.error }, 400]; if (r) await notify(env, `🖥 % Стіл ${tn(t)}: ${r.disc ? `знижка ${r.disc}% — до сплати ${money(payable(r))}` : 'знижку прибрано'} — ${esc(who)}`); return ok(); }
@@ -277,6 +279,7 @@ export async function posApi(b, req, env) {
   }
 
   // ---- далі лише адміністратор ----
+  if (b.op === 'aggList') { const A = await import('./agg.js'), on = await (await import('./ops.js')).modOn(env, 'agg'); return ok({ on: on ? 1 : 0, list: on || admin ? await A.aggList(env) : [] }); } // 🛵 офіціанту — для кнопок оплати
   if (!admin) return needAdmin();
   switch (b.op) {
     case 'shift': { const day = await cashData(env); return ok({ tipbal: await tipBalances(env), tippay: (await env.DB.get('tippay:' + day.day, 'json')) || [], z: await dayZData(env), rec: await env.DB.get('rec:day', 'json'), day, exp: day.exp, mov: day.mov, last: await lastZ(env), bal: await balances(env), closed: await getClosed(env) }); }
@@ -315,6 +318,7 @@ export async function posApi(b, req, env) {
     case 'migRun': case 'migUndo': { if (!admin) return needAdmin(); if (!(await (await import('./ops.js')).modOn(env, 'mig'))) return [{ error: 'Модуль «Перехід» вимкнено — увімкніть у налаштуваннях' }, 400];
       const M = await import('./mig.js'), r = b.op === 'migRun' ? await M.migRun(env, b, who) : await M.migUndo(env, String(b.id || ''), who); if (r.error) return [{ error: r.error }, 400]; return ok(r); }
     // 🏦 банк (етап 2, bank.js): імпорт виписки (dry — перегляд), місяць зі звіркою, дія з рядком, накладні в борг для вибору
+    case 'aggSet': { if (!admin) return needAdmin(); const r = await (await import('./agg.js')).aggSet(env, b); return r.error ? [r, 400] : ok(r); }
     case 'bankList': case 'bankImp': case 'bankAct': case 'bankInvs': { if (!admin) return needAdmin(); if (!(await (await import('./ops.js')).modOn(env, 'bank'))) return [{ error: 'Модуль «Банк і звірка» вимкнено — увімкніть у налаштуваннях' }, 400];
       const B = await import('./bank.js');
       const r = b.op === 'bankList' ? await B.bankList(env, String(b.m || '')) : b.op === 'bankInvs' ? await B.bankInvs(env, String(b.id || ''))

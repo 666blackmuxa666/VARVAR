@@ -106,7 +106,7 @@ export const CFG_LIM = { tables: [0, 200], discMax: [0, 100], scanMin: [10, 600]
 export const getCfg = async env => ({ ...CFG_DEF, ...((await env.DB.get('cfg', 'json')) || {}) });
 // 🧩 Ф13 модулі закладу: cfg.mods { tax, hr, acct, mig, edo } — 1/0. Немає cfg.mods → старий заклад: усе увімкнено (як було).
 // Новий заклад створюється з mods: {} — лише каса («просто видавати чеки»). Вимкнений модуль не показує вкладок і не робить фонових справ.
-export const MODS = { tax: '📅 Податки', hr: '👥 Кадри й зарплата', acct: '📒 Облік', mig: '🔁 Перехід з іншої системи', edo: '📨 ЕДО з постачальниками', bank: '🏦 Банк і звірка' };
+export const MODS = { tax: '📅 Податки', hr: '👥 Кадри й зарплата', acct: '📒 Облік', mig: '🔁 Перехід з іншої системи', edo: '📨 ЕДО з постачальниками', bank: '🏦 Банк і звірка', agg: '🛵 Агрегатори доставки' };
 export const modsOf = c => Object.fromEntries(Object.keys(MODS).map(k => [k, !c?.mods || c.mods[k] ? 1 : 0]));
 export const modOn = async (env, k) => modsOf(await getCfg(env))[k] === 1;
 export async function setMod(env, k, v) {

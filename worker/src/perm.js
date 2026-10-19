@@ -33,7 +33,7 @@ const MAP = [
   ['pay', /^zp(Grid|Att|Plan|PlanCopy|Op|OpDel|GridSet|Staff)$/],
   ['print', /^(rcptSet|rcptLogo|rcptTest|printRoute|tabReg|printMove|printClear|printQr|qrInfo|qrNew|dzGet|dzSet)$/],
   ['delivery', /^cour(List|Rep|Cash)$/],
-  ['settings', /^(wifi|wifiAdd|wifiClear|hallsSet|mapSet|cfgSet|modSet|kitchenPct|evDrop|alog|onlList)$/],
+  ['settings', /^(wifi|wifiAdd|wifiClear|hallsSet|mapSet|cfgSet|modSet|aggSet|kitchenPct|evDrop|alog|onlList)$/],
 ];
 export const permOf = op => { for (const [k, re] of MAP) if (re.test(op || '')) return k; return ''; };
 

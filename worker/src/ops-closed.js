@@ -1,5 +1,6 @@
 // 🧾 Закриті рахунки: список, видалення/повернення, редагування, повторне відкриття, відновлення стола, передрук
 // (частина ops.js — інші файли імпортують з ops.js, як і раніше)
+import { agBump } from './agg.js';
 import { cliTouch } from './delivery.js';
 import { fisSafe } from './fiscal.js';
 import { addTipBal, getVoids, splitTip, tipSplitOf } from './ops-bill.js';
@@ -18,7 +19,7 @@ async function _delClosed(env, ref, day = dayKey()) {
   if (!x || x.del || x.rm) return null;
   x.rm = 1; await env.DB.put(k, JSON.stringify(list)); // rm — прибраний з виручки (del — стіл видалений до закриття)
   await bump(env, 'day:' + day, d => { d.closed = Math.max(0, (d.closed || 0) - x.sum); d.tables = Math.max(0, (d.tables || 0) - 1);
-    d.cash = Math.max(0, (d.cash || 0) - (x.cash ?? x.sum)); d.card = Math.max(0, (d.card || 0) - (x.card || 0)); if (x.onl) d.onl = Math.max(0, (d.onl || 0) - x.onl); d.orders = Math.max(0, (d.orders || 0) - (x.orders || 0));
+    d.cash = Math.max(0, (d.cash || 0) - (x.cash ?? x.sum)); d.card = Math.max(0, (d.card || 0) - (x.card || 0)); if (x.onl) d.onl = Math.max(0, (d.onl || 0) - x.onl); agBump(d, x.ag, -(x.agS || 0)); d.orders = Math.max(0, (d.orders || 0) - (x.orders || 0));
     if (x.discSum) d.disc = Math.max(0, (d.disc || 0) - x.discSum); if (x.tip) d.tip = Math.max(0, (d.tip || 0) - x.tip); });
   if (x.dishes?.length) await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q: -q, sum: -sum })), day, { stock: false }); // страву віддали — продукти витрачені
   for (const [n, v] of Object.entries(tipSplitOf(x))) await addTipBal(env, n, -v);
@@ -71,13 +72,13 @@ async function _editClosed(env, ref, p, who, day = dayKey()) {
   const oSplit = tipSplitOf(x); let split = oSplit;
   if (tip !== oTip || w !== (x.w || x.by || '')) { const kt = Math.min(x.ktip || 0, tip); split = tip ? await splitTip(env, w, tip - kt, kt) : {}; }
   const oOnl = x.onl || 0, onl = Math.min(oOnl, card); /* 🌐 онлайн не може бути більшим за безготівку */
-  Object.assign(x, { t, w, sum, cash, card, dishes }); if (onl) x.onl = onl; else delete x.onl; if (x.ib) { x.ib = Math.min(x.ib, card); if (!x.ib) delete x.ib; } /* 🏦 переказ — частина безготівки */
+  Object.assign(x, { t, w, sum, cash, card, dishes }); if (onl) x.onl = onl; else delete x.onl; if (x.ib) { x.ib = Math.min(x.ib, card); if (!x.ib) delete x.ib; } const oAg = x.agS || 0; if (x.ag) { x.agS = Math.min(oAg, card); if (!x.agS) { delete x.agS; } } /* 🛵 агрегатор — частина безготівки */ /* 🏦 переказ — частина безготівки */
   if (pct) Object.assign(x, { disc: pct, discSum, gross }); else { delete x.disc; delete x.discSum; delete x.gross; }
   if (tip) Object.assign(x, { tip, tipSplit: split }); else { delete x.tip; delete x.tipSplit; delete x.ktip; }
   if (x.ktip && x.ktip > tip) x.ktip = tip;
   (x.edits = x.edits || []).push({ at: hhmm(), ts: Date.now(), by: who || '', what: what.join(', ') });
   await env.DB.put(k, JSON.stringify(list));
-  await bump(env, 'day:' + day, d => { d.closed = (d.closed || 0) + sum - old.sum; d.cash = (d.cash || 0) + cash - oCash; d.card = (d.card || 0) + card - oCard; if (onl !== oOnl) d.onl = Math.max(0, (d.onl || 0) + onl - oOnl);
+  await bump(env, 'day:' + day, d => { d.closed = (d.closed || 0) + sum - old.sum; d.cash = (d.cash || 0) + cash - oCash; d.card = (d.card || 0) + card - oCard; if (onl !== oOnl) d.onl = Math.max(0, (d.onl || 0) + onl - oOnl); agBump(d, x.ag, (x.agS || 0) - oAg);
     d.disc = Math.max(0, (d.disc || 0) + discSum - (old.discSum || 0)); d.tip = Math.max(0, (d.tip || 0) + tip - oTip); });
   if (dd.length) await addDishes(env, dd, day); // топ страв того дня + склад: додане списується, прибране повертається
   if (split !== oSplit) { for (const [n, v] of Object.entries(oSplit)) await addTipBal(env, n, -v); for (const [n, v] of Object.entries(split)) await addTipBal(env, n, v); }
@@ -90,7 +91,7 @@ async function _restoreClosed(env, ref, who, day = dayKey()) {
   if (!x || !x.rm || x.reopen || x.del) return null;
   delete x.rm; await env.DB.put(k, JSON.stringify(list));
   await bump(env, 'day:' + day, d => { d.closed = (d.closed || 0) + x.sum; d.tables = (d.tables || 0) + 1;
-    d.cash = (d.cash || 0) + (x.cash ?? x.sum); d.card = (d.card || 0) + (x.card || 0); if (x.onl) d.onl = (d.onl || 0) + x.onl; d.orders = (d.orders || 0) + (x.orders || 0);
+    d.cash = (d.cash || 0) + (x.cash ?? x.sum); d.card = (d.card || 0) + (x.card || 0); if (x.onl) d.onl = (d.onl || 0) + x.onl; agBump(d, x.ag, x.agS || 0); d.orders = (d.orders || 0) + (x.orders || 0);
     if (x.discSum) d.disc = (d.disc || 0) + x.discSum; if (x.tip) d.tip = (d.tip || 0) + x.tip; });
   if (x.dishes?.length) await addDishes(env, x.dishes.map(([n, q, sum]) => ({ n, q, sum })), day, { stock: false });
   for (const [n, v] of Object.entries(tipSplitOf(x))) await addTipBal(env, n, v);

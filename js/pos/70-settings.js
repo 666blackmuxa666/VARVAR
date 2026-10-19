@@ -117,6 +117,7 @@
     part.rules = `<div class="grid2 set">
       <div class="card"><h3>🧩 Модулі</h3><div class="muted set-note">Каса й чеки працюють завжди. Решту вмикайте, коли потрібно: вимкнений модуль не показує вкладок і не шле нагадувань.</div>
         ${MODS_UI.map(([k, l, h]) => `<div class="kv press" data-a="modTgl" data-k="${k}"><span>${l}<br><small class="muted">${h}</small></span><span class="switch ${modOn(k) ? 'on' : ''}"></span></div>`).join('')}</div>
+      ${modOn('agg') ? `<div class="card"><h3>🛵 Агрегатори</h3><div class="muted set-note">Glovo, Bolt Food та інші: спосіб оплати при закритті стола, комісія, звірка виплат з банком.</div><button class="btn sm primary" data-a="aggManage">🛵 Налаштувати агрегатори</button></div>` : ''}
       <div class="card"><h3>🏛 Зали і столи</h3>${(() => { const H = c.halls || []; let a = 1;
         return (H.length ? H.map((h, i) => { const f = a; a += h.c; return `<div class="kv"><span>${h.ic} ${esc(h.n)}<br><small class="muted">${h.c} стол. · №${f}–${a - 1}</small></span><span class="kv-r"><button class="btn sm" data-hs="ed" data-i="${i}">✏️</button><button class="btn sm" data-hs="up" data-i="${i}" ${i ? '' : 'disabled'}>⬆️</button><button class="btn sm red" data-hs="del" data-i="${i}">🗑</button></span></div>`; }).join('')
           : row('🪑 Столів у залі', S.n, ch('cfg', ' data-k="tables"'), 'Один зал. Додайте зали й тераси — каса покаже перемикач'))
@@ -264,7 +265,7 @@
       }
   });
   const MODS_UI = [['tax', '📅 Податки', 'Податковий календар і нагадування про звіти й платежі'], ['hr', '👥 Кадри й зарплата', 'Графік змін, зарплата, операції й ефективність у «Персонал»'],
-    ['acct', '📒 Облік', 'Документи й звіти для бухгалтера (наповнюється з наступними оновленнями)'], ['mig', '🔁 Перехід з іншої системи', 'Імпорт з 1С / Excel — у кабінеті власника, у боті /mig'], ['bank', '🏦 Банк і звірка', 'Виписки (1С / CSV), звірка з еквайрингом і накладними — Каса → 🏦 Банк'], ['edo', '📨 ЕДО з постачальниками', 'Електронні накладні (скоро)']];
+    ['agg', '🛵 Агрегатори доставки', 'Glovo, Bolt Food: оплата «🛵» при закритті, окремо в Z-звіті, звірка виплат з банком'], ['acct', '📒 Облік', 'Документи й звіти для бухгалтера (наповнюється з наступними оновленнями)'], ['mig', '🔁 Перехід з іншої системи', 'Імпорт з 1С / Excel — у кабінеті власника, у боті /mig'], ['bank', '🏦 Банк і звірка', 'Виписки (1С / CSV), звірка з еквайрингом і накладними — Каса → 🏦 Банк'], ['edo', '📨 ЕДО з постачальниками', 'Електронні накладні (скоро)']];
   on('modTgl', async (el, e, a, t) => { const k = el.dataset.k; if (await act('modSet', { k, v: modOn(k) ? 0 : 1 }, '🧩 Збережено')) { loadView(); loadState().catch(() => {}); } });
   on('cfgTgl', async (el, e, a, t) => { { const k = el.dataset.k, cur = S.data.staff?.cfg?.[k] ?? S.cfg?.[k] ?? +(el.dataset.def || 0); if (await act('cfgSet', { k, v: cur ? 0 : 1 }, '⚙️ Збережено')) { loadView(); loadState().catch(() => {}); } return; } });
   on('staffDel', async (el, e, a, t) => { if (await confirmBox('Видалити працівника?', 'Його PIN перестане працювати')) { await act('staffDel', { id: el.dataset.id }); loadView(); } return; });

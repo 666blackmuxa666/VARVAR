@@ -16,7 +16,7 @@
       <div class="bal-c tot"><span>💰 Разом</span><b class="money">${money(B.total)}</b><small>${B.tipOwed ? `з них чайові ${money(B.tipOwed)} · вільних <b>${money(B.free)}</b>` : `з ${B.from ? B.from.split('-').reverse().join('.') : '—'}`}</small></div></div>` : '';
     // 1. головне: виручка за сьогодні, готівка/картка, кнопка Z
     const hero = `<div class="cash-hero on"><div class="hero-main"><div class="muted">${today}</div><div class="hero-l">Виручка за сьогодні</div><div class="hero-n money">${money(z.total)}</div>${z.tip ? `<div class="muted" style="font-size:13px">без чайових · + 💝 ${money(z.tip)} чайові персоналу</div>` : ''}
-        <div class="split"><div class="bar2"><i style="width:${pc}%"></i></div><div class="split-l"><span>💵 Готівка <b class="money">${money(z.cash)}</b></span><span>💳 Картка <b class="money">${money(z.card)}</b>${z.onl ? `<small class="muted"> з них 🌐 онлайн ${money(z.onl)}</small>` : ''}${S.cfg?.bankFee && z.card ? `<small class="muted"> · 🏦 −${money(Math.round(z.card * S.cfg.bankFee / 100))} комісія</small>` : ''}</span></div></div></div>
+        <div class="split"><div class="bar2"><i style="width:${pc}%"></i></div><div class="split-l"><span>💵 Готівка <b class="money">${money(z.cash)}</b></span><span>💳 Картка <b class="money">${money(z.card)}</b>${z.onl ? `<small class="muted"> з них 🌐 онлайн ${money(z.onl)}</small>` : ''}${Object.entries(z.ag || {}).map(([a, v]) => `<small class="muted"> · 🛵 ${esc((S.aggs || []).find(g => g.id === a)?.n || a)} ${money(v)}</small>`).join('')}${S.cfg?.bankFee && z.card ? `<small class="muted"> · 🏦 −${money(Math.round(z.card * S.cfg.bankFee / 100))} комісія</small>` : ''}</span></div></div></div>
       <button class="btn primary zbtn" data-a="zDay">🧾 Z-звіт<small>переглянути · друк · закрити день</small></button></div>`;
     const recH = (() => { const R = r.rec, best = Math.max(R?.sum || 0, 0), now = z.total, pct = best ? Math.min(100, Math.round(now / best * 100)) : 0; /* 🏆 рекорд закладу за день */
         return `<div class="widget hero-rec${best && now > best ? ' beat' : ''}"><span>🏆 Рекорд за день</span><b class="money">${best ? money(best) : '—'}</b><small>${best ? (now > best ? '🔥 сьогодні вже більше — рекорд!' : `${R.d.split('-').reverse().join('.')} · сьогодні ${pct}%`) : ''}${S.cfg?.recBonus ? ` · премія ${money(S.cfg.recBonus)}` : ''}</small>${best ? `<div class="bar2"><i style="width:${pct}%"></i></div>` : ''}</div>`; })();
@@ -145,16 +145,17 @@
     const line = (x, btns) => `<div class="kv" style="align-items:flex-start;gap:10px"><span style="min-width:0;overflow-wrap:anywhere">${{ ok: '✅', q: '⚠️', x: '🙈' }[x.st]} ${bkD(x.d)} · ${esc(x.who || '—')}${x.pur ? `<br><small class="muted">${esc(x.pur.slice(0, 160))}</small>` : ''}${x.mt ? `<br><small>${esc(x.mt)}</small>` : ''}${btns ? `<div class="btns" style="margin-top:6px;flex-wrap:wrap">${btns}</div>` : ''}</span>${sg(x)}</div>`;
     const b = (k, id, l) => `<button class="btn sm" data-a="bkAct" data-k="${k}" data-id="${id}">${l}</button>`;
     const qb = x => x.sum < 0 ? b('inv', x.id, '🧾 Накладні') + b('exp', x.id, '💸 Витрата') + b('mov', x.id, '➖ Вилучення') + b('auto', x.id, '🔎 Пара') + b('skip', x.id, '🙈 Пропустити')
-      : b('acq', x.id, '💳 Еквайринг') + b('mov', x.id, '➕ Внесення') + b('auto', x.id, '🔎 Пара') + b('skip', x.id, '🙈 Пропустити');
+      : b('acq', x.id, '💳 Еквайринг') + (modOn('agg') ? b('agg', x.id, '🛵 Агрегатор') : '') + b('mov', x.id, '➕ Внесення') + b('auto', x.id, '🔎 Пара') + b('skip', x.id, '🙈 Пропустити');
     const head = `<div class="card"><h3>🏦 Банк · ${esc(mn)}</h3><div class="btns" style="flex-wrap:wrap;align-items:center"><button class="btn sm" data-a="bkM" data-t="-1">‹</button><button class="btn sm" data-a="bkM" data-t="1">›</button>
       <label class="btn sm primary" style="cursor:pointer">📎 Завантажити виписку<input id="bankFile" type="file" accept=".txt,.csv,.tsv" hidden></label></div>
       <div class="muted" style="font-size:12px;margin-top:8px">Файл з інтернет-банку: «Експорт у 1С» (.txt) або CSV. Повторне завантаження не дублює. Еквайринг, оплати накладних і записані витрати зіставляються самі${r.last ? ` · останній імпорт ${new Date(r.last.ts).toLocaleDateString('uk-UA')} (${r.last.n})` : ''}.</div></div>`;
     const tiles = `<div class="widgets">${[['➕ Надійшло', money(t.in)], ['➖ Списано', money(-t.out)], ['💳 Комісія банку', money(t.fee)], ['✅ Зіставлено', t.ok], ['⚠️ На підтвердження', t.q], ['🙈 Пропущено', t.x]].map(([l, v]) => `<div class="widget"><span>${l}</span><b class="money">${v}</b></div>`).join('')}</div>`;
     const miss = r.miss.length ? `<div class="card"><h3>💳 Не надійшла безготівка</h3><div class="muted" style="font-size:12px;margin-bottom:6px">Продажі карткою є, а відшкодування банку у виписці немає (перевірте термінал або завантажте пізнішу виписку)</div>${r.miss.map(x => `<div class="kv"><span>${bkD(x.d)}</span><b class="money">${money(x.card)}</b></div>`).join('')}</div>` : '';
+    const missAg = r.missAg?.length ? `<div class="card"><h3>🛵 Не надійшла виплата агрегатора</h3><div class="muted" style="font-size:12px;margin-bottom:6px">Продажі через агрегатор старші за 2 тижні, а виплати у виписці немає</div>${r.missAg.map(x => `<div class="kv"><span style="min-width:0;overflow-wrap:anywhere">${esc(x.n)} · ${bkD(x.from)}${x.to !== x.from ? '–' + bkD(x.to) : ''}</span><b class="money">${money(x.sum)}</b></div>`).join('')}</div>` : '';
     const qH = q.length ? `<div class="card"><h3>⚠️ На підтвердження · ${q.length}</h3>${q.map(x => line(x, qb(x))).join('')}</div>` : '';
     const all = r.list.filter(x => x.st !== 'q');
     const allH = `<div class="card"><h3>📋 Опрацьовані · ${all.length}</h3>${all.length ? all.map(x => line(x, b('un', x.id, '↩️ Скасувати'))).join('') : `<div class="muted">${r.list.length ? 'Усе чекає підтвердження вище' : 'Виписок за цей місяць ще немає'}</div>`}</div>`;
-    return head + tiles + miss + qH + allH;
+    return head + tiles + miss + missAg + qH + allH;
   }
   async function bankFile(f) {
     if (/\.xlsx?$/i.test(f.name)) return toast('⚠️ Збережіть виписку як CSV або оберіть «Експорт у 1С» (.txt)');
@@ -184,6 +185,11 @@
     if (k === 'acq') { const x = S.data.bank.list.find(y => y.id === id), ds = [...Array(7)].map((_, i) => { const d = new Date(x.d + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - i); return d.toISOString().slice(0, 10); });
       const v = await modal({ title: '💳 За які дні це відшкодування?', body: ds.map(d => `<label class="kv"><span><input type="checkbox" class="bkDay" value="${d}"> ${bkD(d)}</span></label>`).join(''), buttons: [{ label: '✅ Зіставити', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
       p.days = v === 'ok' ? [...document.querySelectorAll('.bkDay:checked')].map(i => i.value) : []; closeModal(); if (!p.days.length) return; }
+    if (k === 'agg') { const g = await aggsLoad(); if (!g.length) return toast('ℹ️ Агрегатори вимкнено — ⚙️ Налаштування → 🛵 Агрегатори');
+      const x = S.data.bank.list.find(y => y.id === id), ds = [...Array(21)].map((_, i) => { const d = new Date(x.d + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - i); return d.toISOString().slice(0, 10); });
+      const ag = g.length === 1 ? g[0].id : await choose('🛵 Від якого агрегатора виплата?', `${bkD(x.d)} · ${money(x.sum)}`, g.map(a => ({ label: a.n, val: a.id }))); if (!ag) return;
+      const v = await modal({ title: '🛵 За які дні продажів ця виплата?', body: `<div style="max-height:50vh;overflow:auto">${ds.map(d => `<label class="kv"><span><input type="checkbox" class="bkDay" value="${d}"> ${bkD(d)}</span></label>`).join('')}</div>`, buttons: [{ label: '✅ Зіставити', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
+      p.ag = ag; p.days = v === 'ok' ? [...document.querySelectorAll('.bkDay:checked')].map(i => i.value) : []; closeModal(); if (!p.days.length) return; }
     const r = await act('bankAct', { id, a: k, ...p }, '✅ Готово'); if (r?.warn) toast('⚠️ ' + r.warn); if (r) loadView();
   }
   on('bkAct', async (el) => { bkAct(el.dataset.k, el.dataset.id); return; });

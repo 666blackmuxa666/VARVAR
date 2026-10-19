@@ -1174,6 +1174,40 @@ async function loyTests(A, W, dish) {
     must(xp.sections.some(s => s.id === 'bank' && s.rows.some(r => String(r[7]).endsWith(RUN))), 'банку немає в експорті');
     return `безготівка ${C} ₴ · комісія ${a.m.fee} ₴`;
   });
+  await step('🛵 агрегатори: модуль вимкнено → оплата 400; Glovo як спосіб оплати → окремо в зміні й чеку; права й межі; видалення чека віднімає; виплата у виписці → комісія витратою; бот', async () => {
+    const ok = (r, w) => { must(r.status === 200 && !r.j.error, w + ': ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 200)); return r.j; };
+    const it = (await http(`/v/${VID}/api/menu`)).j.categories.flatMap(c => c.items).find(i => typeof i.price === 'number');
+    const sale = async (t, pay) => { const o = await vpos(VA, 'order', { t, items: [{ id: it.id, q: 1 }] }); must(o.status === 200, 'order ' + JSON.stringify(o.j).slice(0, 120)); return vpos(VA, 'close', { t, pay }); };
+    let VW = ''; for (let i = 0; i < 5 && !VW; i++) VW = (await vpos(null, 'register', { code: codes.waiter, name: 'QA офіціант агр ' + RUN.slice(-4) + i, pin: String(2000 + Math.floor(Math.random() * 7000)) })).j.token || ''; must(VW, 'офіціант не зареєструвався');
+    ok(await vpos(VA, 'modSet', { k: 'agg', v: 0 }), 'вимкнути');
+    must((await sale(7, 'agg:glovo')).status === 400, 'модуль вимкнено, а Glovo прийнято'); ok(await vpos(VA, 'close', { t: 7, pay: 'cash' }), 'закрити готівкою');
+    must(ok(await vpos(VW, 'aggList'), 'список офіціанта').list.length === 0, 'офіціант бачить агрегатори вимкненого модуля');
+    ok(await vpos(VA, 'modSet', { k: 'agg', v: 1 }), 'увімкнути');
+    must((await vpos(VW, 'aggSet', { id: 'glovo', fee: 1 })).status === 403, 'офіціант змінює агрегатори');
+    must((await vpos(VA, 'aggSet', { id: 'glovo', fee: 99 })).status === 400, 'комісія 99%');
+    ok(await vpos(VA, 'aggSet', { id: 'glovo', fee: 30, on: 1 }), 'комісія Glovo');
+    const nw = ok(await vpos(VA, 'aggSet', { n: 'QA Uklon ' + RUN.slice(-4), fee: 20 }), 'новий').list.find(a => a.n.endsWith(RUN.slice(-4))); must(nw?.id, 'новий агрегатор без id');
+    ok(await vpos(VA, 'aggSet', { id: nw.id, on: 0 }), 'вимкнути новий');
+    must(ok(await vpos(VW, 'aggList'), 'список').list.some(a => a.id === 'glovo' && a.on), 'офіціант не бачить Glovo');
+    must((await sale(7, 'agg:' + nw.id)).status === 400, 'вимкнений агрегатор прийнято'); must((await vpos(VA, 'close', { t: 7, pay: 'agg:nope' })).status === 400, 'невідомий агрегатор');
+    const s0 = (await vpos(VA, 'shift')).j.day, g0 = s0.ag?.glovo || 0, c0 = s0.card;
+    const r = ok(await vpos(VA, 'close', { t: 7, pay: 'agg:glovo' }), 'закрити Glovo').r; must(r.ag === 'glovo' && r.agS === r.sum && r.card === r.sum && !r.cash, 'чек Glovo: ' + JSON.stringify(r));
+    const s1 = (await vpos(VA, 'shift')).j.day; must(s1.ag?.glovo === g0 + r.sum && s1.card === c0 + r.sum, `зміна: Glovo ${s1.ag?.glovo} ≠ ${g0}+${r.sum}`);
+    const r2 = ok(await sale(7, 'agg:glovo'), 'другий').r; ok(await vpos(VA, 'closedDel', { ref: r2.id }), 'видалити');
+    must((await vpos(VA, 'shift')).j.day.ag?.glovo === g0 + r.sum, 'видалення чека не відняло Glovo');
+    // 🏦 виписка: виплата Glovo нетто → зіставлено з продажами днів, комісія — витрата
+    ok(await vpos(VA, 'modSet', { k: 'bank', v: 1 }), 'банк');
+    for (const x of ok(await vpos(VA, 'bankList'), 'список').list.filter(x => x.m?.k === 'agg')) ok(await vpos(VA, 'bankAct', { id: x.id, a: 'un' }), 'скасувати стару виплату');
+    const day = s1.day, G = s1.ag.glovo, net = Math.round(G * 0.7 * 100) / 100, d = day.split('-').reverse().join('.'), OWN = 'UA213223130000026007233566001';
+    const f = ['1CClientBankExchange', 'РасчСчет=' + OWN, 'СекцияДокумент=Платежное поручение', 'Номер=77', 'Дата=' + d, 'Сумма=' + net.toFixed(2), 'ПлательщикСчет=UA443052990000026001234500000', 'Плательщик=ТОВ ГЛОВО УКРАЇНА', 'ПлательщикИНН=41234567', 'ПолучательСчет=' + OWN, 'ДатаПоступило=' + d, 'НазначениеПлатежа=Виплата за замовлення Glovo ' + RUN, 'КонецДокумента', 'КонецФайла'].join('\r\n');
+    const im = ok(await vpos(VA, 'bankImp', { text: f }), 'імпорт'); must(im.ok === 1, 'виплату не зіставлено: ' + JSON.stringify(im));
+    const L = ok(await vpos(VA, 'bankList'), 'список').list.find(x => x.pur.endsWith(RUN) && /Glovo/.test(x.pur)); must(L?.m?.k === 'agg' && L.m.a === 'glovo' && L.m.gross === G && Math.abs(L.m.fee - (G - net)) < 0.011, 'зіставлення: ' + JSON.stringify(L?.m));
+    must((await vpos(VA, 'shift')).j.exp.some(e => !e.del && e.src === 'card' && /Комісія Glovo/.test(e.note)), 'комісія Glovo не записана');
+    ok(await vpos(VA, 'bankAct', { id: L.id, a: 'un' }), 'скасувати'); must(!(await vpos(VA, 'shift')).j.exp.some(e => !e.del && /Комісія Glovo/.test(e.note)), 'скасування не прибрало комісію');
+    must((await vpos(VA, 'bankAct', { id: L.id, a: 'agg', ag: 'glovo', days: ['2020-01-01'] })).status === 400, 'день без продажів Glovo зіставлено');
+    ok(await vpos(VA, 'bankAct', { id: L.id, a: 'agg', ag: 'glovo', days: [day] }), 'вручну');
+    return `Glovo ${G} ₴ → виплата ${net} ₴`;
+  });
   await step('⏳ черга в залі (wl): гість /api/wl — створення, дубль за телефоном, статус, скасування, ліміт 3/пристрій', async () => {
     const dev = 'qa-wl-' + Date.now(), ph = n => '067' + String(Date.now()).slice(-6) + n;
     // 🛡 index.js: wlip — не більше 6 POST /api/wl за годину з одного IP (спільний IP тестів вичерпується) → тест чесно пропускається

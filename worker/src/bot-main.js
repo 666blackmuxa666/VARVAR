@@ -258,6 +258,11 @@ export async function handleUpdate(u, env) {
   if (admin && (low === 'перехід' || low === '📥 перехід' || low === '/mig')) { // 📥 етап 1: статус імпортів + де майстер
     if (!(await (await import('./ops.js')).modOn(env, 'mig'))) return send({ text: '📥 Модуль «Перехід з іншої системи» вимкнено. Увімкнути: напишіть <code>модулі</code>.' });
     return send({ text: await (await import('./mig.js')).migBotText(env, 'https://posatom.online/owner/') }); }
+  if (admin && (low === 'агрегатори' || low === '🛵 агрегатори' || /^агрегатор\s/.test(low))) { // 🛵 Glovo / Bolt: список, увімкнути, «агрегатор Glovo 28» — комісія
+    if (!(await (await import('./ops.js')).modOn(env, 'agg'))) return send({ text: '🛵 Модуль «Агрегатори доставки» вимкнено. Увімкнути: напишіть <code>модулі</code>.' });
+    const A = await import('./agg.js'), m = low.match(/^агрегатор\s+(.+?)\s+(\d+(?:[.,]\d+)?)\s*%?$/);
+    if (m) { const l = await A.aggList(env), x = l.find(a => a.n.toLowerCase() === m[1].trim()); const r = await A.aggSet(env, x ? { id: x.id, fee: m[2].replace(',', '.') } : { n: text.trim().replace(/^агрегатор\s+/i, '').replace(/\s+\d+(?:[.,]\d+)?\s*%?$/, ''), fee: m[2].replace(',', '.') }); if (r.error) return send({ text: '⚠️ ' + r.error }); }
+    return send(await A.aggBotView(env)); }
   if (admin && (low === 'банк' || low === '🏦 банк' || low === '/bank')) { // 🏦 етап 2: місяць, дні без еквайрингу, черга «на підтвердження»
     if (!(await (await import('./ops.js')).modOn(env, 'bank'))) return send({ text: '🏦 Модуль «Банк і звірка» вимкнено. Увімкнути: напишіть <code>модулі</code>.' });
     const B = await import('./bank.js'), v = await B.bankBotView(env); await send({ text: v.text });
@@ -358,7 +363,9 @@ async function handleCallback(q, env) {
     await (await import('./ledger.js')).audit(env, who, 'mod', 'mod:' + arg, { v: was }, { v: c.mods[arg] });
     const v = await (await import('./bot-views.js')).modsView(env); await edit(v.text, v.markup); return answer(`${O.MODS[arg]}: ${c.mods[arg] ? 'увімкнено' : 'вимкнено'}`);
   }
-  if (act === 'bk') { // 🏦 рядок виписки: витрата / рух / пошук пари / пропустити / скасувати — та сама bankAct, що й у касі
+  if (act === 'agg') { const A = await import('./agg.js'), x = (await A.aggList(env)).find(a => a.id === arg); if (!x) return answer('Немає такого');
+    await A.aggSet(env, { id: x.id, on: x.on ? 0 : 1 }); const v = await A.aggBotView(env); return edit(v.text, v.markup); }
+  if (act === 'bnk') { // 🏦 рядок виписки: витрата / рух / пошук пари / пропустити / скасувати — та сама bankAct, що й у касі
     if (!admin) return answer('🔐 Лише для адміністратора'); if (!(await (await import('./ops.js')).modOn(env, 'bank'))) return answer('Модуль «Банк» вимкнено');
     const B = await import('./bank.js'), r = await B.bankAct(env, oid, arg, { why: opt }, who); if (r.error) return answer('⚠️ ' + r.error);
     await edit(B.lineText(r.x), { inline_keyboard: B.lineKb(r.x) }); return answer(r.warn ? '⚠️ ' + r.warn : '✅ Готово');
@@ -533,7 +540,9 @@ async function handleCallback(q, env) {
     fd.append('photo', new Blob([await (await import('./qr.js')).qrPng(F.ibanQr(v, sum, `Оплата за замовлення, стіл ${tn(arg)}`), 8)], { type: 'image/png' }), 'qr.png');
     await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd }).catch(() => {}); return answer(''); }
   if (act === 'clsok') { if (oid === 'iban' && !(await (await import('./fiscal.js')).ibanGet(env))) return answer('Рахунок для переказу не вказано');
-    const txt = closedText(await closeTable(env, +arg, who, ['card', 'iban'].includes(oid) ? oid : 'cash', opt !== 'np'));
+    const A = String(oid).startsWith('agg-') ? await import('./agg.js') : null; if (A && (!(await (await import('./ops.js')).modOn(env, 'agg')) || !(await A.aggPay(env, 'agg:' + oid.slice(4))))) return answer('Агрегатор вимкнено');
+    const cr = await closeTable(env, +arg, who, A ? 'agg:' + oid.slice(4) : ['card', 'iban'].includes(oid) ? oid : 'cash', opt !== 'np'); if (cr?.ag) cr.agN = A.aggName(await A.aggList(env), cr.ag);
+    const txt = closedText(cr);
     const nx = (await (await import('./wl.js')).wlList(env).catch(() => [])).find(x => x.st === 'wait'); // ⏳ у черзі є гість — пропонуємо покликати (без автовідправки)
     if (oid === 'iban') await tg(env, 'editMessageReplyMarkup', { chat_id: chat, message_id: mid, reply_markup: { inline_keyboard: [] } }); // повідомлення з QR — фото, текст не редагується
     await (oid === 'iban' ? (t, m) => send({ text: t, markup: m }) : edit)(nx ? txt + `\n\n⏳ Стіл вільний — у черзі <b>${esc(nx.name)}</b>, ${nx.people} ос.` : txt, nx ? { inline_keyboard: [[{ text: `🔔 Покликати ${nx.name.slice(0, 14)}`, callback_data: 'wl:call:' + nx.id }]] } : undefined); return answer('Закрито'); }

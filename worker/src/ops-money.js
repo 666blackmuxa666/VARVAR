@@ -1,5 +1,6 @@
 // 💰 Гроші й звіти: витрати, рух коштів, залишки, звірка, зміна, Z/X-звіти, рекорд дня, звіти за період
 // (частина ops.js — інші файли імпортують з ops.js, як і раніше)
+import { agSum, agLine, agRows, agTotal } from './agg.js';
 import { fisOn, fisRetry, fisMov, fisZ, fisDay } from './fiscal.js';
 import { courOwed } from './courier.js';
 import { getMenu } from './menu.js';
@@ -69,7 +70,7 @@ export async function cashData(env) {
   const mov = await getMov(env), mvCash = mov.reduce((a, m) => a + moveCash(m), 0), mvCard = mov.reduce((a, m) => a + moveCard(m), 0);
   const tipOut = mov.filter(m => !m.del && (m.type === 'tipc' || m.type === 'tipk')).reduce((a, m) => a + m.sum, 0);
   const salOut = mov.filter(m => !m.del && (m.type === 'salc' || m.type === 'salk')).reduce((a, m) => a + m.sum, 0); // 👷 зарплата — теж витрата
-  return { day: dayKey(), float: d.float || 0, cash: d.cash || 0, card: d.card || 0, onl: d.onl || 0, disc: d.disc || 0, tip: d.tip || 0, exCash, exCard, mvCash, mvCard, tipOut, salOut, net: (d.cash || 0) + (d.card || 0) - (d.tip || 0) - exCash - exCard - salOut, open, exp, mov }; // як у Z-звіті: без чайових
+  return { day: dayKey(), float: d.float || 0, cash: d.cash || 0, card: d.card || 0, onl: d.onl || 0, ...(d.ag ? { ag: d.ag } : {}), disc: d.disc || 0, tip: d.tip || 0, exCash, exCard, mvCash, mvCard, tipOut, salOut, net: (d.cash || 0) + (d.card || 0) - (d.tip || 0) - exCash - exCard - salOut, open, exp, mov }; // як у Z-звіті: без чайових
 }
 export async function sumDays(env, keys) {
   const days = await env.DB.getMany(keys.map(k => 'day:' + k), 'json'), exps = await env.DB.getMany(keys.map(k => 'exp:' + k), 'json');
@@ -124,7 +125,7 @@ export async function shiftData(env) {
   // чайові — не виручка закладу (як у dayZData): total без них, показуються окремо; inBox — фізична готівка, чайові в ній є, поки не видані (рух tipc)
   const ow = (await courOwed(env).catch(() => ({ sum: 0 }))).sum; // 🛵 готівка ще в кур'єрів — не в шухляді
   const tip = sum(recs, x => x.tip), tipBy = {}; recs.forEach(x => Object.entries(tipSplitOf(x)).forEach(([n, v]) => { tipBy[n] = (tipBy[n] || 0) + v; }));
-  return { lastZ: s ? null : await lastZrec(env), open: !!s, id: s?.id, opened: s?.opened || 0, by: s?.by || '', float, checks: recs.length, cash, card, onl: sum(recs, x => x.onl), gross: cash + card, total: cash + card - tip, tip, tipBy, disc: sum(recs, x => x.discSum),
+  return { lastZ: s ? null : await lastZrec(env), open: !!s, id: s?.id, opened: s?.opened || 0, by: s?.by || '', float, checks: recs.length, cash, card, onl: sum(recs, x => x.onl), ag: agSum(recs), gross: cash + card, total: cash + card - tip, tip, tipBy, disc: sum(recs, x => x.discSum),
     exCash, exCard, mvCash, mvCard, courOwed: ow, inBox: float + cash - exCash + mvCash - ow, openTables: open.length, openSum: open.reduce((a, r) => a + payable(r.b), 0) };
 }
 // «Загальна сума» для відкриття каси: уся готівка за весь час (готівка від гостей − витрати готівкою)
@@ -171,7 +172,7 @@ const fisDayOf = async (env, day) => { const [c, m] = await Promise.all([env.DB.
 export const fisZLine = z => !z.fis ? '' : `🧾 ПРРО: у чеках ${money(z.fisDay?.fis ?? 0)}${z.fisDay?.ib ? ` · 🏦 переказом ${money(z.fisDay.ib)}` : ''}${z.fisDay?.gap ? ` · ⚠️ без чека ${money(z.fisDay.gap)}` : ''}${z.fis.error ? ` · ⚠️ Z: ${z.fis.error}` : ' · Z ✅'}`;
 const fmtDT = t => new Date(t).toLocaleString('uk-UA', { timeZone: TZ, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '');
 export const zText = z => [`🔒 <b>Касу закрито</b> (${fmtDT(z.opened)} — ${fmtDT(z.closed)})`, '',
-  `Чеків: ${z.checks} · виручка <b>${money(z.total)}</b>`, `💵 ${money(z.cash)} · 💳 ${money(z.card)}${z.onl ? ` (🌐 ${money(z.onl)})` : ''}${z.disc ? ` · знижки ${money(z.disc)}` : ''}`, z.tip ? `💝 Чайові (не виручка, персоналу): ${money(z.tip)}` : '', '',
+  `Чеків: ${z.checks} · виручка <b>${money(z.total)}</b>`, `💵 ${money(z.cash)} · 💳 ${money(z.card)}${z.onl ? ` (🌐 ${money(z.onl)})` : ''}${agLine(z.ag)}${z.disc ? ` · знижки ${money(z.disc)}` : ''}`, z.tip ? `💝 Чайові (не виручка, персоналу): ${money(z.tip)}` : '', '',
   `На початок ${money(z.float)} + готівка ${money(z.cash)} − витрати ${money(z.exCash)}${z.mvCash ? ` ${z.mvCash > 0 ? '+' : '−'} рух коштів ${money(Math.abs(z.mvCash))}` : ''}`, `= <b>має бути в касі ${money(z.inBox)}</b>`,
   z.counted != null ? `Пораховано: ${money(z.counted)} · ${z.diff ? `<b>різниця ${z.diff > 0 ? '+' : ''}${money(z.diff)}</b>` : 'збігається ✅'}` : '',
   fisZLine(z),
@@ -179,7 +180,7 @@ export const zText = z => [`🔒 <b>Касу закрито</b> (${fmtDT(z.opene
 function zTicket(z) {
   return [['invb', 'Z-ЗВІТ'], ['c', 'Закриття каси'], ['gap'],
     ['lr', 'Відкрито', fmtDT(z.opened)], ['lr', 'Закрито', fmtDT(z.closed)], ['lr', 'Відкрив', z.by || '—'], ['lr', 'Закрив', z.closedBy || '—'], ['dbl'],
-    ['lr', 'Чеків', String(z.checks)], ['lr', 'Готівка', `${z.cash} грн`], ['lr', 'Картка', `${z.card} грн`], ...(z.onl ? [['lr', ' з них онлайн', `${z.onl} грн`]] : []), ...(z.disc ? [['lr', 'Знижки', `${z.disc} грн`]] : []), ...(z.tip ? [['lr', '− Чайові (персоналу)', `${z.tip} грн`], ...Object.entries(z.tipBy || {}).map(([n, s]) => ['lr', `  ${n}`, `${s} грн`])] : []),
+    ['lr', 'Чеків', String(z.checks)], ['lr', 'Готівка', `${z.cash} грн`], ['lr', 'Картка', `${z.card} грн`], ...(z.onl ? [['lr', ' з них онлайн', `${z.onl} грн`]] : []), ...agRows(z.ag), ...(z.disc ? [['lr', 'Знижки', `${z.disc} грн`]] : []), ...(z.tip ? [['lr', '− Чайові (персоналу)', `${z.tip} грн`], ...Object.entries(z.tipBy || {}).map(([n, s]) => ['lr', `  ${n}`, `${s} грн`])] : []),
     ['total', 'ВИРУЧКА', `${z.total} грн`], ['dbl'],
     ['lr', 'На початок', `${z.float} грн`], ['lr', '+ Готівка', `${z.cash} грн`], ['lr', '− Витрати (готівка)', `${z.exCash} грн`], ...(z.mvCash ? [['lr', 'Рух коштів (готівка)', `${z.mvCash > 0 ? '+' : ''}${z.mvCash} грн`]] : []), ...(z.exCard ? [['lr', 'Витрати з картки', `${z.exCard} грн`]] : []),
     ['total', 'В КАСІ', `${z.inBox} грн`],
@@ -199,7 +200,7 @@ export async function dayZData(env, day = dayKey()) {
   const tipBy = {}; recs.forEach(x => Object.entries(tipSplitOf(x)).forEach(([n, v]) => { tipBy[n] = (tipBy[n] || 0) + v; }));
   // виручка — без чайових (чайові — гроші персоналу); готівка/картка — фактично отримані (з чайовими)
   const tip = sum(recs, x => x.tip);
-  return { day, tipBy, checks: recs.length, cash, card, onl: sum(recs, x => x.onl), gross: cash + card, total: cash + card - tip, disc: sum(recs, x => x.discSum), tip, exCash, exCard, mvCash, mvCard,
+  return { day, tipBy, checks: recs.length, cash, card, onl: sum(recs, x => x.onl), ag: agSum(recs), gross: cash + card, total: cash + card - tip, disc: sum(recs, x => x.discSum), tip, exCash, exCard, mvCash, mvCard,
     tipOut: sum(movs.filter(m => m.type === 'tipc' || m.type === 'tipk'), m => m.sum),
     salOut: sum(movs.filter(m => m.type === 'salc' || m.type === 'salk'), m => m.sum),
     net: cash + card - tip - exCash - exCard - sum(movs.filter(m => m.type === 'salc' || m.type === 'salk'), m => m.sum), orders: (d || {}).orders || 0, dels: cl.filter(x => x.del || x.rm).length,
@@ -239,13 +240,13 @@ export async function dayX(env, who, day = dayKey()) {
 const dm = d => d.split('-').reverse().join('.');
 export const zDayText = z => [`🧾 <b>Z-звіт за ${dm(z.day)}</b>`, '',
   z.fis ? fisZLine(z) + '\n' : '',
-  `Чеків: ${z.checks} · виручка <b>${money(z.total)}</b>`, `💵 Готівка: ${money(z.cash)}`, `💳 Картка: ${money(z.card)}${z.onl ? ` (термінал ${money(z.card - z.onl)} · 🌐 онлайн ${money(z.onl)})` : ''}`,
+  `Чеків: ${z.checks} · виручка <b>${money(z.total)}</b>`, `💵 Готівка: ${money(z.cash)}`, `💳 Картка: ${money(z.card)}${z.onl ? ` (термінал ${money(z.card - z.onl - agTotal(z))} · 🌐 онлайн ${money(z.onl)})` : ''}${agLine(z.ag)}`,
   z.disc ? `🏷 Знижки: ${money(z.disc)}` : '', z.tip ? `💝 Чайові (не виручка, персоналу): ${money(z.tip)}${Object.keys(z.tipBy || {}).length ? '\n' + Object.entries(z.tipBy).map(([n, s]) => `   👤 ${esc(n)}: ${money(s)}`).join('\n') : ''}` : '', `💸 Витрати: ${money(z.exCash + z.exCard)}${z.exCard ? ` (з картки ${money(z.exCard)})` : ''}`,
   z.mvCash || z.mvCard ? `🔁 Рух коштів: готівка ${z.mvCash >= 0 ? '+' : ''}${money(z.mvCash)}${z.mvCard ? `, картка ${z.mvCard >= 0 ? '+' : ''}${money(z.mvCard)}` : ''}` : '',
   `📈 Чистими: <b>${money(z.net)}</b>`, z.rec?.beat ? `🏆 Новий рекорд закладу за день!` : z.rec?.sum ? `🏆 Рекорд: ${money(z.rec.sum)} (${dm(z.rec.d)})` : '', z.openTables ? `\n⚠️ Ще відкрито столів: ${z.openTables} (${money(z.openSum)})` : ''].filter(x => x !== '').join('\n');
 function zDayTicket(z, x) {
   return [['invb', x ? 'X-ЗВІТ' : 'Z-ЗВІТ'], ['c', dm(z.day)], ['gap'], ['lr', 'Надруковано', fmtDT(z.closed)], ['lr', 'Хто', z.closedBy || '—'], ['dbl'],
-    ['lr', 'Чеків', String(z.checks)], ['lr', 'Готівка', `${z.cash} грн`], ['lr', 'Картка', `${z.card} грн`], ...(z.onl ? [['lr', ' з них онлайн', `${z.onl} грн`]] : []), ...(z.disc ? [['lr', 'Знижки', `${z.disc} грн`]] : []), ...(z.tip ? [['lr', '− Чайові (персоналу)', `${z.tip} грн`]] : []),
+    ['lr', 'Чеків', String(z.checks)], ['lr', 'Готівка', `${z.cash} грн`], ['lr', 'Картка', `${z.card} грн`], ...(z.onl ? [['lr', ' з них онлайн', `${z.onl} грн`]] : []), ...agRows(z.ag), ...(z.disc ? [['lr', 'Знижки', `${z.disc} грн`]] : []), ...(z.tip ? [['lr', '− Чайові (персоналу)', `${z.tip} грн`]] : []),
     ['total', 'ВИРУЧКА', `${z.total} грн`], ['dbl'],
     ['lr', 'Витрати (готівка)', `${z.exCash} грн`], ...(z.exCard ? [['lr', 'Витрати (картка)', `${z.exCard} грн`]] : []),
     ...(z.mvCash ? [['lr', 'Рух коштів (готівка)', `${z.mvCash > 0 ? '+' : ''}${z.mvCash} грн`]] : []), ...(z.mvCard ? [['lr', 'Рух коштів (картка)', `${z.mvCard > 0 ? '+' : ''}${z.mvCard} грн`]] : []),

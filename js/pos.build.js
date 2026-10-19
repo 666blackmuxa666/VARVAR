@@ -2184,6 +2184,7 @@ var __objRest = (source, exclude) => {
       { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u0430 + \u{1F5A8} \u0447\u0435\u043A", val: "card:1", cls: "blue" },
       { label: "\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430, \u0431\u0435\u0437 \u0447\u0435\u043A\u0430", val: "cash:0" },
       { label: "\u{1F4B3} \u041A\u0430\u0440\u0442\u0430, \u0431\u0435\u0437 \u0447\u0435\u043A\u0430", val: "card:0" },
+      ...modOn("agg") ? (await aggsLoad()).map((g) => ({ label: "\u{1F6F5} " + g.n, val: "agg:" + g.id })) : [],
       ...((_a2 = S.cfg) == null ? void 0 : _a2.iban) ? [{ label: "\u{1F3E6} \u041F\u0435\u0440\u0435\u043A\u0430\u0437 \u043D\u0430 \u0440\u0430\u0445\u0443\u043D\u043E\u043A", val: "iban" }] : [],
       { label: "\u2797 \u041F\u043E\u0440\u0456\u0432\u043D\u0443 \u043D\u0430 \u0433\u043E\u0441\u0442\u0435\u0439", val: "eq" }
     ]);
@@ -2214,8 +2215,8 @@ var __objRest = (source, exclude) => {
       await choose(`\u2797 \u041F\u043E\u0440\u0456\u0432\u043D\u0443 \u043D\u0430 ${n}`, `\u0417 \u043A\u043E\u0436\u043D\u043E\u0433\u043E ${money(one)}${rest ? ` (\u043E\u0434\u0438\u043D \u0434\u043E\u043F\u043B\u0430\u0447\u0443\u0454 ${money(one + rest)})` : ""} \xB7 \u0440\u0430\u0437\u043E\u043C ${money(tot)}`, [{ label: "\u0413\u0430\u0440\u0430\u0437\u0434", val: "ok" }]);
       return closeFlow();
     }
-    const [pay, pr] = v.split(":");
-    const r = await act("close", { t, pay, print: pr === "1" });
+    const [pay, pr] = v.split(":"), isAg = pay === "agg";
+    const r = await act("close", { t, pay: isAg ? v : pay, print: !isAg && pr === "1" });
     if (r == null ? void 0 : r.queued) {
       toast(`\u{1F4F4} \u0421\u0442\u0456\u043B ${tn(t)}: \u043D\u0435\u043C\u0430\u0454 \u0437\u0432'\u044F\u0437\u043A\u0443 \u2014 \u0437\u0430\u043A\u0440\u0438\u0442\u0442\u044F \u0432 \u0447\u0435\u0440\u0437\u0456, \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u0438\u043C\u043E \u0441\u0430\u043C\u0456`);
       closeSheet();
@@ -4069,7 +4070,10 @@ var __objRest = (source, exclude) => {
       <button class="bal-c" data-a="balInfo" data-s="card"><span>\u{1F4B3} \u041D\u0430 \u043A\u0430\u0440\u0442\u0446\u0456</span><b class="money">${money(B.card)}</b><small>\u270F\uFE0F \u0437\u0432\u0456\u0440\u0438\u0442\u0438</small></button>
       <div class="bal-c tot"><span>\u{1F4B0} \u0420\u0430\u0437\u043E\u043C</span><b class="money">${money(B.total)}</b><small>${B.tipOwed ? `\u0437 \u043D\u0438\u0445 \u0447\u0430\u0439\u043E\u0432\u0456 ${money(B.tipOwed)} \xB7 \u0432\u0456\u043B\u044C\u043D\u0438\u0445 <b>${money(B.free)}</b>` : `\u0437 ${B.from ? B.from.split("-").reverse().join(".") : "\u2014"}`}</small></div></div>` : "";
     const hero = `<div class="cash-hero on"><div class="hero-main"><div class="muted">${today}</div><div class="hero-l">\u0412\u0438\u0440\u0443\u0447\u043A\u0430 \u0437\u0430 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456</div><div class="hero-n money">${money(z.total)}</div>${z.tip ? `<div class="muted" style="font-size:13px">\u0431\u0435\u0437 \u0447\u0430\u0439\u043E\u0432\u0438\u0445 \xB7 + \u{1F49D} ${money(z.tip)} \u0447\u0430\u0439\u043E\u0432\u0456 \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\u0443</div>` : ""}
-        <div class="split"><div class="bar2"><i style="width:${pc}%"></i></div><div class="split-l"><span>\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 <b class="money">${money(z.cash)}</b></span><span>\u{1F4B3} \u041A\u0430\u0440\u0442\u043A\u0430 <b class="money">${money(z.card)}</b>${z.onl ? `<small class="muted"> \u0437 \u043D\u0438\u0445 \u{1F310} \u043E\u043D\u043B\u0430\u0439\u043D ${money(z.onl)}</small>` : ""}${((_a2 = S.cfg) == null ? void 0 : _a2.bankFee) && z.card ? `<small class="muted"> \xB7 \u{1F3E6} \u2212${money(Math.round(z.card * S.cfg.bankFee / 100))} \u043A\u043E\u043C\u0456\u0441\u0456\u044F</small>` : ""}</span></div></div></div>
+        <div class="split"><div class="bar2"><i style="width:${pc}%"></i></div><div class="split-l"><span>\u{1F4B5} \u0413\u043E\u0442\u0456\u0432\u043A\u0430 <b class="money">${money(z.cash)}</b></span><span>\u{1F4B3} \u041A\u0430\u0440\u0442\u043A\u0430 <b class="money">${money(z.card)}</b>${z.onl ? `<small class="muted"> \u0437 \u043D\u0438\u0445 \u{1F310} \u043E\u043D\u043B\u0430\u0439\u043D ${money(z.onl)}</small>` : ""}${Object.entries(z.ag || {}).map(([a, v]) => {
+      var _a3;
+      return `<small class="muted"> \xB7 \u{1F6F5} ${esc(((_a3 = (S.aggs || []).find((g) => g.id === a)) == null ? void 0 : _a3.n) || a)} ${money(v)}</small>`;
+    }).join("")}${((_a2 = S.cfg) == null ? void 0 : _a2.bankFee) && z.card ? `<small class="muted"> \xB7 \u{1F3E6} \u2212${money(Math.round(z.card * S.cfg.bankFee / 100))} \u043A\u043E\u043C\u0456\u0441\u0456\u044F</small>` : ""}</span></div></div></div>
       <button class="btn primary zbtn" data-a="zDay">\u{1F9FE} Z-\u0437\u0432\u0456\u0442<small>\u043F\u0435\u0440\u0435\u0433\u043B\u044F\u043D\u0443\u0442\u0438 \xB7 \u0434\u0440\u0443\u043A \xB7 \u0437\u0430\u043A\u0440\u0438\u0442\u0438 \u0434\u0435\u043D\u044C</small></button></div>`;
     const recH = (() => {
       var _a3;
@@ -4289,22 +4293,24 @@ var __objRest = (source, exclude) => {
   const BK_WHY = [["own", "\u{1F501} \u0412\u043B\u0430\u0441\u043D\u0438\u0439 \u043F\u0435\u0440\u0435\u043A\u0430\u0437"], ["tax", "\u{1F3DB} \u041F\u043E\u0434\u0430\u0442\u043A\u0438 / \u0404\u0421\u0412"], ["sal", "\u{1F477} \u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430"], ["loan", "\u{1F3E6} \u041A\u0440\u0435\u0434\u0438\u0442 / \u0434\u0435\u043F\u043E\u0437\u0438\u0442"], ["other", "\u{1F648} \u0406\u043D\u0448\u0435"]];
   const bkD = (d) => d.slice(8) + "." + d.slice(5, 7);
   function bankHTML() {
+    var _a2;
     const r = S.data.bank;
     if (!r) return '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
     const mn = (/* @__PURE__ */ new Date(r.m + "-15T12:00:00")).toLocaleDateString("uk-UA", { month: "long", year: "numeric" }), t = r.t, q = r.list.filter((x) => x.st === "q");
     const sg = (x) => `<b class="money" style="color:${x.sum > 0 ? "var(--green)" : "inherit"}">${x.sum > 0 ? "+" : "\u2212"}${money(Math.abs(x.sum))}</b>`;
     const line = (x, btns) => `<div class="kv" style="align-items:flex-start;gap:10px"><span style="min-width:0;overflow-wrap:anywhere">${{ ok: "\u2705", q: "\u26A0\uFE0F", x: "\u{1F648}" }[x.st]} ${bkD(x.d)} \xB7 ${esc(x.who || "\u2014")}${x.pur ? `<br><small class="muted">${esc(x.pur.slice(0, 160))}</small>` : ""}${x.mt ? `<br><small>${esc(x.mt)}</small>` : ""}${btns ? `<div class="btns" style="margin-top:6px;flex-wrap:wrap">${btns}</div>` : ""}</span>${sg(x)}</div>`;
     const b = (k, id, l) => `<button class="btn sm" data-a="bkAct" data-k="${k}" data-id="${id}">${l}</button>`;
-    const qb = (x) => x.sum < 0 ? b("inv", x.id, "\u{1F9FE} \u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0456") + b("exp", x.id, "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0430") + b("mov", x.id, "\u2796 \u0412\u0438\u043B\u0443\u0447\u0435\u043D\u043D\u044F") + b("auto", x.id, "\u{1F50E} \u041F\u0430\u0440\u0430") + b("skip", x.id, "\u{1F648} \u041F\u0440\u043E\u043F\u0443\u0441\u0442\u0438\u0442\u0438") : b("acq", x.id, "\u{1F4B3} \u0415\u043A\u0432\u0430\u0439\u0440\u0438\u043D\u0433") + b("mov", x.id, "\u2795 \u0412\u043D\u0435\u0441\u0435\u043D\u043D\u044F") + b("auto", x.id, "\u{1F50E} \u041F\u0430\u0440\u0430") + b("skip", x.id, "\u{1F648} \u041F\u0440\u043E\u043F\u0443\u0441\u0442\u0438\u0442\u0438");
+    const qb = (x) => x.sum < 0 ? b("inv", x.id, "\u{1F9FE} \u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0456") + b("exp", x.id, "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0430") + b("mov", x.id, "\u2796 \u0412\u0438\u043B\u0443\u0447\u0435\u043D\u043D\u044F") + b("auto", x.id, "\u{1F50E} \u041F\u0430\u0440\u0430") + b("skip", x.id, "\u{1F648} \u041F\u0440\u043E\u043F\u0443\u0441\u0442\u0438\u0442\u0438") : b("acq", x.id, "\u{1F4B3} \u0415\u043A\u0432\u0430\u0439\u0440\u0438\u043D\u0433") + (modOn("agg") ? b("agg", x.id, "\u{1F6F5} \u0410\u0433\u0440\u0435\u0433\u0430\u0442\u043E\u0440") : "") + b("mov", x.id, "\u2795 \u0412\u043D\u0435\u0441\u0435\u043D\u043D\u044F") + b("auto", x.id, "\u{1F50E} \u041F\u0430\u0440\u0430") + b("skip", x.id, "\u{1F648} \u041F\u0440\u043E\u043F\u0443\u0441\u0442\u0438\u0442\u0438");
     const head = `<div class="card"><h3>\u{1F3E6} \u0411\u0430\u043D\u043A \xB7 ${esc(mn)}</h3><div class="btns" style="flex-wrap:wrap;align-items:center"><button class="btn sm" data-a="bkM" data-t="-1">\u2039</button><button class="btn sm" data-a="bkM" data-t="1">\u203A</button>
       <label class="btn sm primary" style="cursor:pointer">\u{1F4CE} \u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0438\u0442\u0438 \u0432\u0438\u043F\u0438\u0441\u043A\u0443<input id="bankFile" type="file" accept=".txt,.csv,.tsv" hidden></label></div>
       <div class="muted" style="font-size:12px;margin-top:8px">\u0424\u0430\u0439\u043B \u0437 \u0456\u043D\u0442\u0435\u0440\u043D\u0435\u0442-\u0431\u0430\u043D\u043A\u0443: \xAB\u0415\u043A\u0441\u043F\u043E\u0440\u0442 \u0443 1\u0421\xBB (.txt) \u0430\u0431\u043E CSV. \u041F\u043E\u0432\u0442\u043E\u0440\u043D\u0435 \u0437\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F \u043D\u0435 \u0434\u0443\u0431\u043B\u044E\u0454. \u0415\u043A\u0432\u0430\u0439\u0440\u0438\u043D\u0433, \u043E\u043F\u043B\u0430\u0442\u0438 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0438\u0445 \u0456 \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u0456 \u0432\u0438\u0442\u0440\u0430\u0442\u0438 \u0437\u0456\u0441\u0442\u0430\u0432\u043B\u044F\u044E\u0442\u044C\u0441\u044F \u0441\u0430\u043C\u0456${r.last ? ` \xB7 \u043E\u0441\u0442\u0430\u043D\u043D\u0456\u0439 \u0456\u043C\u043F\u043E\u0440\u0442 ${new Date(r.last.ts).toLocaleDateString("uk-UA")} (${r.last.n})` : ""}.</div></div>`;
     const tiles = `<div class="widgets">${[["\u2795 \u041D\u0430\u0434\u0456\u0439\u0448\u043B\u043E", money(t.in)], ["\u2796 \u0421\u043F\u0438\u0441\u0430\u043D\u043E", money(-t.out)], ["\u{1F4B3} \u041A\u043E\u043C\u0456\u0441\u0456\u044F \u0431\u0430\u043D\u043A\u0443", money(t.fee)], ["\u2705 \u0417\u0456\u0441\u0442\u0430\u0432\u043B\u0435\u043D\u043E", t.ok], ["\u26A0\uFE0F \u041D\u0430 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F", t.q], ["\u{1F648} \u041F\u0440\u043E\u043F\u0443\u0449\u0435\u043D\u043E", t.x]].map(([l, v]) => `<div class="widget"><span>${l}</span><b class="money">${v}</b></div>`).join("")}</div>`;
     const miss = r.miss.length ? `<div class="card"><h3>\u{1F4B3} \u041D\u0435 \u043D\u0430\u0434\u0456\u0439\u0448\u043B\u0430 \u0431\u0435\u0437\u0433\u043E\u0442\u0456\u0432\u043A\u0430</h3><div class="muted" style="font-size:12px;margin-bottom:6px">\u041F\u0440\u043E\u0434\u0430\u0436\u0456 \u043A\u0430\u0440\u0442\u043A\u043E\u044E \u0454, \u0430 \u0432\u0456\u0434\u0448\u043A\u043E\u0434\u0443\u0432\u0430\u043D\u043D\u044F \u0431\u0430\u043D\u043A\u0443 \u0443 \u0432\u0438\u043F\u0438\u0441\u0446\u0456 \u043D\u0435\u043C\u0430\u0454 (\u043F\u0435\u0440\u0435\u0432\u0456\u0440\u0442\u0435 \u0442\u0435\u0440\u043C\u0456\u043D\u0430\u043B \u0430\u0431\u043E \u0437\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0442\u0435 \u043F\u0456\u0437\u043D\u0456\u0448\u0443 \u0432\u0438\u043F\u0438\u0441\u043A\u0443)</div>${r.miss.map((x) => `<div class="kv"><span>${bkD(x.d)}</span><b class="money">${money(x.card)}</b></div>`).join("")}</div>` : "";
+    const missAg = ((_a2 = r.missAg) == null ? void 0 : _a2.length) ? `<div class="card"><h3>\u{1F6F5} \u041D\u0435 \u043D\u0430\u0434\u0456\u0439\u0448\u043B\u0430 \u0432\u0438\u043F\u043B\u0430\u0442\u0430 \u0430\u0433\u0440\u0435\u0433\u0430\u0442\u043E\u0440\u0430</h3><div class="muted" style="font-size:12px;margin-bottom:6px">\u041F\u0440\u043E\u0434\u0430\u0436\u0456 \u0447\u0435\u0440\u0435\u0437 \u0430\u0433\u0440\u0435\u0433\u0430\u0442\u043E\u0440 \u0441\u0442\u0430\u0440\u0448\u0456 \u0437\u0430 2 \u0442\u0438\u0436\u043D\u0456, \u0430 \u0432\u0438\u043F\u043B\u0430\u0442\u0438 \u0443 \u0432\u0438\u043F\u0438\u0441\u0446\u0456 \u043D\u0435\u043C\u0430\u0454</div>${r.missAg.map((x) => `<div class="kv"><span style="min-width:0;overflow-wrap:anywhere">${esc(x.n)} \xB7 ${bkD(x.from)}${x.to !== x.from ? "\u2013" + bkD(x.to) : ""}</span><b class="money">${money(x.sum)}</b></div>`).join("")}</div>` : "";
     const qH = q.length ? `<div class="card"><h3>\u26A0\uFE0F \u041D\u0430 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F \xB7 ${q.length}</h3>${q.map((x) => line(x, qb(x))).join("")}</div>` : "";
     const all = r.list.filter((x) => x.st !== "q");
     const allH = `<div class="card"><h3>\u{1F4CB} \u041E\u043F\u0440\u0430\u0446\u044C\u043E\u0432\u0430\u043D\u0456 \xB7 ${all.length}</h3>${all.length ? all.map((x) => line(x, b("un", x.id, "\u21A9\uFE0F \u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438"))).join("") : `<div class="muted">${r.list.length ? "\u0423\u0441\u0435 \u0447\u0435\u043A\u0430\u0454 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F \u0432\u0438\u0449\u0435" : "\u0412\u0438\u043F\u0438\u0441\u043E\u043A \u0437\u0430 \u0446\u0435\u0439 \u043C\u0456\u0441\u044F\u0446\u044C \u0449\u0435 \u043D\u0435\u043C\u0430\u0454"}</div>`}</div>`;
-    return head + tiles + miss + qH + allH;
+    return head + tiles + miss + missAg + qH + allH;
   }
   async function bankFile(f) {
     var _a2, _b2;
@@ -4372,6 +4378,22 @@ var __objRest = (source, exclude) => {
         return d.toISOString().slice(0, 10);
       });
       const v = await modal({ title: "\u{1F4B3} \u0417\u0430 \u044F\u043A\u0456 \u0434\u043D\u0456 \u0446\u0435 \u0432\u0456\u0434\u0448\u043A\u043E\u0434\u0443\u0432\u0430\u043D\u043D\u044F?", body: ds.map((d) => `<label class="kv"><span><input type="checkbox" class="bkDay" value="${d}"> ${bkD(d)}</span></label>`).join(""), buttons: [{ label: "\u2705 \u0417\u0456\u0441\u0442\u0430\u0432\u0438\u0442\u0438", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+      p.days = v === "ok" ? [...document.querySelectorAll(".bkDay:checked")].map((i) => i.value) : [];
+      closeModal();
+      if (!p.days.length) return;
+    }
+    if (k === "agg") {
+      const g = await aggsLoad();
+      if (!g.length) return toast("\u2139\uFE0F \u0410\u0433\u0440\u0435\u0433\u0430\u0442\u043E\u0440\u0438 \u0432\u0438\u043C\u043A\u043D\u0435\u043D\u043E \u2014 \u2699\uFE0F \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F \u2192 \u{1F6F5} \u0410\u0433\u0440\u0435\u0433\u0430\u0442\u043E\u0440\u0438");
+      const x = S.data.bank.list.find((y) => y.id === id), ds = [...Array(21)].map((_, i) => {
+        const d = /* @__PURE__ */ new Date(x.d + "T12:00:00Z");
+        d.setUTCDate(d.getUTCDate() - i);
+        return d.toISOString().slice(0, 10);
+      });
+      const ag = g.length === 1 ? g[0].id : await choose("\u{1F6F5} \u0412\u0456\u0434 \u044F\u043A\u043E\u0433\u043E \u0430\u0433\u0440\u0435\u0433\u0430\u0442\u043E\u0440\u0430 \u0432\u0438\u043F\u043B\u0430\u0442\u0430?", `${bkD(x.d)} \xB7 ${money(x.sum)}`, g.map((a) => ({ label: a.n, val: a.id })));
+      if (!ag) return;
+      const v = await modal({ title: "\u{1F6F5} \u0417\u0430 \u044F\u043A\u0456 \u0434\u043D\u0456 \u043F\u0440\u043E\u0434\u0430\u0436\u0456\u0432 \u0446\u044F \u0432\u0438\u043F\u043B\u0430\u0442\u0430?", body: `<div style="max-height:50vh;overflow:auto">${ds.map((d) => `<label class="kv"><span><input type="checkbox" class="bkDay" value="${d}"> ${bkD(d)}</span></label>`).join("")}</div>`, buttons: [{ label: "\u2705 \u0417\u0456\u0441\u0442\u0430\u0432\u0438\u0442\u0438", val: "ok", cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+      p.ag = ag;
       p.days = v === "ok" ? [...document.querySelectorAll(".bkDay:checked")].map((i) => i.value) : [];
       closeModal();
       if (!p.days.length) return;
@@ -4445,6 +4467,56 @@ var __objRest = (source, exclude) => {
     }
     return;
   });
+  async function aggsLoad(force) {
+    if (!modOn("agg")) return [];
+    if (!S.aggs || force) {
+      const r = await api("aggList").catch(() => null);
+      if (!r) return S.aggs || [];
+      S.aggsAll = r.list || [];
+      S.aggs = S.aggsAll.filter((a) => a.on);
+    }
+    return S.aggs;
+  }
+  async function aggManage() {
+    await aggsLoad(true);
+    const l = S.aggsAll || [];
+    const v = await modal({
+      title: "\u{1F6F5} \u0410\u0433\u0440\u0435\u0433\u0430\u0442\u043E\u0440\u0438 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0438",
+      body: `<div class="muted" style="font-size:12px;margin-bottom:8px">\u0417\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F \u0437 \u0430\u0433\u0440\u0435\u0433\u0430\u0442\u043E\u0440\u0430 \u0437\u0430\u043A\u0440\u0438\u0432\u0430\u0439\u0442\u0435 \u043E\u043F\u043B\u0430\u0442\u043E\u044E \xAB\u{1F6F5} \u043D\u0430\u0437\u0432\u0430\xBB. \u0412\u0438\u043F\u043B\u0430\u0442\u0443 \u0430\u0433\u0440\u0435\u0433\u0430\u0442\u043E\u0440\u0430 \u0443 \u0431\u0430\u043D\u043A\u0456\u0432\u0441\u044C\u043A\u0456\u0439 \u0432\u0438\u043F\u0438\u0441\u0446\u0456 \u0441\u0438\u0441\u0442\u0435\u043C\u0430 \u0437\u0456\u0441\u0442\u0430\u0432\u0438\u0442\u044C \u0437 \u043F\u0440\u043E\u0434\u0430\u0436\u0430\u043C\u0438 \u0441\u0430\u043C\u0430, \u0430 \u043A\u043E\u043C\u0456\u0441\u0456\u044E \u0437\u0430\u043F\u0438\u0448\u0435 \u0432\u0438\u0442\u0440\u0430\u0442\u043E\u044E.</div>
+      ${l.map((a) => `<div class="kv"><span style="min-width:0;overflow-wrap:anywhere">${a.on ? "\u{1F7E2}" : "\u26AA\uFE0F"} ${esc(a.n)}<br><small class="muted">\u043A\u043E\u043C\u0456\u0441\u0456\u044F ~${a.fee || 0}%${a.rx ? " \xB7 \u0443 \u0432\u0438\u043F\u0438\u0441\u0446\u0456: " + esc(a.rx) : ""}</small></span></div>`).join("")}`,
+      buttons: [...l.map((a) => ({ label: "\u270F\uFE0F " + a.n, val: "ed:" + a.id })), { label: "\u2795 \u0414\u043E\u0434\u0430\u0442\u0438", val: "add" }, { label: "\u0417\u0430\u043A\u0440\u0438\u0442\u0438", val: null }]
+    });
+    if (String(v).startsWith("ed:")) return aggEd(v.slice(3));
+    if (v === "add") {
+      const n = await ask("\u041D\u0430\u0437\u0432\u0430 \u0430\u0433\u0440\u0435\u0433\u0430\u0442\u043E\u0440\u0430", "\u041D\u0430\u043F\u0440.: Uklon Food");
+      if (!n) return;
+      const fee = await ask("\u041A\u043E\u043C\u0456\u0441\u0456\u044F, %", "\u041E\u0440\u0456\u0454\u043D\u0442\u043E\u0432\u043D\u0430 \u2014 \u0434\u043B\u044F \u043F\u0456\u0434\u043A\u0430\u0437\u043A\u0438 \u043F\u0440\u0438 \u0437\u0432\u0456\u0440\u0446\u0456", "number");
+      if (await act("aggSet", { n, fee }, "\u{1F6F5} \u0414\u043E\u0434\u0430\u043D\u043E")) {
+        await aggsLoad(true);
+        aggManage();
+      }
+    }
+  }
+  on("aggManage", async () => {
+    aggManage();
+    return;
+  });
+  async function aggEd(id) {
+    var _a2;
+    const a = (S.aggsAll || []).find((x) => x.id === id);
+    if (!a) return;
+    const v = await choose("\u{1F6F5} " + a.n, `\u041A\u043E\u043C\u0456\u0441\u0456\u044F ~${a.fee || 0}% \xB7 ${a.on ? "\u0443\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u043E" : "\u0432\u0438\u043C\u043A\u043D\u0435\u043D\u043E"}`, [{ label: a.on ? "\u26AA\uFE0F \u0412\u0438\u043C\u043A\u043D\u0443\u0442\u0438" : "\u{1F7E2} \u0423\u0432\u0456\u043C\u043A\u043D\u0443\u0442\u0438", val: "on" }, { label: "\u{1F4B8} \u041A\u043E\u043C\u0456\u0441\u0456\u044F, %", val: "fee" }, { label: "\u270F\uFE0F \u041D\u0430\u0437\u0432\u0430", val: "n" }, { label: "\u{1F3E6} \u042F\u043A \u043F\u0456\u0434\u043F\u0438\u0441\u0430\u043D\u0438\u0439 \u0443 \u0432\u0438\u043F\u0438\u0441\u0446\u0456", val: "rx" }]);
+    if (!v) return aggManage();
+    const p = { id: a.id };
+    if (v === "on") p.on = a.on ? 0 : 1;
+    else {
+      const x = await askVal({ fee: "\u041A\u043E\u043C\u0456\u0441\u0456\u044F, %", n: "\u041D\u0430\u0437\u0432\u0430", rx: "\u042F\u043A \u0430\u0433\u0440\u0435\u0433\u0430\u0442\u043E\u0440 \u043F\u0456\u0434\u043F\u0438\u0441\u0430\u043D\u0438\u0439 \u0443 \u0432\u0438\u043F\u0438\u0441\u0446\u0456 (\u0447\u0435\u0440\u0435\u0437 |, \u043D\u0430\u043F\u0440.: glovo|\u0433\u043B\u043E\u0432\u043E)" }[v], (_a2 = a[v]) != null ? _a2 : "", v === "fee" ? "number" : "text");
+      if (x == null || x === "") return aggManage();
+      p[v] = x;
+    }
+    if (await act("aggSet", p, "\u{1F6F5} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) await aggsLoad(true);
+    aggManage();
+  }
   function perRange(p) {
     var _a2, _b2;
     const now = new Date(Date.now() - ((_b2 = (_a2 = S.cfg) == null ? void 0 : _a2.dayH) != null ? _b2 : 3) * 36e5), day = 864e5, y = now.getFullYear(), mo = now.getMonth();
@@ -5130,6 +5202,7 @@ var __objRest = (source, exclude) => {
     part.rules = `<div class="grid2 set">
       <div class="card"><h3>\u{1F9E9} \u041C\u043E\u0434\u0443\u043B\u0456</h3><div class="muted set-note">\u041A\u0430\u0441\u0430 \u0439 \u0447\u0435\u043A\u0438 \u043F\u0440\u0430\u0446\u044E\u044E\u0442\u044C \u0437\u0430\u0432\u0436\u0434\u0438. \u0420\u0435\u0448\u0442\u0443 \u0432\u043C\u0438\u043A\u0430\u0439\u0442\u0435, \u043A\u043E\u043B\u0438 \u043F\u043E\u0442\u0440\u0456\u0431\u043D\u043E: \u0432\u0438\u043C\u043A\u043D\u0435\u043D\u0438\u0439 \u043C\u043E\u0434\u0443\u043B\u044C \u043D\u0435 \u043F\u043E\u043A\u0430\u0437\u0443\u0454 \u0432\u043A\u043B\u0430\u0434\u043E\u043A \u0456 \u043D\u0435 \u0448\u043B\u0435 \u043D\u0430\u0433\u0430\u0434\u0443\u0432\u0430\u043D\u044C.</div>
         ${MODS_UI.map(([k, l, h]) => `<div class="kv press" data-a="modTgl" data-k="${k}"><span>${l}<br><small class="muted">${h}</small></span><span class="switch ${modOn(k) ? "on" : ""}"></span></div>`).join("")}</div>
+      ${modOn("agg") ? `<div class="card"><h3>\u{1F6F5} \u0410\u0433\u0440\u0435\u0433\u0430\u0442\u043E\u0440\u0438</h3><div class="muted set-note">Glovo, Bolt Food \u0442\u0430 \u0456\u043D\u0448\u0456: \u0441\u043F\u043E\u0441\u0456\u0431 \u043E\u043F\u043B\u0430\u0442\u0438 \u043F\u0440\u0438 \u0437\u0430\u043A\u0440\u0438\u0442\u0442\u0456 \u0441\u0442\u043E\u043B\u0430, \u043A\u043E\u043C\u0456\u0441\u0456\u044F, \u0437\u0432\u0456\u0440\u043A\u0430 \u0432\u0438\u043F\u043B\u0430\u0442 \u0437 \u0431\u0430\u043D\u043A\u043E\u043C.</div><button class="btn sm primary" data-a="aggManage">\u{1F6F5} \u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u0442\u0438 \u0430\u0433\u0440\u0435\u0433\u0430\u0442\u043E\u0440\u0438</button></div>` : ""}
       <div class="card"><h3>\u{1F3DB} \u0417\u0430\u043B\u0438 \u0456 \u0441\u0442\u043E\u043B\u0438</h3>${(() => {
       const H = c.halls || [];
       let a = 1;
@@ -5522,6 +5595,7 @@ var __objRest = (source, exclude) => {
   const MODS_UI = [
     ["tax", "\u{1F4C5} \u041F\u043E\u0434\u0430\u0442\u043A\u0438", "\u041F\u043E\u0434\u0430\u0442\u043A\u043E\u0432\u0438\u0439 \u043A\u0430\u043B\u0435\u043D\u0434\u0430\u0440 \u0456 \u043D\u0430\u0433\u0430\u0434\u0443\u0432\u0430\u043D\u043D\u044F \u043F\u0440\u043E \u0437\u0432\u0456\u0442\u0438 \u0439 \u043F\u043B\u0430\u0442\u0435\u0436\u0456"],
     ["hr", "\u{1F465} \u041A\u0430\u0434\u0440\u0438 \u0439 \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0430", "\u0413\u0440\u0430\u0444\u0456\u043A \u0437\u043C\u0456\u043D, \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0430, \u043E\u043F\u0435\u0440\u0430\u0446\u0456\u0457 \u0439 \u0435\u0444\u0435\u043A\u0442\u0438\u0432\u043D\u0456\u0441\u0442\u044C \u0443 \xAB\u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\xBB"],
+    ["agg", "\u{1F6F5} \u0410\u0433\u0440\u0435\u0433\u0430\u0442\u043E\u0440\u0438 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0438", "Glovo, Bolt Food: \u043E\u043F\u043B\u0430\u0442\u0430 \xAB\u{1F6F5}\xBB \u043F\u0440\u0438 \u0437\u0430\u043A\u0440\u0438\u0442\u0442\u0456, \u043E\u043A\u0440\u0435\u043C\u043E \u0432 Z-\u0437\u0432\u0456\u0442\u0456, \u0437\u0432\u0456\u0440\u043A\u0430 \u0432\u0438\u043F\u043B\u0430\u0442 \u0437 \u0431\u0430\u043D\u043A\u043E\u043C"],
     ["acct", "\u{1F4D2} \u041E\u0431\u043B\u0456\u043A", "\u0414\u043E\u043A\u0443\u043C\u0435\u043D\u0442\u0438 \u0439 \u0437\u0432\u0456\u0442\u0438 \u0434\u043B\u044F \u0431\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u0430 (\u043D\u0430\u043F\u043E\u0432\u043D\u044E\u0454\u0442\u044C\u0441\u044F \u0437 \u043D\u0430\u0441\u0442\u0443\u043F\u043D\u0438\u043C\u0438 \u043E\u043D\u043E\u0432\u043B\u0435\u043D\u043D\u044F\u043C\u0438)"],
     ["mig", "\u{1F501} \u041F\u0435\u0440\u0435\u0445\u0456\u0434 \u0437 \u0456\u043D\u0448\u043E\u0457 \u0441\u0438\u0441\u0442\u0435\u043C\u0438", "\u0406\u043C\u043F\u043E\u0440\u0442 \u0437 1\u0421 / Excel \u2014 \u0443 \u043A\u0430\u0431\u0456\u043D\u0435\u0442\u0456 \u0432\u043B\u0430\u0441\u043D\u0438\u043A\u0430, \u0443 \u0431\u043E\u0442\u0456 /mig"],
     ["bank", "\u{1F3E6} \u0411\u0430\u043D\u043A \u0456 \u0437\u0432\u0456\u0440\u043A\u0430", "\u0412\u0438\u043F\u0438\u0441\u043A\u0438 (1\u0421 / CSV), \u0437\u0432\u0456\u0440\u043A\u0430 \u0437 \u0435\u043A\u0432\u0430\u0439\u0440\u0438\u043D\u0433\u043E\u043C \u0456 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0438\u043C\u0438 \u2014 \u041A\u0430\u0441\u0430 \u2192 \u{1F3E6} \u0411\u0430\u043D\u043A"],
