@@ -45,7 +45,7 @@
   // 📅 податковий календар: ФОП/ТОВ → дати звітів і платежів, нагадування в Telegram; без КЕП і без доступу до рахунків
   const TXR = { minWage: 'Мінімальна зарплата, ₴', living: 'Прожитковий мінімум, ₴', esv: 'ЄСВ, %', ep3: 'ЄП 3 групи, % доходу', vz: 'Військовий збір ФОП, % доходу', pdfo: 'ПДФО із зарплати, %', vzZp: 'Військовий збір із зарплати, %' };
   function taxCard() {
-    if (!isAdmin()) return '';
+    if (!isAdmin() || !modOn('tax')) return '';
     const hd = '<div class="card" style="margin-top:12px"><h3>📅 Податковий календар</h3>';
     if (!S.txR) { if (!S.txL) { S.txL = 1; api('taxGet', {}).then(r => { S.txR = r; renderMain(); }).catch(() => { S.txL = 0; }); } return hd + '<div class="muted">Завантаження…</div></div>'; }
     const R = S.txR, T = R.tax, dm = d => d.split('-').reverse().slice(0, 2).join('.');
@@ -115,6 +115,8 @@
       <div class="card"><h3>🤖 Увійшли в Telegram-бот</h3><div class="scrollbox">${st ? st.waiters.map(w => `<div class="kv"><span>${esc(w.name || w.uid)}</span><button class="btn sm red" data-a="wOut" data-uid="${w.uid}">Вийти</button></div>`).join('') || '<div class="muted">Нікого</div>' : '…'}</div></div></div>`;
     const tg = (k, l, hint, def = 0) => `<div class="kv press" data-a="cfgTgl" data-k="${k}" data-def="${def}"><span>${l}<br><small class="muted">${hint}</small></span><span class="switch ${c[k] ?? def ? 'on' : ''}"></span></div>`;
     part.rules = `<div class="grid2 set">
+      <div class="card"><h3>🧩 Модулі</h3><div class="muted set-note">Каса й чеки працюють завжди. Решту вмикайте, коли потрібно: вимкнений модуль не показує вкладок і не шле нагадувань.</div>
+        ${MODS_UI.map(([k, l, h]) => `<div class="kv press" data-a="modTgl" data-k="${k}"><span>${l}<br><small class="muted">${h}</small></span><span class="switch ${modOn(k) ? 'on' : ''}"></span></div>`).join('')}</div>
       <div class="card"><h3>🏛 Зали і столи</h3>${(() => { const H = c.halls || []; let a = 1;
         return (H.length ? H.map((h, i) => { const f = a; a += h.c; return `<div class="kv"><span>${h.ic} ${esc(h.n)}<br><small class="muted">${h.c} стол. · №${f}–${a - 1}</small></span><span class="kv-r"><button class="btn sm" data-hs="ed" data-i="${i}">✏️</button><button class="btn sm" data-hs="up" data-i="${i}" ${i ? '' : 'disabled'}>⬆️</button><button class="btn sm red" data-hs="del" data-i="${i}">🗑</button></span></div>`; }).join('')
           : row('🪑 Столів у залі', S.n, ch('cfg', ' data-k="tables"'), 'Один зал. Додайте зали й тераси — каса покаже перемикач'))
@@ -261,6 +263,9 @@
         return;
       }
   });
+  const MODS_UI = [['tax', '📅 Податки', 'Податковий календар і нагадування про звіти й платежі'], ['hr', '👥 Кадри й зарплата', 'Графік змін, зарплата, операції й ефективність у «Персонал»'],
+    ['acct', '📒 Облік', 'Документи й звіти для бухгалтера (наповнюється з наступними оновленнями)'], ['mig', '🔁 Перехід з іншої системи', 'Імпорт з 1С / Excel (скоро)'], ['edo', '📨 ЕДО з постачальниками', 'Електронні накладні (скоро)']];
+  on('modTgl', async (el, e, a, t) => { const k = el.dataset.k; if (await act('modSet', { k, v: modOn(k) ? 0 : 1 }, '🧩 Збережено')) { loadView(); loadState().catch(() => {}); } });
   on('cfgTgl', async (el, e, a, t) => { { const k = el.dataset.k, cur = S.data.staff?.cfg?.[k] ?? S.cfg?.[k] ?? +(el.dataset.def || 0); if (await act('cfgSet', { k, v: cur ? 0 : 1 }, '⚙️ Збережено')) { loadView(); loadState().catch(() => {}); } return; } });
   on('staffDel', async (el, e, a, t) => { if (await confirmBox('Видалити працівника?', 'Його PIN перестане працювати')) { await act('staffDel', { id: el.dataset.id }); loadView(); } return; });
   on('wOut', async (el, e, a, t) => { await act('waiterOut', { uid: el.dataset.uid }, 'Вийшов із бота'); loadView(); return; });

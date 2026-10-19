@@ -1072,6 +1072,16 @@ async function loyTests(A, W, dish) {
     const raw = typeof g.j.data === 'string' ? g.j.data : JSON.stringify(g.j); must(raw.includes('§sql:doc') && raw.includes(a.doc.id) && raw.includes('§sql:audit'), 'у бекапі немає SQL-таблиць');
     return 'копійки, сторно, журнал, бекап';
   });
+  await step('🧩 модулі закладу (Ф13): новий заклад — лише каса, перемикач з журналом, старий заклад — усе увімкнено', async () => {
+    const st = (await vpos(VA, 'state')).j; must(st.cfg?.mods && !Object.values(st.cfg.mods).some(Boolean), 'новий заклад не «лише каса»: ' + JSON.stringify(st.cfg?.mods));
+    must((await vpos(VA, 'modSet', { k: 'zzz', v: 1 })).status === 400, 'невідомий модуль');
+    const on = await vpos(VA, 'modSet', { k: 'tax', v: 1 }); must(on.status === 200 && on.j.cfg.mods.tax === 1 && on.j.cfg.mods.hr === 0, 'увімкнути: ' + JSON.stringify(on.j).slice(0, 160));
+    must((await vpos(VA, 'state')).j.cfg.mods.tax === 1, 'стан не оновився');
+    must((await vpos(VA, 'ldgAudit', { ref: 'mod:tax' })).j.list.some(x => x.what === 'mod' && x.now?.v === 1), 'журнал модуля');
+    must((await vpos(VA, 'modSet', { k: 'tax', v: 0 })).j.cfg.mods.tax === 0, 'вимкнути');
+    const m = (await pos('state')).j.cfg; must(!m?.mods, 'VARVAR отримав mods — старий заклад мав лишитись «усе увімкнено»');
+    return 'лише каса → увімкнути/вимкнути';
+  });
   await step('⏳ черга в залі (wl): гість /api/wl — створення, дубль за телефоном, статус, скасування, ліміт 3/пристрій', async () => {
     const dev = 'qa-wl-' + Date.now(), ph = n => '067' + String(Date.now()).slice(-6) + n;
     // 🛡 index.js: wlip — не більше 6 POST /api/wl за годину з одного IP (спільний IP тестів вичерпується) → тест чесно пропускається

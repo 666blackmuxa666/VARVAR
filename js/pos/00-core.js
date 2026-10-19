@@ -302,6 +302,8 @@
   const NAV_COUR = [['go', '🛵', 'Доставки'], ['course', '🎓', 'Навчання']];
   // 🔑 права з галочками: S.me.can — повний набір ключів (сервер perm.js); без нього (старий кеш) — за роллю
   const can = k => S.me?.can ? S.me.can.includes(k) : realAdmin();
+  // 🧩 Ф13 модулі закладу: немає cfg.mods → старий заклад, усе увімкнено; новий заклад — лише каса
+  const modOn = k => { const m = (S.data?.staff?.cfg || S.cfg)?.mods; return !m || !!m[k]; };
   const NAV_PERM = { cash: 'cash', reports: 'reports', calc: 'stock', team: 'staff', settings: 'settings' };
   const navList = () => {
     if (isCour()) return NAV_COUR; if (isCook()) return S.me?.can?.length ? [...NAV_COOK, ...NAV_A.filter(([v]) => NAV_PERM[v] && can(NAV_PERM[v]) && !NAV_COOK.some(x => x[0] === v))] : NAV_COOK;

@@ -37,6 +37,7 @@ export async function intApi(req, env, path) {
     if (await env.DB.get('cfg:venue')) return [{ error: 'Заклад уже створено' }, 400];
     const codes = {}; for (const r of ['admin', 'waiter', 'cook', 'courier']) { let c; do c = String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000)); while (Object.values(codes).includes(c)); codes[r] = c; await env.DB.put('reg_' + r, c); }
     await env.DB.put('cfg:venue', JSON.stringify({ id: env.VENUE, name: String(b.name || ''), at: Date.now() }));
+    { const c = (await env.DB.get('cfg', 'json')) || {}; if (!c.mods) { c.mods = {}; await env.DB.put('cfg', JSON.stringify(c)); } } // 🧩 новий заклад — лише каса; модулі вмикає власник
     await env.DB.put('menu', JSON.stringify({ categories: [] })); // не меню VARVAR за замовчуванням
     await saveSecrets(env, { PRINT_KEY: rnd(16) }); // свій ключ програми друку
     await (await import('./backup.js')).backupNow(env).catch(() => {}); // 💾 перша копія одразу

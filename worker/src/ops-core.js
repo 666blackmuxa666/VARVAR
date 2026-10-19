@@ -104,6 +104,15 @@ export const WAITER_DISC_MAX = 20;
 export const CFG_DEF = { tables: 0, discMax: WAITER_DISC_MAX, scanMin: 60, foodCost: 30, priceAlert: 5, lateMin: 10, lateFine: 0, dayH: 3, autoZ: 0, zPrint: 1, zTg: 1, zRemind: 1, semiCalc: 1, bankFee: 0, recBonus: 0 };
 export const CFG_LIM = { tables: [0, 200], discMax: [0, 100], scanMin: [10, 600], foodCost: [5, 90], priceAlert: [1, 100], lateMin: [0, 120], lateFine: [0, 5000], dayH: [0, 8], autoZ: [0, 1], zPrint: [0, 1], zTg: [0, 1], zRemind: [0, 1], semiCalc: [0, 1], bankFee: [0, 10], recBonus: [0, 10000] };
 export const getCfg = async env => ({ ...CFG_DEF, ...((await env.DB.get('cfg', 'json')) || {}) });
+// 🧩 Ф13 модулі закладу: cfg.mods { tax, hr, acct, mig, edo } — 1/0. Немає cfg.mods → старий заклад: усе увімкнено (як було).
+// Новий заклад створюється з mods: {} — лише каса («просто видавати чеки»). Вимкнений модуль не показує вкладок і не робить фонових справ.
+export const MODS = { tax: '📅 Податки', hr: '👥 Кадри й зарплата', acct: '📒 Облік', mig: '🔁 Перехід з іншої системи', edo: '📨 ЕДО з постачальниками' };
+export const modsOf = c => Object.fromEntries(Object.keys(MODS).map(k => [k, !c?.mods || c.mods[k] ? 1 : 0]));
+export const modOn = async (env, k) => modsOf(await getCfg(env))[k] === 1;
+export async function setMod(env, k, v) {
+  if (!MODS[k]) return { error: 'Невідомий модуль' };
+  return L(env, 'cfg', async () => { const c = (await env.DB.get('cfg', 'json')) || {}; c.mods = { ...modsOf(c), [k]: v ? 1 : 0 }; await env.DB.put('cfg', JSON.stringify(c)); return { ...CFG_DEF, ...c }; });
+}
 // 🏛 зали: [{ n: назва, ic: емодзі, c: столів }] — столи нумеруються підряд (Зал 1: 1–15, Тераса: 16–25…), тож старі номери й QR не ламаються
 export const hallsOf = c => (c.halls?.length ? c.halls : [{ n: 'Зал', ic: '🪑', c: c.tables || 0 }]);
 export async function setHalls(env, halls, go) {

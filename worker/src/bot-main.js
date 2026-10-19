@@ -246,6 +246,7 @@ export async function handleUpdate(u, env) {
   const admOnly = ADM.includes(text) || /^(\/revenue|\/wifi|\/menu|виручка|каса|звіти|витрата|видалити стіл|зарплата)/.test(low);
   if (admOnly && !admin) return send({ text: `🔐 Це доступно лише адміністратору. Натисніть «${W.admin}».` });
   if (text === A.cash || low === 'каса') return send(await cashView(env));
+  if (admin && (low === 'модулі' || low === '/mods')) return send(await (await import('./bot-views.js')).modsView(env)); // 🧩 Ф13
   if (admin && (low === 'постачальники' || low === 'борги' || low === '/sup')) { /* 🏭 борги постачальникам — як у касі (Склад → Постачальники) */
     const r = await (await import('./suppliers.js')).supList(env), l = r.list.filter(x => x.debt > 0), tot = l.reduce((a, x) => a + x.debt, 0);
     return send({ text: l.length ? `🏭 <b>Борги постачальникам: ${money(tot)}</b>\n${l.map(x => `• ${esc(x.n)} — <b>${money(x.debt)}</b>${x.over ? ` · ⏰ прострочено ${money(x.over)}` : ''}${x.phone ? ` · ${esc(x.phone)}` : ''}`).join('\n')}\n\nОплатити й переглянути накладні — у касі: Склад → 🏭 Постачальники.` : '✅ Боргів постачальникам немає.' });
@@ -268,6 +269,7 @@ export async function handleUpdate(u, env) {
 
   // --- 👷 зарплата ---
   if (text === A.pay || low === 'зарплата') {
+    if (!(await (await import('./ops.js')).modOn(env, 'hr'))) return send({ text: '👥 Модуль «Кадри й зарплата» вимкнено. Увімкнути: напишіть <code>модулі</code> або в касі ⚙️ Налаштування → 🧩 Модулі.' });
     const p = await payroll(env), st = await getStaff(env);
     return send({ text: payText(p) + '\n\nТекстом: <code>премія Гріша 300 за суботу</code>, <code>штраф Назар 100 запізнення</code>, <code>аванс Назар 1000</code> (або <code>… картка</code>)',
       markup: { inline_keyboard: p.rows.filter(r => r.due > 0).map(r => [{ text: `💸 Видати ${r.n} · ${r.due}`.slice(0, 60), callback_data: 'zpb:' + (st.find(x => x.name === r.n)?.id || '') }]) } });
@@ -335,6 +337,12 @@ async function handleCallback(q, env) {
   const who = q.from?.first_name || '';
   const confirm = (text, yes) => send({ text, markup: { inline_keyboard: [[{ text: '✅ Так', callback_data: yes }, { text: 'Ні', callback_data: 'no' }]] } });
 
+  if (act === 'mod') { // 🧩 модуль закладу (як у касі)
+    if (!admin) return answer('🔐 Лише для адміністратора'); const O = await import('./ops.js'); if (!O.MODS[arg]) return answer('Невідомий модуль');
+    const was = (await O.modOn(env, arg)) ? 1 : 0, c = await O.setMod(env, arg, !was);
+    await (await import('./ledger.js')).audit(env, who, 'mod', 'mod:' + arg, { v: was }, { v: c.mods[arg] });
+    const v = await (await import('./bot-views.js')).modsView(env); await edit(v.text, v.markup); return answer(`${O.MODS[arg]}: ${c.mods[arg] ? 'увімкнено' : 'вимкнено'}`);
+  }
   if (act === 'wl') { // ⏳ черга в залі — та сама wlAct, що й у касі
     const W = await import('./wl.js');
     if (arg === 'list') { const l = await W.wlList(env); await edit(W.wlText(l), W.wlKb(l)); return answer(''); }

@@ -867,6 +867,11 @@ var __objRest = (source, exclude) => {
     var _a2;
     return ((_a2 = S.me) == null ? void 0 : _a2.can) ? S.me.can.includes(k) : realAdmin();
   };
+  const modOn = (k) => {
+    var _a2, _b2, _c;
+    const m = (_c = ((_b2 = (_a2 = S.data) == null ? void 0 : _a2.staff) == null ? void 0 : _b2.cfg) || S.cfg) == null ? void 0 : _c.mods;
+    return !m || !!m[k];
+  };
   const NAV_PERM = { cash: "cash", reports: "reports", calc: "stock", team: "staff", settings: "settings" };
   const navList = () => {
     var _a2, _b2;
@@ -4829,7 +4834,7 @@ var __objRest = (source, exclude) => {
   });
   const TXR = { minWage: "\u041C\u0456\u043D\u0456\u043C\u0430\u043B\u044C\u043D\u0430 \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0430, \u20B4", living: "\u041F\u0440\u043E\u0436\u0438\u0442\u043A\u043E\u0432\u0438\u0439 \u043C\u0456\u043D\u0456\u043C\u0443\u043C, \u20B4", esv: "\u0404\u0421\u0412, %", ep3: "\u0404\u041F 3 \u0433\u0440\u0443\u043F\u0438, % \u0434\u043E\u0445\u043E\u0434\u0443", vz: "\u0412\u0456\u0439\u0441\u044C\u043A\u043E\u0432\u0438\u0439 \u0437\u0431\u0456\u0440 \u0424\u041E\u041F, % \u0434\u043E\u0445\u043E\u0434\u0443", pdfo: "\u041F\u0414\u0424\u041E \u0456\u0437 \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0438, %", vzZp: "\u0412\u0456\u0439\u0441\u044C\u043A\u043E\u0432\u0438\u0439 \u0437\u0431\u0456\u0440 \u0456\u0437 \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0438, %" };
   function taxCard() {
-    if (!isAdmin()) return "";
+    if (!isAdmin() || !modOn("tax")) return "";
     const hd = '<div class="card" style="margin-top:12px"><h3>\u{1F4C5} \u041F\u043E\u0434\u0430\u0442\u043A\u043E\u0432\u0438\u0439 \u043A\u0430\u043B\u0435\u043D\u0434\u0430\u0440</h3>';
     if (!S.txR) {
       if (!S.txL) {
@@ -5004,6 +5009,8 @@ var __objRest = (source, exclude) => {
       return `<div class="kv press" data-a="cfgTgl" data-k="${k}" data-def="${def}"><span>${l}<br><small class="muted">${hint}</small></span><span class="switch ${((_a3 = c[k]) != null ? _a3 : def) ? "on" : ""}"></span></div>`;
     };
     part.rules = `<div class="grid2 set">
+      <div class="card"><h3>\u{1F9E9} \u041C\u043E\u0434\u0443\u043B\u0456</h3><div class="muted set-note">\u041A\u0430\u0441\u0430 \u0439 \u0447\u0435\u043A\u0438 \u043F\u0440\u0430\u0446\u044E\u044E\u0442\u044C \u0437\u0430\u0432\u0436\u0434\u0438. \u0420\u0435\u0448\u0442\u0443 \u0432\u043C\u0438\u043A\u0430\u0439\u0442\u0435, \u043A\u043E\u043B\u0438 \u043F\u043E\u0442\u0440\u0456\u0431\u043D\u043E: \u0432\u0438\u043C\u043A\u043D\u0435\u043D\u0438\u0439 \u043C\u043E\u0434\u0443\u043B\u044C \u043D\u0435 \u043F\u043E\u043A\u0430\u0437\u0443\u0454 \u0432\u043A\u043B\u0430\u0434\u043E\u043A \u0456 \u043D\u0435 \u0448\u043B\u0435 \u043D\u0430\u0433\u0430\u0434\u0443\u0432\u0430\u043D\u044C.</div>
+        ${MODS_UI.map(([k, l, h]) => `<div class="kv press" data-a="modTgl" data-k="${k}"><span>${l}<br><small class="muted">${h}</small></span><span class="switch ${modOn(k) ? "on" : ""}"></span></div>`).join("")}</div>
       <div class="card"><h3>\u{1F3DB} \u0417\u0430\u043B\u0438 \u0456 \u0441\u0442\u043E\u043B\u0438</h3>${(() => {
       const H = c.halls || [];
       let a = 1;
@@ -5391,6 +5398,21 @@ var __objRest = (source, exclude) => {
         loadView();
       }
       return;
+    }
+  });
+  const MODS_UI = [
+    ["tax", "\u{1F4C5} \u041F\u043E\u0434\u0430\u0442\u043A\u0438", "\u041F\u043E\u0434\u0430\u0442\u043A\u043E\u0432\u0438\u0439 \u043A\u0430\u043B\u0435\u043D\u0434\u0430\u0440 \u0456 \u043D\u0430\u0433\u0430\u0434\u0443\u0432\u0430\u043D\u043D\u044F \u043F\u0440\u043E \u0437\u0432\u0456\u0442\u0438 \u0439 \u043F\u043B\u0430\u0442\u0435\u0436\u0456"],
+    ["hr", "\u{1F465} \u041A\u0430\u0434\u0440\u0438 \u0439 \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0430", "\u0413\u0440\u0430\u0444\u0456\u043A \u0437\u043C\u0456\u043D, \u0437\u0430\u0440\u043F\u043B\u0430\u0442\u0430, \u043E\u043F\u0435\u0440\u0430\u0446\u0456\u0457 \u0439 \u0435\u0444\u0435\u043A\u0442\u0438\u0432\u043D\u0456\u0441\u0442\u044C \u0443 \xAB\u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\xBB"],
+    ["acct", "\u{1F4D2} \u041E\u0431\u043B\u0456\u043A", "\u0414\u043E\u043A\u0443\u043C\u0435\u043D\u0442\u0438 \u0439 \u0437\u0432\u0456\u0442\u0438 \u0434\u043B\u044F \u0431\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u0430 (\u043D\u0430\u043F\u043E\u0432\u043D\u044E\u0454\u0442\u044C\u0441\u044F \u0437 \u043D\u0430\u0441\u0442\u0443\u043F\u043D\u0438\u043C\u0438 \u043E\u043D\u043E\u0432\u043B\u0435\u043D\u043D\u044F\u043C\u0438)"],
+    ["mig", "\u{1F501} \u041F\u0435\u0440\u0435\u0445\u0456\u0434 \u0437 \u0456\u043D\u0448\u043E\u0457 \u0441\u0438\u0441\u0442\u0435\u043C\u0438", "\u0406\u043C\u043F\u043E\u0440\u0442 \u0437 1\u0421 / Excel (\u0441\u043A\u043E\u0440\u043E)"],
+    ["edo", "\u{1F4E8} \u0415\u0414\u041E \u0437 \u043F\u043E\u0441\u0442\u0430\u0447\u0430\u043B\u044C\u043D\u0438\u043A\u0430\u043C\u0438", "\u0415\u043B\u0435\u043A\u0442\u0440\u043E\u043D\u043D\u0456 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0456 (\u0441\u043A\u043E\u0440\u043E)"]
+  ];
+  on("modTgl", async (el, e, a, t) => {
+    const k = el.dataset.k;
+    if (await act("modSet", { k, v: modOn(k) ? 0 : 1 }, "\u{1F9E9} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
+      loadView();
+      loadState().catch(() => {
+      });
     }
   });
   on("cfgTgl", async (el, e, a, t) => {
@@ -7418,7 +7440,8 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
       }));
     }).map((s) => s.name);
     const rows = G.rows.filter((r) => people.includes(r.n) || r.paid || r.adv || r.bonus || r.fine), due = rows.reduce((a, r) => a + Math.max(0, r.due), 0), pend = rows.reduce((a, r) => a + r.pending, 0);
-    const tab = S.zpTab || "grid", TABS2 = [["grid", "\u{1F4C5} \u0413\u0440\u0430\u0444\u0456\u043A"], ["pay", "\u{1F4B0} \u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430"], ["ops", "\u{1F9FE} \u041E\u043F\u0435\u0440\u0430\u0446\u0456\u0457"], ["eff", "\u{1F4CA} \u0415\u0444\u0435\u043A\u0442\u0438\u0432\u043D\u0456\u0441\u0442\u044C"], ["plan", "\u{1F4CB} \u041F\u043B\u0430\u043D"], ["people", "\u{1F465} \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0438"], ["ideas", "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F"]];
+    const HR = ["grid", "pay", "ops", "eff"], hr = modOn("hr"), TABS2 = [["grid", "\u{1F4C5} \u0413\u0440\u0430\u0444\u0456\u043A"], ["pay", "\u{1F4B0} \u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430"], ["ops", "\u{1F9FE} \u041E\u043F\u0435\u0440\u0430\u0446\u0456\u0457"], ["eff", "\u{1F4CA} \u0415\u0444\u0435\u043A\u0442\u0438\u0432\u043D\u0456\u0441\u0442\u044C"], ["plan", "\u{1F4CB} \u041F\u043B\u0430\u043D"], ["people", "\u{1F465} \u041F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0438"], ["ideas", "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F"]].filter(([k]) => hr || !HR.includes(k));
+    const tab = TABS2.some(([k]) => k === S.zpTab) ? S.zpTab : hr ? "grid" : "people";
     const top = `<div class="zp-top"><button class="btn sm" data-a="zpM" data-d="-1">\u25C0</button><b>${monName(G.m)}</b><button class="btn sm" data-a="zpM" data-d="1">\u25B6</button></div>
       ${["pay", "ops", "eff"].includes(tab) ? `<div class="kpis"><div class="kpi accent"><span>\u0414\u043E \u0432\u0438\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(due)}</b></div><div class="kpi"><span>\u0424\u043E\u043D\u0434 \u043E\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(G.fund)}</b><small class="muted">${G.fundPct}% \u0432\u0456\u0434 \u0432\u0438\u0440\u0443\u0447\u043A\u0438</small></div>
         <div class="kpi"><span>\u0412\u0438\u0440\u0443\u0447\u043A\u0430 \u043C\u0456\u0441\u044F\u0446\u044F</span><b class="money">${money(G.revenue)}</b></div><div class="kpi ${pend ? "red press" : ""}"${pend ? ' data-a="zpPend"' : ""}><span>\u0427\u0435\u043A\u0430\u0454 \u2705</span><b>${pend}</b><small class="muted">${pend ? "\u043D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C, \u0449\u043E\u0431 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0438" : "\u0443\u0441\u0435 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043E"}</small></div></div>

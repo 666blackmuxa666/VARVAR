@@ -284,7 +284,7 @@ export async function staffOne(env, id) {
     [{ text: '⬅️ Усі працівники', callback_data: 'stfbk' }]] } };
 }
 // 🛡 Права працівника: перемикачі (паритет із касою). Чутливі права для не-адмінів — лише в касі разом із новим PIN 6–8 цифр
-export const BOT_PERM = { mvl: 'cash', zl: 'cash', zday: 'cash', rp: 'reports', stf: 'staff', stfn: 'staff', stfp: 'staff', stfr: 'staff', stfro: 'staff', stfdq: 'staff', stfdel: 'staff', stfadd: 'staff', prm: 'staff', prt: 'staff' };
+export const BOT_PERM = { mvl: 'cash', zl: 'cash', zday: 'cash', rp: 'reports', stf: 'staff', stfn: 'staff', stfp: 'staff', stfr: 'staff', stfro: 'staff', stfdq: 'staff', stfdel: 'staff', stfadd: 'staff', prm: 'staff', prt: 'staff', mod: 'settings' };
 export async function permView(env, id) {
   const s = (await getStaff(env)).find(x => x.id === id); if (!s) return staffView(env);
   const adm = s.role === 'admin', on = k => adm ? s.perm?.[k] !== 0 : s.perm?.[k] === 1;
@@ -377,4 +377,11 @@ export async function tgLogin(env, uid, s, chat) {
   await env.DB.put('tgs:' + uid, s.id); await env.DB.put('wlog:' + uid, JSON.stringify({ name: s.name, role: s.role, at: Date.now() }));
   if (s.role !== 'admin') return KEYBOARD;
   await env.DB.put('adm:' + uid, JSON.stringify({ name: s.name, at: Date.now() }), { expirationTtl: ADMIN_TTL }); await env.DB.delete('kbw:' + uid); return ADMIN_KB;
+}
+
+// 🧩 Ф13 модулі закладу (як «⚙️ Налаштування → 🧩 Модулі» у касі)
+export async function modsView(env) {
+  const { MODS, modsOf, getCfg } = await import('./ops.js'), m = modsOf(await getCfg(env));
+  return { text: '🧩 <b>Модулі закладу</b>\nКаса й чеки працюють завжди. Вимкнений модуль не показує вкладок і не шле нагадувань. Натисніть, щоб увімкнути / вимкнути.',
+    markup: { inline_keyboard: Object.entries(MODS).map(([k, n]) => [{ text: `${m[k] ? '✅' : '⬜️'} ${n}`, callback_data: 'mod:' + k }]) } };
 }
