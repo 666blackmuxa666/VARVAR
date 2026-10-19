@@ -240,7 +240,7 @@ export async function dayX(env, who, day = dayKey()) {
 const dm = d => d.split('-').reverse().join('.');
 export const zDayText = z => [`🧾 <b>Z-звіт за ${dm(z.day)}</b>`, '',
   z.fis ? fisZLine(z) + '\n' : '',
-  `Чеків: ${z.checks} · виручка <b>${money(z.total)}</b>`, `💵 Готівка: ${money(z.cash)}`, `💳 Картка: ${money(z.card)}${z.onl ? ` (термінал ${money(z.card - z.onl - agTotal(z))} · 🌐 онлайн ${money(z.onl)})` : ''}${agLine(z.ag)}`,
+  `Чеків: ${z.checks} · виручка <b>${money(z.total)}</b>`, `💵 Готівка: ${money(z.cash)}`, `💳 Картка: ${money(z.card)}${z.onl || agTotal(z) ? ` (термінал ${money(z.card - (z.onl || 0) - agTotal(z))}${z.onl ? ` · 🌐 онлайн ${money(z.onl)}` : ''})` : ''}${agLine(z.ag)}`,
   z.disc ? `🏷 Знижки: ${money(z.disc)}` : '', z.tip ? `💝 Чайові (не виручка, персоналу): ${money(z.tip)}${Object.keys(z.tipBy || {}).length ? '\n' + Object.entries(z.tipBy).map(([n, s]) => `   👤 ${esc(n)}: ${money(s)}`).join('\n') : ''}` : '', `💸 Витрати: ${money(z.exCash + z.exCard)}${z.exCard ? ` (з картки ${money(z.exCard)})` : ''}`,
   z.mvCash || z.mvCard ? `🔁 Рух коштів: готівка ${z.mvCash >= 0 ? '+' : ''}${money(z.mvCash)}${z.mvCard ? `, картка ${z.mvCard >= 0 ? '+' : ''}${money(z.mvCard)}` : ''}` : '',
   `📈 Чистими: <b>${money(z.net)}</b>`, z.rec?.beat ? `🏆 Новий рекорд закладу за день!` : z.rec?.sum ? `🏆 Рекорд: ${money(z.rec.sum)} (${dm(z.rec.d)})` : '', z.openTables ? `\n⚠️ Ще відкрито столів: ${z.openTables} (${money(z.openSum)})` : ''].filter(x => x !== '').join('\n');

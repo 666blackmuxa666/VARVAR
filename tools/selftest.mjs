@@ -1193,6 +1193,9 @@ async function loyTests(A, W, dish) {
     const s0 = (await vpos(VA, 'shift')).j.day, g0 = s0.ag?.glovo || 0, c0 = s0.card;
     const r = ok(await vpos(VA, 'close', { t: 7, pay: 'agg:glovo' }), 'закрити Glovo').r; must(r.ag === 'glovo' && r.agS === r.sum && r.card === r.sum && !r.cash, 'чек Glovo: ' + JSON.stringify(r));
     const s1 = (await vpos(VA, 'shift')).j.day; must(s1.ag?.glovo === g0 + r.sum && s1.card === c0 + r.sum, `зміна: Glovo ${s1.ag?.glovo} ≠ ${g0}+${r.sum}`);
+    { const x0 = ok(await vpos(VA, 'closed'), 'закриті').list.find(c => c.id === r.id), ed = p => vpos(VA, 'closedEdit', { ref: r.id, p: { items: p, tip: 0, pay: 'card', disc: 0 } });
+      const e1 = ok(await ed(x0.dishes.map(([n, q, s]) => [n, q * 2, s * 2])), 'правка +страва').x; must(e1.agS === e1.card && e1.card === r.sum * 2, 'дописана страва не через Glovo: ' + JSON.stringify({ agS: e1.agS, card: e1.card }));
+      must((await vpos(VA, 'shift')).j.day.ag?.glovo === g0 + r.sum * 2, 'зміна після правки'); ok(await ed(x0.dishes), 'правка назад'); must((await vpos(VA, 'shift')).j.day.ag?.glovo === g0 + r.sum, 'правка назад не повернула Glovo'); }
     const r2 = ok(await sale(7, 'agg:glovo'), 'другий').r; ok(await vpos(VA, 'closedDel', { ref: r2.id }), 'видалити');
     must((await vpos(VA, 'shift')).j.day.ag?.glovo === g0 + r.sum, 'видалення чека не відняло Glovo');
     // 🏦 виписка: виплата Glovo нетто → зіставлено з продажами днів, комісія — витрата
