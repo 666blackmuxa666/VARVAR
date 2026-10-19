@@ -144,9 +144,15 @@ export async function reprintClosed(env, ref, who, day = dayKey()) {
   await queuePrint(env, 'receipt', await receipt(env, { table: x.t, bill, final: true, pay: x.card && x.cash ? 'mix' : x.onl ? 'online' : x.card ? 'card' : 'cash', by: who }));
   return true;
 }
+// 📝 журнал змін (Ф6) + перерахунок продажів минулого дня в обліку (документ sale)
+async function aud(env, what, who, day, r, was = null) {
+  const x = r?.x || r; if (!x || typeof x !== 'object' || x.error || (r?.what && !r.what.length)) return;
+  try { const lg = await import('./ledger.js'); await lg.audit(env, who || '', what, `closed:${day}/${x.id || x.t || ''}`, was, { sum: x.sum, cash: x.cash, card: x.card, ...(r?.what ? { what: r.what.join(', ') } : {}), ...(x.del ? { del: 1 } : {}), ...(x.rm ? { rm: 1 } : {}) });
+    if (day < dayKey()) await lg.saleSync(env, day); } catch (e) { console.log('aud', e.message); }
+}
 async function billBack(env, ...a) { return L(env, 'bills', () => _billBack(env, ...a)); }
-export async function delClosed(env, ref, day) { day = cDay(day); const r = await L(env, 'closed:' + day, () => _delClosed(env, ref, day)); fisSafe(env, day, (r?.x || r)?.id || (typeof ref === 'string' && !/^\d+$/.test(ref) ? ref : '')); return r; }
-export async function editClosed(env, ref, p, who, day) { day = cDay(day); const r = await L(env, 'closed:' + day, () => _editClosed(env, ref, p || {}, who, day)); fisSafe(env, day, (r?.x || r)?.id || (typeof ref === 'string' && !/^\d+$/.test(ref) ? ref : '')); return r; }
-export async function restoreClosed(env, ref, who, day) { day = cDay(day); const r = await L(env, 'closed:' + day, () => _restoreClosed(env, ref, who, day)); fisSafe(env, day, (r?.x || r)?.id || (typeof ref === 'string' && !/^\d+$/.test(ref) ? ref : '')); return r; }
-export async function reopenClosed(env, ref, who, day) { day = cDay(day); const r = await L(env, ['bills', 'closed:' + day], () => _reopenClosed(env, ref, who, day)); fisSafe(env, day, (r?.x || r)?.id || (typeof ref === 'string' && !/^\d+$/.test(ref) ? ref : '')); return r; }
-export async function restoreTable(env, ref, who, day) { day = cDay(day); const r = await L(env, ['bills', 'closed:' + day, 'void:' + day], () => _restoreTable(env, ref, who, day)); fisSafe(env, day, (r?.x || r)?.id || (typeof ref === 'string' && !/^\d+$/.test(ref) ? ref : '')); return r; }
+export async function delClosed(env, ref, day, who = '') { day = cDay(day); const r = await L(env, 'closed:' + day, () => _delClosed(env, ref, day)); fisSafe(env, day, (r?.x || r)?.id || (typeof ref === 'string' && !/^\d+$/.test(ref) ? ref : '')); await aud(env, 'closed.del', who, day, r); return r; }
+export async function editClosed(env, ref, p, who, day) { day = cDay(day); const r = await L(env, 'closed:' + day, () => _editClosed(env, ref, p || {}, who, day)); fisSafe(env, day, (r?.x || r)?.id || (typeof ref === 'string' && !/^\d+$/.test(ref) ? ref : '')); await aud(env, 'closed.edit', who, day, r, r?.was != null ? { sum: r.was } : null); return r; }
+export async function restoreClosed(env, ref, who, day) { day = cDay(day); const r = await L(env, 'closed:' + day, () => _restoreClosed(env, ref, who, day)); fisSafe(env, day, (r?.x || r)?.id || (typeof ref === 'string' && !/^\d+$/.test(ref) ? ref : '')); await aud(env, 'closed.restore', who, day, r); return r; }
+export async function reopenClosed(env, ref, who, day) { day = cDay(day); const r = await L(env, ['bills', 'closed:' + day], () => _reopenClosed(env, ref, who, day)); fisSafe(env, day, (r?.x || r)?.id || (typeof ref === 'string' && !/^\d+$/.test(ref) ? ref : '')); await aud(env, 'closed.reopen', who, day, r); return r; }
+export async function restoreTable(env, ref, who, day) { day = cDay(day); const r = await L(env, ['bills', 'closed:' + day, 'void:' + day], () => _restoreTable(env, ref, who, day)); fisSafe(env, day, (r?.x || r)?.id || (typeof ref === 'string' && !/^\d+$/.test(ref) ? ref : '')); await aud(env, 'closed.tableBack', who, day, r); return r; }

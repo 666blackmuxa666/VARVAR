@@ -25,7 +25,7 @@ const MAP = [
   ['void', /^(voidBack|tableBack|closedDel|closedRefund)$/],
   ['edit_closed', /^(closedEdit|closedReopen|closedBack|closedPrint)$/],
   ['cash', /^(shift|zX|zDay|tipPay|cashMove|reconcile|moveDel|moveBack|expenseBack|zDel|zBack|shiftOpen|shiftClose|float|expense|expenseDel)$/],
-  ['reports', /^(report|reports|acctExport)$/],
+  ['reports', /^(report|reports|acctExport|ldgDocs|ldgTotals|ldgAudit)$/],
   ['tax', /^tax(Get|Set|Done)$/],
   ['stock', /^sk[A-Z]/],
   ['menu', /^(catSet|menuSave|catAdd|menuDel|menuUndo|menuPhoto|menuImport|stGet|stSet|stItem|photo[A-Z]\w*)$/],

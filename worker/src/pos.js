@@ -268,12 +268,12 @@ export async function posApi(b, req, env) {
       if (!x?.lpo?.length) return [{ error: 'Цей чек не оплачувався онлайн' }, 400]; if (x.del || x.rm) return [{ error: 'Чек уже знято з виручки' }, 400];
       const LP = await import('./liqpay.js'), k = LP.lpKeys(env); if (!k) return [{ error: 'LiqPay не підключено' }, 400];
       for (const p of x.lpo) { const r = await LP.lpRefund(k, p.o, p.a); if (r.error) return [{ error: 'LiqPay не повернув: ' + r.error }, 400]; }
-      await delClosed(env, String(b.ref), day); await env.DB.locked('closed:' + day, async () => { const l = await getClosed(env, day), y = l.find(c => c.id === x.id); if (y) { y.lref = Date.now(); y.lrefBy = who; await env.DB.put('closed:' + day, JSON.stringify(l)); } }).catch(() => {}); await notify(env, `🖥 ↩️ Повернуто гостю онлайн ${money(x.onl)} — стіл ${tn(x.t)} (${x.at}), чек знято з виручки — ${esc(who)}`); return ok({ sum: x.onl }); }
+      await delClosed(env, String(b.ref), day, who); await env.DB.locked('closed:' + day, async () => { const l = await getClosed(env, day), y = l.find(c => c.id === x.id); if (y) { y.lref = Date.now(); y.lrefBy = who; await env.DB.put('closed:' + day, JSON.stringify(l)); } }).catch(() => {}); await notify(env, `🖥 ↩️ Повернуто гостю онлайн ${money(x.onl)} — стіл ${tn(x.t)} (${x.at}), чек знято з виручки — ${esc(who)}`); return ok({ sum: x.onl }); }
     case 'fisRetry': { if (!admin) return needAdmin(); const F = await import('./fiscal.js'); if (!F.fisOn(env)) return [{ error: 'ПРРО Checkbox не підключено' }, 400]; // 🧾 повторити фіскалізацію чека (або всіх невдалих за день)
       const day = isDay(b.day) && b.day <= dayKey() ? b.day : dayKey(); if (!b.ref) return ok(await F.fisRetry(env, day));
       const x = await closedRec(env, String(b.ref), day); if (!x?.id) return [{ error: 'Чек не знайдено' }, 400]; return ok((await F.fisSync(env, day, x.id)) || {}); }
     case 'fisInfo': { if (!admin) return needAdmin(); return ok(await (await import('./fiscal.js')).fisInfo(env, !!b.check)); }
-    case 'closedDel': { if (!admin) return needAdmin(); const x = await delClosed(env, String(b.ref), b.day); if (x) await notify(env, `🖥 🧹 Закритий рахунок стола ${tn(x.t)} (${money(x.sum)}, ${x.at}) видалено з виручки — ${esc(who)}`); return ok({ x }); }
+    case 'closedDel': { if (!admin) return needAdmin(); const x = await delClosed(env, String(b.ref), b.day, who); if (x) await notify(env, `🖥 🧹 Закритий рахунок стола ${tn(x.t)} (${money(x.sum)}, ${x.at}) видалено з виручки — ${esc(who)}`); return ok({ x }); }
   }
 
   // ---- далі лише адміністратор ----
@@ -358,10 +358,18 @@ async function adminRest(b, env, who, ip, ok) {
     case 'alog': return ok({ list: await (await import('./ops.js')).alogGet(env, String(b.m || '')) }); // 📜 журнал дій
     case 'hallsSet': { const c = await setHalls(env, b.halls, b.go); if (c.error) return [{ error: c.error }, 400]; await notify(env, `🖥 🏛 Зали: ${c.halls ? c.halls.map(h => `${h.ic} ${esc(h.n)} (${h.c})`).join(', ') : `один зал (${c.tables || tablesCount(env)})`} — ${esc(who)}`); return ok({ cfg: c }); }
     case 'mapSet': { const c = await setMap(env, b.pos, b.from, b.to, b.deco, b.floor); return ok({ cfg: c }); } // 🗺 без повідомлення в групу
-    case 'cfgSet': { const c = await setCfg(env, String(b.k), b.v); if (c.error) return [{ error: c.error }, 400]; await notify(env, `🖥 ⚙️ Налаштування: ${esc(String(b.k))} = <b>${c[b.k]}</b> — ${esc(who)}`); return ok({ cfg: c }); }
+    case 'cfgSet': { const was = (await getCfg(env))[String(b.k)], c = await setCfg(env, String(b.k), b.v); if (c.error) return [{ error: c.error }, 400]; if (was !== c[b.k]) await (await import('./ledger.js')).audit(env, who, 'cfg', 'cfg:' + b.k, { v: was ?? null }, { v: c[b.k] }); await notify(env, `🖥 ⚙️ Налаштування: ${esc(String(b.k))} = <b>${c[b.k]}</b> — ${esc(who)}`); return ok({ cfg: c }); }
     case 'kitchenPct': { const v = Math.round(+b.pct); if (!(v >= 0 && v <= 100)) return [{ error: 'Від 0 до 100' }, 400]; await env.DB.put('kitchen_pct', String(v)); await notify(env, `🖥 👨‍🍳 Частка кухні від чайових: <b>${v}%</b> — ${esc(who)}`); return ok(); }
     case 'acctExport': { const r = await acctExport(env, String(b.from), String(b.to)); if (!r) return [{ error: 'Невірний період' }, 400]; return ok(r); } // 📤 експорт для бухгалтера
     case 'taxGet': return ok(await taxView(env)); // 📅 податковий календар
+    // 📒 облік (фундамент): документи, підсумки по платнику/типу, сторно, журнал змін. Екранів поки немає — для кабінету й експорту
+    case 'ldgDocs': return ok({ list: await (await import('./ledger.js')).docList(env, { from: b.from, to: b.to, type: b.type, payer: b.payer, limit: b.limit }) });
+    case 'ldgTotals': return ok({ list: await (await import('./ledger.js')).docTotals(env, { from: b.from, to: b.to, type: b.type, payer: b.payer }) });
+    case 'ldgStorno': { const r = await (await import('./ledger.js')).docStorno(env, String(b.id || ''), who, String(b.why || '')); if (r.error) return [{ error: r.error }, 400]; return ok(r); }
+    case 'ldgAdd': { const r = await (await import('./ledger.js')).docAdd(env, { type: b.type, day: b.day, sum: b.sum, no: b.no, ext: b.ext, st: b.st === 0 ? 0 : 1, src: 'pos', body: { note: String(b.note || '').slice(0, 300) } }, who); if (r.error) return [{ error: r.error }, 400]; return ok(r); } // ручний документ (сума в копійках)
+    case 'ldgPost': { const r = await (await import('./ledger.js')).docPost(env, String(b.id || ''), who); if (r.error) return [{ error: r.error }, 400]; return ok(r); }
+    case 'ldgSale': { if (!isDay(b.day)) return [{ error: 'Дата — РРРР-ММ-ДД' }, 400]; return ok(await (await import('./ledger.js')).saleSync(env, b.day)); } // перерахувати продажі дня в обліку
+    case 'ldgAudit': return ok({ list: await (await import('./ledger.js')).auditList(env, { ref: b.ref ? String(b.ref) : '', from: b.from, to: b.to, limit: b.limit }) });
     case 'taxSet': { const r = await taxSet(env, b); if (r.error) return [{ error: r.error }, 400]; return ok(await taxView(env)); }
     case 'taxDone': { if (typeof b.key !== 'string' || !/^[a-zA-Z0-9]+:\d{4}-\d{2}-\d{2}$/.test(b.key)) return [{ error: 'Невірний ключ' }, 400]; await taxDone(env, b.key, b.v ? 1 : 0); return ok(await taxView(env)); }
     case 'stGet': { const m = await getMenu(env); return ok({ sts: await getStations(env), cats: m.categories.filter(c => !c.tech).map(c => ({ id: c.id, name: c.name.uk, g: groupOf(c.id), st: c.st || '' })) }); } // 🍳 цехи кухні

@@ -379,6 +379,7 @@ export async function cron(env) {
   await (await import('./stock.js')).lossDaily(env).catch(e => console.log('lossDaily', e.message)); // 🚨 продаж нижче собівартості
   await (await import('./tax.js')).taxDaily(env).catch(e => console.log('taxDaily', e.message)); // 📅 податковий календар
   await (await import('./excise.js')).exDaily(env).catch(e => console.log('exDaily', e.message)); // 📜 ліцензія на алкоголь
+  await (await import('./ledger.js')).ledgerDaily(env).catch(e => console.log('ledgerDaily', e.message)); // 📒 продажі дня → документи обліку (+ перенесення старих днів)
   await (await import('./digest.js')).digDaily(env).catch(e => console.log('digDaily', e.message)); // 🌙 підсумок дня о 22:00
   // відгуки
   const due = await L(env, 'revq', async () => { const q = (await env.DB.get('revq', 'json')) || [], d = q.filter(x => x.at <= now); if (d.length) await env.DB.put('revq', JSON.stringify(q.filter(x => x.at > now))); return d; });

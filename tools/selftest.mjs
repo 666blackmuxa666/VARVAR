@@ -1039,6 +1039,39 @@ async function loyTests(A, W, dish) {
     must((await vpos(VA, 'state')).j.events?.some(x => /без зв'язку 5 хв/.test(x.text)), 'у стрічці немає «каса без зв\'язку»');
     return '12 → повний код, ліцензія: строк і каса';
   });
+  await step('📒 облік: документ (копійки, ext без дублів), сторно, підсумки, журнал змін (чек, налаштування), бекап з SQL', async () => {
+    const vok = async (op, b) => { const r = await vpos(VA, op, b); must(r.status === 200 && r.j.ok, `${op} → ${r.status} ${JSON.stringify(r.j).slice(0, 200)}`); return r.j; };
+    must((await vpos(VA, 'ldgAdd', { type: 'inc', sum: 10.5 })).status === 400, 'дробові копійки прийнято');
+    must((await vpos(VA, 'ldgAdd', { type: 'zzz', sum: 100 })).status === 400, 'невідомий тип прийнято');
+    const ext = 'qa:' + RUN, a = await vok('ldgAdd', { type: 'inc', sum: 12345, ext, note: 'QA інший дохід' });
+    must(a.doc.sum === 12345 && a.doc.st === 1 && a.doc.day, 'документ: ' + JSON.stringify(a.doc).slice(0, 160));
+    const a2 = await vok('ldgAdd', { type: 'inc', sum: 999, ext }); must(a2.same && a2.doc.id === a.doc.id && a2.doc.sum === 12345, 'повтор за ext змінив проведений');
+    const tot = async () => ((await vok('ldgTotals', { type: 'inc', from: a.doc.day, to: a.doc.day })).list.find(x => x.payer === '') || { sum: 0 }).sum;
+    const t0 = await tot(); must(t0 >= 12345, 'підсумок ' + t0);
+    const s = await vok('ldgStorno', { id: a.doc.id, why: 'QA' }); must(s.doc.sum === -12345 && s.doc.rev === a.doc.id && s.orig.rev === s.doc.id, 'сторно: ' + JSON.stringify(s).slice(0, 200));
+    must((await vpos(VA, 'ldgStorno', { id: a.doc.id })).status === 400, 'подвійне сторно');
+    must(await tot() === t0 - 12345, 'підсумок після сторно');
+    const au = (await vok('ldgAudit', { ref: 'doc:' + a.doc.id })).list.map(x => x.what); must(au.includes('doc.add') && au.includes('doc.storno'), 'журнал документа: ' + au);
+    const d = await vok('ldgAdd', { type: 'exp', sum: 500, st: 0 }); must(d.doc.st === 0, 'чернетка');
+    must((await vpos(VA, 'ldgStorno', { id: d.doc.id })).status === 400, 'сторно чернетки');
+    must((await vok('ldgPost', { id: d.doc.id })).doc.st === 1, 'провести'); await vok('ldgStorno', { id: d.doc.id, why: 'QA' });
+    // 📝 журнал: налаштування і правка закритого чека
+    const lm = (await vpos(VA, 'state')).j.cfg?.lateMin ?? 10; await vok('cfgSet', { k: 'lateMin', v: lm === 11 ? 12 : 11 }); await vok('cfgSet', { k: 'lateMin', v: lm });
+    must((await vok('ldgAudit', { ref: 'cfg:lateMin' })).list.some(x => x.what === 'cfg' && x.now?.v === lm), 'журнал налаштувань');
+    const it = (await http(`/v/${VID}/api/menu`)).j.categories.flatMap(c => c.items).filter(i => typeof i.price === 'number' && !i.hidden).at(-1);
+    const od = await vpos(VA, 'order', { t: 7, items: [{ id: it.id, q: 1 }] }); must(od.status === 200, 'order ' + od.status + ' ' + JSON.stringify(od.j).slice(0, 160)); must((await vpos(VA, 'close', { t: 7, pay: 'cash' })).status === 200, 'close');
+    const x = (await vok('closed', {})).list.filter(r => r.t === 7 && !r.rm && !r.del).pop(); await vok('closedEdit', { ref: x.id, p: { tip: 7 } });
+    const ca = (await vok('ldgAudit', { ref: `closed:${(await vok('closed', {})).day}/${x.id}` })).list; must(ca.some(q => q.what === 'closed.edit' && q.was?.sum === x.sum && /чайові/.test(q.now?.what || '')), 'журнал правки чека: ' + JSON.stringify(ca).slice(0, 200));
+    const day = (await vok('closed', {})).day, sl = await vok('ldgSale', { day });
+    must(sl.doc?.type === 'sale' && sl.doc.day === day && Number.isInteger(sl.doc.sum) && sl.doc.sum > 0, 'продажі дня: ' + JSON.stringify(sl).slice(0, 160));
+    await vpos(VA, 'closedDel', { ref: x.id }); const s2 = await vok('ldgSale', { day }); must(s2.doc && s2.doc.id !== sl.doc.id && s2.doc.sum < sl.doc.sum, 'перерахунок після зняття чека: ' + JSON.stringify(s2).slice(0, 160));
+    must((await vok('ldgDocs', { type: 'sale', from: day, to: day })).list.some(q => q.rev === sl.doc.id && q.sum === -sl.doc.sum), 'старий підсумок дня не сторновано');
+    must((await vok('ldgAudit', { ref: `closed:${day}/${x.id}` })).list.some(q => q.what === 'closed.del'), 'журнал зняття чека');
+    // 💾 SQL у бекапі
+    const b = await ownT(PT, 'bak', { venue: VID, do: 'now' }); must(b.j.n > 0, 'бекап'); const g = await ownT(PT, 'bak', { venue: VID, do: 'get', tag: b.j.tag });
+    const raw = typeof g.j.data === 'string' ? g.j.data : JSON.stringify(g.j); must(raw.includes('§sql:doc') && raw.includes(a.doc.id) && raw.includes('§sql:audit'), 'у бекапі немає SQL-таблиць');
+    return 'копійки, сторно, журнал, бекап';
+  });
   await step('⏳ черга в залі (wl): гість /api/wl — створення, дубль за телефоном, статус, скасування, ліміт 3/пристрій', async () => {
     const dev = 'qa-wl-' + Date.now(), ph = n => '067' + String(Date.now()).slice(-6) + n;
     // 🛡 index.js: wlip — не більше 6 POST /api/wl за годину з одного IP (спільний IP тестів вичерпується) → тест чесно пропускається

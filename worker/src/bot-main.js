@@ -586,7 +586,7 @@ async function handleCallback(q, env) {
   if (act === 'cvb') { const v = await closedView(env); await edit(v.text, v.markup); return answer(''); }
   if (act === 'cvp') return answer(await reprintClosed(env, arg, who) ? '🖨 Чек відправлено на принтер' : 'Немає переліку страв');
   if (act === 'dc') { await confirm('🧹 Видалити цей закритий рахунок? Сума відніметься з виручки.', 'dcok:' + arg); return answer(''); }
-  if (act === 'dcok') { const x = await delClosed(env, arg); await edit(x ? `🧹 Рахунок стола ${tn(x.t)} (${money(x.sum)}, ${x.at}) видалено з виручки.` : 'Цей рахунок уже видалено.'); return answer('Видалено'); }
+  if (act === 'dcok') { const x = await delClosed(env, arg, undefined, who); await edit(x ? `🧹 Рахунок стола ${tn(x.t)} (${money(x.sum)}, ${x.at}) видалено з виручки.` : 'Цей рахунок уже видалено.'); return answer('Видалено'); }
   if (act === 'rst1') { await edit('⚠️ Точно? Це не можна скасувати.', { inline_keyboard: [[{ text: '♻️ Так, усе обнулити', callback_data: 'rst2' }, { text: 'Ні', callback_data: 'no' }]] }); return answer(''); }
   if (act === 'rst2') { const n = await resetAll(env); await edit(`♻️ <b>Усе обнулено</b> (${n} записів): звіти, каса, витрати, закриті рахунки, топ страв, стрічка, відкриті столи.\nМеню, Wi‑Fi, персонал і паролі не чіпались.`); return answer('Обнулено'); }
   if (act === 'exy') { /* 📅 витрата за минулий день — як у касі */

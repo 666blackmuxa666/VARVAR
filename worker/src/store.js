@@ -5,11 +5,13 @@ import { DurableObject } from 'cloudflare:workers';
 import { handle } from './index.js';
 import { ALS, MAIN, doName, venueEnv, venueId } from './venue.js';
 import { SCHEMA, migrate } from './migrate.js';
+import { LEDGER_DDL, LEDGER_TABLES } from './ledgerdb.js';
 
 const now = () => Date.now();
 // ключі, зміна яких оновлює екрани POS
 const WATCH = /^(bill:|closed:|day:|exp:|ev:|menu$|staff$|ord:|fav$|shift$|z:|mov:|tipbal$|tippay:|void:|kq:|ing$|cards$|stk:|invl:|sups$|cntl$|cnt:open|att:|plan:|pay:|swaps$|task:|lookv$|tpq$)/;
 const alive = r => r && (!r.e || r.e > now());
+const SQLK = '§sql:'; // запис бекапу з рядками SQL-таблиці (не ключ сховища)
 
 export class Store extends DurableObject {
   constructor(ctx, env) {
@@ -83,10 +85,20 @@ export class Store extends DurableObject {
   // 💾 бекап / відновлення: увесь вміст сховища закладу як є (з терміном життя записів)
   // 🔐 у бекап не йдуть сесії/токени входу й лічильники ліміти (вони короткоживучі; копія бекапу не має давати доступ до каси чи кабінету гостя)
   static volatile = k => k.startsWith('__') || k === 'failall' || /^(pos|gs|gl|glu|qid|ipdev|prl|prfail|jserr|gorl|wlrl|lrl|gchrl|callrl|fail):/.test(k);
-  async dump() { return [...(await this.ctx.storage.list())].filter(([k]) => !Store.volatile(k)); }
+  // 📒 SQL-облік (ledgerdb.js): таблиці створюються при першому зверненні; stmts = [[запит, ...аргументи], …] — усі разом в одній транзакції
+  sqlInit() { if (this.sqlOk) return; for (const q of LEDGER_DDL) this.ctx.storage.sql.exec(q); this.sqlOk = 1; }
+  sqlRun(stmts) { this.sqlInit(); return this.ctx.storage.transactionSync(() => stmts.map(([q, ...a]) => [...this.ctx.storage.sql.exec(q, ...a.map(x => x === undefined ? null : x))])); }
+  async dump() { this.sqlInit(); return [...[...(await this.ctx.storage.list())].filter(([k]) => !Store.volatile(k)), ...LEDGER_TABLES.map(t => [SQLK + t, { v: [...this.ctx.storage.sql.exec(`SELECT * FROM ${t}`)], e: 0 }])]; }
+  // відновлення SQL: документи — оновлюються з копії (не видаляються: документ не зникає); журнали — лише дописуються відсутні рядки
+  sqlRestore(t, rows) {
+    if (!LEDGER_TABLES.includes(t) || !Array.isArray(rows) || !rows.length) return; this.sqlInit();
+    const cols = Object.keys(rows[0]).filter(c => /^[a-z]+$/.test(c)), q = `INSERT OR ${t === 'doc' ? 'REPLACE' : 'IGNORE'} INTO ${t} (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`;
+    this.ctx.storage.transactionSync(() => { for (const r of rows) this.ctx.storage.sql.exec(q, ...cols.map(c => r[c] ?? null)); });
+  }
   async restore(entries) {
     // спершу записуємо новий вміст, лише потім прибираємо зайве: збій посередині лишає суміш, а не порожню базу (deleteAll не атомарний)
-    entries = entries.filter(e => Array.isArray(e) && typeof e[0] === 'string' && !Store.volatile(e[0]));
+    for (const e of entries) if (Array.isArray(e) && typeof e[0] === 'string' && e[0].startsWith(SQLK)) this.sqlRestore(e[0].slice(SQLK.length), e[1]?.v);
+    entries = entries.filter(e => Array.isArray(e) && typeof e[0] === 'string' && !e[0].startsWith(SQLK) && !Store.volatile(e[0]));
     for (let i = 0; i < entries.length; i += 128) await this.ctx.storage.put(Object.fromEntries(entries.slice(i, i + 128)));
     const want = new Set(entries.map(e => e[0])), stale = [...(await this.ctx.storage.list()).keys()].filter(k => !Store.volatile(k) && !want.has(k));
     for (let i = 0; i < stale.length; i += 128) await this.ctx.storage.delete(stale.slice(i, i + 128));
@@ -146,6 +158,7 @@ function localDB(st, kv, venue) {
       finally { mine.forEach(k => held.delete(k)); for (const id of ids) st.unlock(id); }
     },
     list: async ({ prefix } = {}) => ({ keys: (await st.list(prefix)).map(name => ({ name })), list_complete: true }),
+    sql: stmts => st.sqlRun(stmts), // 📒 облік: [[запит, ...аргументи], …] → рядки кожного запиту (одна транзакція)
     dump: () => st.dump(), restore: e => st.restore(e), kv, // 💾 бекапи (лише всередині Store)
   };
 }
@@ -169,6 +182,7 @@ export function storeDB(kv, ns, venue = MAIN) {
       finally { mine.forEach(k => held.delete(k)); for (const id of ids) try { await s.unlock(id); } catch {} }
     },
     list: async ({ prefix } = {}) => ({ keys: (await s.list(prefix)).map(name => ({ name })), list_complete: true }),
+    sql: stmts => s.sqlRun(stmts),
     kv: kvRaw, // сирий KV (бекапи bak:*)
   };
 }
