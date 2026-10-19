@@ -310,6 +310,10 @@ export async function posApi(b, req, env) {
     case 'catSet': { if (!admin) return needAdmin(); const r = await (await import('./menu.js')).setCatGroup(env, String(b.id), b); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 📂 Меню: розділ <b>${esc(r.c.name.uk)}</b> → ${{ kitchen: '🍳 кухня', bar: '🍹 бар', hookah: '💨 кальян' }[r.c.g]}${r.c.nopack ? ' · без упаковки' : ''} — ${esc(who)}`); return ok(); }
     case 'menuSave': case 'catAdd': case 'menuDel': case 'menuUndo': case 'menuPhoto': return menuLock(env, () => menuOp(b, env, who));
     case 'menuImport': { if (!admin) return needAdmin(); const r = await importMenu(env, b.rows, !!b.replace); await notify(env, `🖥 📥 Меню: імпорт — додано ${r.add}, оновлено ${r.upd}, розділів ${r.cats} · ${esc(who)}`); return ok(r); }
+    // 📥 перехід з іншої системи (етап 1, mig.js): журнал, перевірка/імпорт пакета, точковий відкат
+    case 'migLog': { if (!admin) return needAdmin(); return ok({ ...(await (await import('./mig.js')).migLog(env)), on: await (await import('./ops.js')).modOn(env, 'mig') }); }
+    case 'migRun': case 'migUndo': { if (!admin) return needAdmin(); if (!(await (await import('./ops.js')).modOn(env, 'mig'))) return [{ error: 'Модуль «Перехід» вимкнено — увімкніть у налаштуваннях' }, 400];
+      const M = await import('./mig.js'), r = b.op === 'migRun' ? await M.migRun(env, b, who) : await M.migUndo(env, String(b.id || ''), who); if (r.error) return [{ error: r.error }, 400]; return ok(r); }
     default: return adminRest(b, env, who, ip, ok);
   }
 }

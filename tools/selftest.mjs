@@ -1082,6 +1082,47 @@ async function loyTests(A, W, dish) {
     const m = (await pos('state')).j.cfg; must(!m?.mods, 'VARVAR отримав mods — старий заклад мав лишитись «усе увімкнено»');
     return 'лише каса → увімкнути/вимкнути';
   });
+  await step('📥 перехід (етап 1): модуль вимкнено → 400; меню/продукти (г→кг, залишки, документ «вхідні залишки»)/техкарти-чернетки/гості/сертифікати до копійки; повтор не дублює; відкат і його заборона', async () => {
+    const run = (kind, rows, dry = 0, sys = 'xls') => vpos(VA, 'migRun', { sys, kind, rows, dry }), ok = (r, w) => { must(r.status === 200 && !r.j.error, w + ': ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 200)); return r.j; };
+    must((await run('menu', [{ name: 'QA Борщ', price: '150' }])).status === 400, 'модуль вимкнено, а імпорт пройшов');
+    must((await pos(users.waiter?.token, 'migRun', { kind: 'menu', rows: [{ name: 'x', price: 1 }] })).status === 403, 'офіціант імпортує');
+    ok(await vpos(VA, 'modSet', { k: 'mig', v: 1 }), 'увімкнути модуль');
+    must((await run('zzz', [{}])).status === 400, 'невідомий вид');
+    const M = [{ id: 'A1', cat: 'QA Супи', name: 'QA Борщ', price: '150' }, { id: 'A2', cat: 'QA Супи', name: 'QA Солянка', price: '170,5' }, { name: 'QA Без ціни', price: '' }];
+    const d = ok(await run('menu', M, 1), 'перевірка меню'); must(d.dry && d.add === 2 && d.skip === 1 && d.errs.some(e => e.w && /округлено/.test(e.m)), 'dry меню: ' + JSON.stringify(d).slice(0, 200));
+    const items = async () => (await vpos(VA, 'menu')).j.menu.categories.flatMap(c => c.items);
+    must(!(await items()).some(i => i.name.uk === 'QA Борщ'), 'перевірка змінила меню');
+    const m1 = ok(await run('menu', M), 'імпорт меню'); must(m1.add === 2 && m1.undo, 'меню: ' + JSON.stringify(m1).slice(0, 160));
+    const m2 = ok(await run('menu', [{ id: 'A1', cat: 'QA Супи', name: 'QA Борщ український', price: '155' }, M[1]]), 'повтор меню'); must(m2.add === 0 && m2.upd === 2, 'повтор дублює: ' + JSON.stringify(m2).slice(0, 160));
+    const it = await items(); must(it.filter(i => /^QA Борщ/.test(i.name.uk)).length === 1 && it.find(i => i.name.uk === 'QA Борщ український')?.price === 155, 'код A1 не оновив страву');
+    const g = ok(await run('ing', [{ n: 'QA Буряк', u: 'г', q: '2500', cost: '0,02' }, { n: 'QA Сметана', u: 'кг', q: '1.5', sum: '90', wh: 'Бар' }, { n: 'QA Дивне', u: 'бочка' }]), 'продукти');
+    must(g.add === 3 && g.tot.q === 2 && g.errs.some(e => e.w && /одиниця/.test(e.m)), 'продукти: ' + JSON.stringify(g).slice(0, 200));
+    const ing = (await vpos(VA, 'skData')).j.ing, bur = ing.find(x => x.n === 'QA Буряк'), sm = ing.find(x => x.n === 'QA Сметана');
+    must(bur?.u === 'кг' && bur.st.k === 2.5 && bur.cost === 20, 'г → кг: ' + JSON.stringify(bur)); must(sm?.st.b === 1.5 && sm.cost === 60, 'сума/кількість → ціна, склад «Бар»: ' + JSON.stringify(sm));
+    const od = (await vpos(VA, 'ldgDocs', { type: 'open' })).j.list.filter(x => !x.rev); must(od.length === 1 && od[0].sum === 14000, 'документ «вхідні залишки» 140,00 ₴: ' + JSON.stringify(od).slice(0, 200));
+    const g2 = ok(await run('ing', [{ n: 'QA Буряк', u: 'кг', q: '3' }]), 'повтор залишків'); must(g2.add === 0 && g2.upd === 1, 'повтор продукту дублює');
+    must((await vpos(VA, 'skData')).j.ing.filter(x => x.n === 'QA Буряк').length === 1, 'два буряки');
+    const od2 = (await vpos(VA, 'ldgDocs', { type: 'open' })).j.list; must(od2.filter(x => !x.rev && x.sum > 0).length === 1 && od2.some(x => x.sum === 15000 && !x.rev), 'залишки змінились — документ не перераховано (сторно + новий): ' + JSON.stringify(od2.map(x => [x.sum, !!x.rev])));
+    const c = ok(await run('cards', [{ dish: 'QA Борщ український', ing: 'QA Буряк', q: '200', u: 'г' }, { dish: 'QA Борщ український', ing: 'QA Сіль', q: '5' }, { dish: 'QA Нема в меню', ing: 'QA Буряк', q: '1' }]), 'техкарти');
+    must(c.add === 1 && c.tot.newIng === 1 && c.errs.some(e => !e.w && /немає в меню/.test(e.m)) && c.errs.some(e => e.w && /без одиниці/.test(e.m)), 'техкарти: ' + JSON.stringify(c).slice(0, 220));
+    const cs = (await vpos(VA, 'skCost')).j, key = cs.list.find(x => x.name === 'QA Борщ український')?.key, card = cs.cards[key];
+    must(card?.draft && card.items.some(l => l.q === 0.2) && card.items.some(l => l.q === 0.005), 'техкарта не чернетка або грамовки: ' + JSON.stringify(card));
+    const ph = '067' + String(Date.now()).slice(-7);
+    const cl = ok(await run('cli', [{ phone: ph, name: 'QA Гість', bal: '123,45', bd: '31.12.1990' }, { phone: 'abc' }, { phone: '+38' + ph, bal: '0.01' }]), 'гості');
+    must(cl.add === 1 && cl.skip === 1 && cl.dups.length === 1, 'гості: ' + JSON.stringify(cl).slice(0, 200));
+    const gc = (await vpos(VA, 'loyCliGet', { phone: ph })).j.cli; must(gc?.bal === 0.01 && gc.bd === '12-31' && gc.name === 'QA Гість', 'гість: ' + JSON.stringify(gc));
+    const cc = 'QA-' + String(Date.now()).slice(-6), ce = ok(await run('cert', [{ code: cc, sum: '1000', left: '250,50' }, { code: cc + 'X', sum: '100', left: '200' }]), 'сертифікати');
+    must(ce.add === 1 && ce.skip === 1 && ce.tot.left === 250.5, 'сертифікати до копійки: ' + JSON.stringify(ce).slice(0, 200));
+    must((await vpos(VA, 'certGet', { code: cc })).j.c?.left === 250.5, 'сертифікат не знайдено');
+    const lg = (await vpos(VA, 'migLog')).j; must(lg.on && lg.list.length >= 7 && lg.map, 'журнал переходу');
+    const un = ok(await vpos(VA, 'migUndo', { id: ce.id }), 'відкат сертифікатів'); must(un.n >= 1 && (await vpos(VA, 'certGet', { code: cc })).status === 400, 'сертифікат лишився після відкату');
+    must((await vpos(VA, 'migUndo', { id: ce.id })).status === 400, 'другий відкат того самого');
+    must((await vpos(VA, 'migUndo', { id: m1.id })).status === 400, 'відкат не останнього імпорту');
+    ok(await vpos(VA, 'loyCliSet', { phone: ph, f: { note: 'змінили після імпорту' } }), 'змінити гостя');
+    const bl = await vpos(VA, 'migUndo', { id: cl.id }); must(bl.status === 400 && /змінювали/.test(bl.j.error), 'відкат затер зміни після імпорту: ' + JSON.stringify(bl.j));
+    must((await vpos(VA, 'ldgAudit', { ref: 'mig:' + m1.id })).j.list.some(x => x.what === 'mig'), 'журнал змін імпорту');
+    return '6 видів, повтор, відкат';
+  });
   await step('⏳ черга в залі (wl): гість /api/wl — створення, дубль за телефоном, статус, скасування, ліміт 3/пристрій', async () => {
     const dev = 'qa-wl-' + Date.now(), ph = n => '067' + String(Date.now()).slice(-6) + n;
     // 🛡 index.js: wlip — не більше 6 POST /api/wl за годину з одного IP (спільний IP тестів вичерпується) → тест чесно пропускається

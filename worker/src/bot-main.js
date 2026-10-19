@@ -247,6 +247,9 @@ export async function handleUpdate(u, env) {
   if (admOnly && !admin) return send({ text: `🔐 Це доступно лише адміністратору. Натисніть «${W.admin}».` });
   if (text === A.cash || low === 'каса') return send(await cashView(env));
   if (admin && (low === 'модулі' || low === '/mods')) return send(await (await import('./bot-views.js')).modsView(env)); // 🧩 Ф13
+  if (admin && (low === 'перехід' || low === '📥 перехід' || low === '/mig')) { // 📥 етап 1: статус імпортів + де майстер
+    if (!(await (await import('./ops.js')).modOn(env, 'mig'))) return send({ text: '📥 Модуль «Перехід з іншої системи» вимкнено. Увімкнути: напишіть <code>модулі</code>.' });
+    return send({ text: await (await import('./mig.js')).migBotText(env, 'https://posatom.online/owner/') }); }
   if (admin && (low === 'постачальники' || low === 'борги' || low === '/sup')) { /* 🏭 борги постачальникам — як у касі (Склад → Постачальники) */
     const r = await (await import('./suppliers.js')).supList(env), l = r.list.filter(x => x.debt > 0), tot = l.reduce((a, x) => a + x.debt, 0);
     return send({ text: l.length ? `🏭 <b>Борги постачальникам: ${money(tot)}</b>\n${l.map(x => `• ${esc(x.n)} — <b>${money(x.debt)}</b>${x.over ? ` · ⏰ прострочено ${money(x.over)}` : ''}${x.phone ? ` · ${esc(x.phone)}` : ''}`).join('\n')}\n\nОплатити й переглянути накладні — у касі: Склад → 🏭 Постачальники.` : '✅ Боргів постачальникам немає.' });

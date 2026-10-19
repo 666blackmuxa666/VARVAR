@@ -1,0 +1,145 @@
+// 📥 Кабінет власника → заклад → Перехід: майстер переходу з іншої системи (етап 1). Адаптер «будь-який Excel/CSV»:
+// файл (.xlsx/.xls/.csv) або вставка з таблиці → пошук рядка заголовків (звіти 1С мають шапку) → зіставлення колонок (вгадуємо + памʼятаємо для системи)
+// → 🔍 перевірка (migRun dry) → ✅ імпорт → журнал з ↩️ відкатом. Сервер — worker/src/mig.js. Підключається з owner-venue.js (розділ «mig»).
+window.OWNMIG = (() => {
+  let C = null; // { S, esc, money, toast, render, vapi, reload }
+  const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  // підказки заголовків: поле → як його називають у 1С / Poster / Excel (укр і рос)
+  const HINT = {
+    menu: { id: /^(код|артикул|id|code)\b/, cat: /розд|катег|груп|categ/, name: /назв|найменув|наименов|страв|блюд|товар|name|позиц|номенклат/, price: /ціна|цена|вартість|price/, desc: /опис|склад|desc/, size: /ваг|вихід|выход|об.?є?м|порц|size|грам/ },
+    ing: { id: /^(код|артикул|id|code)\b/, n: /назв|найменув|наименов|номенклат|товар|продукт|інгред|ингред|name/, u: /^(од|ед)\.?\b|одиниц|единиц|unit/, cat: /груп|катег|розд/, q: /залиш|остат|кільк|колич|к-ть|qty|сальдо/, wh: /^склад|warehouse|місце збер/, cost: /ціна|цена|собіварт|себестоим|price|cost/, sum: /сума|сумма|вартість|стоимост|sum|total/, bc: /штрих|barcode|ean/ },
+    cards: { dish: /страв|блюд|dish|продукц|рецепт|калькуляц|техкарт/, ing: /продукт|інгред|ингред|сировин|сырь|компонент|ingredient|номенклат|товар/, q: /брутто|кільк|колич|норма|qty|вага/, u: /^(од|ед)\.?\b|одиниц|единиц|unit/, loss: /втрат|потер|відход|отход|loss/, out: /вихід|выход|нетто|yield/ },
+    sup: { n: /назв|найменув|наименов|контрагент|постач|поставщ|name/, code: /єдрпоу|едрпоу|іпн|инн|рнокпп|edrpou|^код/, iban: /iban|рахун|счет|р\/р/, phone: /тел|phone|моб/, addr: /адрес|address/ },
+    cli: { phone: /тел|phone|моб/, name: /^ім|^им|піб|фио|name|клієнт|клиент|гість|гост/, bal: /бонус|бал|bonus|point/, bd: /народж|рожд|birth|д\.?\s?н\.?$/, note: /нотат|приміт|примеч|коментар|note/ },
+    cert: { code: /код|номер|code|^№/, sum: /номінал|номинал|сума|сумма|amount|nominal/, left: /залиш|остат|balance|left/, phone: /тел|phone/, to: /кому|отримув|получат|^to$/, exp: /діє до|действ|термін|срок|expir/ },
+  };
+  const FILL = { menu: ['cat'], ing: ['cat', 'wh'], cards: ['dish'] }; // порожня клітинка = як у рядку вище (групи в 1С / рецептури)
+  const TOTAL = /^(разом|всього|усього|итого|всего|total)\b/i;
+  const ORDER = ['menu', 'ing', 'cards', 'sup', 'cli', 'cert'];
+  const st = () => (C.S.mig ||= { sys: 'xls', kind: '', head: [], data: [], map: {}, res: null, file: '' });
+
+  // ---------- читання ----------
+  function parseText(t) { // TSV (копія з Excel/Google) або CSV з «;» / «,» і лапками
+    const first = t.split(/\r?\n/).find(l => l.trim()) || '', sep = first.includes('\t') ? '\t' : first.split(';').length >= first.split(',').length ? ';' : ',';
+    const out = []; let row = [], cell = '', q = false;
+    for (let i = 0; i < t.length; i++) { const ch = t[i];
+      if (q) { if (ch === '"' && t[i + 1] === '"') { cell += '"'; i++; } else if (ch === '"') q = false; else cell += ch; continue; }
+      if (ch === '"' && !cell) q = true; else if (ch === sep) { row.push(cell); cell = ''; } else if (ch === '\n' || ch === '\r') { if (ch === '\r' && t[i + 1] === '\n') i++; row.push(cell); out.push(row); row = []; cell = ''; } else cell += ch; }
+    if (cell || row.length) { row.push(cell); out.push(row); }
+    return out.map(r => r.map(x => String(x).trim()));
+  }
+  let xl = null;
+  async function parseFile(f) {
+    if (/\.(csv|txt|tsv)$/i.test(f.name)) { const buf = new Uint8Array(await f.arrayBuffer()); let t = new TextDecoder('utf-8').decode(buf); if (t.includes('�')) t = new TextDecoder('windows-1251').decode(buf); return parseText(t.replace(/^﻿/, '')); }
+    if (!window.XLSX) { xl ||= new Promise((res, rej) => { const s = document.createElement('script'); s.src = XLSX_URL; s.onload = res; s.onerror = () => { xl = null; rej(new Error('Не вдалося завантажити читач Excel — перевірте інтернет')); }; document.head.append(s); }); await xl; }
+    const wb = window.XLSX.read(await f.arrayBuffer(), { type: 'array' }), ws = wb.Sheets[wb.SheetNames[0]];
+    return window.XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' }).map(r => r.map(x => String(x ?? '').trim()));
+  }
+  // рядок заголовків — той, де найбільше колонок схожі на наші поля (у звітах 1С зверху шапка й період)
+  function setTable(rows, name) {
+    const m = st(), H = HINT[m.kind]; rows = rows.filter(r => r.some(x => x));
+    let hi = -1, best = 0; rows.slice(0, 25).forEach((r, i) => { const sc = Object.values(H).filter(re => r.some(x => x && x.length < 60 && re.test(x.toLowerCase()))).length; if (sc > best) { best = sc; hi = i; } });
+    const w = Math.max(0, ...rows.map(r => r.length));
+    m.head = hi >= 0 ? Array.from({ length: w }, (_, j) => rows[hi][j] || `Стовпець ${j + 1}`) : Array.from({ length: w }, (_, j) => `Стовпець ${String.fromCharCode(65 + (j % 26))}`);
+    m.data = rows.slice(hi + 1); m.file = name || ''; m.res = null; m.map = guess(m.head);
+  }
+  function guess(head) {
+    const m = st(), H = HINT[m.kind], saved = C.S.cfgV?.d?.map?.[m.sys + '|' + m.kind] || {}, used = new Set(), map = {};
+    for (const f of Object.keys(H)) { const j = head.findIndex((h, k) => !used.has(k) && saved[f] && h === saved[f]); if (j >= 0) { map[f] = j; used.add(j); } }
+    for (const [f, re] of Object.entries(H)) { if (f in map) continue; const j = head.findIndex((h, k) => !used.has(k) && re.test(String(h).toLowerCase())); if (j >= 0) { map[f] = j; used.add(j); } }
+    return map;
+  }
+  // таблиця → рядки нашими полями (порожні, «Разом» — геть; групи/страви тягнемо вниз)
+  function rowsOf() {
+    const m = st(), F = Object.keys(HINT[m.kind]), last = {}, main = F.find(f => kinds()[m.kind].f[f].endsWith('*'));
+    return m.data.map(r => { const o = Object.fromEntries(F.map(f => [f, m.map[f] >= 0 ? String(r[m.map[f]] ?? '').trim() : '']));
+      for (const f of FILL[m.kind] || []) { if (o[f]) last[f] = o[f]; else if (last[f]) o[f] = last[f]; } return o; })
+      .filter(o => F.some(f => o[f] && !(FILL[m.kind] || []).includes(f)) && !TOTAL.test(o[main] || ''));
+  }
+  const kinds = () => C.S.cfgV?.d?.kinds || {};
+
+  // ---------- вигляд ----------
+  const esc = s => C.esc(s), n2 = x => (+x || 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const TOT = { cats: 'нових розділів', q: 'продуктів із залишком', val: 'вартість складу, ₴', dishes: 'техкарт', newIng: 'нових продуктів з техкарт', bal: 'бонусів разом, ₴', left: 'залишок сертифікатів, ₴' };
+  const totText = t => Object.entries(t || {}).filter(([k]) => TOT[k]).map(([k, v]) => `${TOT[k]}: <b>${['val', 'bal', 'left'].includes(k) ? n2(v) : v}</b>`).join(' · ');
+  function html(v) {
+    const d = v.d, m = st(), K = d.kinds || {}, SYS = d.sys || {};
+    if (!d.on) return `<div class="card"><h3>📥 Перехід з іншої системи</h3><div class="muted" style="margin-bottom:10px">Модуль вимкнено. Увімкніть, щоб перенести меню, техкарти, залишки, постачальників, гостей з бонусами й сертифікати з 1С, Poster, Excel чи іншої системи.</div><button class="btn primary" data-a="migOn">🧩 Увімкнути модуль «Перехід»</button></div>`;
+    const kindBtns = ORDER.filter(k => K[k]).map(k => `<button class="btn sm ${m.kind === k ? 'primary' : ''}" data-a="migKind" data-k="${k}">${K[k].t}</button>`).join(' ');
+    let body = `<div class="card"><h3>📥 Перехід з іншої системи</h3>
+      <div class="muted" style="font-size:13px;margin-bottom:10px">Порядок: меню → продукти й залишки → техкарти → постачальники → гості → сертифікати. Повторний імпорт оновлює, а не дублює. Перед кожним імпортом робиться копія даних.</div>
+      <label>Звідки переходимо<select id="migSys">${Object.entries(SYS).map(([k, l]) => `<option value="${k}" ${m.sys === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
+      ${m.sys === '1c' ? `<div class="alert" style="font-size:13px;margin:8px 0">🟡 <b>1С / BAS:</b> довідник «Номенклатура» → Зберегти як Excel; залишки — «Оборотно-сальдова відомість» по рах. 201 / 281 на дату переходу (з кількістю) → Excel; рецептури — звіт «Калькуляційні картки» → Excel. Шапку звіту прибирати не треба.</div>` : ''}
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${kindBtns}</div></div>`;
+    if (m.kind && K[m.kind]) body += stepHTML(K[m.kind]);
+    body += logHTML(d, K, SYS);
+    return body;
+  }
+  function stepHTML(k) {
+    const m = st(), F = Object.entries(k.f), rows = m.head.length ? rowsOf() : [];
+    let h = `<div class="card"><h3>${esc(k.t)}</h3>
+      <div class="muted" style="font-size:13px">Колонки: ${F.map(([, l]) => esc(l)).join(' · ')} (* — обовʼязково). Назви колонок можуть бути будь-які — зіставимо нижче.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0"><label class="btn sm" style="cursor:pointer">📄 Обрати файл<input id="migFile" type="file" accept=".xlsx,.xls,.csv,.txt,.tsv" hidden></label><span class="muted" style="font-size:13px;overflow-wrap:anywhere">${m.file ? '📎 ' + esc(m.file) : 'Excel (.xlsx, .xls) або CSV'}</span></div>
+      <textarea id="migPaste" rows="3" placeholder="…або скопіюйте рядки з Excel / Google Sheets разом із заголовком і вставте сюди" style="width:100%;font:inherit;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px"></textarea>`;
+    if (m.head.length) {
+      h += `<div style="margin-top:12px"><b>🔗 Зіставлення колонок</b> <span class="muted" style="font-size:13px">· рядків: ${rows.length}</span></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 12px;margin-top:6px">${F.map(([f, l]) => `<label style="min-width:0">${esc(l)}<select data-mf="${f}"><option value="-1">— немає —</option>${m.head.map((x, j) => `<option value="${j}" ${m.map[f] === j ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label>`).join('')}</div>
+        <div style="overflow-x:auto;margin-top:10px"><table style="border-collapse:collapse;font-size:12px;min-width:100%"><tr>${F.map(([, l]) => `<th style="text-align:left;padding:4px 6px;border-bottom:1px solid var(--line);white-space:nowrap">${esc(l.replace('*', ''))}</th>`).join('')}</tr>
+        ${rows.slice(0, 6).map(r => `<tr>${F.map(([f]) => `<td style="padding:4px 6px;border-bottom:1px solid var(--line);max-width:220px;overflow-wrap:anywhere">${esc(r[f])}</td>`).join('')}</tr>`).join('')}</table></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"><button class="btn" data-a="migCheck">🔍 Перевірити</button><button class="btn primary" data-a="migGo" ${m.res?.dry ? '' : 'disabled'}>✅ Імпортувати ${rows.length}</button><button class="btn ghost" data-a="migClear">✖️ Інший файл</button></div>`;
+    }
+    if (m.res) h += resHTML(m.res);
+    return h + '</div>';
+  }
+  function resHTML(r) {
+    const bad = r.errs.filter(e => !e.w), warn = r.errs.filter(e => e.w), ln = i => `рядок ${i + 1}`;
+    return `<div class="alert ${bad.length ? 'red' : ''}" style="margin-top:12px;font-size:13px">${r.dry ? '🔍 <b>Перевірка</b> (ще нічого не змінено)' : '✅ <b>Імпортовано</b>'}: нових <b>${r.add}</b>, оновиться <b>${r.upd}</b>${r.skip ? `, пропущено <b>${r.skip}</b>` : ''}${totText(r.tot) ? '<br>' + totText(r.tot) : ''}
+      ${r.dups?.length ? `<br>🔁 Повтори у файлі (береться останній): ${r.dups.slice(0, 10).map(x => `${ln(x.i)} = ${ln(x.j)}`).join(', ')}${r.dups.length > 10 ? '…' : ''}` : ''}</div>
+      ${bad.length ? `<div style="font-size:13px;margin-top:6px">${bad.slice(0, 30).map(e => `❌ ${ln(e.i)}: ${esc(e.m)}`).join('<br>')}${bad.length > 30 ? `<br>…ще ${bad.length - 30}` : ''}</div>` : ''}
+      ${warn.length ? `<div class="muted" style="font-size:13px;margin-top:6px">${warn.slice(0, 30).map(e => `⚠️ ${ln(e.i)}: ${esc(e.m)}`).join('<br>')}${warn.length > 30 ? `<br>…ще ${warn.length - 30}` : ''}</div>` : ''}
+      ${!r.dry && r.kind === 'cards' ? '<div class="muted" style="font-size:13px;margin-top:6px">📋 Техкарти збережено як чернетки — шеф перевіряє грамовки й підтверджує в касі: Склад → Техкарти → фільтр «чернетки».</div>' : ''}`;
+  }
+  function logHTML(d, K, SYS) {
+    const l = d.list || [], lastUndo = l.find(e => e.undo && !e.undone);
+    if (!l.length) return '';
+    return `<div class="card"><h3>🕓 Журнал переходу</h3>${l.slice(0, 15).map(e => `<div class="kv"><span style="min-width:0">${e.undone ? '↩️' : e.nerr ? '⚠️' : '✅'} <b>${esc(K[e.kind]?.t || e.kind)}</b> · ${esc(SYS[e.sys] || e.sys)}<br><small class="muted">${new Date(e.ts).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · нових ${e.add}, оновлено ${e.upd}${e.skip ? `, пропущено ${e.skip}` : ''} · ${esc(e.who || '')}${e.undone ? ' · відмінено' : ''}${totText(e.tot) ? '<br>' + totText(e.tot) : ''}</small></span>${e === lastUndo ? `<button class="btn sm" data-a="migUndo" data-id="${esc(e.id)}">↩️ Відмінити</button>` : ''}</div>`).join('')}</div>`;
+  }
+
+  // ---------- дії ----------
+  async function click(a, el) {
+    const m = st();
+    if (a === 'migOn') { try { await C.vapi('modSet', { k: 'mig', v: 1 }); C.toast('🧩 Модуль «Перехід» увімкнено'); } catch (e) { C.toast('⚠️ ' + e.message); } return C.reload(); }
+    if (a === 'migKind') { Object.assign(m, { kind: el.dataset.k, head: [], data: [], map: {}, res: null, file: '' }); return C.render(); }
+    if (a === 'migClear') { Object.assign(m, { head: [], data: [], map: {}, res: null, file: '' }); return C.render(); }
+    if (a === 'migCheck' || a === 'migGo') {
+      const rows = rowsOf(); if (!rows.length) return C.toast('Немає рядків — перевірте зіставлення колонок');
+      if (rows.length > 2000) return C.toast('⚠️ За раз — до 2000 рядків. Розбийте файл на частини');
+      if (a === 'migGo' && !confirm(`Імпортувати ${rows.length} рядків? Перед цим буде збережено копію даних, а імпорт можна відмінити, поки ці записи ніхто не змінював.`)) return;
+      el.disabled = true;
+      try {
+        const map = Object.fromEntries(Object.entries(m.map).filter(([, j]) => j >= 0).map(([f, j]) => [f, m.head[j]]));
+        m.res = await C.vapi('migRun', { sys: m.sys, kind: m.kind, rows, map, dry: a === 'migCheck' ? 1 : 0 });
+        if (a === 'migGo') { C.toast(`📥 Готово: нових ${m.res.add}, оновлено ${m.res.upd}`); const r = m.res; Object.assign(m, { head: [], data: [], map: {}, file: '' }); await C.reload(); m.res = r; }
+      } catch (e) { C.toast('⚠️ ' + e.message); }
+      el.disabled = false; return C.render();
+    }
+    if (a === 'migUndo') {
+      if (!confirm('Відмінити цей імпорт? Записи повернуться до стану перед ним.')) return;
+      try { const r = await C.vapi('migUndo', { id: el.dataset.id }); C.toast(`↩️ Відмінено (${r.n} записів)`); } catch (e) { C.toast('⚠️ ' + e.message); }
+      return C.reload();
+    }
+  }
+  function bind() {
+    document.addEventListener('click', e => { const el = e.target.closest('[data-a^="mig"]'); if (el && C && C.S.cfgV?.sec === 'mig') click(el.dataset.a, el); });
+    document.addEventListener('change', async e => {
+      if (!C || C.S.cfgV?.sec !== 'mig') return; const m = st(), t = e.target;
+      if (t.id === 'migSys') { m.sys = t.value; if (m.head.length) m.map = guess(m.head); m.res = null; return C.render(); }
+      if (t.id === 'migPaste' && t.value.trim() && !m.head.length) { setTable(parseText(t.value), '📋 вставлено з таблиці'); return C.render(); }
+      if (t.dataset?.mf) { m.map[t.dataset.mf] = +t.value; m.res = null; return C.render(); }
+      if (t.id === 'migFile' && t.files[0]) { try { setTable(await parseFile(t.files[0]), t.files[0].name); } catch (x) { C.toast('⚠️ ' + x.message); } return C.render(); }
+    });
+    document.addEventListener('paste', e => { if (e.target.id !== 'migPaste' || !C) return; setTimeout(() => { const v = e.target.value; if (v.trim()) { setTable(parseText(v), '📋 вставлено з таблиці'); C.render(); } }, 0); });
+  }
+  let bound = false;
+  return { init(ctx) { C = ctx; if (!bound) { bound = true; bind(); } }, html: v => html(v), _parseText: parseText };
+})();

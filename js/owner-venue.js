@@ -12,7 +12,7 @@ window.OWNV = ctx => {
     if (!r.ok || j.error) throw new Error(errText(j.error) || 'Помилка ' + r.status); return j;
   }
   const errText = e => ({ admin: 'Потрібні права адміна', image: 'Невірний формат картинки', too_big: 'Завеликий файл', not_found: 'Не знайдено' }[e] || e);
-  const SEC0 = [['start', '🚀 Запуск'], ['venue', '🏪 Заклад і каса'], ['site', '🌐 Сайт'], ['menu', '🍽 Меню'], ['go', '🛵 Доставка'], ['staff', '👥 Персонал'], ['bots', '🤖 Боти'], ['printer', '🖨 Принтер'], ['dz', '🎨 Друк і дизайн'], ['pay', '💳 Оплата'], ['log', '🛡 Журнал і копії']];
+  const SEC0 = [['start', '🚀 Запуск'], ['venue', '🏪 Заклад і каса'], ['site', '🌐 Сайт'], ['menu', '🍽 Меню'], ['go', '🛵 Доставка'], ['staff', '👥 Персонал'], ['bots', '🤖 Боти'], ['printer', '🖨 Принтер'], ['dz', '🎨 Друк і дизайн'], ['pay', '💳 Оплата'], ['mig', '📥 Перехід'], ['log', '🛡 Журнал і копії']];
   /* 🚀 Запуск — лише поки заклад не налаштований (VARVAR — ніколи) */
   const doneKey = id => 'own_ready_' + id, isDone = id => { if (id === 'varvar') return true; try { return localStorage.getItem(doneKey(id)) === '1'; } catch { return false; } };
   const secs = () => SEC0.filter(([k]) => k !== 'start' || !isDone(S.cfgV?.id));
@@ -39,6 +39,7 @@ window.OWNV = ctx => {
       if (sec === 'pay') { const [bl, g] = await Promise.all([api('bill', { venue: id }), vapi(id, 'goCfg').catch(() => ({}))]); v.d = { ...bl, go: g.cfg || {}, glp: g.lp, prov: g.prov, main: g.main, ref: (await api('ref', { venue: id }).catch(() => ({}))).ref }; if (g.lp) v.d.onl = (await vapi(id, 'onlList', { days: 30 }).catch(() => ({}))).list || []; [v.d.fis, v.d.menu] = await Promise.all([vapi(id, 'fisInfo', { check: 1 }).catch(() => null), vapi(id, 'menu').then(m => m.menu).catch(() => null)]); }
       if (sec === 'go') { const r = await vapi(id, 'goCfg'); v.d = { go: r.cfg, lp: r.lp, main: r.main }; }
       if (sec === 'staff') v.d = await vapi(id, 'staff');
+      if (sec === 'mig') v.d = await vapi(id, 'migLog'); /* 📥 перехід з іншої системи (owner-mig.js) */
       if (sec === 'log') { const [a, b] = await Promise.all([vapi(id, 'alog', { m: S.logM || '' }), api('bak', { venue: id, do: 'list' }).catch(() => ({ list: [] }))]); v.d = { list: a.list, bak: b.list }; }
     } catch (e) { toast('⚠️ ' + e.message); v.d = { err: e.message }; }
     render();
@@ -56,6 +57,7 @@ window.OWNV = ctx => {
     return head + (SECV[v.sec] || (() => ''))(v, venue);
   }
   const SECV = {
+    mig(v) { window.OWNMIG.init({ S, esc, money, toast, render, vapi: (op, data) => vapi(v.id, op, data), reload: load }); return window.OWNMIG.html(v); },
     start(v) {
       const r = v.d.ready, ok = x => x ? '✅' : '⬜', it = (done, l, sec, hint) => `<div class="kv"><span>${ok(done)} <b>${l}</b><br><small class="muted">${hint}</small></span>${done ? '' : `<button class="btn sm primary" data-a="vsec" data-s="${sec}">Налаштувати →</button>`}</div>`;
       const list = [[r.name && r.name !== 'Новий заклад', 'Назва', 'venue', esc(r.name || '')], [r.logo, 'Логотип', 'venue', 'квадратний PNG — у касі й на сайті'], [r.contacts, 'Контакти й години', 'site', 'телефон, адреса — для сайту й ботів'],
