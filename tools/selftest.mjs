@@ -77,6 +77,15 @@ async function apiTests() {
     for (const k of ['bookOn', 'certOn']) await pos(A, 'siteSet', { k, v: 1 });
     await pos(A, 'loySet', { on: 1 }); return 'ок';
   });
+  await step('💡 допродаж: правила зберігаються, читаються, підказка в касі; офіціанту редагувати не можна', async () => {
+    if (!dish || !drink) return 'немає страв';
+    const old = (await posOk(A, 'upsGet')).text || '';
+    const r = await posOk(A, 'upsSet', { text: `${dish.name.uk} → ${drink.name.uk}` }); must(r.n >= 1, 'n=' + r.n);
+    const g = await posOk(A, 'upsGet'); must(g.text.includes(drink.name.uk), 'text=' + g.text.slice(0, 80));
+    const m = await posOk(A, 'upsMap'); must(m.m && typeof m.m === 'object', 'upsMap');
+    if (W) { const w = await pos(W, 'upsSet', { text: '' }); must(w.status === 403, 'офіціант upsSet → ' + w.status); }
+    await posOk(A, 'upsSet', { text: old });
+  });
   sect('Стіл → кухня → закриття');
   let T = 0;
   await step('вибрати вільний стіл', async () => {

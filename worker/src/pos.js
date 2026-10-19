@@ -68,7 +68,7 @@ export async function posApi(b, req, env) {
 
   // 🛵 кур'єр: лише свої доставки
   if (me.role === 'courier' && !['logout', 'state', 'avatar', 'goSt', 'goCour', 'zpIn', 'zpOut', 'zpMy', 'ideaAdd', 'ideaList', 'ideaDel', 'ideaThr', 'ideaSay', 'ideaSeen', 'help', 'courMe', 'courTg', 'courAct', 'taskList', 'taskMark', 'taskPh', 'lookV'].includes(b.op)) return [{ error: 'Кур\'єр — лише доставки' }, 403];
-  if (/^go[A-Z]|^cli[A-Z]/.test(b.op || '')) return goApi(b, env, me, t);
+  if (/^go[A-Z]|^cli[A-Z]|^ups[A-Z]/.test(b.op || '')) return goApi(b, env, me, t);
   if (b.op === 'help') { // 💬 Допомога: з каси будь-якого закладу → власнику платформи в Telegram (група VARVAR)
     const text = String(b.text || '').trim().slice(0, 1500); if (text.length < 3) return [{ error: 'Опишіть проблему' }, 400];
     const site = await (await import('./site.js')).getSite(env), tok = env.PLATFORM_BOT || env.BOT_TOKEN, chat = env.PLATFORM_CHAT || env.CHAT_ID;
