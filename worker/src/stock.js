@@ -530,6 +530,7 @@ export async function stockApi(b, env, me, ai) {
     case 'skExAdd': return R(await (await import('./excise.js')).exAdd(env, String(b.id), b.codes, b.inv, who));
     case 'skExOpen': return R(await (await import('./excise.js')).exOpen(env, String(b.id), b.c));
     case 'skExOff': return R(await (await import('./excise.js')).exOff(env, String(b.id), b.c, b.note, who, !!b.rm));
+    case 'skExLic': return R(await (await import('./excise.js')).exLicSet(env, b, who));
     case 'skBuy': { const list = await purchaseList(env); return ok({ list, text: purchaseText(list).replace(/<\/?b>/g, '') }); }
     case 'skMerge': if (!admin) return bad('Лише адмін'); return R(await ingMerge(env, String(b.to || ''), b.from, b.f || {}, who));
     case 'skGrp': if (!admin) return bad('Лише адмін'); return R(await grpSave(env, b.x || {}));

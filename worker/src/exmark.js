@@ -10,8 +10,13 @@ export const exVol = x => +x?.vol > 0 ? r3(x.vol) : x?.u === 'л' ? 0.5 : 1;
 export const exP = (m, id) => (m[id] ||= { b: [], q: [] });
 // скільки ще можна продати за марками (відкрита + нові пляшки)
 export const exCap = (m, id) => r3((m[id]?.b || []).reduce((a, y) => a + (y.d ? 0 : y.left), 0));
-// марка зі сканера: без переносів рядка, 6–200 символів; лише цифри — звичайна марка, інакше — електронна (єАкциз)
-export function exCode(s) { s = String(s ?? '').replace(/[\r\n\t]/g, '').trim(); return s.length >= 6 && s.length <= 200 ? s : ''; }
+// марка зі сканера / камери: без керівних символів (сканер-клавіатура губить GS з DataMatrix, тож прибираємо завжди — однаково для всіх способів), 6–200 символів.
+// Лише цифри — паперова марка (штрихкод), інакше — електронна (DataMatrix єАкциз; людина може ввести лише 12 символів з-під коду).
+export function exCode(s) { s = String(s ?? '').replace(/[\u0000-\u001f\u007f]/g, '').trim(); return s.length >= 6 && s.length <= 200 ? s : ''; }
+export const exIsE = c => !/^\d+$/.test(c);
+// та сама марка: точний збіг або 12 символів, введених очима, ⊂ повного коду DataMatrix
+export const exSame = (a, b) => a === b || (a.length === 12 && b.length > 12 && b.includes(a)) || (b.length === 12 && a.length > 12 && a.includes(b));
+export const exFind = (l, c) => { const i = l.findIndex(y => y.c === c); return i >= 0 ? i : l.findIndex(y => exSame(y.c, c)); };
 const tail = c => '…' + String(c).slice(-6);
 export const exTail = tail;
 function prune(p) { const done = p.b.filter(y => y.d); if (done.length > 150) { const cut = new Set(done.slice(0, done.length - 150)); p.b = p.b.filter(y => !cut.has(y)); } if (p.q.length > 100) p.q = p.q.slice(-100); }
@@ -41,7 +46,7 @@ export function exTake(m, x, qq) {
 }
 // відкрити саме цю пляшку (бармен взяв іншу): вона стає першою
 export function exOpenOne(m, x, c) {
-  const p = exP(m, x.id), i = p.b.findIndex(y => y.c === c && !y.d); if (i < 0) return null;
+  const p = exP(m, x.id), i = exFind(p.b.map(y => y.d ? { c: '' } : y), c); if (i < 0) return null;
   const [y] = p.b.splice(i, 1); p.b.unshift(y); const fresh = open(p, y); return { y, fresh };
 }
 // стан для каси / бота

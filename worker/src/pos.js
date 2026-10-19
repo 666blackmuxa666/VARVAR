@@ -199,6 +199,11 @@ export async function posApi(b, req, env) {
     case 'tabAck': { const P = await import('./print.js'); await P.tabAck(env, [].concat(b.ids || []).map(String).slice(0, 40), String(b.dev || '-')); return ok(); }
     case 'tabReg': { if (!admin) return needAdmin(); const P = await import('./print.js'), r = await P.tabReg(env, b); return r.error ? [{ error: 'Невірний пристрій' }, 400] : ok(r); }
     case 'printMove': { if (!admin) return needAdmin(); const P = await import('./print.js'), r = await P.printMove(env, String(b.id || ''), String(b.st || '')); return r.error ? [{ error: r.error }, 400] : ok(r); }
+    case 'offLog': { // 📴 каса була без зв'язку (повідомляє сама, коли зв'язок повернувся) → запис у стрічку; Telegram не чіпаємо
+      const f = +b.from, t = Math.min(+b.to, Date.now()), m = Math.round((t - f) / 60e3); if (!(f > 0 && m >= 2 && m <= 720)) return [{ error: 'Невірний час' }, 400];
+      const hm = x => new Date(x).toLocaleTimeString('uk-UA', { timeZone: 'Europe/Kyiv', hour: '2-digit', minute: '2-digit' });
+      await logEvent(env, { k: 'shift', by: who, text: `📴 Каса без зв'язку ${m} хв (${hm(f)}–${hm(t)})${+b.n > 0 ? ` · ${Math.min(999, +b.n)} дій відправлено після` : ''}. Чеки за цей час фіскалізовано із запізненням — перевірте 🧾 у «Закритих».` });
+      return [{ ok: true }, 200]; }
     case 'evAck': { let ok = 0; await editEv(env, l => { const e = l.find(x => x.id === b.id && x.k === 'noscan'); if (e && e.s !== 'acc') { e.s = 'acc'; e.accBy = who; ok = 1; } }); return ok ? [{ ok: true }, 200] : [{ error: 'Вже підтверджено' }, 400]; } // 🚨 «гість не може замовити» — хтось іде
     // 💬 коментарі під подіями стрічки (як в Instagram): усе в самій події ev:<день> — без окремих запитів, приходить зі станом
     case 'evCom': case 'evComDel': case 'evRx': case 'evSeen': case 'evPin': case 'evVoice': {

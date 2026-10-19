@@ -12,7 +12,12 @@
       2) Прийшла накладна — відскануйте марку на кожній пляшці (сканером підряд або камерою).<br>
       3) Продаєте порціями як завжди: марка відкритої пляшки сама піде в перший фіскальний чек з неї. Закінчилась пляшка — відкривається наступна, у стрічці каси видно її марку.<br>
       4) Продати більше, ніж є пляшок з марками, не вийде — каса, бот і сайт попередять.</div></div>`;
-    if (!R.list.length) return help;
+    const dd = d => d.split('-').reverse().join('.'), L = R.lic;
+    const lic = `<div class="card${R.licErr || !L ? ' sk-low' : ''}"><h3>📜 Ліцензія на алкоголь</h3>${L ? `<div class="kv"><span>№ ${esc(L.no)}<br><small class="muted">дійсна до ${dd(L.till)}${R.licLeft >= 0 ? ` · лишилось ${R.licLeft} дн.` : ''}</small></span><span class="kv-r">${R.licErr ? `<b class="warn">⛔ ${esc(R.licErr)}</b>` : L.ok ? '✅ каса вписана' : ''}</span></div>
+      ${R.licErr ? '<div class="warn" style="font-size:13px">Алкоголь не продається (каса, бот, сайт), доки не оновите.</div>' : R.licLeft <= 30 ? '<div class="warn" style="font-size:13px">⚠️ Скоро закінчується — продовжте й оновіть дату.</div>' : ''}`
+      : '<div class="muted" style="font-size:13px">⚠️ Не вказано. Продаж алкоголю через касу, не вписану в ліцензію, — штраф 200%. Вкажіть номер, строк і чи вписана ця каса — нагадаємо за 30 і 7 днів до кінця.</div>'}
+      <div class="btnrow"><button class="btn sm" data-a="exLic">${L ? '✏️ Змінити' : '📜 Вказати ліцензію'}</button></div></div>`;
+    if (!R.list.length) return lic + help;
     const row = x => { const bad = Math.abs(x.cap - x.st) > x.vol * 0.25;
       return `<div class="sk-row${x.short ? ' low' : ''}"><div class="sk-n press" data-a="exOne" data-id="${x.id}"><b>🍾 ${esc(x.n)}</b><small class="muted">${x.open ? `відкрита ${exTl(x.open.c)} · лишилось ${fq(x.open.left, x.u)}` : 'відкритої пляшки немає'}${x.uk ? ` · УКТ ЗЕД ${esc(x.uk)}` : ' · ⚠️ без УКТ ЗЕД'}</small>
         ${x.short ? `<small class="warn">⚠️ продано понад марки: ${fq(x.short, x.u)} — додайте марки</small>` : bad ? `<small class="warn">⚠️ за марками ${fq(x.cap, x.u)}, на складі ${fq(x.st, x.u)} — перевірте</small>` : ''}</div>
@@ -20,7 +25,7 @@
         <div class="sk-act"><button class="btn sm" data-a="exAdd" data-id="${x.id}">➕ Марки</button></div></div>`; };
     return `<div class="kpis sk-kpis"><div class="kpi accent"><span>Акцизних продуктів</span><b>${R.list.length}</b><small class="muted">пляшок нових: ${R.list.reduce((a, x) => a + x.n0, 0)}</small></div>
       <div class="kpi ${R.list.some(x => !x.cap) ? 'red' : ''}"><span>Без марок</span><b>${R.list.filter(x => !x.cap).length}</b><small class="muted">їх не продати</small></div></div>
-      <div class="card"><h3>🍾 Акцизні продукти</h3>${R.list.map(row).join('')}</div>` + help;
+      <div class="card"><h3>🍾 Акцизні продукти</h3>${R.list.map(row).join('')}</div>` + lic + help;
   }
   function skExOneHTML(R) {
     const x = R.x, st = y => y.w ? `🗑 ${esc(y.w)}` : y.d ? '✅ закінчилась' : y.o ? '🍾 відкрита' : '🆕 нова';
@@ -43,7 +48,7 @@
       <button class="btn" data-a="exCam">📷 Сканувати камерою</button><div id="scCam" class="sc-cam" hidden><video id="scV" playsinline muted></video></div></div>
       <div class="muted" style="font-size:12px;margin-top:8px">Скануйте кожну пляшку один раз — повтор не зарахується. Обʼєм пляшки: ${fq(x.vol || (x.u === 'л' ? .5 : 1), x.u)}.</div>`,
       buttons: [{ label: '✅ Зберегти', val: 1, cls: 'primary' }, { label: 'Скасувати', val: null }] });
-    const put = c => { c = String(c || '').replace(/[\r\n\t]/g, '').trim(); if (c.length < 6) return draw('⚠️ закороткий код'); if (got.includes(c)) return draw('↩️ ця вже є');
+    const put = c => { c = String(c || '').replace(/[\u0000-\u001f\u007f]/g, '').trim(); if (c.length < 6) return draw('⚠️ закороткий код'); if (got.includes(c)) return draw('↩️ ця вже є');
       got.push(c); draw('✅ ' + exTl(c)); try { navigator.vibrate?.(60); } catch {} };
     exCamCb = put;
     setTimeout(() => { const i = $('#exIn'); if (!i) return; i.focus(); i.addEventListener('keydown', e => { if (e.key !== 'Enter') return; e.preventDefault(); put(i.value); i.value = ''; }); draw(); }, 60);
@@ -51,7 +56,7 @@
     const left = $('#exIn')?.value; if (left) put(left);
     if (!v || !got.length) return;
     const r = await act('skExAdd', { id, codes: got, inv }); if (!r) return;
-    toast(`🍾 Додано марок: ${r.added}${r.dup.length ? ` · дублі: ${r.dup.length}` : ''}`);
+    toast(`🍾 Додано марок: ${r.added}${r.up ? ` · оновлено до повного коду: ${r.up}` : ''}${r.dup.length ? ` · дублі: ${r.dup.length}` : ''}`);
     if (r.dup.length) modal({ title: '↩️ Ці марки вже є', text: r.dup.map(d => `${exTl(d.c)}${d.n ? ' — ' + d.n : ''}`).join(' · '), buttons: [{ label: 'Зрозуміло', val: 1, cls: 'primary' }] });
     exReload();
   }
@@ -72,6 +77,15 @@
       case 'exOne': if (!id) break; K.exId = id; S.data.skEx = null; renderMain(); exReload(); break;
       case 'exBack': K.exId = ''; S.data.skEx = null; renderMain(); exReload(); break;
       case 'exAdd': if (id) exScan(id); break;
+      case 'exLic': { const L = S.data.skEx?.lic || {};
+        const v = await modal({ title: '📜 Ліцензія на алкоголь', body: `<div class="form"><label>Номер ліцензії<input id="exLn" value="${esc(L.no || '')}" maxlength="40"></label>
+          <label>Дійсна до<input id="exLt" type="date" value="${esc(L.till || '')}"></label>
+          <label class="kv"><span>✅ Цю касу (ПРРО) вписано в ліцензію</span><input id="exLo" type="checkbox"${L.ok || !L.no ? ' checked' : ''}></label>
+          <div class="muted" style="font-size:12px">Без позначки або після дати алкоголь не продаватиметься — так каса вбереже від штрафу 200%.</div></div>`,
+          buttons: [{ label: '💾 Зберегти', val: 1, cls: 'primary' }, ...(L.no ? [{ label: '🗑 Прибрати', val: 'off' }] : []), { label: 'Скасувати', val: null }], keep: true });
+        const f = v === 1 ? { no: $('#exLn')?.value.trim(), till: $('#exLt')?.value, ok: $('#exLo')?.checked ? 1 : 0 } : null; closeModal();
+        if (v === 'off') { if (await confirmBox('🗑 Прибрати ліцензію?', 'Продаж алкоголю не блокуватиметься, нагадувань не буде.') && await act('skExLic', { off: 1 }, '🗑 Прибрано')) exReload(); break; }
+        if (f && await act('skExLic', f, '📜 Збережено')) exReload(); break; }
       case 'exCam': skCam(c => exCamCb?.(c)); break;
       case 'exOpen': { if (!id) break; const c = await ask('🍾 Яку пляшку відкрили?', 'Відскануйте марку відкритої пляшки'); if (!c) break;
         const r = await act('skExOpen', { id, c }, '🍾 Тепер відкрита ця пляшка'); if (r) exReload(); break; }

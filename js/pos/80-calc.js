@@ -289,8 +289,9 @@
     try {
       if ('BarcodeDetector' in window) {
         const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); v.srcObject = st; await v.play();
-        const bd = new BarcodeDetector(); let on = true, last = '', lt = 0; camStop = () => { on = false; st.getTracks().forEach(t => t.stop()); };
-        const loop = async () => { if (!on) return; if (!$('#scV')) return camStop?.(); try { const r = await bd.detect(v); const t = r[0]?.rawValue; if (t && (t !== last || Date.now() - lt > 2500)) { last = t; lt = Date.now(); on(t); } } catch {} setTimeout(loop, 250); }; loop();
+        // 🍾 DataMatrix — е-марка; 'on' — колбек, тож прапор роботи — окрема змінна (раніше перекривав колбек і скан камерою тихо губився)
+        const bd = new BarcodeDetector(); let live = true, last = '', lt = 0; camStop = () => { live = false; st.getTracks().forEach(t => t.stop()); };
+        const loop = async () => { if (!live) return; if (!$('#scV')) return camStop?.(); try { const r = await bd.detect(v); const t = r[0]?.rawValue; if (t && (t !== last || Date.now() - lt > 2500)) { last = t; lt = Date.now(); on(t); } } catch {} setTimeout(loop, 250); }; loop();
       } else {
         await loadScript('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/zxing-browser.min.js');
         const rd = new ZXingBrowser.BrowserMultiFormatReader(); let last = '', lt = 0;

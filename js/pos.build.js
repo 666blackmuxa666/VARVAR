@@ -179,9 +179,19 @@ var __objRest = (source, exclude) => {
   };
   const netErr = (e) => e instanceof TypeError || /не відповідає|fetch|network|load failed/i.test((e == null ? void 0 : e.message) || "");
   const offNow = () => S.offline || navigator.onLine === false;
+  const OFF_LONG = 2 * 6e4;
   function offBanner() {
     const n = offQ().length;
     let el = $("#offq");
+    let t0 = +store.get("offAt", 0);
+    if (S.offline && !t0) store.set("offAt", t0 = Date.now());
+    if (!S.offline && t0) {
+      store.set("offAt", 0);
+      const dur = Date.now() - t0;
+      if (dur >= OFF_LONG && dur < 12 * 36e5 && S.token) fetch(API + "/api/pos", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + S.token }, body: JSON.stringify({ op: "offLog", from: t0, to: Date.now(), n }) }).catch(() => {
+      });
+      t0 = 0;
+    }
     if (!n && !S.offline) {
       el == null ? void 0 : el.remove();
       return;
@@ -192,8 +202,13 @@ var __objRest = (source, exclude) => {
       document.body.append(el);
     }
     const at = S.offline && S.cacheAt ? ` \xB7 \u0434\u0430\u043D\u0456 \u043D\u0430 ${new Date(S.cacheAt).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })}` : "";
-    el.textContent = `\u{1F4F4} ${S.offline ? "\u041D\u0435\u043C\u0430\u0454 \u0437\u0432'\u044F\u0437\u043A\u0443 \u2014 \u043A\u0430\u0441\u0430 \u043F\u0440\u0430\u0446\u044E\u0454" : "\u0412\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u044F\u044E\u2026"}${n ? ` \xB7 \u0443 \u0447\u0435\u0440\u0437\u0456 ${n} ${n === 1 ? "\u0434\u0456\u044F" : n < 5 ? "\u0434\u0456\u0457" : "\u0434\u0456\u0439"} \u2014 \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u0438\u043C\u043E \u0441\u0430\u043C\u0456` : ""}${at}`;
+    const long = S.offline && t0 && Date.now() - t0 >= OFF_LONG;
+    el.classList.toggle("long", !!long);
+    el.textContent = long ? `\u{1F4F4} \u041D\u0435\u043C\u0430\u0454 \u0437\u0432'\u044F\u0437\u043A\u0443 ${Math.round((Date.now() - t0) / 6e4)} \u0445\u0432 \u2014 \u0444\u0456\u0441\u043A\u0430\u043B\u044C\u043D\u0456 \u0447\u0435\u043A\u0438 \u043D\u0435 \u0432\u0438\u0434\u0430\u044E\u0442\u044C\u0441\u044F. \u0423\u0432\u0456\u043C\u043A\u043D\u0456\u0442\u044C \u0440\u043E\u0437\u0434\u0430\u0447\u0443 \u0456\u043D\u0442\u0435\u0440\u043D\u0435\u0442\u0443 \u0437 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0430 (\u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F \u2192 \u0422\u043E\u0447\u043A\u0430 \u0434\u043E\u0441\u0442\u0443\u043F\u0443)${n ? ` \xB7 \u0443 \u0447\u0435\u0440\u0437\u0456 ${n} \u2014 \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u0438\u043C\u043E \u0441\u0430\u043C\u0456` : ""}` : `\u{1F4F4} ${S.offline ? "\u041D\u0435\u043C\u0430\u0454 \u0437\u0432'\u044F\u0437\u043A\u0443 \u2014 \u043A\u0430\u0441\u0430 \u043F\u0440\u0430\u0446\u044E\u0454" : "\u0412\u0456\u0434\u043F\u0440\u0430\u0432\u043B\u044F\u044E\u2026"}${n ? ` \xB7 \u0443 \u0447\u0435\u0440\u0437\u0456 ${n} ${n === 1 ? "\u0434\u0456\u044F" : n < 5 ? "\u0434\u0456\u0457" : "\u0434\u0456\u0439"} \u2014 \u0432\u0456\u0434\u043F\u0440\u0430\u0432\u0438\u043C\u043E \u0441\u0430\u043C\u0456` : ""}${at}`;
   }
+  setInterval(() => {
+    if (S.offline) offBanner();
+  }, 3e4);
   function offOverlay() {
     var _a2;
     const q = offQ();
@@ -6368,14 +6383,14 @@ ${g.sup}:
         v.srcObject = st;
         await v.play();
         const bd = new BarcodeDetector();
-        let on3 = true, last = "", lt = 0;
+        let live = true, last = "", lt = 0;
         camStop = () => {
-          on3 = false;
+          live = false;
           st.getTracks().forEach((t) => t.stop());
         };
         const loop = async () => {
           var _a2;
-          if (!on3) return;
+          if (!live) return;
           if (!$("#scV")) return camStop == null ? void 0 : camStop();
           try {
             const r = await bd.detect(v);
@@ -6383,7 +6398,7 @@ ${g.sup}:
             if (t && (t !== last || Date.now() - lt > 2500)) {
               last = t;
               lt = Date.now();
-              on3(t);
+              on2(t);
             }
           } catch (e) {
           }
@@ -7055,7 +7070,11 @@ ${g.sup}:
       2) \u041F\u0440\u0438\u0439\u0448\u043B\u0430 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0430 \u2014 \u0432\u0456\u0434\u0441\u043A\u0430\u043D\u0443\u0439\u0442\u0435 \u043C\u0430\u0440\u043A\u0443 \u043D\u0430 \u043A\u043E\u0436\u043D\u0456\u0439 \u043F\u043B\u044F\u0448\u0446\u0456 (\u0441\u043A\u0430\u043D\u0435\u0440\u043E\u043C \u043F\u0456\u0434\u0440\u044F\u0434 \u0430\u0431\u043E \u043A\u0430\u043C\u0435\u0440\u043E\u044E).<br>
       3) \u041F\u0440\u043E\u0434\u0430\u0454\u0442\u0435 \u043F\u043E\u0440\u0446\u0456\u044F\u043C\u0438 \u044F\u043A \u0437\u0430\u0432\u0436\u0434\u0438: \u043C\u0430\u0440\u043A\u0430 \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u043E\u0457 \u043F\u043B\u044F\u0448\u043A\u0438 \u0441\u0430\u043C\u0430 \u043F\u0456\u0434\u0435 \u0432 \u043F\u0435\u0440\u0448\u0438\u0439 \u0444\u0456\u0441\u043A\u0430\u043B\u044C\u043D\u0438\u0439 \u0447\u0435\u043A \u0437 \u043D\u0435\u0457. \u0417\u0430\u043A\u0456\u043D\u0447\u0438\u043B\u0430\u0441\u044C \u043F\u043B\u044F\u0448\u043A\u0430 \u2014 \u0432\u0456\u0434\u043A\u0440\u0438\u0432\u0430\u0454\u0442\u044C\u0441\u044F \u043D\u0430\u0441\u0442\u0443\u043F\u043D\u0430, \u0443 \u0441\u0442\u0440\u0456\u0447\u0446\u0456 \u043A\u0430\u0441\u0438 \u0432\u0438\u0434\u043D\u043E \u0457\u0457 \u043C\u0430\u0440\u043A\u0443.<br>
       4) \u041F\u0440\u043E\u0434\u0430\u0442\u0438 \u0431\u0456\u043B\u044C\u0448\u0435, \u043D\u0456\u0436 \u0454 \u043F\u043B\u044F\u0448\u043E\u043A \u0437 \u043C\u0430\u0440\u043A\u0430\u043C\u0438, \u043D\u0435 \u0432\u0438\u0439\u0434\u0435 \u2014 \u043A\u0430\u0441\u0430, \u0431\u043E\u0442 \u0456 \u0441\u0430\u0439\u0442 \u043F\u043E\u043F\u0435\u0440\u0435\u0434\u044F\u0442\u044C.</div></div>`;
-    if (!R.list.length) return help;
+    const dd = (d) => d.split("-").reverse().join("."), L = R.lic;
+    const lic = `<div class="card${R.licErr || !L ? " sk-low" : ""}"><h3>\u{1F4DC} \u041B\u0456\u0446\u0435\u043D\u0437\u0456\u044F \u043D\u0430 \u0430\u043B\u043A\u043E\u0433\u043E\u043B\u044C</h3>${L ? `<div class="kv"><span>\u2116 ${esc(L.no)}<br><small class="muted">\u0434\u0456\u0439\u0441\u043D\u0430 \u0434\u043E ${dd(L.till)}${R.licLeft >= 0 ? ` \xB7 \u043B\u0438\u0448\u0438\u043B\u043E\u0441\u044C ${R.licLeft} \u0434\u043D.` : ""}</small></span><span class="kv-r">${R.licErr ? `<b class="warn">\u26D4 ${esc(R.licErr)}</b>` : L.ok ? "\u2705 \u043A\u0430\u0441\u0430 \u0432\u043F\u0438\u0441\u0430\u043D\u0430" : ""}</span></div>
+      ${R.licErr ? '<div class="warn" style="font-size:13px">\u0410\u043B\u043A\u043E\u0433\u043E\u043B\u044C \u043D\u0435 \u043F\u0440\u043E\u0434\u0430\u0454\u0442\u044C\u0441\u044F (\u043A\u0430\u0441\u0430, \u0431\u043E\u0442, \u0441\u0430\u0439\u0442), \u0434\u043E\u043A\u0438 \u043D\u0435 \u043E\u043D\u043E\u0432\u0438\u0442\u0435.</div>' : R.licLeft <= 30 ? '<div class="warn" style="font-size:13px">\u26A0\uFE0F \u0421\u043A\u043E\u0440\u043E \u0437\u0430\u043A\u0456\u043D\u0447\u0443\u0454\u0442\u044C\u0441\u044F \u2014 \u043F\u0440\u043E\u0434\u043E\u0432\u0436\u0442\u0435 \u0439 \u043E\u043D\u043E\u0432\u0456\u0442\u044C \u0434\u0430\u0442\u0443.</div>' : ""}` : '<div class="muted" style="font-size:13px">\u26A0\uFE0F \u041D\u0435 \u0432\u043A\u0430\u0437\u0430\u043D\u043E. \u041F\u0440\u043E\u0434\u0430\u0436 \u0430\u043B\u043A\u043E\u0433\u043E\u043B\u044E \u0447\u0435\u0440\u0435\u0437 \u043A\u0430\u0441\u0443, \u043D\u0435 \u0432\u043F\u0438\u0441\u0430\u043D\u0443 \u0432 \u043B\u0456\u0446\u0435\u043D\u0437\u0456\u044E, \u2014 \u0448\u0442\u0440\u0430\u0444 200%. \u0412\u043A\u0430\u0436\u0456\u0442\u044C \u043D\u043E\u043C\u0435\u0440, \u0441\u0442\u0440\u043E\u043A \u0456 \u0447\u0438 \u0432\u043F\u0438\u0441\u0430\u043D\u0430 \u0446\u044F \u043A\u0430\u0441\u0430 \u2014 \u043D\u0430\u0433\u0430\u0434\u0430\u0454\u043C\u043E \u0437\u0430 30 \u0456 7 \u0434\u043D\u0456\u0432 \u0434\u043E \u043A\u0456\u043D\u0446\u044F.</div>'}
+      <div class="btnrow"><button class="btn sm" data-a="exLic">${L ? "\u270F\uFE0F \u0417\u043C\u0456\u043D\u0438\u0442\u0438" : "\u{1F4DC} \u0412\u043A\u0430\u0437\u0430\u0442\u0438 \u043B\u0456\u0446\u0435\u043D\u0437\u0456\u044E"}</button></div></div>`;
+    if (!R.list.length) return lic + help;
     const row = (x) => {
       const bad = Math.abs(x.cap - x.st) > x.vol * 0.25;
       return `<div class="sk-row${x.short ? " low" : ""}"><div class="sk-n press" data-a="exOne" data-id="${x.id}"><b>\u{1F37E} ${esc(x.n)}</b><small class="muted">${x.open ? `\u0432\u0456\u0434\u043A\u0440\u0438\u0442\u0430 ${exTl(x.open.c)} \xB7 \u043B\u0438\u0448\u0438\u043B\u043E\u0441\u044C ${fq(x.open.left, x.u)}` : "\u0432\u0456\u0434\u043A\u0440\u0438\u0442\u043E\u0457 \u043F\u043B\u044F\u0448\u043A\u0438 \u043D\u0435\u043C\u0430\u0454"}${x.uk ? ` \xB7 \u0423\u041A\u0422 \u0417\u0415\u0414 ${esc(x.uk)}` : " \xB7 \u26A0\uFE0F \u0431\u0435\u0437 \u0423\u041A\u0422 \u0417\u0415\u0414"}</small>
@@ -7065,7 +7084,7 @@ ${g.sup}:
     };
     return `<div class="kpis sk-kpis"><div class="kpi accent"><span>\u0410\u043A\u0446\u0438\u0437\u043D\u0438\u0445 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0456\u0432</span><b>${R.list.length}</b><small class="muted">\u043F\u043B\u044F\u0448\u043E\u043A \u043D\u043E\u0432\u0438\u0445: ${R.list.reduce((a, x) => a + x.n0, 0)}</small></div>
       <div class="kpi ${R.list.some((x) => !x.cap) ? "red" : ""}"><span>\u0411\u0435\u0437 \u043C\u0430\u0440\u043E\u043A</span><b>${R.list.filter((x) => !x.cap).length}</b><small class="muted">\u0457\u0445 \u043D\u0435 \u043F\u0440\u043E\u0434\u0430\u0442\u0438</small></div></div>
-      <div class="card"><h3>\u{1F37E} \u0410\u043A\u0446\u0438\u0437\u043D\u0456 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0438</h3>${R.list.map(row).join("")}</div>` + help;
+      <div class="card"><h3>\u{1F37E} \u0410\u043A\u0446\u0438\u0437\u043D\u0456 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0438</h3>${R.list.map(row).join("")}</div>` + lic + help;
   }
   function skExOneHTML(R) {
     const x = R.x, st = (y) => y.w ? `\u{1F5D1} ${esc(y.w)}` : y.d ? "\u2705 \u0437\u0430\u043A\u0456\u043D\u0447\u0438\u043B\u0430\u0441\u044C" : y.o ? "\u{1F37E} \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u0430" : "\u{1F195} \u043D\u043E\u0432\u0430";
@@ -7101,7 +7120,7 @@ ${g.sup}:
     });
     const put = (c) => {
       var _a3;
-      c = String(c || "").replace(/[\r\n\t]/g, "").trim();
+      c = String(c || "").replace(/[\u0000-\u001f\u007f]/g, "").trim();
       if (c.length < 6) return draw("\u26A0\uFE0F \u0437\u0430\u043A\u043E\u0440\u043E\u0442\u043A\u0438\u0439 \u043A\u043E\u0434");
       if (got.includes(c)) return draw("\u21A9\uFE0F \u0446\u044F \u0432\u0436\u0435 \u0454");
       got.push(c);
@@ -7133,7 +7152,7 @@ ${g.sup}:
     if (!v || !got.length) return;
     const r = await act("skExAdd", { id, codes: got, inv });
     if (!r) return;
-    toast(`\u{1F37E} \u0414\u043E\u0434\u0430\u043D\u043E \u043C\u0430\u0440\u043E\u043A: ${r.added}${r.dup.length ? ` \xB7 \u0434\u0443\u0431\u043B\u0456: ${r.dup.length}` : ""}`);
+    toast(`\u{1F37E} \u0414\u043E\u0434\u0430\u043D\u043E \u043C\u0430\u0440\u043E\u043A: ${r.added}${r.up ? ` \xB7 \u043E\u043D\u043E\u0432\u043B\u0435\u043D\u043E \u0434\u043E \u043F\u043E\u0432\u043D\u043E\u0433\u043E \u043A\u043E\u0434\u0443: ${r.up}` : ""}${r.dup.length ? ` \xB7 \u0434\u0443\u0431\u043B\u0456: ${r.dup.length}` : ""}`);
     if (r.dup.length) modal({ title: "\u21A9\uFE0F \u0426\u0456 \u043C\u0430\u0440\u043A\u0438 \u0432\u0436\u0435 \u0454", text: r.dup.map((d) => `${exTl(d.c)}${d.n ? " \u2014 " + d.n : ""}`).join(" \xB7 "), buttons: [{ label: "\u0417\u0440\u043E\u0437\u0443\u043C\u0456\u043B\u043E", val: 1, cls: "primary" }] });
     exReload();
   }
@@ -7150,6 +7169,7 @@ ${g.sup}:
     }
   }
   document.addEventListener("click", async (e) => {
+    var _a2, _b2, _c, _d;
     const el = e.target.closest("[data-a]");
     if (!el || !/^ex[A-Z]/.test(el.dataset.a)) return;
     const a = el.dataset.a, K = S.sk, id = el.dataset.id;
@@ -7170,6 +7190,26 @@ ${g.sup}:
       case "exAdd":
         if (id) exScan(id);
         break;
+      case "exLic": {
+        const L = ((_a2 = S.data.skEx) == null ? void 0 : _a2.lic) || {};
+        const v = await modal({
+          title: "\u{1F4DC} \u041B\u0456\u0446\u0435\u043D\u0437\u0456\u044F \u043D\u0430 \u0430\u043B\u043A\u043E\u0433\u043E\u043B\u044C",
+          body: `<div class="form"><label>\u041D\u043E\u043C\u0435\u0440 \u043B\u0456\u0446\u0435\u043D\u0437\u0456\u0457<input id="exLn" value="${esc(L.no || "")}" maxlength="40"></label>
+          <label>\u0414\u0456\u0439\u0441\u043D\u0430 \u0434\u043E<input id="exLt" type="date" value="${esc(L.till || "")}"></label>
+          <label class="kv"><span>\u2705 \u0426\u044E \u043A\u0430\u0441\u0443 (\u041F\u0420\u0420\u041E) \u0432\u043F\u0438\u0441\u0430\u043D\u043E \u0432 \u043B\u0456\u0446\u0435\u043D\u0437\u0456\u044E</span><input id="exLo" type="checkbox"${L.ok || !L.no ? " checked" : ""}></label>
+          <div class="muted" style="font-size:12px">\u0411\u0435\u0437 \u043F\u043E\u0437\u043D\u0430\u0447\u043A\u0438 \u0430\u0431\u043E \u043F\u0456\u0441\u043B\u044F \u0434\u0430\u0442\u0438 \u0430\u043B\u043A\u043E\u0433\u043E\u043B\u044C \u043D\u0435 \u043F\u0440\u043E\u0434\u0430\u0432\u0430\u0442\u0438\u043C\u0435\u0442\u044C\u0441\u044F \u2014 \u0442\u0430\u043A \u043A\u0430\u0441\u0430 \u0432\u0431\u0435\u0440\u0435\u0436\u0435 \u0432\u0456\u0434 \u0448\u0442\u0440\u0430\u0444\u0443 200%.</div></div>`,
+          buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: 1, cls: "primary" }, ...L.no ? [{ label: "\u{1F5D1} \u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438", val: "off" }] : [], { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }],
+          keep: true
+        });
+        const f = v === 1 ? { no: (_b2 = $("#exLn")) == null ? void 0 : _b2.value.trim(), till: (_c = $("#exLt")) == null ? void 0 : _c.value, ok: ((_d = $("#exLo")) == null ? void 0 : _d.checked) ? 1 : 0 } : null;
+        closeModal();
+        if (v === "off") {
+          if (await confirmBox("\u{1F5D1} \u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u043B\u0456\u0446\u0435\u043D\u0437\u0456\u044E?", "\u041F\u0440\u043E\u0434\u0430\u0436 \u0430\u043B\u043A\u043E\u0433\u043E\u043B\u044E \u043D\u0435 \u0431\u043B\u043E\u043A\u0443\u0432\u0430\u0442\u0438\u043C\u0435\u0442\u044C\u0441\u044F, \u043D\u0430\u0433\u0430\u0434\u0443\u0432\u0430\u043D\u044C \u043D\u0435 \u0431\u0443\u0434\u0435.") && await act("skExLic", { off: 1 }, "\u{1F5D1} \u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E")) exReload();
+          break;
+        }
+        if (f && await act("skExLic", f, "\u{1F4DC} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) exReload();
+        break;
+      }
       case "exCam":
         skCam((c) => exCamCb == null ? void 0 : exCamCb(c));
         break;

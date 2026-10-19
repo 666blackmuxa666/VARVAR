@@ -3,7 +3,7 @@ import { esc, money, tg, dayKey, L } from './ops.js';
 import { getMenu } from './menu.js';
 import { WH, fq, norm, getIng, getCards, purchaseList, purchaseText, adjust, transfer, produce, invoiceSave, invList, invPay, matchLines, countSave, countFinish, countGet, ingSave, cardSave, cardResolver, cardCost, unitCost, costReport, r3 } from './stock.js';
 import { aiInvoice } from './ai.js';
-import { exList, exAdd, exOpen, exOff } from './excise.js';
+import { exList, exAdd, exOpen, exOff, exLicSet } from './excise.js';
 import { exCode } from './exmark.js';
 
 export const CALC_HELP = `🧮 <b>Розрахунок — команди</b>
@@ -194,8 +194,9 @@ const tl = c => '…' + String(c).slice(-6);
 async function exBot(env, id) {
   const r = await exList(env, id);
   if (!id) { if (!r.list.length) return { text: '🍾 Акцизних продуктів немає. У касі: 📦 Залишки → продукт → «🍾 Акцизний» (обʼєм пляшки, УКТ ЗЕД).' };
-    return { text: ['🍾 <b>Акциз</b> — пляшки з марками', ...r.list.map(x => `${x.short ? '⚠️' : x.cap ? '•' : '🔴'} ${esc(x.n)} — нових ${x.n0}${x.open ? ` · відкрита ${tl(x.open.c)} (${fq(x.open.left, x.u)})` : ''}${x.short ? ` · продано понад марки ${fq(x.short, x.u)}` : ''}`)].join('\n'),
-      markup: { inline_keyboard: r.list.slice(0, 30).map(x => [{ text: `🍾 ${x.n}`, callback_data: 'skexp:' + x.id }]) } };
+    const lic = r.lic ? `📜 Ліцензія № ${esc(r.lic.no)} до ${r.lic.till.split('-').reverse().join('.')}${r.licErr ? ` — ⛔ ${r.licErr}, алкоголь не продається` : r.licLeft <= 30 ? ` — ⚠️ лишилось ${r.licLeft} дн.` : r.lic.ok ? ' · каса вписана ✅' : ''}` : '📜 ⚠️ Ліцензію не вказано — натисніть «📜 Ліцензія»';
+    return { text: ['🍾 <b>Акциз</b> — пляшки з марками', lic, '', ...r.list.map(x => `${x.short ? '⚠️' : x.cap ? '•' : '🔴'} ${esc(x.n)} — нових ${x.n0}${x.open ? ` · відкрита ${tl(x.open.c)} (${fq(x.open.left, x.u)})` : ''}${x.short ? ` · продано понад марки ${fq(x.short, x.u)}` : ''}`)].join('\n'),
+      markup: { inline_keyboard: [...r.list.slice(0, 30).map(x => [{ text: `🍾 ${x.n}`, callback_data: 'skexp:' + x.id }]), [{ text: '📜 Ліцензія', callback_data: 'skexl' }]] } };
   }
   if (r.error) return { text: '⚠️ ' + r.error }; const x = r.x;
   return { text: [`🍾 <b>${esc(x.n)}</b>`, `Можна продати за марками: <b>${fq(x.cap, x.u)}</b> · на складі ${fq(x.st, x.u)}`, `Відкрита: ${x.open ? `${tl(x.open.c)} — лишилось ${fq(x.open.left, x.u)}` : '—'} · нових пляшок: ${x.n0}`,
@@ -206,6 +207,8 @@ async function exBot(env, id) {
 export async function stockCallbackX(act, arg, env, uid, who) {
   if (act === 'skex') return exBot(env);
   if (act === 'skexp') return exBot(env, arg);
+  if (act === 'skexl') { await env.DB.put('st:' + uid, 'skexl', ST_TTL);
+    return { text: '📜 Надішліть: <code>номер ДД.ММ.РРРР так</code>\nномер ліцензії на алкоголь · до якої дати дійсна · <b>так</b> — цю касу вписано в ліцензію (<b>ні</b> — ще не вписано, алкоголь не продаватиметься).\nПриклад: <code>990108202600123 31.10.2027 так</code>' }; }
   if (act === 'skexa' || act === 'skexo' || act === 'skexw') { await env.DB.put('st:' + uid, act + ':' + arg, ST_TTL);
     return { text: { skexa: '➕ Надішліть марки пляшок — кожну з нового рядка (сканер у Telegram теж підходить). Можна кількома повідомленнями.', skexo: '🍾 Надішліть марку пляшки, яку відкрили', skexw: '🗑 Надішліть: <code>марка причина</code> — списати залишок пляшки зі складу\nабо <code>марка прибрати</code> — помилково відсканована нова пляшка' }[act] }; }
   if (act === 'skcnm') return { text: '📝 Інвентаризація — який склад?', markup: { inline_keyboard: [[{ text: WH.k, callback_data: 'skcn:k' }, { text: WH.b, callback_data: 'skcn:b' }]] } };
@@ -241,6 +244,9 @@ export async function stockState(state, text, env, uid, who) {
   if (k === 'skexa') { const cs = text.split('\n').map(exCode).filter(Boolean); if (!cs.length) return null;
     const r = await exAdd(env, a, cs, '', who); if (r.error) return { text: '⚠️ ' + r.error }; await env.DB.put('st:' + uid, state, ST_TTL);
     return { text: `🍾 Додано марок: <b>${r.added}</b>${r.dup.length ? ` · уже були: ${r.dup.map(d => tl(d.c)).join(', ')}` : ''}\nНових пляшок: ${r.x.n0} · можна продати ${fq(r.x.cap, r.x.u)}\nНадсилайте ще або будь-який інший текст — вийти.` }; }
+  if (k === 'skexl') { const m = text.trim().match(/^(\S{1,40})\s+(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(так|ні|ok|no))?$/i); if (!m) return { text: 'Формат: <code>номер ДД.ММ.РРРР так</code>' };
+    const r = await exLicSet(env, { no: m[1], till: `${m[4]}-${m[3].padStart(2, '0')}-${m[2].padStart(2, '0')}`, ok: !/^(ні|no)$/i.test(m[5] || 'так') }, who); if (r.error) return { text: '⚠️ ' + r.error };
+    return { text: `📜 Ліцензію збережено: № ${esc(r.lic.no)} до ${m[2]}.${m[3]}.${m[4]}${r.err ? `\n⛔ ${r.err} — алкоголь не продається` : ' ✅'}` }; }
   if (k === 'skexo') { const c = exCode(text); if (!c) return null; const r = await exOpen(env, a, c); if (r.error) return { text: '⚠️ ' + r.error }; return { text: `🍾 Відкрита пляшка ${tl(c)} — марка піде в наступний чек` }; }
   if (k === 'skexw') { const m = text.trim().match(/^(\S{6,200})\s+(.+)$/); if (!m) return { text: 'Формат: <code>марка причина</code> або <code>марка прибрати</code>' };
     const rm = /^прибрати$/i.test(m[2].trim()), r = await exOff(env, a, m[1], m[2], who, rm); if (r.error) return { text: '⚠️ ' + r.error };

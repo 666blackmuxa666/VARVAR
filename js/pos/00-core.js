@@ -43,12 +43,22 @@
   const offQ = () => store.get('offq', []), offSave = q => { store.set('offq', q); offBanner(); };
   const netErr = e => e instanceof TypeError || /не відповідає|fetch|network|load failed/i.test(e?.message || '');
   const offNow = () => S.offline || navigator.onLine === false;
+  // ⏱ скільки каса без зв'язку: понад OFF_LONG — червона підказка «увімкніть роздачу з телефона» (фіскальні чеки без зв'язку не видаються);
+  // після повернення зв'язку — один запис у стрічку подій (без Telegram), щоб власник бачив, коли й скільки каса була офлайн
+  const OFF_LONG = 2 * 60e3;
   function offBanner() {
-    const n = offQ().length; let el = $('#offq'); if (!n && !S.offline) { el?.remove(); return; }
+    const n = offQ().length; let el = $('#offq');
+    let t0 = +store.get('offAt', 0);
+    if (S.offline && !t0) store.set('offAt', t0 = Date.now());
+    if (!S.offline && t0) { store.set('offAt', 0); const dur = Date.now() - t0; if (dur >= OFF_LONG && dur < 12 * 3600e3 && S.token) fetch(API + '/api/pos', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + S.token }, body: JSON.stringify({ op: 'offLog', from: t0, to: Date.now(), n }) }).catch(() => {}); t0 = 0; }
+    if (!n && !S.offline) { el?.remove(); return; }
     if (!el) { el = document.createElement('div'); el.id = 'offq'; document.body.append(el); }
     const at = S.offline && S.cacheAt ? ` · дані на ${new Date(S.cacheAt).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}` : '';
-    el.textContent = `📴 ${S.offline ? 'Немає зв\'язку — каса працює' : 'Відправляю…'}${n ? ` · у черзі ${n} ${n === 1 ? 'дія' : n < 5 ? 'дії' : 'дій'} — відправимо самі` : ''}${at}`;
+    const long = S.offline && t0 && Date.now() - t0 >= OFF_LONG; el.classList.toggle('long', !!long);
+    el.textContent = long ? `📴 Немає зв'язку ${Math.round((Date.now() - t0) / 60e3)} хв — фіскальні чеки не видаються. Увімкніть роздачу інтернету з телефона (Налаштування → Точка доступу)${n ? ` · у черзі ${n} — відправимо самі` : ''}`
+      : `📴 ${S.offline ? 'Немає зв\'язку — каса працює' : 'Відправляю…'}${n ? ` · у черзі ${n} ${n === 1 ? 'дія' : n < 5 ? 'дії' : 'дій'} — відправимо самі` : ''}${at}`;
   }
+  setInterval(() => { if (S.offline) offBanner(); }, 30e3); // лише оновлює текст підказки, без запитів
   // ⏳ накласти дії з черги на останній відомий стан залу (кеш або свіжий — сервер їх ще не бачив)
   function offOverlay() {
     const q = offQ(); if (!q.length || !S.tables) return; const by = {}; (S.menu?.categories || []).forEach(c => c.items.forEach(i => { by[i.id] = i; }));

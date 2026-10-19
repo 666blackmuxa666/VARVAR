@@ -808,6 +808,7 @@ body.cour #feed, body.cour .feed-btn { display: none !important; }
 
 /* 📴 офлайн-черга */
 #offq { position: fixed; left: 50%; top: 10px; transform: translateX(-50%); z-index: 90; background: #ff9f0a; color: #1a1000; font-weight: 700; padding: 8px 14px; border-radius: 12px; max-width: calc(100vw - 24px); text-align: center; box-shadow: 0 6px 20px #0006; }
+#offq.long { background: var(--red); color: #fff; }
 .icogrp{display:flex;gap:4px}
 .icobtn{width:48px;height:44px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:22px;border:0;border-radius:14px;background:#ffffff12}
 .icobtn:hover{background:#ffffff22}
