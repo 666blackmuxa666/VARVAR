@@ -32,5 +32,10 @@ export async function acctExport(env, from, to) {
   for (const m of mm) { const p = await payroll(env, m); for (const x of p.rows) if (x.shifts || x.earned || x.paid || x.adv) zp.push([m, x.n, x.role || '', x.shifts, x.hours, r2(x.earned), r2(x.adv), r2(x.paid), r2(x.due)]); }
   sections.push({ id: 'zp', title: 'Зарплата (по місяцях)', head: ['Місяць', 'Працівник', 'Роль', 'Змін', 'Годин', 'Нараховано', 'Аванс', 'Виплачено', 'Залишок'],
     rows: [...zp, ['Разом', '', '', '', '', r2(zp.reduce((a, x) => a + x[5], 0)), r2(zp.reduce((a, x) => a + x[6], 0)), r2(zp.reduce((a, x) => a + x[7], 0)), r2(zp.reduce((a, x) => a + x[8], 0))]] });
+  const bk = (await env.DB.getMany(mm.map(m => 'bank:' + m), 'json')).flatMap(l => l || []).filter(x => x.d >= from && x.d <= to).sort((a, b) => (a.d < b.d ? -1 : 1)); // 🏦 виписки (етап 2)
+  if (bk.length) { const { matchText } = await import('./bank.js');
+    sections.push({ id: 'bank', title: 'Банк (виписка)', head: ['Дата', '№', 'Надійшло', 'Списано', 'Контрагент', 'ЄДРПОУ / ІПН', 'Рахунок', 'Призначення', 'Звірка'],
+      rows: [...bk.map(x => [x.d, x.no || '', x.sum > 0 ? r2(x.sum) : '', x.sum < 0 ? r2(-x.sum) : '', x.who || '', x.code || '', x.iban || '', x.pur || '', ({ ok: '✅ ', q: '⚠️ на підтвердження', x: '' }[x.st] || '') + matchText(x)]),
+        ['Разом', '', r2(bk.reduce((a, x) => a + (x.sum > 0 ? x.sum : 0), 0)), r2(-bk.reduce((a, x) => a + (x.sum < 0 ? x.sum : 0), 0)), '', '', '', '', '']] }); }
   return { from, to, sections };
 }

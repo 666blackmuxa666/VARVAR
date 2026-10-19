@@ -67,3 +67,9 @@
 6. 🧾 Z-звіт (без друку) → запис `z:<day>`; «Звіти» за сьогодні — чек, витрата, Z, рух на місці; порівняння з попереднім періодом без помилок у консолі.
 
 - 🎁 Знижки акцій/рівнів — `payable` віднімає `bill.promo.sum`; у `closed:` поля `promo`, `promoSum`, `gross`; у Z/`day:.disc` — лише ручні знижки, акції — звіт `loyRep` (`_team/loyalty.md`).
+
+## 🏦 Банк і звірка (`worker/src/bank.js`, модуль `bank`)
+- Ключі: `bank:<YYYY-MM>` — рядки виписки `{id, d, sum (+/−), who, code, iban, pur, no, st ok|q|x, m?, why?}`; `bank:own` — власні IBAN; `bank:last` — останній імпорт.
+- `m`: `acq {days, gross, fee, fe}` (комісія — витрата з картки «🏦 Комісія еквайрингу»), `inv {ids}` (через `invPay` card), `exp {d,i,new?}`, `mov {d,i,new?}`. `un` видаляє лише створене звіркою; оплату накладної не знімає.
+- Op (права `cash`, лише адмін): `bankList {m}`, `bankImp {text, dry?, name}`, `bankAct {id, a: un|skip|exp|mov|auto|acq|inv}`, `bankInvs {id}`. Бот: файл .txt/.csv, `банк`, кнопки `bk:`.
+- Очікувана комісія — `cfg.bankFee` (типово 1.5%). Автотест — крок «🏦 банк (етап 2)».

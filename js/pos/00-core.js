@@ -338,7 +338,8 @@
   async function loadView(silent) {
     try {
       if (S.view === 'kq') await loadKq();
-      if (S.view === 'cash' && S.cashTab !== 'checks') { S.data.shift = await api('shift'); if (isAdmin()) S.data.cours = await api('courList').catch(() => null); }
+      if (S.view === 'cash' && S.cashTab === 'bank') S.data.bank = await api('bankList', { m: S.bankM || '' });
+      if (S.view === 'cash' && S.cashTab !== 'checks' && S.cashTab !== 'bank') { S.data.shift = await api('shift'); if (isAdmin()) S.data.cours = await api('courList').catch(() => null); }
       if (S.view === 'closed' || (S.view === 'cash' && S.cashTab === 'checks')) { const r = await api('closed', { day: S.cday || '' }); S.data.closed = r.list; S.data.cvoids = r.voids || []; S.data.cday = r.day; S.data.ctoday = r.today; }
       if (S.view === 'reports') { if (!S.menu) await loadMenu(); if (S.rep.tab === 'plus') { const [from, to] = perRange(S.sk.p); S.data.skRep = await api('skReport', { from, to }, 30000); } else await loadReport(); }
       if (S.view === 'go' && isCour()) await loadCour();

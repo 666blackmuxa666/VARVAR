@@ -1,6 +1,7 @@
   function cashHTML() {
-    const ctab = S.cashTab || 'day', cseg = `<div class="seg rsec cseg">${[['day', '💰 Сьогодні'], ['checks', '🧾 Чеки']].map(([k, l]) => `<button class="${ctab === k ? 'on' : ''}" data-a="cashTab" data-t="${k}">${l}</button>`).join('')}</div>`;
+    const ctab = S.cashTab || 'day', cseg = `<div class="seg rsec cseg">${[['day', '💰 Сьогодні'], ['checks', '🧾 Чеки'], ...(modOn('bank') && can('cash') ? [['bank', '🏦 Банк']] : [])].map(([k, l]) => `<button class="${ctab === k ? 'on' : ''}" data-a="cashTab" data-t="${k}">${l}</button>`).join('')}</div>`;
     if (ctab === 'checks') return cseg + closedHTML();
+    if (ctab === 'bank') return cseg + bankHTML();
     return cseg + courCard() + cashHTML0();
   }
   function cashHTML0() {
@@ -134,6 +135,59 @@
   // ---------- 🖱 кнопки розділу (data-a) ----------
   on('zDay', async (el, e, a, t) => { zDay(); return; });
   on('shOpen', async (el, e, a, t) => { shOpen(); return; });
+  // 🏦 Банк (етап 2, worker/src/bank.js): виписка 1С / CSV → автозвірка → черга «на підтвердження»
+  const BK_WHY = [['own', '🔁 Власний переказ'], ['tax', '🏛 Податки / ЄСВ'], ['sal', '👷 Зарплата'], ['loan', '🏦 Кредит / депозит'], ['other', '🙈 Інше']];
+  const bkD = d => d.slice(8) + '.' + d.slice(5, 7);
+  function bankHTML() {
+    const r = S.data.bank; if (!r) return '<div class="muted">Завантаження…</div>';
+    const mn = new Date(r.m + '-15T12:00:00').toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' }), t = r.t, q = r.list.filter(x => x.st === 'q');
+    const sg = x => `<b class="money" style="color:${x.sum > 0 ? 'var(--green)' : 'inherit'}">${x.sum > 0 ? '+' : '−'}${money(Math.abs(x.sum))}</b>`;
+    const line = (x, btns) => `<div class="kv" style="align-items:flex-start;gap:10px"><span style="min-width:0;overflow-wrap:anywhere">${{ ok: '✅', q: '⚠️', x: '🙈' }[x.st]} ${bkD(x.d)} · ${esc(x.who || '—')}${x.pur ? `<br><small class="muted">${esc(x.pur.slice(0, 160))}</small>` : ''}${x.mt ? `<br><small>${esc(x.mt)}</small>` : ''}${btns ? `<div class="btns" style="margin-top:6px;flex-wrap:wrap">${btns}</div>` : ''}</span>${sg(x)}</div>`;
+    const b = (k, id, l) => `<button class="btn sm" data-a="bkAct" data-k="${k}" data-id="${id}">${l}</button>`;
+    const qb = x => x.sum < 0 ? b('inv', x.id, '🧾 Накладні') + b('exp', x.id, '💸 Витрата') + b('mov', x.id, '➖ Вилучення') + b('auto', x.id, '🔎 Пара') + b('skip', x.id, '🙈 Пропустити')
+      : b('acq', x.id, '💳 Еквайринг') + b('mov', x.id, '➕ Внесення') + b('auto', x.id, '🔎 Пара') + b('skip', x.id, '🙈 Пропустити');
+    const head = `<div class="card"><h3>🏦 Банк · ${esc(mn)}</h3><div class="btns" style="flex-wrap:wrap;align-items:center"><button class="btn sm" data-a="bkM" data-t="-1">‹</button><button class="btn sm" data-a="bkM" data-t="1">›</button>
+      <label class="btn sm primary" style="cursor:pointer">📎 Завантажити виписку<input id="bankFile" type="file" accept=".txt,.csv,.tsv" hidden></label></div>
+      <div class="muted" style="font-size:12px;margin-top:8px">Файл з інтернет-банку: «Експорт у 1С» (.txt) або CSV. Повторне завантаження не дублює. Еквайринг, оплати накладних і записані витрати зіставляються самі${r.last ? ` · останній імпорт ${new Date(r.last.ts).toLocaleDateString('uk-UA')} (${r.last.n})` : ''}.</div></div>`;
+    const tiles = `<div class="widgets">${[['➕ Надійшло', money(t.in)], ['➖ Списано', money(-t.out)], ['💳 Комісія банку', money(t.fee)], ['✅ Зіставлено', t.ok], ['⚠️ На підтвердження', t.q], ['🙈 Пропущено', t.x]].map(([l, v]) => `<div class="widget"><span>${l}</span><b class="money">${v}</b></div>`).join('')}</div>`;
+    const miss = r.miss.length ? `<div class="card"><h3>💳 Не надійшла безготівка</h3><div class="muted" style="font-size:12px;margin-bottom:6px">Продажі карткою є, а відшкодування банку у виписці немає (перевірте термінал або завантажте пізнішу виписку)</div>${r.miss.map(x => `<div class="kv"><span>${bkD(x.d)}</span><b class="money">${money(x.card)}</b></div>`).join('')}</div>` : '';
+    const qH = q.length ? `<div class="card"><h3>⚠️ На підтвердження · ${q.length}</h3>${q.map(x => line(x, qb(x))).join('')}</div>` : '';
+    const all = r.list.filter(x => x.st !== 'q');
+    const allH = `<div class="card"><h3>📋 Опрацьовані · ${all.length}</h3>${all.length ? all.map(x => line(x, b('un', x.id, '↩️ Скасувати'))).join('') : `<div class="muted">${r.list.length ? 'Усе чекає підтвердження вище' : 'Виписок за цей місяць ще немає'}</div>`}</div>`;
+    return head + tiles + miss + qH + allH;
+  }
+  async function bankFile(f) {
+    if (/\.xlsx?$/i.test(f.name)) return toast('⚠️ Збережіть виписку як CSV або оберіть «Експорт у 1С» (.txt)');
+    const buf = new Uint8Array(await f.arrayBuffer()); let text; try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch { text = new TextDecoder('windows-1251').decode(buf); }
+    const r = await act('bankImp', { text, dry: 1, name: f.name }); if (!r) return;
+    const dd = d => d.split('-').reverse().join('.');
+    if (!r.add) return toast(`ℹ️ Нових операцій немає (уже завантажено: ${r.dup})`);
+    const ok = await modal({ title: '🏦 Виписка', body: `<div class="kv"><span>Період</span><b>${dd(r.from)} – ${dd(r.to)}</b></div><div class="kv"><span>Формат</span><b>${r.fmt === '1c' ? '1С' : 'CSV'}</b></div>
+      <div class="kv"><span>Нових операцій</span><b>${r.add}</b></div>${r.dup ? `<div class="kv"><span>Уже були</span><b>${r.dup}</b></div>` : ''}<div class="kv"><span>➕ Надійшло</span><b class="money">${money(r.in)}</b></div><div class="kv"><span>➖ Списано</span><b class="money">${money(-r.out)}</b></div>
+      ${r.bad ? `<p class="muted" style="font-size:12px;overflow-wrap:anywhere">⚠️ Пропущено рядків без дати чи суми: ${r.bad}${r.errs?.length ? ' (' + esc(r.errs.slice(0, 3).join('; ')) + ')' : ''}</p>` : ''}`,
+      buttons: [{ label: '✅ Імпортувати', val: 1, cls: 'primary' }, { label: 'Скасувати', val: null }] });
+    if (!ok) return;
+    const x = await act('bankImp', { text, name: f.name }); if (x) toast(`✅ ${x.add} операцій · зіставлено ${x.ok} · на підтвердження ${x.q}`);
+    S.bankM = x?.to?.slice(0, 7) || S.bankM; loadView();
+  }
+  document.addEventListener('change', e => { const el = e.target; if (el.id !== 'bankFile' || !el.files?.[0]) return; const f = el.files[0]; el.value = ''; bankFile(f); });
+  async function bkAct(k, id) {
+    let p = {};
+    if (k === 'skip') { const why = await choose('🙈 Пропустити', 'Що це за операція? У касі нічого не зміниться', BK_WHY.map(([v, label]) => ({ label, val: v }))); if (!why) return; p.why = why; }
+    if (k === 'un' && !(await confirmBox('↩️ Скасувати звірку?', 'Витрату чи рух, які записала звірка, буде видалено, а рядок повернеться на підтвердження'))) return;
+    if (k === 'exp' && !(await confirmBox('💸 Записати витрату з картки?', 'Сума піде у витрати дня виписки'))) return;
+    if (k === 'mov' && !(await confirmBox('🔁 Записати рух картки?', 'Внесення / вилучення з картки — сьогоднішнім днем'))) return;
+    if (k === 'inv') { const r = await act('bankInvs', { id }); if (!r) return; if (!r.list.length) return toast('ℹ️ Немає неоплачених накладних у борг');
+      const v = await modal({ title: '🧾 Які накладні оплачено?', body: `<div style="max-height:50vh;overflow:auto">${r.list.map(x => `<label class="kv" style="gap:8px"><span style="min-width:0;overflow-wrap:anywhere"><input type="checkbox" class="bkInv" value="${esc(x.id)}"> ${bkD(x.day)} · ${esc(x.sup)}${x.no ? ' №' + esc(x.no) : ''}</span><b class="money">${money(x.total)}</b></label>`).join('')}</div>`,
+        buttons: [{ label: '✅ Зіставити', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
+      p.ids = v === 'ok' ? [...document.querySelectorAll('.bkInv:checked')].map(i => i.value) : []; closeModal(); if (!p.ids.length) return; }
+    if (k === 'acq') { const x = S.data.bank.list.find(y => y.id === id), ds = [...Array(7)].map((_, i) => { const d = new Date(x.d + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - i); return d.toISOString().slice(0, 10); });
+      const v = await modal({ title: '💳 За які дні це відшкодування?', body: ds.map(d => `<label class="kv"><span><input type="checkbox" class="bkDay" value="${d}"> ${bkD(d)}</span></label>`).join(''), buttons: [{ label: '✅ Зіставити', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
+      p.days = v === 'ok' ? [...document.querySelectorAll('.bkDay:checked')].map(i => i.value) : []; closeModal(); if (!p.days.length) return; }
+    const r = await act('bankAct', { id, a: k, ...p }, '✅ Готово'); if (r?.warn) toast('⚠️ ' + r.warn); if (r) loadView();
+  }
+  on('bkAct', async (el) => { bkAct(el.dataset.k, el.dataset.id); return; });
+  on('bkM', async (el) => { const m = S.data.bank?.m || new Date().toISOString().slice(0, 7); let [y, mm] = m.split('-').map(Number); mm += +el.dataset.t; if (mm < 1) { mm = 12; y--; } if (mm > 12) { mm = 1; y++; } S.bankM = `${y}-${String(mm).padStart(2, '0')}`; S.data.bank = null; renderMain(); loadView(); return; });
   on('cashTab', async (el, e, a, t) => { S.cashTab = el.dataset.t; renderMain(); loadView(); return; });
   on('movBack', async (el, e, a, t) => { await act('moveBack', { i: +el.dataset.i }, '↩️ Відновлено'); loadView(); return; });
   on('expBack', async (el, e, a, t) => { await act('expenseBack', { i: +el.dataset.i }, '↩️ Відновлено'); loadView(); return; });

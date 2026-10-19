@@ -24,7 +24,7 @@ export const SENSITIVE = ['void', 'staff', 'settings', 'reports'];
 const MAP = [
   ['void', /^(voidBack|tableBack|closedDel|closedRefund)$/],
   ['edit_closed', /^(closedEdit|closedReopen|closedBack|closedPrint)$/],
-  ['cash', /^(shift|zX|zDay|tipPay|cashMove|reconcile|moveDel|moveBack|expenseBack|zDel|zBack|shiftOpen|shiftClose|float|expense|expenseDel)$/],
+  ['cash', /^(shift|zX|zDay|tipPay|cashMove|reconcile|moveDel|moveBack|expenseBack|zDel|zBack|shiftOpen|shiftClose|float|expense|expenseDel|bank(List|Imp|Act|Invs))$/],
   ['reports', /^(report|reports|acctExport|ldgDocs|ldgTotals|ldgAudit)$/],
   ['tax', /^tax(Get|Set|Done)$/],
   ['stock', /^sk[A-Z]/],

@@ -63,6 +63,7 @@ ${A.wifi} — мережі закладу для замовлень
 ${A.staff} — PIN-коди працівників для касової програми, хто увійшов у бот
 ${A.delClosed} / ${A.reset} — тестові
 ${A.waiter} — звичайні кнопки (вхід зберігається)
+<code>банк</code> — 🏦 виписка й звірка (надішліть файл виписки .txt / .csv)
 ${A.logout} — вийти з режиму адміністратора
 
 Вхід діє 12 годин. 🖥 Каса: ${POS_URL(env)}`;
@@ -284,7 +285,7 @@ export async function staffOne(env, id) {
     [{ text: '⬅️ Усі працівники', callback_data: 'stfbk' }]] } };
 }
 // 🛡 Права працівника: перемикачі (паритет із касою). Чутливі права для не-адмінів — лише в касі разом із новим PIN 6–8 цифр
-export const BOT_PERM = { mvl: 'cash', zl: 'cash', zday: 'cash', rp: 'reports', stf: 'staff', stfn: 'staff', stfp: 'staff', stfr: 'staff', stfro: 'staff', stfdq: 'staff', stfdel: 'staff', stfadd: 'staff', prm: 'staff', prt: 'staff', mod: 'settings' };
+export const BOT_PERM = { mvl: 'cash', zl: 'cash', zday: 'cash', rp: 'reports', stf: 'staff', stfn: 'staff', stfp: 'staff', stfr: 'staff', stfro: 'staff', stfdq: 'staff', stfdel: 'staff', stfadd: 'staff', prm: 'staff', prt: 'staff', mod: 'settings', bk: 'cash' };
 export async function permView(env, id) {
   const s = (await getStaff(env)).find(x => x.id === id); if (!s) return staffView(env);
   const adm = s.role === 'admin', on = k => adm ? s.perm?.[k] !== 0 : s.perm?.[k] === 1;

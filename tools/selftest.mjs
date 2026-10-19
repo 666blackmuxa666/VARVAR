@@ -1123,6 +1123,57 @@ async function loyTests(A, W, dish) {
     must((await vpos(VA, 'ldgAudit', { ref: 'mig:' + m1.id })).j.list.some(x => x.what === 'mig'), 'журнал змін імпорту');
     return '6 видів, повтор, відкат';
   });
+  await step('🏦 банк (етап 2): модуль/права; виписка 1С → еквайринг з комісією, оплата 2 накладних, власний переказ, черга; повтор не дублює; дії й заборони; CSV; облік і експорт', async () => {
+    const ok = (r, w) => { must(r.status === 200 && !r.j.error, w + ': ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 200)); return r.j; };
+    must((await vpos(VA, 'bankList')).status === 400, 'модуль вимкнено, а банк відкрився');
+    must((await pos(users.waiter?.token, 'bankList')).status === 403, 'офіціант бачить банк');
+    ok(await vpos(VA, 'modSet', { k: 'bank', v: 1 }), 'увімкнути модуль');
+    for (const x of ok(await vpos(VA, 'bankList'), 'список').list) { // попередні прогони того ж дня не заважають
+      if (x.st !== 'q') ok(await vpos(VA, 'bankAct', { id: x.id, a: 'un' }), 'скасувати старе'); ok(await vpos(VA, 'bankAct', { id: x.id, a: 'skip', why: 'other' }), 'пропустити старе'); }
+    const it = (await http(`/v/${VID}/api/menu`)).j.categories.flatMap(c => c.items).find(i => typeof i.price === 'number');
+    const oo = await vpos(VA, 'order', { t: 7, items: [{ id: it.id, q: 1 }] }); must(oo.status === 200, 'order ' + JSON.stringify(oo.j).slice(0, 150)); const cc = await vpos(VA, 'close', { t: 7, pay: 'card' }); must(cc.status === 200, 'close ' + JSON.stringify(cc.j).slice(0, 150));
+    const C = (await vpos(VA, 'shift')).j.day.card; must(C > 0, 'немає безготівки');
+    const ing = (await vpos(VA, 'skData')).j.ing.find(x => !x.off && !x.grp), code = String(40000000 + Math.floor(Math.random() * 9e6)), sup = 'QA Банк-постач ' + RUN;
+    const inv = async (q, sum, no) => ok(await vpos(VA, 'skInvSave', { inv: { sup, no, pay: 'debt', src: 'hand', req: { code }, lines: [{ id: ing.id, q, f: 1, sum }] } }), 'накладна').inv;
+    const i1 = await inv(1, 300, 'Н' + RUN.slice(-3) + '1'), i2 = await inv(1, 200, 'Н' + RUN.slice(-3) + '2');
+    const d = new Date(Date.now() + 2 * 3600e3).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', year: 'numeric' }), acq = Math.round(C * 0.985 * 100) / 100;
+    const OWN = 'UA213223130000026007233566001', OWN2 = 'UA903052992990004149123456789', doc = (o) => ['СекцияДокумент=Платежное поручение', ...Object.entries(o).map(([k, v]) => k + '=' + v), 'КонецДокумента'].join('\r\n');
+    const f1 = ['1CClientBankExchange', 'ВерсияФормата=1.02', 'Кодировка=Windows', 'РасчСчет=' + OWN, 'РасчСчет=' + OWN2,
+      doc({ Номер: 1, Дата: d, Сумма: acq.toFixed(2), ПлательщикСчет: 'UA673052990000026001234567890', Плательщик: 'АТ КБ ПРИВАТБАНК', ПлательщикИНН: '14360570', ПолучательСчет: OWN, ДатаПоступило: d, НазначениеПлатежа: 'Відшкодування за операціями з ПК, торговий еквайринг ' + RUN }),
+      doc({ Номер: 2, Дата: d, Сумма: '500.00', ПлательщикСчет: OWN, ПолучательСчет: 'UA113052990000026009876543210', Получатель: sup, ПолучательИНН: code, ДатаСписано: d, НазначениеПлатежа: 'Оплата за товар ' + RUN }),
+      doc({ Номер: 3, Дата: d, Сумма: '1000.00', ПлательщикСчет: OWN, ПолучательСчет: OWN2, Получатель: 'Я', ДатаСписано: d, НазначениеПлатежа: 'Переказ власних коштів ' + RUN }),
+      doc({ Номер: 4, Дата: d, Сумма: '777.77', ПлательщикСчет: OWN, ПолучательСчет: 'UA223052990000026001111111111', Получатель: 'ФОП Орендодавець', ПолучательИНН: '1234567890', ДатаСписано: d, НазначениеПлатежа: 'Оренда ' + RUN }),
+      doc({ Номер: 5, Дата: d, Сумма: '123.45', ПлательщикСчет: 'UA333052990000026002222222222', Плательщик: 'Невідомий', ПолучательСчет: OWN, ДатаПоступило: d, НазначениеПлатежа: 'Повернення ' + RUN }), 'КонецФайла'].join('\r\n');
+    const n0 = ok(await vpos(VA, 'bankList'), 'список').list.length;
+    const dr = ok(await vpos(VA, 'bankImp', { text: f1, dry: 1 }), 'перевірка'); must(dr.fmt === '1c' && dr.add === 5 && dr.in === Math.round((acq + 123.45) * 100) / 100 && dr.out === -2277.77, 'dry: ' + JSON.stringify(dr).slice(0, 220));
+    must(ok(await vpos(VA, 'bankList'), 'список').list.length === n0, 'перевірка записала рядки');
+    const im = ok(await vpos(VA, 'bankImp', { text: f1, name: 'kl_to_1c.txt' }), 'імпорт'); must(im.add === 5 && im.ok === 2 && im.q === 2, 'імпорт: ' + JSON.stringify({ ...im, own: 0 }) + ' ' + JSON.stringify(ok(await vpos(VA, 'bankList'), 'с').list.filter(x => (x.pur || '').endsWith(RUN)).map(x => [x.st, x.why, x.mt, x.d])).slice(0, 600));
+    must(ok(await vpos(VA, 'bankImp', { text: f1 }), 'повтор').add === 0, 'повтор дублює');
+    const L1 = ok(await vpos(VA, 'bankList'), 'список').list.filter(x => (x.pur || '').endsWith(RUN)), by = re => L1.find(x => re.test(x.pur));
+    const a = by(/еквайринг/); must(a.st === 'ok' && a.m.k === 'acq' && a.m.gross === C && Math.abs(a.m.fee - (C - acq)) < 0.011, 'еквайринг: ' + JSON.stringify(a).slice(0, 220));
+    must((await vpos(VA, 'shift')).j.exp.some(e => !e.del && e.src === 'card' && /Комісія еквайрингу/.test(e.note) && Math.abs(e.sum - a.m.fee) < 0.011), 'комісія не записана витратою з картки');
+    const p = by(/Оплата за товар/); must(p.st === 'ok' && p.m.k === 'inv' && p.m.ids.length === 2 && p.m.ids.includes(i1.id) && p.m.ids.includes(i2.id), 'накладні: ' + JSON.stringify(p).slice(0, 200));
+    must(ok(await vpos(VA, 'skSupCard', { id: i1.sid }), 'постачальник').debt === 0, 'борг постачальнику лишився');
+    must(by(/власних/).st === 'x' && by(/власних/).why === 'own', 'власний переказ не пропущено');
+    const r = by(/Оренда/), b = by(/Повернення/); must(r.st === 'q' && b.st === 'q', 'черга: ' + r.st + b.st);
+    must((await pos(users.waiter?.token, 'bankAct', { id: r.id, a: 'exp' })).status === 403, 'офіціант діє з виписки');
+    must((await vpos(VA, 'bankAct', { id: b.id, a: 'exp' })).status === 400, 'надходження стало витратою');
+    must((await vpos(VA, 'bankAct', { id: b.id, a: 'acq', days: [a.m.days[0]] })).status === 400, 'день еквайрингу зіставлено двічі');
+    must((await vpos(VA, 'bankAct', { id: r.id, a: 'skip', why: 'zzz' })).status === 400, 'пропуск без причини');
+    const e1 = ok(await vpos(VA, 'bankAct', { id: r.id, a: 'exp' }), 'витрата').x; must(e1.st === 'ok' && e1.m.k === 'exp' && e1.m.new, 'витрата: ' + JSON.stringify(e1).slice(0, 160));
+    must((await vpos(VA, 'bankAct', { id: r.id, a: 'exp' })).status === 400, 'витрата двічі');
+    must((await vpos(VA, 'shift')).j.exp.some(e => !e.del && e.sum === 777.77 && e.src === 'card'), 'витрати немає в касі');
+    ok(await vpos(VA, 'bankAct', { id: r.id, a: 'un' }), 'скасувати'); must(!(await vpos(VA, 'shift')).j.exp.some(e => !e.del && e.sum === 777.77), 'скасування не прибрало витрату');
+    ok(await vpos(VA, 'bankAct', { id: r.id, a: 'skip', why: 'tax' }), 'пропустити');
+    const mv = ok(await vpos(VA, 'bankAct', { id: b.id, a: 'mov' }), 'внесення').x; must(mv.m.k === 'mov' && (await vpos(VA, 'shift')).j.mov.some(m => !m.del && m.type === 'kin' && m.sum === 123), 'внесення на картку: ' + JSON.stringify(mv.m));
+    const csv = 'Дата;Сума;Валюта;Призначення платежу;Контрагент;ЄДРПОУ\n' + d + ';-1 234,56;UAH;Комуналка ' + RUN + ';ТОВ Енерго;12345678\n';
+    const cv = ok(await vpos(VA, 'bankImp', { text: csv }), 'CSV'); must(cv.fmt === 'csv' && cv.add === 1 && cv.out === -1234.56 && cv.q === 1, 'CSV: ' + JSON.stringify(cv).slice(0, 200));
+    must((await vpos(VA, 'bankImp', { text: 'просто текст\nбез колонок' })).status === 400, 'сміття імпортовано');
+    const dl = ok(await vpos(VA, 'ldgDocs', { type: 'bank' }), 'облік').list; must(dl.filter(x => x.ext && x.body?.pur?.endsWith(RUN)).length === 6, 'документи «🏦 Банк»: ' + dl.length);
+    const xp = ok(await vpos(VA, 'acctExport', { from: a.d, to: a.d }), 'експорт');
+    must(xp.sections.some(s => s.id === 'bank' && s.rows.some(r => String(r[7]).endsWith(RUN))), 'банку немає в експорті');
+    return `безготівка ${C} ₴ · комісія ${a.m.fee} ₴`;
+  });
   await step('⏳ черга в залі (wl): гість /api/wl — створення, дубль за телефоном, статус, скасування, ліміт 3/пристрій', async () => {
     const dev = 'qa-wl-' + Date.now(), ph = n => '067' + String(Date.now()).slice(-6) + n;
     // 🛡 index.js: wlip — не більше 6 POST /api/wl за годину з одного IP (спільний IP тестів вичерпується) → тест чесно пропускається

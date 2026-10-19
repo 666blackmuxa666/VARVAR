@@ -314,6 +314,12 @@ export async function posApi(b, req, env) {
     case 'migLog': { if (!admin) return needAdmin(); return ok({ ...(await (await import('./mig.js')).migLog(env)), on: await (await import('./ops.js')).modOn(env, 'mig') }); }
     case 'migRun': case 'migUndo': { if (!admin) return needAdmin(); if (!(await (await import('./ops.js')).modOn(env, 'mig'))) return [{ error: 'Модуль «Перехід» вимкнено — увімкніть у налаштуваннях' }, 400];
       const M = await import('./mig.js'), r = b.op === 'migRun' ? await M.migRun(env, b, who) : await M.migUndo(env, String(b.id || ''), who); if (r.error) return [{ error: r.error }, 400]; return ok(r); }
+    // 🏦 банк (етап 2, bank.js): імпорт виписки (dry — перегляд), місяць зі звіркою, дія з рядком, накладні в борг для вибору
+    case 'bankList': case 'bankImp': case 'bankAct': case 'bankInvs': { if (!admin) return needAdmin(); if (!(await (await import('./ops.js')).modOn(env, 'bank'))) return [{ error: 'Модуль «Банк і звірка» вимкнено — увімкніть у налаштуваннях' }, 400];
+      const B = await import('./bank.js');
+      const r = b.op === 'bankList' ? await B.bankList(env, String(b.m || '')) : b.op === 'bankInvs' ? await B.bankInvs(env, String(b.id || ''))
+        : b.op === 'bankImp' ? await B.bankImport(env, String(b.text || ''), { dry: !!b.dry, name: String(b.name || ''), who }) : await B.bankAct(env, String(b.id || ''), String(b.a || ''), b, who);
+      if (r.error) return [{ error: r.error }, 400]; if (b.op === 'bankImp' && !b.dry) await B.bankNotify(env, r, who); return ok(r); }
     default: return adminRest(b, env, who, ip, ok);
   }
 }

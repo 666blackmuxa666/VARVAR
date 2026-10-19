@@ -193,6 +193,14 @@ export async function handleUpdate(u, env) {
   // 🧮 фото накладної → розпізнати (Gemini) → чернетка з кнопками «Записати»
   if (m.photo && admin && /^накладн/i.test((m.caption || '').trim())) { await send({ text: '🔎 Розпізнаю накладну… 10–30 с' }); return send(await invPhoto(m, env, uid)); }
   if (m.photo) return send({ text: admin ? await handleMenuPhoto(m, env, tg) : '🔐 Змінювати фото може лише адміністратор.' });
+  if (m.document && admin && /\.(txt|csv|tsv)$/i.test(m.document.file_name || '')) { // 🏦 файл виписки → імпорт і звірка (як Каса → 🏦 Банк)
+    if (!(await (await import('./ops.js')).modOn(env, 'bank'))) return send({ text: '🏦 Модуль «Банк і звірка» вимкнено. Увімкнути: напишіть <code>модулі</code>.' });
+    if ((m.document.file_size || 0) > 3e6) return send({ text: '⚠️ Файл завеликий — розбийте виписку на місяці' });
+    const B = await import('./bank.js'), f = await (await tg(env, 'getFile', { file_id: m.document.file_id })).json();
+    const buf = new Uint8Array(await (await fetch(`https://api.telegram.org/file/bot${env.BOT_TOKEN}/${f.result?.file_path}`)).arrayBuffer());
+    const r = await B.bankImport(env, B.decode(buf), { name: m.document.file_name, who }); await send({ text: B.importText(r) }); if (r.error) return;
+    await B.bankNotify(env, r, who); const v = await B.bankBotView(env);
+    for (const x of v.q) await send({ text: B.lineText(x), markup: { inline_keyboard: B.lineKb(x) } }); return; }
   if (!text) return;
   let x;
   // --- офіціант ---
@@ -250,6 +258,10 @@ export async function handleUpdate(u, env) {
   if (admin && (low === 'перехід' || low === '📥 перехід' || low === '/mig')) { // 📥 етап 1: статус імпортів + де майстер
     if (!(await (await import('./ops.js')).modOn(env, 'mig'))) return send({ text: '📥 Модуль «Перехід з іншої системи» вимкнено. Увімкнути: напишіть <code>модулі</code>.' });
     return send({ text: await (await import('./mig.js')).migBotText(env, 'https://posatom.online/owner/') }); }
+  if (admin && (low === 'банк' || low === '🏦 банк' || low === '/bank')) { // 🏦 етап 2: місяць, дні без еквайрингу, черга «на підтвердження»
+    if (!(await (await import('./ops.js')).modOn(env, 'bank'))) return send({ text: '🏦 Модуль «Банк і звірка» вимкнено. Увімкнути: напишіть <code>модулі</code>.' });
+    const B = await import('./bank.js'), v = await B.bankBotView(env); await send({ text: v.text });
+    for (const x of v.q) await send({ text: B.lineText(x), markup: { inline_keyboard: B.lineKb(x) } }); return; }
   if (admin && (low === 'постачальники' || low === 'борги' || low === '/sup')) { /* 🏭 борги постачальникам — як у касі (Склад → Постачальники) */
     const r = await (await import('./suppliers.js')).supList(env), l = r.list.filter(x => x.debt > 0), tot = l.reduce((a, x) => a + x.debt, 0);
     return send({ text: l.length ? `🏭 <b>Борги постачальникам: ${money(tot)}</b>\n${l.map(x => `• ${esc(x.n)} — <b>${money(x.debt)}</b>${x.over ? ` · ⏰ прострочено ${money(x.over)}` : ''}${x.phone ? ` · ${esc(x.phone)}` : ''}`).join('\n')}\n\nОплатити й переглянути накладні — у касі: Склад → 🏭 Постачальники.` : '✅ Боргів постачальникам немає.' });
@@ -345,6 +357,11 @@ async function handleCallback(q, env) {
     const was = (await O.modOn(env, arg)) ? 1 : 0, c = await O.setMod(env, arg, !was);
     await (await import('./ledger.js')).audit(env, who, 'mod', 'mod:' + arg, { v: was }, { v: c.mods[arg] });
     const v = await (await import('./bot-views.js')).modsView(env); await edit(v.text, v.markup); return answer(`${O.MODS[arg]}: ${c.mods[arg] ? 'увімкнено' : 'вимкнено'}`);
+  }
+  if (act === 'bk') { // 🏦 рядок виписки: витрата / рух / пошук пари / пропустити / скасувати — та сама bankAct, що й у касі
+    if (!admin) return answer('🔐 Лише для адміністратора'); if (!(await (await import('./ops.js')).modOn(env, 'bank'))) return answer('Модуль «Банк» вимкнено');
+    const B = await import('./bank.js'), r = await B.bankAct(env, oid, arg, { why: opt }, who); if (r.error) return answer('⚠️ ' + r.error);
+    await edit(B.lineText(r.x), { inline_keyboard: B.lineKb(r.x) }); return answer(r.warn ? '⚠️ ' + r.warn : '✅ Готово');
   }
   if (act === 'wl') { // ⏳ черга в залі — та сама wlAct, що й у касі
     const W = await import('./wl.js');
