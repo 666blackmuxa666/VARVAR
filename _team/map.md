@@ -29,7 +29,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | `exmark.js` | 57 | 🍾 Акцизні марки: пляшки акцизного продукту (марка → скільки лишилось у пляшці). Чиста логіка без імпортів складу. |
 | `fiscal.js` | 262 | 🧾 ПРРО Checkbox: фіскальний чек на кожен закритий рахунок, повернення, службові внесення/видачі, Z. |
 | `guestbot.js` | 252 | 🤖 Бот гостей (@…GUEST_BOT_TOKEN): меню, статус замовлення, бонуси, день народження, сертифікати, |
-| `hub.js` | 310 | 🌐 HUB — центральна база платформи (один Durable Object): акаунти власників, заклади, сесії кабінету. |
+| `hub.js` | 328 | 🌐 HUB — центральна база платформи (один Durable Object): акаунти власників, заклади, сесії кабінету. |
 | `ideas.js` | 64 | 💡 Побажання розробнику: працівник пише з особистого кабінету (каса) або з бота персоналу. |
 | `index.js` | 465 |  |
 | `kitbot.js` | 146 | 👨‍🍳 Бот кухні (KITCHEN_BOT_TOKEN, вебхук /tg4): кухарі отримують нові замовлення на телефон, |
@@ -52,7 +52,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | `ops-staff.js` | 135 | 👥 Доступ і персонал: паролі, PIN, коди реєстрації, працівники, права, перейменування, аватарки |
 | `ops.js` | 10 | Спільна логіка закладу для Telegram-бота і касової програми (POS). |
 | `orderui.js` | 133 | Замовлення офіціанта кнопками: стіл → категорія → страва → (розмір) → кількість → знову категорії. |
-| `owner.js` | 444 | 👑 Кабінет власника мережі й консоль платформи: /api/owner (поза закладом) + внутрішні виклики закладів /__int/* (всередині Store). |
+| `owner.js` | 473 | 👑 Кабінет власника мережі й консоль платформи: /api/owner (поза закладом) + внутрішні виклики закладів /__int/* (всередині Store). |
 | `pay.js` | 232 | 👷 Графік змін і зарплата: прихід «Почати зміну» → адмін підтверджує → ✅ у графіку; ставка за зміну + % від виручки + бонус за план; |
 | `perm.js` | 59 | 🔑 Ролі й права з галочками (_team/roles.md). |
 | `photoai.js` | 94 | 📸 ШІ-фото страв в одному стилі закладу: Gemini Image (платний ключ GEMINI_IMG_KEY — лише тут; решта ШІ — безкоштовний ключ). |
@@ -171,7 +171,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | goMap | delivery.js:279 | 20-delivery.js |
 | goSt | delivery.js:261, pos.js:88 | 00-core.js, 20-delivery.js |
 | hallsSet | pos.js:373 | 70-settings.js |
-| help | owner.js:321, pos.js:72 | 85-team.js |
+| help | owner.js:350, pos.js:72 | 85-team.js |
 | ibanQr | pos.js:151 | 10-hall.js |
 | ideaAdd | ideas.js:42 | 85-team.js |
 | ideaDel | ideas.js:44 | 85-team.js |
@@ -188,8 +188,8 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | kUndo | pos.js:186 | 40-kitchen.js |
 | kitchen | pos.js:179 | 40-kitchen.js |
 | kitchenPct | pos.js:378 | 00-core.js |
-| login | owner.js:226, pos.js:40 | 00-core.js |
-| logout | owner.js:279, pos.js:107 | 00-core.js |
+| login | owner.js:263, pos.js:40 | 00-core.js |
+| logout | owner.js:308, pos.js:107 | 00-core.js |
 | lookV | pos.js:80 | 00-core.js |
 | lookVSet | pos.js:87 | 70-settings.js |
 | loyCli | promo.js:247 | 75-loyalty.js |
@@ -235,7 +235,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | reject | pos.js:171 | 10-hall.js |
 | remove | pos.js:149 | 10-hall.js |
 | report | pos.js:299 | 60-reports.js |
-| reset | owner.js:240, pos.js:309 | 70-settings.js |
+| reset | owner.js:277, pos.js:309 | 70-settings.js |
 | shift | pos.js:285 | 00-core.js, 50-cash.js |
 | shiftOpen | pos.js:296 | 50-cash.js |
 | skAdj | stock.js:526 | 80-calc.js |

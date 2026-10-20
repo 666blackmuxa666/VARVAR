@@ -1370,6 +1370,27 @@ async function loyTests(A, W, dish) {
     const r = await own({ op: 'signup', email: SE, place: 'Інша', pass: 'selfpass-123' }); must(r.status === 400 && /уже зареєстровано/.test(r.j.error || ''), JSON.stringify(r.j)); });
   await step('⚡ самореєстрація: прибирання', async () => { await ownT(PT, 'venueDel', { id: sv.venue, pass: PP }); await ownT(PT, 'acctDel', { email: SE }); }); }
   await step('прибирання: тестові заклади й власник-друг', async () => { for (const id of FV) await ownT(PT, 'venueDel', { id, pass: PP }); await ownT(PT, 'acctDel', { email: FE }); if (FE2) await ownT(PT, 'acctDel', { email: FE2 }); });
+  await step('🇬 вхід через Google: підпис, aud, новий email → назва закладу → заклад; чужий Google-акаунт на той самий email → відмова', async () => {
+    const kp = await crypto.subtle.generateKey({ name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' }, true, ['sign', 'verify']);
+    const jwk = { ...(await crypto.subtle.exportKey('jwk', kp.publicKey)), kid: 'qa1' }, u8 = x => Buffer.from(x).toString('base64url');
+    const jwt = async (p, key = kp.privateKey) => { const h = u8(JSON.stringify({ alg: 'RS256', kid: 'qa1', typ: 'JWT' })), b = u8(JSON.stringify({ iss: 'https://accounts.google.com', aud: 'test-gid', exp: Math.floor(Date.now() / 1000) + 600, email_verified: true, ...p }));
+      return h + '.' + b + '.' + u8(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(h + '.' + b))); };
+    const GE = 'qa-google@test.local', g = async (p, x = {}) => own({ op: 'google', cred: await jwt({ email: GE, sub: 'g-111', name: 'QA Google', ...p }), jwk, ...x });
+    must((await own({ op: 'canBoot' })).j.gid === 'test-gid', 'gid');
+    must((await own({ op: 'google', cred: 'a.b.c', jwk })).status === 401, 'сміття');
+    must((await g({ aud: 'other' })).status === 401, 'чужий aud');
+    must((await g({ exp: 1 })).status === 401, 'прострочений');
+    must((await g({ email_verified: false })).status === 401, 'неперевірений email');
+    const other = await crypto.subtle.generateKey({ name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' }, true, ['sign']);
+    must((await own({ op: 'google', cred: await jwt({ email: GE, sub: 'g-111' }, other.privateKey), jwk })).status === 401, 'підпис чужим ключем');
+    const n = await g(); must(n.j.need === 'place' && !n.j.token, 'новий email без назви: ' + JSON.stringify(n.j));
+    must((await own({ op: 'login', email: GE, pass: 'x' })).status === 401, 'акаунт не створено до назви');
+    const r = await g({}, { place: 'QA Гугл Кафе', city: 'Тест' }); must(r.j.token && r.j.venue, JSON.stringify(r.j));
+    const me = await ownT(r.j.token, 'me'); must(me.j.venues?.some(v => v.id === r.j.venue && v.status === 'trial') && me.j.me.role === 'owner', JSON.stringify(me.j));
+    const r2 = await g(); must(r2.j.token && !r2.j.need && !r2.j.venue, 'повторний вхід: ' + JSON.stringify(r2.j));
+    must((await g({ sub: 'g-222' })).status === 403, 'інший Google-акаунт на той самий email');
+    must((await g({ sub: 'g-111' }, { place: 'Друга' })).j.venue === null, 'вхід із назвою не створює другий заклад');
+    await ownT(PT, 'venueDel', { id: r.j.venue, pass: PP }); must((await ownT(PT, 'acctDel', { email: GE })).j.ok, 'прибирання'); });
   await step('🧮 кабінет бухгалтера: запрошення власником, «Мої клієнти», експорт; без каси й чужих закладів', async () => {
     const AE = `qa-acc-${VID}@test.local`, d = new Date().toISOString().slice(0, 10), from = d.slice(0, 8) + '01';
     if (!OT) OT = (await own({ op: 'login', email: OE, pass: 'owner-pass-123' })).j.token;

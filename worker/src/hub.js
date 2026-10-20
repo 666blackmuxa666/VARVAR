@@ -1,6 +1,6 @@
 // 🌐 HUB — центральна база платформи (один Durable Object): акаунти власників, заклади, сесії кабінету.
 // Дані закладів тут НЕ зберігаються — лише «хто чим володіє». Цифри для аналітики беруться з закладів (owner.js).
-//   acct:<email>  { email, name, role: platform|owner|acc (🧮 бухгалтер: лише облік і звіти), hash, salt, venues: [id], at }
+//   acct:<email>  { email, name, role: platform|owner|acc (🧮 бухгалтер: лише облік і звіти), hash, salt, venues: [id], gsub (🇬 id Google-акаунта), at }
 //   venue:<id>    { id, name, owner, status: active|trial|off, plan, city, at }
 //   sess:<token>  { email, exp }
 //   payer:<id>    { id, kind: fop|tov, n, owner, g, lim, base, regs: [{ from, g }], at } — платник податків (Ф2); заклад → venue.payer
@@ -94,6 +94,24 @@ export class Hub extends DurableObject {
     await this.st.put('signup:' + email, { place: String(place || '').trim().slice(0, 60), city: String(city || '').trim().slice(0, 60), ref: String(ref || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20), at: now });
     this.ctx.storage.setAlarm?.(now + 864e5);
     return this.mailToken(email, 'signup');
+  }
+  // 🇬 вхід через Google (email уже перевірив Google): прив'язує sub, підтверджує пошту; create — новий акаунт власника
+  async googleIn({ email, sub, name, create, place, city, ref, ip }) {
+    email = normEmail(email); if (!okEmail(email) || !sub) return { error: 'Google не підтвердив email' };
+    let a = await this.st.get('acct:' + email);
+    if (!a) {
+      if (!create) return { need: true };
+      const now = Date.now();
+      if (ip && this.env.BOT_TOKEN !== 'local-test') { const rk = 'srl:' + ip.slice(0, 64), fresh = ((await this.st.get(rk)) || []).filter(t => now - t < 3600e3);
+        if (fresh.length >= 4) return { error: 'Забагато спроб — спробуйте пізніше або залиште заявку' };
+        await this.st.put(rk, [...fresh, now]); }
+      const c = await this.acctCreate({ email, name, pass: rnd(16) }); if (c.error) return c; // пароль випадковий — за бажання «Забули пароль»
+      a = await this.st.get('acct:' + email);
+      await this.st.put('signup:' + email, { place: String(place || '').trim().slice(0, 60), city: String(city || '').trim().slice(0, 60), ref: String(ref || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20), at: now }); // → signupVenue
+    } else if (a.gsub && a.gsub !== sub) return { error: 'Цей email прив\'язано до іншого Google-акаунта' };
+    a.gsub = sub; a.verified = true; await this.st.put('acct:' + email, a);
+    const token = rnd(24); await this.st.put('sess:' + token, { email, exp: Date.now() + SESS_MS });
+    return { token, acct: pub(a) };
   }
   async signupTake(email) { const k = 'signup:' + normEmail(email), p = await this.st.get(k); if (p) await this.st.delete(k); return p || null; }
   async logout(token) { if (/^[a-f0-9]{48}$/.test(token || '')) await this.st.delete('sess:' + token); }

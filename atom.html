@@ -357,6 +357,7 @@ footer a { color: var(--muted); }
         <input name="place" placeholder="Назва закладу" autocomplete="organization" required><input name="city" placeholder="Місто, адреса"><input name="email" type="email" placeholder="Email" autocomplete="email" required><input name="pass" type="password" placeholder="Пароль (від 8 символів)" autocomplete="new-password" minlength="8" required>
         <input class="hp" name="web" tabindex="-1" autocomplete="off" aria-hidden="true">
         <button class="btn btn-gold" type="submit">⚡ Зареєструвати заклад</button><div class="msg" id="sm" role="status"></div>
+        <button class="btn" type="button" id="sg" hidden>🇬 Зареєструватися через Google</button><!-- 🇬 показати, коли задано GOOGLE_CLIENT_ID (wrangler.toml) -->
       </form>
       <div class="m" style="margin-top:8px">Демо, налаштування й перший місяць — безкоштовно. Нічого не потрібно купувати.</div>
     </div>
@@ -483,6 +484,8 @@ footer a { color: var(--muted); }
     } catch (x) { m.className = 'msg err'; m.textContent = '⚠️ ' + x.message; }
     btn.disabled = false;
   });
+  // 🇬 реєстрація через Google: кабінет власника питає Google і створює заклад з назвою з форми
+  $('#sg').addEventListener('click', () => { const f = $('#sf'), q = new URLSearchParams({ gnew: 1, place: f.place.value.trim(), city: f.city.value.trim(), ref: refCode() }); location.href = '/owner/#' + q; });
   // 💬 заявка
   $('#lf').addEventListener('submit', async e => {
     e.preventDefault(); const f = e.target, m = $('#lm'), d = Object.fromEntries(new FormData(f)); m.className = 'msg'; if (PV) { m.textContent = '👁 Перегляд: заявка не надсилається'; return; }

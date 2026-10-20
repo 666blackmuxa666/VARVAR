@@ -65,11 +65,12 @@
       catch (x) { $('#serr').textContent = x.message; return; }
     }
     if (mt) return renderSetPass(mt, hp.get(mt));
-    let boot = false; try { boot = (await api('canBoot')).boot; } catch {}
+    let boot = false, gid = ''; try { ({ boot, gid } = await api('canBoot')); } catch {}
     app.innerHTML = `<div class="login"><img class="logo" src="img/app/pos.svg" alt="ATOM"><div class="brandw">ATOM</div><h1>${boot ? 'Перший запуск платформи' : 'Кабінет власника'}</h1>
       <p class="muted">${boot ? (pos ? 'Створіть головний акаунт — він бачитиме всі заклади й керуватиме платформою.' : 'Відкрийте цю сторінку з каси VARVAR: ⚙️ Налаштування → 👑 Кабінет власника.') : 'Усі ваші заклади, аналітика й керування — в одному місці.'}</p>
       ${boot && !pos ? '' : `<form id="lf">${boot ? '<input name="name" placeholder="Ваше ім\'я" autocomplete="name">' : ''}<input name="email" type="email" placeholder="Email" autocomplete="username" required><input name="pass" type="password" placeholder="Пароль${boot ? ' (від 8 символів)' : ''}" autocomplete="${boot ? 'new-password' : 'current-password'}" required minlength="${boot ? 8 : 1}">
-      <button class="btn primary">${boot ? '🚀 Створити й увійти' : 'Увійти'}</button><div class="err" id="lerr"></div>${boot ? '' : '<a href="#" class="muted lnk" id="forgot">Забули пароль?</a>'}</form>`}</div>`;
+      <button class="btn primary">${boot ? '🚀 Створити й увійти' : 'Увійти'}</button><div class="err" id="lerr"></div>${boot ? '' : '<a href="#" class="muted lnk" id="forgot">Забули пароль?</a>'}</form>`}${!boot && gid ? `<div class="gor">${hp.get('gnew') ? 'Реєстрація закладу через Google' : 'або'}</div><div id="gbtn" class="gbtn"></div>` : ''}</div>`;
+    if (!boot && gid) gSign(gid, hp);
     $('#forgot')?.addEventListener('click', async e => { e.preventDefault(); const f = $('#lf'), err = $('#lerr'); if (!f.email.checkValidity() || !f.email.value) { err.textContent = 'Введіть email вище'; return f.email.focus(); }
       err.textContent = '…'; try { const r = await api('forgot', { email: f.email.value }); err.textContent = r.mail ? '✉️ Якщо такий акаунт є — лист з посиланням уже на пошті (перевірте «Спам»)' : 'Пошта ще не налаштована — зверніться до розробника'; } catch (x) { err.textContent = x.message; } });
     $('#lf')?.addEventListener('submit', async e => {
@@ -77,6 +78,25 @@
       try { const r = await api(boot ? 'bootstrap' : 'login', { email: f.email.value, pass: f.pass.value, ...(boot ? { name: f.name.value, pos } : {}) }); S.token = r.token; store.set('token', r.token); history.replaceState(null, '', location.pathname + location.search); start(); }
       catch (x) { err.textContent = x.message; if (/Підтвердіть email/.test(x.message)) { const l = document.createElement('a'); l.href = '#'; l.className = 'lnk'; l.textContent = '✉️ Надіслати лист ще раз'; l.onclick = async ev => { ev.preventDefault(); try { await api('resend', { email: f.email.value }); err.textContent = '✉️ Надіслано — перевірте пошту'; } catch (y) { err.textContent = y.message; } }; err.append(' ', l); } }
     });
+  }
+  // 🇬 вхід / реєстрація через Google (скрипт Google вантажиться лише на екрані входу). Новий email → питаємо назву закладу
+  function gSign(gid, hp) {
+    const go = async (cred, x = {}) => { const err = $('#lerr') || $('#gerr'); if (err) err.textContent = '…';
+      try { const r = await api('google', { cred, place: hp.get('place') || '', city: hp.get('city') || '', ref: hp.get('ref') || '', ...x });
+        if (r.need) return gPlace(cred, r, go);
+        S.token = r.token; store.set('token', r.token); history.replaceState(null, '', location.pathname + location.search); if (r.venue) toast('🎉 Заклад створено — пробний місяць увімкнено'); start();
+      } catch (e) { if (err) err.textContent = e.message; } };
+    const draw = () => { if (!window.google?.accounts?.id || !$('#gbtn')) return;
+      google.accounts.id.initialize({ client_id: gid, callback: r => go(r.credential), ux_mode: 'popup', auto_select: false });
+      google.accounts.id.renderButton($('#gbtn'), { theme: 'filled_black', size: 'large', shape: 'pill', text: hp.get('gnew') ? 'signup_with' : 'continue_with', locale: 'uk', width: Math.min(360, $('#gbtn').clientWidth || 320) }); };
+    if (window.google?.accounts?.id) return draw();
+    const sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true; sc.onload = draw; document.head.append(sc);
+  }
+  function gPlace(cred, r, go) { // перший вхід через Google — створюємо заклад (як самореєстрація)
+    app.innerHTML = `<div class="login"><img class="logo" src="img/app/pos.svg" alt="ATOM"><div class="brandw">ATOM</div><h1>Ваш заклад</h1><p class="muted">${esc(r.name || '')} · ${esc(r.email)}<br>Для цього email ще немає кабінету. Як називається заклад? Створимо його з пробним місяцем.</p>
+      <form id="gf"><input name="place" placeholder="Назва закладу" required minlength="2" maxlength="60"><input name="city" placeholder="Місто" maxlength="60"><button class="btn primary">🚀 Створити заклад</button><div class="err" id="gerr"></div><a href="#" class="muted lnk" id="gback">← Назад</a></form></div>`;
+    $('#gback').onclick = e => { e.preventDefault(); renderLogin(); };
+    $('#gf').addEventListener('submit', e => { e.preventDefault(); go(cred, { place: e.target.place.value, city: e.target.city.value }); });
   }
   function renderSetPass(kind, t) { // ✉️ посилання з листа
     app.innerHTML = `<div class="login"><img class="logo" src="img/app/pos.svg" alt="ATOM"><div class="brandw">ATOM</div><h1>${kind === 'verify' ? '✅ Підтвердження пошти' : '🔑 Новий пароль'}</h1><p class="muted">Придумайте пароль для входу в кабінет (від 8 символів).</p>
