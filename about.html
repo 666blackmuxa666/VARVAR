@@ -61,9 +61,10 @@
     </div>
   </section>
 
-  <section id="promos" hidden><h2 data-t="hPromo"></h2><div class="promos" id="promoList"></div></section>
 
   <section id="menu"><div class="sec-h"><h2 data-t="hHits"></h2><a class="more" href="index.html?go" data-t="allMenu"></a></div><div class="hits" id="hits"></div></section>
+
+  <section id="promos" hidden><h2 data-t="hPromo"></h2><div class="promos" id="promoList"></div></section>
 
   <section id="gallery" hidden><h2 data-t="hGal"></h2><div class="gal" id="gal"></div></section>
 
@@ -86,17 +87,6 @@
     <div class="done" id="bookDone" hidden></div>
   </section>
 
-  <section class="formbox" id="wl" hidden>
-    <h2>⏳ <span data-t="wlH"></span></h2>
-    <button type="button" class="btn alt" id="wlOpen" data-t="wlBtn"></button>
-    <form id="wlF" hidden>
-      <div class="row2"><input name="name" required autocomplete="name" data-ph="fName"><input name="phone" type="tel" required autocomplete="tel" inputmode="tel" data-ph="fPhone"></div>
-      <input name="people" type="number" min="1" max="30" value="2" required>
-      <button class="btn" type="submit" data-t="wlSend"></button>
-      <div class="msg" id="wlMsg"></div>
-    </form>
-    <div class="done" id="wlDone" hidden></div>
-  </section>
 
   <section class="formbox cert" id="cert">
     <h2>🎟 <span data-t="hCert"></span></h2>
@@ -114,6 +104,18 @@
   <section id="reviews"><div class="sec-h"><h2 data-t="hRev"></h2><span class="rate" id="rate"></span></div><div class="quotes" id="quotes"></div>
     <div class="cta"><a class="btn ghost" id="revA" target="_blank" rel="noopener">⭐ <span data-t="revAll"></span></a><a class="btn ghost" id="revW" target="_blank" rel="noopener">✍️ <span data-t="revWrite"></span></a></div></section>
 
+  <section class="formbox" id="wl" hidden>
+    <h2>⏳ <span data-t="wlH"></span></h2>
+    <button type="button" class="btn alt" id="wlOpen" data-t="wlBtn"></button>
+    <form id="wlF" hidden>
+      <div class="row2"><input name="name" required autocomplete="name" data-ph="fName"><input name="phone" type="tel" required autocomplete="tel" inputmode="tel" data-ph="fPhone"></div>
+      <input name="people" type="number" min="1" max="30" value="2" required>
+      <button class="btn" type="submit" data-t="wlSend"></button>
+      <div class="msg" id="wlMsg"></div>
+    </form>
+    <div class="done" id="wlDone" hidden></div>
+  </section>
+
   <section id="contacts" class="contacts">
     <div><h2 data-t="hCont"></h2>
       <p>📍 <span id="cAddr"></span></p><p>🕐 <span data-t="daily"></span> <b id="cHours"></b></p><p>📞 <a id="cPhone"></a></p>
@@ -128,7 +130,7 @@
 <div class="modal" id="modal" hidden><div class="bg" data-x></div><div class="card" id="mBody"></div></div>
 
 <script src="js/config.js?v=16"></script>
-<script src="js/about-design.js?v=5"></script>
+<script src="js/about-design.js?v=6"></script>
 <script src="js/avatar.js?v=1"></script>
 <script src="js/floor3d.js?v=6"></script>
 <script src="js/about.js?v=20"></script>

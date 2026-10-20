@@ -8,7 +8,7 @@ window.OWNSITE = (() => {
   const HDEF = { lay: 'full', h: 62, dim: 40, al: 'l', badge: 1, addr: 1, logo: 0, btns: ['order', 'book', 'call', 'route'], own: { t: '', u: '' } };
   const FONTS = ['Rubik', 'Rubik Dirt', 'Montserrat', 'Playfair Display', 'Lora', 'Unbounded', 'Comfortaa', 'Oswald', 'Nunito', 'Merriweather', 'Russo One', 'Caveat', 'Manrope', 'Exo 2', 'Cormorant Garamond', 'Prata', 'Forum', 'Tenor Sans', 'Yeseva One', 'Old Standard TT', 'Spectral', 'Alice', 'Philosopher', 'Poiret One', 'Inter', 'Jost', 'Raleway', 'Golos Text', 'Onest', 'Tektur', 'Dela Gothic One', 'Pacifico', 'Lobster', 'Marck Script', 'Amatic SC', 'Bad Script', 'Press Start 2P'];
   const DISP = ['Rubik Dirt', 'Russo One', 'Caveat', 'Unbounded', 'Yeseva One', 'Poiret One', 'Dela Gothic One', 'Pacifico', 'Lobster', 'Marck Script', 'Amatic SC', 'Bad Script', 'Press Start 2P', 'Tektur']; /* лише для заголовків */
-  const STD = { about: '📝 Про нас', promos: '🎉 Акції', menu: '🍽 Хіти меню', events: '🎵 Афіша', gallery: '📷 Галерея', hookah: '💨 Кальяни', banquet: '🥂 Банкети', book: '📅 Бронювання', cert: '🎟 Сертифікати', reviews: '⭐ Відгуки', contacts: '📍 Контакти й карта' };
+  const STD = { about: '📝 Про нас', menu: '🍽 Хіти меню', promos: '🎉 Акції', events: '🎵 Афіша', gallery: '📷 Галерея', hookah: '💨 Кальяни', banquet: '🥂 Банкети', book: '📅 Бронювання', cert: '🎟 Сертифікати', reviews: '⭐ Відгуки', contacts: '📍 Контакти й карта' };
   const CT = { text: '📝 Текст', media: '🖼 Текст + фото', feats: '✨ Переваги-плитки', links: '🔗 Кнопки-посилання', quote: '💬 Цитата', sep: '➖ Розділювач', soc: '📲 Соцмережі' };
   const TPL = {
     varvar: ['🌙 Темний класичний', { ...DEF }, { lay: 'full' }],

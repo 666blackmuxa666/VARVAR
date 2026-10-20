@@ -562,7 +562,7 @@
     if (m.brand?.name) { document.title = m.brand.name + ' — меню'; const h = $('.logo'); if (h) { h.textContent = m.brand.name; } document.querySelectorAll('a.lang[href*="about.html"]').forEach(a => { a.textContent = a.textContent.replace('VARVAR', m.brand.name); }); fitLogo(); /* після кнопки «← назва» — вона теж ширшає */ }
     if (m.brand?.logo) touchIcon(m.brand.logo, m.brand.name); else { const t = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if (t) t.content = m.brand?.name || (window.VARVAR?.venue ? 'Меню' : 'VARVAR'); }
     { const pl = GO ? [] : (m.promos || []).filter(p => !p.w || p.w.includes('hall')); /* ⚡ акції, що діють зараз: лише в залі (QR на столі). На сайті їх показує візитка — у меню не дублюємо */
-      let bar = $('#promoBar'); if (!bar) { bar = document.createElement('div'); bar.id = 'promoBar'; bar.className = 'promo-bar'; $('#menu').before(bar); }
+      let bar = $('#promoBar'); if (!bar) { bar = document.createElement('div'); bar.id = 'promoBar'; bar.className = 'promo-bar'; $('#menu').after(bar); } /* ⚡ акції — у кінці меню */
       bar.hidden = !pl.length; bar.innerHTML = pl.map(p => `<div class="promo-chip"><b>⚡ ${esc(p.t)}</b>${p.d ? `<span>${esc(p.d)}</span>` : ''}</div>`).join(''); }
     m.categories.forEach(c => c.items.forEach(it => { byId[it.id] = it; catOf[it.id] = c.id; }));
     packId = (m.categories.find(c => c.id === 'upakuvannia' || /упаков/i.test(c.name?.uk || ''))?.items || []).find(i => !i.hidden)?.id || null;

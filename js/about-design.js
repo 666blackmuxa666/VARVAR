@@ -71,7 +71,7 @@ window.VVD = (() => {
   }
   function blocks(s, lang, t) {
     const main = $('main'), two = $('.two'), ev = events(s, lang, t);
-    const ALL = ['about', 'promos', 'menu', 'events', 'gallery', 'hookah', 'banquet', 'book', 'cert', 'reviews', 'contacts'];
+    const ALL = ['about', 'menu', 'promos', 'events', 'gallery', 'hookah', 'banquet', 'book', 'cert', 'reviews', 'contacts'];
     const list = [...(s.blocks || []), ...ALL.filter(id => !(s.blocks || []).some(b => b.id === id)).map(id => ({ id, on: 1 }))];
     // свої заголовки (оригінал зберігаємо, щоб повернути)
     for (const id of ALL) { const h = $('#' + id + ' h2'); if (!h || h.hasAttribute('data-o')) continue; if (h.dataset.orig == null) h.dataset.orig = h.innerHTML; const b = list.find(x => x.id === id), T = L(b?.t, lang); h.innerHTML = T ? esc(T) : h.dataset.orig; if (!T) h.querySelectorAll('[data-t]').forEach(e => { e.textContent = t(e.dataset.t); }); }
@@ -85,6 +85,7 @@ window.VVD = (() => {
       if (x && !placed.has(x)) { main.append(x); placed.add(x); }
     }
     if (two) two.hidden = $('#hookah').hidden && $('#banquet').hidden;
+    { const wl = $('#wl'), c = $('#contacts'); if (wl && c && placed.has(c)) c.before(wl); } // 🕒 черга — одразу перед контактами й картою
   }
 
   function dock(s, t, link) {
