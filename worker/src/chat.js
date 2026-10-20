@@ -41,6 +41,6 @@ ${hist}`).catch(() => null);
   if (r.lead.hot) reply = ((reply ? reply + ' ' : '') + HOLD).slice(0, 500); else if (ai?.hot && !r.lead.phone) reply = ((reply ? reply + ' ' : '') + ASK).slice(0, 500);
   await H.chatBot(id, reply, {}); // відповідь у розмову (прапорці вже виставлені)
   const hot = r.newHot && `🔥 <b>Тепла розмова ATOM</b>\n👤 ${e(r.lead.name)} · ${e(r.lead.phone)}\n🏪 ${e(r.lead.place) || '—'}${r.lead.city ? ' · ' + e(r.lead.city) : ''}\n💬 ${e(text).slice(0, 200)}\n\nКабінет → 🚀 Продажі → 💬 Розмова`;
-  if (hot) { await supNotify(env, hot).catch(() => {}); if (cfg.tg) await tg(env, 'sendMessage', { chat_id: cfg.tg, parse_mode: 'HTML', text: hot }).catch(() => {}); } // у групу підтримки + особисто
+  if (hot) { await (await import('./push.js')).crmPush(env, '🔥 Тепла розмова ATOM', `${r.lead.name || ''} · ${r.lead.phone || ''} — ${text}`, 'chat' + id).catch(() => {}); await supNotify(env, hot).catch(() => {}); if (cfg.tg) await tg(env, 'sendMessage', { chat_id: cfg.tg, parse_mode: 'HTML', text: hot }).catch(() => {}); } // у групу підтримки + особисто
   return out({ reply, done: !!r.lead.hot });
 }

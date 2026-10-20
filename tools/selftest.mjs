@@ -1279,6 +1279,14 @@ async function loyTests(A, W, dish) {
     must((await ownT(OT, 'enter', { venue: 'varvar' })).status === 403, 'зайшов у чужий заклад');
     const en = await ownT(OT, 'enter', { venue: VID }); must(en.j.token, 'enter'); must((await vpos(en.j.token, 'state')).status === 200, 'токен власника не працює');
     must((await ownT(OT, 'accts')).status === 403, 'власник бачить консоль платформи'); });
+  await step('🔔 Сповіщення CRM (кабінет → Продажі): платформа вмикає/вимикає пристрій, погана підписка → 400, власнику → 403', async () => {
+    const sub = { endpoint: 'https://fcm.googleapis.com/fcm/send/qa-' + Date.now(), keys: { p256dh: 'B' + 'A'.repeat(86), auth: 'A'.repeat(22) } };
+    must((await ownT(OT, 'crmSub', { sub, on: true })).status === 403, 'власник увімкнув сповіщення CRM');
+    must((await ownT(PT, 'crmSub', { sub: { endpoint: 'https://evil.example/x', keys: sub.keys }, on: true })).status === 400, 'чужий push-сервіс прийнято');
+    const on = await ownT(PT, 'crmSub', { sub, on: true }); must(on.j.ok && on.j.on, JSON.stringify(on.j));
+    must((await ownT(PT, 'crmKey', { e: sub.endpoint })).j.mine === true, 'пристрій не збережено');
+    const off = await ownT(PT, 'crmSub', { sub, on: false }); must(off.j.ok && (await ownT(PT, 'crmKey', { e: sub.endpoint })).j.mine === false, 'не вимкнулось');
+  });
   await step('🌙 підсумок дня у кабінеті власника: порахувати, список, особистий Telegram, чужий заклад — 403', async () => {
     const r = await ownT(OT, 'dig', { venue: VID, now: 1 }); must(r.status === 200 && Array.isArray(r.j.list) && r.j.list[0]?.day && /Підсумок дня/.test(r.j.list[0].text), 'now ' + JSON.stringify(r.j).slice(0, 150));
     const l = await ownT(OT, 'dig'); must(l.j.list.length === 1 && l.j.list[0].id === VID && l.j.list[0].list.length >= 1, 'list ' + JSON.stringify(l.j).slice(0, 150));

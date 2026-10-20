@@ -94,6 +94,7 @@ async function ai(env, s, txt, e = []) { // Groq (ключі TEST_AI_1..3 по �
 
 async function toOp(m, T, H, chat, env, s, who) { // 🙋 клієнт → оператор: ШІ замовкає на 12 год, гучне сповіщення в групу з історією
   const id = m.from.id; s.op = Date.now(); const h = s.h || []; s.h = []; await H.supSet('u:' + id, s);
+  await (await import('./push.js')).crmPush(env, '🙋 Клієнт кличе оператора', `${who}${s.v ? ' · ' + s.v : ''} — бот підтримки`, 'sup' + id).catch(() => {});
   const c = await H.atomCfg();
   await T('sendMessage', { chat_id: id, text: `👤 Передав оператору — відповімо тут${c.hrs ? ' (' + c.hrs + ')' : ''}. Можете дописати деталі чи скриншот.` });
   if (h.length) await T('sendMessage', { chat_id: chat, ...(s.t ? { message_thread_id: s.t } : {}), text: `🙋 ${who} просить оператора. Розмова з ШІ:\n\n` + h.map(([q, a]) => `👤 ${q}\n🤖 ${a}`).join('\n\n').slice(0, 3500) });

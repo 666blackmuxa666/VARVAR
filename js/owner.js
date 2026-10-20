@@ -113,6 +113,8 @@
     if (S.me.role === 'acc') { S.tab = 'acc'; return render(); } // 🧮 бухгалтер: лише «Мої клієнти» (owner-acc.js)
     if (location.hash === '#pay' && S.venues.length) { history.replaceState(null, '', location.pathname + location.search); let id = null; try { id = JSON.parse(localStorage.getItem('own_cfgV')); } catch {} /* 💳 повернулись з LiqPay */
       const v = S.venues.find(x => x.id === id) || S.venues.find(x => x.id !== 'varvar') || S.venues[0]; toast('💳 Дякуємо! Оплата зарахується за хвилину — оновіть сторінку'); return VC.open(v.id, 'pay'); }
+    if (location.hash === '#crm' && S.me.role === 'platform') { history.replaceState(null, '', location.pathname + location.search); S.tab = 'crm'; store.set('tab', 'crm'); } // 🔔 тап по сповіщенню CRM
+    if (!S.swMsg) try { S.swMsg = 1; navigator.serviceWorker?.addEventListener('message', e => { if (e.data?.crm && S.me?.role === 'platform') { S.tab = 'crm'; store.set('tab', 'crm'); window.OWNCRM?.reset(); render(); } }); } catch {}
     if (S.tab === 'cfg' && !S.cfgV && S.venues.length === 1) return VC.open(S.venues[0].id);
     render(); if (S.tab !== 'cfg') load();
     syncLook();

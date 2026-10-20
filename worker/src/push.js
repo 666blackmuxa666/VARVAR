@@ -127,3 +127,20 @@ export async function pushDigest(env, text) {
   const O = await import('./ops.js'), sids = (await O.getStaff(env)).filter(s => s.role === 'admin' && s.id).map(s => s.id);
   if (sids.length) await pushTo(env, sids, { title: '📊 Підсумок дня', body: strip(text).slice(0, 170), tag: 'dig', go: { view: 'reports' } });
 }
+
+// 🚀 CRM «Продажі ATOM» → пристрої власника платформи з увімкненим повзунком у кабінеті. Підписки: HUB sup:opush → [{ m, e, k, a, ts }]
+export async function crmSub(env, H, email, sub, on) {
+  const e = String(sub?.endpoint || ''), k = String(sub?.keys?.p256dh || ''), a = String(sub?.keys?.auth || '');
+  if (on && (!okEndpoint(e) || e.length > 800 || !/^[A-Za-z0-9_-]{80,100}$/.test(k) || !/^[A-Za-z0-9_-]{16,32}$/.test(a))) return { error: 'Некоректна підписка' };
+  const l = ((await H.supGet('opush')) || []).filter(x => x.e !== e && (on || x.m !== email || e)); // вимкнути без endpoint — усі пристрої цього власника
+  if (on) l.push({ m: email, e, k, a, ts: Date.now() });
+  await H.supSet('opush', l.slice(-10)); return { ok: true, on: !!on, n: l.filter(x => x.m === email).length };
+}
+export async function crmPush(env, title, body, tag) {
+  if (!pushOn(env) || !env.HUB) return 0;
+  const H = (await import('./hub.js')).hub(env), l = (await H.supGet('opush')) || []; if (!l.length) return 0;
+  const dead = []; let n = 0;
+  await Promise.all(l.map(async s => { try { const st = await sendOne(env, s, { title, body: strip(body), tag, go: { crm: 1 }, urgent: true }, true); if (st === 404 || st === 410) dead.push(s.e); else if (st < 300) n++; } catch {} }));
+  if (dead.length) await H.supSet('opush', ((await H.supGet('opush')) || []).filter(x => !dead.includes(x.e)));
+  return n;
+}

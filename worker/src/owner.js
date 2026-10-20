@@ -231,6 +231,7 @@ async function signupVenue(env, H, r) {
       if (q.error) { await H.venueSet(venue.id, { status: 'off' }).catch(() => {}); venue = null; }
       else {
         const l = await H.leadAdd({ name: r.acct.name, phone: '', place: venue.name, city: venue.city, msg: '⚡ самореєстрація · ' + r.acct.email, src: 'self', ref: p.ref }, 'own:' + Date.now()); if (l?.id) await H.leadSet(l.id, { st: 'trial', venue: venue.id }).catch(() => {});
+        await (await import('./push.js')).crmPush(env, '🆕 Новий заклад', `${venue.name}${venue.city ? ' · ' + venue.city : ''} — ${r.acct.name} · ${r.acct.email}`, 'reg').catch(() => {});
         await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `🆕 <b>Новий заклад (самореєстрація)</b>\n🏪 ${hx(venue.name)}${venue.city ? ' · ' + hx(venue.city) : ''}\n👤 ${hx(r.acct.name)} · ${hx(r.acct.email)}\n🧪 пробний місяць · адреса: ${hx(venue.id)}` }).catch(() => {});
       }
     }
@@ -349,6 +350,7 @@ export async function ownerApi(req, env) {
     case 'secrets': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/secrets', b.f || {}); return r.error ? bad(r.error) : ok(r); }
     case 'help': { const text = String(b.text || '').trim().slice(0, 1500); if (text.length < 3) return bad('Опишіть питання');
       const hk = 'helprl:' + String(me.email || me.name).slice(0, 60), hn = +(await env.DB.get(hk) || 0); if (hn >= 5) return bad('Забагато звернень — спробуйте за годину'); await env.DB.put(hk, String(hn + 1), { expirationTtl: 3600 });
+      await (await import('./push.js')).crmPush(env, '🆘 Допомога з кабінету', `${me.name}: ${text}`, 'help').catch(() => {});
       await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `🆘 <b>Допомога з кабінету</b>\n👤 ${hx(me.name)} · ${hx(me.email)}\n🏪 ${hx(me.venues.join(', ') || '—')}\n\n${text.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}` }).catch(() => {});
       await H.msgAdd({ kind: 'help', venue: me.venues[0] || '', vname: '👑 кабінет', by: me.name + ' · ' + me.email, role: me.role, text }); return ok(); }
     case 'inbox': return ok({ list: await H.msgList(plat ? null : me.venues) });
@@ -425,6 +427,9 @@ ${JSON.stringify(data.filter(Boolean))}
       await kv.put('atom:design', JSON.stringify(d)); await kv.put('atom:design:v', JSON.stringify(vers.slice(0, 10)));
       return ok({ d, vers: vers.slice(0, 10) }); }
     case 'leadNew': { const r = await H.leadAdd({ ...b, src: 'вручну' }, 'own:' + Date.now()); return r.error ? bad(r.error) : ok({ lead: r }); }
+    case 'crmKey': { const P = await import('./push.js'), l = (await H.supGet('opush')) || []; return ok({ on: P.pushOn(env), key: env.VAPID_PUB || '', n: l.filter(x => x.m === me.email).length, mine: !!b.e && l.some(x => x.e === b.e) }); } // 🔔 повзунок «Сповіщення CRM»
+    case 'crmSub': { const r = await (await import('./push.js')).crmSub(env, H, me.email, b.sub, !!b.on); return r.error ? bad(r.error) : ok(r); }
+    case 'crmTest': { const n = await (await import('./push.js')).crmPush(env, '🚀 ATOM · Продажі', 'Сповіщення CRM працюють ✅', 'crmtest'); return n ? ok({ n }) : bad('Не надіслано — увімкніть повзунок ще раз'); }
     case 'leadSet': { const r = await H.leadSet(String(b.id), b.f || {}); return r.error ? bad(r.error) : ok({ lead: r }); }
     case 'demo': { // 📱 демо-каса: створити (власник — платформа) / зберегти поточний стан як еталон для нічного скидання
       if (b.do === 'create') { if (await H.venueGet('atom-demo')) return bad('Демо вже є'); const v = await H.venueCreate({ id: 'atom-demo', name: 'Все за 500', owner: me.email, city: 'Демо' }); if (v.error) return bad(v.error); const r = await callVenue(env, v.id, '/__int/init', { name: v.name }, true); return r.error ? bad(r.error) : ok(); }

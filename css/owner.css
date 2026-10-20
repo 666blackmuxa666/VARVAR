@@ -347,3 +347,9 @@ body:has(.login) { background: radial-gradient(900px 600px at 50% -10%, #2a1a52 
 .login input:focus { border-color: #f2c14e; outline: none; box-shadow: 0 0 0 3px #f2c14e22; }
 .login .btn.primary { background: linear-gradient(135deg, #ffdf8a, #f2c14e); color: #1a1206; border: 0; font-weight: 800; }
 .top .in > img { background: none !important; }
+/* 🔔 повзунок «Сповіщення CRM» (Продажі) */
+.crm-push { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; margin: 10px 0; }
+.osw { flex: none; width: 46px; height: 26px; border-radius: 13px; background: var(--line2); position: relative; transition: background .2s; }
+.osw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.osw.on { background: var(--accent); }
+.osw.on::after { transform: translateX(20px); }

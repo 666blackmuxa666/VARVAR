@@ -21,10 +21,36 @@ window.OWNCRM = (() => {
       <div class="chips crm-st">${Object.entries(ST).map(([k, l]) => `<button class="${x.st === k ? 'on' : ''}" data-crm="st" data-id="${x.id}" data-v="${k}">${l}</button>`).join('')}</div>
       <div class="btnrow">${x.chat ? `<button class="btn sm${x.hot ? ' primary' : ''}" data-crm="chat" data-id="${x.id}">💬 Розмова</button>` : ''}<button class="btn sm" data-crm="note" data-id="${x.id}">📝 Нотатка</button><button class="btn sm" data-crm="next" data-id="${x.id}">⏰ Нагадати</button>${x.venue ? '' : `<button class="btn sm" data-crm="mk" data-id="${x.id}">➕ Створити заклад</button>`}<button class="btn sm red" data-crm="del" data-id="${x.id}">🗑</button></div></div>`;
   }
+  // 🔔 повзунок «Сповіщення CRM» — пуш на цей пристрій (сервер: owner.js crmKey/crmSub/crmTest, push.js crmPush)
+  let PS = null, psBusy = false;
+  const pushCan = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && location.protocol === 'https:';
+  const u8 = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+  async function pushState() {
+    if (psBusy) return; psBusy = true; let sub = null;
+    try { sub = pushCan() ? await (await navigator.serviceWorker.getRegistration())?.pushManager.getSubscription() : null; } catch {}
+    try { const k = await C.api('crmKey', { e: sub?.endpoint || '' }); PS = { ...k, sub, mine: !!sub && k.mine && Notification.permission === 'granted' }; } catch { PS = { on: false }; }
+    psBusy = false; C.render();
+  }
+  async function pushToggle() {
+    if (!pushCan()) return C.toast(/iPhone|iPad/.test(navigator.userAgent) ? '📲 iPhone: Safari → «Поділитися» → «На початковий екран», відкрийте кабінет з іконки й увімкніть' : '⚠️ Цей браузер не підтримує сповіщення');
+    try {
+      if (!PS?.mine) {
+        const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission(); // iPhone: дозвіл — одразу після тапу
+        if (perm !== 'granted') throw new Error('Сповіщення заборонені — дозвольте їх у налаштуваннях браузера/телефона');
+        if (!PS?.on) throw new Error('Сповіщення ще не налаштовані на сервері');
+        const reg = await navigator.serviceWorker.register('owner-sw.js'); await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription(); if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: u8(PS.key) });
+        await C.api('crmSub', { sub: sub.toJSON(), on: true }); C.toast('🔔 Сповіщення CRM увімкнено'); C.api('crmTest').catch(() => {});
+      } else { await C.api('crmSub', { sub: PS.sub.toJSON(), on: false }); C.toast('🔕 Сповіщення CRM вимкнено'); }
+    } catch (e) { C.toast('⚠️ ' + (e.message || e)); }
+    pushState();
+  }
+  const pushCard = () => `<div class="card crm-push" data-crm="push"><span style="min-width:0">🔔 <b>Сповіщення CRM на цей пристрій</b><br><span class="muted" style="font-size:12px">нові заявки, теплі розмови в чаті, клієнт кличе оператора в боті, нові заклади, «допомога», «подзвонити»</span></span><span class="osw${PS?.mine ? ' on' : ''}"></span></div>`;
+
   function view(ctx) {
-    C = ctx; if (!D) { load(); return '<div class="muted">…</div>'; }
+    C = ctx; if (!PS) pushState(); if (!D) { load(); return '<div class="muted">…</div>'; }
     const L = D.list.filter(x => F === 'all' ? 1 : F === 'open' ? !['won', 'lost'].includes(x.st) : F === 'due' ? x.next && x.next < Date.now() + 864e5 && !['won', 'lost'].includes(x.st) : x.st === F);
-    return `<h2>🚀 Продажі ATOM</h2><div class="chips">${[[7, '7 днів'], [30, '30 днів'], [90, '90 днів']].map(([k, l]) => `<button class="${P === k ? 'on' : ''}" data-crm="per" data-v="${k}">${l}</button>`).join('')}</div>${stats()}
+    return `<h2>🚀 Продажі ATOM</h2>${pushCard()}<div class="chips">${[[7, '7 днів'], [30, '30 днів'], [90, '90 днів']].map(([k, l]) => `<button class="${P === k ? 'on' : ''}" data-crm="per" data-v="${k}">${l}</button>`).join('')}</div>${stats()}
       <div class="card" style="margin-top:12px"><h3>📱 Демо-каса для сайту</h3><div class="muted" style="font-size:13px;margin-bottom:8px">Кнопка «Спробувати касу» на posatom.online відкриває заклад <b>atom-demo</b> без PIN. Налаштуйте його як вітрину (меню, фото, сайт) і натисніть «📸 Зберегти еталон». У демо вимкнено ШІ, Telegram, друк, персонал і коди.</div>
         <div class="btnrow">${D.demo ? '<button class="btn sm" data-crm="demoGo">Каса демо →</button><button class="btn sm" data-crm="demoCfg">⚙️ Налаштувати</button><button class="btn sm primary" data-crm="demoSeed">🍔 Заповнити «Все за 500»</button><button class="btn sm" data-crm="demoSave">📸 Зберегти еталон</button>' : '<button class="btn sm primary" data-crm="demoNew">🎬 Створити демо-касу</button>'}<a class="btn sm ghost" href="https://posatom.online/" target="_blank" rel="noopener">🌐 Сайт ATOM</a><button class="btn sm primary" data-crm="design">🎨 Конструктор сайту</button><button class="btn sm" data-crm="cont">💬 Контакти сайту</button><button class="btn sm" data-crm="chatCfg">🤖 Чат на сайті</button></div></div>
       <h2>📋 Заявки</h2><div class="chips">${[['open', 'В роботі'], ['due', '⏰ Дзвонити'], ['new', '🆕 Нові'], ['won', '✅ Клієнти'], ['lost', '❌ Відмови'], ['all', 'Усі']].map(([k, l]) => `<button class="${F === k ? 'on' : ''}" data-crm="f" data-v="${k}">${l}</button>`).join('')}<button data-crm="add">➕ Додати вручну</button></div>
@@ -33,6 +59,7 @@ window.OWNCRM = (() => {
   const set = async (id, f) => { try { const r = await C.api('leadSet', { id, f }); D.list = D.list.map(x => x.id === id ? r.lead || x : x).filter(x => !(f.del && x.id === id)); C.render(); } catch (e) { C.toast('⚠️ ' + e.message); } };
   document.addEventListener('click', async e => {
     const el = e.target.closest('[data-crm]'); if (!el || !C) return; const a = el.dataset.crm, d = el.dataset, x = D?.list.find(l => l.id === d.id);
+    if (a === 'push') return pushToggle();
     if (a === 'per') { P = +d.v; D = null; return C.render(); }
     if (a === 'f') { F = d.v; return C.render(); }
     if (a === 'copy') { try { await navigator.clipboard.writeText(d.v); C.toast('📋 Скопійовано'); } catch { C.toast(d.v); } return; }
@@ -69,5 +96,5 @@ window.OWNCRM = (() => {
     if (a === 'demoGo') return C.enter('atom-demo');
     if (a === 'demoCfg') return C.VC.open('atom-demo');
   });
-  return { view, reset: () => { D = null; } };
+  return { view, reset: () => { D = null; PS = null; } };
 })();

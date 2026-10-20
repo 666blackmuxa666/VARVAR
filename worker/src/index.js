@@ -72,6 +72,7 @@ export default {
     const kh = new Date().toLocaleString('en-GB', { timeZone: 'Europe/Kyiv', hour: '2-digit', minute: '2-digit', hour12: false });
     if (env.HUB) ctx.waitUntil((async () => { // 🚀 ATOM: нагадування «подзвонити» по заявках
       const due = await hub(env).leadDue().catch(() => []);
+      for (const x of due) await (await import('./push.js')).crmPush(env, '⏰ Подзвонити', `${x.name} · ${x.phone}${x.place ? ' · ' + x.place : ''}${x.note ? ' — ' + x.note : ''}`, 'due' + x.id).catch(() => {});
       for (const x of due) await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `⏰ <b>Подзвонити</b>: ${esc(x.name)} · ${esc(x.phone)}${x.place ? ' · ' + esc(x.place) : ''}${x.note ? '\n📝 ' + esc(x.note) : ''}` }).catch(() => {});
       if (kh >= '10:00' && kh < '10:05') await (await import('./billing.js')).billDaily(env).catch(e => console.log('billDaily', e.message)); // 💳 нагадування й блокування підписки
       // 🧪 ШІ-тестувальник (aitest.js) вимкнено 2026-10-20: ключі TEST_AI_1..3 тепер у ШІ бота підтримки (supbot.js)
@@ -442,6 +443,7 @@ async function atomApi(req, env, url) {
       if (String(b.name || '').trim().length < 2) return J({ error: 'Вкажіть імʼя' }, 400);
       const x = await H.leadAdd({ ...b, phone }, ip); if (x.error) return J(x, 429);
       const e = s => String(s || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+      await (await import('./push.js')).crmPush(env, '🚀 Нова заявка ATOM', `${x.name} · ${x.phone}${x.place ? ' · ' + x.place : ''}${x.msg ? ' — ' + x.msg : ''}`, 'lead' + x.id).catch(() => {});
       await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `🚀 <b>Заявка ATOM</b>\n👤 ${e(x.name)} · ${e(x.phone)}\n🏪 ${e(x.place) || '—'}${x.city ? ' · ' + e(x.city) : ''}${x.msg ? '\n💬 ' + e(x.msg) : ''}\n\nКабінет → 🚀 Продажі` }).catch(() => {});
       return J({ ok: true });
     }
