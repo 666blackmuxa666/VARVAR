@@ -14,6 +14,18 @@ export async function supSetup(env, tok) { // ключ з кабінету: пе
   return { bot: me.result.username, link: 'https://t.me/' + me.result.username, chat: !!(await H.supGet('chat')) };
 }
 
+export async function supStatus(env, rearm) { // 🩺 стан бота для кабінету: вебхук (лагодить сам), група, теми, права бота
+  const H = hub(env), tok = env.SUPPORT_BOT_TOKEN || await H.supGet('tok'); if (!tok) return { bot: '' };
+  const T = (m, b) => call(tok, m, b), me = await T('getMe', {}); if (!me.ok) return { bot: '', err: 'Telegram не приймає ключ — вставте новий з @BotFather' };
+  const url = env.SELF_URL + '/tg5', w = await T('getWebhookInfo', {}); let hook = w.result?.url === url;
+  if (!hook) hook = !!(await T('setWebhook', { url, secret_token: env.TG_SECRET, allowed_updates: ['message', 'my_chat_member'] })).ok;
+  if (rearm) await H.supSet('arm', Date.now());
+  const r = { bot: me.result.username, hook, err: w.result?.last_error_message || '', arm: Date.now() - ((await H.supGet('arm')) || 0) < 3600e3 }, chat = await H.supGet('chat');
+  if (chat) { const c = await T('getChat', { chat_id: chat }), m = await T('getChatMember', { chat_id: chat, user_id: me.result.id });
+    Object.assign(r, { chat: c.result?.title || '?', gone: !c.ok, forum: !!c.result?.is_forum, admin: m.result?.status === 'administrator', topics: !!m.result?.can_manage_topics }); }
+  return r;
+}
+
 export async function supNotify(env, text) { // сповіщення в групу помічників (загальна тема), якщо бот і група підключені
   const H = hub(env), tok = env.SUPPORT_BOT_TOKEN || await H.supGet('tok'), chat = tok && await H.supGet('chat');
   if (chat) await call(tok, 'sendMessage', { chat_id: chat, parse_mode: 'HTML', text });

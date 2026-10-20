@@ -432,6 +432,7 @@ ${JSON.stringify(data.filter(Boolean))}
       if (b.do === 'seed') { const r = await demoSnap(env, 'atom-demo', 'seed'); if (r.error) return bad(r.error); await H.venueSet('atom-demo', { name: 'Все за 500' }).catch(() => {}); return ok(r); }
       return bad('unknown'); }
     case 'ref': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const r = await H.refStat(String(b.venue)); return r.error ? bad(r.error) : ok({ ref: r }); } // 🎁 код і лічильник; назву друга не показуємо
+    case 'supStatus': { if (!plat) return bad('Лише платформа', 403); return ok(await (await import('./supbot.js')).supStatus(env, !!b.rearm)); } // 🩺 стан бота підтримки
     case 'chatCfg': { if (!plat) return bad('Лише платформа', 403); return ok({ cfg: await H.chatCfg(b.set ? b.f || {} : undefined) }); } // 💬 вимикач чату на сайті ATOM і Telegram власника для «🔥»
     case 'chat': { if (!plat) return bad('Лише платформа', 403); const r = await H.chatGet(b.id); return r.error ? bad(r.error) : ok({ chat: r.m }); }
     case 'chatSim': { if (!plat) return bad('Лише платформа', 403); const { chatTurn } = await import('./chat.js'); const [d, st] = await chatTurn(env, H, b, 'sim:' + String(b.ip || 'x').slice(0, 20)); return st === 200 ? ok(d) : bad(d.error, st); } // для автотестів: той самий шлях, що /api/chat

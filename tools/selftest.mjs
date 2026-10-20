@@ -1413,6 +1413,8 @@ async function loyTests(A, W, dish) {
       await ownT(PT, 'atomCfg', { set: 1, f: { sup: '@qa_help_bot' } }); must((await http('/api/sup')).j.url === 'https://t.me/qa_help_bot', '@бот не перетворено на посилання');
       const bad = await ownT(PT, 'atomCfg', { set: 1, f: { sup: '123456789:' + 'A'.repeat(35) } }); must(bad.status === 400 && (await http('/api/sup')).j.url === 'https://t.me/qa_help_bot', 'фальшивий ключ бота прийнято: ' + bad.status);
       must((await http('/tg5', {})).status === 403, 'вебхук бота підтримки без секрету');
+      const st = await ownT(PT, 'supStatus'); must(st.status === 200 && st.j.bot === '', 'стан бота без ключа: ' + JSON.stringify(st.j));
+      if (OT) must((await ownT(OT, 'supStatus', { rearm: 1 })).status === 403, 'власник закладу бачить/перепідключає бота платформи');
     } finally { await ownT(PT, 'atomCfg', { set: 1, f: { sup: old.sup || '', hrs: old.hrs || '' } }); }
   });
   await step('🇬 вхід через Google: підпис, aud, новий email → назва закладу → заклад; чужий Google-акаунт на той самий email → відмова', async () => {
