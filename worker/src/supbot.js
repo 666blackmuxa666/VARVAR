@@ -61,6 +61,8 @@ async function client(m, T, H, chat, env) {
     return T('sendMessage', { chat_id: id, text: `🛟 Підтримка ATOM · ${c.hrs || '9:00–22:00'}\n\nОпишіть питання — можна з фото чи скриншотом. Помічник відповість тут.` }); }
   if (!chat) return T('sendMessage', { chat_id: id, text: '🛟 Підтримка ще налаштовується. Напишіть, будь ласка, пізніше або через «Зв\'язок з ATOM» у касі.' });
   const who = [m.from.first_name, m.from.last_name].filter(Boolean).join(' ') || 'Клієнт', now = Date.now();
+  if (s.askV === 1 && !s.v && m.text && !m.text.startsWith('/')) { s.v = m.text.trim().replace(/\s+/g, ' ').slice(0, 60); s.askV = 2; await H.supSet(k, s); // 🏪 клієнт назвав заклад (відкрив бота не з каси/кабінету)
+    if (s.t) { await T('editForumTopic', { chat_id: chat, message_thread_id: s.t, name: `${who} · ${s.v}`.slice(0, 120) }); await T('sendMessage', { chat_id: chat, message_thread_id: s.t, text: `🏪 Заклад: ${s.v}` }); } }
   if (!(s.op && now - s.op < OP_TTL)) { // 🤖 спершу відповідає ШІ; оператор — на прохання, фото, збій ШІ або «[OP]» від ШІ
     const txt = String(m.text || '').trim(), want = OP_RE.test(txt);
     if (txt && !want) { const a = await ai(env, s, txt); if (a && !a.op) { s.h = [...(s.h || []), [txt.slice(0, 400), a.text.slice(0, 600)]].slice(-6); await H.supSet(k, s);
@@ -93,10 +95,10 @@ async function ai(env, s, txt, e = []) { // Groq (ключі TEST_AI_1..3 по �
 }
 
 async function toOp(m, T, H, chat, env, s, who) { // 🙋 клієнт → оператор: ШІ замовкає на 12 год, гучне сповіщення в групу з історією
-  const id = m.from.id; s.op = Date.now(); const h = s.h || []; s.h = []; await H.supSet('u:' + id, s);
+  const id = m.from.id; s.op = Date.now(); const h = s.h || []; s.h = []; const askV = !s.v && !s.askV; if (askV) s.askV = 1; await H.supSet('u:' + id, s);
   await (await import('./push.js')).crmPush(env, '🙋 Клієнт кличе оператора', `${who}${s.v ? ' · ' + s.v : ''} — бот підтримки`, 'sup' + id).catch(() => {});
   const c = await H.atomCfg();
-  await T('sendMessage', { chat_id: id, text: `👤 Передав оператору — відповімо тут${c.hrs ? ' (' + c.hrs + ')' : ''}. Можете дописати деталі чи скриншот.` });
+  await T('sendMessage', { chat_id: id, text: `👤 Передав оператору — відповімо тут${c.hrs ? ' (' + c.hrs + ')' : ''}. Можете дописати деталі чи скриншот.${askV ? '\n\n🏪 Напишіть, будь ласка, назву закладу й місто — так швидше знайдемо ваш кабінет.' : ''}` });
   if (h.length) await T('sendMessage', { chat_id: chat, ...(s.t ? { message_thread_id: s.t } : {}), text: `🙋 ${who} просить оператора. Розмова з ШІ:\n\n` + h.map(([q, a]) => `👤 ${q}\n🤖 ${a}`).join('\n\n').slice(0, 3500) });
   return client({ ...m, _op: 1 }, T, H, chat, env);
 }

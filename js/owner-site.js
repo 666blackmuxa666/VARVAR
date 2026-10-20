@@ -174,7 +174,7 @@ window.OWNSITE = (() => {
       + card('🔠 Заголовки розділів', chips('theme.ttl', [['l', '⬅ Ліворуч'], ['c', '⬌ По центру']]) + tgl('theme.ttlLine', 'Лінія біля заголовка') + range('theme.ttlSz', 'Розмір', 18, 44, 'px')),
     btn: () => preTheme() + card('➕ Кнопка «додати»', chips('theme.add', [['round', 'Кнопка'], ['plus', 'Лише +'], ['wide', 'На всю ширину']]) + chips('theme.btn', [['fill', 'Заливка'], ['line', 'Контур'], ['pill', 'Таблетка']]))
       + card('💰 Ціна', chips('theme.price', [['accent', 'Кольором акценту'], ['text', 'Кольором тексту']])),
-    top: () => preTheme() + card('🏷 Шапка', tgl('theme.logo', 'Логотип біля назви') + '<div class="sb-note">Логотип і назва — у розділі «🏪 Заклад».</div>')
+    top: () => preTheme() + card('🏷 Шапка', text('theme.title', 'Назва в шапці (порожньо — назва закладу)', C.site.name || 'Назва закладу', 40) + tgl('theme.noName', 'Сховати назву') + tgl('theme.logo', 'Логотип біля назви') + '<div class="sb-note">Логотип закладу — у розділі «🏪 Заклад».</div>')
       + card('📣 Стрічка над меню', text('theme.note.t', 'Текст (порожньо — не показувати)', 'напр. Кухня працює до 22:00', 120) + `<div class="sb-cols">${color('theme.note.c', 'Колір')}</div>`),
     ver: () => card('🕰 Попередні версії', '<div id="sbVer" class="sb-list"><div class="sb-note">…</div></div>', 'Зберігаються 5 останніх публікацій.')
       + card('📋 Код стилю', `<div class="sb-row"><button type="button" class="btn sm" data-sb="code">📋 Скопіювати код</button><button type="button" class="btn sm" data-sb="codeIn">📥 Вставити код</button></div>`),

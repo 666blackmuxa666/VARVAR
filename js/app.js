@@ -558,8 +558,8 @@
     m.categories.forEach(c => c.items = c.items.filter(it => !it.hidden));
     m.categories = m.categories.filter(c => c.items.length);
     menu = m; likes = m.likes || {};
-    if (window.VVM && (window.__vvM || m.brand?.theme)) VVM.apply(window.__vvM ? window.__vvM.vvMenu : m.brand.theme, window.__vvM?.brand || m.brand); /* 🎨 дизайн меню з кабінету (js/menu-design.js) */
     if (m.brand?.name) { document.title = m.brand.name + ' — меню'; const h = $('.logo'); if (h) { h.textContent = m.brand.name; } document.querySelectorAll('a.lang[href*="about.html"]').forEach(a => { a.textContent = a.textContent.replace('VARVAR', m.brand.name); }); fitLogo(); /* після кнопки «← назва» — вона теж ширшає */ }
+    if (window.VVM && (window.__vvM || m.brand?.theme)) VVM.apply(window.__vvM ? window.__vvM.vvMenu : m.brand.theme, window.__vvM?.brand || m.brand); /* 🎨 дизайн меню з кабінету (js/menu-design.js) */
     if (m.brand?.logo) touchIcon(m.brand.logo, m.brand.name); else { const t = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if (t) t.content = m.brand?.name || (window.VARVAR?.venue ? 'Меню' : 'VARVAR'); }
     { const pl = GO ? [] : (m.promos || []).filter(p => !p.w || p.w.includes('hall')); /* ⚡ акції, що діють зараз: лише в залі (QR на столі). На сайті їх показує візитка — у меню не дублюємо */
       let bar = $('#promoBar'); if (!bar) { bar = document.createElement('div'); bar.id = 'promoBar'; bar.className = 'promo-bar'; $('#menu').after(bar); } /* ⚡ акції — у кінці меню */

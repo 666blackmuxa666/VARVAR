@@ -237,8 +237,9 @@ async function apiTests() {
   });
   await step('🍽 конструктор меню: дизайн у /api/menu, погане відкидається', async () => {
     const back = (await posOk(A, 'siteGet')).site.menuTheme ?? null;
-    const x = (await posOk(A, 'siteSet', { k: 'menuDesign', v: { menuTheme: { mode: 'light', lay: 'list', cols: 9, phbg: 'img', phImg: 'javascript:1', accent: '#00ff00', fh: 'Bad' } } })).site.menuTheme;
-    must(x.lay === 'list' && x.cols === 3 && x.phImg === '' && x.fh === 'Rubik Dirt' && x.accent === '#00ff00', JSON.stringify(x));
+    const x = (await posOk(A, 'siteSet', { k: 'menuDesign', v: { menuTheme: { mode: 'light', lay: 'list', cols: 9, phbg: 'img', phImg: 'javascript:1', accent: '#00ff00', fh: 'Bad', title: '  Моя назва' + 'х'.repeat(60), noName: 1 } } })).site.menuTheme;
+    must(x.lay === 'list' && x.cols === 3 && x.phImg === '' && x.fh === 'Rubik Dirt' && x.accent === '#00ff00' && x.title.length <= 40 && x.title.startsWith('Моя назва') && x.noName === 1, JSON.stringify(x));
+    { const b = (await http('/api/menu?t=' + Date.now())).j.brand; must(b?.name && b.theme?.title?.startsWith('Моя назва'), 'немає назви закладу в меню: ' + JSON.stringify(b)); }
     must((await pos(W, 'siteSet', { k: 'menuDesign', v: { menuTheme: {} } })).status === 403, 'офіціант зміг');
     await posOk(A, 'siteSet', { k: 'menuDesign', v: { menuTheme: back } });
     must((await posOk(A, 'siteMenuVer')).list.length >= 1, 'немає версій'); return 'ок';

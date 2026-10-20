@@ -30,7 +30,7 @@ window.VVM = (() => {
     fonts([...new Set([t.fh, t.fb])].filter(f => f && f !== 'Rubik' && f !== 'Rubik Dirt').map(fam).join('&family='));
     $('meta[name="theme-color"]')?.setAttribute('content', t.bg); $('meta[name="color-scheme"]')?.setAttribute('content', t.mode === 'light' ? 'light only' : 'dark only');
     // 🏷 логотип у шапці
-    const lg = $('.top .logo'); if (lg) { lg.querySelector('img')?.remove(); if (t.logo && brand?.logo) { const i = document.createElement('img'); i.src = brand.logo; i.alt = ''; lg.prepend(i); } }
+    const lg = $('.top .logo'); if (lg) { lg.textContent = t.noName ? '' : (t.title || brand?.name || lg.textContent); /* ✍️ своя назва в шапці */ if (t.logo && brand?.logo) { const i = document.createElement('img'); i.src = brand.logo; i.alt = ''; lg.prepend(i); } }
     // 📣 стрічка над меню
     if (t.note?.t) { const n = document.createElement('div'); n.id = 'mtNote'; const light = hex(t.note.c).reduce((p, x, i) => p + x * [.299, .587, .114][i], 0) > 150; n.style.cssText = `background:${t.note.c};color:${light ? '#141414' : '#fff'}`; n.textContent = t.note.t; $('#cats')?.before(n); }
   }

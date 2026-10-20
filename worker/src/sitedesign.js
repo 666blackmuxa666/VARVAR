@@ -79,5 +79,5 @@ export function cleanMenuTheme(t) {
     phbg: one(t.phbg, ['tex', 'card', 'accent', 'color', 'img', 'none'], 'tex'), phC: col(t.phC, '#222222'), phImg: safeImg(t.phImg),
     cats: one(t.cats, ['pill', 'line', 'box'], 'pill'), catsSticky: bit(t.catsSticky ?? 1), ttl: one(t.ttl, ['l', 'c'], 'l'), ttlLine: bit(t.ttlLine), ttlSz: num(t.ttlSz, 18, 44, 30),
     desc: bit(t.desc ?? 1), size: bit(t.size ?? 1), add: one(t.add, ['round', 'plus', 'wide'], 'round'), price: one(t.price, ['accent', 'text'], 'accent'),
-    logo: bit(t.logo), note: { t: str(t.note?.t, 120), c: col(t.note?.c, '#f2c14e') } };
+    logo: bit(t.logo), title: str(t.title, 40), noName: bit(t.noName), note: { t: str(t.note?.t, 120), c: col(t.note?.c, '#f2c14e') } };
 }
