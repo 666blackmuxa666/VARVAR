@@ -1131,3 +1131,13 @@ body.noanim .tables .tbl.new::after,body.noanim .ev.wait::after{animation:none!i
 @media (min-width: 700px) { .widgets.w4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .widget b { overflow-wrap: anywhere; }
 .pill.full { grid-column: 1 / -1; } .pill.full .psplit-l { display: flex; flex-wrap: wrap; gap: 6px 24px; }
+
+/* каса: плитки однакові — радіус, відступи, вирівнювання */
+.bal-c small b { font-size: inherit; color: inherit; }
+.bal-c, .widget, .hero-rec { border-radius: 16px; }
+.bal-c small { margin-top: auto; padding-top: 2px; }
+.widget { align-content: start; border: 1px solid transparent; }
+.widgets > .hero-rec { background: var(--card); border-color: var(--line); padding: 12px 14px; align-content: start; }
+.hero-rec span { font-size: 13px; } .hero-rec b { font-size: 22px; }
+@media (max-width: 700px) { .hero-rec b { font-size: 18px; } }
+.bal-c.tot small { font-size: 11px; } .bal-c.tot small b { white-space: nowrap; font-weight: 700; }

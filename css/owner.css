@@ -363,3 +363,17 @@ body:has(.login) { background: radial-gradient(900px 600px at 50% -10%, #2a1a52 
 .vacts > .btn { padding-inline: 4px; font-size: 13px; white-space: nowrap; }
 .venue .kv small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .venue .kv > span { min-width: 0; }
+/* плитки: рівні висоти, підпис внизу, без «сиріт» */
+.kpi { display: flex; flex-direction: column; gap: 2px; }
+.kpi span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi b { margin-top: 0; }
+.kpi small { margin-top: auto; padding-top: 2px; }
+@media (max-width: 600px) { .kpis { grid-template-columns: 1fr 1fr; } .kpis > .kpi:first-child:nth-last-child(2n+1) { grid-column: 1 / -1; } }
+.digs { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+.dig { display: flex; flex-direction: column; gap: 8px; margin: 0; min-width: 0; }
+.dig.wide { grid-column: 1 / -1; }
+.dig .vacts { gap: 8px; margin-top: auto; }
+.vbtns { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; margin-top: auto; }
+.vbtns > .btn { white-space: nowrap; padding-inline: 6px; }
+.vbtns > .btn:nth-child(3) { grid-column: 1 / -1; }
+.dig .vacts { grid-template-columns: 1fr 1fr; } .dig .vacts > .btn { width: 100%; }
