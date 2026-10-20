@@ -20,9 +20,11 @@ export async function supStatus(env, rearm) { // 🩺 стан бота для �
   const url = env.SELF_URL + '/tg5', w = await T('getWebhookInfo', {}); let hook = w.result?.url === url;
   if (!hook) hook = !!(await T('setWebhook', { url, secret_token: env.TG_SECRET, allowed_updates: ['message', 'my_chat_member'] })).ok;
   if (rearm) await H.supSet('arm', Date.now());
-  const r = { bot: me.result.username, hook, err: w.result?.last_error_message || '', arm: Date.now() - ((await H.supGet('arm')) || 0) < 3600e3 }, chat = await H.supGet('chat');
-  if (chat) { const c = await T('getChat', { chat_id: chat }), m = await T('getChatMember', { chat_id: chat, user_id: me.result.id });
-    Object.assign(r, { chat: c.result?.title || '?', gone: !c.ok, forum: !!c.result?.is_forum, admin: m.result?.status === 'administrator', topics: !!m.result?.can_manage_topics }); }
+  const r = { bot: me.result.username, hook, err: w.result?.last_error_message || '', arm: Date.now() - ((await H.supGet('arm')) || 0) < 3600e3 }; let chat = await H.supGet('chat');
+  let c = chat && await T('getChat', { chat_id: chat }); const to = c && c.parameters?.migrate_to_chat_id;
+  if (to) { await H.supSet('chat', chat = String(to)); c = null; } // пропущений перехід у супергрупу — лагодимо
+  if (chat) { c ||= await T('getChat', { chat_id: chat }); const m = await T('getChatMember', { chat_id: chat, user_id: me.result.id });
+    Object.assign(r, { chat: c.result?.title || '?', type: c.result?.type, gone: !c.ok, why: c.ok ? m.result?.status : c.description, forum: !!c.result?.is_forum, admin: m.result?.status === 'administrator', topics: !!m.result?.can_manage_topics }); }
   return r;
 }
 
@@ -35,7 +37,9 @@ export async function supNotify(env, text) { // сповіщення в груп
 export async function supUpdate(u, env) {
   const H = hub(env), tok = env.SUPPORT_BOT_TOKEN || await H.supGet('tok'); if (!tok) return;
   const T = (m, b) => call(tok, m, b), m = u.message, mc = u.my_chat_member, gc = (m || mc)?.chat; if (!gc) return;
-  const chat = await H.supGet('chat');
+  let chat = await H.supGet('chat');
+  const mig = m?.migrate_to_chat_id && String(gc.id) === String(chat) ? m.migrate_to_chat_id : m?.migrate_from_chat_id && String(m.migrate_from_chat_id) === String(chat) ? gc.id : 0;
+  if (mig) { await H.supSet('chat', chat = String(mig)); return; } // увімкнули «Теми» → група стала супергрупою з новим id
   if (/group/.test(gc.type) && String(gc.id) !== String(chat)) { // нова група стає групою підтримки лише протягом години після ключа
     const arm = await H.supGet('arm'), inn = !mc || /member|administrator/.test(mc.new_chat_member?.status || '');
     if (arm && Date.now() - arm < 3600e3 && inn) { await H.supSet('chat', String(gc.id)); await H.supSet('arm', 0);
