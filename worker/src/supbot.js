@@ -15,7 +15,7 @@ export async function supSetup(env, tok) { // ключ з кабінету: пе
   return { bot: me.result.username, link: 'https://t.me/' + me.result.username, chat: !!(await H.supGet('chat')) };
 }
 
-export async function supStatus(env, rearm) { // 🩺 стан бота для кабінету: вебхук (лагодить сам), група, теми, права бота
+export async function supStatus(env, rearm, probe) { // 🩺 стан бота для кабінету: вебхук (лагодить сам), група, теми, права бота
   const H = hub(env), tok = env.SUPPORT_BOT_TOKEN || await H.supGet('tok'); if (!tok) return { bot: '' };
   const T = (m, b) => call(tok, m, b), me = await T('getMe', {}); if (!me.ok) return { bot: '', err: 'Telegram не приймає ключ — вставте новий з @BotFather' };
   const url = env.SELF_URL + '/tg5', w = await T('getWebhookInfo', {}); let hook = w.result?.url === url && (w.result.allowed_updates || []).includes('callback_query');
@@ -26,6 +26,7 @@ export async function supStatus(env, rearm) { // 🩺 стан бота для �
   if (to) { await H.supSet('chat', chat = String(to)); c = null; } // пропущений перехід у супергрупу — лагодимо
   if (chat) { c ||= await T('getChat', { chat_id: chat }); const m = await T('getChatMember', { chat_id: chat, user_id: me.result.id });
     Object.assign(r, { chat: c.result?.title || '?', type: c.result?.type, gone: !c.ok, why: c.ok ? m.result?.status : c.description, forum: !!c.result?.is_forum, admin: m.result?.status === 'administrator', topics: !!m.result?.can_manage_topics }); }
+  if (probe) { const e = []; const a = await ai(env, {}, 'Як закрити зміну?', e); r.ai = a ? '✅ ' + a.text.slice(0, 80) : '❌ ' + (e.join('; ') || 'немає ключів TEST_AI_1..3'); } // 🤖 перевірка ШІ
   return r;
 }
 
@@ -56,7 +57,7 @@ export async function supUpdate(u, env) {
 
 async function client(m, T, H, chat, env) {
   const id = m.from.id, k = 'u:' + id, s = (await H.supGet(k)) || {}, st = /^\/start(?:\s+v_([a-z0-9-]{1,40}))?/i.exec(m.text || '');
-  if (st) { if (st[1]) { s.v = st[1]; await H.supSet(k, s); } const c = await H.atomCfg();
+  if (st) { if (st[1]) s.v = st[1]; s.op = 0; s.h = []; await H.supSet(k, s); const c = await H.atomCfg();
     return T('sendMessage', { chat_id: id, text: `🛟 Підтримка ATOM · ${c.hrs || '9:00–22:00'}\n\nОпишіть питання — можна з фото чи скриншотом. Помічник відповість тут.` }); }
   if (!chat) return T('sendMessage', { chat_id: id, text: '🛟 Підтримка ще налаштовується. Напишіть, будь ласка, пізніше або через «Зв\'язок з ATOM» у касі.' });
   const who = [m.from.first_name, m.from.last_name].filter(Boolean).join(' ') || 'Клієнт', now = Date.now();
@@ -78,14 +79,14 @@ async function client(m, T, H, chat, env) {
 }
 
 const OP_TTL = 12 * 3600e3, OP_RE = /оператор|людин|живий|менеджер|адміністратор|консультант|operator|human|\/op\b/i;
-async function ai(env, s, txt) { // Groq (ключі TEST_AI_1..3 по черзі) з базою знань; null — збій
+async function ai(env, s, txt, e = []) { // Groq (ключі TEST_AI_1..3 по черзі) з базою знань; null — збій
   const keys = [1, 2, 3].map(n => env['TEST_AI_' + n]).filter(Boolean); if (!keys.length) return null;
   const c = await hub(env).atomCfg(), sys = `Ти — помічник підтримки ATOM (каса й кабінет для кафе/ресторанів, posatom.online). Відповідай коротко (до 600 символів), мовою клієнта, дружньо, без вигадок — лише з бази знань нижче. Пиши кроки 1-2-3, якщо питають «як». Якщо відповіді в базі немає, проблема з грошима, оплатою, збоєм, помилкою, доступом, або клієнт роздратований — НЕ вигадуй, а відповідь почни з «[OP]» і коротко скажи, що передаєш оператору. Години роботи операторів: ${c.hrs || '9:00–22:00'}.\n\n${KB}`;
   const msgs = [{ role: 'system', content: sys }, ...(s.h || []).flatMap(([q, a]) => [{ role: 'user', content: q }, { role: 'assistant', content: a }]), { role: 'user', content: txt.slice(0, 1500) }];
   for (let i = 0, o = Math.floor(Math.random() * keys.length); i < keys.length; i++) {
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', signal: AbortSignal.timeout(20000), headers: { authorization: 'Bearer ' + keys[(o + i) % keys.length], 'content-type': 'application/json' },
       body: JSON.stringify({ model: 'openai/gpt-oss-120b', reasoning_effort: 'low', temperature: 0.3, max_tokens: 700, messages: msgs }) }).catch(() => null);
-    if (!r?.ok) continue; const a = String((await r.json().catch(() => ({}))).choices?.[0]?.message?.content || '').trim(); if (!a) continue;
+    if (!r?.ok) { e.push(r ? r.status + ' ' + (await r.text().catch(() => '')).slice(0, 120) : 'тайм-аут'); continue; } const a = String((await r.json().catch(() => ({}))).choices?.[0]?.message?.content || '').trim(); if (!a) continue;
     return { op: /^\[OP\]/i.test(a), text: a.replace(/^\[OP\]\s*/i, '').replace(/\*\*/g, '').slice(0, 1500) };
   }
   return null;
