@@ -74,7 +74,7 @@ export default {
       const due = await hub(env).leadDue().catch(() => []);
       for (const x of due) await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `⏰ <b>Подзвонити</b>: ${esc(x.name)} · ${esc(x.phone)}${x.place ? ' · ' + esc(x.place) : ''}${x.note ? '\n📝 ' + esc(x.note) : ''}` }).catch(() => {});
       if (kh >= '10:00' && kh < '10:05') await (await import('./billing.js')).billDaily(env).catch(e => console.log('billDaily', e.message)); // 💳 нагадування й блокування підписки
-      await (await import('./aitest.js')).aiTestTick(env, kh).catch(e => console.log('aitest', e.message)); // 🧪 ШІ-тестувальник двічі на день
+      // 🧪 ШІ-тестувальник (aitest.js) вимкнено 2026-10-20: ключі TEST_AI_1..3 тепер у ШІ бота підтримки (supbot.js)
     })());
     // 🏪 заклади більше не обходимо звідси: кожен має власний будильник (store.js alarm) — масштабується на тисячі закладів
   },
