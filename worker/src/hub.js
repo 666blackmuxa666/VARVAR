@@ -256,7 +256,7 @@ export class Hub extends DurableObject {
   async refBlock(code, on) { code = String(code || '').toLowerCase(); if (!(await this.st.get('refc:' + code))) return { error: 'Невірний код' }; const r = (await this.st.get('ref:' + code)) || { n: 0, list: [] }; r.blocked = on ? 1 : 0; await this.st.put('ref:' + code, r); return { ok: true }; }
   // 💬 контакти сайту ATOM (кабінет → 🚀 Продажі): телефон, посилання Telegram і Viber; sup — бот/група підтримки, hrs — години
   async supGet(k) { return (await this.st.get('sup:' + k)) ?? null; } // 🛟 бот підтримки ATOM (supbot.js)
-  async supSet(k, v) { await this.st.put('sup:' + k, v); }
+  async supSet(k, v) { if (v == null) await this.st.delete('sup:' + k); else await this.st.put('sup:' + k, v); }
   async atomCfg(f) {
     const c = (await this.st.get('atomcfg')) || {}; if (!f) return c;
     const url = v => { v = String(v || '').trim().slice(0, 200); return !v || /^(https:\/\/|viber:\/\/|tg:\/\/)/.test(v) ? v : ''; };
