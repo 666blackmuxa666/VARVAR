@@ -52,7 +52,7 @@ export async function supUpdate(u, env) {
   }
   if (!m) return;
   if (gc.type === 'private') return client(m, T, H, chat, env);
-  if (String(gc.id) === String(chat) && !m.from?.is_bot) return helper(m, T, H);
+  if (String(gc.id) === String(chat) && (!m.from?.is_bot || String(m.sender_chat?.id) === String(chat))) return helper(m, T, H); // 🕶 анонімний адмін пише «від імені групи» (from — GroupAnonymousBot)
 }
 
 async function client(m, T, H, chat, env) {
