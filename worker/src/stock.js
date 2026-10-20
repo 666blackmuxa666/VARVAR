@@ -313,7 +313,9 @@ export async function dishesUsing(env, ids) {
 export async function invoiceSave(env, d, who) {
   const sup = String(d.sup || '').trim().slice(0, 60) || 'Без постачальника', pay = ['cash', 'card', 'debt'].includes(d.pay) ? d.pay : 'debt';
   const cfg = await getCfg(env), sp = sup !== 'Без постачальника' ? await (await import('./suppliers.js')).supEnsure(env, sup, d.req || {}).catch(() => null) : null; /* 🏭 профіль постачальника створюється / доповнюється сам */
-  const r = await lk(env, async () => {
+  const rid = /^[\w-]{8,40}$/.test(d.rid || '') ? 'invr:' + d.rid : ''; // 🔁 ключ повтору: друге натискання / повтор після обриву мережі не дублює прихід і гроші
+  const r = await L(env, ['ing', 'exp:' + dayKey()], async () => { // оплата з каси — під тим самим замком, щоб видалення не проскочило між накладною й витратою
+    if (rid) { const was = await env.DB.get(rid); const x = was && await env.DB.get('inv:' + was, 'json'); if (x) return { inv: x, alerts: [], low: [], dup: true }; }
     const l = await getIng(env), im = new Map(l.map(x => [x.id, x])), al = (await env.DB.get('al', 'json')) || {};
     const lines = [], rows = [], alerts = [], ch = new Set();
     for (const ln of (Array.isArray(d.lines) ? d.lines : []).slice(0, 120)) {
@@ -343,11 +345,11 @@ export async function invoiceSave(env, d, who) {
     const low = lowCheck(l, ch);
     await Promise.all([putIng(env, l), env.DB.put('al', JSON.stringify(al)), env.DB.put('inv:' + id, JSON.stringify(inv))]);
     const ik = 'invl:' + dayKey().slice(0, 7), il = (await env.DB.get(ik, 'json')) || []; il.push({ id, ts: inv.ts, day: inv.day, sup, no: inv.no, total, pay, by: inv.by, n: lines.length, ...(sp ? { sid: sp.id } : {}) }); await env.DB.put(ik, JSON.stringify(il));
-    if (pay === 'debt') await supDebt(env, sup, total);
+    if (pay === 'debt') await supDebt(env, sup, total); else { await payExpense(env, inv, pay, who); inv.paid = (await env.DB.get('inv:' + id, 'json')).paid; }
+    if (rid) await env.DB.put(rid, id, { expirationTtl: 2 * 86400 });
     return { inv, alerts, low };
   });
-  if (r.error) return r;
-  if (pay !== 'debt') await payExpense(env, r.inv, pay, who);
+  if (r.error || r.dup) return r;
   await sendLow(env, r.low);
   if (r.alerts.length) await priceAlert(env, r.inv, r.alerts);
   return r;
@@ -374,8 +376,16 @@ export async function invPay(env, id, src, who) {
 }
 // 🗑 / ↩️ накладна: склад і витрата повертаються як було
 export async function invoiceDel(env, id, back, who) {
-  const r = await lk(env, async () => {
+  for (let i = 0; i < 3; i++) { // замок і на день оплати: витрата скасовується разом з накладною (раніше лишалась у «Касі»)
+    const p = (await env.DB.get('inv:' + id, 'json'))?.paid?.exp?.d || dayKey();
+    const r = await L(env, ['ing', 'inv:' + id, 'exp:' + p], () => invDelIn(env, id, back, who, p));
+    if (r !== 'retry') return r;
+  }
+  return null;
+}
+async function invDelIn(env, id, back, who, p) {
     const inv = await env.DB.get('inv:' + id, 'json'); if (!inv || !!inv.del === !back) return null;
+    if (inv.paid?.exp && inv.paid.exp.d !== p) return 'retry'; // оплатили між читанням і замком
     const l = await getIng(env), im = new Map(l.map(x => [x.id, x])), rows = [], s = back ? 1 : -1;
     for (const ln of inv.lines) {
       const x = im.get(ln.id); if (!x) continue;
@@ -387,10 +397,8 @@ export async function invoiceDel(env, id, back, who) {
     if (back) delete inv.del; else inv.del = 1;
     await jr(env, rows); await putIng(env, l); await env.DB.put('inv:' + id, JSON.stringify(inv)); await idxSet(env, inv);
     if (inv.pay === 'debt' && !inv.paid) await supDebt(env, inv.sup, s * inv.total);
+    if (inv.paid?.exp) await (back ? restoreExpense(env, inv.paid.exp.i, inv.paid.exp.d) : delExpense(env, inv.paid.exp.i, inv.paid.exp.d, true));
     return inv;
-  });
-  if (r?.paid?.exp) await (back ? restoreExpense : delExpense)(env, r.paid.exp.i, r.paid.exp.d);
-  return r;
 }
 export async function invList(env, months = 2) {
   const now = new Date(Date.now() - 3 * 3600e3), ks = [...Array(months)].map((_, i) => { const d = new Date(now.getFullYear(), now.getMonth() - i, 15); return 'invl:' + d.toISOString().slice(0, 7); });
@@ -560,7 +568,7 @@ export async function stockApi(b, env, me, ai) {
       return ok({ ...r, lines: await matchLines(env, r.sup, r.lines || []) });
     }
     case 'skInvSave': { const d = { ...(b.inv || {}) }; if (cook) d.pay = 'debt'; const r = await invoiceSave(env, d, who);
-      if (r?.inv) await notify(env, `🧾 <b>Накладна</b> ${esc(r.inv.sup)}${r.inv.no ? ' №' + esc(r.inv.no) : ''} — ${money(r.inv.total)} · ${r.inv.lines.length} поз. · ${{ cash: '💵 оплачено з каси', card: '💳 оплачено з картки', debt: '⏳ не оплачено' }[r.inv.pay]} (${esc(who)})`).catch(() => {});
+      if (r?.inv && !r.dup) await notify(env, `🧾 <b>Накладна</b> ${esc(r.inv.sup)}${r.inv.no ? ' №' + esc(r.inv.no) : ''} — ${money(r.inv.total)} · ${r.inv.lines.length} поз. · ${{ cash: '💵 оплачено з каси', card: '💳 оплачено з картки', debt: '⏳ не оплачено' }[r.inv.pay]} (${esc(who)})`).catch(() => {});
       return R(r); }
     case 'skInvList': { const r = await invList(env, Math.min(12, Math.max(1, +b.months || 2))); if (!admin) { r.list = r.list.map(({ total, ...x }) => x); r.sups = {}; } return ok(r); }
     case 'skInvGet': { const x = await invGet(env, String(b.id)); if (x && !admin) x.lines = x.lines.map(({ sum, ...l }) => l), delete x.total; return R(x && { inv: x }); }

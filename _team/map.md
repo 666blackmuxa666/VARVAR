@@ -29,9 +29,9 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | `exmark.js` | 57 | 🍾 Акцизні марки: пляшки акцизного продукту (марка → скільки лишилось у пляшці). Чиста логіка без імпортів складу. |
 | `fiscal.js` | 262 | 🧾 ПРРО Checkbox: фіскальний чек на кожен закритий рахунок, повернення, службові внесення/видачі, Z. |
 | `guestbot.js` | 252 | 🤖 Бот гостей (@…GUEST_BOT_TOKEN): меню, статус замовлення, бонуси, день народження, сертифікати, |
-| `hub.js` | 328 | 🌐 HUB — центральна база платформи (один Durable Object): акаунти власників, заклади, сесії кабінету. |
+| `hub.js` | 331 | 🌐 HUB — центральна база платформи (один Durable Object): акаунти власників, заклади, сесії кабінету. |
 | `ideas.js` | 64 | 💡 Побажання розробнику: працівник пише з особистого кабінету (каса) або з бота персоналу. |
-| `index.js` | 466 |  |
+| `index.js` | 472 |  |
 | `kitbot.js` | 146 | 👨‍🍳 Бот кухні (KITCHEN_BOT_TOKEN, вебхук /tg4): кухарі отримують нові замовлення на телефон, |
 | `kitchen.js` | 133 | 👨‍🍳 Легкий кухонний екран для старих планшетів (iPad 2 / iOS 9): відкривається по http://…workers.dev/kitchen |
 | `ledger.js` | 158 | 📒 Облік закладу (фундамент Ф1/Ф3/Ф4/Ф6/Ф7): документи і журнал змін у SQL-таблицях Store (ledgerdb.js). |
@@ -52,7 +52,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | `ops-staff.js` | 135 | 👥 Доступ і персонал: паролі, PIN, коди реєстрації, працівники, права, перейменування, аватарки |
 | `ops.js` | 10 | Спільна логіка закладу для Telegram-бота і касової програми (POS). |
 | `orderui.js` | 133 | Замовлення офіціанта кнопками: стіл → категорія → страва → (розмір) → кількість → знову категорії. |
-| `owner.js` | 473 | 👑 Кабінет власника мережі й консоль платформи: /api/owner (поза закладом) + внутрішні виклики закладів /__int/* (всередині Store). |
+| `owner.js` | 475 | 👑 Кабінет власника мережі й консоль платформи: /api/owner (поза закладом) + внутрішні виклики закладів /__int/* (всередині Store). |
 | `pay.js` | 232 | 👷 Графік змін і зарплата: прихід «Почати зміну» → адмін підтверджує → ✅ у графіку; ставка за зміну + % від виручки + бонус за план; |
 | `perm.js` | 59 | 🔑 Ролі й права з галочками (_team/roles.md). |
 | `photoai.js` | 94 | 📸 ШІ-фото страв в одному стилі закладу: Gemini Image (платний ключ GEMINI_IMG_KEY — лише тут; решта ШІ — безкоштовний ключ). |
@@ -64,9 +64,10 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | `site.js` | 469 | 🌐 Сайт-візитка: дані закладу, бронювання (+ передзамовлення), подарункові сертифікати, кабінет гостя (вхід через Telegram), |
 | `siteapi.js` | 37 | 🖥 каса: сайт-візитка, броні, сертифікати (op: site*, bk*, cert*) |
 | `sitedesign.js` | 84 | 🎨 Конструктор сайту-візитки: перевірка всього, що власник зберігає з кабінету (тема, головний екран, блоки, панель, |
-| `stock.js` | 589 | 🧮 Розрахунок: склад (Кухня / Бар), техкарти й собівартість, заготовки, накладні, інвентаризація. |
+| `stock.js` | 597 | 🧮 Розрахунок: склад (Кухня / Бар), техкарти й собівартість, заготовки, накладні, інвентаризація. |
 | `stockbot.js` | 256 | 🧮 Розрахунок у Telegram-боті (паритет з касою): залишки, закупівля, накладні з фото, списання, заготовки, інвентаризація, техкарти, фудкост |
 | `store.js` | 189 | Надійне сховище закладу: Durable Object (одна копія, без затримок узгодження, як у KV). |
+| `supbot.js` | 56 | 🛟 Бот підтримки ATOM (вебхук /tg5). Клієнт пише боту → окрема тема в групі-форумі помічників; відповідь помічника в темі → клієнту. |
 | `suppliers.js` | 115 | 🏭 Постачальники: профіль (реквізити з накладної, контакти, відстрочка), борг і накладні, ціни, замовлення, акт звірки, нагадування. |
 | `tasks.js` | 97 | 📋 План на день: адмін складає завдання (разові + шаблони, що повторюються), працівник відмічає ✅ зробив / ❌ не зробив (з причиною, за потре |
 | `tax.js` | 107 | 📅 Податковий календар: власник обирає ФОП (1/2/3 група) або ТОВ → дати звітів і платежів + нагадування в Telegram. |
@@ -238,49 +239,49 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | reset | owner.js:277, pos.js:309 | 70-settings.js |
 | shift | pos.js:285 | 00-core.js, 50-cash.js |
 | shiftOpen | pos.js:296 | 50-cash.js |
-| skAdj | stock.js:526 | 80-calc.js |
-| skBuy | stock.js:534 | 80-calc.js |
-| skCardAi | stock.js:543 | 80-calc.js |
-| skCardSave | stock.js:542 | 80-calc.js |
-| skCost | stock.js:541 | 80-calc.js |
-| skCount | stock.js:570 | 80-calc.js |
-| skCountDoc | stock.js:583 | 80-calc.js |
-| skCountFinish | stock.js:572 | 80-calc.js |
-| skCountList | stock.js:573 | 80-calc.js |
-| skCountSave | stock.js:571 | 80-calc.js |
-| skCountUndo | stock.js:574 | 80-calc.js |
-| skData | stock.js:517 | 80-calc.js, 81-excise.js |
-| skDups | stock.js:537 | 80-calc.js |
-| skEx | stock.js:529 | 80-calc.js, 81-excise.js |
-| skExAdd | stock.js:530 | 81-excise.js |
-| skExLic | stock.js:533 | 81-excise.js |
-| skExOff | stock.js:532 | 81-excise.js |
-| skExOpen | stock.js:531 | 81-excise.js |
-| skGrp | stock.js:536 | 80-calc.js |
-| skIngCost | stock.js:519 | 80-calc.js |
-| skIngDel | stock.js:525 | 80-calc.js |
-| skIngSave | stock.js:518 | 80-calc.js |
-| skInvDel | stock.js:567 | 80-calc.js |
-| skInvGet | stock.js:566 | 80-calc.js |
-| skInvList | stock.js:565 | 80-calc.js |
-| skInvParse | stock.js:554 | 80-calc.js |
-| skInvPay | stock.js:568 | 80-calc.js |
-| skInvSave | stock.js:562 | 80-calc.js |
-| skJournal | stock.js:539 | 80-calc.js |
-| skJrUndo | stock.js:538 | 80-calc.js |
-| skMerge | stock.js:535 | 80-calc.js |
-| skMove | stock.js:527 | 80-calc.js |
-| skProduce | stock.js:552 | 80-calc.js |
-| skReport | stock.js:585 | 00-core.js, 80-calc.js |
-| skSupAct | stock.js:581 | 82-suppliers.js |
-| skSupCard | stock.js:576 | 82-suppliers.js |
-| skSupList | stock.js:575 | 80-calc.js, 82-suppliers.js |
-| skSupMerge | stock.js:578 | 82-suppliers.js |
-| skSupOrder | stock.js:580 | 82-suppliers.js |
-| skSupPay | stock.js:579 | 82-suppliers.js |
-| skSupPrices | stock.js:582 | 82-suppliers.js |
-| skSupSave | stock.js:577 | 82-suppliers.js |
-| skTech | stock.js:544 | 80-calc.js |
+| skAdj | stock.js:534 | 80-calc.js |
+| skBuy | stock.js:542 | 80-calc.js |
+| skCardAi | stock.js:551 | 80-calc.js |
+| skCardSave | stock.js:550 | 80-calc.js |
+| skCost | stock.js:549 | 80-calc.js |
+| skCount | stock.js:578 | 80-calc.js |
+| skCountDoc | stock.js:591 | 80-calc.js |
+| skCountFinish | stock.js:580 | 80-calc.js |
+| skCountList | stock.js:581 | 80-calc.js |
+| skCountSave | stock.js:579 | 80-calc.js |
+| skCountUndo | stock.js:582 | 80-calc.js |
+| skData | stock.js:525 | 80-calc.js, 81-excise.js |
+| skDups | stock.js:545 | 80-calc.js |
+| skEx | stock.js:537 | 80-calc.js, 81-excise.js |
+| skExAdd | stock.js:538 | 81-excise.js |
+| skExLic | stock.js:541 | 81-excise.js |
+| skExOff | stock.js:540 | 81-excise.js |
+| skExOpen | stock.js:539 | 81-excise.js |
+| skGrp | stock.js:544 | 80-calc.js |
+| skIngCost | stock.js:527 | 80-calc.js |
+| skIngDel | stock.js:533 | 80-calc.js |
+| skIngSave | stock.js:526 | 80-calc.js |
+| skInvDel | stock.js:575 | 80-calc.js |
+| skInvGet | stock.js:574 | 80-calc.js |
+| skInvList | stock.js:573 | 80-calc.js |
+| skInvParse | stock.js:562 | 80-calc.js |
+| skInvPay | stock.js:576 | 80-calc.js |
+| skInvSave | stock.js:570 | 80-calc.js |
+| skJournal | stock.js:547 | 80-calc.js |
+| skJrUndo | stock.js:546 | 80-calc.js |
+| skMerge | stock.js:543 | 80-calc.js |
+| skMove | stock.js:535 | 80-calc.js |
+| skProduce | stock.js:560 | 80-calc.js |
+| skReport | stock.js:593 | 00-core.js, 80-calc.js |
+| skSupAct | stock.js:589 | 82-suppliers.js |
+| skSupCard | stock.js:584 | 82-suppliers.js |
+| skSupList | stock.js:583 | 80-calc.js, 82-suppliers.js |
+| skSupMerge | stock.js:586 | 82-suppliers.js |
+| skSupOrder | stock.js:588 | 82-suppliers.js |
+| skSupPay | stock.js:587 | 82-suppliers.js |
+| skSupPrices | stock.js:590 | 82-suppliers.js |
+| skSupSave | stock.js:585 | 82-suppliers.js |
+| skTech | stock.js:552 | 80-calc.js |
 | split | pos.js:168 | 10-hall.js |
 | stGet | pos.js:391 | 70-settings.js |
 | stSet | pos.js:392 | 70-settings.js |
@@ -344,6 +345,7 @@ _Ключ — префікс до «:» (`bill:`, `att:`…)._
 | `ai:` | ai.js |
 | `ait:` | aitest.js |
 | `alog:` | ops-core.js |
+| `apf:` | index.js |
 | `att:` | pay.js, push.js |
 | `bak:` | owner.js |
 | `bank:` | bank.js |

@@ -149,7 +149,7 @@ export class Hub extends DurableObject {
     if (f.name != null) v.name = String(f.name).trim().slice(0, 60) || v.name;
     if (f.status && ['active', 'trial', 'off'].includes(f.status)) v.status = f.status;
     if (f.city != null) v.city = String(f.city).slice(0, 60);
-    if (f.owner) { const a = await this.st.get('acct:' + normEmail(f.owner)); if (!a) return { error: 'Немає власника' }; const old = await this.st.get('acct:' + v.owner); if (old) { /* старий власник зберігає доступ як керуючий — забрати можна окремо */ } a.venues = [...new Set([...(a.venues || []), id])]; await this.st.put('acct:' + a.email, a); v.owner = a.email; }
+    if (f.owner) { const a = await this.st.get('acct:' + normEmail(f.owner)); if (!a) return { error: 'Немає власника' }; const old = a.email !== v.owner && await this.st.get('acct:' + v.owner); if (old && !f.keep) { old.venues = (old.venues || []).filter(x => x !== id); await this.st.put('acct:' + old.email, old); } /* 🔐 передача = продаж: попередній власник втрачає доступ одразу (сесія читає акаунт на кожен запит); keep — лишити як керуючого */ a.venues = [...new Set([...(a.venues || []), id])]; await this.st.put('acct:' + a.email, a); v.owner = a.email; }
     await this.st.put('venue:' + id, v); return v;
   }
   // 🧾 Ф2: платники — ФОП/ТОВ, на якого записано дохід одного чи кількох закладів. Ліміт єдиного податку рахується по платнику.
@@ -255,10 +255,13 @@ export class Hub extends DurableObject {
   }
   async refBlock(code, on) { code = String(code || '').toLowerCase(); if (!(await this.st.get('refc:' + code))) return { error: 'Невірний код' }; const r = (await this.st.get('ref:' + code)) || { n: 0, list: [] }; r.blocked = on ? 1 : 0; await this.st.put('ref:' + code, r); return { ok: true }; }
   // 💬 контакти сайту ATOM (кабінет → 🚀 Продажі): телефон, посилання Telegram і Viber; sup — бот/група підтримки, hrs — години
+  async supGet(k) { return (await this.st.get('sup:' + k)) ?? null; } // 🛟 бот підтримки ATOM (supbot.js)
+  async supSet(k, v) { await this.st.put('sup:' + k, v); }
   async atomCfg(f) {
     const c = (await this.st.get('atomcfg')) || {}; if (!f) return c;
     const url = v => { v = String(v || '').trim().slice(0, 200); return !v || /^(https:\/\/|viber:\/\/|tg:\/\/)/.test(v) ? v : ''; };
-    const n = { phone: String(f.phone ?? c.phone ?? '').trim().slice(0, 30), tg: url(f.tg ?? c.tg), viber: url(f.viber ?? c.viber), sup: url(f.sup ?? c.sup), hrs: String(f.hrs ?? c.hrs ?? '').trim().slice(0, 30) };
+    const tme = v => { v = String(v || '').trim(); const m = /^(?:@|(?:https?:\/\/)?t\.me\/)?([a-z][\w]{3,31})$/i.exec(v); return m && !/^https:/.test(v) ? 'https://t.me/' + m[1] : v; }; // @бот, t.me/бот → https://t.me/бот
+    const n = { phone: String(f.phone ?? c.phone ?? '').trim().slice(0, 30), tg: url(f.tg ?? c.tg), viber: url(f.viber ?? c.viber), sup: url(tme(f.sup ?? c.sup)), hrs: String(f.hrs ?? c.hrs ?? '').trim().slice(0, 30) };
     await this.st.put('atomcfg', n); return n;
   }
   // 💬 ATOM: живий чат з сайту (ШІ-асистент). Розмова — окремо в chat:<leadId> (до 40 повідомлень по 500 символів), у lead лише прапорці chat/hot/last

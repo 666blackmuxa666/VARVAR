@@ -117,7 +117,7 @@ export async function handle(req, env) {
           return { ok: true, n: L[id] || 0, on };
         }));
       }
-      if (url.pathname === '/api/ai' && req.method === 'POST') return json(...await aiHelp(await req.json(), env));
+      if (url.pathname === '/api/ai' && req.method === 'POST') { if (!(await pubRl(env, 'a' + (ip ? ipKey(ip) : '-'), 30, 3600))) return json({ error: 'limit' }, 429); return json(...await aiHelp(await req.json(), env)); } // 🛡 30 порад ШІ на годину з IP: device гість міняє сам
       if (url.pathname === '/api/menu') return new Response(JSON.stringify(await (async () => { const m = { ...(await getMenu(env)), likes: (await env.DB.get('likes', 'json')) || {}, promos: await (await import('./promo.js')).promoShow(env).catch(() => []) /* ⚡ акції, що діють зараз — гість бачить у меню */ }, s = await (await import('./site.js')).getSite(env), th = s.menuTheme || (s.theme?.menu ? s.theme : null); /* 🎨 стиль візитки й для меню */ return env.VENUE && env.VENUE !== MAIN ? { ...m, brand: { name: s.name, logo: s.logo || '', ...(th ? { theme: th } : {}) } } : th ? { ...m, brand: { theme: th } } : m; })()), /* 🏪 назва закладу — разом з меню, без окремого запиту */ { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'no-cache' } });
       if (url.pathname.startsWith('/img/')) {
         const b = await env.DB.get('img:' + url.pathname.slice(5), 'arrayBuffer');
@@ -206,6 +206,10 @@ export async function handle(req, env) {
       if (url.pathname === '/api/call' && req.method === 'POST') return json(...await callWaiter(await req.json(), ip, env));
       if (url.pathname === '/api/order' && req.method === 'POST') return json(...await order(await req.json(), ip, env));
       if (url.pathname === '/api/admin' && req.method === 'POST') return json(...await admin(await req.json(), ip, env));
+      if (url.pathname === '/tg5' && req.method === 'POST') { // 🛟 бот підтримки ATOM
+        if (req.headers.get('X-Telegram-Bot-Api-Secret-Token') !== env.TG_SECRET) return new Response('no', { status: 403 });
+        await (await import('./supbot.js')).supUpdate(await req.json(), env); return new Response('ok');
+      }
       if (url.pathname === '/tg4' && req.method === 'POST') { // 👨‍🍳 бот кухні
         if (req.headers.get('X-Telegram-Bot-Api-Secret-Token') !== env.TG_SECRET) return new Response('no', { status: 403 });
         await (await import('./kitbot.js')).kitUpdate(await req.json(), env); return new Response('ok');
@@ -374,7 +378,9 @@ async function warnNotInVenue(env, table, ip, dev = '') {
 }
 
 async function admin(b, ip, env) {
-  if (!env.ADMIN_PIN || String(b.pin) !== env.ADMIN_PIN) return [{ error: 'pin' }, 401];
+  const fk = 'apf:' + (ip ? ipKey(ip) : '-'), fails = +(await env.DB.get(fk)) || 0, fa = +(await env.DB.get('apf:all')) || 0; // 🛡 підбір PIN: 5 помилок з IP за 15 хв, 30 на годину всього
+  if (fails >= 5 || fa >= 30) return [{ error: 'Забагато спроб — спробуйте пізніше' }, 429];
+  if (!env.ADMIN_PIN || String(b.pin) !== env.ADMIN_PIN) { if (env.ADMIN_PIN) await Promise.all([env.DB.put(fk, String(fails + 1), { expirationTtl: 900 }), env.DB.put('apf:all', String(fa + 1), { expirationTtl: 3600 })]); return [{ error: 'pin' }, 401]; }
   let list = await venueIps(env);
   if (b.action === 'add') {
     const k = ipKey(ip);
@@ -386,7 +392,7 @@ async function admin(b, ip, env) {
 
 // 🌐 posatom.online/<заклад>/… → файли сайту (GitHub Pages) без змін; заклад береться зі шляху (js/config.js).
 // /<заклад>/ — візитка; /<заклад>/?t=…&k=… (QR столу) — меню; /owner/ — кабінет власника; / — поки VARVAR
-const ATOM_SEO = { '/pos-kafe': '/seo-pos-kafe.html', '/kasa-restoran': '/seo-kasa-restoran.html', '/qr-menu': '/seo-qr-menu.html', '/blog': '/blog.html' };
+const ATOM_SEO = { '/pos-kafe': '/seo-pos-kafe.html', '/kasa-restoran': '/seo-kasa-restoran.html', '/qr-menu': '/seo-qr-menu.html', '/blog': '/blog.html', '/privacy': '/privacy.html' };
 async function atomSite(req, env) {
   let url = new URL(req.url);
   if (url.hostname === 'www.posatom.online') return Response.redirect('https://posatom.online' + url.pathname + url.search, 301);

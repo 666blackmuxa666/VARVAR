@@ -269,6 +269,23 @@ async function apiTests() {
     const again = (await posOk(A, 'skInvSave', { inv: { sup: nm.toUpperCase(), pay: 'cash', src: 'hand', req: { code }, lines: [{ id: x.id, q: 1, f: 1, sum: 150 }] } })).inv; must(again.sid === inv.sid, 'дубль профілю');
     await posOk(A, 'skInvDel', { id: again.id }); await posOk(A, 'skInvDel', { id: inv.id }); return 'ок';
   });
+  await step('🧾 накладна: повтор з тим самим ключем не дублює прихід і витрату; видалення оплаченої прибирає витрату з каси, повернення — відновлює; вручну витрату накладної не видалити', async () => {
+    const x = (await posOk(A, 'skData')).ing.find(i => !i.off && !i.grp); if (!x) return 'немає продуктів';
+    const stk = async () => { const i = (await posOk(A, 'skData')).ing.find(y => y.id === x.id); return (i.st?.k || 0) + (i.st?.b || 0); };
+    const S = 4000 + (parseInt(RUN, 36) % 900) + 0.37, live = async sum => (await posOk(A, 'shift')).exp.filter(e => !e.del && e.sum === sum && e.inv);
+    const st0 = await stk(), rid = 'qa-inv-' + RUN, body = { inv: { rid, sup: 'QA Дубль ' + RUN, pay: 'cash', src: 'hand', lines: [{ id: x.id, q: 3, f: 1, sum: S }] } };
+    const [a, b] = await Promise.all([pos(A, 'skInvSave', body), pos(A, 'skInvSave', body)]); must(a.j.inv?.id && a.j.inv.id === b.j.inv?.id, 'два одночасні збереження → дві накладні');
+    must((await posOk(A, 'skInvSave', body)).inv.id === a.j.inv.id, 'повтор після відповіді → нова накладна');
+    must((await live(S)).length === 1, 'витрат ' + (await live(S)).length); must(Math.abs(await stk() - st0 - 3) < 1e-6, 'прихід задвоєно');
+    const ex = (await posOk(A, 'shift')).exp, ei = ex.findIndex(e => !e.del && e.sum === S && e.inv);
+    must((await pos(A, 'expenseDel', { i: ei })).status === 400, 'витрату накладної видалено вручну');
+    await posOk(A, 'skInvDel', { id: a.j.inv.id }); must((await live(S)).length === 0, 'оплачену накладну видалено, а витрата лишилась'); must(Math.abs(await stk() - st0) < 1e-6, 'склад не повернувся');
+    await posOk(A, 'skInvDel', { id: a.j.inv.id, back: 1 }); must((await live(S)).length === 1, 'повернули накладну — витрати немає');
+    await posOk(A, 'skInvDel', { id: a.j.inv.id }); must((await live(S)).length === 0, 'друге видалення');
+    const d = (await posOk(A, 'skInvSave', { inv: { sup: 'QA Борг ' + RUN, pay: 'debt', src: 'hand', lines: [{ id: x.id, q: 1, f: 1, sum: S + 1 }] } })).inv;
+    await posOk(A, 'skInvPay', { id: d.id, src: 'card' }); must((await live(S + 1)).length === 1, 'оплата боргу не стала витратою');
+    await posOk(A, 'skInvDel', { id: d.id }); must((await live(S + 1)).length === 0, 'видалили оплачену борг-накладну — витрата лишилась'); return 'ок';
+  });
   await step('📜 склад: ручне додавання → ↩️ скасувати → залишок як був', async () => {
     const d = await posOk(A, 'skData'), x = (d.ing || []).find(i => !i.off); if (!x) return 'немає продуктів';
     const st0 = (y => (y.st?.k || 0) + (y.st?.b || 0))(x); await posOk(A, 'skAdj', { id: x.id, wh: 'k', q: 2, note: 'QA' });
@@ -1334,6 +1351,21 @@ async function loyTests(A, W, dish) {
     }
     const st = (await ownT(PT, 'ref', { venue: VID })).j.ref; must(st.n === 12, 'n=' + st.n);
     must((await ownT(PT, 'refBlock', { code, on: 1 })).j.ok && (await ownT(PT, 'ref', { venue: VID })).j.ref.blocked, 'блок'); await ownT(PT, 'refBlock', { code, on: 0 }); });
+  await step('🔐 передача закладу: старий власник одразу втрачає доступ (активна сесія теж); «залишити як керуючого» — лише явно; /api/admin: підбір PIN → 429; /api/ai: ліміт з IP', async () => {
+    const T = VID + '-t'; must((await ownT(PT, 'venueNew', { id: T, name: 'QA передача', owner: OE })).j.ok, 'venueNew'); FV.push(T);
+    const ot = (await own({ op: 'login', email: OE, pass: 'owner-pass-123' })).j.token, ft = (await own({ op: 'login', email: FE, pass: 'friend-pass-123' })).j.token;
+    must((await ownT(ot, 'codes', { venue: T })).status === 200, 'власник до передачі');
+    must((await ownT(PT, 'venueSet', { id: T, f: { owner: FE } })).j.ok, 'передача');
+    must((await ownT(ot, 'codes', { venue: T })).status === 403, 'старий власник після передачі має доступ');
+    must(!(await ownT(ot, 'me')).j.venues.some(v => v.id === T), 'заклад лишився в кабінеті старого власника');
+    must((await ownT(ft, 'codes', { venue: T })).status === 200, 'новий власник без доступу');
+    must((await ownT(PT, 'venueSet', { id: T, f: { owner: OE, keep: true } })).j.ok, 'передача назад з keep');
+    must((await ownT(ft, 'codes', { venue: T })).status === 200 && (await ownT(ot, 'codes', { venue: T })).status === 200, 'keep: керуючий втратив доступ');
+    let st = []; for (let i = 0; i < 7; i++) st.push((await http('/api/admin', { pin: 'qa-wrong-' + i, action: 'list' })).status);
+    must(st.includes(429) && st.every(x => x === 401 || x === 429) && st.at(-1) === 429, 'підбір PIN не зупинено: ' + st);
+    let ai = []; for (let i = 0; i < 32; i++) ai.push((await http('/api/ai', { device: 'qa-' + RUN + i })).status);
+    must(ai.at(-1) === 429, 'ліміт ШІ з IP не спрацював: ' + ai.slice(-3)); return 'ок';
+  });
   await step('🎁 авто: перша оплата приведеного (після безкоштовного місяця) → рефері +1 міс одразу, повторна оплата — без подарунка', async () => {
     const { createHash } = await import('node:crypto'), PRIV = 'sandbox_test_private_key';
     const cb = async obj => { const data = Buffer.from(JSON.stringify(obj)).toString('base64'), signature = createHash('sha1').update(PRIV + data + PRIV).digest('base64');
@@ -1370,7 +1402,7 @@ async function loyTests(A, W, dish) {
     const r = await own({ op: 'signup', email: SE, place: 'Інша', pass: 'selfpass-123' }); must(r.status === 400 && /уже зареєстровано/.test(r.j.error || ''), JSON.stringify(r.j)); });
   await step('⚡ самореєстрація: прибирання', async () => { await ownT(PT, 'venueDel', { id: sv.venue, pass: PP }); await ownT(PT, 'acctDel', { email: SE }); }); }
   await step('прибирання: тестові заклади й власник-друг', async () => { for (const id of FV) await ownT(PT, 'venueDel', { id, pass: PP }); await ownT(PT, 'acctDel', { email: FE }); if (FE2) await ownT(PT, 'acctDel', { email: FE2 }); });
-  await step('🛟 підтримка в Telegram: платформа задає посилання й години → /api/sup; не-https відкидається; власнику не можна', async () => {
+  await step('🛟 підтримка в Telegram: платформа задає посилання й години → /api/sup; @бот → посилання; фальшивий ключ і не-https відкидаються; вебхук без секрету й власнику не можна', async () => {
     if (!PT) return 'немає токена платформи — пропуск';
     const old = (await ownT(PT, 'atomCfg')).j.cfg || {};
     try {
@@ -1378,6 +1410,9 @@ async function loyTests(A, W, dish) {
       const r = await http('/api/sup'); must(r.j.url === 'https://t.me/qa_support_bot' && r.j.hrs === '9:00–22:00', JSON.stringify(r.j));
       await ownT(PT, 'atomCfg', { set: 1, f: { sup: 'javascript:alert(1)' } }); must((await http('/api/sup')).j.url === '', 'не-https посилання прийнято');
       if (OT) must((await ownT(OT, 'atomCfg', { set: 1, f: { sup: 'https://t.me/evil' } })).status === 403, 'власник змінив контакти ATOM');
+      await ownT(PT, 'atomCfg', { set: 1, f: { sup: '@qa_help_bot' } }); must((await http('/api/sup')).j.url === 'https://t.me/qa_help_bot', '@бот не перетворено на посилання');
+      const bad = await ownT(PT, 'atomCfg', { set: 1, f: { sup: '123456789:' + 'A'.repeat(35) } }); must(bad.status === 400 && (await http('/api/sup')).j.url === 'https://t.me/qa_help_bot', 'фальшивий ключ бота прийнято: ' + bad.status);
+      must((await http('/tg5', {})).status === 403, 'вебхук бота підтримки без секрету');
     } finally { await ownT(PT, 'atomCfg', { set: 1, f: { sup: old.sup || '', hrs: old.hrs || '' } }); }
   });
   await step('🇬 вхід через Google: підпис, aud, новий email → назва закладу → заклад; чужий Google-акаунт на той самий email → відмова', async () => {

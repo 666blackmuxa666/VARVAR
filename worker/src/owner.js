@@ -414,7 +414,9 @@ ${JSON.stringify(data.filter(Boolean))}
       if (env.DB.kv) { const l = await env.DB.kv.list({ prefix: 'bak:' + String(b.id) + ':' }); for (const x of l.keys) await env.DB.kv.delete(x.name); } // 💾 бекапи теж — щоб новий заклад з тією ж адресою їх не побачив
       return ok(); }
     case 'leads': { const days = Math.min(90, +b.days || 30); return ok({ list: await H.leadList(), hits: await H.hitStats(days), demo: !!(await H.venueGet('atom-demo')) }); } // 🚀 CRM «Продажі»
-    case 'atomCfg': return ok({ cfg: await H.atomCfg(b.set ? b.f || {} : undefined) }); // 💬 контакти сайту ATOM
+    case 'atomCfg': { const f = b.set ? { ...(b.f || {}) } : undefined; let bot; // 💬 контакти сайту ATOM; ключ бота в полі «Підтримка» → бот підтримки (supbot.js)
+      if (f && /^\d{6,12}:/.test(String(f.sup || '').trim())) { const S = await import('./supbot.js'), r = await S.supSetup(env, f.sup); if (r.error) return bad(r.error); f.sup = r.link; bot = r; }
+      return ok({ cfg: await H.atomCfg(f), bot }); }
     case 'atomDesign': { // 🎨 конструктор сайту ATOM: дизайн у KV (воркер вшиває його в сторінку) + 10 попередніх версій
       const kv = env.DB.kv || env.DB, cur = await kv.get('atom:design', 'json'), vers = (await kv.get('atom:design:v', 'json')) || [];
       if (!b.set) return ok({ d: cur || {}, vers });

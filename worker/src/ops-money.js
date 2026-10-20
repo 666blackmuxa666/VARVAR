@@ -13,7 +13,7 @@ import { queuePrint } from './print.js';
 export const getExp = async (env, day = dayKey()) => (await env.DB.get('exp:' + day, 'json')) || [];
 async function _addExpense(env, e, day = dayKey()) { const k = 'exp:' + day; const l = await getExp(env, day); l.push({ ts: Date.now(), at: hhmm(), ...e }); await env.DB.put(k, JSON.stringify(l)); return l.length - 1; }
 // 🗑/↩️ запис дня (витрата / рух коштів / Z-звіт): прапорець del, будь-який день
-async function _flagRec(env, pfx, day, i, del) { const k = pfx + day, l = (await env.DB.get(k, 'json')) || []; const x = l[+i]; if (!x || !!x.del === del) return false; if (del && x.inv) return 'inv'; /* 🧾 оплата накладної — скасовується лише через накладну, інакше борг зникне */ if (del) x.del = 1; else delete x.del; await env.DB.put(k, JSON.stringify(l)); return true; }
+async function _flagRec(env, pfx, day, i, del, force) { const k = pfx + day, l = (await env.DB.get(k, 'json')) || []; const x = l[+i]; if (!x || !!x.del === del) return false; if (del && x.inv && !force) return 'inv'; /* 🧾 оплата накладної — скасовується лише через накладну, інакше борг зникне */ if (del) x.del = 1; else delete x.del; await env.DB.put(k, JSON.stringify(l)); return true; }
 // ---------- рух коштів (не витрати): внесення / вилучення готівки, обмін картка ↔ готівка ----------
 // type: in (+готівка) · out (−готівка) · k2c (з картки в готівку) · c2k (з готівки на картку) · kin (+картка) · kout (−картка)
 export const MOVE = { in: '➕ Внесення готівки', out: '➖ Вилучення готівки', k2c: '🔁 Картка → готівка', c2k: '🔁 Готівка → картка', kin: '➕ Внесення на картку', kout: '➖ Вилучення з картки' };
@@ -297,7 +297,7 @@ export function controlData(r) {
   return Object.values(m).map(w => ({ ...w, voidPct: w.sum ? Math.round(w.voidSum / (w.sum + w.voidSum) * 1000) / 10 : 0 })).sort((a, b) => b.voidSum + b.discSum - a.voidSum - a.discSum);
 }
 export async function addExpense(env, e, day) { day = cDay(day); return L(env, 'exp:' + day, () => _addExpense(env, e, day)); } // 📅 за будь-який минулий день
-export async function delExpense(env, i, day) { day = cDay(day); return L(env, 'exp:' + day, () => _flagRec(env, 'exp:', day, i, true)); }
+export async function delExpense(env, i, day, inv) { day = cDay(day); return L(env, 'exp:' + day, () => _flagRec(env, 'exp:', day, i, true, inv)); } // inv — видалення самою накладною (stock.js)
 export async function restoreExpense(env, i, day) { day = cDay(day); return L(env, 'exp:' + day, () => _flagRec(env, 'exp:', day, i, false)); }
 export async function delZ(env, i, day) { day = cDay(day); return L(env, 'z:' + day, () => _flagRec(env, 'z:', day, i, true)); }
 export async function restoreZ(env, i, day) { day = cDay(day); return L(env, 'z:' + day, () => _flagRec(env, 'z:', day, i, false)); }

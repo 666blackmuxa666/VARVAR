@@ -221,7 +221,7 @@
     const d = S.sk.draft, bad = d.lines.findIndex(l => !(+l.q > 0) || (!l.id && !l.add));
     if (!d.lines.length) return toast('⚠️ Немає позицій');
     if (bad >= 0) return toast(`⚠️ Рядок ${bad + 1}: оберіть продукт і кількість (або приберіть рядок ✕)`);
-    const inv = { sup: $('#dSup')?.value.trim() || d.sup, no: $('#dNo')?.value.trim() || d.no, date: $('#dDate')?.value.trim() || d.date, pay, src: d.src, ...(d.req ? { req: d.req } : {}), lines: d.lines.map(l => ({ id: l.id || null, q: +l.q, f: +l.f || 1, sum: +l.sum || 0, src: l.n || '', ...(l.chk ? { chk: 1 } : {}), ...(l.add ? { add: l.add } : {}) })) };
+    const inv = { rid: d.rid ||= Date.now().toString(36) + Math.random().toString(36).slice(2, 10), sup: $('#dSup')?.value.trim() || d.sup, no: $('#dNo')?.value.trim() || d.no, date: $('#dDate')?.value.trim() || d.date, pay, src: d.src, ...(d.req ? { req: d.req } : {}), lines: d.lines.map(l => ({ id: l.id || null, q: +l.q, f: +l.f || 1, sum: +l.sum || 0, src: l.n || '', ...(l.chk ? { chk: 1 } : {}), ...(l.add ? { add: l.add } : {}) })) };
     const r = await act('skInvSave', { inv }, '🧾 Накладну записано'); if (!r) return;
     if (inv.lines.some(l => S.data.sk?.ing.find(y => y.id === l.id)?.ex)) await exAfterInv(inv.lines, inv.no); // 🍾 одразу марки пляшок
     S.sk.draft = null; S.data.sk = null;

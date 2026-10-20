@@ -23,6 +23,7 @@ ALLOWED_ORIGIN = "https://666blackmuxa666.github.io,https://posatom.online,http:
 TABLES = "15"
 SELF_URL = "https://varvar-menu.varvar.workers.dev"
 SITE_URL = "https://posatom.online/varvar/"
+GOOGLE_CLIENT_ID = "714089340362-fplni2hu7ev0o5qop353ka7kmdb1foru.apps.googleusercontent.com" # 🇬 вхід через Google (публічний; проєкт Google Cloud «ATOM»)
 
 # створіть: npx wrangler kv namespace create DB  → вставте id нижче
 [[kv_namespaces]]
