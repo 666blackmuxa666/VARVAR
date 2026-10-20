@@ -1,6 +1,6 @@
 // 🌐 HUB — центральна база платформи (один Durable Object): акаунти власників, заклади, сесії кабінету.
 // Дані закладів тут НЕ зберігаються — лише «хто чим володіє». Цифри для аналітики беруться з закладів (owner.js).
-//   acct:<email>  { email, name, role: platform|owner, hash, salt, venues: [id], at }
+//   acct:<email>  { email, name, role: platform|owner|acc (🧮 бухгалтер: лише облік і звіти), hash, salt, venues: [id], at }
 //   venue:<id>    { id, name, owner, status: active|trial|off, plan, city, at }
 //   sess:<token>  { email, exp }
 //   payer:<id>    { id, kind: fop|tov, n, owner, g, lim, base, regs: [{ from, g }], at } — платник податків (Ф2); заклад → venue.payer
@@ -30,7 +30,7 @@ export class Hub extends DurableObject {
     email = normEmail(email); if (!okEmail(email)) return { error: 'Невірний email' };
     if (String(pass || '').length < 8) return { error: 'Пароль — щонайменше 8 символів' };
     if (await this.st.get('acct:' + email)) return { error: 'Такий email уже є' };
-    const salt = rnd(16), a = { email, name: String(name || '').trim().slice(0, 60) || email, role: role === 'platform' ? 'platform' : 'owner', salt, hash: await passHash(String(pass), salt), venues: [], at: Date.now(), ...(verify ? { verified: false } : {}) };
+    const salt = rnd(16), a = { email, name: String(name || '').trim().slice(0, 60) || email, role: role === 'platform' ? 'platform' : role === 'acc' ? 'acc' : 'owner', salt, hash: await passHash(String(pass), salt), venues: [], at: Date.now(), ...(verify ? { verified: false } : {}) };
     await this.st.put('acct:' + email, a); return pub(a);
   }
   async acctPass(email, pass) {

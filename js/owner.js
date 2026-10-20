@@ -89,6 +89,7 @@
   async function start() {
     if (!S.token) return renderLogin();
     try { const r = await api('me'); S.me = r.me; S.venues = r.venues; S.seen = r.seen || {}; S.inboxN = r.inbox || 0; } catch { return; }
+    if (S.me.role === 'acc') { S.tab = 'acc'; return render(); } // 🧮 бухгалтер: лише «Мої клієнти» (owner-acc.js)
     if (location.hash === '#pay' && S.venues.length) { history.replaceState(null, '', location.pathname + location.search); let id = null; try { id = JSON.parse(localStorage.getItem('own_cfgV')); } catch {} /* 💳 повернулись з LiqPay */
       const v = S.venues.find(x => x.id === id) || S.venues.find(x => x.id !== 'varvar') || S.venues[0]; toast('💳 Дякуємо! Оплата зарахується за хвилину — оновіть сторінку'); return VC.open(v.id, 'pay'); }
     if (S.tab === 'cfg' && !S.cfgV && S.venues.length === 1) return VC.open(S.venues[0].id);
@@ -190,7 +191,7 @@
   function venues() {
     return `<h2>🏪 Мої заклади</h2><div class="grid">${S.venues.map(v => `<div class="card venue"><div class="h"><b>${esc(v.name)}</b><span class="st ${v.status}">${ST[v.status] || ''}</span></div>
       <div class="muted">${esc(v.city || '')}${v.city ? ' · ' : ''}адреса: <b>${esc(v.id)}</b>${S.seen[v.id] ? ` · заходили ${new Date(S.seen[v.id]).toLocaleDateString('uk-UA')}` : ''}</div>
-      <div class="btnrow"><button class="btn primary sm" data-a="vcfgOpen" data-v="${v.id}">⚙️ Налаштувати</button><button class="btn sm" data-a="enter" data-v="${v.id}">Увійти в касу →</button><a class="btn sm ghost" href="${esc(siteOf(v.id, 'about.html'))}" target="_blank">🌐 Сайт</a></div>
+      <div class="btnrow"><button class="btn primary sm" data-a="vcfgOpen" data-v="${v.id}">⚙️ Налаштувати</button><button class="btn sm" data-a="enter" data-v="${v.id}">Увійти в касу →</button><a class="btn sm ghost" href="${esc(siteOf(v.id, 'about.html'))}" target="_blank">🌐 Сайт</a>${v.owner === S.me.email || S.me.role === 'platform' ? `<button class="btn sm" data-a="accMan" data-v="${v.id}">🧮 Бухгалтер</button>` : ''}</div>
       <div class="kv"><span>🔗 Каса для персоналу<br><small class="muted">${esc(absOf(v.id, 'pos.html'))}</small></span><button class="btn sm" data-a="copy" data-u="${esc(absOf(v.id, 'pos.html'))}">Копіювати</button></div><div class="kv"><span>🌐 Сайт для гостей<br><small class="muted">${esc(absOf(v.id, 'about.html'))}</small></span><button class="btn sm" data-a="copy" data-u="${esc(absOf(v.id, 'about.html'))}">Копіювати</button></div></div>`).join('') || '<div class="muted">Закладів ще немає</div>'}</div>
       <h2>🔐 Акаунт</h2><div class="card"><div class="kv"><span>${esc(S.me.name)}<br><small class="muted">${esc(S.me.email)}</small></span><button class="btn sm" data-a="pass">Змінити пароль</button></div></div>`;
   }
@@ -223,11 +224,11 @@
   }
   function render() {
     if (!S.me) return;
-    const plat = S.me.role === 'platform', TABS = [['home', '🏠 Мережа'], ['an', '📊 Аналітика'], ['ven', '🏪 Заклади'], ['cfg', '⚙️ Налаштування'], ['learn', '🎓 Навчання'], ['inbox', `📨 Вхідні${S.inboxN ? ` <i class="bdg">${S.inboxN}</i>` : ''}`], ...(plat ? [['crm', '🚀 Продажі'], ['plat', '🌐 Платформа']] : [])];
+    const plat = S.me.role === 'platform', acc = S.me.role === 'acc', TABS = acc ? [['acc', '🧮 Мої клієнти']] : [['home', '🏠 Мережа'], ['an', '📊 Аналітика'], ['ven', '🏪 Заклади'], ['cfg', '⚙️ Налаштування'], ['learn', '🎓 Навчання'], ['inbox', `📨 Вхідні${S.inboxN ? ` <i class="bdg">${S.inboxN}</i>` : ''}`], ...(plat ? [['crm', '🚀 Продажі'], ['plat', '🌐 Платформа']] : [])];
     if (!TABS.some(x => x[0] === S.tab)) S.tab = 'home';
-    app.innerHTML = `<header class="top"><div class="in"><img src="img/app/pos.svg" alt="ATOM"><b>Кабінет власника</b><button class="who-av" data-a="myAv" title="Змінити фото">${VVAV.html(S.me.av, S.me.name)}</button><div class="who"><b>${esc(S.me.name)}</b><span class="muted">${plat ? '👑 платформа' : 'власник'}</span></div><div class="icogrp"><button class="icobtn" data-a="myLook" title="Вигляд кабінету">🎨</button><button class="icobtn" data-a="help" title="Допомога">🆘</button><button class="icobtn" data-a="out" title="Вийти">🚪</button></div></div>
+    app.innerHTML = `<header class="top"><div class="in"><img src="img/app/pos.svg" alt="ATOM"><b>${acc ? 'Кабінет бухгалтера' : 'Кабінет власника'}</b><button class="who-av" data-a="myAv" title="Змінити фото">${VVAV.html(S.me.av, S.me.name)}</button><div class="who"><b>${esc(S.me.name)}</b><span class="muted">${plat ? '👑 платформа' : acc ? '🧮 бухгалтер' : 'власник'}</span></div><div class="icogrp">${acc ? '' : '<button class="icobtn" data-a="myLook" title="Вигляд кабінету">🎨</button>'}<button class="icobtn" data-a="help" title="Допомога">🆘</button><button class="icobtn" data-a="out" title="Вийти">🚪</button></div></div>
       <nav class="tabs">${TABS.map(([k, l]) => `<button class="${S.tab === k ? 'on' : ''}" data-a="tab" data-t="${k}">${l}</button>`).join('')}<button data-a="reload">🔄</button></nav></header>
-      <main>${S.tab === 'cfg' ? (S.cfgV ? VC.view() : pickVenue()) : S.tab === 'home' ? home() : S.tab === 'an' ? analytics() : S.tab === 'ven' ? venues() : S.tab === 'learn' ? OWNCOURSE.view({ canOpen: S.venues.length === 1 }) : S.tab === 'inbox' ? inbox() : S.tab === 'crm' && plat ? OWNCRM.view({ api, toast, render, modal, kpi, VC, enter: goPos }) : platform()}</main>`;
+      <main>${acc ? OWNACC.view({ api, toast, render, modal }) : S.tab === 'cfg' ? (S.cfgV ? VC.view() : pickVenue()) : S.tab === 'home' ? home() : S.tab === 'an' ? analytics() : S.tab === 'ven' ? venues() : S.tab === 'learn' ? OWNCOURSE.view({ canOpen: S.venues.length === 1 }) : S.tab === 'inbox' ? inbox() : S.tab === 'crm' && plat ? OWNCRM.view({ api, toast, render, modal, kpi, VC, enter: goPos }) : platform()}</main>`;
   }
 
   // ---------- модалки ----------
@@ -268,7 +269,8 @@
     if (a === 'digTg') { const v = (S.dig || []).find(x => x.id === d.v), c = prompt('Ваш особистий Telegram chat id (число; дізнатись — бот @userinfobot; спершу натисніть Start у боті закладу). Порожнє — вимкнути:', ''); if (c == null) return; try { await api('dig', { venue: d.v, chat: c.trim() }); if (v) v.tg = !!c.trim(); toast(c.trim() ? '✈️ Підсумок надходитиме вам особисто' : 'Telegram вимкнено'); } catch (x) { toast('⚠️ ' + x.message); } return render(); }
     if (a === 'tab' && d.t === 'inbox') S.ib = null;
     if (a === 'tab') { S.cfgV = null; S.tab = d.t; store.set('tab', d.t); if (d.t === 'home' || d.t === 'an') return load(); return render(); }
-    if (a === 'reload') { OWNAN.reset(); S.plat = null; window.OWNCRM?.reset(); return start(); }
+    if (a === 'accMan') return OWNACC.manage({ api, toast, render, modal }, d.v, S.venues.find(x => x.id === d.v)?.name || d.v);
+    if (a === 'reload') { OWNACC.reset(); OWNAN.reset(); S.plat = null; window.OWNCRM?.reset(); return start(); }
     if (a === 'per') { S.per = d.p; if (d.p === 'own') return render(); return load(); }
     if (a === 'perGo') { S.from = $('#pf').value; S.to = $('#pt').value; if (S.from > S.to) [S.from, S.to] = [S.to, S.from]; return load(); }
     if (a === 'enter') { el.disabled = true; try { await goPos(d.v, d.set); } catch (x) { toast('⚠️ ' + x.message); el.disabled = false; } return; }

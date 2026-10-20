@@ -137,6 +137,7 @@ async function apiTests() {
     const ids = x.sections.map(s => s.id).join(); must(['sales', 'checks', 'pay', 'inv', 'off', 'exp', 'zp'].every(k => ids.includes(k)), 'розділи: ' + ids);
     must(x.sections.every(s => s.rows.every(r => r.length === s.head.length)), 'ширина рядків ≠ шапка');
     const rep = await posOk(A, 'report', { from: day, to }), tot = x.sections.find(s => s.id === 'sales').rows.at(-1);
+    { const pt = x.sections.find(s => s.id === 'pay').rows, v = l => +pt.find(r => r[0] === l)?.[1] || 0; must(Math.abs(v('Разом') - (tot[3] + tot[4])) < 0.01, `«Оплати за типами» разом ${v('Разом')} ≠ готівка+карта ${tot[3] + tot[4]} (онлайн двічі?)`); }
     must(tot[1] === rep.checks.length, `чеків ${tot[1]} ≠ ${rep.checks.length}`);
     const bad = await pos(W, 'acctExport', { from: day, to }); must(bad.status === 403 || bad.status === 401 || bad.json?.error, 'офіціант отримав дані');
     const e = await pos(A, 'acctExport', { from: 'x', to: 'y' }); must(e.status === 400, 'невірний період: ' + e.status);
@@ -1369,6 +1370,25 @@ async function loyTests(A, W, dish) {
     const r = await own({ op: 'signup', email: SE, place: 'Інша', pass: 'selfpass-123' }); must(r.status === 400 && /уже зареєстровано/.test(r.j.error || ''), JSON.stringify(r.j)); });
   await step('⚡ самореєстрація: прибирання', async () => { await ownT(PT, 'venueDel', { id: sv.venue, pass: PP }); await ownT(PT, 'acctDel', { email: SE }); }); }
   await step('прибирання: тестові заклади й власник-друг', async () => { for (const id of FV) await ownT(PT, 'venueDel', { id, pass: PP }); await ownT(PT, 'acctDel', { email: FE }); if (FE2) await ownT(PT, 'acctDel', { email: FE2 }); });
+  await step('🧮 кабінет бухгалтера: запрошення власником, «Мої клієнти», експорт; без каси й чужих закладів', async () => {
+    const AE = `qa-acc-${VID}@test.local`, d = new Date().toISOString().slice(0, 10), from = d.slice(0, 8) + '01';
+    if (!OT) OT = (await own({ op: 'login', email: OE, pass: 'owner-pass-123' })).j.token;
+    must((await ownT(OT, 'accInv', { venue: VID, email: 'не-пошта' })).status === 400, 'кривий email прийнято');
+    must((await ownT(OT, 'accInv', { venue: VID, email: OE })).status === 400, 'акаунт власника став бухгалтером');
+    must((await ownT(OT, 'accInv', { venue: 'varvar', email: AE })).status === 403, 'запросив у чужий заклад');
+    const inv = await ownT(OT, 'accInv', { venue: VID, email: AE, name: 'QA бухгалтер' }); must(inv.j.ok && inv.j.acc.unverified, JSON.stringify(inv.j).slice(0, 150));
+    if (!inv.j.test) return 'пошта налаштована — вхід бухгалтера не перевірено';
+    const v = await own({ op: 'verify', t: inv.j.test, pass: 'acc-pass-1234' }), AT = v.j.token; must(AT && v.j.acct.role === 'acc', JSON.stringify(v.j).slice(0, 150));
+    must((await ownT(OT, 'accList', { venue: VID })).j.list.some(a => a.email === AE), 'немає у списку власника');
+    const me = await ownT(AT, 'me'); must(me.j.me.role === 'acc' && me.j.venues.some(x => x.id === VID) && me.j.inbox === 0, 'me');
+    const cl = await ownT(AT, 'accCli', { from, to: d }), c = cl.j.list?.find(x => x.id === VID); must(c && c.sales && c.bank && !c.error, JSON.stringify(cl.j).slice(0, 200));
+    const ex = await ownT(AT, 'accExp', { venue: VID, from, to: d }); must(ex.j.sections?.some(x => x.id === 'sales'), 'експорт');
+    must((await ownT(AT, 'accExp', { venue: VID, from: d, to: from > d ? d : '2020-01-01' })).status === 400, 'кривий період');
+    for (const [op, b] of [['enter', { venue: VID }], ['sum', {}], ['codes', { venue: VID }], ['accList', { venue: VID }], ['accInv', { venue: VID, email: 'x' + AE }], ['payers', {}], ['inbox', {}]]) must((await ownT(AT, op, b)).status === 403, op + ' дозволено бухгалтеру');
+    must((await ownT(AT, 'accExp', { venue: 'varvar', from, to: d })).status === 403, 'бачить чужий заклад');
+    must((await ownT(OT, 'accDel', { venue: VID, email: AE })).j.ok, 'accDel');
+    must((await ownT(AT, 'accExp', { venue: VID, from, to: d })).status === 403, 'доступ лишився після «Прибрати»');
+    must((await ownT(PT, 'acctDel', { email: AE })).j.ok, 'прибирання'); });
   await step('платформа: доступ керуючому, зміна власника, видалення', async () => {
     const ME = `qa-mgr-${VID}@test.local`; must((await ownT(PT, 'acctNew', { email: ME, pass: 'manager-pass-1', name: 'QA керуючий' })).j.ok, 'acctNew');
     must((await ownT(PT, 'grant', { venue: VID, email: ME, on: true })).j.ok, 'grant');

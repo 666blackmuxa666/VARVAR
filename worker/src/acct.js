@@ -15,11 +15,11 @@ export async function acctExport(env, from, to) {
     a.n++; a.sum += c.sum; a.cash += c.cash; a.card += c.card; a.onl += c.onl; a.tip += c.tip; a.disc += c.disc;
     for (const k of ['sum', 'cash', 'card', 'onl', 'tip', 'disc']) pay[k] += c[k];
   }
-  sections.push({ id: 'sales', title: 'Продажі по днях', head: ['Дата', 'Чеків', 'Сума', 'Готівка', 'Карта', 'Онлайн', 'Чайові', 'Знижки'],
+  sections.push({ id: 'sales', title: 'Продажі по днях', head: ['Дата', 'Чеків', 'Сума', 'Готівка', 'Карта (з онлайном)', 'з них онлайн', 'Чайові', 'Знижки'],
     rows: [...Object.keys(by).sort().map(d => { const a = by[d]; return [d, a.n, r2(a.sum), r2(a.cash), r2(a.card), r2(a.onl), r2(a.tip), r2(a.disc)]; }), ['Разом', r.checks.length, r2(pay.sum), r2(pay.cash), r2(pay.card), r2(pay.onl), r2(pay.tip), r2(pay.disc)]] });
-  sections.push({ id: 'checks', title: 'Чеки', head: ['Дата', 'Час', '№', 'Тип', 'Сума', 'Готівка', 'Карта', 'Онлайн', 'Чайові', 'Знижка', 'Офіціант'],
+  sections.push({ id: 'checks', title: 'Чеки', head: ['Дата', 'Час', '№', 'Тип', 'Сума', 'Готівка', 'Карта (з онлайном)', 'з них онлайн', 'Чайові', 'Знижка', 'Офіціант'],
     rows: r.checks.map(c => [c.d, c.at || '', c.id, c.t || '', r2(c.sum), r2(c.cash), r2(c.card), r2(c.onl), r2(c.tip), r2(c.disc), c.w || '']) });
-  sections.push({ id: 'pay', title: 'Оплати за типами', head: ['Тип оплати', 'Сума'], rows: [['💵 Готівка', r2(pay.cash)], ['💳 Карта', r2(pay.card)], ['🌐 Онлайн', r2(pay.onl)], ['Разом', r2(pay.cash + pay.card + pay.onl)], ['з них чайові', r2(pay.tip)]] });
+  sections.push({ id: 'pay', title: 'Оплати за типами', head: ['Тип оплати', 'Сума'], rows: [['💵 Готівка', r2(pay.cash)], ['💳 Карта — термінал і переказ', r2(pay.card - pay.onl)], ['🌐 Онлайн', r2(pay.onl)], ['Разом', r2(pay.cash + pay.card)], ['з них чайові', r2(pay.tip)]] }); // онлайн уже входить у card
   const invs = (await env.DB.getMany(mm.map(m => 'invl:' + m), 'json')).flatMap(l => l || []).filter(x => !x.del && x.day >= from && x.day <= to).sort((a, b) => (a.day < b.day ? -1 : 1));
   sections.push({ id: 'inv', title: 'Приходи складу (накладні)', head: ['Дата', 'Постачальник', '№ накладної', 'Позицій', 'Сума', 'Оплата', 'Сплачено'],
     rows: [...invs.map(x => [x.day, x.sup || '', x.no || '', x.n || 0, r2(x.total), x.pay || '', x.paid ? 'так' : 'ні']), ['Разом', '', '', '', r2(invs.reduce((a, x) => a + (+x.total || 0), 0)), '', '']] });
@@ -38,4 +38,16 @@ export async function acctExport(env, from, to) {
       rows: [...bk.map(x => [x.d, x.no || '', x.sum > 0 ? r2(x.sum) : '', x.sum < 0 ? r2(-x.sum) : '', x.who || '', x.code || '', x.iban || '', x.pur || '', ({ ok: '✅ ', q: '⚠️ на підтвердження', x: '' }[x.st] || '') + matchText(x)]),
         ['Разом', '', r2(bk.reduce((a, x) => a + (x.sum > 0 ? x.sum : 0), 0)), r2(-bk.reduce((a, x) => a + (x.sum < 0 ? x.sum : 0), 0)), '', '', '', '', '']] }); }
   return { from, to, sections };
+}
+
+// 🧮 Кабінет бухгалтера «Мої клієнти»: короткий стан закладу за період — продажі за типами оплат, банк (черга, нестачі), найближчі податкові події. Лише читання.
+export async function accSum(env, from, to) {
+  const { reportRange: rr, dayKey } = await import('./ops.js'), today = dayKey(), m = to.slice(0, 7);
+  const [r, payer, B, T] = await Promise.all([rr(env, from, to), env.DB.get('payer', 'json'), import('./bank.js'), import('./tax.js')]);
+  const s = { n: 0, sum: 0, cash: 0, card: 0, onl: 0, tip: 0 }; for (const c of r?.checks || []) { s.n++; for (const k of ['sum', 'cash', 'card', 'onl', 'tip']) s[k] += +c[k] || 0; }
+  for (const k of ['sum', 'cash', 'card', 'onl', 'tip']) s[k] = r2(s[k]);
+  const bk = await B.bankList(env, m), tax = await T.getTax(env);
+  return { from, to, payer: payer ? { n: payer.n || '' } : null, sales: s, exp: r2((r?.exp || []).reduce((a, x) => a + (+x.sum || 0), 0)),
+    bank: { m, last: bk.last?.to || null, in: bk.t.in, out: bk.t.out, fee: bk.t.fee, q: bk.t.q, miss: bk.miss.length, missAg: bk.missAg.length },
+    tax: { kind: tax.kind || '', next: tax.kind ? T.taxEvents(tax, today, 3, 45).filter(e => !e.done).slice(0, 4).map(e => ({ d: e.d, t: e.title, pay: e.t === 'pay' ? 1 : 0, left: e.left })) : [] } };
 }

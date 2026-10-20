@@ -150,6 +150,9 @@ export async function intApi(req, env, path) {
   if (path === '/__int/dig') { const D = await import('./digest.js'); return [b.do === 'chat' ? await D.digChat(env, b.chat) : b.do === 'now' ? (await D.digRun(env, dayKey(), false), await D.digList(env)) : await D.digList(env), 200]; }
   if (path === '/__int/an') { const { anData } = await import('./analytics.js'); const r = await anData(env, isDay(b.from) ? b.from : dayKey(), isDay(b.to) ? b.to : dayKey()); return [r, r.error ? 400 : 200]; }
   if (path === '/__int/sum') { const r = await venueSum(env, b.from, b.to); if (b.pnl) r.pnl = await pnl(env, r).catch(e => ({ error: e.message })); return [r, 200]; }
+  if (path === '/__int/acc') { // 🧮 кабінет бухгалтера: стан закладу або експорт за період (лише читання)
+    if (!isDay(b.from) || !isDay(b.to) || b.from > b.to || Date.parse(b.to) - Date.parse(b.from) > 370 * 864e5) return [{ error: 'Невірний період' }, 400];
+    const A = await import('./acct.js'), r = b.do === 'exp' ? await A.acctExport(env, b.from, b.to) : await A.accSum(env, b.from, b.to); return r ? [r, 200] : [{ error: 'Невірний період' }, 400]; }
   if (path === '/__int/codes') return [{ codes: Object.fromEntries(await Promise.all(['admin', 'waiter', 'cook', 'courier'].map(async r => [r, await env.DB.get('reg_' + r)]))) }, 200];
   return [{ error: 'unknown' }, 404];
 }
@@ -215,6 +218,7 @@ async function pnl(env, S) {
 const sendVerify = (env, x) => sendMail(env, x.email, 'Підтвердіть пошту — кабінет власника', 'Вітаємо в кабінеті власника', `${x.name}, для вас створено кабінет власника закладу. Підтвердіть пошту й задайте свій пароль. Посилання діє 7 днів.`, '✅ Підтвердити й задати пароль', ownerLink('verify', x.t));
 
 // ---------- /api/owner (поза закладом) ----------
+const ACC_OPS = new Set(['logout', 'me', 'pass', 'av', 'help', 'accCli', 'accExp']); // 🧮 що може акаунт бухгалтера
 export async function ownerApi(req, env) {
   if (!env.HUB) return [{ error: 'HUB не підключено' }, 500];
   const b = await req.json().catch(() => ({})), H = hub(env), tok = (req.headers.get('authorization') || '').slice(7);
@@ -269,9 +273,31 @@ export async function ownerApi(req, env) {
   const me = await H.session(tok); if (!me) return bad('auth', 401);
   const plat = me.role === 'platform', mine = async () => plat ? await H.venueList() : (await Promise.all(me.venues.map(id => H.venueGet(id)))).filter(Boolean);
   const may = async id => plat || me.venues.includes(id);
+  if (me.role === 'acc' && !ACC_OPS.has(b.op)) return bad('Бухгалтеру доступні лише облік і звіти', 403); // 🧮 окрема роль: без входу в касу й налаштувань
+  const own = async id => plat || (isVenueId(id) && (await H.venueGet(id))?.owner === me.email); // справжній власник закладу (не керуючий)
   switch (b.op) {
     case 'logout': await H.logout(tok); return ok();
-    case 'me': return ok({ me, venues: await mine(), seen: await H.seenAll(), inbox: (await H.msgList(plat ? null : me.venues)).filter(m => !m.done).length });
+    case 'me': return ok({ me, venues: await mine(), seen: await H.seenAll(), inbox: me.role === 'acc' ? 0 : (await H.msgList(plat ? null : me.venues)).filter(m => !m.done).length });
+    case 'accCli': { // 🧮 «Мої клієнти»: кожен заклад рахує свій стан сам, паралельно
+      const vs = (await mine()).filter(v => v.status !== 'off' && v.id !== 'atom-demo');
+      return ok({ list: await Promise.all(vs.map(async v => ({ ...(await callVenue(env, v.id, '/__int/acc', { from: b.from, to: b.to }).catch(e => ({ error: e.message }))), id: v.id, name: v.name, city: v.city || '' }))) }); }
+    case 'accExp': { if (!isVenueId(b.venue) || !(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/acc', { do: 'exp', from: b.from, to: b.to }); return r.error ? bad(r.error) : ok(r); }
+    case 'accList': { if (!(await own(b.venue))) return bad('Лише власник закладу', 403); return ok({ list: (await H.acctList()).filter(a => a.role === 'acc' && a.venues.includes(b.venue)).map(a => ({ email: a.email, name: a.name, unverified: !!a.unverified })) }); }
+    case 'accInv': { // ✉️ власник запрошує бухгалтера: новий акаунт «бухгалтер» (пароль — за посиланням з листа) або доступ уже наявному
+      if (!(await own(b.venue))) return bad('Лише власник закладу', 403);
+      const email = String(b.email || '').trim().toLowerCase(); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 100) return bad('Вкажіть email бухгалтера');
+      let a = await H.acctGet(email);
+      if (a && a.role !== 'acc') return bad('Цей email уже має кабінет власника — для бухгалтера потрібна окрема пошта');
+      if (!a) { if ((await H.acctList()).filter(x => x.role === 'acc' && x.venues.includes(b.venue)).length >= 5) return bad('Не більше 5 бухгалтерів на заклад');
+        a = await H.acctCreate({ email, name: String(b.name || '').trim() || email, pass: rnd(16), role: 'acc', verify: true }); if (a.error) return bad(a.error); }
+      const g = await H.grant(b.venue, email, true); if (g.error) return bad(g.error);
+      const v = await H.venueGet(b.venue); let test = null;
+      if (g.unverified) { const x = await H.mailToken(email, 'verify'); if (x?.error) return bad(x.error);
+        if (mailOn(env)) { const r = await sendMail(env, x.email, 'Запрошення бухгалтера — ATOM', 'Вас запросили як бухгалтера', `${me.name} відкриває вам облік закладу «${v.name}»: продажі, банк, податкові дати й експорт для бухгалтерії. Задайте пароль — посилання діє 7 днів.`, '🧮 Задати пароль і увійти', ownerLink('verify', x.t)); if (r.error) return bad(r.error); }
+        else if (env.BOT_TOKEN === 'local-test') test = x.t; }
+      return ok({ acc: { email, name: g.name, unverified: !!g.unverified }, mail: mailOn(env), ...(test ? { test } : {}) }); }
+    case 'accDel': { if (!(await own(b.venue))) return bad('Лише власник закладу', 403); const a = await H.acctGet(b.email); if (!a || a.role !== 'acc') return bad('Немає такого бухгалтера');
+      const r = await H.grant(b.venue, a.email, false); return r.error ? bad(r.error) : ok(); }
     case 'dig': { // 🌙 підсумок дня: останні дні всіх закладів / особистий Telegram власника
       if (b.now) { if (!(await may(b.venue))) return bad('Немає доступу', 403); return ok(await callVenue(env, b.venue, '/__int/dig', { do: 'now' })); }
       if (b.chat != null) { if (!(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/dig', { do: 'chat', chat: b.chat }); return r.error ? bad(r.error) : ok(r); }
