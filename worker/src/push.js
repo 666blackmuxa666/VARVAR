@@ -82,7 +82,11 @@ export async function pushTo(env, sids, msg, urgent = false, out = null) {
 
 // 🧩 каса: push* дії
 export async function pushApi(b, env, me) {
-  if (b.op === 'pushKey') return [{ ok: true, on: pushOn(env), key: env.VAPID_PUB || '', n: me.sid ? ((await env.DB.get('push:' + me.sid, 'json')) || []).length : 0 }, 200];
+  if (b.op === 'pushKey') return [{ ok: true, on: pushOn(env), key: env.VAPID_PUB || '', n: me.sid ? ((await env.DB.get('push:' + me.sid, 'json')) || []).length : 0, all: !!me.sid && ((await env.DB.get('push:all', 'json')) || []).includes(me.sid) }, 200];
+  if (b.op === 'pushAll') { // 👑 власник/адмін — отримувати всі події закладу, навіть не на зміні
+    if (me.role !== 'admin' || !me.sid) return [{ error: 'Лише для адміністратора' }, 403];
+    return [await env.DB.locked('push:all', async () => { const l = ((await env.DB.get('push:all', 'json')) || []).filter(x => x !== me.sid); if (b.on) l.push(me.sid); await env.DB.put('push:all', JSON.stringify(l.slice(-20))); return { ok: true, all: !!b.on }; }), 200];
+  }
   if (!pushOn(env)) return [{ error: 'Сповіщення ще не налаштовані на сервері' }, 400];
   if (b.op === 'pushSub') { const r = await pushSub(env, me.sid, b.sub); return [r, r.error ? 400 : 200]; }
   if (b.op === 'pushUnsub') return [await pushUnsub(env, me.sid, b.e), 200];
@@ -113,6 +117,7 @@ export async function pushEvent(env, e) {
     case 'gchat': if (e.out) return; to = role('admin'); msg = { title: '💬 Гість пише', body: strip(e.text), tag: 'gc' + (e.ph || ''), go: { view: 'hall' } }; break;
     default: return;
   }
+  const all = (await env.DB.get('push:all', 'json')) || []; to = [...to, ...staff.filter(s => all.includes(s.id))]; // 👑 «усі сповіщення»
   const sids = [...new Set(to.filter(s => s && s.name !== e.by).map(s => s.id))];
   if (sids.length) await pushTo(env, sids, msg, urgent);
 }

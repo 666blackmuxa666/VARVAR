@@ -1772,7 +1772,7 @@ var __objRest = (source, exclude) => {
     var _a2;
     const el = $("#pushSw");
     if (!el) return;
-    if (!S.pushK) api("pushKey").then((k) => {
+    if (!S.pushK && !$("#pushAllSw")) api("pushKey").then((k) => {
       S.pushK = k;
     }).catch(() => {
     });
@@ -1782,6 +1782,23 @@ var __objRest = (source, exclude) => {
     } catch (e) {
     }
     el.classList.toggle("on", on2);
+    const aw = $("#pushAllSw"), ar = $("#pushAllRow");
+    if (aw && ar) {
+      const k = await api("pushKey").catch(() => S.pushK || {});
+      S.pushK = k;
+      aw.classList.toggle("on", !!k.all);
+      ar.onclick = async () => {
+        var _a3;
+        try {
+          const v = !((_a3 = S.pushK) == null ? void 0 : _a3.all), r = await api("pushAll", { on: v });
+          S.pushK = __spreadProps(__spreadValues({}, S.pushK), { all: r.all });
+          aw.classList.toggle("on", r.all);
+          toast(r.all ? on2 ? "\u{1F451} \u0422\u0435\u043F\u0435\u0440 \u043F\u0440\u0438\u0445\u043E\u0434\u044F\u0442\u044C \u0443\u0441\u0456 \u0441\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F \u0437\u0430\u043A\u043B\u0430\u0434\u0443" : "\u{1F451} \u0423\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u043E \u2014 \u0449\u0435 \u0443\u0432\u0456\u043C\u043A\u043D\u0456\u0442\u044C \xAB\u0421\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F \u0432 \u0448\u0442\u043E\u0440\u043A\u0443\xBB \u0432\u0438\u0449\u0435" : "\u{1F515} \u041B\u0438\u0448\u0435 \u0432\u0430\u0448\u0456 \u0441\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F");
+        } catch (e) {
+          toast("\u26A0\uFE0F " + (e.message || e));
+        }
+      };
+    }
     const row = $("#pushRow");
     if (!row) return;
     row.onclick = async () => {
@@ -5169,7 +5186,7 @@ var __objRest = (source, exclude) => {
     }));
     setTimeout(pushSwSync, 0);
     return `<div class="grid2 set"><div class="card" style="grid-column:1/-1"><h3>\u{1F3A8} \u0421\u0442\u0443\u0434\u0456\u044F \u0432\u0438\u0433\u043B\u044F\u0434\u0443</h3>${st}</div>
-      <div class="card"><h3>\u{1F4F1} \u0426\u0435\u0439 \u043F\u0440\u0438\u0441\u0442\u0440\u0456\u0439</h3><div class="kv" id="pushRow" style="cursor:pointer"><span style="min-width:0">\u{1F514} \u0421\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F \u0432 \u0448\u0442\u043E\u0440\u043A\u0443</span><span class="switch" id="pushSw"></span></div><div class="set-note muted">\u0420\u043E\u0437\u043C\u0456\u0440</div><div class="lk-row">${[85, 92, 100, 110, 120].map((z) => opt("size", z, z === 100 ? "\u0417\u0432\u0438\u0447\u0430\u0439\u043D\u0438\u0439" : z + "%")).join("")}</div>
+      <div class="card"><h3>\u{1F4F1} \u0426\u0435\u0439 \u043F\u0440\u0438\u0441\u0442\u0440\u0456\u0439</h3><div class="kv" id="pushRow" style="cursor:pointer"><span style="min-width:0">\u{1F514} \u0421\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F \u0432 \u0448\u0442\u043E\u0440\u043A\u0443</span><span class="switch" id="pushSw"></span></div>${isAdmin() ? `<div class="kv" id="pushAllRow" style="cursor:pointer"><span style="min-width:0">\u{1F451} \u0423\u0441\u0456 \u0441\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u043D\u044F \u0437\u0430\u043A\u043B\u0430\u0434\u0443<br><span class="muted" style="font-size:12px">\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F, \u0432\u0438\u043A\u043B\u0438\u043A\u0438, \u0440\u0430\u0445\u0443\u043D\u043A\u0438, \xAB\u0433\u043E\u0442\u043E\u0432\u043E\xBB, \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0438, \u0431\u0440\u043E\u043D\u0456, \u043E\u043F\u043B\u0430\u0442\u0438, \u0447\u0430\u0442 \u2014 \u043D\u0430\u0432\u0456\u0442\u044C \u043D\u0435 \u043D\u0430 \u0437\u043C\u0456\u043D\u0456</span></span><span class="switch" id="pushAllSw"></span></div>` : ""}<div class="set-note muted">\u0420\u043E\u0437\u043C\u0456\u0440</div><div class="lk-row">${[85, 92, 100, 110, 120].map((z) => opt("size", z, z === 100 ? "\u0417\u0432\u0438\u0447\u0430\u0439\u043D\u0438\u0439" : z + "%")).join("")}</div>
         <div class="set-note muted" style="margin-top:10px">\u0410\u043D\u0456\u043C\u0430\u0446\u0456\u0457</div><div class="lk-row">${opt("anim", 1, "\u2728 \u0423\u0432\u0456\u043C\u043A\u043D\u0435\u043D\u0456")}${opt("anim", 0, "\u26A1 \u0412\u0438\u043C\u043A\u043D\u0435\u043D\u0456 (\u0448\u0432\u0438\u0434\u0448\u0435 \u043D\u0430 \u0441\u043B\u0430\u0431\u043A\u0438\u0445)")}</div>
         <div class="btnrow" style="margin-top:12px"><button class="btn sm" data-a="lookReset">\u21BA \u0421\u043A\u0438\u043D\u0443\u0442\u0438 \u043F\u0440\u0438\u0441\u0442\u0440\u0456\u0439 \u0434\u043E \u0432\u0438\u0433\u043B\u044F\u0434\u0443 \u0437\u0430\u043A\u043B\u0430\u0434\u0443</button></div></div>
       <div class="card"><h3>\u{1F50A} \u0417\u0432\u0443\u043A \u0441\u043F\u043E\u0432\u0456\u0449\u0435\u043D\u044C</h3><div class="lk-row">${Object.entries(SOUNDS).map(([k, [l]]) => opt("sound", k, (k === "off" ? "\u{1F507} " : "\u25B6 ") + l)).join("")}</div>

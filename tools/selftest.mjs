@@ -88,6 +88,12 @@ async function apiTests() {
   });
   sect('Стіл → кухня → закриття');
   let T = 0;
+  await step('👑 «Усі сповіщення закладу»: адмін вмикає/вимикає; офіціанту → 403', async () => {
+    const on = await posOk(A, 'pushAll', { on: true }); must(on.all === true, JSON.stringify(on));
+    must((await posOk(A, 'pushKey', {})).all === true, 'pushKey.all не true');
+    if (W) { const w = await pos(W, 'pushAll', { on: true }); must(w.status === 403, 'офіціант pushAll → ' + w.status); }
+    const off = await posOk(A, 'pushAll', { on: false }); must(off.all === false && (await posOk(A, 'pushKey', {})).all === false, 'не вимкнулось');
+  });
   await step('вибрати вільний стіл', async () => {
     const s = await posOk(W, 'state'); const busy = new Set(s.tables.map(x => x.t));
     for (let t = s.n; t >= 1; t--) if (!busy.has(t)) { T = t; break; }

@@ -632,9 +632,12 @@
   }
   // ⚙️ перемикач у Налаштуваннях → Цей пристрій
   async function pushSwSync() {
-    const el = $('#pushSw'); if (!el) return; if (!S.pushK) api('pushKey').then(k => { S.pushK = k; }).catch(() => {});
+    const el = $('#pushSw'); if (!el) return; if (!S.pushK && !$('#pushAllSw')) api('pushKey').then(k => { S.pushK = k; }).catch(() => {});
     let on = false; try { on = pushCan() && Notification.permission === 'granted' && !!(await (await navigator.serviceWorker.getRegistration())?.pushManager.getSubscription()); } catch {}
-    el.classList.toggle('on', on); const row = $('#pushRow'); if (!row) return;
+    el.classList.toggle('on', on);
+    const aw = $('#pushAllSw'), ar = $('#pushAllRow'); if (aw && ar) { const k = await api('pushKey').catch(() => S.pushK || {}); S.pushK = k; aw.classList.toggle('on', !!k.all);
+      ar.onclick = async () => { try { const v = !S.pushK?.all, r = await api('pushAll', { on: v }); S.pushK = { ...S.pushK, all: r.all }; aw.classList.toggle('on', r.all); toast(r.all ? (on ? '👑 Тепер приходять усі сповіщення закладу' : '👑 Увімкнено — ще увімкніть «Сповіщення в шторку» вище') : '🔕 Лише ваші сповіщення'); } catch (e) { toast('⚠️ ' + (e.message || e)); } }; }
+    const row = $('#pushRow'); if (!row) return;
     row.onclick = async () => {
       if (isIOS() && !isApp() || !pushCan()) return pushMenu();
       try {
