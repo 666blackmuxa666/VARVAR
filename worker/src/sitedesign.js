@@ -1,6 +1,6 @@
 // 🎨 Конструктор сайту-візитки: перевірка всього, що власник зберігає з кабінету (тема, головний екран, блоки, панель,
 // оголошення, години, SEO, соцмережі, сезон, адреси, афіша). Усе — білий список полів і меж: сайт публічний.
-export const FONTS = ['Rubik', 'Rubik Dirt', 'Montserrat', 'Playfair Display', 'Lora', 'Unbounded', 'Comfortaa', 'Oswald', 'Nunito', 'Merriweather', 'Russo One', 'Caveat', 'Manrope', 'Exo 2', 'Cormorant Garamond', 'Prata', 'Forum', 'Tenor Sans', 'Yeseva One', 'Old Standard TT', 'Spectral', 'Alice', 'Philosopher', 'Poiret One', 'Inter', 'Jost', 'Raleway', 'Golos Text', 'Onest', 'Tektur', 'Dela Gothic One', 'Pacifico', 'Lobster', 'Marck Script', 'Amatic SC', 'Bad Script', 'Press Start 2P'];
+export const FONTS = ['Rubik', 'Rubik Dirt', 'Montserrat', 'Playfair Display', 'Lora', 'Unbounded', 'Comfortaa', 'Oswald', 'Nunito', 'Merriweather', 'Russo One', 'Caveat', 'Manrope', 'Exo 2', 'Cormorant Garamond', 'Prata', 'Forum', 'Tenor Sans', 'Yeseva One', 'Old Standard TT', 'Spectral', 'Alice', 'Philosopher', 'Poiret One', 'Inter', 'Jost', 'Raleway', 'Golos Text', 'Onest', 'Tektur', 'Dela Gothic One', 'Pacifico', 'Lobster', 'Marck Script', 'Amatic SC', 'Bad Script', 'Press Start 2P', 'Fira Sans', 'Fira Sans Condensed'];
 const CT = ['text', 'media', 'feats', 'links', 'quote', 'sep', 'soc'];
 const col = (v, d) => /^#[0-9a-f]{6}$/i.test(String(v || '')) ? String(v).toLowerCase() : d;
 const num = (v, a, b, d) => { v = Math.round(+v); return Number.isFinite(v) ? Math.min(b, Math.max(a, v)) : d; };
@@ -23,6 +23,7 @@ export function cleanTheme(t) {
     bgfx: one(t.bgfx, ['solid', 'grad', 'img', 'photo', 'aurora', 'vign', 'dots', 'grid', 'noise'], 'solid'), bg2: col(t.bg2, '#2a1f0a'), ang: num(t.ang, 0, 360, 160), bgImg: safeImg(t.bgImg),
     fh: one(t.fh, FONTS, 'Rubik Dirt'), fb: one(t.fb, FONTS, 'Rubik'), fs: one(t.fs, ['s', 'm', 'l'], 'm'), caps: bit(t.caps),
     r: num(t.r, 0, 28, 18), btn: one(t.btn, ['fill', 'line', 'pill'], 'fill'), cards: one(t.cards, ['line', 'shadow', 'flat'], 'line'), nav: one(t.nav, ['glass', 'solid', 'none'], 'glass'),
+    world: one(t.world, ['', 'piste', 'kolyba', 'canon', 'poster', 'carte', 'neon'], ''),
     anim: one(t.anim, ['none', 'fade', 'up'], 'none'), par: bit(t.par), menu: bit(t.menu), shp: one(t.shp, ['', 'arch', 'ticket', 'cut', 'notch', 'slant', 'leaf', 'bubble', 'pill', 'sketch', 'brutal', 'deco', 'neon', 'glass', 'scallop', 'frame', 'folder', 'line', 'brackets', 'polaroid'], ''),
   };
 }

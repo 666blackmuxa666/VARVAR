@@ -21,3 +21,6 @@ _team/video/frames/
 _team/video/*.mp4
 _team/video/*.wav
 _team/video/*.aiff
+
+# 🗺 карта коду Graphify (локально)
+graphify-out/

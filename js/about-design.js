@@ -3,7 +3,7 @@
 window.VVD = (() => {
   const $ = s => document.querySelector(s), R = document.documentElement;
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const FW = { 'Rubik': 'Rubik:wght@400;500;700', 'Rubik Dirt': 'Rubik+Dirt', 'Montserrat': 'Montserrat:wght@400;600;800', 'Playfair Display': 'Playfair+Display:wght@400;700', 'Lora': 'Lora:wght@400;600', 'Unbounded': 'Unbounded:wght@400;700', 'Comfortaa': 'Comfortaa:wght@400;700', 'Oswald': 'Oswald:wght@400;600', 'Nunito': 'Nunito:wght@400;700', 'Merriweather': 'Merriweather:wght@400;700', 'Russo One': 'Russo+One', 'Caveat': 'Caveat:wght@400;700', 'Manrope': 'Manrope:wght@400;700', 'Exo 2': 'Exo+2:wght@400;700', 'Cormorant Garamond': 'Cormorant+Garamond:wght@400;600;700', 'Prata': 'Prata', 'Forum': 'Forum', 'Tenor Sans': 'Tenor+Sans', 'Yeseva One': 'Yeseva+One', 'Old Standard TT': 'Old+Standard+TT:wght@400;700', 'Spectral': 'Spectral:wght@400;700', 'Alice': 'Alice', 'Philosopher': 'Philosopher:wght@400;700', 'Poiret One': 'Poiret+One', 'Inter': 'Inter:wght@400;700', 'Jost': 'Jost:wght@400;700', 'Raleway': 'Raleway:wght@400;700', 'Golos Text': 'Golos+Text:wght@400;700', 'Onest': 'Onest:wght@400;700', 'Tektur': 'Tektur:wght@400;700', 'Dela Gothic One': 'Dela+Gothic+One', 'Pacifico': 'Pacifico', 'Lobster': 'Lobster', 'Marck Script': 'Marck+Script', 'Amatic SC': 'Amatic+SC:wght@400;700', 'Bad Script': 'Bad+Script', 'Press Start 2P': 'Press+Start+2P' };
+  const FW = { 'Rubik': 'Rubik:wght@400;500;700', 'Rubik Dirt': 'Rubik+Dirt', 'Montserrat': 'Montserrat:wght@400;600;800', 'Playfair Display': 'Playfair+Display:wght@400;700', 'Lora': 'Lora:wght@400;600', 'Unbounded': 'Unbounded:wght@400;700', 'Comfortaa': 'Comfortaa:wght@400;700', 'Oswald': 'Oswald:wght@400;600', 'Nunito': 'Nunito:wght@400;700', 'Merriweather': 'Merriweather:wght@400;700', 'Russo One': 'Russo+One', 'Caveat': 'Caveat:wght@400;700', 'Manrope': 'Manrope:wght@400;700', 'Exo 2': 'Exo+2:wght@400;700', 'Cormorant Garamond': 'Cormorant+Garamond:wght@400;600;700', 'Prata': 'Prata', 'Forum': 'Forum', 'Tenor Sans': 'Tenor+Sans', 'Yeseva One': 'Yeseva+One', 'Old Standard TT': 'Old+Standard+TT:wght@400;700', 'Spectral': 'Spectral:wght@400;700', 'Alice': 'Alice', 'Philosopher': 'Philosopher:wght@400;700', 'Poiret One': 'Poiret+One', 'Inter': 'Inter:wght@400;700', 'Jost': 'Jost:wght@400;700', 'Raleway': 'Raleway:wght@400;700', 'Golos Text': 'Golos+Text:wght@400;700', 'Onest': 'Onest:wght@400;700', 'Tektur': 'Tektur:wght@400;700', 'Dela Gothic One': 'Dela+Gothic+One', 'Pacifico': 'Pacifico', 'Lobster': 'Lobster', 'Marck Script': 'Marck+Script', 'Amatic SC': 'Amatic+SC:wght@400;700', 'Bad Script': 'Bad+Script', 'Press Start 2P': 'Press+Start+2P', 'Fira Sans': 'Fira+Sans:wght@400;500;700', 'Fira Sans Condensed': 'Fira+Sans+Condensed:wght@400;600;800' };
   const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), toHex = a => '#' + a.map(x => Math.round(x).toString(16).padStart(2, '0')).join('');
   const mix = (a, b, k) => { const x = hex(a), y = hex(b); return toHex(x.map((v, i) => v + (y[i] - v) * k)); };
   const rgba = (h, a) => `rgba(${hex(h).join(',')},${a})`;
@@ -88,6 +88,23 @@ window.VVD = (() => {
     { const wl = $('#wl'), c = $('#contacts'); if (wl && c && placed.has(c)) c.before(wl); } // 🕒 черга — одразу перед контактами й картою
   }
 
+  // 🌍 світ сторінки (theme.world): декор і структура поверх кольорів теми; стилі — css/about.css «Світи»
+  const TOPO = `<svg class="vw vw-topo" viewBox="0 0 390 700" preserveAspectRatio="xMidYMin slice" aria-hidden="true"><g fill="none" stroke="currentColor">${[120, 165, 212, 262, 316, 374, 436, 502].map((y, i) => `<path d="M-20 ${y} C${60 + i * 8} ${y - 40} ${120 + i * 8} ${y + 30} ${200 + i * 6} ${y - 10} S${330 + i * 4} ${y - 80} 420 ${y - 30}"/>`).join('')}<path d="M250 60C290 40 330 55 350 80S330 120 290 115 240 85 250 60Z"/><path d="M265 68C292 55 318 66 330 82S318 104 292 101 258 82 265 68Z"/></g></svg>`;
+  const GRAIN = `<svg class="vw vw-grain" aria-hidden="true"><filter id="vwW"><feTurbulence type="fractalNoise" baseFrequency=".012 .22" numOctaves="3" seed="4"/><feColorMatrix values="0 0 0 0 .55 0 0 0 0 .33 0 0 0 0 .18 0 0 0 1.1 -.2"/></filter><rect width="100%" height="100%" filter="url(#vwW)"/></svg>`;
+  const unemoji = el => { const n = el?.firstChild; if (n?.nodeType === 3) n.textContent = n.textContent.replace(/^[^\p{L}\p{N}]+/u, ''); };
+  function world(s, th) {
+    const w = th?.world || ''; document.querySelectorAll('.vw').forEach(x => x.remove());
+    if (!w) { delete R.dataset.world; return; } R.dataset.world = w;
+    const H = $('.hero');
+    unemoji($('#openBadge')); document.querySelectorAll('#vvDock a.main').forEach(unemoji);
+    const h1 = $('#sName'); if (h1) h1.dataset.txt = h1.textContent;
+    if (w === 'piste') {
+      H?.insertAdjacentHTML('afterbegin', TOPO);
+      const hs = [...document.querySelectorAll('#hits .hit')], ps = (s.hits || []).slice(0, hs.length).map(h => +h.p || 0), srt = [...ps].sort((a, b) => a - b);
+      hs.forEach((el, i) => { const r = srt.indexOf(ps[i]) / Math.max(1, srt.length - 1); el.querySelector('b')?.insertAdjacentHTML('afterbegin', `<i class="vw vw-run" data-l="${r < .34 ? 0 : r < .67 ? 1 : 2}" aria-hidden="true"></i>`); });
+    }
+    if (w === 'kolyba') { H?.insertAdjacentHTML('afterbegin', GRAIN); const d = (s.hits || []).find(h => h.img); if (d) $('.hero .cta')?.insertAdjacentHTML('beforebegin', `<img class="vw vw-dish" src="${esc(d.img)}" alt="">`); }
+  }
   function dock(s, t, link) {
     let d = $('#vvDock'); const on = s.dock?.on && s.dock.btns?.length;
     if (!on) { d?.remove(); document.body.classList.remove('has-dock'); return; }
@@ -143,7 +160,7 @@ window.VVD = (() => {
   function hit(api, e, preview) { if (preview) return; try { const k = 'vv_hit_' + e; if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1'); } catch { return; } fetch(api + '/api/hit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ e }), keepalive: true }).catch(() => {}); }
 
   function apply(s, lang, t, link) {
-    theme(s.theme || null); hero(s, s.heroCfg || null, t, link); blocks(s, lang, t); contacts(s, lang, t); dock(s, t, link); ann(s, lang); season(s); seo(s); motion(s.theme);
+    theme(s.theme || null); hero(s, s.heroCfg || null, t, link); blocks(s, lang, t); contacts(s, lang, t); dock(s, t, link); world(s, s.theme); ann(s, lang); season(s); seo(s); motion(s.theme);
     if (s.langs === 0) $('#lng').hidden = true;
   }
   return { apply, hoursToday, hit };

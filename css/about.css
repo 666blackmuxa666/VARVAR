@@ -62,7 +62,7 @@ main > section { margin: 40px 0; }
 form { display: grid; gap: 10px; }
 input, textarea { width: 100%; background: var(--card2); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 13px 14px; font: inherit; font-size: 16px; outline: none; } input:focus, textarea:focus { border-color: var(--accent); }
 input[type=date], input[type=time] { color-scheme: dark; }
-.row2 { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; } .row3 { display: grid; gap: 10px; grid-template-columns: 1.4fr 1fr .7fr; }
+.row2 { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; } .row3 { display: grid; gap: 10px; grid-template-columns: minmax(132px, 1.5fr) 1fr minmax(52px, .6fr); } .row2 > *, .row3 > * { min-width: 0; }
 @media (max-width: 520px) { .row2 { grid-template-columns: 1fr; } }
 .seg { display: flex; gap: 6px; flex-wrap: wrap; } .seg button { flex: 1; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--card2); font-weight: 600; white-space: nowrap; padding: 0 10px; }
 .seg button.on { background: var(--accent); color: var(--ink); border-color: var(--accent); }
@@ -211,3 +211,196 @@ html[data-site][data-shp="polaroid"] :is(.hit, .promo, .evc):nth-child(2n) { rot
 .pl-note { margin: 0; font-size: 13px; }
 .pl-in .btn[disabled] { opacity: 1; background: var(--card2, #2a2a2e); color: var(--muted, #999); }
 @media (min-width: 700px) { .pl-m { align-items: center; } .pl-in { border-radius: 24px; } }
+
+/* ===== 🌍 Світи сторінки (theme.world, js/about-design.js → world()): структура й декор поверх кольорів теми ===== */
+/* спільне: лінійні іконки замість емодзі в кнопках і заголовках блоків */
+html[data-site][data-world] { --ember: color-mix(in srgb, var(--accent) 35%, #ff5a14); }
+html[data-site][data-world] .cta .btn:has(> span), html[data-site][data-world] :is(.box, .formbox) > h2:has(> span), html[data-site][data-world] .hero .addr { font-size: 0 !important; }
+html[data-site][data-world] .cta .btn > span { font-size: 16px; } html[data-site][data-world] .box > h2 > span { font-size: 24px; } html[data-site][data-world] .formbox > h2 > span { font-size: 30px; } html[data-site][data-world] .hero .addr > span { font-size: 15px; }
+html[data-site][data-world] .btn[data-hit]::before, html[data-site][data-world] #meBtn::before { content: ''; flex: none; width: 18px; height: 18px; background: currentColor; -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat; }
+html[data-site][data-world] #meBtn { font-size: 0; }
+html[data-site][data-world] [data-hit="order"] { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8h12l-1 12H7z'/%3E%3Cpath d='M9 8V6a3 3 0 0 1 6 0v2'/%3E%3C/svg%3E"); }
+html[data-site][data-world] [data-hit="book"] { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='2'/%3E%3Cpath d='M3 10h18M8 3v4M16 3v4'/%3E%3C/svg%3E"); }
+html[data-site][data-world] [data-hit="call"] { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2'/%3E%3C/svg%3E"); }
+html[data-site][data-world] [data-hit="route"] { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 11 18-8-8 18-2-8z'/%3E%3C/svg%3E"); }
+html[data-site][data-world] #meBtn { --ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6'/%3E%3C/svg%3E"); }
+html[data-site][data-world] .badge { gap: 8px; } html[data-site][data-world] .badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #3fb26b; box-shadow: 0 0 0 4px rgba(63,178,107,.22); } html[data-site][data-world] .badge.off::before { background: #e2483d; box-shadow: 0 0 0 4px rgba(226,72,61,.22); }
+html[data-site][data-world] ::selection { background: var(--accent); color: var(--ink); }
+html[data-site][data-world] :is(a, button, input, textarea):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+html[data-site][data-world] :is(.hero.ph, .hero) .hero-in { max-width: 1100px; }
+.vw-topo, .vw-grain { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+/* 🗺 Карта трас: нічна гірська карта, бронь — скіпас, хіти — траси за складністю */
+html[data-site][data-world="piste"] :is(.hero.ph, .hero) { display: block; min-height: 0; background: radial-gradient(120% 70% at 78% 0%, color-mix(in srgb, var(--text) 9%, var(--bg)), transparent 62%), var(--bg); }
+html[data-site][data-world="piste"] .hero-bg { display: none; }
+html[data-site][data-world="piste"] .vw-topo { color: var(--text); opacity: .11; }
+html[data-site][data-world="piste"] :is(.hero.ph, .hero) .hero-in { padding-top: 22px; color: var(--text) !important; text-align: left; }
+html[data-site][data-world="piste"] .badge { background: none; padding: 0; border-radius: 0; font: 600 13px/1.2 var(--fb); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+html[data-site][data-world="piste"] .hero h1 { font-family: var(--fh); font-size: clamp(60px, 18vw, 150px); line-height: .9; margin: 18px 0 12px; overflow-wrap: anywhere; }
+html[data-site][data-world="piste"] .hero .tag { font-size: 18px; line-height: 1.4; max-width: 30ch; color: var(--soft, var(--text)); text-wrap: balance; }
+html[data-site][data-world="piste"] .hero .addr { display: flex; align-items: center; gap: 8px; color: var(--accent) !important; margin: 0 0 12px; }
+html[data-site][data-world="piste"] .hero .addr > span { font: 600 13px var(--fb); letter-spacing: .1em; text-transform: uppercase; }
+html[data-site][data-world="piste"] .hero .addr::before { content: ''; width: 12px; height: 11px; background: currentColor; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+html[data-site][data-world="piste"] .hero .cta { position: relative; display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; max-width: 440px; margin-top: 52px; padding: 16px 12px; border-radius: 16px; background: var(--text); color: var(--bg);
+  -webkit-mask: radial-gradient(circle 10px at 0 84px, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 10px at 100% 84px, #0000 98%, #000) right / 51% 100% no-repeat; mask: radial-gradient(circle 10px at 0 84px, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 10px at 100% 84px, #0000 98%, #000) right / 51% 100% no-repeat; }
+html[data-site][data-world="piste"] .hero .cta::after { content: ''; position: absolute; left: 14px; right: 14px; top: 83px; border-top: 2px dashed color-mix(in srgb, var(--bg) 28%, transparent); }
+html[data-site][data-world="piste"] .hero .cta::before { content: ''; position: absolute; left: 30px; top: -46px; width: 3px; height: 40px; background: radial-gradient(circle, var(--accent) 1.6px, transparent 2px) 0 0 / 3px 9px; -webkit-mask: none; }
+html[data-site][data-world="piste"] .hero .cta .btn { min-height: 48px; padding: 0 6px; gap: 6px; border-radius: 10px; background: transparent; color: var(--bg); border: 1.5px solid color-mix(in srgb, var(--bg) 25%, transparent); font-family: var(--fb); font-weight: 600; }
+html[data-site][data-world="piste"] .hero .cta .btn > span { font-size: 13.5px; white-space: nowrap; }
+html[data-site][data-world="piste"] .hero .cta .btn::before { width: 16px; height: 16px; }
+html[data-site][data-world="piste"] .hero .cta .btn:first-child { grid-column: 1 / -1; height: 56px; margin-bottom: 18px; background: var(--accent); color: var(--ink); border: 0; font-weight: 800; box-shadow: 0 10px 24px -12px var(--accent); }
+html[data-site][data-world="piste"] .hero .cta .btn:first-child > span { font-size: 19px; font-weight: 800; }
+html[data-site][data-world="piste"] main h2, html[data-site][data-world="piste"] main .sec-h h2 { font: 800 32px/1.05 var(--fb); letter-spacing: -.01em; text-transform: none; }
+html[data-site][data-world="piste"] .hits { grid-template-columns: 1fr; gap: 0; }
+@media (min-width: 700px) { html[data-site][data-world="piste"] .hits { grid-template-columns: 1fr 1fr; column-gap: 32px; } }
+html[data-site][data-world="piste"] .hits > .hit { flex-direction: row; align-items: center; gap: 14px; padding: 12px 0; background: none; border: 0; border-top: 1px solid var(--line); border-radius: 0; box-shadow: none; background-image: none; outline: 0; clip-path: none; -webkit-mask: none; mask: none; rotate: 0deg; overflow: visible; }
+html[data-site][data-world="piste"] .hit .ph { flex: none; width: 92px; background: none !important; }
+html[data-site][data-world="piste"] .hit .ph img { filter: drop-shadow(0 10px 14px rgba(0,0,0,.45)); }
+html[data-site][data-world="piste"] .hit div { padding: 0; min-width: 0; }
+html[data-site][data-world="piste"] .hit b { display: flex; align-items: center; gap: 8px; font: 700 20px var(--fb); }
+html[data-site][data-world="piste"] .hit span { font: 800 18px var(--fb); font-variant-numeric: tabular-nums; }
+.vw-run { flex: none; display: inline-block; width: 13px; height: 13px; }
+.vw-run[data-l="0"] { border-radius: 50%; background: #3fb26b; } .vw-run[data-l="1"] { background: #3d8bff; } .vw-run[data-l="2"] { width: 22px; background: var(--text); clip-path: polygon(25% 0, 50% 50%, 75% 0, 100% 50%, 75% 100%, 50% 50%, 25% 100%, 0 50%); }
+html[data-site][data-world="piste"] #book { background: var(--text); color: var(--bg); border: 0; border-radius: 18px; box-shadow: none; clip-path: none; outline: 0; rotate: 0deg;
+  -webkit-mask: radial-gradient(circle 11px at 0 71px, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 11px at 100% 71px, #0000 98%, #000) right / 51% 100% no-repeat; mask: radial-gradient(circle 11px at 0 71px, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 11px at 100% 71px, #0000 98%, #000) right / 51% 100% no-repeat; }
+html[data-site][data-world="piste"] #book > h2 { margin: 0 -22px 18px; padding: 0 22px 18px; line-height: 30px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-bottom: 2px dashed color-mix(in srgb, var(--bg) 25%, transparent); color: var(--bg); }
+html[data-site][data-world="piste"] #book > h2 > span { font-size: 28px; }
+html[data-site][data-world="piste"] #book :is(input, textarea) { background: transparent; color: var(--bg); border: 1.5px solid color-mix(in srgb, var(--bg) 22%, transparent); }
+html[data-site][data-world="piste"] #book :is(input, textarea)::placeholder { color: color-mix(in srgb, var(--bg) 55%, transparent); }
+html[data-site][data-world="piste"]:not([data-mode="light"]) #book input { color-scheme: light; } html[data-site][data-world="piste"][data-mode="light"] #book input { color-scheme: dark; }
+html[data-site][data-world="piste"] #book .seg button { background: transparent; color: var(--bg); border: 1.5px solid color-mix(in srgb, var(--bg) 22%, transparent); }
+html[data-site][data-world="piste"] #book .seg button.on { background: var(--bg); color: var(--accent); border-color: var(--bg); }
+html[data-site][data-world="piste"] #book .btn.ghost { color: var(--bg); border-color: color-mix(in srgb, var(--bg) 25%, transparent); }
+html[data-site][data-world="piste"] #book .msg, html[data-site][data-world="piste"] #book .done { color: var(--bg); }
+
+/* 🔥 Колиба: обвуглене дерево, жар під стравою, назва горить, кнопка — латунна табличка */
+html[data-site][data-world="kolyba"] :is(.hero.ph, .hero) { display: block; min-height: 0; text-align: center; background: radial-gradient(90% 42% at 50% 80%, color-mix(in srgb, var(--ember) 50%, transparent), transparent 70%), linear-gradient(180deg, color-mix(in srgb, #000 35%, var(--bg)), var(--bg) 45%, color-mix(in srgb, var(--ember) 10%, var(--bg))); }
+html[data-site][data-world="kolyba"] .hero-bg { display: none; }
+html[data-site][data-world="kolyba"] .vw-grain { opacity: .3; mix-blend-mode: overlay; }
+html[data-site][data-world="kolyba"] :is(.hero.ph, .hero) .hero-in { padding-top: 26px; color: var(--text) !important; text-align: center; }
+html[data-site][data-world="kolyba"] .badge { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--soft, var(--text)); font-weight: 500; }
+html[data-site][data-world="kolyba"] .hero h1 { font-family: var(--fh); font-size: clamp(56px, 17vw, 150px); line-height: .9; margin: 22px 0 14px; color: var(--accent); text-shadow: 0 0 18px color-mix(in srgb, var(--ember) 60%, transparent), 0 0 60px color-mix(in srgb, var(--ember) 40%, transparent); animation: vwFlick 3.4s ease-in-out infinite; overflow-wrap: anywhere; }
+@keyframes vwFlick { 0%, 100% { opacity: 1; } 46% { opacity: .9; } 54% { opacity: 1; filter: brightness(1.12); } }
+html[data-site][data-world="kolyba"] .hero .tag { font-size: 18px; line-height: 1.4; max-width: 28ch; margin-inline: auto; color: var(--soft, var(--text)); text-wrap: balance; }
+html[data-site][data-world="kolyba"] .hero .addr { color: var(--muted) !important; }
+.vw-dish { position: relative; display: block; width: min(290px, 72%); margin: 4px auto -6px; filter: drop-shadow(0 28px 28px rgba(0,0,0,.6)) drop-shadow(0 0 40px color-mix(in srgb, var(--ember) 40%, transparent)); }
+html[data-site][data-world="kolyba"] .hero .cta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-width: 520px; margin: 0 auto; }
+html[data-site][data-world="kolyba"] .hero .cta .btn:nth-child(even):last-child { grid-column: 1 / -1; }
+@media (min-width: 700px) { html[data-site][data-world="kolyba"] .hero .cta { grid-template-columns: repeat(3, 1fr); } html[data-site][data-world="kolyba"] .hero .cta .btn:nth-child(even):last-child { grid-column: auto; } }
+html[data-site][data-world="kolyba"] .hero .cta .btn { min-height: 46px; padding: 0 8px; border-radius: 6px; background: color-mix(in srgb, var(--bg) 60%, transparent); color: var(--text); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); font-weight: 500; }
+html[data-site][data-world="kolyba"] .hero .cta .btn > span { font-size: 15px; }
+html[data-site][data-world="kolyba"] .hero .cta .btn:first-child { grid-column: 1 / -1; min-height: 58px; color: var(--ink); border: 0; font-weight: 800;
+  background: radial-gradient(circle at 16px 50%, rgba(255,255,255,.7) 0 2px, rgba(0,0,0,.35) 2.6px 3.6px, transparent 4px), radial-gradient(circle at calc(100% - 16px) 50%, rgba(255,255,255,.7) 0 2px, rgba(0,0,0,.35) 2.6px 3.6px, transparent 4px), linear-gradient(180deg, color-mix(in srgb, #fff 24%, var(--accent)), var(--accent) 58%, color-mix(in srgb, #000 22%, var(--accent)));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 0 rgba(0,0,0,.22), 0 14px 30px -12px var(--ember); }
+html[data-site][data-world="kolyba"] .hero .cta .btn:first-child > span { font-size: 19px; }
+html[data-site][data-world="kolyba"] main h2, html[data-site][data-world="kolyba"] main .sec-h h2 { font-family: var(--fh); font-size: 40px; line-height: 1; }
+html[data-site][data-world="kolyba"] .hits { grid-template-columns: 1fr 1fr; }
+html[data-site][data-world="kolyba"] .hit { background: linear-gradient(180deg, color-mix(in srgb, var(--ember) 9%, var(--card)), var(--card)); border-color: color-mix(in srgb, var(--accent) 18%, transparent); border-radius: 8px; }
+html[data-site][data-world="kolyba"] .hit .ph { background: radial-gradient(60% 38% at 50% 88%, color-mix(in srgb, var(--ember) 30%, transparent), transparent 70%) !important; }
+html[data-site][data-world="kolyba"] .hit .ph img { filter: drop-shadow(0 12px 14px rgba(0,0,0,.55)); }
+html[data-site][data-world="kolyba"] .hit b { font-size: 18px; } html[data-site][data-world="kolyba"] .hit span { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
+@media (max-width: 699px) {
+  html[data-site][data-world="kolyba"] .hit:is(:first-child, :nth-child(4):last-child, :nth-child(2):last-child) { grid-column: 1 / -1; flex-direction: row; align-items: center; }
+  html[data-site][data-world="kolyba"] .hit:is(:first-child, :nth-child(4):last-child, :nth-child(2):last-child) .ph { width: 50%; flex: none; }
+  html[data-site][data-world="kolyba"] .hit:nth-child(4):last-child { flex-direction: row-reverse; }
+}
+@media (min-width: 700px) { html[data-site][data-world="kolyba"] .hits { grid-template-columns: repeat(4, 1fr); } }
+html[data-site][data-world="kolyba"] #book { border-top: 3px solid var(--accent); }
+@media (prefers-reduced-motion: reduce) { html[data-site][data-world="kolyba"] .hero h1 { animation: none; } }
+
+/* 📷 Класика: фото на весь екран, назва знизу, дві головні кнопки, хіти стрічкою */
+html[data-site][data-world="canon"] :is(.hero.ph, .hero) .hero-in { padding-bottom: 30px; }
+html[data-site][data-world="canon"] .hero h1 { font-family: var(--fh); font-size: clamp(52px, 14vw, 112px); line-height: .95; color: var(--accent); margin: 14px 0 10px; }
+html[data-site][data-world="canon"] .hero .tag { font-size: 18px; max-width: 32ch; text-wrap: balance; }
+html[data-site][data-world="canon"] .hero .cta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 520px; }
+html[data-site][data-world="canon"] .hero[data-al="c"] .cta { margin-inline: auto; }
+html[data-site][data-world="canon"] .hero .cta .btn { min-height: 52px; padding: 0 10px; border-radius: 12px; }
+html[data-site][data-world="canon"] .hero .cta .btn:first-child { background: var(--accent); color: var(--ink); border: 0; font-weight: 700; }
+html[data-site][data-world="canon"] .hero .cta .btn:not(:first-child) { background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.2); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+html[data-site][data-world="canon"] .hero .cta .btn:nth-child(n+3) { min-height: 44px; font-weight: 500; }
+html[data-site][data-world="canon"] main h2, html[data-site][data-world="canon"] main .sec-h h2 { font-family: var(--fb); font-weight: 700; font-size: 26px; letter-spacing: -.01em; text-transform: none; }
+@media (max-width: 699px) {
+  html[data-site][data-world="canon"] .hits { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 calc(-1 * var(--gut)); padding: 0 var(--gut) 6px; scroll-padding-inline: var(--gut); }
+  html[data-site][data-world="canon"] .hits::-webkit-scrollbar { display: none; }
+  html[data-site][data-world="canon"] .hit { flex: 0 0 min(62vw, 240px); scroll-snap-align: start; }
+}
+html[data-site][data-world="canon"] .hit .ph { background: var(--card2) !important; }
+
+/* 🖨 Плакат: ризограф — товста назва зі зсувом фарби, наліпки-ціни, рамки чорнилом */
+html[data-site][data-world="poster"] :is(.hero.ph, .hero) { display: block; min-height: 0; background: radial-gradient(circle, color-mix(in srgb, var(--accent) 55%, transparent) 1.6px, transparent 2px) 0 0 / 11px 11px, var(--bg); }
+html[data-site][data-world="poster"] :is(.hero.ph, .hero)::after { content: ''; position: absolute; inset: 0; background: linear-gradient(200deg, transparent 30%, var(--bg) 62%); pointer-events: none; }
+html[data-site][data-world="poster"] .hero-bg { display: none; }
+html[data-site][data-world="poster"] :is(.hero.ph, .hero) .hero-in { z-index: 1; padding-top: 34px; color: var(--text) !important; }
+html[data-site][data-world="poster"] .badge { rotate: -3deg; border-radius: 0; background: var(--accent); color: var(--ink); font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+html[data-site][data-world="poster"] .badge::before { background: currentColor; box-shadow: none; }
+html[data-site][data-world="poster"] .hero h1 { position: relative; font-family: var(--fh); text-transform: uppercase; font-size: clamp(54px, 16vw, 140px); line-height: .88; margin: 20px 0 14px; color: var(--text); overflow-wrap: anywhere; }
+html[data-site][data-world="poster"] .hero h1::after { content: attr(data-txt); position: absolute; inset: 0; color: var(--accent); mix-blend-mode: multiply; transform: translate(4px, 3px); pointer-events: none; }
+html[data-site][data-world="poster"]:not([data-mode="light"]) .hero h1::after { mix-blend-mode: screen; opacity: .85; z-index: -1; }
+html[data-site][data-world="poster"] .hero .tag { font-size: 19px; font-weight: 600; max-width: 26ch; text-wrap: balance; }
+html[data-site][data-world="poster"] .hero .addr { color: var(--muted) !important; }
+html[data-site][data-world="poster"] .btn { border-radius: 0 !important; border: 2.5px solid var(--text) !important; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }
+html[data-site][data-world="poster"] .btn.alt, html[data-site][data-world="poster"] .btn.ghost { background: var(--bg) !important; color: var(--text) !important; }
+html[data-site][data-world="poster"] .hero .cta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 520px; }
+html[data-site][data-world="poster"] .hero .cta .btn { min-height: 50px; padding: 0 8px; }
+html[data-site][data-world="poster"] .hero .cta .btn:first-child, html[data-site][data-world="poster"] .hero .cta .btn:nth-child(even):last-child { grid-column: 1 / -1; }
+html[data-site][data-world="poster"] .hero .cta .btn:first-child { min-height: 58px; box-shadow: 5px 5px 0 var(--text); }
+html[data-site][data-world="poster"] .hero .cta .btn > span { font-size: 15px; white-space: nowrap; }
+html[data-site][data-world="poster"] main h2, html[data-site][data-world="poster"] main .sec-h h2 { font-family: var(--fh); text-transform: uppercase; font-size: clamp(26px, 7.5vw, 44px); overflow-wrap: anywhere; text-wrap: balance; text-decoration: underline 7px var(--accent); text-underline-offset: 4px; text-decoration-skip-ink: none; }
+html[data-site][data-world="poster"] :is(.hit, .box, .formbox, .quote, .feats div, .promo) { border: 2.5px solid var(--text); border-radius: 0; box-shadow: none; }
+html[data-site][data-world="poster"] .hit .ph { background: radial-gradient(circle, color-mix(in srgb, var(--accent) 35%, transparent) 1.4px, transparent 1.8px) 0 0 / 9px 9px, var(--card) !important; border-bottom: 2.5px solid var(--text); }
+html[data-site][data-world="poster"] .hit span { justify-self: start; margin-top: 6px; padding: 2px 8px; background: var(--accent); color: var(--ink); rotate: -3deg; font-weight: 800; font-variant-numeric: tabular-nums; }
+html[data-site][data-world="poster"] .hit:nth-child(2n) span { rotate: 2deg; }
+
+/* 📜 Меню-карта: друкована карта ресторану — по центру, тонкі лінії, римські номери розділів, ціни з крапками */
+html[data-site][data-world="carte"] :is(.hero.ph, .hero) { display: block; min-height: 0; text-align: center; }
+html[data-site][data-world="carte"] .hero-bg { display: none; }
+html[data-site][data-world="carte"] :is(.hero.ph, .hero) .hero-in { margin: 22px var(--gut) 8px; width: auto; max-width: 760px; padding: 34px 18px 30px; color: var(--text) !important; text-align: center; border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); outline: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); outline-offset: 5px; }
+@media (min-width: 800px) { html[data-site][data-world="carte"] :is(.hero.ph, .hero) .hero-in { margin-inline: auto; } }
+html[data-site][data-world="carte"] .badge { background: none; padding: 0; color: var(--muted); font-size: 13px; letter-spacing: .14em; text-transform: uppercase; font-weight: 500; }
+html[data-site][data-world="carte"] .hero h1 { font-family: var(--fh); font-size: clamp(42px, 12vw, 96px); line-height: 1; margin: 16px 0 10px; letter-spacing: .04em; overflow-wrap: anywhere; }
+html[data-site][data-world="carte"] .hero h1::after { content: ''; display: block; width: 130px; height: 9px; margin: 16px auto 0; background: linear-gradient(var(--accent), var(--accent)) left center / 54px 1px no-repeat, linear-gradient(var(--accent), var(--accent)) right center / 54px 1px no-repeat, radial-gradient(circle, var(--accent) 2.5px, transparent 3px) center / 9px 9px no-repeat; }
+html[data-site][data-world="carte"] .hero .tag { font-size: 19px; font-style: italic; max-width: 32ch; margin-inline: auto; color: var(--soft, var(--text)); text-wrap: balance; }
+html[data-site][data-world="carte"] .hero .addr { justify-content: center; color: var(--muted) !important; }
+html[data-site][data-world="carte"] .hero .cta { display: grid; grid-template-columns: 1fr; gap: 8px; width: min(100%, 300px); margin-inline: auto; }
+html[data-site][data-world="carte"] .hero .cta .btn:first-child { background: var(--accent); color: var(--ink); border: 0; }
+html[data-site][data-world="carte"] .cta .btn { min-height: 46px; border-radius: 0; font-size: 0; }
+html[data-site][data-world="carte"] .cta .btn > span { font-size: 13px; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; }
+html[data-site][data-world="carte"] .hero .cta .btn:not(:first-child) { background: transparent; border: 1px solid color-mix(in srgb, var(--text) 30%, transparent); color: var(--text); }
+html[data-site][data-world="carte"] main { counter-reset: vwsec; }
+html[data-site][data-world="carte"] main > section:not([hidden]) { counter-increment: vwsec; }
+html[data-site][data-world="carte"] main > section > h2, html[data-site][data-world="carte"] main .sec-h h2 { font-family: var(--fh); text-align: center; font-size: 32px; letter-spacing: .04em; }
+html[data-site][data-world="carte"] main > section > h2::before, html[data-site][data-world="carte"] main .sec-h h2::before { content: counter(vwsec, upper-roman); display: block; margin-bottom: 4px; font: 500 13px var(--fb); letter-spacing: .2em; color: var(--accent); }
+html[data-site][data-world="carte"] .sec-h { flex-direction: column; align-items: center; gap: 0; margin-bottom: 10px; }
+html[data-site][data-world="carte"] .hits { grid-template-columns: 1fr; gap: 0; }
+@media (min-width: 760px) { html[data-site][data-world="carte"] .hits { grid-template-columns: 1fr 1fr; column-gap: 40px; } }
+html[data-site][data-world="carte"] .hits > .hit { flex-direction: row; align-items: center; gap: 14px; padding: 14px 0; background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; box-shadow: none; background-image: none; outline: 0; clip-path: none; -webkit-mask: none; mask: none; rotate: 0deg; }
+html[data-site][data-world="carte"] .hit .ph { flex: none; width: 72px; background: none !important; }
+html[data-site][data-world="carte"] .hit div { flex: 1; min-width: 0; padding: 0; grid-template-columns: 1fr auto; column-gap: 8px; }
+html[data-site][data-world="carte"] .hit b { display: flex; align-items: baseline; gap: 8px; font: 600 19px var(--fh); min-width: 0; }
+html[data-site][data-world="carte"] .hit b::after { content: ''; flex: 1; min-width: 12px; border-bottom: 1px dotted var(--muted); }
+html[data-site][data-world="carte"] .hit span { grid-column: 2; grid-row: 1; font-weight: 600; font-variant-numeric: tabular-nums; }
+html[data-site][data-world="carte"] .hit small { grid-column: 1 / -1; font-style: italic; }
+
+/* 💡 Вивіска: назва — неонова трубка, що вмикається, кнопки світяться */
+html[data-site][data-world="neon"] :is(.hero.ph, .hero) { display: grid; place-items: center; min-height: min(78vh, 720px); text-align: center; }
+html[data-site][data-world="neon"] .hero-bg::after { background: linear-gradient(180deg, rgba(0,0,0,.6), rgba(0,0,0,.72) 50%, var(--bg)); }
+html[data-site][data-world="neon"] :is(.hero.ph, .hero) .hero-in { color: var(--text) !important; text-align: center; }
+html[data-site][data-world="neon"] .badge { background: none; border: 2px solid #3fb26b; color: #8fe39a; border-radius: 8px; text-transform: uppercase; letter-spacing: .12em; box-shadow: 0 0 12px rgba(63,178,107,.5), inset 0 0 8px rgba(63,178,107,.35); }
+html[data-site][data-world="neon"] .badge.off { border-color: #e2483d; color: #ff8a80; box-shadow: 0 0 12px rgba(226,72,61,.5), inset 0 0 8px rgba(226,72,61,.35); }
+html[data-site][data-world="neon"] .badge::before { display: none; }
+html[data-site][data-world="neon"] .hero h1 { font-family: var(--fh); font-size: clamp(48px, 14vw, 128px); line-height: 1; margin: 22px 0 14px; color: color-mix(in srgb, #fff 70%, var(--accent)); text-shadow: 0 0 4px #fff8, 0 0 12px var(--accent), 0 0 28px var(--accent), 0 0 60px var(--accent); animation: vwOn 2.2s steps(1, end) 1 both; overflow-wrap: anywhere; }
+@keyframes vwOn { 0% { opacity: .15; text-shadow: none; } 8% { opacity: 1; } 11% { opacity: .2; text-shadow: none; } 16% { opacity: 1; } 40% { opacity: .55; } 43%, 100% { opacity: 1; } }
+html[data-site][data-world="neon"] .hero .tag { font-size: 18px; max-width: 30ch; margin-inline: auto; text-wrap: balance; }
+html[data-site][data-world="neon"] .hero .addr { color: var(--muted) !important; }
+html[data-site][data-world="neon"] .hero .cta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: min(100%, 460px); margin-inline: auto; }
+html[data-site][data-world="neon"] .hero .cta .btn { min-height: 50px; padding: 0 8px; }
+html[data-site][data-world="neon"] .hero .cta .btn:first-child, html[data-site][data-world="neon"] .hero .cta .btn:nth-child(even):last-child { grid-column: 1 / -1; }
+html[data-site][data-world="neon"] .hero .cta .btn.btn:first-child { min-height: 56px; background: var(--accent); color: var(--ink); border: 0; box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 60%, transparent), 0 0 40px color-mix(in srgb, var(--accent) 25%, transparent); }
+html[data-site][data-world="neon"] .hero .cta .btn.btn:not(:first-child) { background: transparent; color: var(--text); border: 2px solid var(--accent); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 0 8px color-mix(in srgb, var(--accent) 25%, transparent); }
+html[data-site][data-world="neon"] .btn { border-radius: 99px; }
+html[data-site][data-world="neon"] .btn:not(.alt):not(.ghost) { box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 60%, transparent), 0 0 40px color-mix(in srgb, var(--accent) 25%, transparent); }
+html[data-site][data-world="neon"] :is(.btn.alt, .btn.ghost) { background: transparent; color: var(--text); border: 2px solid var(--accent); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 0 8px color-mix(in srgb, var(--accent) 25%, transparent); }
+html[data-site][data-world="neon"] main h2, html[data-site][data-world="neon"] main .sec-h h2 { font-family: var(--fh); color: color-mix(in srgb, #fff 75%, var(--accent)); text-shadow: 0 0 10px var(--accent), 0 0 26px color-mix(in srgb, var(--accent) 60%, transparent); }
+html[data-site][data-world="neon"] .hit { border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+html[data-site][data-world="neon"] .hit span { text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 70%, transparent); }
+@media (prefers-reduced-motion: reduce) { html[data-site][data-world="neon"] .hero h1 { animation: none; } }

@@ -31,7 +31,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | `guestbot.js` | 252 | 🤖 Бот гостей (@…GUEST_BOT_TOKEN): меню, статус замовлення, бонуси, день народження, сертифікати, |
 | `hub.js` | 331 | 🌐 HUB — центральна база платформи (один Durable Object): акаунти власників, заклади, сесії кабінету. |
 | `ideas.js` | 64 | 💡 Побажання розробнику: працівник пише з особистого кабінету (каса) або з бота персоналу. |
-| `index.js` | 472 |  |
+| `index.js` | 474 |  |
 | `kitbot.js` | 146 | 👨‍🍳 Бот кухні (KITCHEN_BOT_TOKEN, вебхук /tg4): кухарі отримують нові замовлення на телефон, |
 | `kitchen.js` | 133 | 👨‍🍳 Легкий кухонний екран для старих планшетів (iPad 2 / iOS 9): відкривається по http://…workers.dev/kitchen |
 | `ledger.js` | 158 | 📒 Облік закладу (фундамент Ф1/Ф3/Ф4/Ф6/Ф7): документи і журнал змін у SQL-таблицях Store (ledgerdb.js). |
@@ -52,22 +52,22 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | `ops-staff.js` | 135 | 👥 Доступ і персонал: паролі, PIN, коди реєстрації, працівники, права, перейменування, аватарки |
 | `ops.js` | 10 | Спільна логіка закладу для Telegram-бота і касової програми (POS). |
 | `orderui.js` | 133 | Замовлення офіціанта кнопками: стіл → категорія → страва → (розмір) → кількість → знову категорії. |
-| `owner.js` | 476 | 👑 Кабінет власника мережі й консоль платформи: /api/owner (поза закладом) + внутрішні виклики закладів /__int/* (всередині Store). |
+| `owner.js` | 481 | 👑 Кабінет власника мережі й консоль платформи: /api/owner (поза закладом) + внутрішні виклики закладів /__int/* (всередині Store). |
 | `pay.js` | 232 | 👷 Графік змін і зарплата: прихід «Почати зміну» → адмін підтверджує → ✅ у графіку; ставка за зміну + % від виручки + бонус за план; |
 | `perm.js` | 59 | 🔑 Ролі й права з галочками (_team/roles.md). |
 | `photoai.js` | 101 | 📸 ШІ-фото страв в одному стилі закладу: Gemini Image (платний ключ GEMINI_IMG_KEY — лише тут; решта ШІ — безкоштовний ключ). |
 | `pos.js` | 469 | API касової програми (pos.html). POST /api/pos {op, ...} з заголовком Authorization: Bearer <token>. |
 | `print.js` | 223 | Черга друку для принтера в закладі (XP-80C через програму printer/varvar-print.ps1 на Windows). |
 | `promo.js` | 306 | 🎁 Лояльність: рівні постійних клієнтів (знижка / кешбек) і акції-правила (категорія, щасливі години, N-та в подарунок, |
-| `push.js` | 125 | 🔔 Push-сповіщення в шторку (Web Push, VAPID + aes128gcm, RFC 8291/8292) — без бібліотек, лише WebCrypto. |
+| `push.js` | 147 | 🔔 Push-сповіщення в шторку (Web Push, VAPID + aes128gcm, RFC 8291/8292) — без бібліотек, лише WebCrypto. |
 | `qr.js` | 47 | 🔳 QR-коди меню: ключ закладу (qr_key) → ключ кожного столу; PNG генерується на сервері (для принтера чеків і для друкарні). |
 | `site.js` | 469 | 🌐 Сайт-візитка: дані закладу, бронювання (+ передзамовлення), подарункові сертифікати, кабінет гостя (вхід через Telegram), |
 | `siteapi.js` | 37 | 🖥 каса: сайт-візитка, броні, сертифікати (op: site*, bk*, cert*) |
-| `sitedesign.js` | 84 | 🎨 Конструктор сайту-візитки: перевірка всього, що власник зберігає з кабінету (тема, головний екран, блоки, панель, |
+| `sitedesign.js` | 85 | 🎨 Конструктор сайту-візитки: перевірка всього, що власник зберігає з кабінету (тема, головний екран, блоки, панель, |
 | `stock.js` | 597 | 🧮 Розрахунок: склад (Кухня / Бар), техкарти й собівартість, заготовки, накладні, інвентаризація. |
 | `stockbot.js` | 256 | 🧮 Розрахунок у Telegram-боті (паритет з касою): залишки, закупівля, накладні з фото, списання, заготовки, інвентаризація, техкарти, фудкост |
 | `store.js` | 189 | Надійне сховище закладу: Durable Object (одна копія, без затримок узгодження, як у KV). |
-| `supbot.js` | 137 | 🛟 Бот підтримки ATOM (вебхук /tg5). Клієнт пише боту → окрема тема в групі-форумі помічників; відповідь помічника в темі → клієнту. |
+| `supbot.js` | 140 | 🛟 Бот підтримки ATOM (вебхук /tg5). Клієнт пише боту → окрема тема в групі-форумі помічників; відповідь помічника в темі → клієнту. |
 | `supkb.js` | 3 | Згенеровано tools/supkb.mjs — не правити руками. |
 | `suppliers.js` | 115 | 🏭 Постачальники: профіль (реквізити з накладної, контакти, відстрочка), борг і накладні, ціни, замовлення, акт звірки, нагадування. |
 | `tasks.js` | 97 | 📋 План на день: адмін складає завдання (разові + шаблони, що повторюються), працівник відмічає ✅ зробив / ❌ не зробив (з причиною, за потре |
@@ -79,7 +79,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 
 ## Каса — розділи і функції
 
-- **00-core.js** (666) — applyBrand:24, offBanner:49, offOverlay:63, offPre:81, offFlush:89, api:106, showLogin:128, tryLogin:133, pinKey:152, showReg:160, logout:182, loadState:191, loadMenu:205, revive:208, connect:209, ding:269, applyLook:281, applySkin:292, loadLookV:293, renderNav:314, render:326, loadView:338, renderMain:354, modal:402, askVal:416, askLong:420, ask:424, pickTable:428, toast:440, on:447, goBack:557, checkVer:585, pushSubNow:600, pushMenu:611, pushBanner:624, pushSwSync:634, start:651
+- **00-core.js** (669) — applyBrand:24, offBanner:49, offOverlay:63, offPre:81, offFlush:89, api:106, showLogin:128, tryLogin:133, pinKey:152, showReg:160, logout:182, loadState:191, loadMenu:205, revive:208, connect:209, ding:269, applyLook:281, applySkin:292, loadLookV:293, renderNav:314, render:326, loadView:338, renderMain:354, modal:402, askVal:416, askLong:420, ask:424, pickTable:428, toast:440, on:447, goBack:557, checkVer:585, pushSubNow:600, pushMenu:611, pushBanner:624, pushSwSync:634, start:654
 - **10-hall.js** (454) — hallHTML:1, renderFeed:45, openTable:77, closeSheet:84, menuItems:89, renderSheet:97, paintCounts:142, addItem:147, upsHint:167, sendCart:173, closeFlow:183, voidReason:209, discFlow:214, moveFlow:223, splitRender:233, splitFlow:239, hallGrid:252, closedHTML:275, hallViews:299, mapPos:311, mapStart:317, mapSave:319, floorUI:320, mapEdit:350, hallPick:363, myHalls:368, wlFree:390, wlOpen:395
 - **12-evcom.js** (110) — evFoot:12, evList:18, chatSay:26, evNotify:28, evcOpen:35, evcClose:45, evcRender:46, evcDo:58, evcSend:59, evcMent:61, evcPutMent:68, evRecStart:71, evRecStop:83, evPlay:85
 - **20-delivery.js** (191) — goBlock:1, goNew:12, goDone:45, cliT:51, loadCour:71, goHTML:73, goCtlHTML:102, courCard:120, goSetHTML:124, goTileInfo:141, goEdit:143, goMap:153, loadCourRep:155, courRepHTML:156
@@ -173,7 +173,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | goMap | delivery.js:279 | 20-delivery.js |
 | goSt | delivery.js:261, pos.js:88 | 00-core.js, 20-delivery.js |
 | hallsSet | pos.js:373 | 70-settings.js |
-| help | owner.js:350, pos.js:72 | 85-team.js |
+| help | owner.js:351, pos.js:72 | 85-team.js |
 | ibanQr | pos.js:151 | 10-hall.js |
 | ideaAdd | ideas.js:42 | 85-team.js |
 | ideaDel | ideas.js:44 | 85-team.js |
@@ -190,8 +190,8 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | kUndo | pos.js:186 | 40-kitchen.js |
 | kitchen | pos.js:179 | 40-kitchen.js |
 | kitchenPct | pos.js:378 | 00-core.js |
-| login | owner.js:263, pos.js:40 | 00-core.js |
-| logout | owner.js:308, pos.js:107 | 00-core.js |
+| login | owner.js:264, pos.js:40 | 00-core.js |
+| logout | owner.js:309, pos.js:107 | 00-core.js |
 | lookV | pos.js:80 | 00-core.js |
 | lookVSet | pos.js:87 | 70-settings.js |
 | loyCli | promo.js:247 | 75-loyalty.js |
@@ -224,10 +224,11 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | printQr | pos.js:250 | 70-settings.js |
 | printRoute | pos.js:199 | 70-settings.js |
 | printTest | pos.js:192 | 70-settings.js |
+| pushAll | push.js:86 | 00-core.js |
 | pushKey | push.js:85 | 00-core.js |
-| pushSub | push.js:87 | 00-core.js |
-| pushTest | push.js:89 | 00-core.js |
-| pushUnsub | push.js:88 | 00-core.js |
+| pushSub | push.js:91 | 00-core.js |
+| pushTest | push.js:93 | 00-core.js |
+| pushUnsub | push.js:92 | 00-core.js |
 | qrInfo | pos.js:252 | 70-settings.js |
 | qrNew | pos.js:252, pos.js:254 | 70-settings.js |
 | rcptGet | pos.js:194 | 00-core.js, 70-settings.js |
@@ -237,7 +238,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | reject | pos.js:171 | 10-hall.js |
 | remove | pos.js:149 | 10-hall.js |
 | report | pos.js:299 | 60-reports.js |
-| reset | owner.js:277, pos.js:309 | 70-settings.js |
+| reset | owner.js:278, pos.js:309 | 70-settings.js |
 | shift | pos.js:285 | 00-core.js, 50-cash.js |
 | shiftOpen | pos.js:296 | 50-cash.js |
 | skAdj | stock.js:534 | 80-calc.js |
