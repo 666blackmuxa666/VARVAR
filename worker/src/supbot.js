@@ -14,6 +14,12 @@ export async function supSetup(env, tok) { // ключ з кабінету: пе
   return { bot: me.result.username, link: 'https://t.me/' + me.result.username, chat: !!(await H.supGet('chat')) };
 }
 
+export async function supNotify(env, text) { // сповіщення в групу помічників (загальна тема), якщо бот і група підключені
+  const H = hub(env), tok = env.SUPPORT_BOT_TOKEN || await H.supGet('tok'), chat = tok && await H.supGet('chat');
+  if (chat) await call(tok, 'sendMessage', { chat_id: chat, parse_mode: 'HTML', text });
+  return !!chat;
+}
+
 export async function supUpdate(u, env) {
   const H = hub(env), tok = env.SUPPORT_BOT_TOKEN || await H.supGet('tok'); if (!tok) return;
   const T = (m, b) => call(tok, m, b), m = u.message, mc = u.my_chat_member, gc = (m || mc)?.chat; if (!gc) return;

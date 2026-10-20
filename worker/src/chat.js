@@ -1,7 +1,8 @@
 // 💬 Чат на posatom.online: ШІ-асистент збирає заявку з фактів про ATOM. Розмова — у Hub (chat:<leadId>), у lead лише прапорці chat/hot/last.
-// Вимикач — кабінет платформи (за замовчуванням вимкнено). Телефон у логи не пишемо; про «🔥 тепле» — тільки власнику особисто.
+// Вимикач — кабінет платформи (за замовчуванням вимкнено). Телефон у логи не пишемо; про «🔥 тепле» — у групу бота підтримки та/або власнику особисто.
 import { aiChat, aiOn } from './ai.js';
 import { tg } from './ops.js';
+import { supNotify } from './supbot.js';
 
 const HOLD = 'Власник зв’яжеться з вами в Telegram або за телефоном.';
 const ASK = 'Залиште, будь ласка, телефон або Telegram — власник зв’яжеться з вами.';
@@ -39,6 +40,7 @@ ${hist}`).catch(() => null);
   const r = await H.chatBot(id, '', upd); if (r.error) return [{ error: r.error }, 404];
   if (r.lead.hot) reply = ((reply ? reply + ' ' : '') + HOLD).slice(0, 500); else if (ai?.hot && !r.lead.phone) reply = ((reply ? reply + ' ' : '') + ASK).slice(0, 500);
   await H.chatBot(id, reply, {}); // відповідь у розмову (прапорці вже виставлені)
-  if (r.newHot && cfg.tg) await tg(env, 'sendMessage', { chat_id: cfg.tg, parse_mode: 'HTML', text: `🔥 <b>Тепла розмова ATOM</b>\n👤 ${e(r.lead.name)} · ${e(r.lead.phone)}\n🏪 ${e(r.lead.place) || '—'}${r.lead.city ? ' · ' + e(r.lead.city) : ''}\n💬 ${e(text).slice(0, 200)}\n\nКабінет → 🚀 Продажі → 💬 Розмова` }).catch(() => {});
+  const hot = r.newHot && `🔥 <b>Тепла розмова ATOM</b>\n👤 ${e(r.lead.name)} · ${e(r.lead.phone)}\n🏪 ${e(r.lead.place) || '—'}${r.lead.city ? ' · ' + e(r.lead.city) : ''}\n💬 ${e(text).slice(0, 200)}\n\nКабінет → 🚀 Продажі → 💬 Розмова`;
+  if (hot) { await supNotify(env, hot).catch(() => {}); if (cfg.tg) await tg(env, 'sendMessage', { chat_id: cfg.tg, parse_mode: 'HTML', text: hot }).catch(() => {}); } // у групу підтримки + особисто
   return out({ reply, done: !!r.lead.hot });
 }
