@@ -31,7 +31,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | `guestbot.js` | 252 | 🤖 Бот гостей (@…GUEST_BOT_TOKEN): меню, статус замовлення, бонуси, день народження, сертифікати, |
 | `hub.js` | 328 | 🌐 HUB — центральна база платформи (один Durable Object): акаунти власників, заклади, сесії кабінету. |
 | `ideas.js` | 64 | 💡 Побажання розробнику: працівник пише з особистого кабінету (каса) або з бота персоналу. |
-| `index.js` | 465 |  |
+| `index.js` | 466 |  |
 | `kitbot.js` | 146 | 👨‍🍳 Бот кухні (KITCHEN_BOT_TOKEN, вебхук /tg4): кухарі отримують нові замовлення на телефон, |
 | `kitchen.js` | 133 | 👨‍🍳 Легкий кухонний екран для старих планшетів (iPad 2 / iOS 9): відкривається по http://…workers.dev/kitchen |
 | `ledger.js` | 158 | 📒 Облік закладу (фундамент Ф1/Ф3/Ф4/Ф6/Ф7): документи і журнал змін у SQL-таблицях Store (ledgerdb.js). |
@@ -91,7 +91,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 - **80-calc.js** (573) — loadCalc:1, calcHTML:14, skStockHTML:26, skIngEdit:51, skMergeUI:79, skGrpEdit:93, skDups:106, skGrpNew:115, skQty:116, skPick:135, skJournal:148, skBuyHTML:163, skShare:170, skInvHTML:176, skDraftHTML:190, skNewIng:211, skDraftSave:220, skAutoF:231, skPhotos:233, skBench:246, skScan:258, skCode:265, skDraftAdd:281, skCam:287, skInvView:303, skUnitCost:311, skCardsHTML:317, skCardOpen:334, skCardEdHTML:340, skMass:369, skMakeIngs:377, skCardSave:386, skCardAi:396, skAiAll:405, skTechHTML:424, skTechOne:429, skTechAll:434, skProdHTML:441, skProduce:448, skCountHTML:455, skCfInput:471, skCntFinish:477, skCntShow:484, skRepHTML:493
 - **81-excise.js** (98) — skExHTML:6, skExOneHTML:30, exReload:42, exScan:44, exAfterInv:65
 - **82-suppliers.js** (69) — skSupHTML:5, supLoad:14, supOpen:15, supEdit:51, supPrices:58
-- **85-team.js** (209) — loadPay:1, teamHTML:2, payHTML:3, gridHTML:42, zpPend:48, zpCell:56, zpSet:72, zpOpN:84, ideasLoad:93, helpAsk:94, thrMy:99, ideasMy:110, zpMy:116, staffPerms:190
+- **85-team.js** (215) — loadPay:1, teamHTML:2, payHTML:3, gridHTML:42, zpPend:48, zpCell:56, zpSet:72, zpOpN:84, ideasLoad:93, helpAsk:94, thrMy:99, ideasMy:110, supTg:117, zpMy:122, staffPerms:196
 - **86-tasks.js** (68) — loadMyTasks:6, myTasksHTML:8, tkMark:13, tkLoad:21, tkAdminHTML:22, tkForm:38, tkClick:51
 - **94-course-vid.js** (3) — —
 - **95-course.js** (225) — courseLeft:154, courseHTML:159, crNav:175, crEnd:176, crStep:177, crHelpBtn:217

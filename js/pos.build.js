@@ -7826,6 +7826,12 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
       ideasMy();
     }
   }
+  function supTg(sp) {
+    if (!sp.url) return toast("Telegram-\u043F\u0456\u0434\u0442\u0440\u0438\u043C\u043A\u0430 \u0449\u0435 \u043D\u0435 \u043F\u0456\u0434\u043A\u043B\u044E\u0447\u0435\u043D\u0430 \u2014 \u043D\u0430\u043F\u0438\u0448\u0456\u0442\u044C \u0443 \xAB\u{1F198} \u0414\u043E\u043F\u043E\u043C\u043E\u0433\u0430\xBB");
+    const u = /^https:\/\/t\.me\/[a-z0-9_]+bot$/i.test(sp.url) && VENUE ? sp.url + "?start=v_" + VENUE : sp.url;
+    window.open(u, "_blank", "noopener");
+    toast("\u{1F6DF} \u041F\u0456\u0434\u0442\u0440\u0438\u043C\u043A\u0430 " + sp.hrs);
+  }
   async function zpMy() {
     var _a2, _b2, _c, _d, _e;
     const r = await act("zpMy", {});
@@ -7851,7 +7857,9 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     }
     if (v === "push") return pushMenu();
     if (v === "atom") {
-      const c = await choose("\u{1F4AC} \u0417\u0432'\u044F\u0437\u043E\u043A \u0437 ATOM", "\u0420\u043E\u0437\u0440\u043E\u0431\u043D\u0438\u043A \u0432\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u0430\u0454 \u0442\u0443\u0442, \u0443 \u043A\u0430\u0441\u0456", [{ label: "\u{1F198} \u0414\u043E\u043F\u043E\u043C\u043E\u0433\u0430 \u2014 \u0449\u043E\u0441\u044C \u043D\u0435 \u043F\u0440\u0430\u0446\u044E\u0454", val: "help" }, { label: "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F \u2014 \u0449\u043E \u043F\u043E\u043A\u0440\u0430\u0449\u0438\u0442\u0438", val: "idea" }, { label: "\u{1F4AC} \u041C\u043E\u0457 \u0437\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F \u0439 \u0432\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u0456", val: "thr" }]);
+      const sp = fetch(API.replace(/\/v\/[^/]+$/, "") + "/api/sup").then((r2) => r2.json()).catch(() => ({}));
+      const c = await choose("\u{1F4AC} \u0417\u0432'\u044F\u0437\u043E\u043A \u0437 ATOM", "\u0420\u043E\u0437\u0440\u043E\u0431\u043D\u0438\u043A \u0432\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u0430\u0454 \u0442\u0443\u0442, \u0443 \u043A\u0430\u0441\u0456", [{ label: "\u{1F198} \u0414\u043E\u043F\u043E\u043C\u043E\u0433\u0430 \u2014 \u0449\u043E\u0441\u044C \u043D\u0435 \u043F\u0440\u0430\u0446\u044E\u0454", val: "help" }, { label: "\u{1F4A1} \u041F\u043E\u0431\u0430\u0436\u0430\u043D\u043D\u044F \u2014 \u0449\u043E \u043F\u043E\u043A\u0440\u0430\u0449\u0438\u0442\u0438", val: "idea" }, { label: "\u{1F4AC} \u041C\u043E\u0457 \u0437\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F \u0439 \u0432\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u0456", val: "thr" }, { label: "\u{1F6DF} \u041F\u0456\u0434\u0442\u0440\u0438\u043C\u043A\u0430 \u0432 Telegram", val: "tg" }]);
+      if (c === "tg") return supTg(await sp);
       if (c === "idea") return ideasMy();
       if (c === "help") return helpAsk();
       if (c === "thr") return thrMy();

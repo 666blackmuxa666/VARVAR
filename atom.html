@@ -349,6 +349,7 @@ footer a { color: var(--muted); }
     <div class="contacts">
       <div class="m">Або напишіть напряму — відповідаємо швидко:</div>
       <div class="ph" id="cPh">+380 68 311 58 48</div>
+      <a class="btn btn-gold" id="cSup" href="#" target="_blank" rel="noopener" hidden>🛟 Підтримка в Telegram <small id="cHrs"></small></a>
       <a class="btn btn-ghost" id="cTg" href="https://t.me/+380683115848" target="_blank" rel="noopener">✈️ Написати в Telegram</a>
       <a class="btn btn-ghost" id="cVb" href="viber://chat?number=%2B380683115848">💜 Написати у Viber</a>
       <a class="btn btn-ghost" id="cCall" href="tel:+380683115848">📞 Подзвонити</a>
@@ -443,6 +444,7 @@ footer a { color: var(--muted); }
   // 🎁 лічильник акції (реальні заклади) + перегляд
   fetch('/api/atom').then(r => r.json()).then(d => { const c = d.contacts || {}; /* 💬 контакти — з кабінету (🚀 Продажі → Контакти сайту) */
     if (c.phone) { $('#cPh').textContent = c.phone; const n = c.phone.replace(/[^\d+]/g, ''); $('#cCall').href = 'tel:' + n; $('#cVb').href = c.viber || 'viber://chat?number=' + encodeURIComponent(n); }
+    if (c.sup) { $('#cSup').href = c.sup; $('#cHrs').textContent = '· ' + (c.hrs || '9:00–22:00'); $('#cSup').hidden = false; }
     if (c.tg) $('#cTg').href = c.tg; if (c.viber) $('#cVb').href = c.viber;
     if (d.chat && !PV) chatInit();
     if (d.left == null) return; $('#pLeft').textContent = d.left; $('#pTot').textContent = d.total; $('#pBar').style.width = Math.round((d.total - d.left) / d.total * 100) + '%'; }).catch(() => {});

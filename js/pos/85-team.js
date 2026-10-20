@@ -113,6 +113,12 @@
     if (v !== 'add') return; const text = await ask('💡 Ваше побажання', 'Напр.: зробити кнопку … більшою'); if (!text) return ideasMy();
     if (await act('ideaAdd', { text }, '💡 Дякуємо! Передано розробнику')) { S.data.ideas = null; ideasMy(); }
   }
+  // 🛟 підтримка ATOM у Telegram (посилання задає платформа в кабінеті → 🚀 Продажі → Контакти сайту); бот одразу бачить заклад
+  function supTg(sp) {
+    if (!sp.url) return toast('Telegram-підтримка ще не підключена — напишіть у «🆘 Допомога»');
+    const u = /^https:\/\/t\.me\/[a-z0-9_]+bot$/i.test(sp.url) && VENUE ? sp.url + '?start=v_' + VENUE : sp.url;
+    window.open(u, '_blank', 'noopener'); toast('🛟 Підтримка ' + sp.hrs);
+  }
   async function zpMy() {
     const r = await act('zpMy', {}); if (!r) return; const w = r.row, me = S.me?.name;
     const lnx = (l, v) => `<div class="kv"><span>${l}</span><b class="money">${v}</b></div>`;
@@ -129,7 +135,7 @@
     const v = await modal({ title: `👤 ${me}`, body, buttons: [{ label: '🎨 Мій вигляд', val: 'look' }, { label: '🔁 Попросити обмін', val: 'swap' }, { label: '🔔 Сповіщення', val: 'push' }, { label: '💬 Зв\'язок з ATOM', val: 'atom' }, { label: 'Закрити', val: null }] });
     if (v === 'look') { S.view = 'mylook'; renderNav(); renderMain(); return; } // 🎨 свій колір і стиль — для будь-якої ролі, лише на цьому пристрої
     if (v === 'push') return pushMenu();
-    if (v === 'atom') { const c = await choose('💬 Зв\'язок з ATOM', 'Розробник відповідає тут, у касі', [{ label: '🆘 Допомога — щось не працює', val: 'help' }, { label: '💡 Побажання — що покращити', val: 'idea' }, { label: '💬 Мої звернення й відповіді', val: 'thr' }]); if (c === 'idea') return ideasMy(); if (c === 'help') return helpAsk(); if (c === 'thr') return thrMy(); return; }
+    if (v === 'atom') { const sp = fetch(API.replace(/\/v\/[^/]+$/, '') + '/api/sup').then(r => r.json()).catch(() => ({})); /* наперед — щоб Telegram відкрився одразу по кліку (Safari блокує вікна після довгого очікування) */ const c = await choose('💬 Зв\'язок з ATOM', 'Розробник відповідає тут, у касі', [{ label: '🆘 Допомога — щось не працює', val: 'help' }, { label: '💡 Побажання — що покращити', val: 'idea' }, { label: '💬 Мої звернення й відповіді', val: 'thr' }, { label: '🛟 Підтримка в Telegram', val: 'tg' }]); if (c === 'tg') return supTg(await sp); if (c === 'idea') return ideasMy(); if (c === 'help') return helpAsk(); if (c === 'thr') return thrMy(); return; }
     if (v === 'idea') return ideasMy();
     if (v === 'help') return helpAsk();
     if (v === 'thr') return thrMy();

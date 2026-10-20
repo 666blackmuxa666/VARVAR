@@ -198,6 +198,7 @@ export async function handle(req, env) {
         return json(...await T.tpayStart(env, b, { scan: si?.until > Date.now() ? si.t || 0 : -1, wifi: await inVenue(env, ip) })); } return json(await T.tpayState(env, url.searchParams.get('id'))); } // 🍽 оплата столу з QR
       if (url.pathname === '/api/gopay') return json(await (await import('./delivery.js')).goPayState(env, url.searchParams.get('id')));
       if (url.pathname === '/api/go' && req.method === 'POST') { const gb = await req.json(); if (gb && typeof gb === 'object') { delete gb._paid; delete gb._oid; delete gb._me; gb._me = await (await import('./site.js')).meSess(env, (req.headers.get('authorization') || '').slice(7)).catch(() => null); /* 🔐 бонуси лише для гостя, що увійшов під цим телефоном */ } /* 🔐 службові поля лише від LiqPay (delivery.js), не від гостя */ return json(...await goOrder(gb, ip, env)); }
+      if (url.pathname === '/api/sup') { const c = await hub(env).atomCfg(); return new Response(JSON.stringify({ url: c.sup || '', hrs: c.hrs || '9:00–22:00' }), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=300' } }); } // 🛟 підтримка ATOM у Telegram — сайт, кабінет, каса
       if (url.pathname === '/api/goinfo') return json(await goInfo(env, url.searchParams.get('ph'), (req.headers.get('authorization') || '').slice(7)));
       if (url.pathname === '/api/promo' && req.method === 'POST') return json(await promoQuote(await req.json(), env)); // 🎁 знижки кошика ?go
       if (url.pathname === '/api/reco') return json(await recoAll(env));

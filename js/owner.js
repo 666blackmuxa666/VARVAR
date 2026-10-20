@@ -36,6 +36,7 @@
   window.OWNLOOK = { dev: () => store.get('odev', {}), setDev: d => { store.set('odev', d); skApply(); }, setVenue: (id, l) => { if (id === lookId()) { store.set('vlook', l); skApply(); } } };
 
   function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 3000); }
+  const supLink = (u, v) => /^https:\/\/t\.me\/[a-z0-9_]+bot$/i.test(u) && v ? u + '?start=v_' + v : u; // 🛟 бот підтримки одразу бачить заклад
   async function api(op, b = {}) {
     const r = await fetch(API + '/api/owner', { method: 'POST', headers: { 'content-type': 'application/json', ...(S.token ? { authorization: 'Bearer ' + S.token } : {}) }, body: JSON.stringify({ op, ...b }) });
     const j = await r.json().catch(() => ({}));
@@ -280,7 +281,8 @@
     const el = e.target.closest('[data-a]'); if (!el) return; const a = el.dataset.a, d = el.dataset;
     const reload = async () => { S.plat = null; await start(); S.tab = 'plat'; render(); };
     if (a === 'out') { e.preventDefault(); return logout(); }
-    if (a === 'help') { e.preventDefault(); return modal('🆘 Допомога', '<div class="muted" style="font-size:13px">Напишіть, що не працює або що потрібно налаштувати — розробник отримає повідомлення в Telegram і зв\'яжеться з вами.</div><textarea name="t" rows="5" required style="width:100%;font:inherit;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px"></textarea>', async f => { await api('help', { text: f.t.value }); toast('🆘 Надіслано'); }); }
+    if (a === 'help') { e.preventDefault(); let sp = {}; try { sp = await fetch(API + '/api/sup').then(r => r.json()); } catch {} const tg = sp.url ? `<a class="btn" style="display:block;text-align:center;margin-bottom:10px" href="${esc(supLink(sp.url, S.venues?.[0]?.id))}" target="_blank" rel="noopener">🛟 Підтримка в Telegram · ${esc(sp.hrs)}</a><div class="muted" style="font-size:13px">або напишіть тут:</div>` : '';
+      return modal('🆘 Допомога', tg + '<div class="muted" style="font-size:13px">Напишіть, що не працює або що потрібно налаштувати — розробник отримає повідомлення в Telegram і зв\'яжеться з вами.</div><textarea name="t" rows="5" required style="width:100%;font:inherit;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px"></textarea>', async f => { await api('help', { text: f.t.value }); toast('🆘 Надіслано'); }); }
     if (a === 'tab' && d.t === 'cfg') { store.set('tab', 'cfg'); S.cfgV = null; S.tab = 'cfg'; if (S.venues.length === 1) return VC.open(S.venues[0].id); return render(); } // спершу — вибір закладу
     if (a === 'ocOpen') { window.scrollTo(0, 0); S.tab = 'cfg'; store.set('tab', 'cfg'); return VC.open(S.venues[0].id, d.s); }
     if (a === 'ibF') { S.ibF = d.f; return render(); }

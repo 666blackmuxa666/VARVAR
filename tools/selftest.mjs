@@ -1370,6 +1370,16 @@ async function loyTests(A, W, dish) {
     const r = await own({ op: 'signup', email: SE, place: 'Інша', pass: 'selfpass-123' }); must(r.status === 400 && /уже зареєстровано/.test(r.j.error || ''), JSON.stringify(r.j)); });
   await step('⚡ самореєстрація: прибирання', async () => { await ownT(PT, 'venueDel', { id: sv.venue, pass: PP }); await ownT(PT, 'acctDel', { email: SE }); }); }
   await step('прибирання: тестові заклади й власник-друг', async () => { for (const id of FV) await ownT(PT, 'venueDel', { id, pass: PP }); await ownT(PT, 'acctDel', { email: FE }); if (FE2) await ownT(PT, 'acctDel', { email: FE2 }); });
+  await step('🛟 підтримка в Telegram: платформа задає посилання й години → /api/sup; не-https відкидається; власнику не можна', async () => {
+    if (!PT) return 'немає токена платформи — пропуск';
+    const old = (await ownT(PT, 'atomCfg')).j.cfg || {};
+    try {
+      must((await ownT(PT, 'atomCfg', { set: 1, f: { sup: 'https://t.me/qa_support_bot', hrs: '9:00–22:00' } })).status === 200, 'збереження');
+      const r = await http('/api/sup'); must(r.j.url === 'https://t.me/qa_support_bot' && r.j.hrs === '9:00–22:00', JSON.stringify(r.j));
+      await ownT(PT, 'atomCfg', { set: 1, f: { sup: 'javascript:alert(1)' } }); must((await http('/api/sup')).j.url === '', 'не-https посилання прийнято');
+      if (OT) must((await ownT(OT, 'atomCfg', { set: 1, f: { sup: 'https://t.me/evil' } })).status === 403, 'власник змінив контакти ATOM');
+    } finally { await ownT(PT, 'atomCfg', { set: 1, f: { sup: old.sup || '', hrs: old.hrs || '' } }); }
+  });
   await step('🇬 вхід через Google: підпис, aud, новий email → назва закладу → заклад; чужий Google-акаунт на той самий email → відмова', async () => {
     const kp = await crypto.subtle.generateKey({ name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' }, true, ['sign', 'verify']);
     const jwk = { ...(await crypto.subtle.exportKey('jwk', kp.publicKey)), kid: 'qa1' }, u8 = x => Buffer.from(x).toString('base64url');

@@ -254,11 +254,11 @@ export class Hub extends DurableObject {
     return { friend: true, referrer: capped ? null : rid, capped };
   }
   async refBlock(code, on) { code = String(code || '').toLowerCase(); if (!(await this.st.get('refc:' + code))) return { error: 'Невірний код' }; const r = (await this.st.get('ref:' + code)) || { n: 0, list: [] }; r.blocked = on ? 1 : 0; await this.st.put('ref:' + code, r); return { ok: true }; }
-  // 💬 контакти сайту ATOM (кабінет → 🚀 Продажі): телефон, посилання Telegram і Viber
+  // 💬 контакти сайту ATOM (кабінет → 🚀 Продажі): телефон, посилання Telegram і Viber; sup — бот/група підтримки, hrs — години
   async atomCfg(f) {
     const c = (await this.st.get('atomcfg')) || {}; if (!f) return c;
     const url = v => { v = String(v || '').trim().slice(0, 200); return !v || /^(https:\/\/|viber:\/\/|tg:\/\/)/.test(v) ? v : ''; };
-    const n = { phone: String(f.phone ?? c.phone ?? '').trim().slice(0, 30), tg: url(f.tg ?? c.tg), viber: url(f.viber ?? c.viber) };
+    const n = { phone: String(f.phone ?? c.phone ?? '').trim().slice(0, 30), tg: url(f.tg ?? c.tg), viber: url(f.viber ?? c.viber), sup: url(f.sup ?? c.sup), hrs: String(f.hrs ?? c.hrs ?? '').trim().slice(0, 30) };
     await this.st.put('atomcfg', n); return n;
   }
   // 💬 ATOM: живий чат з сайту (ШІ-асистент). Розмова — окремо в chat:<leadId> (до 40 повідомлень по 500 символів), у lead лише прапорці chat/hot/last
