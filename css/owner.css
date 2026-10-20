@@ -32,7 +32,12 @@ a { color: var(--accent); }
 .login p { text-align: center; }
 .login form { display: grid; gap: 10px; margin-top: 18px; }
 .login .gor { text-align: center; color: var(--muted, #888); font-size: 13px; margin: 16px 0 10px; }
-.login .gbtn { display: flex; justify-content: center; min-height: 44px; }
+.login .gbtn { position: relative; min-height: 44px; }
+.login .gfake { width: 100%; pointer-events: none; }
+.login .gbtn:hover .gfake { border-color: var(--accent); }
+.login .gbtn:active .gfake { transform: scale(.97); }
+.login .greal { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; opacity: .01; overflow: hidden; }
+.login .greal > div, .login .greal iframe { transform: scaleY(1.15); }
 .err { color: var(--red); min-height: 20px; text-align: center; font-size: 14px; }
 
 /* каркас */
