@@ -1127,3 +1127,7 @@ body.noanim .tables .tbl.new::after,body.noanim .ev.wait::after{animation:none!i
   .feed.open { transform: none; }
   .nav .feed-btn { display: grid; }
 }
+/* 🧹 порядок: повні ряди плиток */
+@media (min-width: 700px) { .widgets.w4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.widget b { overflow-wrap: anywhere; }
+.pill.full { grid-column: 1 / -1; } .pill.full .psplit-l { display: flex; flex-wrap: wrap; gap: 6px 24px; }

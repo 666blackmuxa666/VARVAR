@@ -1,11 +1,12 @@
   function cashHTML() {
     const ctab = S.cashTab || 'day', cseg = `<div class="seg rsec cseg">${[['day', '💰 Сьогодні'], ['checks', '🧾 Чеки'], ...(modOn('bank') && can('cash') ? [['bank', '🏦 Банк']] : [])].map(([k, l]) => `<button class="${ctab === k ? 'on' : ''}" data-a="cashTab" data-t="${k}">${l}</button>`).join('')}</div>`;
-    if (ctab === 'checks') return cseg + closedHTML();
-    if (ctab === 'bank') return cseg + bankHTML();
-    return cseg + courCard() + cashHTML0();
+    const head = `<div class="rhead"><div><h1>Каса</h1><span class="muted">${{ day: 'виручка й гроші за сьогодні', checks: 'усі чеки за день', bank: 'виписки й звірка' }[ctab] || ''}</span></div></div>` + cseg;
+    if (ctab === 'checks') return head + closedHTML();
+    if (ctab === 'bank') return head + bankHTML();
+    return head + courCard() + cashHTML0();
   }
   function cashHTML0() {
-    const r = S.data.shift; if (!r) return '<div class="head"><h1>Каса</h1></div><div class="muted">Завантаження…</div>';
+    const r = S.data.shift; if (!r) return '<div class="muted">Завантаження…</div>';
     const z = r.z, pc = z.total ? Math.round(z.cash / z.total * 100) : 0;
     const today = new Date().toLocaleDateString('uk-UA', { weekday: 'long', day: 'numeric', month: 'long' });
     // 0. гроші зараз — залишки за весь час (змін немає, усе переходить з дня в день)
@@ -22,7 +23,7 @@
         return `<div class="widget hero-rec${best && now > best ? ' beat' : ''}"><span>🏆 Рекорд за день</span><b class="money">${best ? money(best) : '—'}</b><small>${best ? (now > best ? '🔥 сьогодні вже більше — рекорд!' : `${R.d.split('-').reverse().join('.')} · сьогодні ${pct}%`) : ''}${S.cfg?.recBonus ? ` · премія ${money(S.cfg.recBonus)}` : ''}</small>${best ? `<div class="bar2"><i style="width:${pct}%"></i></div>` : ''}</div>`; })();
     // 2. плитки
     const tiles = [['🧾 Чеків', z.checks], ['Ø Середній чек', z.checks ? money(z.total / z.checks) : '—'], ['🏷 Знижки', money(z.disc)], ['💝 Чайові', money(z.tip || 0)], ['💸 Витрати', money(z.exCash + z.exCard)], ['📈 Чистими', money(z.net), 'green'], ['⏳ Відкрито в залі', z.openTables ? `${money(z.openSum)} · ${z.openTables} ст.` : '—']];
-    const tilesH = `<div class="widgets">${tiles.map(([l, v, c]) => `<div class="widget ${c || ''}"><span>${l}</span><b class="money">${v}</b></div>`).join('')}${recH}</div>`;
+    const tilesH = `<div class="widgets w4">${tiles.map(([l, v, c]) => `<div class="widget ${c || ''}"><span>${l}</span><b class="money">${v}</b></div>`).join('')}${recH}</div>`;
     // 3. операції
     const ops = `<div class="card"><h3>⚡ Операції</h3><div class="opsg"><button class="btn" data-a="expense">💸 Витрата</button><button class="btn" data-a="cMove" data-t="+">➕ Внести</button><button class="btn" data-a="cMove" data-t="-">➖ Вилучити</button><button class="btn" data-a="cMove" data-t="x">🔁 Обмін</button></div>
       <div class="muted" style="font-size:12px;margin-top:8px">Витрата — купили щось · Внести / вилучити — поклали чи забрали гроші (готівкою або з картки ФОП: собі, податки) · Обмін — картка ↔ готівка</div></div>`;
@@ -45,7 +46,7 @@
       .sort((a, b) => String(b.at).localeCompare(String(a.at)));
     const jcard = (title, J) => `<div class="card"><h3>${title} <span class="muted" style="font-weight:400;font-size:13px">· ${J.length}</span></h3>${J.length ? J.map(x => `<div class="jr ${x.cls}${x.del ? ' del' : ''}"><span class="muted">${x.at}</span><span>${x.ic}</span><span class="jt">${x.t}</span><b class="money">${x.v}</b>${!x.del && x.btn ? x.btn : x.del && x.back ? x.back : '<i></i>'}</div>`).join('') : '<div class="muted">Поки порожньо</div>'}</div>`;
     const journal = jcard('💵 Журнал готівки за сьогодні', jlist('cash')) + jcard('💳 Журнал картки за сьогодні', jlist('card'));
-    return `<div class="head"><h1>Каса</h1></div>${balH}${hero}${tilesH}<div class="cash-grid"><div class="col">${journal}</div><div class="col">${tipsH}${ops}${mvH}${all}</div></div>`;
+    return `${balH}${hero}${tilesH}<div class="cash-grid"><div class="col">${journal}</div><div class="col">${tipsH}${ops}${mvH}${all}</div></div>`;
   }
   const MOVE = { in: '➕ Внесення', out: '➖ Вилучення', k2c: '🔁 Картка → готівка', c2k: '🔁 Готівка → картка', tipc: '💝 Чайові (готівка)', tipk: '💝 Чайові (картка)', kin: '➕ Внесення на картку', kout: '➖ Вилучення з картки', adjc: '✏️ Звірка готівки', adjk: '✏️ Звірка картки', salc: '👷 Зарплата (готівка)', salk: '👷 Зарплата (картка)' };
   // розшифровка залишку + звірка з фактом

@@ -110,7 +110,7 @@
       <div class="pill"><span>🍽 Позицій</span><b>${st.qty}</b><small>${st.n ? (st.qty / st.n).toFixed(1) : 0} у чеку</small></div>${(() => { // 🛵 канали продажу
         const ch = { hall: [0, 0], pick: [0, 0], del: [0, 0] }; let fee = 0; for (const c of checks || []) { const k = c.go || 'hall'; ch[k][0]++; ch[k][1] += c.sum - (c.tip || 0); fee += c.fee || 0; }
         if (!ch.pick[0] && !ch.del[0]) return '';
-        return `<div class="pill wide"><span>Канали продажу</span><div class="psplit-l"><span>🪑 Зал <b class="money">${money(ch.hall[1])}</b> <span class="muted">${ch.hall[0]} чек.</span></span><span>🥡 Самовивіз <b class="money">${money(ch.pick[1])}</b> <span class="muted">${ch.pick[0]} чек.</span></span><span>🛵 Доставка <b class="money">${money(ch.del[1])}</b> <span class="muted">${ch.del[0]} чек.${fee ? ` · за доставку ${money(fee)}` : ''}</span></span></div></div>`; })()}</div>`;
+        return `<div class="pill wide full"><span>Канали продажу</span><div class="psplit-l"><span>🪑 Зал <b class="money">${money(ch.hall[1])}</b> <span class="muted">${ch.hall[0]} чек.</span></span><span>🥡 Самовивіз <b class="money">${money(ch.pick[1])}</b> <span class="muted">${ch.pick[0]} чек.</span></span><span>🛵 Доставка <b class="money">${money(ch.del[1])}</b> <span class="muted">${ch.del[0]} чек.${fee ? ` · за доставку ${money(fee)}` : ''}</span></span></div></div>`; })()}</div>`;
     const nav = `<div class="seg rsec">${SECS.map(([k, l, tabs]) => `<button class="${sec[0] === k ? 'on' : ''}" data-a="rSec" data-s="${k}">${l}</button>`).join('')}</div>` +
       (sec[2].length > 1 ? `<div class="chips scroll sub">${sec[2].map(k => `<button class="chip ${R.tab === k ? 'on' : ''}" data-a="rTab" data-t="${k}">${TABS[k]}</button>`).join('')}</div>` : '');
 

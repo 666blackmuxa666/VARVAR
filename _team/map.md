@@ -79,13 +79,13 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 
 ## Каса — розділи і функції
 
-- **00-core.js** (669) — applyBrand:24, offBanner:49, offOverlay:63, offPre:81, offFlush:89, api:106, showLogin:128, tryLogin:133, pinKey:152, showReg:160, logout:182, loadState:191, loadMenu:205, revive:208, connect:209, ding:269, applyLook:281, applySkin:292, loadLookV:293, renderNav:314, render:326, loadView:338, renderMain:354, modal:402, askVal:416, askLong:420, ask:424, pickTable:428, toast:440, on:447, goBack:557, checkVer:585, pushSubNow:600, pushMenu:611, pushBanner:624, pushSwSync:634, start:654
+- **00-core.js** (670) — applyBrand:24, offBanner:49, offOverlay:63, offPre:81, offFlush:89, api:106, showLogin:128, tryLogin:133, pinKey:152, showReg:160, logout:182, loadState:191, loadMenu:205, revive:208, connect:209, ding:269, applyLook:281, applySkin:292, loadLookV:293, renderNav:315, render:327, loadView:339, renderMain:355, modal:403, askVal:417, askLong:421, ask:425, pickTable:429, toast:441, on:448, goBack:558, checkVer:586, pushSubNow:601, pushMenu:612, pushBanner:625, pushSwSync:635, start:655
 - **10-hall.js** (454) — hallHTML:1, renderFeed:45, openTable:77, closeSheet:84, menuItems:89, renderSheet:97, paintCounts:142, addItem:147, upsHint:167, sendCart:173, closeFlow:183, voidReason:209, discFlow:214, moveFlow:223, splitRender:233, splitFlow:239, hallGrid:252, closedHTML:275, hallViews:299, mapPos:311, mapStart:317, mapSave:319, floorUI:320, mapEdit:350, hallPick:363, myHalls:368, wlFree:390, wlOpen:395
 - **12-evcom.js** (110) — evFoot:12, evList:18, chatSay:26, evNotify:28, evcOpen:35, evcClose:45, evcRender:46, evcDo:58, evcSend:59, evcMent:61, evcPutMent:68, evRecStart:71, evRecStop:83, evPlay:85
 - **20-delivery.js** (191) — goBlock:1, goNew:12, goDone:45, cliT:51, loadCour:71, goHTML:73, goCtlHTML:102, courCard:120, goSetHTML:124, goTileInfo:141, goEdit:143, goMap:153, loadCourRep:155, courRepHTML:156
 - **30-books-site.js** (66) — loadBooks:1, booksHTML:3, bkForm:25, bdGiftT:40, certT:46
 - **40-kitchen.js** (88) — kOff:2, loadKq:3, tone:10, siren:13, kPlay:37, kSndPick:47, kitchenStart:53, kitchenGate:59, kqHTML:61
-- **50-cash.js** (205) — cashHTML:1, cashHTML0:7, balInfo:52, cashMove:63, shOpen:72, zDay:84, cEdit:102, bankHTML:141, bankFile:160, bkAct:175
+- **50-cash.js** (206) — cashHTML:1, cashHTML0:8, balInfo:53, cashMove:64, shOpen:73, zDay:85, cEdit:103, bankHTML:142, bankFile:161, bkAct:176
 - **52-agg.js** (26) — aggsLoad:3, aggManage:8, aggEd:17
 - **60-reports.js** (215) — perRange:1, dishOf:14, acctExport:25, loadReport:35, prevRange:52, repChecks:54, repStats:61, reportsHTML:78
 - **70-settings.js** (276) — stopHTML:1, printerHTML:11, printerCards:14, stCard:23, stSave:32, stEdit:33, taxCard:47, taxDo:62, prnCard:69, menuHTML:79, lookHTML:85, settingsHTML:99, menuEdit:157, qrPanel:185, qrSave:197, qrSheet:202, shrink:214, hallsSave:221, hallEdit:222

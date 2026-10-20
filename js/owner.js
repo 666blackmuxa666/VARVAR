@@ -14,6 +14,9 @@
   const S = { token: store.get('token', ''), tab: store.get('tab', 'home'), per: 'today', from: '', to: '', me: null, venues: [], seen: {}, sum: null, prev: null };
   const COLORS = ['#f2c14e', '#0a84ff', '#30d158', '#bf5af2', '#ff9f0a', '#64d2ff', '#ff375f', '#a2845e'];
   const ST = { active: '✅ активний', trial: '🧪 пробний', off: '⛔ вимкнено' };
+  // порядок карток: робочі → пробні → вимкнені, у групі — де заходили останніми
+  const RANK = { active: 0, trial: 1, off: 2 }, stOf = v => (S.venues.find(x => x.id === v.id) || v).status;
+  const vSort = l => [...(l || [])].sort((a, b) => (RANK[stOf(a)] ?? 3) - (RANK[stOf(b)] ?? 3) || (S.seen[b.id] || 0) - (S.seen[a.id] || 0));
   // 🎨 вигляд кабінету = вигляд закладу (lookv з сервера, кешовано) або свій на цьому пристрої — одна студія з касою (VVSkin.studio)
   const lookId = () => (S.venues?.find(x => x.id === 'varvar') || S.venues?.[0])?.id;
   function skApply() {
@@ -153,16 +156,16 @@
     const T = sumTot(S.sum), P = S.prev ? sumTot(S.prev) : null, now = S.sum.reduce((a, v) => { const n = v.now || {}; a.tables += n.tables || 0; a.go += n.go || 0; a.open += n.openSum || 0; a.staff += (n.onShift || []).length; a.sup += n.supDebt || 0; return a; }, { sup: 0, tables: 0, go: 0, open: 0, staff: 0 });
     const al = alerts(S.sum);
     return `<h2>🏠 Мережа сьогодні</h2><div class="kpis">
-      ${kpi('Виручка', money(T.rev), delta(T.rev, P?.rev))}${kpi('Чеків', T.n || 0, T.n ? 'середній ' + money(T.rev / T.n) : '')}${kpi('Зараз у залах', money(now.open), `${now.tables} столів · ${now.go} доставок`)}${kpi('На зміні', now.staff, 'людей')}${kpi('Чайові', money(T.tip))}${kpi('Знижки', money(T.disc))}${now.sup ? kpi('💸 Винні постачальникам', money(now.sup), 'деталі — у касі: Склад → 🏭') : ''}</div>
+      ${kpi('Виручка', money(T.rev), delta(T.rev, P?.rev))}${kpi('Чеків', T.n || 0, T.n ? 'середній ' + money(T.rev / T.n) : '')}${kpi('Зараз у залах', money(now.open), `${now.tables} столів · ${now.go} доставок`)}${kpi('На зміні', now.staff, 'людей')}${kpi('Чайові', money(T.tip))}${kpi('Знижки', money(T.disc))}${now.sup ? kpi('💸 Борг постачальникам', money(now.sup), 'Склад → 🏭') : ''}</div>
       <h2>🧠 Запитай у даних</h2><form class="card" id="askF" style="display:grid;gap:8px"><div class="btnrow" style="flex-wrap:nowrap"><input name="q" placeholder="Напр.: який заклад заробив найбільше цього місяця і чому?" autocomplete="off"><button class="btn primary">Запитати</button></div><div class="muted" style="font-size:12px">${['Скільки заробили на доставці за тиждень?', 'Чому вчора впала виручка?', 'Які страви приносять найбільше грошей?'].map(x => `<a href="#" data-a="askEx" data-q="${esc(x)}" style="margin-right:10px">${esc(x)}</a>`).join('')}</div><div id="askA" style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(S.askA || '')}</div></form>
       <h2>🚨 Тривоги ${al.length ? `<span class="muted">(${al.length})</span>` : ''}</h2>${al.length ? al.map(([c, t]) => `<div class="alert ${c}">${t}</div>`).join('') : '<div class="card muted">Усе спокійно 👌</div>'}
       ${digBlock()}
-      <h2>🏪 Заклади</h2><div class="grid">${S.sum.map(venueCard).join('')}</div>`;
+      <h2>🏪 Заклади</h2><div class="grid">${vSort(S.sum).map(venueCard).join('')}</div>`;
   }
   // 🌙 підсумок дня (щодня о 23:00): останні дні по закладах + особистий Telegram власника
   function digBlock() {
-    const L = (S.dig || []).filter(v => !v.error);
-    return `<h2>🌙 Підсумок дня</h2>` + (L.length ? L.map(v => `<div class="card" style="display:grid;gap:8px"><b>${esc(v.name)}</b>${v.list.length ? v.list.map((d, i) => `<details${i ? '' : ' open'}><summary>${esc(d.day.split('-').reverse().join('.'))} · <b>${money(d.rev)}</b> · ${d.n} чек.</summary><div class="muted" style="white-space:pre-wrap;overflow-wrap:anywhere;margin-top:6px">${esc(d.text.replace(/<[^>]+>/g, '').split('\n').slice(2).join('\n'))}</div></details>`).join('') : '<div class="muted">Перший підсумок з\'явиться сьогодні о 23:00</div>'}<div class="btnrow" style="flex-wrap:wrap"><button class="btn sm" data-a="digNow" data-v="${esc(v.id)}">🔄 Порахувати зараз</button><button class="btn sm" data-a="digTg" data-v="${esc(v.id)}">${v.tg ? '✈️ Telegram увімкнено' : '✈️ Надсилати в Telegram'}</button></div></div>`).join('') : '<div class="card muted">Поки немає даних</div>');
+    const L = vSort((S.dig || []).filter(v => !v.error)).sort((a, b) => (b.list[0]?.rev || 0) - (a.list[0]?.rev || 0));
+    return `<h2>🌙 Підсумок дня</h2>` + (L.length ? L.map(v => `<div class="card" style="display:grid;gap:8px;margin-bottom:10px"><b>${esc(v.name)}</b>${v.list.length ? v.list.map((d, i) => `<details${i ? '' : ' open'}><summary>${esc(d.day.split('-').reverse().join('.'))} · <b>${money(d.rev)}</b> · ${d.n} чек.</summary><div class="muted" style="white-space:pre-wrap;overflow-wrap:anywhere;margin-top:6px">${esc(d.text.replace(/<[^>]+>/g, '').split('\n').slice(2).join('\n'))}</div></details>`).join('') : '<div class="muted">Перший підсумок з\'явиться сьогодні о 23:00</div>'}<div class="btnrow" style="flex-wrap:wrap"><button class="btn sm" data-a="digNow" data-v="${esc(v.id)}">🔄 Порахувати зараз</button><button class="btn sm" data-a="digTg" data-v="${esc(v.id)}">${v.tg ? '✈️ Telegram увімкнено' : '✈️ Надсилати в Telegram'}</button></div></div>`).join('') : '<div class="card muted">Поки немає даних</div>');
   }
   function venueCard(v) {
     const n = v.now || {}, t = v.tot || {}, meta = S.venues.find(x => x.id === v.id) || {};
@@ -209,12 +212,12 @@
   }
   // ⚙️ Налаштування: спершу — який заклад
   function pickVenue() {
-    return `<h2>⚙️ Який заклад налаштувати?</h2><div class="grid">${S.venues.map(v => `<button class="card venue" data-a="vcfgOpen" data-v="${v.id}" style="text-align:left;cursor:pointer"><div class="h"><b>${esc(v.name)}</b><span class="st ${v.status}">${ST[v.status] || ''}</span></div><div class="muted" style="font-size:13px">${esc(v.city || '')}${v.city ? ' · ' : ''}${esc(v.id)}</div><span class="btn sm primary" style="align-self:flex-start">Налаштувати →</span></button>`).join('') || '<div class="muted">Закладів ще немає</div>'}</div>`;
+    return `<h2>⚙️ Який заклад налаштувати?</h2><div class="grid">${vSort(S.venues).map(v => `<button class="card venue" data-a="vcfgOpen" data-v="${v.id}" style="text-align:left;cursor:pointer"><div class="h"><b>${esc(v.name)}</b><span class="st ${v.status}">${ST[v.status] || ''}</span></div><div class="muted" style="font-size:13px">${esc(v.city || '')}${v.city ? ' · ' : ''}${esc(v.id)}</div><span class="btn sm primary" style="align-self:flex-start">Налаштувати →</span></button>`).join('') || '<div class="muted">Закладів ще немає</div>'}</div>`;
   }
   function venues() {
-    return `<h2>🏪 Мої заклади</h2><div class="grid">${S.venues.map(v => `<div class="card venue"><div class="h"><b>${esc(v.name)}</b><span class="st ${v.status}">${ST[v.status] || ''}</span></div>
+    return `<h2>🏪 Мої заклади</h2><div class="grid">${vSort(S.venues).map(v => `<div class="card venue"><div class="h"><b>${esc(v.name)}</b><span class="st ${v.status}">${ST[v.status] || ''}</span></div>
       <div class="muted">${esc(v.city || '')}${v.city ? ' · ' : ''}адреса: <b>${esc(v.id)}</b>${S.seen[v.id] ? ` · заходили ${new Date(S.seen[v.id]).toLocaleDateString('uk-UA')}` : ''}</div>
-      <div class="btnrow"><button class="btn primary sm" data-a="vcfgOpen" data-v="${v.id}">⚙️ Налаштувати</button><button class="btn sm" data-a="enter" data-v="${v.id}">Увійти в касу →</button><a class="btn sm ghost" href="${esc(siteOf(v.id, 'about.html'))}" target="_blank">🌐 Сайт</a>${v.owner === S.me.email || S.me.role === 'platform' ? `<button class="btn sm" data-a="accMan" data-v="${v.id}">🧮 Бухгалтер</button>` : ''}</div>
+      <button class="btn primary sm" data-a="vcfgOpen" data-v="${v.id}">⚙️ Налаштувати</button><div class="btnrow vacts"><button class="btn sm" data-a="enter" data-v="${v.id}">💰 Каса →</button><a class="btn sm" href="${esc(siteOf(v.id, 'about.html'))}" target="_blank">🌐 Сайт</a>${v.owner === S.me.email || S.me.role === 'platform' ? `<button class="btn sm" data-a="accMan" data-v="${v.id}">🧮 Бухгалтер</button>` : ''}</div>
       <div class="kv"><span>🔗 Каса для персоналу<br><small class="muted">${esc(absOf(v.id, 'pos.html'))}</small></span><button class="btn sm" data-a="copy" data-u="${esc(absOf(v.id, 'pos.html'))}">Копіювати</button></div><div class="kv"><span>🌐 Сайт для гостей<br><small class="muted">${esc(absOf(v.id, 'about.html'))}</small></span><button class="btn sm" data-a="copy" data-u="${esc(absOf(v.id, 'about.html'))}">Копіювати</button></div></div>`).join('') || '<div class="muted">Закладів ще немає</div>'}</div>
       <h2>🔐 Акаунт</h2><div class="card"><div class="kv"><span>${esc(S.me.name)}<br><small class="muted">${esc(S.me.email)}</small></span><button class="btn sm" data-a="pass">Змінити пароль</button></div></div>`;
   }
@@ -247,7 +250,7 @@
   }
   function render() {
     if (!S.me) return;
-    const plat = S.me.role === 'platform', acc = S.me.role === 'acc', TABS = acc ? [['acc', '🧮 Мої клієнти']] : [['home', '🏠 Мережа'], ['an', '📊 Аналітика'], ['ven', '🏪 Заклади'], ['cfg', '⚙️ Налаштування'], ['learn', '🎓 Навчання'], ['inbox', `📨 Вхідні${S.inboxN ? ` <i class="bdg">${S.inboxN}</i>` : ''}`], ...(plat ? [['crm', '🚀 Продажі'], ['plat', '🌐 Платформа']] : [])];
+    const plat = S.me.role === 'platform', acc = S.me.role === 'acc', TABS = acc ? [['acc', '🧮 Мої клієнти']] : [['home', '🏠 Мережа'], ['an', '📊 Аналітика'], ['ven', '🏪 Заклади'], ['cfg', '⚙️ Налаштування'], ['inbox', `📨 Вхідні${S.inboxN ? ` <i class="bdg">${S.inboxN}</i>` : ''}`], ...(plat ? [['crm', '🚀 Продажі'], ['plat', '🌐 Платформа']] : []), ['learn', '🎓 Навчання']];
     if (!TABS.some(x => x[0] === S.tab)) S.tab = 'home';
     app.innerHTML = `<header class="top"><div class="in"><img src="img/app/pos.svg" alt="ATOM"><b>${acc ? 'Кабінет бухгалтера' : 'Кабінет власника'}</b><button class="who-av" data-a="myAv" title="Змінити фото">${VVAV.html(S.me.av, S.me.name)}</button><div class="who"><b>${esc(S.me.name)}</b><span class="muted">${plat ? '👑 платформа' : acc ? '🧮 бухгалтер' : 'власник'}</span></div><div class="icogrp">${acc ? '' : '<button class="icobtn" data-a="myLook" title="Вигляд кабінету">🎨</button>'}<button class="icobtn" data-a="help" title="Допомога">🆘</button><button class="icobtn" data-a="out" title="Вийти">🚪</button></div></div>
       <nav class="tabs">${TABS.map(([k, l]) => `<button class="${S.tab === k ? 'on' : ''}" data-a="tab" data-t="${k}">${l}</button>`).join('')}<button data-a="reload">🔄</button></nav></header>
