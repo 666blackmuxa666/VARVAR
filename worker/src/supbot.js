@@ -1,6 +1,6 @@
 // 🛟 Бот підтримки ATOM (вебхук /tg5). Клієнт пише боту → окрема тема в групі-форумі помічників; відповідь помічника в темі → клієнту.
 // Ключ: кабінет платформи → 🚀 Продажі → 💬 Контакти → поле «Підтримка» (або секрет SUPPORT_BOT_TOKEN). Після ключа протягом години додайте бота в групу — вона стане групою підтримки.
-// HUB: sup:tok, sup:chat (група), sup:arm (час підключення), sup:u:<tgId> → { t: тема, v: заклад }, sup:t:<тема> → tgId
+// HUB: sup:tok, sup:chat (група), sup:arm (час підключення), sup:u:<tgId> → { t: тема, v: заклад }, sup:t:<тема> → tgId, sup:m:<повідомлення в групі без тем> → tgId
 import { hub } from './hub.js';
 export const SUP_TOKEN = /^\d{6,12}:[\w-]{30,}$/;
 const call = (tok, m, b) => fetch(`https://api.telegram.org/bot${tok}/${m}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) }).then(r => r.json()).catch(e => ({ ok: false, description: e.message }));
@@ -55,7 +55,7 @@ async function client(m, T, H, chat) {
   const who = [m.from.first_name, m.from.last_name].filter(Boolean).join(' ') || 'Клієнт';
   for (let i = 0; i < 2; i++) {
     if (!s.t) { const t = await T('createForumTopic', { chat_id: chat, name: `${who}${s.v ? ' · ' + s.v : ''}`.slice(0, 120) });
-      if (!t.ok) { await T('sendMessage', { chat_id: chat, text: `⚠️ Не можу створити тему для ${who}: увімкніть «Теми» в групі й дайте боту право «Керувати темами».` }); break; }
+      if (!t.ok) return flat(m, T, H, chat, who, s); // без «Тем» — просто в групу, відповідь через «Відповісти»
       s.t = t.result.message_thread_id; await H.supSet(k, s); await H.supSet('t:' + s.t, id);
       await T('sendMessage', { chat_id: chat, message_thread_id: s.t, text: `👤 ${who}${m.from.username ? ' @' + m.from.username : ''}\n🏪 Заклад: ${s.v || 'не вказано'}` }); }
     const r = await T('copyMessage', { chat_id: chat, message_thread_id: s.t, from_chat_id: id, message_id: m.message_id });
@@ -64,7 +64,18 @@ async function client(m, T, H, chat) {
   return T('sendMessage', { chat_id: id, text: '⚠️ Не вдалося передати повідомлення. Спробуйте ще раз за хвилину.' });
 }
 
+async function flat(m, T, H, chat, who, s) { // група без тем: картка клієнта + його повідомлення; «Відповісти» на будь-яке з них → клієнту
+  const id = m.from.id, h = await T('sendMessage', { chat_id: chat, text: `👤 ${who}${m.from.username ? ' @' + m.from.username : ''} · 🏪 ${s.v || 'заклад не вказано'}\n↩️ Щоб відповісти — «Відповісти» на повідомлення нижче` });
+  const r = await T('copyMessage', { chat_id: chat, from_chat_id: id, message_id: m.message_id });
+  for (const x of [h, r]) if (x.ok) await H.supSet('m:' + x.result.message_id, id);
+  if (!r.ok) return T('sendMessage', { chat_id: id, text: '⚠️ Не вдалося передати повідомлення. Спробуйте ще раз за хвилину.' });
+}
+
 async function helper(m, T, H) {
+  const rp = !m.is_topic_message && m.reply_to_message; // група без тем: відповідь на повідомлення бота
+  if (rp) { if (!rp.from?.is_bot || /^\/\//.test(m.text || m.caption || '')) return; const uid = await H.supGet('m:' + rp.message_id); if (!uid) return;
+    const r = await T('copyMessage', { chat_id: uid, from_chat_id: m.chat.id, message_id: m.message_id });
+    return T('sendMessage', { chat_id: m.chat.id, reply_to_message_id: m.message_id, text: r.ok ? '✅ Надіслано' : '⚠️ Не доставлено: ' + (r.description || 'помилка') }); }
   const t = m.is_topic_message && m.message_thread_id; if (!t || m.forum_topic_created || m.forum_topic_edited || m.forum_topic_closed || m.forum_topic_reopened) return; // загальна тема — розмова команди
   if (/^\/\//.test(m.text || m.caption || '')) return; // // нотатка для своїх
   const uid = await H.supGet('t:' + t); if (!uid) return;
