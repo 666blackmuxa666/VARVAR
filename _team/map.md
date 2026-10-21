@@ -55,7 +55,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | `owner.js` | 481 | 👑 Кабінет власника мережі й консоль платформи: /api/owner (поза закладом) + внутрішні виклики закладів /__int/* (всередині Store). |
 | `pay.js` | 233 | 👷 Графік змін і зарплата: прихід «Почати зміну» → адмін підтверджує → ✅ у графіку; ставка за зміну + % від виручки + бонус за план; |
 | `perm.js` | 59 | 🔑 Ролі й права з галочками (_team/roles.md). |
-| `photoai.js` | 101 | 📸 ШІ-фото страв в одному стилі закладу: Gemini Image (платний ключ GEMINI_IMG_KEY — лише тут; решта ШІ — безкоштовний ключ). |
+| `photoai.js` | 111 | 📸 ШІ-фото страв в одному стилі закладу: Gemini Image (платний ключ GEMINI_IMG_KEY — лише тут; решта ШІ — безкоштовний ключ). |
 | `pos.js` | 469 | API касової програми (pos.html). POST /api/pos {op, ...} з заголовком Authorization: Bearer <token>. |
 | `print.js` | 223 | Черга друку для принтера в закладі (XP-80C через програму printer/varvar-print.ps1 на Windows). |
 | `promo.js` | 306 | 🎁 Лояльність: рівні постійних клієнтів (знижка / кешбек) і акції-правила (категорія, щасливі години, N-та в подарунок, |
@@ -216,7 +216,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | moveBack | pos.js:292 | 50-cash.js |
 | moveDel | pos.js:291 | 50-cash.js |
 | order | pos.js:135 | 10-hall.js |
-| photoInfo | photoai.js:33 | 70-settings.js |
+| photoInfo | photoai.js:35 | 70-settings.js |
 | precheck | pos.js:150 | 00-core.js |
 | printClear | pos.js:249 | 00-core.js, 70-settings.js |
 | printMove | pos.js:203 | 00-core.js |

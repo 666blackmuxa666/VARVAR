@@ -620,6 +620,11 @@ async function apiTests() {
     const r = await pos(A, 'photoStyleSet', { refFrom: st.id }); must(r.status === 200 && r.j.refs.length === 1, 'зразок: ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 150));
     await pos(A, 'photoStyleSet', { refFrom: st.id }); const r3 = await pos(A, 'photoStyleSet', { refFrom: st.id }); must(r3.status === 400, 'третій зразок → ' + r3.status);
     await pos(A, 'photoStyleSet', { refDel: 0 }); await pos(A, 'photoStyleSet', { refDel: 0 }); });
+  await step('📸 Блок меню: свої особливості й зразки — окремо від загального стилю; порожній блок прибирається', async () => {
+    const st = menu.categories.flatMap(c => c.items).find(x => /^img\//.test(x.img || '')), cid = menu.categories.find(c => !c.tech)?.id; if (!cid) return;
+    const p = await pos(A, 'photoStyleSet', { cat: cid, prompt: 'QA блок' }); must(p.status === 200 && p.j.cat?.[cid]?.prompt === 'QA блок' && p.j.prompt !== 'QA блок', JSON.stringify(p.j).slice(0, 200));
+    if (st) { const r = await pos(A, 'photoStyleSet', { cat: cid, refFrom: st.id }); must(r.j.cat?.[cid]?.refs.length === 1 && !r.j.refs.length, 'зразок блоку: ' + JSON.stringify(r.j).slice(0, 200)); await pos(A, 'photoStyleSet', { cat: cid, refDel: 0 }); }
+    const e = await pos(A, 'photoStyleSet', { cat: cid, prompt: '' }); must(!e.j.cat?.[cid], 'порожній блок лишився'); });
   await step('🔳 QR: картинки всіх столів, скан працює; «нові коди» — старий QR не працює', async () => {
     const q = await pos(A, 'qrInfo'); must(q.status === 200 && q.j.list.length === q.j.n && q.j.n > 0, JSON.stringify(q.j).slice(0, 200));
     const x = q.j.list[1], png = await fetch(API + new URL(x.img).pathname); const b = new Uint8Array(await png.arrayBuffer()); must(png.ok && b[0] === 0x89 && b[1] === 0x50, 'не PNG ' + png.status);
