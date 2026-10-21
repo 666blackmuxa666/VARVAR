@@ -16,7 +16,7 @@ window.PHOTOAI = (() => {
     #phw .ph-cat small,#phw .ph-cat .m{color:var(--muted,#999);font-size:12px}#phw .ph-st{display:flex;width:76px}#phw .ph-st i{width:30px;height:30px;border-radius:8px;background:var(--card,#0003) center/cover;border:2px solid var(--card2,#222);margin-left:-8px}#phw .ph-st i:first-child{margin-left:0}
     #phw .ph-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px;max-height:38vh;overflow:auto;margin:6px 0}#phw .ph-d{position:relative;aspect-ratio:1;border-radius:10px;background:var(--card2,#ffffff10) center/cover;cursor:pointer;display:block;overflow:hidden}
     #phw .ph-d input{position:absolute;top:4px;right:4px;width:20px;height:20px;margin:0}#phw .ph-d b{position:absolute;left:0;right:0;bottom:0;background:#000b;color:#fff;font-size:10px;font-weight:500;padding:3px 4px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#phw .ph-d em{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;font-size:22px;opacity:.5}
-    #phw .ph-act{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:6px;margin-top:10px}#phw details summary{cursor:pointer;font-size:14px;padding:4px 0}#phw .ph-steps{font-size:13px;padding:8px 10px;border-radius:10px;border:1px dashed var(--line2,#ffffff33);margin:6px 0;text-align:left}`;
+    #phw .ph-act{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:6px;margin-top:10px}#phw .ph-act .btn{white-space:normal;line-height:1.2;min-width:0;padding:8px 12px;text-align:center}#phw details summary{cursor:pointer;font-size:14px;padding:4px 0}#phw .ph-steps{font-size:13px;padding:8px 10px;border-radius:10px;border:1px dashed var(--line2,#ffffff33);margin:6px 0;text-align:left}`;
   const quotaRow = () => `<div class="ph-q"><span>📊 Цього місяця</span><b>${inf.n} / ${inf.free}${inf.over ? ` · +${inf.over} × ${inf.price} ₴` : ''}</b></div>`;
   const tgt = cat => cat ? (inf.cat[cat] ||= { prompt: '', refs: [] }) : inf; // стиль блоку або всього закладу
   const refsRow = cat => { const r = tgt(cat).refs; return `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0">${r.map((u, i) => `<div style="width:72px;height:72px;border-radius:10px;background:var(--card2,#ffffff10) url('${esc(u)}') center/cover;position:relative"><button data-ph="refDel" data-i="${i}" style="position:absolute;top:2px;right:2px;background:#000a;color:#fff;border-radius:8px;width:22px;height:22px">✕</button></div>`).join('')}${r.length < 2 ? '<button class="btn sm" data-ph="refAdd" style="height:72px">＋ Зразок</button>' : ''}</div>`; };
@@ -68,7 +68,7 @@ window.PHOTOAI = (() => {
       <div class="ph-hint">Страви блоку — позначте, які робити (без фото позначені):</div>
       <div class="ph-g">${c.items.map(i => `<label class="ph-d" style="${i.img ? `background-image:url('${esc(i.img)}')` : ''}" title="${esc(nm(i))}">${i.img ? '' : '<em>📷</em>'}<input type="checkbox" value="${i.id}" ${i.img ? '' : 'checked'}><b>${inf.dish[i.id] ? '✍️ ' : ''}${esc(nm(i))}</b></label>`).join('')}</div>
       ${quotaRow()}
-      <div class="ph-act"><button class="btn primary" data-k="sel">✨ Зробити позначені</button>${withImg.length ? `<button class="btn" data-k="edit">🪄 Наявні — під стиль блоку (${withImg.length})</button>` : ''}<button class="btn ghost" data-k="x">‹ Блоки</button></div>
+      <div class="ph-act"><button class="btn primary" data-k="sel">✨ Зробити позначені</button>${withImg.length ? `<button class="btn" data-k="edit">🪄 Наявні під стиль (${withImg.length})</button>` : ''}<button class="btn ghost" data-k="x">‹ Блоки</button></div>
       <div class="ph-hint">Позначені з фото — фото обробляється (страва та сама, фон і світло як у зразку); без фото — малюється з назви й складу. Окремий опис страви — 🍽 «Одна страва».</div>`);
     w.addEventListener('click', async e => {
       if (e.target === w) return close();
@@ -166,8 +166,8 @@ window.PHOTOAI = (() => {
         <textarea id="phN" rows="3" style="${TA}" placeholder="напр.: кругла піца на дерев'яній дошці, 8 шматків, зверху базилік; без соусу збоку">${esc(st.note)}</textarea></label>
       <div class="muted" style="font-size:12px">ШІ також бере назву${it.desc?.uk ? ', склад' : ''}${it.size ? ' і вагу' : ''} з меню. Опис зберігається для цієї страви — і в касі, і в кабінеті.</div>
       <div style="display:grid;gap:6px;margin-top:12px">
-        ${hasPhoto ? `<label class="kv" style="cursor:pointer"><span>🎯 Суворо як на фото <small class="muted">(міняє лише фон і світло)</small></span><input type="checkbox" id="phS" ${st.strict ? 'checked' : ''} style="width:22px;height:22px"></label>` : ''}
-        <label class="kv" style="cursor:pointer"><span>🖼 Зразки блоку — фон, посуд, кут (${rc})</span><input type="checkbox" id="phR" ${st.refs ? 'checked' : ''} ${!rc ? 'disabled' : ''} style="width:22px;height:22px"></label></div>
+        ${hasPhoto ? `<label class="kv" style="cursor:pointer"><span>🎯 Суворо як на фото <small class="muted">(міняє лише фон і світло)</small></span><input type="checkbox" id="phS" ${st.strict ? 'checked' : ''}></label>` : ''}
+        <label class="kv" style="cursor:pointer"><span>🖼 Зразки блоку — фон, посуд, кут (${rc})</span><input type="checkbox" id="phR" ${st.refs ? 'checked' : ''} ${!rc ? 'disabled' : ''}></label></div>
       <details style="margin-top:10px"><summary>🎨 Стиль закладу (спільний для всіх фото)</summary><div style="margin-top:8px">${styleBlock('')}</div></details>
       ${quotaRow()}
       <div class="ph-act"><button class="btn primary" data-d="go">✨ Згенерувати</button><button class="btn ghost" data-d="x">Закрити</button></div>`);
