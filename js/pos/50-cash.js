@@ -139,6 +139,9 @@
   // 🏦 Банк (етап 2, worker/src/bank.js): виписка 1С / CSV → автозвірка → черга «на підтвердження»
   const BK_WHY = [['own', '🔁 Власний переказ'], ['tax', '🏛 Податки / ЄСВ'], ['sal', '👷 Зарплата'], ['loan', '🏦 Кредит / депозит'], ['other', '🙈 Інше']];
   const bkD = d => d.slice(8) + '.' + d.slice(5, 7);
+  // 🔄 mono / Приват підключає власник у кабінеті (bankapi.js): операції приходять самі
+  const bkW = ts => ts ? new Date(ts).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+  const bkApi = a => !a ? '' : `<div style="margin-top:8px">${a.mono ? `<div class="kv"><span>🔄 monobank ${esc(a.mono.acc.join(', '))}</span><b style="text-align:right">${a.mono.err ? '⚠️ ' + esc(a.mono.err) : a.mono.wait ? 'підключається…' : 'автоматично · ' + bkW(a.mono.hook || a.mono.ts)}</b></div>` : ''}${a.privat ? `<div class="kv"><span>🔄 ПриватБанк</span><b style="text-align:right">${a.privat.err ? '⚠️ ' + esc(a.privat.err) : a.privat.wait ? 'сьогодні оновиться' : 'раз на добу · ' + bkW(a.privat.ts)}</b></div>` : ''}</div>`;
   function bankHTML() {
     const r = S.data.bank; if (!r) return '<div class="muted">Завантаження…</div>';
     const mn = new Date(r.m + '-15T12:00:00').toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' }), t = r.t, q = r.list.filter(x => x.st === 'q');
@@ -148,7 +151,7 @@
     const qb = x => x.sum < 0 ? b('inv', x.id, '🧾 Накладні') + b('exp', x.id, '💸 Витрата') + b('mov', x.id, '➖ Вилучення') + b('auto', x.id, '🔎 Пара') + b('skip', x.id, '🙈 Пропустити')
       : b('acq', x.id, '💳 Еквайринг') + (modOn('agg') ? b('agg', x.id, '🛵 Агрегатор') : '') + (modOn('tax') ? b('inc', x.id, '📒 Це дохід') : '') + b('mov', x.id, '➕ Внесення') + b('auto', x.id, '🔎 Пара') + b('skip', x.id, '🙈 Пропустити');
     const head = `<div class="card"><h3>🏦 Банк · ${esc(mn)}</h3><div class="btns" style="flex-wrap:wrap;align-items:center"><button class="btn sm" data-a="bkM" data-t="-1">‹</button><button class="btn sm" data-a="bkM" data-t="1">›</button>
-      <label class="btn sm primary" style="cursor:pointer">📎 Завантажити виписку<input id="bankFile" type="file" accept=".txt,.csv,.tsv" hidden></label></div>
+      <label class="btn sm primary" style="cursor:pointer">📎 Завантажити виписку<input id="bankFile" type="file" accept=".txt,.csv,.tsv" hidden></label>${r.api ? '<button class="btn sm" data-a="bkSync">🔄 Оновити з банку</button>' : ''}</div>${bkApi(r.api)}
       <div class="muted" style="font-size:12px;margin-top:8px">Файл з інтернет-банку: «Експорт у 1С» (.txt) або CSV. Повторне завантаження не дублює. Еквайринг, оплати накладних і записані витрати зіставляються самі${r.last ? ` · останній імпорт ${new Date(r.last.ts).toLocaleDateString('uk-UA')} (${r.last.n})` : ''}.</div></div>`;
     const tiles = `<div class="widgets">${[['➕ Надійшло', money(t.in)], ['➖ Списано', money(-t.out)], ['💳 Комісія банку', money(t.fee)], ['✅ Зіставлено', t.ok], ['⚠️ На підтвердження', t.q], ['🙈 Пропущено', t.x]].map(([l, v]) => `<div class="widget"><span>${l}</span><b class="money">${v}</b></div>`).join('')}</div>`;
     const miss = r.miss.length ? `<div class="card"><h3>💳 Не надійшла безготівка</h3><div class="muted" style="font-size:12px;margin-bottom:6px">Продажі карткою є, а відшкодування банку у виписці немає (перевірте термінал або завантажте пізнішу виписку)</div>${r.miss.map(x => `<div class="kv"><span>${bkD(x.d)}</span><b class="money">${money(x.card)}</b></div>`).join('')}</div>` : '';
@@ -195,6 +198,7 @@
     const r = await act('bankAct', { id, a: k, ...p }, '✅ Готово'); if (r?.warn) toast('⚠️ ' + r.warn); if (r) { S.incR = null; loadView(); } // 📒 книга доходів перечитається
   }
   on('bkAct', async (el) => { bkAct(el.dataset.k, el.dataset.id); return; });
+  on('bkSync', async () => { const r = await act('bankSync', {}); if (r) { toast(`🔄 Нових операцій: ${(r.add?.mono || 0) + (r.add?.privat || 0)}`); S.data.bank = null; loadView(); } return; });
   on('bkM', async (el) => { const m = S.data.bank?.m || new Date().toISOString().slice(0, 7); let [y, mm] = m.split('-').map(Number); mm += +el.dataset.t; if (mm < 1) { mm = 12; y--; } if (mm > 12) { mm = 1; y++; } S.bankM = `${y}-${String(mm).padStart(2, '0')}`; S.data.bank = null; renderMain(); loadView(); return; });
   on('cashTab', async (el, e, a, t) => { S.cashTab = el.dataset.t; renderMain(); loadView(); return; });
   on('movBack', async (el, e, a, t) => { await act('moveBack', { i: +el.dataset.i }, '↩️ Відновлено'); loadView(); return; });

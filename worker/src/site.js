@@ -384,6 +384,7 @@ export async function cron(env) {
   await (await import('./guestbot.js')).gbDaily(env).catch(e => console.log('gbDaily', e.message)); // 🎂 ДН + 👋 «сплячі»
   await (await import('./suppliers.js')).supDaily(env).catch(e => console.log('supDaily', e.message)); // ⏰ оплата постачальникам
   await (await import('./stock.js')).lossDaily(env).catch(e => console.log('lossDaily', e.message)); // 🚨 продаж нижче собівартості
+  if ((env.MONO_BANK || env.PRIVAT_BANK) && await (await import('./ops.js')).modOn(env, 'bank')) await (await import('./bankapi.js')).bankApiSync(env).catch(e => console.log('bankApi', e.message)); // 🔄 виписки mono / Приват (раз на добу + вебхук)
   if (await (await import('./ops.js')).modOn(env, 'tax')) await (await import('./tax.js')).taxDaily(env).catch(e => console.log('taxDaily', e.message)); // 📅 податковий календар (модуль «Податки»)
   await (await import('./excise.js')).exDaily(env).catch(e => console.log('exDaily', e.message)); // 📜 ліцензія на алкоголь
   await (await import('./ledger.js')).ledgerDaily(env).catch(e => console.log('ledgerDaily', e.message)); // 📒 продажі дня → документи обліку (+ перенесення старих днів)

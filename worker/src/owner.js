@@ -80,6 +80,11 @@ export async function intApi(req, env, path) {
       const tok = String(b.MONO_TOKEN).trim(); if (!/^[\w-]{10,80}$/.test(tok)) return [{ error: 'Токен monobank: невірний формат' }, 400];
       const M = await import('./mono.js'), r = await M.monoCheck({ mono: 1, token: tok, sandbox: /^mono_test_/.test(tok) });
       if (r.error) return [{ error: 'monobank не приймає токен: ' + r.error }, 400]; f.MONO_TOKEN = tok; f.PAY_PROVIDER = 'mono'; }
+    for (const [k, nm] of [['MONO_BANK', 'mono'], ['PRIVAT_BANK', 'privat']]) { // 🔄 виписки автоматично: особистий токен mono (рахунки ФОП) / токен Автоклієнта Приват — перевіряємо одразу
+      if (b[k] == null) continue; const A = await import('./bankapi.js');
+      if (b[k] === '') { if (k === 'MONO_BANK') await A.monoOff((await getSecrets(env)).MONO_BANK); f[k] = ''; continue; }
+      const tok = String(b[k]).trim(); if (!A.tokOk[nm](tok)) return [{ error: `Токен ${nm === 'mono' ? 'monobank' : 'Автоклієнта'}: невірний формат` }, 400];
+      const r = nm === 'mono' ? await A.monoSetup(env, tok) : await A.privatCheck(tok); if (r.error) return [{ error: r.error }, 400]; f[k] = tok; if (nm === 'mono') f._mono = r.acc; else f._priv = 1; }
     if (b.CHECKBOX_LICENSE === '') { f.CHECKBOX_LICENSE = ''; f.CHECKBOX_PIN = ''; f.CHECKBOX_MORE = ''; await env.DB.delete('fis:tok'); } // 🧾 відключити ПРРО (усі каси)
     if (b.FOP || b.FOP_DEL || b.FIS_IB != null) { // 🏪 ФОП / каси: опис (назва, група, ліміт, дохід до підключення, розділи меню) + ключі другої/третьої каси
       const F = await import('./fiscal.js'), cur = await getSecrets(env), meta = F.fopMeta({ FOPS: cur.FOPS }), more = F.fopMeta({ FOPS: cur.CHECKBOX_MORE });
@@ -116,6 +121,9 @@ export async function intApi(req, env, path) {
       if (r?.err_code === 'invalid_signature' || /public_key/i.test(r?.err_description || '')) return [{ error: 'LiqPay не приймає ці ключі' }, 400];
       f.LIQPAY_PUBLIC = pub; f.LIQPAY_PRIVATE = priv; }
     const has = await saveSecrets(env, f);
+    if (f._mono || f._priv || f.MONO_BANK === '' || f.PRIVAT_BANK === '') { const A = await import('./bankapi.js'); // 🔄 рахунки mono — уже знаємо (повторний client-info за хвилину mono відхилить); Приват — перша виписка одразу
+      await L(env, 'bkapi', async () => { const st = (await env.DB.get('bkapi', 'json')) || {}; if (f._mono) st.mono = { tk: A.tkOf(f.MONO_BANK), acc: f._mono, i: 0, day: '', ts: Date.now() }; if (f.MONO_BANK === '') delete st.mono; if (f.PRIVAT_BANK === '') delete st.privat; await env.DB.put('bkapi', JSON.stringify(st)); });
+      if (f._priv) await A.bankApiSync({ ...env, PRIVAT_BANK: f.PRIVAT_BANK }, { force: 1, only: 'privat' }).catch(e => console.log('bankApi', e.message)); }
     if (f.BOT_TOKEN) await fetch(`https://api.telegram.org/bot${f.BOT_TOKEN}/setWebhook`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: env.SELF_URL + '/tg', secret_token: env.TG_SECRET, allowed_updates: ['message', 'callback_query', 'my_chat_member'] }) }).catch(() => {});
     if (f.GUEST_BOT_TOKEN) await env.DB.delete('g2hook'); if (f.COURIER_BOT_TOKEN) await env.DB.delete('g3hook'); // вебхуки гостей/кур'єрів поставляться самі з новим env
     const { venueEnv } = await import('./venue.js'), e2 = { ...(await venueEnv(env, env.VENUE, env.DB)), DB: env.DB }; const br = await (await import('./brand.js')).brandVenue(e2).catch(() => null); // 🎨 одразу оформити нових ботів

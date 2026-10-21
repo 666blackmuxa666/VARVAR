@@ -30,7 +30,7 @@ const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;
 // 💸 запити, що працюють з базою, виконуються всередині Durable Object (store.js → Store.fetch):
 // там кожне читання/запис — локальне, а платний «запит до DO» — один на дію, а не 20–50
 // 💳 оплати закладу (tpay, gopay, callback LiqPay/mono) — теж у Store: там діє межа робочого дня закладу (cfg.dayH), інакше між 00:00 і 03:00 події лягали не в той день
-const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|goinfo|promo|reco|site|book|bookpre|wl|cert|me|me\/start|me\/poll|me\/logout|tpay|gopay|lp\/(go|table|cert))$|api\/v1\/[a-z0-9\/]+$|tg$|tg2$|tg3$|tg4$|__cron$)/;
+const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|goinfo|promo|reco|site|book|bookpre|wl|cert|me|me\/start|me\/poll|me\/logout|tpay|gopay|lp\/(go|table|cert)|bankhook\/[a-f0-9]{40})$|api\/v1\/[a-z0-9\/]+$|tg$|tg2$|tg3$|tg4$|__cron$)/;
 // 💾 кеш у пам'яті воркера для однакових для всіх відповідей (на *.workers.dev кеш Cloudflare не працює).
 // Економить запити до Durable Object: меню відкривають сотні гостей, а змінюється воно рідко. Стоп-лист сервер
 // все одно перевіряє при замовленні (priceMap пропускає hidden), тож 20 с затримки безпечні.
@@ -185,6 +185,9 @@ export async function handle(req, env) {
       if (url.pathname === '/api/me/avatar' && req.method === 'POST') { const d = await (await import('./site.js')).meAvatar(env, (req.headers.get('authorization') || '').slice(7), (await req.json().catch(() => ({}))).data); return d ? json(d, d.error ? 400 : 200) : json({ error: 'auth' }, 401); }
       if (url.pathname === '/api/me') { const d = await meData(env, (req.headers.get('authorization') || '').slice(7)); return d ? json(d) : json({ error: 'auth' }, 401); }
       // 🛵 замовлення за посиланням (самовивіз / доставка)
+      if (url.pathname.startsWith('/api/bankhook/')) { // 🔄 вебхук monobank (операції рахунку ФОП); GET — перевірка адреси від mono
+        if (req.method !== 'POST') return new Response('ok');
+        const r = await (await import('./bankapi.js')).bankHook(env, url.pathname.slice(14), await req.json().catch(() => null)); return json(...r); }
       if (url.pathname.startsWith('/api/lp/') && req.method === 'POST') { // 💳 callback LiqPay (data + signature); ключі — закладу (go, table, cert) або платформи (sub, ai)
         const kind = url.pathname.slice(8), raw = await req.text(), xs = req.headers.get('x-sign'), L = await import('./liqpay.js');
         let x;

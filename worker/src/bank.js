@@ -15,7 +15,7 @@ const MAXL = 3000, MAXT = 2.5e6, WIN = 6, BACK = 30; // рядків за раз
 const r2 = n => Math.round((+n || 0) * 100) / 100;
 const T = (v, n = 160) => String(v ?? '').replace(/[\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
 const num = v => { let t = String(v ?? '').replace(/[\s ']/g, ''); if (/,\d{1,2}$/.test(t)) t = t.replace(/\./g, '').replace(',', '.'); else t = t.replace(/,/g, ''); t = t.replace(/[^\d.-]/g, ''); return t === '' || t === '-' || isNaN(+t) ? null : +t; };
-const hash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return (h >>> 0).toString(36); };
+export const hash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return (h >>> 0).toString(36); };
 const pad = x => String(x).padStart(2, '0');
 // 01.10.2026 · 01.10.26 · 2026-10-01 (з часом або без) → 2026-10-01
 const dayOf = v => { const s = T(v, 30); let m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/); if (m) { const y = m[3].length === 2 ? '20' + m[3] : m[3]; return `${y}-${pad(m[2])}-${pad(m[1])}`; } m = s.match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[1]}-${m[2]}-${m[3]}` : ''; };
@@ -156,26 +156,31 @@ async function autoMatch(env, x, ctx, used, fee0, who) {
 
 // ---------- API ----------
 // 📥 імпорт: dry — лише показати, що буде; інакше записати нові рядки й одразу зіставити
-export async function bankImport(env, text, { dry, name = '', who = '' } = {}) {
+export async function bankImport(env, text, o = {}) {
   const p = parseStatement(text); if (p.error) return p;
   if (!p.rows.length) return { error: 'У файлі не знайдено жодної операції' + (p.errs?.length ? ': ' + p.errs[0] : '') };
-  const ms = [...new Set(p.rows.map(r => monthOf(r.d)))].sort(), have = new Set((await Promise.all(ms.map(m => getM(env, m)))).flat().map(x => x.id));
-  const fresh = p.rows.filter(r => !have.has(r.id)), sum = s => r2(fresh.filter(r => s > 0 ? r.sum > 0 : r.sum < 0).reduce((a, r) => a + r.sum, 0));
+  return bankRows(env, p, o);
+}
+// 🔄 рядки з API банку (bankapi.js: mono / Приват) — та сама звірка; src позначає джерело. Та сама операція, що вже прийшла файлом виписки, не дублюється
+const twin = (r, x) => !x.src && x.d === r.d && Math.abs(x.sum - r.sum) < 0.005 && ((r.code && x.code === r.code) || (r.iban && x.iban === r.iban) || (r.pur && x.pur === r.pur));
+export async function bankRows(env, p, { dry, name = '', who = '', src = '' } = {}) {
+  const ms = [...new Set(p.rows.map(r => monthOf(r.d)))].sort(), old0 = (await Promise.all(ms.map(m => getM(env, m)))).flat(), have = new Set(old0.map(x => x.id));
+  const fresh = p.rows.filter(r => !have.has(r.id) && !(src && old0.some(x => twin(r, x)))), sum = s => r2(fresh.filter(r => s > 0 ? r.sum > 0 : r.sum < 0).reduce((a, r) => a + r.sum, 0));
   const info = { fmt: p.fmt, n: p.rows.length, add: fresh.length, dup: p.rows.length - fresh.length, bad: p.bad, errs: p.errs, from: p.rows.reduce((a, r) => r.d < a ? r.d : a, '9'), to: p.rows.reduce((a, r) => r.d > a ? r.d : a, ''), in: sum(1), out: sum(-1), own: p.own };
   if (dry || !fresh.length) return info;
   const own = new Set([...(((await env.DB.get('bank:own', 'json')) || [])), ...p.own]); if (p.own.length) await env.DB.put('bank:own', JSON.stringify([...own].slice(0, 20)));
   const fee0 = +(await (await import('./ops.js')).getCfg(env))?.bankFee || 1.5;
   return L(env, ['bank', ...ms.map(m => 'bank:' + m)], async () => {
     const all = Object.fromEntries(await Promise.all(ms.map(async m => [m, await getM(env, m)]))), ids = new Set(Object.values(all).flat().map(x => x.id));
-    const add = fresh.filter(r => !ids.has(r.id)).sort((a, b) => a.d < b.d ? -1 : 1), days = [];
+    const all0 = Object.values(all).flat(), add = fresh.filter(r => !ids.has(r.id) && !(src && all0.some(x => twin(r, x)))).sort((a, b) => a.d < b.d ? -1 : 1), days = [];
     for (const r of add) for (let i = -BACK; i <= WIN; i++) days.push(addDays(r.d, i));
     const ctx = await ctxOf(env, days), used = refs([...Object.values(all).flat(), ...(await Promise.all(ms.map(m => getM(env, prevMonth(m))))).flat()]);
     let ok = 0, q = 0;
-    for (const r of add) { const x = { ...r, ts: Date.now() };
+    for (const r of add) { const x = { ...r, ts: Date.now(), ...(src ? { src } : {}) };
       if (own.has(x.iban)) { x.st = 'x'; x.why = 'own'; } else { await autoMatch(env, x, ctx, used, fee0, who); if (x.st === 'ok') ok++; else if (x.st === 'q') q++; }
       all[monthOf(x.d)].push(x); }
     for (const m of ms) await env.DB.put('bank:' + m, JSON.stringify(all[m]));
-    await env.DB.put('bank:last', JSON.stringify({ ts: Date.now(), n: add.length, ok, name: T(name, 60), by: who, from: info.from, to: info.to }));
+    if (!src) await env.DB.put('bank:last', JSON.stringify({ ts: Date.now(), n: add.length, ok, name: T(name, 60), by: who, from: info.from, to: info.to }));
     await ledgerDocs(env, add, who).catch(e => console.log('bank ledger', e.message));
     return { ...info, add: add.length, ok, q };
   });
@@ -201,7 +206,8 @@ export async function bankList(env, m = dayKey().slice(0, 7)) {
   // 🛵 продажі агрегаторів без виплати: агрегатор платить раз на 1–2 тижні — лише дні, старші за 14 днів від останньої виписки
   const ag = {}; if (lastD) ds.forEach((d, j) => { if (d > addDays(lastD, -14)) return; for (const [a, v] of Object.entries(dd[j]?.ag || {})) if (!covered.has(`g:${a}:${d}`)) { const o = ag[a] || (ag[a] = { a, sum: 0, from: d, to: d }); o.sum = r2(o.sum + v); o.to = d; } });
   const names = Object.keys(ag).length ? Object.fromEntries((await aggOn(env)).map(g => [g.id, g.n])) : {};
-  return { m, list: l.map(x => ({ ...x, mt: matchText(x) })), t, miss, missAg: Object.values(ag).map(o => ({ ...o, n: names[o.a] || o.a })), last, own: own || [] };
+  const api = env.MONO_BANK || env.PRIVAT_BANK ? await (await import('./bankapi.js')).bankApiState(env) : null;
+  return { m, api, list: l.map(x => ({ ...x, mt: matchText(x) })), t, miss, missAg: Object.values(ag).map(o => ({ ...o, n: names[o.a] || o.a })), last, own: own || [] };
 }
 const nextMonth = m => { const [y, mm] = m.split('-').map(Number); return mm === 12 ? `${y + 1}-01` : `${y}-${pad(mm + 1)}`; };
 
@@ -273,7 +279,8 @@ export async function bankBotView(env) {
   const head = `🏦 <b>Банк · ${r.m.slice(5)}.${r.m.slice(0, 4)}</b>\n➕ надійшло ${money(r.t.in)} · ➖ списано ${money(-r.t.out)}${r.t.fee ? ` · комісія ${money(r.t.fee)}` : ''}\n✅ зіставлено ${r.t.ok} · ⚠️ на підтвердження <b>${r.t.q}</b> · 🙈 пропущено ${r.t.x}`;
   const miss = r.miss.length ? `\n\n💳 <b>Не надійшла безготівка</b> за: ${r.miss.slice(0, 10).map(x => `${x.d.slice(8)}.${x.d.slice(5, 7)} (${money(x.card)})`).join(', ')}` : '';
   const tail = L0 ? `\n\nОстанній імпорт: ${new Date(L0.ts).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv' })} · ${L0.n} операцій` : '\n\nВиписок ще немає.';
-  return { text: head + miss + tail + '\n\n📎 Надішліть файл виписки (1С .txt або CSV з інтернет-банку) — я його розберу.', q: r.list.filter(x => x.st === 'q').slice(0, 8) };
+  const api = r.api ? '\n\n' + (await import('./bankapi.js')).apiText(r.api) + '\n<code>банк оновити</code> — забрати операції зараз' : '';
+  return { text: head + miss + tail + api + '\n\n📎 Надішліть файл виписки (1С .txt або CSV з інтернет-банку) — я його розберу.', q: r.list.filter(x => x.st === 'q').slice(0, 8) };
 }
 export const importText = r => r.error ? '⚠️ ' + r.error : `🏦 <b>Виписка ${r.from.split('-').reverse().join('.')}–${r.to.split('-').reverse().join('.')}</b> (${r.fmt === '1c' ? '1С' : 'CSV'})\nНових операцій: <b>${r.add}</b>${r.dup ? ` · уже були: ${r.dup}` : ''}${r.bad ? ` · ⚠️ без дати/суми: ${r.bad}` : ''}\n➕ ${money(r.in)} · ➖ ${money(-r.out)}${r.add ? `\n✅ зіставлено автоматично: ${r.ok || 0} · ⚠️ на підтвердження: <b>${r.q || 0}</b>` : ''}`;
 export async function bankNotify(env, r, who) { if (r?.add) await notify(env, `🏦 Виписка: ${r.add} операцій, ⚠️ на підтвердження ${r.q} — ${esc(who)}`).catch(() => {}); }

@@ -1362,6 +1362,28 @@ async function loyTests(A, W, dish) {
     const v3 = ok(await vpos(VA, 'incDel', { id: x1.id }), 'прибрати'); must(!v3.other.some(x => x.id === x1.id) && Math.abs(v3.t.oth - v0.t.oth) < 0.011, 'прибраний дохід лишився');
     return `продажі дня ${Math.round(rev)} ₴ · 12 міс. ${v3.sum.pdvPct}% порогу ПДВ`;
   });
+  await step('🔄 банк автоматично: токени mono / Приват (тест) → Приват одразу й без повторів, вебхук mono → рядок у банку, чужий ключ 403, повтор не дублює; стан у касі й кабінеті', async () => {
+    const ok = (r, w) => { must(r.status === 200 && !r.j.error, w + ': ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 200)); return r.j; };
+    const day = new Date(Date.now() + 2 * 3600e3).toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' });
+    must((await ownT(PT, 'secrets', { venue: VID, f: { PRIVAT_BANK: 'bad token!' } })).status === 400, 'хибний токен Привату прийнято');
+    must((await vpos(VA, 'bankSync')).status === 400, 'оновлення без підключеного банку');
+    try {
+      must((await ownT(PT, 'secrets', { venue: VID, f: { PRIVAT_BANK: 'privat_test_' + 'q'.repeat(16), MONO_BANK: 'monob_test_' + 'q'.repeat(16) } })).j.ok, 'збереження токенів');
+      const st = ok(await vpos(VA, 'bankApi'), 'стан').api; must(st.privat?.ts > 0 && !st.privat.err && st.mono?.acc?.[0] === '…6001' && /^[a-f0-9]{40}$/.test(st.mono.key || ''), 'стан: ' + JSON.stringify(st));
+      const l1 = ok(await vpos(VA, 'bankList'), 'банк'); must(l1.api?.privat && l1.list.some(x => x.src === 'privat' && x.sum === 777 && x.d === day), 'операції Привату немає в банку');
+      must((ok(await vpos(VA, 'bankSync'), 'оновити').add.privat || 0) === 0, 'повторне оновлення Привату дублює');
+      must((await http(`/v/${VID}/api/bankhook/${st.mono.key}`)).status === 200, 'GET вебхука (перевірка mono)');
+      const it = { id: 'qa' + RUN, time: Math.floor(Date.now() / 1000), amount: 123456, currencyCode: 980, description: 'Оренда QA', comment: 'оренда ' + RUN, counterName: 'ФОП Орендар' }, body = { type: 'StatementItem', data: { account: 'qa-fop', statementItem: it } };
+      must((await http(`/v/${VID}/api/bankhook/${'0'.repeat(40)}`, body)).status === 403, 'чужий ключ вебхука');
+      must((await http(`/v/${VID}/api/bankhook/${st.mono.key}`, body)).j.add === 1, 'вебхук mono не додав операцію');
+      must((await http(`/v/${VID}/api/bankhook/${st.mono.key}`, body)).j.add === 0, 'повтор вебхука дублює');
+      must((await http(`/v/${VID}/api/bankhook/${st.mono.key}`, { ...body, data: { ...body.data, account: 'other' } })).j.add == null, 'операція чужого рахунку');
+      const x = ok(await vpos(VA, 'bankList'), 'банк').list.find(y => y.pur === 'оренда ' + RUN); must(x?.src === 'mono' && x.sum === 1234.56 && x.who === 'ФОП Орендар', 'рядок mono: ' + JSON.stringify(x));
+      must(ok(await vpos(VA, 'bankApi'), 'стан').api.mono.hook > 0, 'немає часу останнього вебхука');
+      if (x.st === 'q') ok(await vpos(VA, 'bankAct', { id: x.id, a: 'skip', why: 'other' }), 'пропустити');
+      return `Приват 777 ₴ · mono ${x.sum} ₴`;
+    } finally { await ownT(PT, 'secrets', { venue: VID, f: { PRIVAT_BANK: '', MONO_BANK: '' } }); must(!ok(await vpos(VA, 'bankApi'), 'стан').api.mono, 'mono не відключився'); }
+  });
   await step('🛵 агрегатори: модуль вимкнено → оплата 400; Glovo як спосіб оплати → окремо в зміні й чеку; права й межі; видалення чека віднімає; виплата у виписці → комісія витратою; бот', async () => {
     const ok = (r, w) => { must(r.status === 200 && !r.j.error, w + ': ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 200)); return r.j; };
     const it = (await http(`/v/${VID}/api/menu`)).j.categories.flatMap(c => c.items).find(i => typeof i.price === 'number');

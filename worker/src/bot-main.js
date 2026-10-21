@@ -268,6 +268,10 @@ export async function handleUpdate(u, env) {
     if (low.startsWith('дохід')) { const p = I.incParse(text.trim().replace(/^дохід\s+/i, '')); if (!p) return send({ text: 'Напишіть: <code>дохід 5000 оренда</code>' });
       const r = await I.incAdd(env, p, who); if (r.error) return send({ text: '⚠️ ' + r.error }); await notify(env, `🤖 📒 Інший дохід ${money(r.x.sum)} · ${I.CATS[r.x.cat]}${r.x.note ? ' · ' + esc(r.x.note) : ''} — ${esc(who)}`).catch(() => {}); }
     return send({ text: await I.incBotText(env) }); }
+  if (admin && low === 'банк оновити') { // 🔄 mono / Приват — забрати операції зараз (як кнопка в касі)
+    if (!(await (await import('./ops.js')).modOn(env, 'bank'))) return send({ text: '🏦 Модуль «Банк і звірка» вимкнено. Увімкнути: напишіть <code>модулі</code>.' });
+    const A = await import('./bankapi.js'), x = await A.bankApiSync(env, { force: 1 }); if (!x) return send({ text: '🔄 Банк не підключено — токен додає власник у кабінеті (💳 Оплати → 🔄 Банк автоматично).' });
+    return send({ text: `🔄 Нових операцій: <b>${(x.mono || 0) + (x.privat || 0)}</b>\n${A.apiText(await A.bankApiState(env))}\n\nЧерга — <code>банк</code>` }); }
   if (admin && (low === 'банк' || low === '🏦 банк' || low === '/bank')) { // 🏦 етап 2: місяць, дні без еквайрингу, черга «на підтвердження»
     if (!(await (await import('./ops.js')).modOn(env, 'bank'))) return send({ text: '🏦 Модуль «Банк і звірка» вимкнено. Увімкнути: напишіть <code>модулі</code>.' });
     const B = await import('./bank.js'), v = await B.bankBotView(env); await send({ text: v.text });
