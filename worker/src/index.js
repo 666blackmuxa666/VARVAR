@@ -50,7 +50,7 @@ export default {
   async fetch(req0, env) {
     { const h = new URL(req0.url).hostname; if ((h === 'posatom.online' || h === 'www.posatom.online') && !/^\/v\/[a-z0-9-]+\/api\/v1\//.test(new URL(req0.url).pathname)) return atomSite(req0, env); } // 🔌 API партнерів: posatom.online/v/<заклад>/api/v1/… // 🌐 ATOM: сайт закладів на власному домені
     // 🏪 заклад: /v/<id>/… → запит без префікса + заголовок x-venue; без префікса — VARVAR
-    const { venue, path: p } = splitVenue(new URL(req0.url)), req = venue === MAIN ? new Request(req0) : stripVenue(req0, venue, p);
+    const { venue, path: p } = splitVenue(new URL(req0.url)), req = venue === MAIN && !(p.startsWith('/api/v1/') && p !== new URL(req0.url).pathname) ? new Request(req0) : stripVenue(req0, venue, p); // 🔌 /v/varvar/api/v1/… — теж без префікса
     if (venue === MAIN) { req.headers.delete('x-venue'); req.headers.delete('x-venue-init'); } // заклад визначає лише адреса, не заголовок від клієнта
     else req.headers.delete('x-venue-init');
     if (p === '/tg3' && req.method === 'POST') { // 📍 Live Location кур'єра приходить часто: частіше ніж раз на 2 хв не будимо Durable Object (пам'ять воркера; якщо скинулась — просто пройде зайве)
