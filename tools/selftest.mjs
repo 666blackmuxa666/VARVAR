@@ -635,7 +635,7 @@ async function apiTests() {
   if (K) for (const op of ['cashMove', 'zDay', 'zpGrid']) await step(`cook ✗ ${op}`, async () => { const r = await pos(K, op, {}); must(r.status === 403, 'статус ' + r.status); });
   if (G2) await pos(A, 'delete', { t: G2, reason: 'QA тест' });
   await step('📸 ШІ-фото: стиль зберігається; без платного ключа генерація → 503', async () => {
-    const s1 = await pos(A, 'photoStyleSet', { prompt: 'QA стиль' }); must(s1.status === 200 && s1.j.prompt === 'QA стиль' && s1.j.free === 20, JSON.stringify(s1.j).slice(0, 200));
+    const s1 = await pos(A, 'photoStyleSet', { prompt: 'QA стиль' }); must(s1.status === 200 && s1.j.prompt === 'QA стиль' && s1.j.free === null, /* VARVAR — без місячного ліміту */ JSON.stringify(s1.j).slice(0, 200));
     const m = await pos(A, 'photoMake', { id: dish.id }); must(m.status === 503, 'статус ' + m.status);
     const a = await pos(A, 'photoApply', { id: dish.id }); must(a.status === 400, 'без чернетки → ' + a.status);
     await pos(A, 'photoStyleSet', { prompt: '' }); });
