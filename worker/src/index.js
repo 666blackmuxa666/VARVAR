@@ -425,7 +425,7 @@ async function atomSite(req, env) {
     const html = (await r.text()).replace('<!--ATOMD-->', d ? `<script>window.ATOMD=${d.replace(/</g, '\\u003c')}</script>` : '');
     return new Response(html, { headers: { 'content-type': ct, 'cache-control': 'no-cache' } });
   }
-  return new Response(r.body, { status: r.status, headers: { 'content-type': ct, 'cache-control': /html/.test(ct) || /sw\.js$/.test(rest) ? 'no-cache' : 'public, max-age=300' } }); // service worker — без кешу, щоб нова каса доходила одразу
+  return new Response(r.body, { status: r.status, headers: { 'content-type': ct, 'cache-control': cacheOf(ct, rest, url, r) } }); // service worker — без кешу, щоб нова каса доходила одразу
 }
 // 🚀 API сайту ATOM: заявка, перегляд, лічильник акції, вхід у демо-касу
 const ATOM_FREE = 20, DEMO = 'atom-demo';
@@ -473,5 +473,11 @@ export function siteFile(env, path) {
 async function proxySite(url, env) {
   if (url.pathname.startsWith('/__src/')) return new Response('not found', { status: 404 });
   const r = await siteFile(env, url.pathname);
-  return new Response(r.body, { status: r.status, headers: { 'content-type': r.headers.get('content-type') || 'application/octet-stream', 'cache-control': 'no-cache' } });
+  const ct = r.headers.get('content-type') || 'application/octet-stream';
+  return new Response(r.body, { status: r.status, headers: { 'content-type': ct, 'cache-control': cacheOf(ct, url.pathname, url, r, 'no-cache') } });
+}
+// ⚡ ?v=<відбиток вмісту> (tools/stamp.mjs) — файл з цією версією більше не зміниться: браузер тримає його рік і не питає сервер (каса відкривається миттєво)
+function cacheOf(ct, path, url, r, dflt = 'public, max-age=300') {
+  if (/html/.test(ct) || /sw\.js$/.test(path)) return 'no-cache';
+  return r.ok && /(^|&)v=[a-f0-9]{8}($|&)/.test(url.search.slice(1)) ? 'public, max-age=31536000, immutable' : dflt;
 }
