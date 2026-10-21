@@ -888,6 +888,16 @@ async function loyTests(A, W, dish) {
       must((await ah('receipts?from=xx', r.key)).status === 400, 'погана дата');
       must((await ah('stock', key2)).status === 403, 'stock без права');
     });
+    await step('🧪 пісочниця: публічний ключ — усі права, замовлення «рухається» саме, чужі ключі його не бачать', async () => {
+      const SB = 'atk_00000000_' + '5a4db0c5'.repeat(4);
+      const p = await ah('ping', SB); must(p.status === 200 && p.j.key === 'Пісочниця' && ['menu', 'orders', 'sales', 'stock'].every(x => p.j.scopes.includes(x)), JSON.stringify(p.j));
+      must((await ah('menu', SB)).status === 200 && (await ah('stock', SB)).status === 200, 'menu/stock');
+      const body = { ext_id: 'qa-sb-' + RUN, type: 'delivery', customer: { name: 'QA Пісочниця', phone: '0670010' + String(Math.floor(Math.random() * 900) + 100) }, address: 'вул. Тестова 1', payment: 'cash', items: [{ id: dish.id, qty: 1 }] };
+      must((await ah('orders', SB, { body: { ...body, webhook: 'http://example.com/h' } })).status === 400, 'http webhook прийнято');
+      const r = await ah('orders', SB, { body }); must(r.status === 200 && r.j.ok, JSON.stringify(r.j));
+      const s = await ah('orders/' + r.j.id, SB); must(s.status === 200 && s.j.status === 'new' && s.j.ext_id === body.ext_id, JSON.stringify(s.j));
+      must((await ah('orders/' + r.j.id, key)).status === 404, 'звичайний ключ бачить замовлення пісочниці');
+    });
     await step('🔐 /api/go: _api від гостя не знімає ліміт сайту', async () => {
       const b = { kind: 'pick', name: 'QA Хакер API', phone: '0670008' + String(Math.floor(Math.random() * 900) + 100), when: '12:00', pay: 'cash', items: [{ id: dish.id, q: 1 }], device: 'qa-api-' + RUN, _api: 'x' };
       const st = []; for (let i = 0; i < 4; i++) st.push((await http('/api/go', b)).status); must(st.includes(429), 'ліміт не спрацював: ' + st);

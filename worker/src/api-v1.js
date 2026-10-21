@@ -1,6 +1,7 @@
 // 🔌 Публічне API v1 для партнерів (агрегатори, сайти, бухгалтерія): ключ закладу → ті самі дії, що й сайт/каса.
 // Ключ: atk_<id 8>_<секрет 32>; у базі лише sha256 (apikeys). Права: menu · orders · sales · stock. Ліміт — 60 запитів/хв на ключ.
 // Події партнеру — webhook з підписом HMAC (X-Atom-Signature): order.status, menu.changed, stop.changed; надсилає будильник закладу (apiTick у cron), повтори 1/5/30/120 хв.
+// 🧪 Пісочниця: публічний ключ SB_KEY працює лише на демо-закладі atom-demo (і в тестах) — усі права, ліміт 30/хв з IP; статуси замовлень ідуть самі (крок щохвилини), webhook — полем webhook у замовленні, секрет whs_sandbox.
 // Паспорт — _team/api.md, документація для партнерів — api.html.
 import { getMenu } from './menu.js';
 import { goOrder } from './delivery.js';
@@ -16,6 +17,12 @@ const rnd = n => hex(crypto.getRandomValues(new Uint8Array(n)));
 const sha = async s => hex(await crypto.subtle.digest('SHA-256', te.encode(s)));
 export const hmac = async (k, s) => hex(await crypto.subtle.sign('HMAC', await crypto.subtle.importKey('raw', te.encode(k), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']), te.encode(s)));
 const same = (a, b) => { if (a.length !== b.length) return false; let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; };
+export const SB_KEY = 'atk_00000000_' + '5a4db0c5'.repeat(4), SB_HS = 'whs_sandbox';
+const SB = { id: '00000000', name: 'Пісочниця', sc: Object.keys(SCOPES), sb: 1 }, SB_RPM = 30;
+const sbOn = env => env.VENUE === 'atom-demo' || (env.PLATFORM_BOT || env.BOT_TOKEN) === 'local-test';
+const sbFlow = t => t === 'delivery' ? ['new', 'acc', 'cook', 'ready', 'road', 'done'] : ['new', 'acc', 'cook', 'ready', 'done'];
+const sbSt = a => { const f = sbFlow(a.t); return f[Math.min(f.length - 1, Math.floor((Date.now() - a.at) / 60e3))]; }; // 🧪 замовлення пісочниці «рухається» саме: крок щохвилини
+const sbOut = (id, o, a) => { const st = sbSt(a); return { ...ordOut(id, o, a.ext), status: st, ...(st === 'road' ? { courier: 'Андрій (демо)' } : {}) }; };
 const keys = async env => (await env.DB.get('apikeys', 'json')) || [];
 const pub = k => ({ id: k.id, name: k.name, sc: k.sc, at: k.at, by: k.by, last: k.last || 0, hook: k.hook || '' });
 const hookOk = u => { try { const x = new URL(u); return x.protocol === 'https:' && !/^(localhost|127\.|10\.|192\.168\.|169\.254\.|\[)/.test(x.hostname) && u.length <= 300; } catch { return false; } };
@@ -25,6 +32,11 @@ const J = (d, s = 200, h = {}) => new Response(s === 304 ? null : JSON.stringify
 async function auth(req, env, scope) {
   const raw = ((req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '') || req.headers.get('x-api-key') || '').trim();
   const m = raw.match(/^atk_([a-f0-9]{8})_([a-f0-9]{32})$/); if (!m) return [{ error: 'unauthorized' }, 401];
+  if (raw === SB_KEY) { // 🧪 пісочниця: лише демо-заклад, ліміт з IP (ключ спільний)
+    if (!sbOn(env)) return [{ error: 'unauthorized', sandbox: 'https://posatom.online/v/atom-demo/api/v1/' }, 401];
+    const rk = 'apirl:sb:' + (req.headers.get('CF-Connecting-IP') || '-').slice(0, 64), n = (+(await env.DB.get(rk)) || 0) + 1; if (n > SB_RPM) return [{ error: 'rate_limit', limit_per_min: SB_RPM }, 429];
+    await env.DB.put(rk, String(n), { expirationTtl: 60 }); return [SB];
+  }
   const k = (await keys(env)).find(x => x.id === m[1]); if (!k || !same(k.h, await sha(raw))) return [{ error: 'unauthorized' }, 401];
   if (scope && !k.sc.includes(scope)) return [{ error: 'forbidden', need: scope }, 403];
   const rk = 'apirl:' + k.id, n = (+(await env.DB.get(rk)) || 0) + 1; if (n > RPM) return [{ error: 'rate_limit', limit_per_min: RPM }, 429];
@@ -41,7 +53,7 @@ async function menuOut(env) {
     ...(i.variants ? { variants: i.variants.map(v => ({ id: String(v.v), price: v.p })), unit: i.size || 'л' } : { price: i.price, ...(i.size ? { size: i.size } : {}) }),
     available: !i.hidden, ...(i.desc?.uk ? { description: i.desc.uk } : {}), ...(i.img ? { image: imgUrl(env, i.img) } : {}) })) })) };
 }
-const ordOut = (id, o, ext) => o && { id, ...(ext ? { ext_id: ext } : {}), status: o.g || o.s, no: o.t ? tn(o.t) : '', ...(o.eta ? { eta: new Date(o.eta).toISOString() } : {}), ...(o.cour ? { courier: o.cour } : {}), ...(o.gAt ? { updated: new Date(o.gAt).toISOString() } : {}) };
+function ordOut(id, o, ext) { return  o && { id, ...(ext ? { ext_id: ext } : {}), status: o.g || o.s, no: o.t ? tn(o.t) : '', ...(o.eta ? { eta: new Date(o.eta).toISOString() } : {}), ...(o.cour ? { courier: o.cour } : {}), ...(o.gAt ? { updated: new Date(o.gAt).toISOString() } : {}) }; }
 
 export async function apiV1(req, env, url) {
   if (req.method === 'OPTIONS') return J(null, 204);
@@ -81,7 +93,7 @@ export async function apiV1(req, env, url) {
     if (om && om[1] && req.method === 'GET') { // статус свого замовлення
       const [k, s] = await auth(req, env, 'orders'); if (s) return J(k, s);
       const a = await env.DB.get('apiord:' + om[1], 'json'); if (!a || a.k !== k.id) return J({ error: 'not_found' }, 404);
-      return J(ordOut(om[1], await env.DB.get('ord:' + om[1], 'json'), a.ext) || { error: 'not_found' }, 200);
+      const o = await env.DB.get('ord:' + om[1], 'json'); return J((o && k.sb ? sbOut(om[1], o, a) : ordOut(om[1], o, a.ext)) || { error: 'not_found' }, 200);
     }
     if (om && !om[1] && req.method === 'POST') return J(...await createOrder(req, env));
     return J({ error: 'not_found', docs: 'https://posatom.online/api' }, 404);
@@ -95,20 +107,21 @@ async function createOrder(req, env) {
   const ext = String(b.ext_id || '').trim(); if (!/^[\w.:-]{1,64}$/.test(ext)) return [{ error: 'ext_id', msg: 'ext_id — ваш номер замовлення (1–64 символи: літери, цифри, . _ : -)' }, 400];
   if (!['delivery', 'pickup'].includes(b.type)) return [{ error: 'type', allowed: ['delivery', 'pickup'] }, 400];
   if (!['cash', 'card', 'prepaid'].includes(b.payment || 'cash')) return [{ error: 'payment', allowed: ['cash', 'card', 'prepaid'] }, 400];
+  const hook = k.sb ? String(b.webhook || '').trim() : k.hook; if (k.sb && hook && !hookOk(hook)) return [{ error: 'webhook', msg: 'лише https://' }, 400]; // 🧪 у пісочниці webhook — на кожне замовлення
   const ik = 'apiidem:' + k.id + ':' + ext;
   return L(env, ik, async () => {
     const was = await env.DB.get(ik, 'json'); if (was) return [{ ...was, duplicate: true }, 200];
     const pre = b.payment === 'prepaid', paid = Math.max(0, Math.round(+b.paid_sum || 0));
     const g = { kind: b.type === 'delivery' ? 'del' : 'pick', name: b.customer?.name, phone: b.customer?.phone, addr: b.address, ent: b.entrance, when: b.time || '', cut: b.cutlery, comment: b.comment, change: b.change_from,
       items: (Array.isArray(b.items) ? b.items : []).map(i => ({ id: String(i?.id || ''), q: i?.qty, ...(i?.variant ? { v: String(i.variant) } : {}) })),
-      pay: pre ? 'online' : b.payment || 'cash', src: ('api:' + k.name).slice(0, 20), device: 'api-' + k.id, _api: k.id, ...(pre ? { _paid: { sum: paid, via: 'api' } } : {}) };
+      pay: pre ? 'online' : b.payment || 'cash', src: ('api:' + k.name).slice(0, 20), device: 'api-' + k.id, _api: k.id, ...(k.sb ? { _sb: 1 } : {}), ...(pre ? { _paid: { sum: paid, via: 'api' } } : {}) };
     const [r, st] = await goOrder(g, '', env);
     if (st !== 200 || !r.ok) return [{ ...r, error: { off: 'closed_for_orders', closed: 'closed_now', contact: 'customer', addr: 'address', empty: 'no_valid_items', min: 'below_minimum' }[r.error] || r.error }, st];
     const out = { ok: true, id: r.id, ext_id: ext, no: r.no, total: r.sum, status: 'new', ...(r.eta ? { prep_min: r.eta } : {}) };
-    await Promise.all([env.DB.put(ik, JSON.stringify(out), { expirationTtl: 2 * 86400 }), env.DB.put('apiord:' + r.id, JSON.stringify({ k: k.id, ext }), { expirationTtl: 3 * 86400 }),
-      k.hook ? L(env, 'apiwatch', async () => { const w = (await env.DB.get('apiwatch', 'json')) || []; w.push({ id: r.id, k: k.id, ext, last: 'new', at: Date.now() }); await env.DB.put('apiwatch', JSON.stringify(w.slice(-500))); }) : null,
+    await Promise.all([env.DB.put(ik, JSON.stringify(out), { expirationTtl: 2 * 86400 }), env.DB.put('apiord:' + r.id, JSON.stringify({ k: k.id, ext, ...(k.sb ? { at: Date.now(), t: b.type } : {}) }), { expirationTtl: 3 * 86400 }),
+      hook ? L(env, 'apiwatch', async () => { const w = (await env.DB.get('apiwatch', 'json')) || []; w.push({ id: r.id, k: k.id, ext, last: 'new', at: Date.now(), ...(k.sb ? { hook, sb: 1, t: b.type } : {}) }); await env.DB.put('apiwatch', JSON.stringify(w.slice(-500))); }) : null,
       audit(env, 'API ' + k.name, 'apiOrder', r.id, null, { ext, sum: r.sum })]);
-    if (k.hook && env.WAKE) await env.WAKE(60e3); // ⏰ будильник — за хвилину перевірить статус
+    if (hook && env.WAKE) await env.WAKE(60e3); // ⏰ будильник — за хвилину перевірить статус
     return [out, 200];
   });
 }
@@ -122,7 +135,7 @@ async function send(env, k, event, data) {
   return st >= 200 && st < 300 ? true : st;
 }
 export async function apiTick(env) {
-  const ks = await keys(env); if (!ks.some(k => k.hook)) { for (const x of ['apiwatch', 'apimenu']) if (await env.DB.get(x)) await env.DB.delete(x); return 0; }
+  const ks = await keys(env); if (!ks.some(k => k.hook) && !(sbOn(env) && await env.DB.get('apiwatch'))) { for (const x of ['apiwatch', 'apimenu']) if (await env.DB.get(x)) await env.DB.delete(x); return 0; }
   const [a, b] = await Promise.all([statusTick(env, ks), menuTick(env, ks)]);
   return a && b ? Math.min(a, b) : a || b;
 }
@@ -159,10 +172,10 @@ async function statusTick(env, ks) {
   const w = (await env.DB.get('apiwatch', 'json')) || []; if (!w.length) return 0;
   const now = Date.now(), os = await env.DB.getMany(w.map(x => 'ord:' + x.id), 'json'), res = new Map();
   for (const [i, x] of w.entries()) {
-    const o = os[i], k = ks.find(y => y.id === x.k), st = o && (o.g || o.s);
+    const o = os[i], k = x.sb ? { ...SB, hook: x.hook, hs: SB_HS } : ks.find(y => y.id === x.k), st = o && (x.sb ? sbSt(x) : o.g || o.s);
     if (!o || !k?.hook || now - x.at > 86400e3) { res.set(x.id, { drop: 1 }); continue; } // ключ видалено / без webhook / старше доби
     if (st === x.last || (x.next || 0) > now) continue;
-    const r = (await send(env, k, 'order.status', { order: ordOut(x.id, o, x.ext) })) === true;
+    const r = (await send(env, k, 'order.status', { order: x.sb ? sbOut(x.id, o, x) : ordOut(x.id, o, x.ext) })) === true;
     if (r) res.set(x.id, { last: st, tries: 0, next: 0, fin: FINAL.has(st) });
     else { const tries = (x.tries || 0) + 1; res.set(x.id, tries > RETRY.length ? { last: st, tries: 0, next: 0, fin: FINAL.has(st), fail: k } : { tries, next: now + RETRY[tries - 1] }); }
   }
@@ -171,7 +184,7 @@ async function statusTick(env, ks) {
     const l = ((await env.DB.get('apiwatch', 'json')) || []).flatMap(x => { const r = res.get(x.id); if (!r) return [x]; if (r.drop || r.fin) return []; const { fail, fin, ...y } = r; return [{ ...x, ...y }]; });
     await env.DB.put('apiwatch', JSON.stringify(l)); next = l.length ? now + 60e3 : 0;
   });
-  for (const r of res.values()) if (r.fail) await failMsg(env, r.fail);
+  for (const r of res.values()) if (r.fail && !r.fail.sb) await failMsg(env, r.fail);
   return next;
 }
 

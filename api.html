@@ -22,6 +22,11 @@ pre code { background: none; padding: 0; }
 .tbl { overflow-x: auto; margin: 0 0 12px; } table { border-collapse: collapse; width: 100%; font-size: 15px; }
 th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; } th { color: var(--muted); font-weight: 600; }
 .m { font: 600 13px ui-monospace, Menlo, monospace; padding: 2px 6px; border-radius: 5px; background: #2b3a2a; color: #9fe39a; } .m.p { background: #3a332a; color: #f2c14e; }
+.sb { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 0 0 12px; }
+.sb .row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.sb button { font: 600 14px system-ui, sans-serif; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: #262626; color: var(--text); cursor: pointer; }
+.sb button:hover { border-color: var(--accent); } .sb button.k { background: var(--accent); color: #121212; border-color: var(--accent); }
+#sbOut { max-height: 340px; min-height: 60px; white-space: pre-wrap; word-break: break-word; }
 </style>
 </head>
 <body>
@@ -37,6 +42,18 @@ th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--lin
 <p><b>Формат:</b> JSON, UTF-8, суми — у гривнях (цілі), час — ISO 8601.</p>
 <pre><code>curl https://posatom.online/v/demo-cafe/api/v1/ping \
   -H "Authorization: Bearer atk_1a2b3c4d_…"</code></pre>
+
+<h2 id="sandbox">🧪 Пісочниця</h2>
+<p>Спробувати API без договору й без справжніх грошей — на демо-закладі «Все за 500». Ключ публічний, усі права, ліміт 30 запитів на хвилину з однієї IP-адреси. Дані демо-закладу щоночі повертаються до початкових.</p>
+<p><b>Адреса:</b> <code>https://posatom.online/v/atom-demo/api/v1/</code><br><b>Ключ:</b> <code id="sbKey">atk_00000000_5a4db0c55a4db0c55a4db0c55a4db0c5</code></p>
+<p>Замовлення в пісочниці «рухаються» самі: щохвилини наступний статус (<code>new → acc → cook → ready → road → done</code>, для самовивозу без <code>road</code>). Щоб отримувати <code>order.status</code>, додайте в замовлення поле <code>"webhook": "https://…"</code>; підпис — секретом <code>whs_sandbox</code>. Використовуйте унікальний <code>ext_id</code>: ключ спільний для всіх.</p>
+<div class="sb">
+<div class="row"><button data-t="ping">ping</button><button data-t="menu">menu</button><button data-t="stock">stock</button><button data-t="sales">sales</button><button data-t="order" class="k">Створити замовлення</button><button data-t="status" id="sbSt" hidden>Статус замовлення</button></div>
+<pre><code id="sbOut">Натисніть кнопку — тут буде відповідь сервера.</code></pre>
+</div>
+<pre><code>curl https://posatom.online/v/atom-demo/api/v1/menu \
+  -H "Authorization: Bearer atk_00000000_5a4db0c55a4db0c55a4db0c55a4db0c5"</code></pre>
+<p class="muted">Для свого закладу ключ видає власник у кабінеті; ключ пісочниці там не працює.</p>
 
 <h2>Методи</h2>
 <div class="tbl"><table>
@@ -114,5 +131,26 @@ const ok = crypto.timingSafeEqual(
 <p><code>200</code> — успіх · <code>304</code> — меню не змінилось · <code>400</code> — помилка в даних (поле <code>error</code>) · <code>401</code> — немає або невірний ключ · <code>403</code> — у ключа немає права · <code>404</code> — не знайдено · <code>429</code> — ліміт запитів.</p>
 <p class="muted">Питання щодо інтеграції — підтримка ATOM у Telegram (посилання на головній сторінці).</p>
 </main>
+<script>
+(() => {
+  const B = 'https://posatom.online/v/atom-demo/api/v1/', K = document.getElementById('sbKey').textContent, out = document.getElementById('sbOut'), stB = document.getElementById('sbSt');
+  let oid = '', menu = null;
+  const call = async (path, body) => {
+    const r = await fetch(B + path, { method: body ? 'POST' : 'GET', headers: { authorization: 'Bearer ' + K, ...(body ? { 'content-type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
+    const j = await r.json().catch(() => ({})); out.textContent = (body ? 'POST ' : 'GET ') + path + ' → ' + r.status + '\n\n' + JSON.stringify(j, null, 2); return j;
+  };
+  document.querySelector('.sb .row').addEventListener('click', async e => {
+    const t = e.target.closest('button')?.dataset.t; if (!t) return; out.textContent = '…';
+    try {
+      if (t === 'order') {
+        menu ||= await fetch(B + 'menu', { headers: { authorization: 'Bearer ' + K } }).then(r => r.json());
+        const it = menu.categories.flatMap(c => c.items).find(i => i.available && i.price); if (!it) { out.textContent = 'У меню немає доступних страв'; return; }
+        const j = await call('orders', { ext_id: 'try-' + Date.now().toString(36), type: 'delivery', customer: { name: 'Тест API', phone: '0670000000' }, address: 'вул. Демо 1', payment: 'cash', items: [{ id: it.id, qty: 1 }] });
+        if (j.id) { oid = j.id; stB.hidden = false; }
+      } else await call(t === 'status' ? 'orders/' + oid : t);
+    } catch (x) { out.textContent = 'Помилка мережі: ' + x.message; }
+  });
+})();
+</script>
 </body>
 </html>
