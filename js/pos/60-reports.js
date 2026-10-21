@@ -23,8 +23,14 @@
   // 📤 експорт для бухгалтера: CSV (Excel, UTF-8 + «;») або друк/PDF — за обраний період
   const csvOf = x => x.sections.map(s => [s.title, s.head, ...s.rows].map(r => Array.isArray(r) ? r.map(v => { const t = String(v ?? ''); return /[;"\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; }).join(';') : r).join('\r\n')).join('\r\n\r\n');
   async function acctExport() {
-    const [from, to] = perRange(S.rep.p), how = await choose('📤 Експорт для бухгалтера', `Період ${from} — ${to}: продажі, оплати за типами, приходи складу, списання, витрати з каси, ЗП.`, [{ label: '📄 CSV (Excel)', val: 'csv', cls: 'primary' }, { label: '🖨 PDF / друк', val: 'pdf' }]);
+    const [from, to] = perRange(S.rep.p), how = await choose('📤 Експорт для бухгалтера', `Період ${from} — ${to}: продажі, оплати за типами, приходи складу, списання, витрати з каси, ЗП.`, [{ label: '📄 CSV (Excel)', val: 'csv', cls: 'primary' }, { label: '🖨 PDF / друк', val: 'pdf' }, { label: '🧾 M.E.Doc — податкові накладні', val: 'medoc' }, { label: '📗 BAS — продажі по позиціях', val: 'bas' }]);
     if (!how) return;
+    if (how === 'medoc' || how === 'bas') { // 🧾 файл для програми бухгалтера (ZIP з XML ПН / CSV для atom-bas-import.ps1)
+      let no = 1; if (how === 'medoc') { const v = await askVal('№ першої податкової накладної цього місяця', '1', 'number'); if (v == null) return; no = +v || 1; }
+      let r; try { r = await api('acctFile', { from, to, fmt: how, no }, 30000); } catch (e) { return toast('⚠️ ' + (e.message || 'Не вдалось сформувати')); }
+      const u = Uint8Array.from(atob(r.b64), c => c.charCodeAt(0)), a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([u])); a.download = r.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      return toast(how === 'medoc' ? `🧾 ПН: ${r.n} — розпакуйте ZIP і в M.E.Doc: Файл → Імпорт` : `📗 Рядків: ${r.n} — завантажте в BAS скриптом atom-bas-import.ps1`);
+    }
     let x; try { x = await api('acctExport', { from, to }); } catch { return toast('⚠️ Не вдалось сформувати'); }
     if (how === 'csv') { const f = new Blob(['\ufeff' + csvOf(x)], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = `varvar-${from}_${to}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); return; }
     const w = window.open('', '_blank'); if (!w) return toast('⚠️ Дозвольте спливаюче вікно');

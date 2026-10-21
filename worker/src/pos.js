@@ -12,7 +12,7 @@ import { QR_PRINT, TEST_JOB } from './bot.js';
 import { storeStub } from './store.js';
 import { stockApi } from './stock.js';
 import { exCheck } from './excise.js';
-import { acctExport } from './acct.js';
+import { acctExport, acctFile } from './acct.js';
 import { taxView, taxSet, taxDone } from './tax.js';
 import { setPerm } from './ops.js';
 import { PERMS, SENSITIVE, permOf, can, canList, discLimit } from './perm.js';
@@ -379,6 +379,7 @@ async function adminRest(b, env, who, ip, ok) {
     case 'modSet': { const k = String(b.k || ''), was = (await (await import('./ops.js')).modOn(env, k)) ? 1 : 0, c = await (await import('./ops.js')).setMod(env, k, b.v); if (c.error) return [{ error: c.error }, 400]; const M = (await import('./ops.js')).MODS;
       if (was !== c.mods[k]) { await (await import('./ledger.js')).audit(env, who, 'mod', 'mod:' + k, { v: was }, { v: c.mods[k] }); await notify(env, `🖥 🧩 Модуль ${M[k]} ${c.mods[k] ? 'увімкнено' : 'вимкнено'} — ${esc(who)}`); } return ok({ cfg: c }); } // 🧩 Ф13
     case 'kitchenPct': { const v = Math.round(+b.pct); if (!(v >= 0 && v <= 100)) return [{ error: 'Від 0 до 100' }, 400]; await env.DB.put('kitchen_pct', String(v)); await notify(env, `🖥 👨‍🍳 Частка кухні від чайових: <b>${v}%</b> — ${esc(who)}`); return ok(); }
+    case 'acctFile': { if (!/^\d{4}-\d{2}-\d{2}$/.test(b.from) || !/^\d{4}-\d{2}-\d{2}$/.test(b.to) || Date.parse(b.to) - Date.parse(b.from) > 370 * 864e5) return [{ error: 'Невірний період' }, 400]; const r = await acctFile(env, b.from, b.to, String(b.fmt), b.no); return r.error ? [r, 400] : ok(r); } // 🧾 M.E.Doc / BAS
     case 'acctExport': { const r = await acctExport(env, String(b.from), String(b.to)); if (!r) return [{ error: 'Невірний період' }, 400]; return ok(r); } // 📤 експорт для бухгалтера
     case 'taxGet': return ok(await taxView(env)); // 📅 податковий календар
     // 📒 облік (фундамент): документи, підсумки по платнику/типу, сторно, журнал змін. Екранів поки немає — для кабінету й експорту

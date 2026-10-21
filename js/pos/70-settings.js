@@ -52,6 +52,7 @@
     return hd + `<div class="muted" style="font-size:13px;margin-bottom:8px">Оберіть форму — система нагадає в Telegram про звіти й платежі та дасть посилання на кабінет платника. Ми не подаємо звіти й не маємо доступу до рахунків. ⚠️ Дати й суми орієнтовні — звірте з бухгалтером.</div>
       <div class="kv"><span>Форма</span><button class="btn sm ${T.kind ? 'primary' : ''}" data-tx="kind">${esc(R.kinds[T.kind] || 'Не обрано')}</button></div>
       ${T.kind === 'tov' ? `<div class="kv"><span>Платник ПДВ</span><span class="switch press ${T.pdv ? 'on' : ''}" data-txs="pdv" role="switch" aria-checked="${T.pdv ? 'true' : 'false'}"></span></div>` : ''}
+      ${T.pdv ? `<div class="kv"><span>🧾 Реквізити для податкових накладних (M.E.Doc)<br><small class="muted">${T.pn ? esc(T.pn.n) + ' · ІПН ' + esc(T.pn.ipn) : 'не заповнено — потрібні для вивантаження ПН у 📊 Звіти → 📤 Бухгалтеру'}</small></span><button class="btn sm" data-tx="pn">✏️</button></div>` : ''}
       ${T.kind ? `<div class="kv"><span>🔔 Нагадування в Telegram</span><span class="switch press ${T.on ? 'on' : ''}" data-txs="on" role="switch" aria-checked="${T.on ? 'true' : 'false'}"></span></div>
       <div class="kv"><span>Нагадувати за (днів)</span><button class="btn sm" data-tx="lead">${T.lead}</button></div>
       <div class="kv"><span>Ставки й мінімуми</span><button class="btn sm" data-tx="rates">✏️ Змінити</button></div>
@@ -64,6 +65,7 @@
     if (a === 'kind') { const k = await choose('Форма оподаткування', 'Від неї залежать строки й платежі', [...Object.entries(R.kinds).map(([val, label]) => ({ label, val })), { label: '🚫 Не вести', val: '-' }]); if (k) await taxDo({ kind: k === '-' ? '' : k }); }
     else if (a === 'lead') { const v = await askVal('За скільки днів нагадувати (0–30)', String(T.lead), 'number'); if (v != null && v !== '') await taxDo({ lead: +v }); }
     else if (a === 'rates') { const b = {}; for (const [k, l] of Object.entries(TXR)) { const v = await askVal(l, String(T.rates[k]), 'number'); if (v == null) return; if (v !== '') b[k] = +v; } await taxDo({ rates: b }); }
+    else if (a === 'pn') { const P = T.pn || {}, b = {}; for (const [k, l] of [['n', 'Продавець (повна назва ТОВ / ФОП)'], ['tin', 'ЄДРПОУ (8 цифр) або РНОКПП ФОП (10 цифр)'], ['ipn', 'ІПН платника ПДВ (12 цифр)'], ['sti', 'Код податкової (ДПІ), 4 цифри — напр. 2655'], ['boss', 'Посадова особа, що підписує (необовʼязково)'], ['bossN', 'РНОКПП посадової особи (необовʼязково)']]) { const v = await askVal(l, P[k] || ''); if (v == null) return; b[k] = v; } await taxDo({ pn: b }); }
     else if (a === 'done') { const r = await act('taxDone', { key: el.dataset.k, v: +el.dataset.v }, el.dataset.v === '1' ? '✅ Позначено' : '↩️ Знято'); if (r) S.txR = r; renderMain(); } });
   document.addEventListener('click', async e => { const el = e.target.closest('[data-txs]'); if (!el || !S.txR) return; const k = el.dataset.txs, on = S.txR.tax[k] ? 0 : 1; el.classList.toggle('on', !!on); await taxDo({ [k]: on }); }); // 📅 перемикачі ПДВ / нагадування
   function prnCard() {

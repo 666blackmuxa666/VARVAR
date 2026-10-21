@@ -4566,8 +4566,28 @@ var __objRest = (source, exclude) => {
     return /[;"\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
   }).join(";") : r).join("\r\n")).join("\r\n\r\n");
   async function acctExport() {
-    const [from, to] = perRange(S.rep.p), how = await choose("\u{1F4E4} \u0415\u043A\u0441\u043F\u043E\u0440\u0442 \u0434\u043B\u044F \u0431\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u0430", `\u041F\u0435\u0440\u0456\u043E\u0434 ${from} \u2014 ${to}: \u043F\u0440\u043E\u0434\u0430\u0436\u0456, \u043E\u043F\u043B\u0430\u0442\u0438 \u0437\u0430 \u0442\u0438\u043F\u0430\u043C\u0438, \u043F\u0440\u0438\u0445\u043E\u0434\u0438 \u0441\u043A\u043B\u0430\u0434\u0443, \u0441\u043F\u0438\u0441\u0430\u043D\u043D\u044F, \u0432\u0438\u0442\u0440\u0430\u0442\u0438 \u0437 \u043A\u0430\u0441\u0438, \u0417\u041F.`, [{ label: "\u{1F4C4} CSV (Excel)", val: "csv", cls: "primary" }, { label: "\u{1F5A8} PDF / \u0434\u0440\u0443\u043A", val: "pdf" }]);
+    const [from, to] = perRange(S.rep.p), how = await choose("\u{1F4E4} \u0415\u043A\u0441\u043F\u043E\u0440\u0442 \u0434\u043B\u044F \u0431\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u0430", `\u041F\u0435\u0440\u0456\u043E\u0434 ${from} \u2014 ${to}: \u043F\u0440\u043E\u0434\u0430\u0436\u0456, \u043E\u043F\u043B\u0430\u0442\u0438 \u0437\u0430 \u0442\u0438\u043F\u0430\u043C\u0438, \u043F\u0440\u0438\u0445\u043E\u0434\u0438 \u0441\u043A\u043B\u0430\u0434\u0443, \u0441\u043F\u0438\u0441\u0430\u043D\u043D\u044F, \u0432\u0438\u0442\u0440\u0430\u0442\u0438 \u0437 \u043A\u0430\u0441\u0438, \u0417\u041F.`, [{ label: "\u{1F4C4} CSV (Excel)", val: "csv", cls: "primary" }, { label: "\u{1F5A8} PDF / \u0434\u0440\u0443\u043A", val: "pdf" }, { label: "\u{1F9FE} M.E.Doc \u2014 \u043F\u043E\u0434\u0430\u0442\u043A\u043E\u0432\u0456 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0456", val: "medoc" }, { label: "\u{1F4D7} BAS \u2014 \u043F\u0440\u043E\u0434\u0430\u0436\u0456 \u043F\u043E \u043F\u043E\u0437\u0438\u0446\u0456\u044F\u0445", val: "bas" }]);
     if (!how) return;
+    if (how === "medoc" || how === "bas") {
+      let no = 1;
+      if (how === "medoc") {
+        const v = await askVal("\u2116 \u043F\u0435\u0440\u0448\u043E\u0457 \u043F\u043E\u0434\u0430\u0442\u043A\u043E\u0432\u043E\u0457 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u043E\u0457 \u0446\u044C\u043E\u0433\u043E \u043C\u0456\u0441\u044F\u0446\u044F", "1", "number");
+        if (v == null) return;
+        no = +v || 1;
+      }
+      let r;
+      try {
+        r = await api("acctFile", { from, to, fmt: how, no }, 3e4);
+      } catch (e) {
+        return toast("\u26A0\uFE0F " + (e.message || "\u041D\u0435 \u0432\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u0444\u043E\u0440\u043C\u0443\u0432\u0430\u0442\u0438"));
+      }
+      const u = Uint8Array.from(atob(r.b64), (c) => c.charCodeAt(0)), a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([u]));
+      a.download = r.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5e3);
+      return toast(how === "medoc" ? `\u{1F9FE} \u041F\u041D: ${r.n} \u2014 \u0440\u043E\u0437\u043F\u0430\u043A\u0443\u0439\u0442\u0435 ZIP \u0456 \u0432 M.E.Doc: \u0424\u0430\u0439\u043B \u2192 \u0406\u043C\u043F\u043E\u0440\u0442` : `\u{1F4D7} \u0420\u044F\u0434\u043A\u0456\u0432: ${r.n} \u2014 \u0437\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0442\u0435 \u0432 BAS \u0441\u043A\u0440\u0438\u043F\u0442\u043E\u043C atom-bas-import.ps1`);
+    }
     let x;
     try {
       x = await api("acctExport", { from, to });
@@ -5064,6 +5084,7 @@ var __objRest = (source, exclude) => {
     return hd + `<div class="muted" style="font-size:13px;margin-bottom:8px">\u041E\u0431\u0435\u0440\u0456\u0442\u044C \u0444\u043E\u0440\u043C\u0443 \u2014 \u0441\u0438\u0441\u0442\u0435\u043C\u0430 \u043D\u0430\u0433\u0430\u0434\u0430\u0454 \u0432 Telegram \u043F\u0440\u043E \u0437\u0432\u0456\u0442\u0438 \u0439 \u043F\u043B\u0430\u0442\u0435\u0436\u0456 \u0442\u0430 \u0434\u0430\u0441\u0442\u044C \u043F\u043E\u0441\u0438\u043B\u0430\u043D\u043D\u044F \u043D\u0430 \u043A\u0430\u0431\u0456\u043D\u0435\u0442 \u043F\u043B\u0430\u0442\u043D\u0438\u043A\u0430. \u041C\u0438 \u043D\u0435 \u043F\u043E\u0434\u0430\u0454\u043C\u043E \u0437\u0432\u0456\u0442\u0438 \u0439 \u043D\u0435 \u043C\u0430\u0454\u043C\u043E \u0434\u043E\u0441\u0442\u0443\u043F\u0443 \u0434\u043E \u0440\u0430\u0445\u0443\u043D\u043A\u0456\u0432. \u26A0\uFE0F \u0414\u0430\u0442\u0438 \u0439 \u0441\u0443\u043C\u0438 \u043E\u0440\u0456\u0454\u043D\u0442\u043E\u0432\u043D\u0456 \u2014 \u0437\u0432\u0456\u0440\u0442\u0435 \u0437 \u0431\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u043E\u043C.</div>
       <div class="kv"><span>\u0424\u043E\u0440\u043C\u0430</span><button class="btn sm ${T2.kind ? "primary" : ""}" data-tx="kind">${esc(R.kinds[T2.kind] || "\u041D\u0435 \u043E\u0431\u0440\u0430\u043D\u043E")}</button></div>
       ${T2.kind === "tov" ? `<div class="kv"><span>\u041F\u043B\u0430\u0442\u043D\u0438\u043A \u041F\u0414\u0412</span><span class="switch press ${T2.pdv ? "on" : ""}" data-txs="pdv" role="switch" aria-checked="${T2.pdv ? "true" : "false"}"></span></div>` : ""}
+      ${T2.pdv ? `<div class="kv"><span>\u{1F9FE} \u0420\u0435\u043A\u0432\u0456\u0437\u0438\u0442\u0438 \u0434\u043B\u044F \u043F\u043E\u0434\u0430\u0442\u043A\u043E\u0432\u0438\u0445 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0438\u0445 (M.E.Doc)<br><small class="muted">${T2.pn ? esc(T2.pn.n) + " \xB7 \u0406\u041F\u041D " + esc(T2.pn.ipn) : "\u043D\u0435 \u0437\u0430\u043F\u043E\u0432\u043D\u0435\u043D\u043E \u2014 \u043F\u043E\u0442\u0440\u0456\u0431\u043D\u0456 \u0434\u043B\u044F \u0432\u0438\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F \u041F\u041D \u0443 \u{1F4CA} \u0417\u0432\u0456\u0442\u0438 \u2192 \u{1F4E4} \u0411\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u0443"}</small></span><button class="btn sm" data-tx="pn">\u270F\uFE0F</button></div>` : ""}
       ${T2.kind ? `<div class="kv"><span>\u{1F514} \u041D\u0430\u0433\u0430\u0434\u0443\u0432\u0430\u043D\u043D\u044F \u0432 Telegram</span><span class="switch press ${T2.on ? "on" : ""}" data-txs="on" role="switch" aria-checked="${T2.on ? "true" : "false"}"></span></div>
       <div class="kv"><span>\u041D\u0430\u0433\u0430\u0434\u0443\u0432\u0430\u0442\u0438 \u0437\u0430 (\u0434\u043D\u0456\u0432)</span><button class="btn sm" data-tx="lead">${T2.lead}</button></div>
       <div class="kv"><span>\u0421\u0442\u0430\u0432\u043A\u0438 \u0439 \u043C\u0456\u043D\u0456\u043C\u0443\u043C\u0438</span><button class="btn sm" data-tx="rates">\u270F\uFE0F \u0417\u043C\u0456\u043D\u0438\u0442\u0438</button></div>
@@ -5094,6 +5115,14 @@ var __objRest = (source, exclude) => {
         if (v !== "") b[k] = +v;
       }
       await taxDo({ rates: b });
+    } else if (a === "pn") {
+      const P = T2.pn || {}, b = {};
+      for (const [k, l] of [["n", "\u041F\u0440\u043E\u0434\u0430\u0432\u0435\u0446\u044C (\u043F\u043E\u0432\u043D\u0430 \u043D\u0430\u0437\u0432\u0430 \u0422\u041E\u0412 / \u0424\u041E\u041F)"], ["tin", "\u0404\u0414\u0420\u041F\u041E\u0423 (8 \u0446\u0438\u0444\u0440) \u0430\u0431\u043E \u0420\u041D\u041E\u041A\u041F\u041F \u0424\u041E\u041F (10 \u0446\u0438\u0444\u0440)"], ["ipn", "\u0406\u041F\u041D \u043F\u043B\u0430\u0442\u043D\u0438\u043A\u0430 \u041F\u0414\u0412 (12 \u0446\u0438\u0444\u0440)"], ["sti", "\u041A\u043E\u0434 \u043F\u043E\u0434\u0430\u0442\u043A\u043E\u0432\u043E\u0457 (\u0414\u041F\u0406), 4 \u0446\u0438\u0444\u0440\u0438 \u2014 \u043D\u0430\u043F\u0440. 2655"], ["boss", "\u041F\u043E\u0441\u0430\u0434\u043E\u0432\u0430 \u043E\u0441\u043E\u0431\u0430, \u0449\u043E \u043F\u0456\u0434\u043F\u0438\u0441\u0443\u0454 (\u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)"], ["bossN", "\u0420\u041D\u041E\u041A\u041F\u041F \u043F\u043E\u0441\u0430\u0434\u043E\u0432\u043E\u0457 \u043E\u0441\u043E\u0431\u0438 (\u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)"]]) {
+        const v = await askVal(l, P[k] || "");
+        if (v == null) return;
+        b[k] = v;
+      }
+      await taxDo({ pn: b });
     } else if (a === "done") {
       const r = await act("taxDone", { key: el.dataset.k, v: +el.dataset.v }, el.dataset.v === "1" ? "\u2705 \u041F\u043E\u0437\u043D\u0430\u0447\u0435\u043D\u043E" : "\u21A9\uFE0F \u0417\u043D\u044F\u0442\u043E");
       if (r) S.txR = r;

@@ -140,3 +140,5 @@ export async function exOff(env, id, code, note, who, rm = false) {
   if (r.left > 0) await adjust(env, { id, wh: r.xx.home || 'b', q: -r.left, note: `🍾 пляшка ${exTail(r.c)}: ${String(note || 'списано').slice(0, 50)}`, noEx: 1 }, who);
   if (r.error) return r; return { x: r.x };
 }
+// 📤 податкова накладна / BAS: страва → код УКТ ЗЕД акцизного продукту з техкарти ('' — страва = послуга харчування)
+export async function exUkOf(env) { const c = await ctxOf(env), m = new Map(); return n => { if (!m.has(n)) { let uk = ''; walk(c, n, 1, y => { uk ||= y.uk || ''; }); m.set(n, uk); } return m.get(n); }; }

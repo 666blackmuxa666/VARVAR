@@ -152,7 +152,7 @@ export async function intApi(req, env, path) {
   if (path === '/__int/sum') { const r = await venueSum(env, b.from, b.to); if (b.pnl) r.pnl = await pnl(env, r).catch(e => ({ error: e.message })); return [r, 200]; }
   if (path === '/__int/acc') { // 🧮 кабінет бухгалтера: стан закладу або експорт за період (лише читання)
     if (!isDay(b.from) || !isDay(b.to) || b.from > b.to || Date.parse(b.to) - Date.parse(b.from) > 370 * 864e5) return [{ error: 'Невірний період' }, 400];
-    const A = await import('./acct.js'), r = b.do === 'exp' ? await A.acctExport(env, b.from, b.to) : await A.accSum(env, b.from, b.to); return r ? [r, 200] : [{ error: 'Невірний період' }, 400]; }
+    const A = await import('./acct.js'), r = b.do === 'exp' ? await A.acctExport(env, b.from, b.to) : b.do === 'file' ? await A.acctFile(env, b.from, b.to, String(b.fmt), b.no) : await A.accSum(env, b.from, b.to); return r ? [r, 200] : [{ error: 'Невірний період' }, 400]; }
   if (path === '/__int/codes') return [{ codes: Object.fromEntries(await Promise.all(['admin', 'waiter', 'cook', 'courier'].map(async r => [r, await env.DB.get('reg_' + r)]))) }, 200];
   return [{ error: 'unknown' }, 404];
 }
@@ -311,7 +311,7 @@ export async function ownerApi(req, env) {
     case 'accCli': { // 🧮 «Мої клієнти»: кожен заклад рахує свій стан сам, паралельно
       const vs = (await mine()).filter(v => v.status !== 'off' && v.id !== 'atom-demo');
       return ok({ list: await Promise.all(vs.map(async v => ({ ...(await callVenue(env, v.id, '/__int/acc', { from: b.from, to: b.to }).catch(e => ({ error: e.message }))), id: v.id, name: v.name, city: v.city || '' }))) }); }
-    case 'accExp': { if (!isVenueId(b.venue) || !(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/acc', { do: 'exp', from: b.from, to: b.to }); return r.error ? bad(r.error) : ok(r); }
+    case 'accExp': { if (!isVenueId(b.venue) || !(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/acc', b.fmt ? { do: 'file', fmt: b.fmt, no: b.no, from: b.from, to: b.to } : { do: 'exp', from: b.from, to: b.to }); return r.error ? bad(r.error) : ok(r); }
     case 'accList': { if (!(await own(b.venue))) return bad('Лише власник закладу', 403); return ok({ list: (await H.acctList()).filter(a => a.role === 'acc' && a.venues.includes(b.venue)).map(a => ({ email: a.email, name: a.name, unverified: !!a.unverified })) }); }
     case 'accInv': { // ✉️ власник запрошує бухгалтера: новий акаунт «бухгалтер» (пароль — за посиланням з листа) або доступ уже наявному
       if (!(await own(b.venue))) return bad('Лише власник закладу', 403);

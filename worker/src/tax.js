@@ -70,7 +70,7 @@ const fmt = d => d.split('-').reverse().join('.');
 export async function taxView(env) {
   const tax = await getTax(env), list = taxEvents(tax);
   for (const e of list.slice(0, 14)) e.amt = await taxAmount(env, tax, e).catch(() => null);
-  return { tax: { kind: tax.kind, pdv: tax.pdv, on: tax.on, lead: tax.lead, rates: rateOf(tax) }, kinds: KINDS, def: RATES, list: list.slice(0, 30), link: TAX_LINK };
+  return { tax: { kind: tax.kind, pdv: tax.pdv, on: tax.on, lead: tax.lead, rates: rateOf(tax), pn: tax.pn || null }, kinds: KINDS, def: RATES, list: list.slice(0, 30), link: TAX_LINK };
 }
 export async function taxSet(env, b) {
   if (b.kind && !KINDS[b.kind]) return { error: 'Невідомий тип' };
@@ -80,6 +80,11 @@ export async function taxSet(env, b) {
     if ('pdv' in b) t.pdv = b.pdv ? 1 : 0;
     if ('on' in b) t.on = b.on ? 1 : 0;
     if ('lead' in b) { const n = Math.round(+b.lead); if (!(n >= 0 && n <= 30)) return { error: 'Нагадувати за 0–30 днів' }; t.lead = n; }
+    if (b.pn && typeof b.pn === 'object') { // 🧾 реквізити продавця для ПН (M.E.Doc): ЄДРПОУ/РНОКПП, ІПН платника ПДВ, код ДПІ, назва, посадова особа
+      const d = k => String(b.pn[k] ?? '').replace(/\D/g, ''), s = k => String(b.pn[k] ?? '').replace(/\s+/g, ' ').trim(), p = { tin: d('tin'), ipn: d('ipn'), sti: d('sti'), n: s('n').slice(0, 200), boss: s('boss').slice(0, 100), bossN: d('bossN') };
+      if (!/^(\d{8}|\d{10})$/.test(p.tin)) return { error: 'ЄДРПОУ (8 цифр) або РНОКПП (10 цифр)' }; if (!/^\d{12}$/.test(p.ipn)) return { error: 'ІПН платника ПДВ — 12 цифр' };
+      if (!/^\d{4}$/.test(p.sti)) return { error: 'Код податкової (ДПІ) — 4 цифри' }; if (p.n.length < 3) return { error: 'Назва продавця' }; if (p.bossN && !/^\d{10}$/.test(p.bossN)) return { error: 'РНОКПП посадової особи — 10 цифр' };
+      t.pn = p; }
     if (b.rates && typeof b.rates === 'object') { t.rates = t.rates || {}; for (const k of Object.keys(RATES)) if (k in b.rates) { const v = +b.rates[k]; if (!(v >= 0 && v <= 1e6)) return { error: 'Невірна ставка: ' + k }; t.rates[k] = v; } }
     await env.DB.put('tax', JSON.stringify(t)); return {};
   });

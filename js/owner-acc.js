@@ -24,7 +24,7 @@ window.OWNACC = (() => {
       ${b.fee ? `<div class="muted" style="font-size:13px">комісії еквайрингу й агрегаторів: ${money(b.fee)}</div>` : ''}
       ${warn.length ? `<div class="acc-w">${warn.join('<br>')}</div>` : ''}
       ${(v.tax?.next || []).length ? `<div class="acc-t">${v.tax.next.map(e => `<div class="kv"><span>${esc(e.t)}</span><small class="${e.left <= 3 ? 'red' : 'muted'}">${dd(e.d)}${e.left < 0 ? ' · прострочено' : e.left === 0 ? ' · сьогодні' : ` · ${e.left} дн.`}</small></div>`).join('')}</div>` : v.tax?.kind ? '' : '<div class="muted" style="font-size:13px">📅 податковий календар не налаштовано</div>'}
-      <div class="btnrow"><button class="btn sm primary" data-acc="csv" data-v="${esc(v.id)}">📄 Експорт CSV</button><button class="btn sm" data-acc="pdf" data-v="${esc(v.id)}">🖨 PDF / друк</button></div></div>`;
+      <div class="btnrow"><button class="btn sm primary" data-acc="csv" data-v="${esc(v.id)}">📄 Експорт CSV</button><button class="btn sm" data-acc="pdf" data-v="${esc(v.id)}">🖨 PDF / друк</button><button class="btn sm" data-acc="medoc" data-v="${esc(v.id)}">🧾 M.E.Doc (ПН)</button><button class="btn sm" data-acc="bas" data-v="${esc(v.id)}">📗 BAS</button></div></div>`;
   }
   function view(ctx) {
     C = ctx; if (!D || D.key !== P) { load(); }
@@ -36,6 +36,10 @@ window.OWNACC = (() => {
   const csvOf = x => x.sections.map(s => [s.title, s.head, ...s.rows].map(r => Array.isArray(r) ? r.map(v => { const t = String(v ?? ''); return /[;"\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; }).join(';') : r).join('\r\n')).join('\r\n\r\n');
   async function exp(id, how) {
     const [from, to] = range(), name = (D?.list || []).find(v => v.id === id)?.name || id;
+    if (how === 'medoc' || how === 'bas') { const no = how === 'medoc' ? prompt('№ першої податкової накладної цього місяця', '1') : 1; if (no == null) return; // 🧾 файл для M.E.Doc / BAS
+      let r; try { r = await C.api('accExp', { venue: id, from, to, fmt: how, no: +no || 1 }); } catch (e) { return C.toast('⚠️ ' + e.message); }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([Uint8Array.from(atob(r.b64), c => c.charCodeAt(0))])); a.download = r.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      return C.toast(how === 'medoc' ? `🧾 ПН: ${r.n} — розпакуйте ZIP і в M.E.Doc: Файл → Імпорт` : `📗 Рядків: ${r.n} — завантажте в BAS скриптом atom-bas-import.ps1`); }
     let w = how === 'pdf' ? window.open('', '_blank') : null; if (how === 'pdf' && !w) return C.toast('⚠️ Дозвольте спливаюче вікно');
     let x; try { x = await C.api('accExp', { venue: id, from, to }); } catch (e) { w?.close(); return C.toast('⚠️ ' + e.message); }
     if (how === 'csv') { const f = new Blob(['﻿' + csvOf(x)], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = `${id}-${from}_${to}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); return; }
@@ -55,6 +59,6 @@ window.OWNACC = (() => {
       try { await C.api('accDel', { venue: id, email: b.dataset.accdel }); C.toast('🧮 Доступ прибрано'); bg.remove(); manage(ctx, id, name); } catch (x) { C.toast('⚠️ ' + x.message); } });
   }
   document.addEventListener('click', e => { const b = e.target.closest('[data-acc]'); if (!b || !C) return; const a = b.dataset.acc;
-    if (a === 'per') { P = b.dataset.v; C.render(); } else if (a === 'csv' || a === 'pdf') exp(b.dataset.v, a); });
+    if (a === 'per') { P = b.dataset.v; C.render(); } else if (a === 'csv' || a === 'pdf' || a === 'medoc' || a === 'bas') exp(b.dataset.v, a); });
   return { view, manage, reset: () => { D = null; } };
 })();

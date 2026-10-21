@@ -148,6 +148,24 @@ async function apiTests() {
     const bad = await pos(W, 'acctExport', { from: day, to }); must(bad.status === 403 || bad.status === 401 || bad.json?.error, 'офіціант отримав дані');
     const e = await pos(A, 'acctExport', { from: 'x', to: 'y' }); must(e.status === 400, 'невірний період: ' + e.status);
   });
+  await step('🧾 M.E.Doc і BAS: ZIP з XML ПН (J1201016) і CSV по позиціях — суми = виручка без чайових', async () => {
+    const day = new Date().toISOString().slice(0, 10), to = new Date(Date.now() + 864e5).toISOString().slice(0, 10), rep = await posOk(A, 'report', { from: day, to });
+    const rev = rep.checks.filter(c => (c.dishes || []).some(x => x[2] > 0)).reduce((a, c) => a + c.sum - (c.tip || 0), 0), buf = r => Buffer.from(r.b64, 'base64');
+    const bas = await pos(A, 'acctFile', { from: day, to, fmt: 'bas' });
+    if (rev > 0) { must(bas.status === 200, 'BAS: ' + JSON.stringify(bas.j).slice(0, 150)); const t = buf(bas.j).toString('utf8'), rows = t.replace(/^﻿/, '').trim().split('\r\n');
+      must(rows[0].startsWith('Дата;Номенклатура;Кількість;Сума з ПДВ'), 'шапка BAS: ' + rows[0]); const s = rows.slice(1).reduce((a, r) => a + +r.split(';')[3], 0); must(Math.abs(s - rev) < 0.05 * rows.length + 0.01, `BAS сума ${s} ≠ виручка ${rev}`); }
+    const T0 = (await posOk(A, 'taxGet', {})).tax;
+    try {
+      await posOk(A, 'taxSet', { kind: 'tov', pdv: 0 }); const np = await pos(A, 'acctFile', { from: day, to, fmt: 'medoc' }); must(np.status === 400 && /ПДВ/.test(np.j?.error), 'не платник ПДВ: ' + JSON.stringify(np.j));
+      await posOk(A, 'taxSet', { pdv: 1 }); const bad = await pos(A, 'taxSet', { pn: { n: 'ТОВ QA', tin: '123', ipn: '1', sti: '2655' } }); must(bad.status === 400, 'невірні реквізити прийнято');
+      await posOk(A, 'taxSet', { pn: { n: 'ТОВ «QA Ресторан»', tin: '12345678', ipn: '123456789012', sti: '2655' } });
+      if (rev > 0) { const r = await posOk(A, 'acctFile', { from: day, to, fmt: 'medoc', no: 7 }), z = buf(r); must(z.slice(0, 2).toString() === 'PK' && r.n >= 1, 'ZIP: ' + r.n);
+        const x = z.toString('latin1'); must(x.includes('265500123456 78'.replace(' ', '') + 'J12010161000000007'), 'імʼя файлу / № ПН'); must(x.includes('encoding="windows-1251"') && x.includes('<HTYPR>11</HTYPR>') && x.includes('<HKBUY>100000000000</HKBUY>'), 'тип 11 / неплатник');
+        const g = [...x.matchAll(/<R04G11>([\d.]+)<\/R04G11>/g)].reduce((a, m) => a + +m[1], 0); must(Math.abs(g - rev) < 0.05 * r.n + 0.01, `ПН разом ${g} ≠ виручка ${rev}`);
+        for (const m of x.matchAll(/<R04G11>([\d.]+)<\/R04G11>\s*<R03G11>([\d.]+)<\/R03G11>\s*<R03G7>[\d.]+<\/R03G7>\s*<R03G109 xsi:nil="true" \/>\s*<R03G14 xsi:nil="true" \/>\s*<R01G7>([\d.]+)<\/R01G7>/g)) must(Math.abs(+m[1] - +m[2] - +m[3]) < 0.011, 'база + ПДВ ≠ разом'); }
+      const w = await pos(W, 'acctFile', { from: day, to, fmt: 'bas' }); must(w.status === 403 || w.status === 401 || w.j?.error, 'офіціант отримав файл');
+    } finally { await posOk(A, 'taxSet', { kind: T0.kind || '', pdv: T0.pdv || 0 }); }
+  });
   await step('🚨 продаж нижче собівартості: техкарта дорожча за ціну → у звіті складу loss', async () => {
     const ing = await posOk(A, 'skIngSave', { x: { n: 'QA дорогий ' + RUN, u: 'кг' } }), id = ing.x?.id || ing.id; must(id, 'продукт: ' + JSON.stringify(ing).slice(0, 120));
     await posOk(A, 'skIngCost', { list: [{ id, cost: dish.price * 10 }] });
