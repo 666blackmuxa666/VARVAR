@@ -237,6 +237,12 @@ async function apiTests() {
     const l = (await posOk(A, 'taskList')).list; must(l.find(x => x.id === t.id)?.st === 'done', 'не відмічено');
     await posOk(A, 'taskDel', { id: t.id }); return ck ? 'кухар ✅' : 'адмін ✅';
   });
+  await step('📢 оголошення команді: адмін задає, усі бачать, офіціанту — ні', async () => {
+    const was = (await posOk(A, 'taskList')).ann;
+    must((await posOk(A, 'taskAnn', { t: 'QA завтра збори' })).ann?.t === 'QA завтра збори', 'не збережено');
+    if (W) { must((await posOk(W, 'taskList', { mine: 1 })).ann?.t === 'QA завтра збори', 'офіціант не бачить'); must((await pos(W, 'taskAnn', { t: 'x' })).status === 403, 'офіціант змінив оголошення'); }
+    must((await posOk(A, 'taskAnn', { t: '' })).ann === null, 'не прибрано'); if (was) await posOk(A, 'taskAnn', { t: was.t }); return '✅';
+  });
   await step('🎨 конструктор сайту: дизайн зберігається, погане відкидається, офіціанту — ні', async () => {
     const s0 = (await posOk(A, 'siteGet')).site, back = {}; for (const k of ['theme', 'heroCfg', 'blocks', 'dock', 'ann', 'events', 'chat']) back[k] = s0[k] ?? null;
     const td = new Date(Date.now() + 864e5).toISOString().slice(0, 10);

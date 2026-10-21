@@ -236,6 +236,11 @@ export async function handleUpdate(u, env) {
     return send({ text: r.error ? '⚠️ ' + r.error : '✅ Збережено — уже на сайті' }); } }
   if (/^(вхідні|✉️|\/inbox)$/i.test(text.trim())) { if (!waiter) return send({ text: '🔐 Спершу увійдіть своїм PIN' }); await (await import('./guestbot.js')).inboxBot(env, chat); return; } // ✉️ невідписані повідомлення гостей
   if (text === W.plan || /^(\/plan|план)$/i.test(text)) { const s0 = await meStaff(env, uid); if (!s0) return send({ text: '🔐 Спершу увійдіть своїм PIN' }); const v = await (await import('./tasks.js')).taskBotView(env, s0); return send(v); } // 📋 план на день
+  { const m = text.match(/^(?:📢\s*)?(?:оголошення|\/ann)(?:\s+([\s\S]+))?$/i); if (m) { // 📢 оголошення для команди (паритет з касою: Персонал → 📋 План)
+    const T = await import('./tasks.js'), v = (m[1] || '').trim();
+    if (!v || !admin) { const a = await T.getAnn(env); return send({ text: (a ? `📢 <b>${esc(a.t)}</b>\n<i>— ${esc(a.by)}</i>` : '📢 Оголошень немає.') + (admin ? '\n\nЗадати: <code>оголошення Завтра о 10:00 генералка</code>\nПрибрати: <code>оголошення прибрати</code>' : '') }); }
+    const s0 = await meStaff(env, uid), r = await T.setAnn(env, /^(прибрати|вимкнути|видалити|-)$/i.test(v) ? '' : v, s0?.name || 'адмін');
+    return send({ text: r.ann ? '📢 Оголошення бачать усі — у касі (👤 кабінет) і в «📋 Мій план».' : '🗑 Оголошення прибрано.' }); } }
   if (/^(побажання|\/idea)/i.test(text)) { const r = await (await import('./ideas.js')).ideaBot(env, text, await meStaff(env, uid), admin); if (r) return send(r); } // 💡 побажання розробнику
   { const m = text.match(/^(гість|бонус)\s+(\d+)\s+(\S+)\s*$/i); if (m && waiter) { // 🎁 паритет з касою: телефон гостя на рахунок (кешбек) / списати бонуси
     const t = +m[2], bill = await getBill(env, t); if (!bill.total) return send({ text: `⚠️ Стіл ${tn(t)} порожній` });

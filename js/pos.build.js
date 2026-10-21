@@ -7977,7 +7977,7 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     const asks = r.swaps.filter((s) => s.to === me && s.st === "ask");
     const shiftH = `<div class="zp-shift">${onShift() ? `<button class="btn red" data-a="zpOut">\u{1F534} \u0417\u0430\u043A\u0456\u043D\u0447\u0438\u0442\u0438 \u0437\u043C\u0456\u043D\u0443</button><span class="muted">\u043D\u0430 \u0437\u043C\u0456\u043D\u0456 \u0437 ${hhK(S.myAtt.in)}${S.myAtt.ok === 0 ? " \xB7 \u{1F553} \u0447\u0435\u043A\u0430\u0454 \u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F" : " \xB7 \u2705"}</span>` : `<button class="btn green" data-a="zpIn">\u{1F7E2} \u041F\u043E\u0447\u0430\u0442\u0438 \u0437\u043C\u0456\u043D\u0443</button>${((_b2 = S.myAtt) == null ? void 0 : _b2.out) ? `<span class="muted">\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 ${hhK(S.myAtt.in)}\u2013${hhK(S.myAtt.out)}</span>` : ""}`}</div>`;
     await loadMyTasks();
-    const avH = `<div class="my-av"><button class="my-av-b" data-a="zpAv" title="\u0417\u043C\u0456\u043D\u0438\u0442\u0438 \u0444\u043E\u0442\u043E">${VVAV.html((_c = S.me) == null ? void 0 : _c.av, me)}<em>\u{1F4F7}</em></button><div><b>${esc(me)}</b><div class="muted" style="font-size:12px">\u041D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \u043D\u0430 \u0444\u043E\u0442\u043E, \u0449\u043E\u0431 \u0437\u043C\u0456\u043D\u0438\u0442\u0438${((_d = S.me) == null ? void 0 : _d.av) ? ' \xB7 <button class="linkb" data-a="zpAvDel">\u043F\u0440\u0438\u0431\u0440\u0430\u0442\u0438</button>' : ""}</div></div></div>`;
+    const avH = `<div class="my-av"><button class="my-av-b" data-a="zpAv" title="\u0417\u043C\u0456\u043D\u0438\u0442\u0438 \u0444\u043E\u0442\u043E">${VVAV.html((_c = S.me) == null ? void 0 : _c.av, me)}<em>\u{1F4F7}</em></button><div><b>${esc(me)}</b>${S.ann ? annHTML() : `<div class="muted" style="font-size:12px">\u041D\u0430\u0442\u0438\u0441\u043D\u0456\u0442\u044C \u043D\u0430 \u0444\u043E\u0442\u043E, \u0449\u043E\u0431 \u0437\u043C\u0456\u043D\u0438\u0442\u0438${((_d = S.me) == null ? void 0 : _d.av) ? ' \xB7 <button class="linkb" data-a="zpAvDel">\u043F\u0440\u0438\u0431\u0440\u0430\u0442\u0438</button>' : ""}</div>`}</div></div>`;
     const body = avH + shiftH + `<div id="myTasks">${myTasksHTML()}</div>${w ? `<div class="pills zp-my"><div class="pill"><span>\u0417\u043C\u0456\u043D</span><b>${w.shifts}</b><small>${w.hours ? w.hours + " \u0433\u043E\u0434" : ""}</small></div><div class="pill"><span>\u0417\u0430\u0440\u043E\u0431\u043B\u0435\u043D\u043E</span><b class="money">${money(w.earned)}</b></div><div class="pill"><span>\u0414\u043E \u0432\u0438\u043F\u043B\u0430\u0442\u0438</span><b class="money">${money(w.due)}</b></div><div class="pill"><span>\u{1F49D} \u041C\u043E\u0457 \u0447\u0430\u0439\u043E\u0432\u0456</span><b class="money">${money(((_e = S.myTip) == null ? void 0 : _e.sum) || 0)}</b><small>${w.tips ? `\u0437\u0430 \u043C\u0456\u0441\u044F\u0446\u044C ${money(w.tips)}` : "\u0449\u0435 \u043D\u0435 \u0432\u0438\u0434\u0430\u043D\u043E"}</small></div></div>
       ${lnx(`\u0421\u0442\u0430\u0432\u043A\u0430 \xD7 ${w.shifts}`, money(w.rate))}${w.pct ? lnx("% \u0432\u0456\u0434 \u0432\u0438\u0440\u0443\u0447\u043A\u0438", money(w.pct)) : ""}${w.dayB || w.monB ? lnx("\u{1F3AF} \u0411\u043E\u043D\u0443\u0441 \u0437\u0430 \u043F\u043B\u0430\u043D", money(w.dayB + w.monB)) : ""}${w.bonus ? lnx("\u2795 \u041F\u0440\u0435\u043C\u0456\u0457", money(w.bonus)) : ""}${w.fine ? lnx("\u2796 \u0428\u0442\u0440\u0430\u0444\u0438", "\u2212" + money(w.fine)) : ""}${w.adv ? lnx("\u{1F4B5} \u0410\u0432\u0430\u043D\u0441\u0438", "\u2212" + money(w.adv)) : ""}${w.paid ? lnx("\u{1F4B8} \u0412\u0438\u043F\u043B\u0430\u0447\u0435\u043D\u043E", "\u2212" + money(w.paid)) : ""}
       ${w.toMon ? `<div class="muted" style="font-size:13px;margin-top:6px">\u{1F3AF} \u0414\u043E \u043C\u0456\u0441\u044F\u0447\u043D\u043E\u0433\u043E \u0431\u043E\u043D\u0443\u0441\u0443 \u0449\u0435 ${money(w.toMon)}</div>` : ""}` : '<div class="muted">\u0421\u0442\u0430\u0432\u043A\u0443 \u0449\u0435 \u043D\u0435 \u0437\u0430\u0434\u0430\u043D\u043E</div>'}
@@ -8255,6 +8255,8 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     try {
       const r = await api("taskList", { mine: 1 });
       S.myTasks = r.list;
+      S.ann = r.ann || null;
+      if ($("#myAnn")) $("#myAnn").outerHTML = annHTML();
       const n = r.list.filter((t) => !t.st).length;
       if (n !== S.taskN) {
         S.taskN = n;
@@ -8262,6 +8264,18 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
       }
       if ($("#myTasks")) $("#myTasks").innerHTML = myTasksHTML();
     } catch (e) {
+    }
+  }
+  const annHTML = () => S.ann ? `<div id="myAnn" class="my-ann">\u{1F4E2} ${esc(S.ann.t)}<small class="muted">\u2014 ${esc(S.ann.by)}</small></div>` : '<div id="myAnn"></div>';
+  async function annEdit() {
+    var _a2, _b2;
+    const t = await askLong("\u{1F4E2} \u041E\u0433\u043E\u043B\u043E\u0448\u0435\u043D\u043D\u044F \u0434\u043B\u044F \u043A\u043E\u043C\u0430\u043D\u0434\u0438", ((_b2 = (_a2 = S.data.tasks) == null ? void 0 : _a2.ann) == null ? void 0 : _b2.t) || "");
+    if (t === null || t === void 0) return;
+    const r = await act("taskAnn", { t }, t.trim() ? "\u{1F4E2} \u041E\u0433\u043E\u043B\u043E\u0448\u0435\u043D\u043D\u044F \u0431\u0430\u0447\u0430\u0442\u044C \u0443\u0441\u0456" : "\u{1F5D1} \u041E\u0433\u043E\u043B\u043E\u0448\u0435\u043D\u043D\u044F \u043F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
+    if (r) {
+      S.ann = r.ann;
+      if (S.data.tasks) S.data.tasks.ann = r.ann;
+      renderMain();
     }
   }
   function myTasksHTML() {
@@ -8328,7 +8342,10 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     const row = (t) => `<div class="tk-row${t.st ? " done" : ""}${t.imp && !t.st ? " imp" : ""}"><span class="tk-n">${tkIc(t)} ${t.tm ? `<b>${t.tm}</b> \xB7 ` : ""}${esc(t.n)}${t.tpl ? ' <small class="muted">\u{1F501}</small>' : ""}<small class="muted">${tkWho(t.who)}${t.st ? ` \xB7 ${esc(t.by || "")} ${t.at || ""}${t.why ? " \u2014 " + esc(t.why) : ""}` : t.photo ? " \xB7 \u{1F4F7} \u0437 \u0444\u043E\u0442\u043E" : ""}</small></span>
       <span class="tk-b">${t.ph ? `<button class="btn sm" data-a="tkPh" data-id="${t.id}">\u{1F4F7}</button>` : ""}${t.st ? "" : `<button class="btn sm green" data-a="tkMarkA" data-id="${t.id}" data-st="done" title="\u0412\u0456\u0434\u043C\u0456\u0442\u0438\u0442\u0438 \u0437\u0430 \u043F\u0440\u0430\u0446\u0456\u0432\u043D\u0438\u043A\u0430">\u2705</button>`}${past ? "" : `<button class="btn sm ghost" data-a="tkDel" data-id="${t.id}">\u{1F5D1}</button>`}</span></div>`;
     const tpl = D.tpl || [];
-    return `<div class="card"><div class="zp-top"><button class="btn sm" data-a="tkDay" data-d="${shift(-1)}">\u25C0</button><b>${day === todayK() ? "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : day === shift(0) && day > todayK() ? "\u0417\u0430\u0432\u0442\u0440\u0430" : ""} ${tkDm(day)} ${TK_WD[((/* @__PURE__ */ new Date(day + "T12:00:00Z")).getUTCDay() + 6) % 7]}</b><button class="btn sm" data-a="tkDay" data-d="${shift(1)}">\u25B6</button></div>
+    const an = D.ann;
+    return `<div class="card"><h3>\u{1F4E2} \u041E\u0433\u043E\u043B\u043E\u0448\u0435\u043D\u043D\u044F \u0434\u043B\u044F \u043A\u043E\u043C\u0430\u043D\u0434\u0438</h3>${an ? `<div class="my-ann">${esc(an.t)}<small class="muted">\u2014 ${esc(an.by)} \xB7 ${new Date(an.at).toLocaleString("uk-UA", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</small></div>` : '<div class="muted set-note">\u041D\u0430\u043F\u0440. \xAB\u0417\u0430\u0432\u0442\u0440\u0430 \u043E 10:00 \u0433\u0435\u043D\u0435\u0440\u0430\u043B\u043A\u0430\xBB, \xAB\u041F\u0442 \u2014 \u043A\u043E\u0440\u043F\u043E\u0440\u0430\u0442\u0438\u0432 \u{1F389}\xBB, \xAB\u0417\u0431\u043E\u0440\u0438 \u043E 18:00\xBB. \u0411\u0430\u0447\u0430\u0442\u044C \u0443\u0441\u0456 \u0432 \u043A\u0430\u0431\u0456\u043D\u0435\u0442\u0456 \u0439 \u0443 \u0431\u043E\u0442\u0456, \u043F\u043E\u043A\u0438 \u043D\u0435 \u043F\u0440\u0438\u0431\u0435\u0440\u0435\u0442\u0435.</div>'}
+        <div class="btnrow" style="margin-top:10px"><button class="btn${an ? "" : " primary"}" data-a="tkAnn">${an ? "\u270F\uFE0F \u0417\u043C\u0456\u043D\u0438\u0442\u0438" : "\u{1F4E2} \u041D\u0430\u043F\u0438\u0441\u0430\u0442\u0438"}</button>${an ? '<button class="btn ghost" data-a="tkAnnDel">\u{1F5D1} \u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438</button>' : ""}</div></div>
+      <div class="card"><div class="zp-top"><button class="btn sm" data-a="tkDay" data-d="${shift(-1)}">\u25C0</button><b>${day === todayK() ? "\u0421\u044C\u043E\u0433\u043E\u0434\u043D\u0456" : day === shift(0) && day > todayK() ? "\u0417\u0430\u0432\u0442\u0440\u0430" : ""} ${tkDm(day)} ${TK_WD[((/* @__PURE__ */ new Date(day + "T12:00:00Z")).getUTCDay() + 6) % 7]}</b><button class="btn sm" data-a="tkDay" data-d="${shift(1)}">\u25B6</button></div>
         ${l.length ? `<div class="kpis"><div class="kpi accent"><span>\u0412\u0438\u043A\u043E\u043D\u0430\u043D\u043E</span><b>${ok2} \u0437 ${l.length}</b><small class="muted">${Math.round(ok2 / l.length * 100)}%</small></div>${Object.entries(by).map(([n, [a, b]]) => `<div class="kpi"><span>${esc(n)}</span><b>${a}/${b}</b></div>`).join("")}</div>` : ""}
         ${l.length ? l.map(row).join("") : '<div class="muted">\u041D\u0430 \u0446\u0435\u0439 \u0434\u0435\u043D\u044C \u0437\u0430\u0432\u0434\u0430\u043D\u044C \u043D\u0435\u043C\u0430\u0454</div>'}
         ${past ? "" : '<div class="btnrow" style="margin-top:10px"><button class="btn primary" data-a="tkAdd">\u2795 \u0417\u0430\u0432\u0434\u0430\u043D\u043D\u044F</button></div>'}</div>
@@ -8365,6 +8382,18 @@ ${r.rows.map((x) => `${x.d}  ${x.t}  ${x.plus ? "+" + x.plus : "\u2212" + x.minu
     switch (a) {
       case "tkMark":
         return tkMark(D.id, D.st);
+      case "tkAnn":
+        return annEdit();
+      case "tkAnnDel":
+        if (await confirmBox("\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u043E\u0433\u043E\u043B\u043E\u0448\u0435\u043D\u043D\u044F?", "\u0417\u043D\u0438\u043A\u043D\u0435 \u0432 \u0443\u0441\u0456\u0445")) {
+          const r = await act("taskAnn", { t: "" }, "\u{1F5D1} \u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
+          if (r) {
+            S.ann = null;
+            if (S.data.tasks) S.data.tasks.ann = null;
+            renderMain();
+          }
+        }
+        return;
       case "tkMarkA":
         return tkMark(D.id, D.st, S.tkDay || todayK());
       case "tkDay":

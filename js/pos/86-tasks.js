@@ -3,7 +3,13 @@
   const tkWho = w => !w || w.k === 'a' ? '👥 будь-хто' : w.k === 'r' ? '👥 ' + (TK_ROLE[w.r] || w.r) : '👤 ' + esc(w.n || '?');
   const tkIc = t => t.st === 'done' ? '✅' : t.st === 'no' ? '❌' : t.imp ? '❗' : '⬜';
   const tkDm = d => `${d.slice(8)}.${d.slice(5, 7)}`;
-  async function loadMyTasks() { try { const r = await api('taskList', { mine: 1 }); S.myTasks = r.list; const n = r.list.filter(t => !t.st).length; if (n !== S.taskN) { S.taskN = n; renderNav(); } if ($('#myTasks')) $('#myTasks').innerHTML = myTasksHTML(); } catch {} }
+  async function loadMyTasks() { try { const r = await api('taskList', { mine: 1 }); S.myTasks = r.list; S.ann = r.ann || null; if ($('#myAnn')) $('#myAnn').outerHTML = annHTML(); const n = r.list.filter(t => !t.st).length; if (n !== S.taskN) { S.taskN = n; renderNav(); } if ($('#myTasks')) $('#myTasks').innerHTML = myTasksHTML(); } catch {} }
+  // 📢 оголошення адміна — у кабінеті поруч з фото, поки адмін не прибере
+  const annHTML = () => S.ann ? `<div id="myAnn" class="my-ann">📢 ${esc(S.ann.t)}<small class="muted">— ${esc(S.ann.by)}</small></div>` : '<div id="myAnn"></div>';
+  async function annEdit() {
+    const t = await askLong('📢 Оголошення для команди', S.data.tasks?.ann?.t || ''); if (t === null || t === undefined) return;
+    const r = await act('taskAnn', { t }, t.trim() ? '📢 Оголошення бачать усі' : '🗑 Оголошення прибрано'); if (r) { S.ann = r.ann; if (S.data.tasks) S.data.tasks.ann = r.ann; renderMain(); }
+  }
   // 👤 у кабінеті працівника
   function myTasksHTML() {
     const l = S.myTasks || []; if (!l.length) return '';
@@ -26,7 +32,10 @@
     const row = t => `<div class="tk-row${t.st ? ' done' : ''}${t.imp && !t.st ? ' imp' : ''}"><span class="tk-n">${tkIc(t)} ${t.tm ? `<b>${t.tm}</b> · ` : ''}${esc(t.n)}${t.tpl ? ' <small class="muted">🔁</small>' : ''}<small class="muted">${tkWho(t.who)}${t.st ? ` · ${esc(t.by || '')} ${t.at || ''}${t.why ? ' — ' + esc(t.why) : ''}` : t.photo ? ' · 📷 з фото' : ''}</small></span>
       <span class="tk-b">${t.ph ? `<button class="btn sm" data-a="tkPh" data-id="${t.id}">📷</button>` : ''}${t.st ? '' : `<button class="btn sm green" data-a="tkMarkA" data-id="${t.id}" data-st="done" title="Відмітити за працівника">✅</button>`}${past ? '' : `<button class="btn sm ghost" data-a="tkDel" data-id="${t.id}">🗑</button>`}</span></div>`;
     const tpl = D.tpl || [];
-    return `<div class="card"><div class="zp-top"><button class="btn sm" data-a="tkDay" data-d="${shift(-1)}">◀</button><b>${day === todayK() ? 'Сьогодні' : day === shift(0) && day > todayK() ? 'Завтра' : ''} ${tkDm(day)} ${TK_WD[(new Date(day + 'T12:00:00Z').getUTCDay() + 6) % 7]}</b><button class="btn sm" data-a="tkDay" data-d="${shift(1)}">▶</button></div>
+    const an = D.ann;
+    return `<div class="card"><h3>📢 Оголошення для команди</h3>${an ? `<div class="my-ann">${esc(an.t)}<small class="muted">— ${esc(an.by)} · ${new Date(an.at).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</small></div>` : '<div class="muted set-note">Напр. «Завтра о 10:00 генералка», «Пт — корпоратив 🎉», «Збори о 18:00». Бачать усі в кабінеті й у боті, поки не приберете.</div>'}
+        <div class="btnrow" style="margin-top:10px"><button class="btn${an ? '' : ' primary'}" data-a="tkAnn">${an ? '✏️ Змінити' : '📢 Написати'}</button>${an ? '<button class="btn ghost" data-a="tkAnnDel">🗑 Прибрати</button>' : ''}</div></div>
+      <div class="card"><div class="zp-top"><button class="btn sm" data-a="tkDay" data-d="${shift(-1)}">◀</button><b>${day === todayK() ? 'Сьогодні' : day === shift(0) && day > todayK() ? 'Завтра' : ''} ${tkDm(day)} ${TK_WD[(new Date(day + 'T12:00:00Z').getUTCDay() + 6) % 7]}</b><button class="btn sm" data-a="tkDay" data-d="${shift(1)}">▶</button></div>
         ${l.length ? `<div class="kpis"><div class="kpi accent"><span>Виконано</span><b>${ok} з ${l.length}</b><small class="muted">${Math.round(ok / l.length * 100)}%</small></div>${Object.entries(by).map(([n, [a, b]]) => `<div class="kpi"><span>${esc(n)}</span><b>${a}/${b}</b></div>`).join('')}</div>` : ''}
         ${l.length ? l.map(row).join('') : '<div class="muted">На цей день завдань немає</div>'}
         ${past ? '' : '<div class="btnrow" style="margin-top:10px"><button class="btn primary" data-a="tkAdd">➕ Завдання</button></div>'}</div>
@@ -51,6 +60,8 @@
   async function tkClick(a, D) {
     switch (a) {
       case 'tkMark': return tkMark(D.id, D.st);
+      case 'tkAnn': return annEdit();
+      case 'tkAnnDel': if (await confirmBox('Прибрати оголошення?', 'Зникне в усіх')) { const r = await act('taskAnn', { t: '' }, '🗑 Прибрано'); if (r) { S.ann = null; if (S.data.tasks) S.data.tasks.ann = null; renderMain(); } } return;
       case 'tkMarkA': return tkMark(D.id, D.st, S.tkDay || todayK());
       case 'tkDay': S.tkDay = D.d; S.data.tasks = null; return renderMain();
       case 'tkAdd': { const r = await tkForm(); if (r && await act('taskAdd', { ...r, day: S.tkDay || todayK() }, '➕ Додано')) tkLoad(); return; }

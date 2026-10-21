@@ -1,7 +1,8 @@
 // 📋 План на день: адмін складає завдання (разові + шаблони, що повторюються), працівник відмічає ✅ зробив / ❌ не зробив (з причиною, за потреби — фото).
 // Ключі: task_tpl — шаблони [{id,n,who,days,imp,photo,tm}]; task:<день> — {gen, l:[{id,n,who,imp,photo,tm,tpl,st,by,at,why,ph}]}; tph:<день>:<id> — фото (35 днів).
+// task:ann — 📢 оголошення для всієї команди {t,by,at}: висить у кабінеті кожного, поки адмін не прибере.
 // who: {k:'a'} — будь-хто на зміні · {k:'r', r:'cook'} — уся роль · {k:'s', id, n} — конкретна людина.
-import { L, dayKey, isDay, hhmm, getStaff, esc } from './ops.js';
+import { L, dayKey, isDay, hhmm, getStaff, esc, notify } from './ops.js';
 
 const ROLE = { admin: 'адміни', waiter: 'офіціанти', cook: 'кухарі', courier: 'кур\'єри' };
 export const whoText = w => !w || w.k === 'a' ? 'будь-хто' : w.k === 'r' ? ROLE[w.r] || w.r : w.n || '?';
@@ -56,19 +57,29 @@ export async function taskMark(env, me, day, id, st, why, ph) {
   });
 }
 
+// 📢 оголошення команді: одне на заклад; приходить разом зі списком завдань (без окремого запиту)
+export const getAnn = async env => (await env.DB.get('task:ann', 'json')) || null;
+export async function setAnn(env, text, by) {
+  const t = String(text || '').trim().slice(0, 300);
+  if (!t) { await env.DB.delete('task:ann'); return { ann: null }; }
+  const a = { t, by: String(by || ''), at: Date.now() }; await env.DB.put('task:ann', JSON.stringify(a));
+  await notify(env, `📢 <b>Оголошення для команди</b>\n${esc(t)}\n— ${esc(a.by)}`).catch(() => {}); return { ann: a };
+}
+
 export async function taskApi(b, env, me) {
   const admin = me.role === 'admin', day = admin && isDay(b.day) ? b.day : dayKey(), /* працівник — лише сьогодні */ R = x => [x?.error ? x : { ok: true, ...x }, x?.error ? 400 : 200];
   const needAdmin = () => [{ error: 'admin' }, 403];
   switch (b.op) {
     case 'taskList': {
       const d = await taskDay(env, day), l = admin && !b.mine ? d.l : d.l.filter(t => isMine(t, me));
-      return R({ day, list: sortL(l), ...(admin ? { tpl: await getTpl(env), staff: (await getStaff(env)).map(s => ({ id: s.id, n: s.name, r: s.role })) } : {}) });
+      return R({ day, list: sortL(l), ann: await getAnn(env), ...(admin ? { tpl: await getTpl(env), staff: (await getStaff(env)).map(s => ({ id: s.id, n: s.name, r: s.role })) } : {}) });
     }
     case 'taskAdd': {
       if (!admin) return needAdmin(); if (day < dayKey()) return R({ error: 'Минулий день змінити не можна' });
       const t = cleanTask(b, await getStaff(env)); if (!t.n) return R({ error: 'Напишіть завдання' });
       return R(await edit(env, day, d => { if (d.l.length >= 200) return { error: 'Забагато завдань на день' }; const x = { id: nid(), ...t, st: '' }; d.l.push(x); return { t: x }; }));
     }
+    case 'taskAnn': { if (!admin) return needAdmin(); return R(await setAnn(env, b.t, me.name)); }
     case 'taskDel': { if (!admin) return needAdmin(); return R(await edit(env, day, d => { const i = d.l.findIndex(x => x.id === b.id); if (i < 0) return { error: 'Не знайдено' }; if (d.l[i].tpl) d.dtpl = [...new Set([...(d.dtpl || []), d.l[i].tpl])]; d.l.splice(i, 1); return {}; })); } // видалене з шаблону не повертається
     case 'taskMark': return R(await taskMark(env, me, day, String(b.id || ''), String(b.st || ''), b.why, typeof b.ph === 'string' && b.ph.length > 1000 && b.ph.length < 2e6 ? b.ph.replace(/^data:image\/\w+;base64,/, '').replace(/[^A-Za-z0-9+/=]/g, '') : ''));
     case 'taskPh': { const d = await taskDay(env, day), t = d.l.find(x => x.id === b.id); if (!t || (!admin && !isMine(t, me))) return R({ error: 'Не знайдено' }); return R({ ph: await env.DB.get(`tph:${day}:${t.id}`) || '' }); }
@@ -87,10 +98,10 @@ export async function taskApi(b, env, me) {
 
 // 🤖 бот персоналу: «📋 Мій план» — список і кнопки ✅ / ❌ (причину бот попросить написати)
 export async function taskBotView(env, s) {
-  const me = { name: s.name, role: s.role, sid: s.id }, day = dayKey(), l = sortL((await taskDay(env, day)).l.filter(t => isMine(t, me)));
-  if (!l.length) return { text: '📋 На сьогодні завдань немає.' };
+  const me = { name: s.name, role: s.role, sid: s.id }, day = dayKey(), l = sortL((await taskDay(env, day)).l.filter(t => isMine(t, me))), a = await getAnn(env), an = a ? `📢 <b>${esc(a.t)}</b>\n<i>— ${esc(a.by)}</i>\n\n` : '';
+  if (!l.length) return { text: an + '📋 На сьогодні завдань немає.' };
   const ic = t => t.st === 'done' ? '✅' : t.st === 'no' ? '❌' : t.imp ? '❗' : '⬜';
-  const text = `📋 <b>Мій план на ${day.split('-').reverse().join('.')}</b> · ${l.filter(t => t.st === 'done').length} з ${l.length}\n\n` + l.map(t => `${ic(t)} ${t.tm ? t.tm + ' · ' : ''}${esc(t.n)}${t.photo && !t.st ? ' 📷' : ''}${t.st ? ` <i>(${esc(t.by || '')} ${t.at || ''}${t.why ? ' — ' + esc(t.why) : ''})</i>` : ''}`).join('\n') + (l.some(t => t.photo && !t.st) ? '\n\n📷 — завдання з фото: відмітьте в касі (👤 кабінет).' : '');
+  const text = an + `📋 <b>Мій план на ${day.split('-').reverse().join('.')}</b> · ${l.filter(t => t.st === 'done').length} з ${l.length}\n\n` + l.map(t => `${ic(t)} ${t.tm ? t.tm + ' · ' : ''}${esc(t.n)}${t.photo && !t.st ? ' 📷' : ''}${t.st ? ` <i>(${esc(t.by || '')} ${t.at || ''}${t.why ? ' — ' + esc(t.why) : ''})</i>` : ''}`).join('\n') + (l.some(t => t.photo && !t.st) ? '\n\n📷 — завдання з фото: відмітьте в касі (👤 кабінет).' : '');
   const open = l.filter(t => !t.st).slice(0, 20);
   return { text, markup: open.length ? { inline_keyboard: open.map(t => [...(t.photo ? [] : [{ text: '✅ ' + t.n.slice(0, 28), callback_data: 'tkd:' + t.id }]), { text: '❌' + (t.photo ? ' ' + t.n.slice(0, 28) : ''), callback_data: 'tkn:' + t.id }]) } : undefined };
 }
