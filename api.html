@@ -32,7 +32,7 @@ th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--lin
 
 <h2>Основи</h2>
 <p><b>Адреса:</b> <code>https://posatom.online/v/&lt;заклад&gt;/api/v1/</code> — ідентифікатор закладу показано в кабінеті поруч із ключем.</p>
-<p><b>Ключ</b> передається в заголовку <code>Authorization: Bearer atk_…</code> (або <code>X-Api-Key</code>). Ключ має права: <code>menu</code>, <code>orders</code>, <code>sales</code>. Тримайте його лише на своєму сервері, не в браузері чи мобільному застосунку.</p>
+<p><b>Ключ</b> передається в заголовку <code>Authorization: Bearer atk_…</code> (або <code>X-Api-Key</code>). Ключ має права: <code>menu</code>, <code>orders</code>, <code>sales</code>, <code>stock</code>. Тримайте його лише на своєму сервері, не в браузері чи мобільному застосунку.</p>
 <p><b>Ліміт:</b> 60 запитів на хвилину на ключ (далі <code>429</code>). Опитувати нас не потрібно: про зміни статусів, меню й стоп-листа ми самі повідомляємо через webhook.</p>
 <p><b>Формат:</b> JSON, UTF-8, суми — у гривнях (цілі), час — ISO 8601.</p>
 <pre><code>curl https://posatom.online/v/demo-cafe/api/v1/ping \
@@ -46,6 +46,8 @@ th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--lin
 <tr><td><span class="m p">POST</span> <code>orders</code></td><td>orders</td><td>Нове замовлення на доставку або самовивіз</td></tr>
 <tr><td><span class="m">GET</span> <code>orders/&lt;id&gt;</code></td><td>orders</td><td>Статус свого замовлення</td></tr>
 <tr><td><span class="m">GET</span> <code>sales?from=YYYY-MM-DD&amp;to=YYYY-MM-DD</code></td><td>sales</td><td>Закриті чеки за період (до 31 дня): суми, оплати, знижки, чайові, позиції</td></tr>
+<tr><td><span class="m">GET</span> <code>stock</code></td><td>stock</td><td>Залишки продуктів: кухня, бар, разом, собівартість за одиницю, мінімум, штрихкоди</td></tr>
+<tr><td><span class="m">GET</span> <code>receipts?from=YYYY-MM-DD&amp;to=YYYY-MM-DD</code></td><td>stock</td><td>Надходження (накладні) за період (до 31 дня): постачальник, номер, сума, оплата, рядки</td></tr>
 </table></div>
 
 <h2>Нове замовлення</h2>

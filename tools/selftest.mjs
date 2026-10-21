@@ -880,6 +880,14 @@ async function loyTests(A, W, dish) {
       const s = await ah('sales', key2); must(s.status === 200 && Array.isArray(s.j.checks), JSON.stringify(s.j).slice(0, 200));
       must((await ah('sales?from=2026-01-01&to=2026-03-01', key2)).status === 400, 'великий діапазон');
     });
+    await step('📦 GET stock / receipts: залишки й накладні; без права → 403', async () => {
+      const r = await posOk(A, 'apiKeyNew', { name: 'QA4 ' + RUN, sc: ['stock'] });
+      const s = await ah('stock', r.key); must(s.status === 200 && Array.isArray(s.j.items) && (!s.j.items[0] || 'kitchen' in s.j.items[0]), JSON.stringify(s.j).slice(0, 200));
+      const v = await ah('receipts', r.key); must(v.status === 200 && Array.isArray(v.j.receipts), JSON.stringify(v.j).slice(0, 200));
+      must((await ah('receipts?from=2026-01-01&to=2026-03-01', r.key)).status === 400, 'великий діапазон');
+      must((await ah('receipts?from=xx', r.key)).status === 400, 'погана дата');
+      must((await ah('stock', key2)).status === 403, 'stock без права');
+    });
     await step('🔐 /api/go: _api від гостя не знімає ліміт сайту', async () => {
       const b = { kind: 'pick', name: 'QA Хакер API', phone: '0670008' + String(Math.floor(Math.random() * 900) + 100), when: '12:00', pay: 'cash', items: [{ id: dish.id, q: 1 }], device: 'qa-api-' + RUN, _api: 'x' };
       const st = []; for (let i = 0; i < 4; i++) st.push((await http('/api/go', b)).status); must(st.includes(429), 'ліміт не спрацював: ' + st);

@@ -1,5 +1,5 @@
 // 🔌 Публічне API v1 для партнерів (агрегатори, сайти, бухгалтерія): ключ закладу → ті самі дії, що й сайт/каса.
-// Ключ: atk_<id 8>_<секрет 32>; у базі лише sha256 (apikeys). Права: menu · orders · sales. Ліміт — 60 запитів/хв на ключ.
+// Ключ: atk_<id 8>_<секрет 32>; у базі лише sha256 (apikeys). Права: menu · orders · sales · stock. Ліміт — 60 запитів/хв на ключ.
 // Події партнеру — webhook з підписом HMAC (X-Atom-Signature): order.status, menu.changed, stop.changed; надсилає будильник закладу (apiTick у cron), повтори 1/5/30/120 хв.
 // Паспорт — _team/api.md, документація для партнерів — api.html.
 import { getMenu } from './menu.js';
@@ -7,8 +7,9 @@ import { goOrder } from './delivery.js';
 import { reportRange, L, tg, esc, dayKey } from './ops.js';
 import { tn } from './tn.js';
 import { audit } from './ledger.js';
+import { getIng } from './stock.js';
 
-export const SCOPES = { menu: '🍽 Меню й стоп-лист', orders: '🛵 Замовлення: створення й статус', sales: '📊 Продажі для бухгалтерії' };
+export const SCOPES = { menu: '🍽 Меню й стоп-лист', orders: '🛵 Замовлення: створення й статус', sales: '📊 Продажі для бухгалтерії', stock: '📦 Залишки й надходження (склад)' };
 const MAX_KEYS = 10, RPM = 60, FINAL = new Set(['done', 'rej']), RETRY = [60e3, 300e3, 1800e3, 7200e3];
 const te = new TextEncoder(), hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
 const rnd = n => hex(crypto.getRandomValues(new Uint8Array(n)));
@@ -59,6 +60,22 @@ export async function apiV1(req, env, url) {
       if ((Date.parse(to) - Date.parse(from)) / 864e5 > 30) return J({ error: 'range', max_days: 31 }, 400);
       const r = await reportRange(env, from, to); if (!r) return J({ error: 'bad_date', format: 'YYYY-MM-DD' }, 400);
       return J({ from, to, checks: r.checks.map(x => ({ id: x.id, date: x.d, closed_at: x.at, no: tn(x.t), total: x.sum, cash: x.cash, card: x.card, online: x.onl, discount: x.disc, tip: x.tip, ...(x.bonus ? { bonus: x.bonus } : {}), ...(x.go ? { delivery: x.go, fee: x.fee } : {}), items: (x.dishes || []).map(([name, qty, sum]) => ({ name, qty, sum })) })) });
+    }
+    if (p === 'stock' && req.method === 'GET') { // 📦 залишки по складах (лише читання)
+      const [k, s] = await auth(req, env, 'stock'); if (s) return J(k, s);
+      const l = (await getIng(env)).filter(x => !x.off);
+      return J({ at: Date.now(), items: l.map(x => ({ id: x.id, name: x.n, unit: x.u, category: x.cat || '', kitchen: x.st?.k || 0, bar: x.st?.b || 0, total: Math.round(((x.st?.k || 0) + (x.st?.b || 0)) * 1000) / 1000, cost: x.cost || 0, min: x.min || 0, ...(x.bc?.length ? { barcodes: x.bc } : {}), ...(x.semi ? { semi: true } : {}) })) });
+    }
+    if (p === 'receipts' && req.method === 'GET') { // 🧾 надходження (накладні) за період (до 31 дня)
+      const [k, s] = await auth(req, env, 'stock'); if (s) return J(k, s);
+      const from = url.searchParams.get('from') || dayKey(), to = url.searchParams.get('to') || from, re = /^\d{4}-\d{2}-\d{2}$/;
+      if (!re.test(from) || !re.test(to) || isNaN(Date.parse(from)) || isNaN(Date.parse(to)) || to < from) return J({ error: 'bad_date', format: 'YYYY-MM-DD' }, 400);
+      if ((Date.parse(to) - Date.parse(from)) / 864e5 > 30) return J({ error: 'range', max_days: 31 }, 400);
+      const ms = [...new Set([from.slice(0, 7), to.slice(0, 7)])], idx = (await env.DB.getMany(ms.map(m => 'invl:' + m), 'json')).flatMap(x => x || []).filter(x => !x.del && x.day >= from && x.day <= to).slice(0, 500);
+      const inv = idx.length ? await env.DB.getMany(idx.map(x => 'inv:' + x.id), 'json') : [];
+      const out = inv.filter(x => x && !x.del).map(x => ({ id: x.id, date: x.day, at: x.ts, supplier: x.sup, no: x.no || '', doc_date: x.date || '', total: x.total, payment: x.pay, paid: !!x.paid || x.pay !== 'debt',
+        lines: x.lines.map(ln => ({ id: ln.id, name: ln.n, unit: ln.u, qty: ln.bq, sum: ln.sum, warehouse: ln.wh === 'b' ? 'bar' : 'kitchen' })) }));
+      return J({ from, to, receipts: out });
     }
     const om = p.match(/^orders(?:\/([a-f0-9]{10}))?$/);
     if (om && om[1] && req.method === 'GET') { // статус свого замовлення

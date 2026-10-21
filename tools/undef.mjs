@@ -42,7 +42,7 @@ for (const k in G) for (const n of EX) G[k].add(n);
 const out = [];
 for (const f of files.filter(fam)) {
   const { t, mine } = top[f], seen = new Set(), g = G[fam(f)];
-  for (const m of t.matchAll(/(?<![\w$])(?<!(?<!\.\.)\.)([A-Za-z_$][\w$]*)(?!\s*:(?!:))/g)) {
+  for (const m of t.matchAll(/(?<![\w$])(?<!(?<!\.\.)\.)([A-Za-z_$][\w$]*)(?![\w$])(?!\s*:(?!:))/g)) {
     const n = m[1];
     if (!g.has(n) || mine.has(n) || seen.has(n) || n in globalThis) continue;
     seen.add(n); out.push(`🔎 ${f}:${t.slice(0, m.index).split('\n').length}: «${n}» — не оголошено й не імпортовано в цьому файлі`);
