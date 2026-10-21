@@ -1,6 +1,6 @@
 // 🔌 Публічне API v1 для партнерів (агрегатори, сайти, бухгалтерія): ключ закладу → ті самі дії, що й сайт/каса.
 // Ключ: atk_<id 8>_<секрет 32>; у базі лише sha256 (apikeys). Права: menu · orders · sales. Ліміт — 60 запитів/хв на ключ.
-// Статуси замовлень партнеру — webhook з підписом HMAC (X-Atom-Signature), надсилає будильник закладу (apiTick у cron), повтори 1/5/30/120 хв.
+// Події партнеру — webhook з підписом HMAC (X-Atom-Signature): order.status, menu.changed, stop.changed; надсилає будильник закладу (apiTick у cron), повтори 1/5/30/120 хв.
 // Паспорт — _team/api.md, документація для партнерів — api.html.
 import { getMenu } from './menu.js';
 import { goOrder } from './delivery.js';
@@ -97,15 +97,55 @@ async function createOrder(req, env) {
 }
 
 // ⏰ з cron закладу: зміни статусів замовлень партнерів → webhook. Повертає, коли прокинутись знову (0 — нічого не чекаємо)
+// 📮 надіслати подію партнеру з підписом + журнал останніх доставок (кабінет → 🔌 API)
+async function send(env, k, event, data) {
+  const body = JSON.stringify({ event, venue: env.VENUE || 'varvar', ...data, sent_at: new Date().toISOString() });
+  const st = await fetch(k.hook, { method: 'POST', headers: { 'content-type': 'application/json', 'x-atom-event': event, 'x-atom-signature': await hmac(k.hs, body) }, body, signal: AbortSignal.timeout(5000) }).then(r => r.status, () => 0);
+  await L(env, 'apihooklog', async () => { const l = (await env.DB.get('apihooklog', 'json')) || []; l.unshift({ k: k.id, e: event, st, at: Date.now() }); await env.DB.put('apihooklog', JSON.stringify(l.slice(0, 40))); });
+  return st >= 200 && st < 300 ? true : st;
+}
 export async function apiTick(env) {
+  const ks = await keys(env); if (!ks.some(k => k.hook)) { for (const x of ['apiwatch', 'apimenu']) if (await env.DB.get(x)) await env.DB.delete(x); return 0; }
+  const [a, b] = await Promise.all([statusTick(env, ks), menuTick(env, ks)]);
+  return a && b ? Math.min(a, b) : a || b;
+}
+// t — відбиток меню без наявності, off — стоп-лист, etag — як у GET menu
+async function menuSnap(env) {
+  const m = await menuOut(env), off = m.categories.flatMap(c => c.items).filter(i => !i.available).map(i => i.id).sort();
+  return { off, t: (await sha(JSON.stringify(m, (k, v) => k === 'available' ? undefined : v))).slice(0, 16), etag: '"m' + (await sha(JSON.stringify(m))).slice(0, 16) + '"' };
+}
+const menuStart = async (env, id) => { const { t, off } = await menuSnap(env); await L(env, 'apimenu', async () => { const st = (await env.DB.get('apimenu', 'json')) || {}; st[id] = { t, off }; await env.DB.put('apimenu', JSON.stringify(st)); }); }; // точка відліку — момент підключення webhook
+// 🍽 menu.changed / stop.changed: порівнюємо меню з тим, що партнер уже знає (apimenu), шлемо лише різницю.
+// Будильник — через 30 с після запису меню (store.js), тож кілька змін поспіль ідуть одним сповіщенням.
+async function menuTick(env, ks) {
+  const mk = ks.filter(k => k.hook && k.sc.includes('menu')), st = (await env.DB.get('apimenu', 'json')) || {};
+  if (!mk.length) { if (Object.keys(st).length) await env.DB.delete('apimenu'); return 0; }
+  const { t, off, etag } = await menuSnap(env), now = Date.now(), ns = {}, fails = [];
+  let next = 0, dirty = Object.keys(st).some(id => !mk.some(k => k.id === id));
+  for (const k of mk) {
+    const p = st[k.id]; if (!p) { ns[k.id] = { t, off }; dirty = true; continue; } // перший раз — запамʼятати без події
+    const offCh = p.off.join() !== off.join(); if (p.t === t && !offCh) { ns[k.id] = p.tries ? { t, off } : p; dirty ||= !!p.tries; continue; }
+    if ((p.next || 0) > now) { ns[k.id] = p; next = next ? Math.min(next, p.next) : p.next; continue; }
+    let ok = true;
+    if (p.t !== t) ok = (await send(env, k, 'menu.changed', { etag })) === true;
+    if (offCh) ok = (await send(env, k, 'stop.changed', { etag, stopped: off.filter(x => !p.off.includes(x)), available: p.off.filter(x => !off.includes(x)), stop_list: off })) === true && ok;
+    const tries = ok ? 0 : (p.tries || 0) + 1; dirty = true;
+    if (ok || tries > RETRY.length) { ns[k.id] = { t, off }; if (!ok) fails.push(k); }
+    else { ns[k.id] = { ...p, tries, next: now + RETRY[tries - 1] }; next = next ? Math.min(next, ns[k.id].next) : ns[k.id].next; }
+  }
+  if (dirty) await L(env, 'apimenu', () => env.DB.put('apimenu', JSON.stringify(ns)));
+  for (const k of fails) await failMsg(env, k);
+  return next;
+}
+const failMsg = async (env, k) => { const f = 'apifail:' + k.id + ':' + dayKey(); if (await env.DB.get(f)) return; await env.DB.put(f, '1', { expirationTtl: 2 * 86400 }); await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `🔌 Інтеграція <b>${esc(k.name)}</b> не приймає сповіщення (webhook). Перевірте адресу в кабінеті → 🔌 API.` }).catch(() => {}); }; // раз на добу, без спаму
+async function statusTick(env, ks) {
   const w = (await env.DB.get('apiwatch', 'json')) || []; if (!w.length) return 0;
-  const now = Date.now(), ks = await keys(env), os = await env.DB.getMany(w.map(x => 'ord:' + x.id), 'json'), res = new Map();
+  const now = Date.now(), os = await env.DB.getMany(w.map(x => 'ord:' + x.id), 'json'), res = new Map();
   for (const [i, x] of w.entries()) {
     const o = os[i], k = ks.find(y => y.id === x.k), st = o && (o.g || o.s);
     if (!o || !k?.hook || now - x.at > 86400e3) { res.set(x.id, { drop: 1 }); continue; } // ключ видалено / без webhook / старше доби
     if (st === x.last || (x.next || 0) > now) continue;
-    const body = JSON.stringify({ event: 'order.status', venue: env.VENUE || 'varvar', order: ordOut(x.id, o, x.ext), sent_at: new Date(now).toISOString() });
-    const r = await fetch(k.hook, { method: 'POST', headers: { 'content-type': 'application/json', 'x-atom-event': 'order.status', 'x-atom-signature': await hmac(k.hs, body) }, body, signal: AbortSignal.timeout(5000) }).then(r => r.ok, () => false);
+    const r = (await send(env, k, 'order.status', { order: ordOut(x.id, o, x.ext) })) === true;
     if (r) res.set(x.id, { last: st, tries: 0, next: 0, fin: FINAL.has(st) });
     else { const tries = (x.tries || 0) + 1; res.set(x.id, tries > RETRY.length ? { last: st, tries: 0, next: 0, fin: FINAL.has(st), fail: k } : { tries, next: now + RETRY[tries - 1] }); }
   }
@@ -114,7 +154,7 @@ export async function apiTick(env) {
     const l = ((await env.DB.get('apiwatch', 'json')) || []).flatMap(x => { const r = res.get(x.id); if (!r) return [x]; if (r.drop || r.fin) return []; const { fail, fin, ...y } = r; return [{ ...x, ...y }]; });
     await env.DB.put('apiwatch', JSON.stringify(l)); next = l.length ? now + 60e3 : 0;
   });
-  for (const r of res.values()) if (r.fail) { const f = 'apifail:' + r.fail.id + ':' + dayKey(); if (!(await env.DB.get(f))) { await env.DB.put(f, '1', { expirationTtl: 2 * 86400 }); await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, parse_mode: 'HTML', text: `🔌 Інтеграція <b>${esc(r.fail.name)}</b> не приймає сповіщення (webhook). Перевірте адресу в кабінеті → 🔌 API.` }).catch(() => {}); } } // раз на добу, без спаму
+  for (const r of res.values()) if (r.fail) await failMsg(env, r.fail);
   return next;
 }
 
@@ -123,13 +163,14 @@ export async function apiAdmin(b, env, me) {
   if (me.role !== 'admin' || me.elev) return [{ error: 'admin' }, 403];
   if (env.VENUE === 'atom-demo' && /Гість демо/.test(me.name || '')) return [{ error: 'У демо ключі API не створюються' }, 403];
   const sc = a => [...new Set((Array.isArray(a) ? a : []).filter(x => SCOPES[x]))];
-  if (b.op === 'apiKeys') return [{ ok: true, list: (await keys(env)).map(pub), scopes: SCOPES }, 200];
+  if (b.op === 'apiKeys') { const hl = (await env.DB.get('apihooklog', 'json')) || []; return [{ ok: true, list: (await keys(env)).map(k => ({ ...pub(k), hl: hl.filter(x => x.k === k.id).slice(0, 5) })), scopes: SCOPES }, 200]; } // hl — останні доставки webhook
   if (b.op === 'apiKeyNew') {
     const name = String(b.name || '').trim().slice(0, 40), s = sc(b.sc); if (!name) return [{ error: 'Назва ключа' }, 400]; if (!s.length) return [{ error: 'Оберіть хоча б одне право' }, 400];
     if (b.hook && !hookOk(b.hook)) return [{ error: 'Адреса webhook — лише https://' }, 400];
     const id = rnd(4), key = `atk_${id}_${rnd(16)}`, hs = b.hook ? 'whs_' + rnd(16) : '';
     const r = await L(env, 'apikeys', async () => { const l = await keys(env); if (l.length >= MAX_KEYS) return null; l.push({ id, name, sc: s, h: await sha(key), at: Date.now(), by: me.name, ...(b.hook ? { hook: b.hook, hs } : {}) }); await env.DB.put('apikeys', JSON.stringify(l)); return 1; });
     if (!r) return [{ error: `Не більше ${MAX_KEYS} ключів` }, 400];
+    if (hs && s.includes('menu')) await menuStart(env, id);
     await audit(env, me.name, 'apiKeyNew', id, null, { name, sc: s });
     return [{ ok: true, id, key, ...(hs ? { hs } : {}) }, 200]; // ключ показується один раз
   }
@@ -138,13 +179,12 @@ export async function apiAdmin(b, env, me) {
     const id = String(b.id || ''), u = String(b.hook || '').trim(); if (u && !hookOk(u)) return [{ error: 'Адреса webhook — лише https://' }, 400];
     const hs = u ? 'whs_' + rnd(16) : '';
     const r = await L(env, 'apikeys', async () => { const l = await keys(env), x = l.find(y => y.id === id); if (!x) return null; if (u) Object.assign(x, { hook: u, hs }); else { delete x.hook; delete x.hs; } await env.DB.put('apikeys', JSON.stringify(l)); return 1; });
-    if (!r) return [{ error: 'not_found' }, 404]; await audit(env, me.name, 'apiKeyHook', id, null, { hook: u }); return [{ ok: true, ...(hs ? { hs } : {}) }, 200];
+    if (!r) return [{ error: 'not_found' }, 404]; if (u) await menuStart(env, id); await audit(env, me.name, 'apiKeyHook', id, null, { hook: u }); return [{ ok: true, ...(hs ? { hs } : {}) }, 200];
   }
   if (b.op === 'apiHookTest') { // 🧪 тестове сповіщення event=ping
     const k = (await keys(env)).find(x => x.id === String(b.id || '')); if (!k?.hook) return [{ error: 'Спершу вкажіть адресу webhook' }, 400];
-    const body = JSON.stringify({ event: 'ping', venue: env.VENUE || 'varvar', sent_at: new Date().toISOString() });
-    const st = await fetch(k.hook, { method: 'POST', headers: { 'content-type': 'application/json', 'x-atom-event': 'ping', 'x-atom-signature': await hmac(k.hs, body) }, body, signal: AbortSignal.timeout(5000) }).then(r => r.status, () => 0);
-    return [{ ok: st >= 200 && st < 300, status: st }, 200];
+    const r = await send(env, k, 'ping', {});
+    return [{ ok: r === true, status: r === true ? 200 : r }, 200];
   }
   return [{ error: 'unknown op' }, 400];
 }

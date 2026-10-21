@@ -884,6 +884,16 @@ async function loyTests(A, W, dish) {
       const b = { kind: 'pick', name: 'QA Хакер API', phone: '0670008' + String(Math.floor(Math.random() * 900) + 100), when: '12:00', pay: 'cash', items: [{ id: dish.id, q: 1 }], device: 'qa-api-' + RUN, _api: 'x' };
       const st = []; for (let i = 0; i < 4; i++) st.push((await http('/api/go', b)).status); must(st.includes(429), 'ліміт не спрацював: ' + st);
     });
+    await step('📮 webhook наскрізно: стоп-лист → stop.changed, замовлення → order.status (будильник закладу, ≤75 с)', async () => {
+      const r = await posOk(A, 'apiKeyNew', { name: 'QA3 ' + RUN, sc: ['menu', 'orders'], hook: 'https://example.com/atom-qa' });
+      const o = await ah('orders', r.key, { body: { ext_id: 'qa3-' + RUN, type: 'pickup', customer: { name: 'QA API', phone: '0670009' + String(Math.floor(Math.random() * 900) + 100) }, time: '12:00', payment: 'cash', items: [{ id: dish.id, qty: 1 }] } }); must(o.j.ok, JSON.stringify(o.j));
+      await posOk(A, 'stop', { id: dish.id, hidden: true }); await posOk(A, 'accept', { oid: o.j.id }).catch(() => {}); // new → acc
+      let hl = [];
+      try { for (let i = 0; i < 15; i++) { await sleep(5000); hl = (await posOk(A, 'apiKeys')).list.find(k => k.id === r.id)?.hl || []; if (['stop.changed', 'order.status'].every(e => hl.some(h => h.e === e))) break; } }
+      finally { await posOk(A, 'stop', { id: dish.id, hidden: false }); }
+      must(['stop.changed', 'order.status'].every(e => hl.some(h => h.e === e)), 'доставки: ' + JSON.stringify(hl));
+      return hl.map(h => h.e + ':' + h.st).join(' ');
+    });
     await step('🗑 відкликаний ключ → 401', async () => {
       await posOk(A, 'apiKeyDel', { id: kid }); must((await ah('ping', key)).status === 401, 'працює після відкликання');
       for (const k of (await posOk(A, 'apiKeys')).list.filter(k => k.name.endsWith(' ' + RUN))) await posOk(A, 'apiKeyDel', { id: k.id });

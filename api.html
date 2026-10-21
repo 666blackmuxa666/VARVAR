@@ -33,7 +33,7 @@ th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--lin
 <h2>Основи</h2>
 <p><b>Адреса:</b> <code>https://posatom.online/v/&lt;заклад&gt;/api/v1/</code> — ідентифікатор закладу показано в кабінеті поруч із ключем.</p>
 <p><b>Ключ</b> передається в заголовку <code>Authorization: Bearer atk_…</code> (або <code>X-Api-Key</code>). Ключ має права: <code>menu</code>, <code>orders</code>, <code>sales</code>. Тримайте його лише на своєму сервері, не в браузері чи мобільному застосунку.</p>
-<p><b>Ліміт:</b> 60 запитів на хвилину на ключ (далі <code>429</code>). Замість частого опитування статусів використовуйте webhook.</p>
+<p><b>Ліміт:</b> 60 запитів на хвилину на ключ (далі <code>429</code>). Опитувати нас не потрібно: про зміни статусів, меню й стоп-листа ми самі повідомляємо через webhook.</p>
 <p><b>Формат:</b> JSON, UTF-8, суми — у гривнях (цілі), час — ISO 8601.</p>
 <pre><code>curl https://posatom.online/v/demo-cafe/api/v1/ping \
   -H "Authorization: Bearer atk_1a2b3c4d_…"</code></pre>
@@ -79,10 +79,26 @@ th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--lin
 </table></div>
 
 <h2>Webhook</h2>
-<p>Якщо для ключа вказано адресу webhook (лише https), ATOM надсилає <code>POST</code> при кожній зміні статусу вашого замовлення — зазвичай протягом 1–2 хвилин:</p>
+<p>Якщо для ключа вказано адресу webhook (лише https), ATOM сам надсилає <code>POST</code>, коли щось змінилось. Тип події — у полі <code>event</code> і заголовку <code>X-Atom-Event</code>.</p>
+<div class="tbl"><table>
+<tr><th>event</th><th>Право</th><th>Коли</th></tr>
+<tr><td><code>order.status</code></td><td>orders</td><td>Змінився статус вашого замовлення (зазвичай за 1–2 хв)</td></tr>
+<tr><td><code>stop.changed</code></td><td>menu</td><td>Страва потрапила в стоп-лист або повернулась у продаж (за ~30 с)</td></tr>
+<tr><td><code>menu.changed</code></td><td>menu</td><td>Змінились ціни, страви чи категорії — заберіть <code>menu</code> з новим <code>etag</code></td></tr>
+</table></div>
+<h3>order.status</h3>
 <pre><code>{ "event": "order.status", "venue": "demo-cafe",
   "order": { "id": "3f9a1c0b7e", "ext_id": "GL-100245", "status": "road", "no": "Д-12", "courier": "Андрій" },
   "sent_at": "2026-10-21T15:04:05.000Z" }</code></pre>
+<h3>stop.changed</h3>
+<pre><code>{ "event": "stop.changed", "venue": "demo-cafe", "etag": "\"m4f1c…\"",
+  "stopped": ["carbonara"],          // щойно в стоп-листі
+  "available": ["lemonade"],          // знову в продажу
+  "stop_list": ["carbonara", "tiramisu"],  // повний стоп-лист зараз
+  "sent_at": "2026-10-21T15:04:05.000Z" }</code></pre>
+<h3>menu.changed</h3>
+<pre><code>{ "event": "menu.changed", "venue": "demo-cafe", "etag": "\"m9a2d…\"", "sent_at": "…" }</code></pre>
+<p>Кілька змін поспіль приходять одним сповіщенням. Перше сповіщення приходить лише після першої зміни: на старті заберіть меню запитом <code>GET menu</code>.</p>
 <p>Відповідайте кодом <code>2xx</code>. Якщо ні — повтор через 1, 5, 30 і 120 хвилин. Тестове сповіщення з кабінету має <code>"event": "ping"</code>.</p>
 <h3>Перевірка підпису</h3>
 <p>Заголовок <code>X-Atom-Signature</code> — HMAC-SHA256 тіла запиту секретом <code>whs_…</code> (видається разом із ключем), у hex.</p>
