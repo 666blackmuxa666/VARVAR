@@ -11,7 +11,7 @@ const gtg = (env, m, b) => tg({ ...env, BOT_TOKEN: env.GUEST_BOT_TOKEN || env.BO
 
 // ---------- дані візитки ----------
 // 🧱 блоки сайту-візитки (порядок і показ задає власник у кабінеті)
-export const BLOCKS = ['about', 'promos', 'menu', 'events', 'gallery', 'hookah', 'banquet', 'book', 'cert', 'reviews', 'contacts'];
+export const BLOCKS = ['about', 'promos', 'menu', 'events', 'gallery', 'hookah', 'banquet', 'book', 'cert', 'reviews', 'wl', 'contacts'];
 export const SITE_DEF = {
   name: 'Varvar Food Bar', tagline: 'Смачна їжа, кальяни й затишок у серці Буковелю',
   about: 'Varvar — фуд-бар у Поляниці, поруч із трасами Буковелю. Готуємо ситні мінімакс-тарілки, пасти, бургери й страви за власними рецептами, змішуємо коктейлі та забиваємо кальяни. Після катання — найкраще місце зігрітись і поїсти.',

@@ -1,6 +1,6 @@
 // 📸 ШІ-фото страв в одному стилі закладу: Gemini Image (платний ключ GEMINI_IMG_KEY — лише тут; решта ШІ — безкоштовний ключ).
 // Стиль закладу: cfg:photoStyle { prompt, refs: [img-ключ] } — до 2 фото-зразків. Результат — чернетка img:draft-<id>; у меню — лише після «✅ Взяти».
-// Ліміт: FREE генерацій на місяць на заклад, далі — PRICE ₴ за фото (рахується в phq:<місяць>.over для рахунку платформи); жорстка стеля DAY_CAP на добу.
+// Ліміт: FREE генерацій на місяць на заклад, далі — PRICE ₴ за фото з балансу ШІ (VARVAR — жорстка межа FREE) (рахується в phq:<місяць>.over для рахунку платформи); жорстка стеля DAY_CAP на добу.
 import { getMenu, saveMenu, menuLock } from './menu.js';
 import { dayKey } from './ops.js';
 
@@ -65,6 +65,7 @@ async function photoMake(b, env, who) {
   const { k, q } = await quota(env), today = dayKey();
   if ((q.d[today] || 0) >= DAY_CAP) return [{ error: `Сьогодні вже ${DAY_CAP} фото — продовжимо завтра` }, 429];
   const paid = q.n >= FREE && (env.VENUE || 'varvar') !== 'varvar'; /* 🤖 понад ліміт — з балансу ШІ закладу (VARVAR — без оплати) */
+  if (q.n >= FREE && (env.VENUE || 'varvar') === 'varvar') return [{ error: `Ліміт ${FREE} фото на місяць вичерпано — нові з 1-го числа` }, 429]; // VARVAR не платить — тож понад ліміт не пускаємо
   if (paid && (await aiBal(env)).bal < PRICE) return [{ error: `Безкоштовні ${FREE} фото цього місяця використано. Поповніть баланс ШІ в кабінеті власника (💳 Оплата) — ${PRICE} ₴ за фото`, bal: 1 }, 402];
   if (q.n >= FREE && !b.pay) return [{ error: 'pay', n: q.n, free: FREE, price: PRICE }, 402]; // каса питає «понад ліміт — 2 ₴, продовжити?»
   if (await env.DB.get('phbusy')) return [{ error: 'Інше фото ще генерується — зачекайте кілька секунд' }, 429];

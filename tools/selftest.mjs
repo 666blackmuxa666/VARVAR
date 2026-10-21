@@ -223,12 +223,13 @@ async function apiTests() {
     const s0 = (await posOk(A, 'siteGet')).site, back = {}; for (const k of ['theme', 'heroCfg', 'blocks', 'dock', 'ann', 'events', 'chat']) back[k] = s0[k] ?? null;
     const td = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
     const v = { theme: { mode: 'light', bg: 'red', accent: '#ff0000', fh: 'Comic Sans', r: 99, evil: 1, world: 'piste' }, heroCfg: { lay: 'split', btns: ['call', 'hack'], own: { t: 'X', u: 'javascript:alert(1)' } },
-      blocks: [{ id: 'contacts', on: 1, t: { uk: 'Де ми' } }, { id: 'c_qa01', type: 'links', on: 1, links: [{ l: { uk: 'ok' }, u: 'https://example.com' }, { l: { uk: 'bad' }, u: 'javascript:x' }] }, { id: 'c_<b>', type: 'text' }],
+      blocks: [{ id: 'wl', on: 0 }, { id: 'contacts', on: 1, t: { uk: 'Де ми' } }, { id: 'c_qa01', type: 'links', on: 1, links: [{ l: { uk: 'ok' }, u: 'https://example.com' }, { l: { uk: 'bad' }, u: 'javascript:x' }] }, { id: 'c_<b>', type: 'text' }],
       dock: { on: 1, btns: ['call', 'order'] }, events: [{ d: td, t: { uk: 'QA подія' } }, { d: 'вчора', t: { uk: 'погана' } }], chat: 1 };
     const r = await posOk(A, 'siteSet', { k: 'siteDesign', v }), x = r.site;
     must(x.theme.bg === '#121212' && x.theme.accent === '#ff0000' && x.theme.fh === 'Rubik Dirt' && x.theme.r === 28 && x.theme.world === 'piste' && !('evil' in x.theme), 'тема: ' + JSON.stringify(x.theme));
     must(x.heroCfg.btns.join() === 'call' && x.heroCfg.own.u === '' && typeof x.hero === 'string', 'кнопки: ' + JSON.stringify(x.heroCfg));
     const cb = x.blocks.find(b => b.id === 'c_qa01'); must(cb && cb.links.length === 1 && !x.blocks.some(b => b.id === 'c_<b>'), 'блоки: ' + JSON.stringify(x.blocks));
+    must(x.blocks[0]?.id === 'wl' && !x.blocks[0].on, '⏳ блок «Черга» не зберігся: ' + JSON.stringify(x.blocks));
     must(x.events.length === 1, 'афіша: ' + JSON.stringify(x.events));
     must((await posOk(A, 'siteSet', { k: 'siteDesign', v: { ...v, theme: { ...v.theme, world: 'evil' } } })).site.theme.world === '', 'поганий світ пройшов');
     must((await pos(W, 'siteSet', { k: 'siteDesign', v })).status === 403, 'офіціант зміг');

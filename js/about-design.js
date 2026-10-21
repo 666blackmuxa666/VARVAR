@@ -71,7 +71,7 @@ window.VVD = (() => {
   }
   function blocks(s, lang, t) {
     const main = $('main'), two = $('.two'), ev = events(s, lang, t);
-    const ALL = ['about', 'menu', 'promos', 'events', 'gallery', 'hookah', 'banquet', 'book', 'cert', 'reviews', 'contacts'];
+    const ALL = ['about', 'menu', 'promos', 'events', 'gallery', 'hookah', 'banquet', 'book', 'cert', 'reviews', 'wl', 'contacts'];
     const list = [...(s.blocks || []), ...ALL.filter(id => !(s.blocks || []).some(b => b.id === id)).map(id => ({ id, on: 1 }))];
     // свої заголовки (оригінал зберігаємо, щоб повернути)
     for (const id of ALL) { const h = $('#' + id + ' h2'); if (!h || h.hasAttribute('data-o')) continue; if (h.dataset.orig == null) h.dataset.orig = h.innerHTML; const b = list.find(x => x.id === id), T = L(b?.t, lang); h.innerHTML = T ? esc(T) : h.dataset.orig; if (!T) h.querySelectorAll('[data-t]').forEach(e => { e.textContent = t(e.dataset.t); }); }
@@ -81,11 +81,11 @@ window.VVD = (() => {
       let x;
       if (b.type) { x = $('#cb-' + b.id); if (!x) { x = document.createElement('section'); x.id = 'cb-' + b.id; x.className = 'cb'; } x.dataset.type = b.type; x.innerHTML = custom(b, s, lang, t); x.hidden = !b.on; }
       else if (b.id === 'hookah' || b.id === 'banquet') { x = two; $('#' + b.id).hidden = !b.on; }
-      else { x = b.id === 'events' ? ev : $('#' + b.id); if (!x) continue; if (b.id === 'book') x.hidden = !b.on || !s.bookOn; else if (b.id === 'cert') x.hidden = !b.on || !s.certOn; else if (b.id === 'promos') x.hidden = !b.on || !s.promos?.length; else if (b.id === 'gallery') x.hidden = !b.on || !s.photos?.length; else if (b.id === 'events') x.hidden = !b.on || x.hidden; else x.hidden = !b.on; }
+      else { x = b.id === 'events' ? ev : $('#' + b.id); if (!x) continue; if (b.id === 'book' || b.id === 'wl') x.hidden = !b.on || !s.bookOn; else if (b.id === 'cert') x.hidden = !b.on || !s.certOn; else if (b.id === 'promos') x.hidden = !b.on || !s.promos?.length; else if (b.id === 'gallery') x.hidden = !b.on || !s.photos?.length; else if (b.id === 'events') x.hidden = !b.on || x.hidden; else x.hidden = !b.on; }
       if (x && !placed.has(x)) { main.append(x); placed.add(x); }
     }
     if (two) two.hidden = $('#hookah').hidden && $('#banquet').hidden;
-    { const wl = $('#wl'), c = $('#contacts'); if (wl && c && placed.has(c)) c.before(wl); } // 🕒 черга — одразу перед контактами й картою
+    if (!(s.blocks || []).some(b => b.id === 'wl')) { const wl = $('#wl'), c = $('#contacts'); if (wl && c && placed.has(c)) c.before(wl); } // 🕒 черга без свого місця — одразу перед контактами й картою
   }
 
   // 🌍 світ сторінки (theme.world): декор і структура поверх кольорів теми; стилі — css/about.css «Світи»
