@@ -223,3 +223,49 @@ export async function migBotText(env, link) {
   return [`📥 <b>Перехід з іншої системи</b>`, l.length ? l.map(e => `${e.undone ? '↩️' : e.nerr ? '⚠️' : '✅'} ${new Date(e.ts + 3 * 3600e3).toISOString().slice(5, 16).replace('T', ' ').replace(/(\d\d)-(\d\d)/, '$2.$1')} · ${KINDS[e.kind]?.t || e.kind} (${SYS[e.sys] || e.sys}) — нових ${e.add}, оновлено ${e.upd}${e.skip ? `, пропущено ${e.skip}` : ''}${e.undone ? ' — відмінено' : ''}`).join('\n') : 'Імпортів ще не було.',
     `\nМайстер переходу (Excel, 1С, Poster…): кабінет власника → заклад → 📥 Перехід${link ? `\n${link}` : ''}`].join('\n');
 }
+
+// 📡 Перехід напряму (етап 2): власник вставляє ключ API своєї старої системи → ми забираємо дані її ж API й повертаємо рядки
+// нашими полями (KINDS). Далі — той самий майстер: перевірка → імпорт → відкат. Ключ ніде не зберігається й не пишеться в журнал;
+// звертаємось лише до офіційних адрес систем (не до довільних URL). Poster: меню, техкарти, залишки, постачальники, гості з бонусами.
+// Syrve/iiko Cloud API віддає лише номенклатуру (меню + товари); техкарти й залишки там — через файл.
+const cents = v => v == null || v === '' ? '' : String(Math.round(+v) / 100);
+const getJ = async (u, o = {}) => { const r = await fetch(u, { ...o, signal: AbortSignal.timeout(20000) }); const j = await r.json().catch(() => null); if (!r.ok || !j) throw new Error(r.status === 401 || r.status === 403 ? 'Ключ не підходить' : `Система відповіла ${r.status}`); return j; };
+async function pullPoster(tok) {
+  if (!/^\d+:[0-9a-f]{20,64}$/i.test(tok)) return { error: 'Ключ Poster має вигляд 123456:abcdef… (Доступ → Інтеграції → API)' };
+  const P = async (m, q = '') => { const j = await getJ(`https://joinposter.com/api/${m}?token=${encodeURIComponent(tok)}${q}`); if (j.error) throw new Error(j.error.message || j.message || 'Poster: помилка ' + (j.error.code || j.error)); return j.response || []; };
+  const [prods, left, sups] = await Promise.all([P('menu.getProducts'), P('storage.getStorageLeftovers', '&zero_leftovers=true'), P('storage.getSuppliers').catch(() => [])]);
+  const cli = []; for (let off = 0; off < 10000; off += 500) { const l = await P('clients.getClients', `&num=500&offset=${off}`); cli.push(...l); if (l.length < 500) break; }
+  const U = { kg: 'кг', l: 'л', p: 'шт' }, SU = { kg: 'г', l: 'мл', p: 'шт' }, ingN = new Map(left.map(x => [String(x.ingredient_id), x.ingredient_name]));
+  const live = prods.filter(p => p.type !== '1' && +p.type !== 1 && String(p.delete || '0') !== '1');
+  const price = p => cents((p.spots || []).find(s => +s.visible)?.price ?? p.spots?.[0]?.price ?? (typeof p.price === 'object' ? Object.values(p.price || {})[0] : p.price));
+  const cards = [], miss = new Set();
+  for (const p of live.filter(p => +p.type === 2)) for (const s of p.ingredients || []) { const n = ingN.get(String(s.ingredient_id)); if (!n) { miss.add(p.product_name); continue; } cards.push({ dish: p.product_name, ing: n, q: String(s.structure_brutto ?? ''), u: SU[s.structure_unit] || s.structure_unit || '', out: '' }); }
+  return { data: {
+    menu: live.flatMap(p => p.modifications?.length ? p.modifications.map(x => ({ id: p.product_id + '-' + x.modificator_id, cat: p.category_name || '', name: `${p.product_name} — ${String(x.modificator_name || '').trim()}`, price: price(x), desc: '', size: '' })) // товар з модифікаціями (смаки, обʼєми) — окремі позиції
+      : [{ id: p.product_id, cat: p.category_name || '', name: p.product_name, price: price(p), desc: '', size: '' }]),
+    ing: left.filter(x => +x.hidden !== 1).map(x => ({ id: x.ingredient_id, n: x.ingredient_name, u: U[x.ingredient_unit] || x.ingredient_unit || '', cat: '', q: String(x.ingredient_left ?? ''), wh: '', cost: cents(x.prime_cost), sum: cents(x.storage_ingredient_sum), bc: '' })),
+    cards, sup: sups.filter(s => +s.delete !== 1).map(s => ({ n: s.supplier_name, code: s.supplier_tin || s.supplier_code || '', iban: '', phone: s.supplier_phone || '', addr: s.supplier_adress || '' })),
+    cli: cli.filter(c => +c.delete !== 1 && (c.phone_number || c.phone)).map(c => ({ phone: c.phone_number || c.phone, name: [c.firstname, c.lastname].filter(Boolean).join(' '), bal: cents(c.bonus), bd: c.birthday && !/^0000/.test(c.birthday) ? c.birthday : '', note: c.comment || '' })),
+  }, note: miss.size ? `Техкарти з напівфабрикатами перенесено частково: ${[...miss].slice(0, 5).join(', ')}${miss.size > 5 ? '…' : ''}` : '' };
+}
+async function pullSyrve(tok, org) {
+  if (!/^[\w-]{8,80}$/.test(tok)) return { error: 'Ключ Syrve — «API login» з налаштувань Syrve Cloud' };
+  let base = '', at = '';
+  for (const h of ['https://api-eu.syrve.live', 'https://api-ru.iiko.services']) { try { at = (await getJ(h + '/api/1/access_token', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ apiLogin: tok }) })).token; if (at) { base = h; break; } } catch {} }
+  if (!at) return { error: 'Ключ не підходить ні до Syrve, ні до iiko' };
+  const S = (p, b) => getJ(base + '/api/1/' + p, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + at }, body: JSON.stringify(b) });
+  const orgs = (await S('organizations', {})).organizations || []; const o = orgs.find(x => x.id === org) || orgs[0]; if (!o) return { error: 'У Syrve немає закладів' };
+  const n = await S('nomenclature', { organizationId: o.id }), gr = new Map((n.groups || []).map(g => [g.id, g.name])), ps = (n.products || []).filter(p => !p.isDeleted);
+  const pr = p => String((p.sizePrices || [])[0]?.price?.currentPrice ?? '');
+  return { data: {
+    menu: ps.filter(p => p.type === 'Dish' || (p.type === 'Good' && pr(p) > 0)).map(p => ({ id: p.code || p.id, cat: gr.get(p.parentGroup) || '', name: p.name, price: pr(p), desc: p.description || '', size: p.weight ? String(Math.round(p.weight * 1000)) + ' г' : '' })),
+    ing: ps.filter(p => p.type === 'Good').map(p => ({ id: p.code || p.id, n: p.name, u: p.measureUnit || '', cat: gr.get(p.parentGroup) || '', q: '', wh: '', cost: '', sum: '', bc: '' })),
+  }, note: `Заклад Syrve: ${o.name}${orgs.length > 1 ? ` (усього ${orgs.length})` : ''}. Техкарти, залишки й гостей Syrve через цей ключ не віддає — їх перенесіть файлом.`, orgs: orgs.map(x => ({ id: x.id, name: x.name })) };
+}
+export async function migPull(env, b) {
+  const tok = String(b.token || '').trim(); if (!tok) return { error: 'Вставте ключ API' };
+  try { const r = b.sys === 'poster' ? await pullPoster(tok) : b.sys === 'syrve' ? await pullSyrve(tok, String(b.org || '')) : { error: 'Напряму — лише Poster і Syrve/iiko; для інших — файл' };
+    if (r.data) for (const k of Object.keys(r.data)) r.data[k] = r.data[k].slice(0, 10000);
+    return r; }
+  catch (e) { return { error: e.name === 'TimeoutError' ? 'Система не відповідає — спробуйте пізніше' : String(e.message || e).slice(0, 160) }; }
+}

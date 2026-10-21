@@ -1197,6 +1197,9 @@ async function loyTests(A, W, dish) {
     must((await pos(users.waiter?.token, 'migRun', { kind: 'menu', rows: [{ name: 'x', price: 1 }] })).status === 403, 'офіціант імпортує');
     ok(await vpos(VA, 'modSet', { k: 'mig', v: 1 }), 'увімкнути модуль');
     must((await run('zzz', [{}])).status === 400, 'невідомий вид');
+    { const pl = b => vpos(VA, 'migPull', b); // 📡 напряму з Poster/Syrve: формат ключа перевіряється до будь-якого запиту назовні
+      must((await pos(users.waiter?.token, 'migPull', { sys: 'poster', token: '1:' + 'a'.repeat(32) })).status === 403, 'офіціант забирає дані');
+      for (const [b, w] of [[{ sys: 'poster', token: '' }, 'порожній ключ'], [{ sys: 'poster', token: 'https://evil.example/x' }, 'ключ-URL'], [{ sys: 'syrve', token: 'a b' }, 'syrve з пробілом'], [{ sys: 'xls', token: 'x'.repeat(20) }, 'файлова система']]) { const r = await pl(b); must(r.status === 400 && r.j.error, w + ': ' + r.status); } }
     const M = [{ id: 'A1', cat: 'QA Супи', name: 'QA Борщ', price: '150' }, { id: 'A2', cat: 'QA Супи', name: 'QA Солянка', price: '170,5' }, { name: 'QA Без ціни', price: '' }];
     const d = ok(await run('menu', M, 1), 'перевірка меню'); must(d.dry && d.add === 2 && d.skip === 1 && d.errs.some(e => e.w && /округлено/.test(e.m)), 'dry меню: ' + JSON.stringify(d).slice(0, 200));
     const items = async () => (await vpos(VA, 'menu')).j.menu.categories.flatMap(c => c.items);

@@ -16,6 +16,11 @@ window.OWNMIG = (() => {
   const FILL = { menu: ['cat'], ing: ['cat', 'wh'], cards: ['dish'] }; // порожня клітинка = як у рядку вище (групи в 1С / рецептури)
   const TOTAL = /^(разом|всього|усього|итого|всего|total)\b/i;
   const ORDER = ['menu', 'ing', 'cards', 'sup', 'cli', 'cert'];
+  const DIRECT = { poster: 'Poster → Доступ → Інтеграції → API → скопіюйте ключ (вигляд 123456:abc…). Заберемо меню, техкарти, залишки, постачальників і гостей з бонусами.', syrve: 'Syrve Office → Налаштування Cloud API → «API login». Заберемо меню й товари; техкарти й залишки — файлом.' };
+  function fromPull(k) { // 📡 рядки з API старої системи → та сама таблиця, що й з файлу (зіставлення 1:1)
+    const m = st(), F = Object.keys(kinds()[k].f), rows = m.pulled?.[k] || []; if (!rows.length) return;
+    Object.assign(m, { head: F.map(f => kinds()[k].f[f].replace('*', '')), data: rows.map(r => F.map(f => r[f] ?? '')), map: Object.fromEntries(F.map((f, j) => [f, j])), file: '📡 ' + (C.S.mig.sysName || '') });
+  }
   const st = () => (C.S.mig ||= { sys: 'xls', kind: '', head: [], data: [], map: {}, res: null, file: '' });
 
   // ---------- читання ----------
@@ -65,11 +70,14 @@ window.OWNMIG = (() => {
   function html(v) {
     const d = v.d, m = st(), K = d.kinds || {}, SYS = d.sys || {};
     if (!d.on) return `<div class="card"><h3>📥 Перехід з іншої системи</h3><div class="muted" style="margin-bottom:10px">Модуль вимкнено. Увімкніть, щоб перенести меню, техкарти, залишки, постачальників, гостей з бонусами й сертифікати з 1С, Poster, Excel чи іншої системи.</div><button class="btn primary" data-a="migOn">🧩 Увімкнути модуль «Перехід»</button></div>`;
-    const kindBtns = ORDER.filter(k => K[k]).map(k => `<button class="btn sm ${m.kind === k ? 'primary' : ''}" data-a="migKind" data-k="${k}">${K[k].t}</button>`).join(' ');
+    const kindBtns = ORDER.filter(k => K[k]).map(k => `<button class="btn sm ${m.kind === k ? 'primary' : ''}" data-a="migKind" data-k="${k}">${K[k].t}${m.pulled?.[k]?.length ? ' · ' + m.pulled[k].length : ''}</button>`).join(' ');
     let body = `<div class="card"><h3>📥 Перехід з іншої системи</h3>
       <div class="muted" style="font-size:13px;margin-bottom:10px">Порядок: меню → продукти й залишки → техкарти → постачальники → гості → сертифікати. Повторний імпорт оновлює, а не дублює. Перед кожним імпортом робиться копія даних.</div>
       <label>Звідки переходимо<select id="migSys">${Object.entries(SYS).map(([k, l]) => `<option value="${k}" ${m.sys === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
       ${m.sys === '1c' ? `<div class="alert" style="font-size:13px;margin:8px 0">🟡 <b>1С / BAS:</b> довідник «Номенклатура» → Зберегти як Excel; залишки — «Оборотно-сальдова відомість» по рах. 201 / 281 на дату переходу (з кількістю) → Excel; рецептури — звіт «Калькуляційні картки» → Excel. Шапку звіту прибирати не треба.</div>` : ''}
+      ${DIRECT[m.sys] ? `<div class="alert" style="font-size:13px;margin:8px 0">📡 <b>Напряму з ${esc(SYS[m.sys])}</b> — без файлів: ${DIRECT[m.sys]} Ключ використовується один раз і ніде не зберігається.
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"><input id="migTok" type="password" autocomplete="off" placeholder="Ключ API" style="flex:1;min-width:180px"><button class="btn sm primary" data-a="migPull">📡 Забрати дані</button></div>
+        ${m.pulled ? `<div style="margin-top:8px">✅ Отримано: ${ORDER.filter(k => m.pulled[k]?.length).map(k => `${esc(K[k].t)} <b>${m.pulled[k].length}</b>`).join(' · ') || 'нічого'}. Оберіть розділ нижче (по порядку) → 🔍 Перевірити → ✅ Імпортувати.${m.pullNote ? `<br>ℹ️ ${esc(m.pullNote)}` : ''}</div>` : ''}</div>` : ''}
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${kindBtns}</div></div>`;
     if (m.kind && K[m.kind]) body += stepHTML(K[m.kind]);
     body += logHTML(d, K, SYS);
@@ -109,16 +117,26 @@ window.OWNMIG = (() => {
   async function click(a, el) {
     const m = st();
     if (a === 'migOn') { try { await C.vapi('modSet', { k: 'mig', v: 1 }); C.toast('🧩 Модуль «Перехід» увімкнено'); } catch (e) { C.toast('⚠️ ' + e.message); } return C.reload(); }
-    if (a === 'migKind') { Object.assign(m, { kind: el.dataset.k, head: [], data: [], map: {}, res: null, file: '' }); return C.render(); }
+    if (a === 'migKind') { Object.assign(m, { kind: el.dataset.k, head: [], data: [], map: {}, res: null, file: '' }); fromPull(el.dataset.k); return C.render(); }
+    if (a === 'migPull') {
+      const t = document.getElementById('migTok'), tok = t?.value.trim(); if (!tok) return C.toast('Вставте ключ API');
+      el.disabled = true; el.textContent = '⏳ Забираю…';
+      try { const r = await C.vapi('migPull', { sys: m.sys, token: tok }); Object.assign(m, { pulled: r.data, pullNote: r.note || '', sysName: C.S.cfgV?.d?.sys?.[m.sys] || m.sys, kind: '', head: [], data: [], map: {}, res: null }); C.toast('📡 Дані отримано — перевіряйте по розділах'); }
+      catch (e) { C.toast('⚠️ ' + e.message); }
+      if (t) t.value = ''; el.disabled = false; return C.render();
+    }
     if (a === 'migClear') { Object.assign(m, { head: [], data: [], map: {}, res: null, file: '' }); return C.render(); }
     if (a === 'migCheck' || a === 'migGo') {
       const rows = rowsOf(); if (!rows.length) return C.toast('Немає рядків — перевірте зіставлення колонок');
-      if (rows.length > 2000) return C.toast('⚠️ За раз — до 2000 рядків. Розбийте файл на частини');
+
       if (a === 'migGo' && !confirm(`Імпортувати ${rows.length} рядків? Перед цим буде збережено копію даних, а імпорт можна відмінити, поки ці записи ніхто не змінював.`)) return;
       el.disabled = true;
       try {
         const map = Object.fromEntries(Object.entries(m.map).filter(([, j]) => j >= 0).map(([f, j]) => [f, m.head[j]]));
-        m.res = await C.vapi('migRun', { sys: m.sys, kind: m.kind, rows, map, dry: a === 'migCheck' ? 1 : 0 });
+        let res = null; for (let o = 0; o < rows.length; o += 2000) { // понад 2000 рядків — частинами, підсумок разом
+          const r = await C.vapi('migRun', { sys: m.sys, kind: m.kind, rows: rows.slice(o, o + 2000), map, dry: a === 'migCheck' ? 1 : 0 }), sh = x => ({ ...x, i: x.i + o, ...(x.j != null ? { j: x.j + o } : {}) });
+          res = !res ? { ...r, errs: r.errs.map(sh), dups: (r.dups || []).map(sh) } : { ...res, add: res.add + r.add, upd: res.upd + r.upd, skip: (res.skip || 0) + (r.skip || 0), errs: [...res.errs, ...r.errs.map(sh)], dups: [...res.dups, ...(r.dups || []).map(sh)], tot: Object.fromEntries(Object.entries(r.tot || {}).map(([k, v]) => [k, (+res.tot?.[k] || 0) + (+v || 0)])) };
+        } m.res = res;
         if (a === 'migGo') { C.toast(`📥 Готово: нових ${m.res.add}, оновлено ${m.res.upd}`); const r = m.res; Object.assign(m, { head: [], data: [], map: {}, file: '' }); await C.reload(); m.res = r; }
       } catch (e) { C.toast('⚠️ ' + e.message); }
       el.disabled = false; return C.render();
@@ -133,7 +151,7 @@ window.OWNMIG = (() => {
     document.addEventListener('click', e => { const el = e.target.closest('[data-a^="mig"]'); if (el && C && C.S.cfgV?.sec === 'mig') click(el.dataset.a, el); });
     document.addEventListener('change', async e => {
       if (!C || C.S.cfgV?.sec !== 'mig') return; const m = st(), t = e.target;
-      if (t.id === 'migSys') { m.sys = t.value; if (m.head.length) m.map = guess(m.head); m.res = null; return C.render(); }
+      if (t.id === 'migSys') { m.sys = t.value; m.pulled = null; if (m.head.length) m.map = guess(m.head); m.res = null; return C.render(); }
       if (t.id === 'migPaste' && t.value.trim() && !m.head.length) { setTable(parseText(t.value), '📋 вставлено з таблиці'); return C.render(); }
       if (t.dataset?.mf) { m.map[t.dataset.mf] = +t.value; m.res = null; return C.render(); }
       if (t.id === 'migFile' && t.files[0]) { try { setTable(await parseFile(t.files[0]), t.files[0].name); } catch (x) { C.toast('⚠️ ' + x.message); } return C.render(); }

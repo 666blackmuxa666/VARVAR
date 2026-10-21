@@ -316,6 +316,8 @@ export async function posApi(b, req, env) {
     case 'menuImport': { if (!admin) return needAdmin(); const r = await importMenu(env, b.rows, !!b.replace); await notify(env, `🖥 📥 Меню: імпорт — додано ${r.add}, оновлено ${r.upd}, розділів ${r.cats} · ${esc(who)}`); return ok(r); }
     // 📥 перехід з іншої системи (етап 1, mig.js): журнал, перевірка/імпорт пакета, точковий відкат
     case 'migLog': { if (!admin) return needAdmin(); return ok({ ...(await (await import('./mig.js')).migLog(env)), on: await (await import('./ops.js')).modOn(env, 'mig') }); }
+    case 'migPull': { if (!admin) return needAdmin(); if (!(await (await import('./ops.js')).modOn(env, 'mig'))) return [{ error: 'Модуль «Перехід» вимкнено — увімкніть у налаштуваннях' }, 400]; // 📡 ключ старої системи — лише в цьому запиті, не зберігаємо
+      const r = await (await import('./mig.js')).migPull(env, b); if (r.error) return [{ error: r.error }, 400]; return ok(r); }
     case 'migRun': case 'migUndo': { if (!admin) return needAdmin(); if (!(await (await import('./ops.js')).modOn(env, 'mig'))) return [{ error: 'Модуль «Перехід» вимкнено — увімкніть у налаштуваннях' }, 400];
       const M = await import('./mig.js'), r = b.op === 'migRun' ? await M.migRun(env, b, who) : await M.migUndo(env, String(b.id || ''), who); if (r.error) return [{ error: r.error }, 400]; return ok(r); }
     // 🏦 банк (етап 2, bank.js): імпорт виписки (dry — перегляд), місяць зі звіркою, дія з рядком, накладні в борг для вибору
