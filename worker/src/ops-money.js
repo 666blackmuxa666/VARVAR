@@ -51,14 +51,13 @@ export async function balances(env) {
   r.free = r.total - r.tipOwed; r.from = names(dk).map(k => k.slice(4)).sort()[0] || '';
   return r;
 }
-// ✏️ звірка: вписали фактичний залишок — різниця записується коригуванням
+// ✏️ звірка: вписали фактичний залишок — різниця записується коригуванням (у рух коштів; у стрічку подій — ні)
 async function _reconcile(env, src, actual, who) {
   actual = Math.round(+actual); if (!(actual >= 0 && actual <= 1e8)) return null;
   const b = await balances(env), was = src === 'card' ? b.card : b.cash, diff = actual - was;
   if (!diff) return { diff: 0, was, actual };
   const k = 'mov:' + dayKey(), l = await getMov(env);
   l.push({ ts: Date.now(), at: hhmm(), type: src === 'card' ? 'adjk' : 'adjc', sum: diff, note: `було ${was}, факт ${actual}`, by: who || '' }); await env.DB.put(k, JSON.stringify(l));
-  await logEvent(env, { k: 'shift', by: who, text: `✏️ Звірка ${src === 'card' ? 'картки' : 'готівки'}: факт ${actual} грн (${diff > 0 ? '+' : ''}${diff})` });
   return { diff, was, actual };
 }
 export const setFloat = (env, n) => bump(env, 'day:' + dayKey(), d => { n = Math.round(+n); d.float = n >= 0 && n <= SUM_MAX ? n : 0; });

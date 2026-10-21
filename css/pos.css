@@ -578,7 +578,7 @@ body.cook .more-btn { display: none !important; }
 .zp-grid { overflow-x: auto; margin: 0 -4px; }
 .zp-grid table { border-collapse: separate; border-spacing: 2px; font-size: 12px; }
 .zp-grid th { font-weight: 600; color: var(--muted); padding: 2px; min-width: 34px; } .zp-grid th small { display: block; font-size: 10px; font-weight: 400; } .zp-grid th.we { color: var(--orange); }
-.zp-grid tbody th { text-align: left; color: var(--text); white-space: nowrap; padding-right: 8px; position: sticky; left: 0; background: var(--card); z-index: 1; }
+.zp-grid tbody th { text-align: left; color: var(--text); white-space: nowrap; padding: 0 12px; height: 40px; position: sticky; left: 0; background: var(--card2); border-radius: 10px; box-shadow: 0 0 0 2px var(--card); z-index: 1; } /* імʼя — заокруглена плашка, як клітинки; тінь кольору картки закриває проміжки при прокрутці */
 .zp-grid td { background: var(--card2); border-radius: 7px; height: 40px; min-width: 34px; text-align: center; vertical-align: middle; cursor: pointer; padding: 1px; }
 .zp-grid td i { display: block; font-style: normal; font-size: 15px; line-height: 1.1; } .zp-grid td small { display: block; font-size: 9px; color: var(--muted); } .zp-grid td small.h { color: var(--green); }
 .zp-grid .td { outline: 2px solid var(--accent); }
@@ -597,6 +597,7 @@ body.cook .more-btn { display: none !important; }
 .zp-shift { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; } .zp-shift .btn { flex: 1 1 200px; padding: 14px; font-size: 17px; }
 .zp-grid tr.me th { color: var(--accent); } .zp-grid tr.me td { box-shadow: inset 0 0 0 1px #f2c14e55; }
 #modal .zp-grid { max-width: 100%; }
+.zp-grid tbody th .zp-x { background: var(--card); }
 .zp-x { width: 28px; height: 28px; border-radius: 50%; background: var(--card2); color: var(--muted); font-size: 10px; margin-right: 6px; vertical-align: middle; }
 /* 💰 зарплата — компактно */
 .zp-body { margin-top: 12px; } .zp-leg { font-size: 11px; margin: 8px 0 2px; }

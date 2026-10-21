@@ -1919,7 +1919,7 @@ var __objRest = (source, exclude) => {
       return `<button class="${v.id === cur.id ? "on" : ""}${h ? " hot" : ""}" data-hl="set" data-h="${v.id}">${v.ic} ${esc(v.n)}${n ? ` <b>${n}</b>` : ""}</button>`;
     };
     const tabs = V2.map(tab), bar = V2.length > 1 ? `<div class="hall-tabs">${tabs.join("")}</div>` : "", othHot = tabs.some((x, i) => V2[i].id !== cur.id && x.includes(' hot"'));
-    const tools = go ? "" : `<div class="seg hall-f">${[["mine", "\u{1F464}", "\u041C\u043E\u0457 \u0441\u0442\u043E\u043B\u0438"], ["busy", "\u{1F525}", "\u0417\u0430\u0439\u043D\u044F\u0442\u0456"], ["all", "\u0423\u0441\u0456", "\u0423\u0441\u0456 \u0441\u0442\u043E\u043B\u0438"]].map(([k, l, t]) => `<button class="${S.hf === k ? "on" : ""}" data-hl="hf" data-h="${k}" title="${t}">${l}</button>`).join("")}<button data-hl="hm" title="\u0412\u0438\u0433\u043B\u044F\u0434: \u043F\u043B\u0438\u0442\u043A\u0438 \u2192 3D \u2192 \u043F\u043B\u0430\u043D">${!map ? "\u{1F4CB}" : S.f3m === "3d" ? "\u{1F9CA}" : "\u25A6"}</button></div>`;
+    const tools = go ? "" : `<div class="seg hall-f">${[["mine", "\u{1F64B}", "\u041C\u043E\u0457 \u0441\u0442\u043E\u043B\u0438"], ["all", "\u0423\u0441\u0456", "\u0423\u0441\u0456 \u0441\u0442\u043E\u043B\u0438"]].map(([k, l, t]) => `<button class="${S.hf === k ? "on" : ""}" data-hl="hf" data-h="${k}" title="${t}">${l}</button>`).join("")}<button data-hl="hm" title="\u0412\u0438\u0433\u043B\u044F\u0434: \u043F\u043B\u0438\u0442\u043A\u0438 \u2192 3D \u2192 \u043F\u043B\u0430\u043D">${!map ? "\u{1F4CB}" : S.f3m === "3d" ? "\u{1F9CA}" : "\u25A6"}</button></div>`;
     const why = (t) => {
       var _a3, _b3;
       return calls[t] ? "\u{1F514} \u043A\u043B\u0438\u0447\u0435" : pending.has(t) ? "\u{1F6CE} \u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F" : ((_a3 = S.tables[t]) == null ? void 0 : _a3.pwait) ? "\u{1F310} \u043E\u043F\u043B\u0430\u0442\u0438\u0432" : ((_b3 = S.tables[t]) == null ? void 0 : _b3.check) ? "\u{1F9FE} \u0440\u0430\u0445\u0443\u043D\u043E\u043A" : "";
@@ -2408,6 +2408,7 @@ var __objRest = (source, exclude) => {
   }
   S.hall = store.get("hall", "");
   S.hf = store.get("hf", "all");
+  if (S.hf === "busy") S.hf = "all";
   function hallViews() {
     var _a2, _b2, _c;
     const H = ((_b2 = (_a2 = S.cfg) == null ? void 0 : _a2.halls) == null ? void 0 : _b2.length) ? S.cfg.halls : [{ n: "\u0417\u0430\u043B", ic: "\u{1FA91}", c: S.n }];
@@ -2428,7 +2429,7 @@ var __objRest = (source, exclude) => {
   }
   const hallRng = (cur, calls = {}) => Array.from({ length: Math.max(0, cur.to - cur.from + 1) }, (_, i) => cur.from + i).filter((t) => {
     var _a2, _b2;
-    return S.hf === "busy" ? S.tables[t] || calls[t] : S.hf === "mine" ? ((_a2 = S.tables[t]) == null ? void 0 : _a2.waiter) === ((_b2 = S.me) == null ? void 0 : _b2.name) : true;
+    return S.hf === "mine" ? ((_a2 = S.tables[t]) == null ? void 0 : _a2.waiter) === ((_b2 = S.me) == null ? void 0 : _b2.name) : true;
   });
   S.hm = store.get("hm", "tiles");
   S.f3m = store.get("f3m", "3d");

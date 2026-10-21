@@ -22,7 +22,7 @@
     const tab = v => { const n = v.go ? gos.filter(b => v.go === 'all' || (v.go === 'del' ? b.go.kind === 'del' : b.go.kind !== 'del')).length : Object.keys(S.tables).filter(t => t >= v.from && t <= v.to).length, h = v.go ? gos.some(b => b.go.st === 'new' && (v.go === 'all' || (v.go === 'del') === (b.go.kind === 'del'))) : Array.from({ length: v.to - v.from + 1 }, (_, i) => v.from + i).some(hot);
       return `<button class="${v.id === cur.id ? 'on' : ''}${h ? ' hot' : ''}" data-hl="set" data-h="${v.id}">${v.ic} ${esc(v.n)}${n ? ` <b>${n}</b>` : ''}</button>`; };
     const tabs = V.map(tab), bar = V.length > 1 ? `<div class="hall-tabs">${tabs.join('')}</div>` : '', othHot = tabs.some((x, i) => V[i].id !== cur.id && x.includes(' hot"')); // 📱 на телефоні вкладок немає — крапка на кнопці залу
-    const tools = go ? '' : `<div class="seg hall-f">${[['mine', '👤', 'Мої столи'], ['busy', '🔥', 'Зайняті'], ['all', 'Усі', 'Усі столи']].map(([k, l, t]) => `<button class="${S.hf === k ? 'on' : ''}" data-hl="hf" data-h="${k}" title="${t}">${l}</button>`).join('')}<button data-hl="hm" title="Вигляд: плитки → 3D → план">${!map ? '📋' : S.f3m === '3d' ? '🧊' : '▦'}</button></div>`;
+    const tools = go ? '' : `<div class="seg hall-f">${[['mine', '🙋', 'Мої столи'], ['all', 'Усі', 'Усі столи']].map(([k, l, t]) => `<button class="${S.hf === k ? 'on' : ''}" data-hl="hf" data-h="${k}" title="${t}">${l}</button>`).join('')}<button data-hl="hm" title="Вигляд: плитки → 3D → план">${!map ? '📋' : S.f3m === '3d' ? '🧊' : '▦'}</button></div>`;
     // 🔔 що чекає в ІНШИХ залах — одним рядком над столами: тап → той зал і стіл
     const why = t => calls[t] ? '🔔 кличе' : pending.has(t) ? '🛎 замовлення' : S.tables[t]?.pwait ? '🌐 оплатив' : S.tables[t]?.check ? '🧾 рахунок' : '';
     const away = go ? [] : V.filter(v => !v.go && v.id !== cur.id).flatMap(v => Array.from({ length: v.to - v.from + 1 }, (_, i) => v.from + i).filter(hot).map(t => ({ v, t })));
@@ -295,7 +295,7 @@
 
   // ---------- 🏛 зали (Налаштування → Правила роботи → Зали) ----------
   // столи нумеруються підряд через усі зали; «з собою» й доставка — у залі стрічкою (goTabs 0), однією вкладкою (1) або двома (2)
-  S.hall = store.get('hall', ''); S.hf = store.get('hf', 'all');
+  S.hall = store.get('hall', ''); S.hf = store.get('hf', 'all'); if (S.hf === 'busy') S.hf = 'all'; // фільтр «🔥 Зайняті» прибрано
   function hallViews() {
     const H = S.cfg?.halls?.length ? S.cfg.halls : [{ n: 'Зал', ic: '🪑', c: S.n }]; let a = 1;
     const V = H.map((h, i) => { const v = { id: 'h' + i, n: h.n, ic: h.ic || '🪑', from: a, to: Math.min(S.n, a + h.c - 1) }; a += h.c; return v; });
@@ -303,7 +303,7 @@
     if (!isAdmin() && H.length > 1) { const mine = store.get('myHalls', null); if (mine?.length) return V.filter(v => v.go || mine.includes(v.id)); } // 👤 офіціант бачить свої зали (вибір на пристрої)
     return V;
   }
-  const hallRng = (cur, calls = {}) => Array.from({ length: Math.max(0, cur.to - cur.from + 1) }, (_, i) => cur.from + i).filter(t => S.hf === 'busy' ? S.tables[t] || calls[t] : S.hf === 'mine' ? S.tables[t]?.waiter === S.me?.name : true);
+  const hallRng = (cur, calls = {}) => Array.from({ length: Math.max(0, cur.to - cur.from + 1) }, (_, i) => cur.from + i).filter(t => S.hf === 'mine' ? S.tables[t]?.waiter === S.me?.name : true);
   // 🗺 схема залу (js/floor3d.js): місця столів cfg.map {t:[x%,y%,форма,поворот]}, декор cfg.deco[from], підлога cfg.floor[from]
   // редагування — у чернетці S.mapDraft {pos, deco, floor}; зберігається одним запитом mapSet
   S.hm = store.get('hm', 'tiles'); S.f3m = store.get('f3m', '3d'); S.mapSel = null;

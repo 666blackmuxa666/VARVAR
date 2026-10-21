@@ -1304,7 +1304,7 @@ async function loyTests(A, W, dish) {
     const ing = (await vpos(VA, 'skData')).j.ing.find(x => !x.off && !x.grp), code = String(40000000 + Math.floor(Math.random() * 9e6)), sup = 'QA Банк-постач ' + RUN;
     const inv = async (q, sum, no) => ok(await vpos(VA, 'skInvSave', { inv: { sup, no, pay: 'debt', src: 'hand', req: { code }, lines: [{ id: ing.id, q, f: 1, sum }] } }), 'накладна').inv;
     const i1 = await inv(1, 300, 'Н' + RUN.slice(-3) + '1'), i2 = await inv(1, 200, 'Н' + RUN.slice(-3) + '2');
-    const d = new Date(Date.now() + 2 * 3600e3).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', year: 'numeric' }), acq = Math.round(C * 0.985 * 100) / 100;
+    const d = new Date(Date.now() - 3 * 3600e3).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', year: 'numeric' }), acq = Math.round(C * 0.985 * 100) / 100;
     const OWN = 'UA213223130000026007233566001', OWN2 = 'UA903052992990004149123456789', doc = (o) => ['СекцияДокумент=Платежное поручение', ...Object.entries(o).map(([k, v]) => k + '=' + v), 'КонецДокумента'].join('\r\n');
     const f1 = ['1CClientBankExchange', 'ВерсияФормата=1.02', 'Кодировка=Windows', 'РасчСчет=' + OWN, 'РасчСчет=' + OWN2,
       doc({ Номер: 1, Дата: d, Сумма: acq.toFixed(2), ПлательщикСчет: 'UA673052990000026001234567890', Плательщик: 'АТ КБ ПРИВАТБАНК', ПлательщикИНН: '14360570', ПолучательСчет: OWN, ДатаПоступило: d, НазначениеПлатежа: 'Відшкодування за операціями з ПК, торговий еквайринг ' + RUN }),
@@ -1344,7 +1344,7 @@ async function loyTests(A, W, dish) {
   });
   await step('📒 книга доходів: продажі дня = чеки без чайових; інший дохід вручну й з виписки («це дохід» → книга, «скасувати» → зникає); межі; пороги; експорт; офіціанту заборонено', async () => {
     const ok = (r, w) => { must(r.status === 200 && !r.j.error, w + ': ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 200)); return r.j; };
-    const day = new Date(Date.now() + 2 * 3600e3).toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' }), m = day.slice(0, 7);
+    const day = new Date(Date.now() - 3 * 3600e3).toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' }), m = day.slice(0, 7);
     const v0 = ok(await vpos(VA, 'incGet', {}), 'книга'); must(v0.m === m && v0.sum?.pdvLim === 1e6 && v0.cats?.rent && Array.isArray(v0.sum.months) && v0.sum.months.length === 12, 'книга: ' + JSON.stringify(v0).slice(0, 200));
     const rep = ok(await vpos(VA, 'report', { from: day, to: day }), 'звіт'), rev = rep.checks.reduce((a, c) => a + c.sum - (c.tip || 0), 0), d0 = v0.days.find(x => x.d === day);
     must(Math.abs((d0?.sale || 0) - rev) < 0.05, `продажі дня ${d0?.sale} ≠ чеки без чайових ${rev}`);
@@ -1354,7 +1354,7 @@ async function loyTests(A, W, dish) {
     must((await vpos(VA, 'incAdd', { sum: 10, d: '2099-01-01' })).status === 400, 'дохід у майбутньому');
     const v1 = ok(await vpos(VA, 'incAdd', { sum: 1500.5, cat: 'b2b', note: 'QA банкет ' + RUN, d: day }), 'інший дохід'), x1 = v1.other.find(x => x.note === 'QA банкет ' + RUN);
     must(x1 && x1.cat === 'b2b' && Math.abs(v1.t.oth - v0.t.oth - 1500.5) < 0.011 && Math.abs(v1.sum.ytd - v0.sum.ytd - 1500.5) < 0.011 && Math.abs(v1.sum.roll - v0.sum.roll - 1500.5) < 0.011, 'інший дохід не в книзі / році / 12 міс.');
-    const OWN = 'UA213223130000026007233566001', d = new Date(Date.now() + 2 * 3600e3).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', year: 'numeric' });
+    const OWN = 'UA213223130000026007233566001', d = new Date(Date.now() - 3 * 3600e3).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', year: 'numeric' });
     const f = ['1CClientBankExchange', 'ВерсияФормата=1.02', 'РасчСчет=' + OWN, 'СекцияДокумент=Платежное поручение', 'Номер=9', 'Дата=' + d, 'Сумма=2000.00', 'ПлательщикСчет=UA443052990000026003333333333', 'Плательщик=ТОВ Замовник', 'ПлательщикИНН=32323232', 'ПолучательСчет=' + OWN, 'ДатаПоступило=' + d, 'НазначениеПлатежа=Оплата банкету ' + RUN, 'КонецДокумента', 'КонецФайла'].join('\r\n');
     ok(await vpos(VA, 'bankImp', { text: f }), 'виписка'); const bl = ok(await vpos(VA, 'bankList'), 'банк').list.find(x => x.pur === 'Оплата банкету ' + RUN); must(bl?.st === 'q', 'надходження не на підтвердженні: ' + bl?.st);
     must(ok(await vpos(VA, 'incGet', {}), 'книга').bankQ.n >= 1, 'книга не попередила про нерозібране надходження');
@@ -1370,7 +1370,7 @@ async function loyTests(A, W, dish) {
   });
   await step('🔄 банк автоматично: токени mono / Приват (тест) → Приват одразу й без повторів, вебхук mono → рядок у банку, чужий ключ 403, повтор не дублює; стан у касі й кабінеті', async () => {
     const ok = (r, w) => { must(r.status === 200 && !r.j.error, w + ': ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 200)); return r.j; };
-    const day = new Date(Date.now() + 2 * 3600e3).toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' });
+    const day = new Date(Date.now() - 3 * 3600e3).toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' });
     must((await ownT(PT, 'secrets', { venue: VID, f: { PRIVAT_BANK: 'bad token!' } })).status === 400, 'хибний токен Привату прийнято');
     must((await vpos(VA, 'bankSync')).status === 400, 'оновлення без підключеного банку');
     try {
