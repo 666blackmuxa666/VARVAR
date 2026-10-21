@@ -247,17 +247,16 @@ export async function certPaid(env, x) {
   if (c0.st !== 'new') { if (c0.st === 'no' || !c0.lp) await late(c0.st === 'no' ? 'заявку відхилено' : 'сертифікат уже оплачено раніше'); return { ok: true, dup: 1 }; }
   const { lpOk } = await import('./liqpay.js'); if (!lpOk(x)) return { ok: true, fail: 1 };
   if (Math.round(+x.amount || 0) + 1 < c0.sum) { await late(`сума ${Math.round(+x.amount || 0)} грн менша за сертифікат ${c0.sum} грн — не активовано`); return { ok: true, fail: 1 }; } /* 💳 недоплата — не активуємо */
-  await env.DB.put('cert:' + code, JSON.stringify({ ...c0, lp: String(x.payment_id || '') })); /* без терміну: тепер справжній сертифікат */
+  const c = await certPay(env, code, 'online', '🌐 LiqPay', { lp: String(x.payment_id || '') }); if (!c) return { ok: true, dup: 1 }; /* перевірка «ще не оплачено», позначка LiqPay й активація — під одним замком: паралельний повтор не проведе гроші двічі */
   await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; if (!l.includes(code)) l.push(code); await env.DB.put('certs', JSON.stringify(l.slice(-500))); });
-  const c = await certPay(env, code, 'online', '🌐 LiqPay'); if (!c) return { error: 'state' };
   await logEvent(env, { k: 'cert', code, s: 'acc', accBy: '🌐 онлайн', text: `🎁 Сертифікат ${money(c.sum)} · від ${c.from}${c.to ? ' для ' + c.to : ''} — 💳 оплачено онлайн${x.status === 'sandbox' ? ' · 🧪 тест' : ''}` });
   await notify(env, `🎁 <b>Сертифікат оплачено онлайн</b> ${money(c.sum)} · код <b>${code}</b>\nвід ${esc(c.from)}${c.to ? ` для ${esc(c.to)}` : ''}`).catch(() => {});
   return { ok: true };
 }
 export const getCert = async (env, code) => (await env.DB.get('cert:' + String(code || '').toUpperCase().trim(), 'json')) || null;
 // оплачено → активний (надходження в касу як рух грошей), або скасовано
-export async function certPay(env, code, how, who) {
-  const c = await L(env, 'cert:' + code, async () => { const c = await getCert(env, code); if (!c || c.st !== 'new') return null; c.st = how === 'no' ? 'no' : 'ok'; c.paid = how; c.paidAt = Date.now(); c.by = who; await env.DB.put('cert:' + code, JSON.stringify(c)); return c; });
+export async function certPay(env, code, how, who, extra) {
+  const c = await L(env, 'cert:' + code, async () => { const c = await getCert(env, code); if (!c || c.st !== 'new') return null; Object.assign(c, extra); c.st = how === 'no' ? 'no' : 'ok'; c.paid = how; c.paidAt = Date.now(); c.by = who; await env.DB.put('cert:' + code, JSON.stringify(c)); return c; });
   if (!c) return null;
   if (c.st === 'ok') await addMove(env, { type: how === 'card' || how === 'online' ? 'kin' : 'in', sum: c.sum, note: `🎁 Сертифікат ${code} (${c.from})${how === 'online' ? ' · 🌐 онлайн' : ''}`, by: who }).catch(() => {}); // гроші за сертифікат — у касу / на картку
   await editEv(env, l => { for (const e of l) if (e.code === code) { e.s = c.st === 'ok' ? 'acc' : 'rej'; e.accBy = who; } }).catch(() => {});

@@ -155,7 +155,7 @@ async function _closeTable(env, t, who, pay = 'cash', print = true) {
   // чайові входять у виручку тим способом, яким заплатив гість; при видачі списуються з готівки або картки
   const tip = (bill.tip || 0) + (bill.ktip || 0), sum = payable(bill) + tip, disc = discAmt(bill);
   /* 🌐 онлайн (LiqPay) — безготівка, але окремо від терміналу (onl ⊂ card). Оплачене гостем наперед (go.paid / paid з QR) — завжди онлайн; доплату — тим способом, що обрали на касі */
-  const pre = Math.round(bill.go?.paid?.sum || bill.paid?.sum || 0), onl = pay === 'online' ? sum : Math.min(pre, sum), rest = sum - onl;
+  const pre = Math.round((bill.go?.paid && !bill.go.paid.ref ? bill.go.paid.sum : 0) || bill.paid?.sum || 0), onl = pay === 'online' ? sum : Math.min(pre, sum), rest = sum - onl;
   const ag = String(pay).startsWith('agg:') ? pay.slice(4) : '', agS = ag ? rest : 0; /* 🛵 агрегатор (Glovo, Bolt…) — безготівка (agS ⊂ card), виплата нетто приходить на рахунок */
   const card = onl + (pay === 'card' || pay === 'iban' || ag ? rest : 0), cash = sum - card, ib = pay === 'iban' ? rest : 0; if (onl && !rest) pay = 'online'; /* 🏦 переказ на рахунок закладу — безготівка (ib ⊂ card) */
   if (pre > sum + 1) notify(env, `⚠️ Стіл ${tn(t)}: гість оплатив онлайн ${pre} грн, а рахунок ${sum} грн — переплата ${pre - sum} грн. Поверніть різницю в кабінеті LiqPay.`).catch(() => {}); /* 💳 зменшили рахунок після оплати */
@@ -237,12 +237,12 @@ async function _tipBalances(env) {
 }
 async function _addTipBal(env, name, n) { if (!n) return; const b = await tipBalances(env); const k = name || '—'; b[k] = Math.round(((b[k] || 0) + n) * 100) / 100; if (!b[k]) delete b[k]; /* мінус = чайові вже видали, а чек потім прибрали — борг, щоб не видати двічі */ await env.DB.put('tipbal', JSON.stringify(b)); }
 // src: cash | card — звідки видали: сума списується з готівки або з картки (як рух коштів)
-async function _payTips(env, name, who, src = 'cash') {
+async function _payTips(env, name, who, src = 'cash', h = {}) {
   const b = await tipBalances(env), sum = b[name] || 0; if (!(sum > 0)) return null;
   src = src === 'card' ? 'card' : 'cash';
   delete b[name]; await env.DB.put('tipbal', JSON.stringify(b));
   const k = 'tippay:' + dayKey(), l = (await env.DB.get(k, 'json')) || []; l.push({ ts: Date.now(), at: hhmm(), name, sum, src, by: who || '' }); await env.DB.put(k, JSON.stringify(l));
-  const mk = 'mov:' + dayKey(), ml = await getMov(env); ml.push({ ts: Date.now(), at: hhmm(), type: src === 'card' ? 'tipk' : 'tipc', sum, note: name, by: who || '' }); await env.DB.put(mk, JSON.stringify(ml));
+  const mk = 'mov:' + dayKey(), ml = await getMov(env), ts = Date.now(); ml.push({ ts, at: hhmm(), type: src === 'card' ? 'tipk' : 'tipc', sum, note: name, by: who || '' }); await env.DB.put(mk, JSON.stringify(ml)); if (src === 'cash') h.ts = ts;
   await logEvent(env, { k: 'shift', by: who, text: `💝 Видано чайові: ${name} — ${sum} грн (${src === 'card' ? 'з картки' : 'готівкою'})` });
   return sum;
 }
@@ -366,4 +366,8 @@ async function addVoid(env, ...a) { return L(env, 'void:' + dayKey(), () => _add
 export async function markCook(env, ...a) { return L(env, 'cooks:' + dayKey(), () => _markCook(env, ...a)); }
 export async function tipBalances(env, ...a) { const b = await env.DB.get('tipbal', 'json'); return b || L(env, 'tipbal', () => _tipBalances(env, ...a)); } // читання — без черги
 export async function addTipBal(env, ...a) { return L(env, 'tipbal', () => _addTipBal(env, ...a)); }
-export async function payTips(env, ...a) { return L(env, ['tipbal', 'tippay:' + dayKey(), 'mov:' + dayKey()], () => _payTips(env, ...a)); }
+export async function payTips(env, name, who, src) {
+  const h = {}, r = await L(env, ['tipbal', 'tippay:' + dayKey(), 'mov:' + dayKey()], () => _payTips(env, name, who, src, h));
+  if (h.ts) { const f = await import('./fiscal.js'); if (f.fisOn(env)) await f.fisMov(env, dayKey(), h.ts, true); } // 🧾 готівка вийшла з каси → службовий чек (помилка лишається в записі руху, «Повторити»)
+  return r;
+}

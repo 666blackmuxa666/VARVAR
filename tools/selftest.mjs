@@ -292,7 +292,8 @@ async function apiTests() {
     await posOk(A, 'skInvDel', { id: a.j.inv.id }); must((await live(S)).length === 0, 'друге видалення');
     const d = (await posOk(A, 'skInvSave', { inv: { sup: 'QA Борг ' + RUN, pay: 'debt', src: 'hand', lines: [{ id: x.id, q: 1, f: 1, sum: S + 1 }] } })).inv;
     await posOk(A, 'skInvPay', { id: d.id, src: 'card' }); must((await live(S + 1)).length === 1, 'оплата боргу не стала витратою');
-    await posOk(A, 'skInvDel', { id: d.id }); must((await live(S + 1)).length === 0, 'видалили оплачену борг-накладну — витрата лишилась'); return 'ок';
+    await posOk(A, 'skInvDel', { id: d.id }); must((await live(S + 1)).length === 0, 'видалили оплачену борг-накладну — витрата лишилась');
+    must((await pos(A, 'skInvSave', { inv: { sup: 'QA Мінус ' + RUN, pay: 'debt', src: 'hand', lines: [{ id: x.id, q: 1, f: -1, sum: 10 }] } })).status === 400, 'від\'ємна кількість в упаковці прийнята'); return 'ок';
   });
   await step('📜 склад: ручне додавання → ↩️ скасувати → залишок як був', async () => {
     const d = await posOk(A, 'skData'), x = (d.ing || []).find(i => !i.off); if (!x) return 'немає продуктів';
@@ -450,6 +451,14 @@ async function apiTests() {
       await posOk(A, 'goSt', { t: gt, st: 'done', pay: 'cash' }); const s1 = await posOk(A, 'shift');
       const d = x => x.z?.onl || 0; must(d(s1) - d(s0) === po.sum, `онлайн у зміні ${d(s0)} → ${d(s1)} (${JSON.stringify(s1).slice(0, 160)})`); return `+${po.sum} онлайн`;
     });
+    await step('↩️ повернули онлайн-оплату доставки → закриття не рахує її 🌐 онлайн-виручкою', async () => {
+      const r = await http('/api/go', { kind: 'pick', name: 'QA Повернення', phone: '0670006' + String(Math.floor(Math.random() * 900) + 100), when: '12:00', pay: 'online', items: [{ id: dish.id, q: 1 }], device: 'qa-lr-' + RUN }); must(r.j.id, JSON.stringify(r.j));
+      must((await lpPost('/api/lp/go', lpSign({ order_id: 'go-varvar-' + r.j.id, status: 'sandbox', amount: r.j.sum, payment_id: 12346 }))).j.ok, 'callback');
+      const t = (await posOk(A, 'state')).tables.find(x => x.go?.oid === r.j.id)?.t; must(t, 'немає в касі'); await posOk(A, 'accept', { oid: r.j.id }).catch(() => {});
+      await posOk(A, 'tpayRefund', { t }); must(!(await posOk(A, 'state')).tables.find(x => x.t === t)?.go?.paid, 'після повернення досі «оплачено»');
+      const s0 = await posOk(A, 'shift'); await posOk(A, 'goSt', { t, st: 'done', pay: 'cash' }); const s1 = await posOk(A, 'shift');
+      must((s1.z?.onl || 0) === (s0.z?.onl || 0), `онлайн виріс ${s0.z?.onl} → ${s1.z?.onl}`); return 'онлайн без змін';
+    });
     await posOk(A, 'goCfgSet', { k: 'onl', v: 0 });
 
     await step('🎁 сертифікат онлайн: посилання → callback → активний, повтор без дубля', async () => {
@@ -459,6 +468,10 @@ async function apiTests() {
       const f = lpSign({ order_id: 'ct-varvar-' + r.j.code, status: 'sandbox', amount: 500, payment_id: 999 }), c1 = await lpPost('/api/lp/cert', f), c2 = await lpPost('/api/lp/cert', f);
       must(c1.j.ok && !c1.j.dup && c2.j.dup, JSON.stringify([c1.j, c2.j]));
       const ev = (await posOk(A, 'state')).events.find(e => e.k === 'cert' && e.code === r.j.code); must(ev?.s === 'acc', 'подія ' + JSON.stringify(ev));
+      { const r2 = await http('/api/cert', { sum: 300, from: 'QA Паралель', to: 'QA', phone: '0670008' + String(Math.floor(Math.random() * 900) + 100), device: 'qa-cp-' + RUN, pay: 'online' }); /* ⚡ два одночасні callback — одне надходження */
+        const f2 = lpSign({ order_id: 'ct-varvar-' + r2.j.code, status: 'sandbox', amount: 300, payment_id: 998 }), m0 = (await posOk(A, 'shift')).mov.filter(m => (m.note || '').includes(r2.j.code)).length;
+        const both = await Promise.all([lpPost('/api/lp/cert', f2), lpPost('/api/lp/cert', f2)]); must(both.filter(x => x.j.ok && !x.j.dup).length === 1, 'активацій: ' + JSON.stringify(both.map(x => x.j)));
+        const mv = (await posOk(A, 'shift')).mov.filter(m => (m.note || '').includes(r2.j.code) && !m.del).length; must(mv - m0 === 1, 'рухів грошей: ' + (mv - m0)); }
       await posOk(A, 'goCfgSet', { k: 'onl', v: 0 }); return r.j.code; });
     // 🍽 оплата рахунку столу з QR → червоний стіл → ✅ підтвердити
     const TT = 14; let tk = '', tp = null;
@@ -959,6 +972,8 @@ async function loyTests(A, W, dish) {
       must(y?.fis?.r?.a?.ret?.length === 1 && !y.fis.r.a.id && ret.goods.every(g => g.is_return) && ret.related_receipt_id === x.fis.r.a.id, 'повернення: ' + JSON.stringify(y?.fis));
       must((await vpos(VA, 'cashMove', { type: 'in', sum: 100, note: 'QA' })).status === 200, 'cashMove');
       m = (await vpos(VA, 'fisInfo')).j.mock; must(m.some(q => q.path === '/receipts/service' && q.body.payment.value === 10000), 'службове внесення');
+      must((await vpos(VA, 'zpOp', { n: 'QA ЗП', t: 'adv', sum: 70, src: 'cash' })).status === 200, 'zpOp'); /* 👷 аванс готівкою з каси — теж службова видача */
+      m = (await vpos(VA, 'fisInfo')).j.mock; must(m.some(q => q.path === '/receipts/service' && q.body.payment.value === -7000), 'службова видача ЗП');
       const z = await vpos(VA, 'zDay', { print: false }); must(z.j.z.fis?.ok, 'Z у Checkbox: ' + JSON.stringify(z.j.z.fis));
       m = (await vpos(VA, 'fisInfo')).j.mock; must(m.some(q => q.path === '/shifts/close'), 'зміна Checkbox не закрита');
     } finally { await ownT(PT, 'secrets', { venue: VID, f: { CHECKBOX_LICENSE: '' } }); }

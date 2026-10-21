@@ -313,6 +313,7 @@ export async function dishesUsing(env, ids) {
 export async function invoiceSave(env, d, who) {
   const sup = String(d.sup || '').trim().slice(0, 60) || 'Без постачальника', pay = ['cash', 'card', 'debt'].includes(d.pay) ? d.pay : 'debt';
   const cfg = await getCfg(env), sp = sup !== 'Без постачальника' ? await (await import('./suppliers.js')).supEnsure(env, sup, d.req || {}).catch(() => null) : null; /* 🏭 профіль постачальника створюється / доповнюється сам */
+  if ((Array.isArray(d.lines) ? d.lines : []).some(ln => ln?.f != null && ln.f !== '' && !(+ln.f > 0 && +ln.f < 1e6))) return { error: 'Кількість в упаковці має бути більше нуля' }; // 📦 від'ємний множник перетворив би прихід на списання
   const rid = /^[\w-]{8,40}$/.test(d.rid || '') ? 'invr:' + d.rid : ''; // 🔁 ключ повтору: друге натискання / повтор після обриву мережі не дублює прихід і гроші
   const r = await L(env, ['ing', 'exp:' + dayKey()], async () => { // оплата з каси — під тим самим замком, щоб видалення не проскочило між накладною й витратою
     if (rid) { const was = await env.DB.get(rid); const x = was && await env.DB.get('inv:' + was, 'json'); if (x) return { inv: x, alerts: [], low: [], dup: true }; }

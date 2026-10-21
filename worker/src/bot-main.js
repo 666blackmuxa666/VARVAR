@@ -363,7 +363,7 @@ async function handleCallback(q, env) {
     await (await import('./ledger.js')).audit(env, who, 'mod', 'mod:' + arg, { v: was }, { v: c.mods[arg] });
     const v = await (await import('./bot-views.js')).modsView(env); await edit(v.text, v.markup); return answer(`${O.MODS[arg]}: ${c.mods[arg] ? 'увімкнено' : 'вимкнено'}`);
   }
-  if (act === 'agg') { const A = await import('./agg.js'), x = (await A.aggList(env)).find(a => a.id === arg); if (!x) return answer('Немає такого');
+  if (act === 'agg') { if (!admin) return answer('🔐 Лише адмін'); const A = await import('./agg.js'), x = (await A.aggList(env)).find(a => a.id === arg); if (!x) return answer('Немає такого');
     await A.aggSet(env, { id: x.id, on: x.on ? 0 : 1 }); const v = await A.aggBotView(env); return edit(v.text, v.markup); }
   if (act === 'bnk') { // 🏦 рядок виписки: витрата / рух / пошук пари / пропустити / скасувати — та сама bankAct, що й у касі
     if (!admin) return answer('🔐 Лише для адміністратора'); if (!(await (await import('./ops.js')).modOn(env, 'bank'))) return answer('Модуль «Банк» вимкнено');
@@ -409,7 +409,7 @@ async function handleCallback(q, env) {
   if (act === 'goe' || act === 'goef') { // ✏️ доставка (адмін)
     if (!admin) return answer('🔐 Лише для адміністратора');
     const g = (await getBill(env, +arg)).go; if (!g) return answer('Немає замовлення');
-    if (act === 'goe') { await send({ text: `✏️ <b>${tn(+arg)}</b> · ${esc(g.name || '')} ${fmtPhone(g.phone)}${g.addr ? `\n📍 ${esc(g.addr)}` : ''}${g.ent ? `\n🚪 ${esc(g.ent)}` : ''}${g.when ? `\n🕐 ${g.when}` : ''}${g.note ? `\n💬 ${esc(g.note)}` : ''}\n\nЩо змінити?`,
+    if (act === 'goe') { await send({ text: `✏️ <b>${tn(+arg)}</b> · ${esc(g.name || '')} ${fmtPhone(g.phone)}${g.addr ? `\n📍 ${esc(g.addr)}` : ''}${g.ent ? `\n🚪 ${esc(g.ent)}` : ''}${g.when ? `\n🕐 ${esc(g.when)}` : ''}${g.note ? `\n💬 ${esc(g.note)}` : ''}\n\nЩо змінити?`,
       markup: { inline_keyboard: chunk(Object.entries(GO_F).filter(([f]) => g.kind === 'del' || !['addr', 'ent'].includes(f)).map(([f, t]) => ({ text: t, callback_data: `goef:${arg}:${f}` })), 3) } }); return answer(''); }
     if (!GO_F[oid]) return answer('');
     await env.DB.put('st:' + uid, `goe:${arg}:${oid}`, { expirationTtl: 600 }); await send({ text: `${GO_F[oid]}: ${GO_ASK[oid]}` }); return answer('');

@@ -39,6 +39,7 @@ export async function lpFake(k, obj) { const data = b64(JSON.stringify(obj)); re
 // ↩️ повернення: спершу стан платежу (вже повернено? ще в обробці?), далі refund; повна відповідь — у журнал воркера (wrangler tail)
 export async function lpRefund(k, order, amt) {
   if (k.mono) return monoRefund(k, order, amt);
+  if (k.priv === 'sandbox_test_private_key') return { ok: true }; /* 🧪 лише локальний тестовий сервер (ключ із .varvar-test) — без мережі до LiqPay */
   const st = await lpApi(k, { action: 'status', order_id: order }); console.log('lp status', order, JSON.stringify(st).slice(0, 400));
   if (['reversed', 'refund'].includes(st.status)) return { ok: true, already: 1 };
   const tries = [{ action: 'refund', order_id: order, amount: amt }, { action: 'refund', order_id: order }];

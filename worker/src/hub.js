@@ -49,11 +49,11 @@ export class Hub extends DurableObject {
   }
   // ---- вхід ----
   async login(email, pass) {
-    email = normEmail(email);
+    email = normEmail(email); if (email.length > 120 || !/^[^\s@]+@[^\s@]+$/.test(email)) return { error: 'Невірний email або пароль' };
     const fk = 'fail:' + email, f = (await this.st.get(fk)) || { n: 0, at: 0 };
     if (f.n >= 8 && Date.now() - f.at < 15 * 60e3) return { error: 'Забагато спроб — зачекайте 15 хв' };
     const a = await this.st.get('acct:' + email);
-    if (!a || (await passHash(String(pass || ''), a.salt)) !== a.hash) { await this.st.put(fk, { n: f.n + 1, at: Date.now() }); return { error: 'Невірний email або пароль' }; }
+    if (!a || (await passHash(String(pass || ''), a.salt)) !== a.hash) { if (a) await this.st.put(fk, { n: f.n + 1, at: Date.now() }); return { error: 'Невірний email або пароль' }; } /* лічильник — лише для справжніх акаунтів: вигадані email не засмічують реєстр */
     await this.st.delete(fk);
     if (a.verified === false) return { error: 'Підтвердіть email — перейдіть за посиланням з листа', unverified: true };
     const token = rnd(24); await this.st.put('sess:' + token, { email, exp: Date.now() + SESS_MS });
@@ -209,10 +209,14 @@ export class Hub extends DurableObject {
   // 💳 оплата ATOM: оплачено до, автосписання, історія оплат; payOnce — один платіж LiqPay обробляється один раз
   async venueBill(id, f) {
     const v = await this.st.get('venue:' + id); if (!v) return { error: 'Немає закладу' };
-    for (const k of ['paidTill', 'auto', 'subOrder', 'locked', 'unlockErr']) if (f[k] !== undefined) v[k] = f[k];
-    if (f.status && ['active', 'trial', 'off'].includes(f.status)) v.status = f.status;
-    if (f.pay) v.pays = [f.pay, ...(v.pays || [])].slice(0, 36);
-    await this.st.put('venue:' + id, v); return v;
+    billSet(v, f); await this.st.put('venue:' + id, v); return v;
+  }
+  // 💳 оплата підписки: «платіж уже оброблено» і «+1 місяць» записуються разом — збій між ними не з'їдає оплачений місяць. till0 — «оплачено до» за замовчуванням (billing.tillOf)
+  async subPaid(id, pid, f, till0) {
+    if (await this.st.get('lpp:' + pid)) return { dup: 1 };
+    const v = await this.st.get('venue:' + id); if (!v) return { error: 'Немає закладу' };
+    const d = new Date(Math.max(Date.now(), v.paidTill || till0)); d.setMonth(d.getMonth() + 1);
+    billSet(v, { ...f, paidTill: d.getTime() }); await this.st.put({ ['venue:' + id]: v, ['lpp:' + pid]: Date.now() }); return { till: d.getTime() };
   }
   async payOnce(pid) { const k = 'lpp:' + pid; if (await this.st.get(k)) return false; await this.st.put(k, Date.now()); return true; }
   // 🚀 ATOM: заявки з сайту posatom.online (CRM «Продажі»), ліміт з IP, статистика переглядів
@@ -314,7 +318,9 @@ export class Hub extends DurableObject {
   async hit(kind) { const d = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' }), k = 'ah:' + d, v = (await this.st.get(k)) || {}; v[kind] = (v[kind] || 0) + 1; await this.st.put(k, v); }
   async hitOnce(ip) { if (!ip) return; const k = 'ahip:' + ip.slice(0, 64); if (await this.st.get(k)) return; await this.st.put(k, 1); await this.hit('view'); this.ctx.storage.setAlarm?.(Date.now() + 864e5); }
   async alarm() { for (const [k, v] of await this.st.list({ prefix: 'signup:' })) if (Date.now() - v.at > 7 * 864e5) { await this.st.delete(k); const a = await this.st.get('acct:' + k.slice(7)); if (a && a.verified === false) await this.st.delete('acct:' + k.slice(7)); } /* непідтверджені самореєстрації старші 7 днів */
-    for (const p of ['ahip:', 'lrl:', 'srl:']) { const l = await this.st.list({ prefix: p }); if (l.size) await this.st.delete([...l.keys()].slice(0, 1000)); } } // щодоби: перегляди й ліміти заявок з IP
+    for (const p of ['ahip:', 'lrl:', 'srl:']) { const l = await this.st.list({ prefix: p }); if (l.size) await this.st.delete([...l.keys()].slice(0, 1000)); } // щодоби: перегляди й ліміти заявок з IP
+    { const l = await this.st.list({ prefix: 'fail:' }), old = [...l].filter(([, v]) => Date.now() - (v?.at || 0) > 864e5).map(([k]) => k); if (old.length) await this.st.delete(old.slice(0, 1000)); } // старі лічильники невдалих входів
+    this.ctx.storage.setAlarm?.(Date.now() + 864e5); } // наступне прибирання — завтра (інакше після останньої заявки воно більше не прокинеться)
   async hitStats(days) { const out = []; for (let i = days - 1; i >= 0; i--) { const d = new Date(Date.now() - i * 864e5).toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' }); out.push({ d, ...((await this.st.get('ah:' + d)) || {}) }); } return out; }
 }
 
@@ -324,6 +330,11 @@ function yrOf(p, s, y) {
   const by = Object.fromEntries(Object.entries(s.v || {}).map(([v, d]) => [v, Object.values(d).reduce((a, x) => a + x, 0)]));
   const sum = Object.values(by).reduce((a, x) => a + x, 0) + (p.base || 0) * 100, g = p.kind === 'fop' ? groupOf(p, y) : 0, lim = p.kind === 'fop' ? (p.lim || LIM[g] || 0) : 0;
   const pct = lim ? Math.round(sum / 100 / lim * 1000) / 10 : 0; return { y, sum, by, g, lim, pct, step: [100, 95, 80].find(x => pct >= x) || 0 };
+}
+function billSet(v, f) {
+  for (const k of ['paidTill', 'auto', 'subOrder', 'locked', 'unlockErr']) if (f[k] !== undefined) v[k] = f[k];
+  if (f.status && ['active', 'trial', 'off'].includes(f.status)) v.status = f.status;
+  if (f.pay) v.pays = [f.pay, ...(v.pays || [])].slice(0, 36);
 }
 export const hub = env => env.HUB.get(env.HUB.idFromName('hub'));
 // активні заклади (для Cron); VARVAR окремо (MAIN)

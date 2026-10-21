@@ -1,6 +1,6 @@
 // 🛟 Бот підтримки ATOM (вебхук /tg5). Клієнт пише боту → окрема тема в групі-форумі помічників; відповідь помічника в темі → клієнту.
-// Ключ: кабінет платформи → 🚀 Продажі → 💬 Контакти → поле «Підтримка» (або секрет SUPPORT_BOT_TOKEN). Після ключа протягом години додайте бота в групу — вона стане групою підтримки.
-// HUB: sup:tok, sup:chat (група), sup:arm (час підключення), sup:u:<tgId> → { t: тема, v: заклад }, sup:t:<тема> → tgId, sup:m:<повідомлення в групі без тем> → tgId
+// Ключ: кабінет платформи → 🚀 Продажі → 💬 Контакти → поле «Підтримка» (або секрет SUPPORT_BOT_TOKEN). Після ключа протягом години додайте бота в групу й надішліть туди код із кабінету — вона стане групою підтримки.
+// HUB: sup:tok, sup:chat (група), sup:arm (час підключення), sup:armc (одноразовий код групи), sup:u:<tgId> → { t: тема, v: заклад }, sup:t:<тема> → tgId, sup:m:<повідомлення в групі без тем> → tgId
 import { hub } from './hub.js';
 import { KB } from './supkb.js';
 export const SUP_TOKEN = /^\d{6,12}:[\w-]{30,}$/;
@@ -11,17 +11,18 @@ export async function supSetup(env, tok) { // ключ з кабінету: пе
   const me = await call(tok, 'getMe', {}); if (!me.ok) return { error: 'Telegram не прийняв ключ — скопіюйте його з @BotFather ще раз' };
   const w = await call(tok, 'setWebhook', { url: env.SELF_URL + '/tg5', secret_token: env.TG_SECRET, allowed_updates: ['message', 'my_chat_member', 'callback_query'] });
   if (!w.ok) return { error: 'Не вдалося підключити бота: ' + (w.description || '') };
-  const H = hub(env); await H.supSet('tok', tok); await H.supSet('arm', Date.now());
-  return { bot: me.result.username, link: 'https://t.me/' + me.result.username, chat: !!(await H.supGet('chat')) };
+  const H = hub(env); await H.supSet('tok', tok); const code = await arm(H);
+  return { bot: me.result.username, link: 'https://t.me/' + me.result.username, chat: !!(await H.supGet('chat')), code };
 }
 
+const arm = async H => { const code = String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000)); await H.supSet('armc', code); await H.supSet('arm', Date.now()); return code; }; // 🔑 одноразовий код прив'язки групи (година)
 export async function supStatus(env, rearm, probe) { // 🩺 стан бота для кабінету: вебхук (лагодить сам), група, теми, права бота
   const H = hub(env), tok = env.SUPPORT_BOT_TOKEN || await H.supGet('tok'); if (!tok) return { bot: '' };
   const T = (m, b) => call(tok, m, b), me = await T('getMe', {}); if (!me.ok) return { bot: '', err: 'Telegram не приймає ключ — вставте новий з @BotFather' };
   const url = env.SELF_URL + '/tg5', w = await T('getWebhookInfo', {}); let hook = w.result?.url === url && (w.result.allowed_updates || []).includes('callback_query');
   if (!hook) hook = !!(await T('setWebhook', { url, secret_token: env.TG_SECRET, allowed_updates: ['message', 'my_chat_member', 'callback_query'] })).ok;
-  if (rearm) await H.supSet('arm', Date.now());
-  const r = { bot: me.result.username, hook, err: w.result?.last_error_message || '', arm: Date.now() - ((await H.supGet('arm')) || 0) < 3600e3 }; let chat = await H.supGet('chat');
+  if (rearm) await arm(H);
+  const armed = Date.now() - ((await H.supGet('arm')) || 0) < 3600e3, r = { bot: me.result.username, hook, err: w.result?.last_error_message || '', arm: armed, ...(armed ? { code: await H.supGet('armc') } : {}) }; let chat = await H.supGet('chat');
   let c = chat && await T('getChat', { chat_id: chat }); const to = c && c.parameters?.migrate_to_chat_id;
   if (to) { await H.supSet('chat', chat = String(to)); c = null; } // пропущений перехід у супергрупу — лагодимо
   if (chat) { c ||= await T('getChat', { chat_id: chat }); const m = await T('getChatMember', { chat_id: chat, user_id: me.result.id });
@@ -44,9 +45,10 @@ export async function supUpdate(u, env) {
   let chat = await H.supGet('chat');
   const mig = m?.migrate_to_chat_id && String(gc.id) === String(chat) ? m.migrate_to_chat_id : m?.migrate_from_chat_id && String(m.migrate_from_chat_id) === String(chat) ? gc.id : 0;
   if (mig) { await H.supSet('chat', chat = String(mig)); return; } // увімкнули «Теми» → група стала супергрупою з новим id
-  if (/group/.test(gc.type) && String(gc.id) !== String(chat)) { // нова група стає групою підтримки лише протягом години після ключа
-    const arm = await H.supGet('arm'), inn = !mc || /member|administrator/.test(mc.new_chat_member?.status || '');
-    if (arm && Date.now() - arm < 3600e3 && inn) { await H.supSet('chat', String(gc.id)); await H.supSet('arm', 0);
+  if (/group/.test(gc.type) && String(gc.id) !== String(chat)) { // нова група стає групою підтримки лише протягом години після ключа і лише з одноразовим кодом із кабінету (інакше будь-хто, хто першим додав бота в свою групу, отримував би звернення)
+    const at = await H.supGet('arm'), code = await H.supGet('armc'), on = at && Date.now() - at < 3600e3 && code;
+    if (on && mc && /member|administrator/.test(mc.new_chat_member?.status || '')) return T('sendMessage', { chat_id: gc.id, text: '🔑 Щоб зробити цю групу групою підтримки ATOM, надішліть сюди команду з кодом із кабінету платформи (💬 Контакти): /atom@бот КОД' });
+    if (on && m && new RegExp(`(^|\\D)${code}(\\D|$)`).test(String(m.text || ''))) { await H.supSet('chat', String(gc.id)); await H.supSet('arm', 0); await H.supSet('armc', '');
       await T('sendMessage', { chat_id: gc.id, text: '✅ Групу підтримки ATOM підключено.\n\n1) Налаштування групи → увімкніть «Теми».\n2) Зробіть бота адміністратором (право «Керувати темами»).\n\nКожен клієнт — окрема тема. Пишіть відповідь прямо в темі — бот перешле її клієнту. Повідомлення, що починається з //, — нотатка лише для команди.' }); }
     return;
   }

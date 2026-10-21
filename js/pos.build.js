@@ -67,7 +67,9 @@ var __objRest = (source, exclude) => {
   }, set(k, v) {
     try {
       localStorage.setItem("pos_" + (VENUE ? VENUE + "_" : "") + k, JSON.stringify(v));
+      return true;
     } catch (e) {
+      return false;
     }
   } };
   const OPEN_SET = new URLSearchParams(location.hash.slice(1)).get("set") || "";
@@ -174,8 +176,9 @@ var __objRest = (source, exclude) => {
   const QOPS = /* @__PURE__ */ new Set(["order", "close", "remove", "move", "split", "discount", "kDone", "kStart", "evAck"]), qidNew = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
   const QN = { order: "\u0437\u0430\u043C\u043E\u0432\u043B\u0435\u043D\u043D\u044F", close: "\u0437\u0430\u043A\u0440\u0438\u0442\u0442\u044F", remove: "\u0441\u043A\u0430\u0441\u0443\u0432\u0430\u043D\u043D\u044F", move: "\u043F\u0435\u0440\u0435\u043D\u0435\u0441\u0435\u043D\u043D\u044F", split: "\u0440\u043E\u0437\u0434\u0456\u043B\u0435\u043D\u043D\u044F", discount: "\u0437\u043D\u0438\u0436\u043A\u0430", kDone: "\u0433\u043E\u0442\u043E\u0432\u043E", kStart: "\u043A\u0443\u0445\u043D\u044F", evAck: "\u043F\u0456\u0434\u0442\u0432\u0435\u0440\u0434\u0436\u0435\u043D\u043D\u044F" };
   const offQ = () => store.get("offq", []), offSave = (q) => {
-    store.set("offq", q);
+    const ok2 = store.set("offq", q);
     offBanner();
+    return ok2;
   };
   const netErr = (e) => e instanceof TypeError || /не відповідає|fetch|network|load failed/i.test((e == null ? void 0 : e.message) || "");
   const offNow = () => S.offline || navigator.onLine === false;
@@ -351,7 +354,7 @@ var __objRest = (source, exclude) => {
   }, 2e4);
   const queue = (op, data) => {
     S.offline = true;
-    offSave([...offQ(), { op, data, at: Date.now() }]);
+    if (!offSave([...offQ(), { op, data, at: Date.now() }])) throw new Error("\u{1F4F4} \u041D\u0435\u043C\u0430\u0454 \u0437\u0432'\u044F\u0437\u043A\u0443, \u0430 \u043F\u0430\u043C'\u044F\u0442\u044C \u043F\u0440\u0438\u0441\u0442\u0440\u043E\u044E \u043D\u0435 \u0434\u0430\u043B\u0430 \u0437\u0431\u0435\u0440\u0435\u0433\u0442\u0438 \u0434\u0456\u044E \u2014 \u0457\u0457 \u041D\u0415 \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u043E. \u041F\u043E\u0432\u0442\u043E\u0440\u0456\u0442\u044C, \u043A\u043E\u043B\u0438 \u0437\u0432'\u044F\u0437\u043E\u043A \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u0442\u044C\u0441\u044F");
     try {
       offOverlay();
       render();

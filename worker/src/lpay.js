@@ -42,7 +42,7 @@ export async function tpayStart(env, b, at) {
   const due = (bill?.total ? tDue(bill) : 0) + extra; if (due < 1) return [{ error: 'paid' }, 400];
   const pct = TIPS.includes(+b.tip) ? +b.tip : 0, tip = b.tipSum != null ? Math.max(0, Math.min(due, Math.round(+b.tipSum || 0))) : Math.round(due * pct / 100), amount = due + tip; /* tipSum — сума з вікна «Хочу чек» */
   const id = Date.now().toString(36) + [...crypto.getRandomValues(new Uint8Array(3))].map(x => x.toString(16).padStart(2, '0')).join('');
-  await env.DB.put('tpp:' + id, JSON.stringify({ t, due, tip, amount, at: Date.now(), ...(items.length ? { items, comment: String(b.comment || '').slice(0, 300) } : {}) }), { expirationTtl: 3600 });
+  await env.DB.put('tpp:' + id, JSON.stringify({ t, due, tip, amount, at: Date.now(), ...(bill?.total ? { bo: bill.opened || 1 } : {}), ...(items.length ? { items, comment: String(b.comment || '').slice(0, 300) } : {}) }), { expirationTtl: 3600 });
   const f = await lpForm(lpKeys(env), { order_id: `tb-${env.VENUE || 'varvar'}-${id}`, amount, description: `Рахунок · стіл ${tn(t)}${tip ? ` · чайові ${tip} грн` : ''}`, result_url: siteLink(`?tpaid=${id}`), server_url: env.SELF_URL + '/api/lp/table' });
   if (!f.url) return [{ error: 'pay_fail', msg: f.error }, 502];
   return [{ ok: true, pay: f.url, id, sum: amount }, 200];
@@ -66,10 +66,11 @@ async function tablePaid(env, x) {
     const p = await env.DB.get('tpp:' + id, 'json'); if (!p) { if (lpOk(x)) await notify(env, `⚠️ Онлайн-оплата столу ${Math.round(+x.amount || 0)} грн прийшла пізніше години — не зараховано (${esc(String(x.order_id))}). Зарахуйте вручну або поверніть гроші в LiqPay.`).catch(() => {}); return { error: 'expired' }; }
     if (p.done) return { ok: true, dup: 1 };
     if (!lpOk(x)) { await env.DB.put('tpp:' + id, JSON.stringify({ ...p, fail: x.status || 'error' }), { expirationTtl: 3600 }); return { ok: true, fail: 1 }; }
+    if (p.bo) { const b0 = await getBill(env, p.t); if (!b0?.total || (b0.opened || 0) > p.bo) p.items = null; } /* 🧾 оплачували разом зі старим рахунком, а його вже закрили — нові страви не відкривають неповний рахунок (нижче — «рахунку немає», розбір вручну) */
     if (p.items?.length) await addWaiterOrder(env, { table: p.t, items: p.items }, '🌐 гість (QR)', ['💳 ОПЛАЧЕНО ОНЛАЙН', p.comment].filter(Boolean).join(' · '), 'сайт').catch(e => console.log('tpay items', e.message)); /* страви — на кухню й у рахунок */
     const amount = Math.round(+x.amount || 0), tip = Math.min(p.tip, amount), net = amount - tip, pay = { id, lp: String(x.payment_id || ''), order: String(x.order_id), amt: amount, at: Date.now(), ...(x.status === 'sandbox' ? { test: 1 } : {}) };
     const ok = await L(env, 'bills', async () => {
-      const b = await getBill(env, p.t); if (!b?.total) return false;
+      const b = await getBill(env, p.t); if (!b?.total || (p.bo && (b.opened || 0) > p.bo)) return false;
       b.paid = { sum: (b.paid?.sum || 0) + amount, net: (b.paid?.net || 0) + net, list: [...(b.paid?.list || []), pay] }; b.pwait = 1;
       if (tip) b.tip = (b.tip || 0) + tip;
       b.check = true; b.pay = 'online'; await putBill(env, p.t, b); return true;
@@ -100,7 +101,7 @@ export async function tpayApi(b, env, me) {
     for (const p of list) { const r = await lpRefund(k, p.order, p.amt); if (r.error) fails.push(`${p.amt} грн: ${r.error}`); }
     if (fails.length) return [{ error: 'LiqPay не повернув: ' + fails.join('; ') }, 400];
     const sum = list.reduce((a, p) => a + p.amt, 0);
-    if (gp) await L(env, 'bills', async () => { const x = await getBill(env, t); if (x?.go?.paid) { x.go.paid.ref = Date.now(); await putBill(env, t, x); } });
+    if (gp) await L(env, 'bills', async () => { const x = await getBill(env, t); if (x?.go?.paid) { x.go.refd = { ...x.go.paid, ref: Date.now() }; delete x.go.paid; await putBill(env, t, x); } /* ↩️ повернуто — більше не оплачено: закриття не рахує це онлайн-виручкою */ });
     else await L(env, 'bills', async () => { const x = await getBill(env, t); if (!x?.paid) return; const tip = x.paid.sum - x.paid.net; x.tip = Math.max(0, (x.tip || 0) - tip); if (!x.tip) delete x.tip; delete x.paid; delete x.pwait; delete x.pay; await putBill(env, t, x); });
     await ackEv(env, t, 'rej', who);
     await logEvent(env, { k: 'shift', by: who, text: `↩️ Стіл ${tn(t)}: повернуто гостю онлайн-оплату ${sum} грн` });

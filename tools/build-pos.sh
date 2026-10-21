@@ -4,5 +4,6 @@
 cd "$(dirname "$0")/.." || exit 1
 OUT=js/pos.joined.tmp.js
 { cat js/pos/_head.txt; for f in js/pos/[0-9]*.js; do printf '\n  // ===== %s =====\n' "$(basename "$f")"; cat "$f"; done; cat js/pos/_tail.txt; } > "$OUT"
-npx esbuild "$OUT" --target=es2017 --outfile=js/pos.build.js --log-level=warning && rm -f "$OUT" && echo "✅ js/pos.build.js"
+npx esbuild "$OUT" --target=es2017 --outfile=js/pos.build.js --log-level=warning || { echo "❌ esbuild: каса не зібралась"; exit 1; }
+rm -f "$OUT" && echo "✅ js/pos.build.js"
 node tools/supkb.mjs

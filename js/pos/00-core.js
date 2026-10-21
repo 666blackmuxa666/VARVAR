@@ -7,7 +7,7 @@
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const tn = t => +t > 2000 ? 'С‑' + (t - 2000) : +t > 1000 ? 'Д‑' + (t - 1000) : t; // 🛵 віртуальні столи доставки / самовивозу
   const money = n => `${Math.round(n || 0).toLocaleString('uk-UA')} ₴`;
-  const store = { get(k, d) { try { const v = localStorage.getItem('pos_' + (VENUE ? VENUE + '_' : '') + k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem('pos_' + (VENUE ? VENUE + '_' : '') + k, JSON.stringify(v)); } catch {} } };
+  const store = { get(k, d) { try { const v = localStorage.getItem('pos_' + (VENUE ? VENUE + '_' : '') + k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem('pos_' + (VENUE ? VENUE + '_' : '') + k, JSON.stringify(v)); return true; } catch { return false; } } };
   // 👑 вхід з кабінету власника: #tok=…&me=… (у якорі — не йде на сервер і в історію)
   const OPEN_SET = new URLSearchParams(location.hash.slice(1)).get('set') || ''; // 👑 з кабінету: одразу відкрити вкладку налаштувань (напр. повний редактор сайту)
   { const h = new URLSearchParams(location.hash.slice(1)); if (/^[a-f0-9]{32}$/.test(h.get('tok') || '')) { try { store.set('token', h.get('tok')); store.set('me', JSON.parse(h.get('me') || 'null')); } catch {} history.replaceState(null, '', location.pathname + location.search); } }
@@ -40,7 +40,7 @@
   // Поки дія в черзі, стіл показується вже зміненим (⏳) — офіціант бачить замовлене, а не порожній стіл.
   const QOPS = new Set(['order', 'close', 'remove', 'move', 'split', 'discount', 'kDone', 'kStart', 'evAck']), qidNew = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
   const QN = { order: 'замовлення', close: 'закриття', remove: 'скасування', move: 'перенесення', split: 'розділення', discount: 'знижка', kDone: 'готово', kStart: 'кухня', evAck: 'підтвердження' };
-  const offQ = () => store.get('offq', []), offSave = q => { store.set('offq', q); offBanner(); };
+  const offQ = () => store.get('offq', []), offSave = q => { const ok = store.set('offq', q); offBanner(); return ok; };
   const netErr = e => e instanceof TypeError || /не відповідає|fetch|network|load failed/i.test(e?.message || '');
   const offNow = () => S.offline || navigator.onLine === false;
   // ⏱ скільки каса без зв'язку: понад OFF_LONG — червона підказка «увімкніть роздачу з телефона» (фіскальні чеки без зв'язку не видаються);
@@ -102,7 +102,7 @@
   const offKick = () => { if (offQ().length) offFlush(); else if (S.offline && S.token) loadState().catch(() => {}); };
   addEventListener('online', offKick); addEventListener('offline', () => { S.offline = true; offBanner(); });
   setInterval(() => { if (offQ().length) offFlush(); }, 20000); // перевірка — лише коли є черга
-  const queue = (op, data) => { S.offline = true; offSave([...offQ(), { op, data, at: Date.now() }]); try { offOverlay(); render(); } catch {} return { ok: true, queued: true }; };
+  const queue = (op, data) => { S.offline = true; if (!offSave([...offQ(), { op, data, at: Date.now() }])) throw new Error('📴 Немає зв\'язку, а пам\'ять пристрою не дала зберегти дію — її НЕ записано. Повторіть, коли зв\'язок повернеться'); try { offOverlay(); render(); } catch {} return { ok: true, queued: true }; };
   async function api(op, data = {}, ms = 12000) {
     if (QOPS.has(op) && !data.qid) data = { ...data, qid: qidNew() };
     // 📴 уже відомо, що зв'язку нема, — у чергу одразу (не чекати 12 с на кожну дію); зв'язок перевірить сама черга

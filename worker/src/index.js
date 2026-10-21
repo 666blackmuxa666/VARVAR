@@ -55,7 +55,7 @@ export default {
     else req.headers.delete('x-venue-init');
     if (p === '/tg3' && req.method === 'POST') { // 📍 Live Location кур'єра приходить часто: частіше ніж раз на 2 хв не будимо Durable Object (пам'ять воркера; якщо скинулась — просто пройде зайве)
       let j = null; try { j = await req.clone().json(); } catch {} const em = j?.edited_message;
-      if (em?.location && em.chat) { const k = venue + '|' + em.chat.id, now = Date.now(); if (now - (LOCT.get(k) || 0) < 120e3) return new Response('ok'); if (LOCT.size > 500) LOCT.clear(); LOCT.set(k, now); }
+      if (em?.location && em.chat && req.headers.get('X-Telegram-Bot-Api-Secret-Token') === env.TG_SECRET) { /* лише справжній Telegram: чужий POST не приглушить кур'єра */ const k = venue + '|' + em.chat.id, now = Date.now(); if (now - (LOCT.get(k) || 0) < 120e3) return new Response('ok'); if (LOCT.size > 500) LOCT.clear(); LOCT.set(k, now); }
     }
     if (IN_STORE.test(p) && req.method !== 'OPTIONS') return cached(req0, p, async () => {
       const r = await env.STORE.get(env.STORE.idFromName(doName(venue))).fetch(req);

@@ -36,7 +36,7 @@ const fillPromo = async (env, b) => (await import('./promo.js')).promoFill(env, 
 const pay2 = b => Math.max(0, (b.total || 0) - (b.discSum ?? Math.round((b.total || 0) * (b.disc || 0) / 100)) - (b.bonus || 0) - (b.promo?.sum || 0));
 function card(t, b) {
   const g = b.go;
-  return [`🛵 <b>${tn(t)}</b> · ${g.when ? `<b>на ${g.when}</b>` : 'якнайшвидше'}${g.st === 'ready' ? ' · 🍽 <b>ГОТОВО</b>' : g.st === 'cook' ? ' · 🔥 готується' : ''}`,
+  return [`🛵 <b>${tn(t)}</b> · ${g.when ? `<b>на ${esc(g.when)}</b>` : 'якнайшвидше'}${g.st === 'ready' ? ' · 🍽 <b>ГОТОВО</b>' : g.st === 'cook' ? ' · 🔥 готується' : ''}`,
     `👤 ${esc(g.name || '')} · ${fmtPhone(g.phone)}`, `📍 ${esc(g.addr || '')}${g.ent ? ` (${esc(g.ent)})` : ''}`,
     `🍽 ${items(b).map(esc).join(', ')}${g.cut ? ` · 🍴${g.cut}` : ''}`,
     g.paid ? (pay2(b) > g.paid.sum + 1 ? `💳 оплачено онлайн ${g.paid.sum} ₴ · <b>доплата ${pay2(b) - g.paid.sum} ₴</b>` : '💳 <b>оплачено онлайн</b>') : `${g.pay === 'card' ? '💳 термінал' : '💵 готівка'} · до сплати <b>${pay2(b)} ₴</b>${g.change ? ` · решта з <b>${g.change}</b>` : ''}`,

@@ -105,14 +105,15 @@ export async function payOp(env, { n, t, sum, src, note, day }, by) {
   const d = dayKey(), money_ = t === 'adv' || t === 'paid', m = !money_ && isDay(day) ? mon(day) : mon(d); /* штраф / премія — у місяць самої зміни */
   src = src === 'card' ? 'card' : 'cash';
   // рух грошей і операція ЗП — під одним замком на обидва ключі; спершу читаємо обидва списки, потім пишемо підряд
-  const op = await L(env, ['mov:' + d, 'pay:' + m], async () => {
+  const d0 = Date.now(), op = await L(env, ['mov:' + d, 'pay:' + m], async () => {
     const k = 'mov:' + d, ml = money_ ? (await env.DB.get(k, 'json')) || [] : null, l = await getOps(env, m);
     let mov = null;
-    if (money_) { ml.push({ ts: Date.now(), at: hhmm(), type: src === 'card' ? 'salk' : 'salc', sum, note: `${n} · ${OPS[t].slice(2).toLowerCase()}${note ? ' · ' + note : ''}`, by: by || '' }); mov = { d, i: ml.length - 1 }; }
+    if (money_) { ml.push({ ts: d0, at: hhmm(), type: src === 'card' ? 'salk' : 'salc', sum, note: `${n} · ${OPS[t].slice(2).toLowerCase()}${note ? ' · ' + note : ''}`, by: by || '' }); mov = { d, i: ml.length - 1 }; }
     const op = { id: uid(), ts: Date.now(), day: d, n, t, sum, ...(money_ ? { src, mov } : {}), note: String(note || '').slice(0, 100), by: by || '' };
     if (money_) await env.DB.put(k, JSON.stringify(ml));
     l.push(op); await env.DB.put('pay:' + m, JSON.stringify(l)); return op;
   });
+  if (money_ && src === 'cash') { const f = await import('./fiscal.js'); if (f.fisOn(env)) await f.fisMov(env, d, d0, true); } // 🧾 зарплата готівкою з каси → службовий чек
   /* у стрічку не пишемо — її бачать усі; ЗП видно лише в розділі зарплат */
   return { op };
 }

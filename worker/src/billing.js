@@ -55,10 +55,9 @@ export async function billPaid(env, kind, x) {
     await say(env, `🤖 <b>Баланс ШІ</b> · ${esc(v.name)}: +${sum} грн${test ? ' · 🧪 тест' : ''}`);
     return { ok: true };
   }
-  if (!(await H.payOnce(pid))) return { ok: true, dup: 1 };
-  // sub: +1 місяць від пізнішої з дат (зараз / оплачено до)
-  const till = addMonth(Math.max(Date.now(), tillOf(v)));
-  await H.venueBill(vid, { locked: 0, paidTill: till, pay: { ts: Date.now(), sum, lp: pid, ...(test ? { test: 1 } : {}) }, ...(x.action === 'subscribe' || x.status === 'subscribed' ? { auto: 1, subOrder: String(x.order_id) } : {}), ...(v.status === 'off' || v.status === 'trial' ? { status: 'active' } : {}) });
+  // sub: +1 місяць від пізнішої з дат (зараз / оплачено до) — разом із позначкою платежу, однією дією реєстру
+  const sp = await H.subPaid(vid, pid, { locked: 0, pay: { ts: Date.now(), sum, lp: pid, ...(test ? { test: 1 } : {}) }, ...(x.action === 'subscribe' || x.status === 'subscribed' ? { auto: 1, subOrder: String(x.order_id) } : {}), ...(v.status === 'off' || v.status === 'trial' ? { status: 'active' } : {}) }, tillOf(v));
+  if (sp.dup) return { ok: true, dup: 1 }; if (sp.error) return { error: 'venue' }; const till = sp.till;
   // розблокування: 3 спроби; не вдалось — тривога платформі й позначка, щоб щоденна перевірка повторила
   let un = 0; for (let i = 0; i < 3 && !un; i++) un = await (await import('./owner.js')).callVenue(env, vid, '/__int/lock', { on: 0 }).then(() => 1, () => 0);
   if (!un) await H.venueBill(vid, { unlockErr: 1 });

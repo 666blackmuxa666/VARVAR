@@ -205,7 +205,7 @@ export async function goList(env, open) {
 export const locLine = g => g?.loc && g.st === 'road' ? ` · <a href="https://www.openstreetmap.org/?mlat=${g.loc.la}&mlon=${g.loc.lo}#map=16/${g.loc.la}/${g.loc.lo}">📍 ${Math.max(0, Math.round((Date.now() - g.loc.ts) / 60e3))} хв тому</a>` : '';
 export function goText(list) {
   if (!list.length) return '🛵 Активних доставок і самовивозів немає.';
-  return ['🛵 <b>Доставка і з собою</b>', ...list.map(g => `\n<b>${tn(g.t)}</b> · ${goStLabel(g.st)} · ${g.sum} грн${g.when ? ` · на ${g.when}` : ''}\n👤 ${esc(g.name)} ${fmtPhone(g.phone)}${g.kind === 'del' ? `\n📍 ${esc(g.addr)}` : ''}${g.cour ? `\n🛵 ${esc(g.cour)}${locLine(g)}` : ''}`)].join('\n');
+  return ['🛵 <b>Доставка і з собою</b>', ...list.map(g => `\n<b>${tn(g.t)}</b> · ${goStLabel(g.st)} · ${g.sum} грн${g.when ? ` · на ${esc(g.when)}` : ''}\n👤 ${esc(g.name)} ${fmtPhone(g.phone)}${g.kind === 'del' ? `\n📍 ${esc(g.addr)}` : ''}${g.cour ? `\n🛵 ${esc(g.cour)}${locLine(g)}` : ''}`)].join('\n');
 }
 export const goButtons = g => [[...(g.st !== 'road' && g.kind === 'del' ? [{ text: `🛵 ${tn(g.t)} поїхав`, callback_data: `gos:${g.t}:road` }] : []), ...(g.st !== 'ready' && g.st !== 'road' ? [{ text: '🍽 Готово', callback_data: `gos:${g.t}:ready` }] : []), { text: `🤝 ${tn(g.t)} видано`, callback_data: `gos:${g.t}:done` }]];
 

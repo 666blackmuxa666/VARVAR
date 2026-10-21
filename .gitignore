@@ -24,3 +24,10 @@ _team/video/*.aiff
 
 # 🗺 карта коду Graphify (локально)
 graphify-out/
+
+# 🕵️ звіти й службове Manus (щоденний аудит) — лише локально, не на сайт
+.manus/
+.work/
+outputs/
+PRODUCT.md
+.gitattributes

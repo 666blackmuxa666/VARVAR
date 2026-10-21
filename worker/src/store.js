@@ -6,6 +6,7 @@ import { handle } from './index.js';
 import { ALS, MAIN, doName, venueEnv, venueId } from './venue.js';
 import { SCHEMA, migrate } from './migrate.js';
 import { LEDGER_DDL, LEDGER_TABLES } from './ledgerdb.js';
+const LOCK_MS = 30000; // 🔒 скільки максимум тримається / чекається замок ключа (довгі дії — ПРРО, банк — вкладаються)
 
 const now = () => Date.now();
 // ключі, зміна яких оновлює екрани POS
@@ -110,9 +111,10 @@ export class Store extends DurableObject {
   async lock(k) {
     this.q ||= new Map(); const prev = this.q.get(k) || Promise.resolve();
     let rel; const mine = new Promise(r => { rel = r; }); const tail = prev.then(() => mine);
-    this.q.set(k, tail); await Promise.race([prev, new Promise(r => setTimeout(r, 8000))]); // попередній завис — не чекаємо вічно
-    const id = crypto.randomUUID(); (this.rel ||= new Map()).set(id, () => { rel(); if (this.q.get(k) === tail) this.q.delete(k); });
-    setTimeout(() => this.unlock(id), 8000); // запобіжник: запит упав — черга не зависає
+    this.q.set(k, tail); const done = () => { rel(); if (this.q.get(k) === tail) this.q.delete(k); };
+    if (!(await Promise.race([prev.then(() => 1), new Promise(r => setTimeout(r, LOCK_MS, 0))]))) { done(); throw new Error('Зайнято — спробуйте ще раз'); } // попередній завис — не заходимо поверх нього (інакше дві зміни перетруть одна одну), а відмовляємо
+    const id = crypto.randomUUID(); (this.rel ||= new Map()).set(id, done);
+    setTimeout(() => this.unlock(id), LOCK_MS); // запобіжник: запит упав і не відпустив — черга не зависає назавжди
     return id;
   }
   unlock(id) { const f = this.rel?.get(id); if (f) { this.rel.delete(id); f(); } }
