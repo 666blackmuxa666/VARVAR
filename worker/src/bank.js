@@ -9,6 +9,7 @@
 // оплата накладної, комісія еквайрингу та явна дія людини; «↩️ Скасувати» прибирає те, що створила звірка.
 import { L, dayKey, isDay, esc, money, notify } from './ops.js';
 import { aggOn, aggRx, agTotal } from './agg.js';
+import { CATS } from './income.js';
 
 const MAXL = 3000, MAXT = 2.5e6, WIN = 6, BACK = 30; // рядків за раз · символів файлу · днів довкола дати для пошуку пари
 const r2 = n => Math.round((+n || 0) * 100) / 100;
@@ -204,7 +205,7 @@ export async function bankList(env, m = dayKey().slice(0, 7)) {
 }
 const nextMonth = m => { const [y, mm] = m.split('-').map(Number); return mm === 12 ? `${y + 1}-01` : `${y}-${pad(mm + 1)}`; };
 
-// ✋ дія з рядком: exp (витрата з картки) · mov (внесення / вилучення з картки) · inv {ids} (оплата накладних) · acq {days} · skip {why} · un (повернути на підтвердження) · auto (спробувати ще раз)
+// ✋ дія з рядком: inc {cat} (дохід у книгу) · exp (витрата з картки) · mov (внесення / вилучення з картки) · inv {ids} (оплата накладних) · acq {days} · skip {why} · un (повернути на підтвердження) · auto (спробувати ще раз)
 export const WHY = { own: '🔁 Власний переказ', tax: '🏛 Податки / ЄСВ', sal: '👷 Зарплата', loan: '🏦 Кредит / депозит', other: '🙈 Інше' };
 export async function bankAct(env, id, a, p = {}, who = '') {
   id = String(id || ''); const m = /^\d{4}/.test(id) ? `20${id.slice(0, 2)}-${id.slice(2, 4)}` : ''; if (!m) return { error: 'Немає такого рядка' };
@@ -214,13 +215,15 @@ export async function bankAct(env, id, a, p = {}, who = '') {
     const today = dayKey(), d = x.d <= today ? x.d : today, note = `🏦 ${x.who ? x.who + ': ' : ''}${x.pur || 'банк'}`.slice(0, 100);
     if (a === 'un') {
       if (x.st === 'q') return { error: 'Рядок і так чекає підтвердження' };
-      const mm = x.m; if (mm?.new && mm.k === 'exp') await ops.delExpense(env, mm.i, mm.d); if (mm?.new && mm.k === 'mov') await ops.delMove(env, mm.i, mm.d); if (mm?.fe) await ops.delExpense(env, mm.fe.i, mm.fe.d);
+      const mm = x.m; if (mm?.new && mm.k === 'exp') await ops.delExpense(env, mm.i, mm.d); if (mm?.new && mm.k === 'mov') await ops.delMove(env, mm.i, mm.d); if (mm?.fe) await ops.delExpense(env, mm.fe.i, mm.fe.d); if (mm?.k === 'inc') await (await import('./income.js')).incDel(env, mm.id, { bank: 1 });
       const left = mm?.k === 'inv' && mm.new ? 'оплата накладних лишилась — скасуйте її у Складі, якщо треба' : '';
       delete x.m; delete x.why; x.st = 'q'; await env.DB.put('bank:' + m, JSON.stringify(l)); return { x, ...(left ? { warn: left } : {}) };
     }
     if (x.st !== 'q') return { error: 'Рядок уже розібрано — спершу «↩️ Скасувати»' };
     if (a === 'skip') { if (!WHY[p.why]) return { error: 'Оберіть причину' }; x.st = 'x'; x.why = p.why; }
     else if (a === 'exp') { if (x.sum > 0) return { error: 'Це надходження, а не витрата' }; const i = await ops.addExpense(env, { sum: -x.sum, src: 'card', note, by: who, bank: x.id }, d); x.m = { k: 'exp', d, i, new: 1 }; x.st = 'ok'; }
+    else if (a === 'inc') { if (x.sum < 0) return { error: 'Дохід — це надходження, а не списання' }; const I = await import('./income.js'), cat = CATS[p.cat || p.why] ? p.cat || p.why : 'other'; // 📒 надходження → книга доходів датою виписки
+      const r = await I.incAdd(env, { d: x.d, sum: x.sum, cat, note: `${x.who ? x.who + ': ' : ''}${x.pur || ''}`, bank: x.id }, who); if (r.error) return r; x.m = { k: 'inc', id: r.x.id, cat }; x.st = 'ok'; }
     else if (a === 'mov') { const e = await ops.addMove(env, { type: x.sum > 0 ? 'kin' : 'kout', sum: Math.abs(x.sum), note, by: who }); if (!e) return { error: 'Сума поза межами' };
       const i = (await ops.getMov(env)).findIndex(y => y.ts === e.ts); x.m = { k: 'mov', d: today, i, new: 1 }; x.st = 'ok'; }
     else if (a === 'inv' || a === 'acq' || a === 'agg' || a === 'auto') {
@@ -260,9 +263,10 @@ export const lineText = x => `${ICON[x.st]} ${x.d.slice(8)}.${x.d.slice(5, 7)} <
 export const matchText = x => { const m = x.m; if (x.st === 'x') return WHY[x.why] || ''; if (!m) return x.h === 'acq' ? '💳 схоже на еквайринг — сума не зійшлась з безготівкою днів' : x.h === 'agg' ? `🛵 ${x.sup || 'агрегатор'}: сума не зійшлась з продажами` : x.h === 'sup' ? `🏭 ${x.sup || 'постачальник'}: сума не збіглась з накладними` : '';
   if (m.k === 'acq') return `💳 еквайринг за ${m.days.map(d => d.slice(8) + '.' + d.slice(5, 7)).join(', ')} · безготівка ${money(m.gross)} · комісія ${money(m.fee)} (${m.gross ? Math.round(m.fee / m.gross * 1000) / 10 : 0}%)`;
   if (m.k === 'agg') return `🛵 ${m.n} за ${m.days[0].slice(8)}.${m.days[0].slice(5, 7)}${m.days.length > 1 ? '–' + m.days[m.days.length - 1].slice(8) + '.' + m.days[m.days.length - 1].slice(5, 7) : ''} · продажі ${money(m.gross)} · комісія ${money(m.fee)} (${m.gross ? Math.round(m.fee / m.gross * 1000) / 10 : 0}%)`;
-  if (m.k === 'inv') return `🧾 оплата накладних: ${m.ids.length}${m.new ? ' · позначено оплаченими' : ''}`; if (m.k === 'exp') return `💸 витрата з картки${m.new ? ' (записано звіркою)' : ''}`; if (m.k === 'mov') return `🔁 рух картки${m.new ? ' (записано звіркою)' : ''}`; return ''; };
+  if (m.k === 'inv') return `🧾 оплата накладних: ${m.ids.length}${m.new ? ' · позначено оплаченими' : ''}`; if (m.k === 'exp') return `💸 витрата з картки${m.new ? ' (записано звіркою)' : ''}`; if (m.k === 'mov') return `🔁 рух картки${m.new ? ' (записано звіркою)' : ''}`; if (m.k === 'inc') return '📒 у книзі доходів: ' + (CATS[m.cat] || CATS.other); return ''; };
 export const lineKb = x => x.st !== 'q' ? [[{ text: '↩️ Скасувати', callback_data: 'bnk:un:' + x.id }]] : [
   [x.sum < 0 ? { text: '💸 Витрата', callback_data: 'bnk:exp:' + x.id } : { text: '➕ Внесення', callback_data: 'bnk:mov:' + x.id }, x.sum < 0 ? { text: '➖ Вилучення', callback_data: 'bnk:mov:' + x.id } : { text: '🔎 Шукати пару', callback_data: 'bnk:auto:' + x.id }],
+  ...(x.sum > 0 ? [[{ text: '📒 Це дохід', callback_data: 'bnk:inc:' + x.id }, { text: '🏦 Позика', callback_data: 'bnk:skip:' + x.id + ':loan' }]] : []),
   [{ text: '🔁 Власний', callback_data: 'bnk:skip:' + x.id + ':own' }, { text: '🏛 Податки', callback_data: 'bnk:skip:' + x.id + ':tax' }, { text: '🙈 Інше', callback_data: 'bnk:skip:' + x.id + ':other' }]];
 export async function bankBotView(env) {
   const r = await bankList(env), L0 = r.last;

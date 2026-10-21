@@ -391,6 +391,9 @@ async function adminRest(b, env, who, ip, ok) {
     case 'ldgSale': { if (!isDay(b.day)) return [{ error: 'Дата — РРРР-ММ-ДД' }, 400]; return ok(await (await import('./ledger.js')).saleSync(env, b.day)); } // перерахувати продажі дня в обліку
     case 'ldgAudit': return ok({ list: await (await import('./ledger.js')).auditList(env, { ref: b.ref ? String(b.ref) : '', from: b.from, to: b.to, limit: b.limit }) });
     case 'taxSet': { const r = await taxSet(env, b); if (r.error) return [{ error: r.error }, 400]; return ok(await taxView(env)); }
+    case 'incGet': return ok(await (await import('./income.js')).incomeView(env, String(b.m || ''))); // 📒 книга доходів
+    case 'incAdd': { const I = await import('./income.js'), r = await I.incAdd(env, b, who); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 📒 Інший дохід ${money(r.x.sum)} · ${I.CATS[r.x.cat]}${r.x.note ? ' · ' + esc(r.x.note) : ''} — ${esc(who)}`).catch(() => {}); return ok(await I.incomeView(env, r.x.d.slice(0, 7))); }
+    case 'incDel': { const I = await import('./income.js'), r = await I.incDel(env, b.id); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 📒 ✕ Прибрано дохід ${money(r.x.sum)} (${r.x.d}) — ${esc(who)}`).catch(() => {}); return ok(await I.incomeView(env, r.x.d.slice(0, 7))); }
     case 'taxDone': { if (typeof b.key !== 'string' || !/^[a-zA-Z0-9]+:\d{4}-\d{2}-\d{2}$/.test(b.key)) return [{ error: 'Невірний ключ' }, 400]; await taxDone(env, b.key, b.v ? 1 : 0); return ok(await taxView(env)); }
     case 'stGet': { const m = await getMenu(env); return ok({ sts: await getStations(env), cats: m.categories.filter(c => !c.tech).map(c => ({ id: c.id, name: c.name.uk, g: groupOf(c.id), st: c.st || '' })) }); } // 🍳 цехи кухні
     case 'stSet': { const sts = await setStations(env, b.list, b.cats); await notify(env, `🖥 🍳 Цехи кухні: ${sts.length ? sts.map(x => esc(x.name)).join(', ') : 'вимкнено'} — ${esc(who)}`); return ok({ sts }); }

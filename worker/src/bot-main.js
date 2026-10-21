@@ -263,6 +263,11 @@ export async function handleUpdate(u, env) {
     const A = await import('./agg.js'), m = low.match(/^агрегатор\s+(.+?)\s+(\d+(?:[.,]\d+)?)\s*%?$/);
     if (m) { const l = await A.aggList(env), x = l.find(a => a.n.toLowerCase() === m[1].trim()); const r = await A.aggSet(env, x ? { id: x.id, fee: m[2].replace(',', '.') } : { n: text.trim().replace(/^агрегатор\s+/i, '').replace(/\s+\d+(?:[.,]\d+)?\s*%?$/, ''), fee: m[2].replace(',', '.') }); if (r.error) return send({ text: '⚠️ ' + r.error }); }
     return send(await A.aggBotView(env)); }
+  if (admin && (low === 'книга' || low === '📒 книга' || low === 'книга доходів' || low === '/income' || /^дохід\s+\d/.test(low))) { // 📒 етап 3: книга доходів — та сама, що в касі (⚙️ Налаштування → 📒)
+    const I = await import('./income.js');
+    if (low.startsWith('дохід')) { const p = I.incParse(text.trim().replace(/^дохід\s+/i, '')); if (!p) return send({ text: 'Напишіть: <code>дохід 5000 оренда</code>' });
+      const r = await I.incAdd(env, p, who); if (r.error) return send({ text: '⚠️ ' + r.error }); await notify(env, `🤖 📒 Інший дохід ${money(r.x.sum)} · ${I.CATS[r.x.cat]}${r.x.note ? ' · ' + esc(r.x.note) : ''} — ${esc(who)}`).catch(() => {}); }
+    return send({ text: await I.incBotText(env) }); }
   if (admin && (low === 'банк' || low === '🏦 банк' || low === '/bank')) { // 🏦 етап 2: місяць, дні без еквайрингу, черга «на підтвердження»
     if (!(await (await import('./ops.js')).modOn(env, 'bank'))) return send({ text: '🏦 Модуль «Банк і звірка» вимкнено. Увімкнути: напишіть <code>модулі</code>.' });
     const B = await import('./bank.js'), v = await B.bankBotView(env); await send({ text: v.text });

@@ -97,6 +97,7 @@ export async function taxDaily(env) {
   const h = +new Date().toLocaleString('en-GB', { timeZone: 'Europe/Kyiv', hour: '2-digit', hour12: false }) % 24; if (h < 9 || h >= 22) return;
   const tax = await getTax(env); if (!tax.kind || !tax.on) return;
   const flag = 'taxRem:' + dayKey(); if (await env.DB.get(flag)) return; await env.DB.put(flag, '1', { expirationTtl: 2 * 86400 });
+  await (await import('./income.js')).incWatch(env, tax).catch(e => console.log('incWatch', e.message)); // 📒 пороги ПДВ / групи — по понеділках
   const due = taxEvents(tax, dayKey(), 1, tax.lead).filter(e => !e.done && (e.left === 0 || e.left === -1 || e.left === tax.lead));
   if (!due.length) return;
   const chat = await env.DB.get('digchat'), lines = [];

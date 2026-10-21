@@ -265,7 +265,7 @@ export const getCert = async (env, code) => (await env.DB.get('cert:' + String(c
 export async function certPay(env, code, how, who, extra) {
   const c = await L(env, 'cert:' + code, async () => { const c = await getCert(env, code); if (!c || c.st !== 'new') return null; Object.assign(c, extra); c.st = how === 'no' ? 'no' : 'ok'; c.paid = how; c.paidAt = Date.now(); c.by = who; await env.DB.put('cert:' + code, JSON.stringify(c)); return c; });
   if (!c) return null;
-  if (c.st === 'ok') await addMove(env, { type: how === 'card' || how === 'online' ? 'kin' : 'in', sum: c.sum, note: `🎁 Сертифікат ${code} (${c.from})${how === 'online' ? ' · 🌐 онлайн' : ''}`, by: who }).catch(() => {}); // гроші за сертифікат — у касу / на картку
+  if (c.st === 'ok') await addMove(env, { type: how === 'card' || how === 'online' ? 'kin' : 'in', sum: c.sum, note: `🎁 Сертифікат ${code} (${c.from})${how === 'online' ? ' · 🌐 онлайн' : ''}`, by: who, inc: 'cert' }).catch(() => {}); // гроші за сертифікат — у касу / на картку
   await editEv(env, l => { for (const e of l) if (e.code === code) { e.s = c.st === 'ok' ? 'acc' : 'rej'; e.accBy = who; } }).catch(() => {});
   if (c.st === 'ok') await guestMsg(env, c.phone, `🎁 Сертифікат ${money(c.sum)} активовано!\nКод: <b>${code}</b>\nСторінка для подарунку: ${siteLink('about.html#cert=' + code)}`);
   return c;

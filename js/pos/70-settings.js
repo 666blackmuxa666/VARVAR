@@ -15,7 +15,7 @@
     const p = S.printer || {}, ok = p.seen && Date.now() - p.seen < 60e3;
     return `<div class="cards"><div class="card"><div class="big">${ok ? '✅ на звʼязку' : p.seen ? '❌ немає звʼязку' : '❌ програма друку не запущена'}</div>
       <div class="muted">${p.seen ? 'Останній звʼязок: ' + hhmm(p.seen) : ''} · у черзі: ${p.q ?? 0}</div>${p.q && isAdmin() ? '<div class="btnrow" style="margin-top:10px"><button class="btn sm" data-a="pQList">📋 Що в черзі</button><button class="btn sm red" data-a="pQClear">🗑 Очистити чергу</button></div>' : ''}</div>
-      <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">🖨 Тестовий друк</button><button class="btn" data-a="pQr">🔳 QR меню для столу</button><button class="btn" data-a="qrPanel">🔳 Усі QR-коди</button></div></div>${stCard()}${taxCard()}${prnCard()}`;
+      <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">🖨 Тестовий друк</button><button class="btn" data-a="pQr">🔳 QR меню для столу</button><button class="btn" data-a="qrPanel">🔳 Усі QR-коди</button></div></div>${stCard()}${taxCard()}${incCard()}${prnCard()}`;
   }
   // 🖨 що на який принтер (js/prnroute.js) — лише адмін; розподіл вантажиться раз при відкритті вкладки
   // 🍳 цехи кухні: свій екран, принтер і готовність; порожній список = як раніше (одна кухня)
@@ -68,6 +68,34 @@
     else if (a === 'pn') { const P = T.pn || {}, b = {}; for (const [k, l] of [['n', 'Продавець (повна назва ТОВ / ФОП)'], ['tin', 'ЄДРПОУ (8 цифр) або РНОКПП ФОП (10 цифр)'], ['ipn', 'ІПН платника ПДВ (12 цифр)'], ['sti', 'Код податкової (ДПІ), 4 цифри — напр. 2655'], ['boss', 'Посадова особа, що підписує (необовʼязково)'], ['bossN', 'РНОКПП посадової особи (необовʼязково)']]) { const v = await askVal(l, P[k] || ''); if (v == null) return; b[k] = v; } await taxDo({ pn: b }); }
     else if (a === 'done') { const r = await act('taxDone', { key: el.dataset.k, v: +el.dataset.v }, el.dataset.v === '1' ? '✅ Позначено' : '↩️ Знято'); if (r) S.txR = r; renderMain(); } });
   document.addEventListener('click', async e => { const el = e.target.closest('[data-txs]'); if (!el || !S.txR) return; const k = el.dataset.txs, on = S.txR.tax[k] ? 0 : 1; el.classList.toggle('on', !!on); await taxDo({ [k]: on }); }); // 📅 перемикачі ПДВ / нагадування
+  // 📒 книга доходів (worker/src/income.js): дохід за датою надходження грошей, ліміт групи ЄП і поріг ПДВ (1 млн за 12 міс.)
+  function incCard() {
+    if (!isAdmin() || !modOn('tax')) return '';
+    const R = S.incR, mn = m => new Date(m + '-15T12:00:00').toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' });
+    const hd = m => `<div class="card" style="margin-top:12px"><h3>📒 Книга доходів${m ? ' · ' + esc(mn(m)) : ''}</h3>`;
+    if (!R) { if (!S.incL) { S.incL = 1; api('incGet', { m: S.incM || '' }).then(r => { S.incR = r; S.incL = 0; renderMain(); }).catch(() => { S.incL = 0; }); } return hd('') + '<div class="muted">Завантаження…</div></div>'; }
+    const t = R.t, s = R.sum, dm = d => d.slice(8) + '.' + d.slice(5, 7), now = new Date().toISOString().slice(0, 7);
+    const bar = (p, l) => `<div style="margin:6px 0 10px"><div class="muted" style="font-size:12px;margin-bottom:4px">${l}</div><div style="height:8px;border-radius:4px;background:var(--line,#333);overflow:hidden"><div style="height:100%;width:${Math.min(100, p)}%;background:${p >= 95 ? 'var(--red)' : p >= 80 ? 'var(--orange,#e9a23b)' : 'var(--accent)'}"></div></div></div>`;
+    const part = r => [r.cert ? '🎁 ' + money(r.cert) : '', r.dep ? '💰 ' + money(r.dep) : '', r.oth ? '💼 ' + money(r.oth) : ''].filter(Boolean).join(' · ');
+    return hd(R.m) + `<div class="btns" style="margin-bottom:8px"><button class="btn sm" data-inc="m" data-v="-1">‹</button><button class="btn sm" data-inc="m" data-v="1" ${R.m >= now ? 'disabled' : ''}>›</button><button class="btn sm primary" data-inc="add">➕ Інший дохід</button></div>
+      <div class="muted" style="font-size:12px;margin-bottom:8px">Дохід — у день, коли надійшли гроші: чеки без чайових (картка й агрегатори — у день продажу), продаж сертифікатів, передоплати й інший дохід. Чайові, внесення, власні перекази й позики — не дохід. ⚠️ Орієнтовно — звірте з бухгалтером.</div>
+      <div class="widgets">${[['🧾 Продажі', money(t.sale)], ['🎁 Сертифікати', money(t.cert)], ['💰 Передоплати', money(t.dep)], ['💼 Інший', money(t.oth)], ['📒 Разом за місяць', money(t.tot)], [`📊 З початку ${s.y}`, money(s.ytd)]].map(([l, v]) => `<div class="widget"><span>${l}</span><b class="money">${v}</b></div>`).join('')}</div>
+      ${s.lim ? bar(s.limPct, `Ліміт ${esc(s.kind.slice(3))} групи ЄП: ${money(s.ytd)} з ${money(s.lim)} · ${s.limPct}%`) : ''}
+      ${s.pdv ? '' : bar(s.pdvPct, `Поріг ПДВ за 12 міс. (${dm(s.from + '-01').slice(3)}–зараз): ${money(s.roll)} з 1 000 000 ₴ · ${s.pdvPct}%${s.pdvPct >= 100 ? ' — потрібна реєстрація платником ПДВ' : ''}`)}
+      ${R.bankQ.n ? `<div class="kv" style="color:var(--red)"><span>⚠️ На рахунок надійшло ${R.bankQ.n} оп. на ${money(R.bankQ.sum)}, ще не розібрано — 💰 Каса → 🏦 Банк: «📒 Це дохід» чи інше</span></div>` : ''}
+      ${R.other.length ? `<h3 class="muted" style="margin:12px 0 6px;font-size:14px">💼 Інший дохід</h3>${R.other.map(x => `<div class="kv"><span style="min-width:0;overflow-wrap:anywhere">${dm(x.d)} · ${esc(R.cats[x.cat] || x.cat)}${x.note ? `<br><small class="muted">${esc(x.note)}</small>` : ''}</span><span style="display:flex;gap:6px;align-items:center"><b class="money">${money(x.sum)}</b>${x.bank ? '<small class="muted">🏦</small>' : `<button class="btn sm" data-inc="del" data-id="${esc(x.id)}" aria-label="Прибрати">✕</button>`}</span></div>`).join('')}` : ''}
+      <details style="margin-top:10px"><summary>По днях · ${R.days.length}</summary>${R.days.map(r => `<div class="kv"><span>${dm(r.d)}${r.n ? ` · чеків ${r.n}` : ''}${part(r) ? `<br><small class="muted">🧾 ${money(r.sale)} · ${part(r)}</small>` : ''}</span><b class="money">${money(r.tot)}</b></div>`).join('') || '<div class="muted">Доходу цього місяця ще немає</div>'}</details></div>`;
+  }
+  document.addEventListener('click', async e => { const el = e.target.closest('button[data-inc]'); if (!el || !S.incR) return; const a = el.dataset.inc;
+    if (a === 'm') { const [y, m] = S.incR.m.split('-').map(Number), t = y * 12 + m - 1 + +el.dataset.v; S.incM = `${Math.floor(t / 12)}-${String(t % 12 + 1).padStart(2, '0')}`; S.incR = null; renderMain(); return; }
+    if (a === 'del') { if (!(await confirmBox('✕ Прибрати цей дохід з книги?'))) return; const r = await act('incDel', { id: el.dataset.id }, '✕ Прибрано'); if (r) { S.incR = r; renderMain(); } return; }
+    if (a === 'add') {
+      const sum = await askVal('Сума, ₴', '', 'number'); if (!sum) return;
+      const cat = await choose('💼 Що це за дохід?', 'Чеки, сертифікати й передоплати каса рахує сама', Object.entries(S.incR.cats).map(([val, label]) => ({ label, val }))); if (!cat) return;
+      const note = await askVal('Від кого / за що (необовʼязково)', ''); if (note == null) return;
+      const d = await askVal('Дата надходження (РРРР-ММ-ДД)', new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' })); if (!d) return;
+      const r = await act('incAdd', { sum: +String(sum).replace(',', '.'), cat, note, d }, '📒 Записано'); if (r) { S.incR = r; S.incM = r.m; renderMain(); } }
+  });
   function prnCard() {
     if (!isAdmin() || !window.PRN) return '';
     if (!S.prnR) { if (!S.prnL) { S.prnL = 1; api('rcptGet', {}).then(r => { S.prnR = { route: r.route || { st: [] }, dev: r.dev }; renderMain(); }).catch(() => { S.prnL = 0; }); } return '<div class="card" style="margin-top:12px"><h3>🖨 Що на який принтер</h3><div class="muted">Завантаження…</div></div>'; }

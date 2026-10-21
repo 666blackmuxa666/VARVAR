@@ -146,7 +146,7 @@
     const line = (x, btns) => `<div class="kv" style="align-items:flex-start;gap:10px"><span style="min-width:0;overflow-wrap:anywhere">${{ ok: '✅', q: '⚠️', x: '🙈' }[x.st]} ${bkD(x.d)} · ${esc(x.who || '—')}${x.pur ? `<br><small class="muted">${esc(x.pur.slice(0, 160))}</small>` : ''}${x.mt ? `<br><small>${esc(x.mt)}</small>` : ''}${btns ? `<div class="btns" style="margin-top:6px;flex-wrap:wrap">${btns}</div>` : ''}</span>${sg(x)}</div>`;
     const b = (k, id, l) => `<button class="btn sm" data-a="bkAct" data-k="${k}" data-id="${id}">${l}</button>`;
     const qb = x => x.sum < 0 ? b('inv', x.id, '🧾 Накладні') + b('exp', x.id, '💸 Витрата') + b('mov', x.id, '➖ Вилучення') + b('auto', x.id, '🔎 Пара') + b('skip', x.id, '🙈 Пропустити')
-      : b('acq', x.id, '💳 Еквайринг') + (modOn('agg') ? b('agg', x.id, '🛵 Агрегатор') : '') + b('mov', x.id, '➕ Внесення') + b('auto', x.id, '🔎 Пара') + b('skip', x.id, '🙈 Пропустити');
+      : b('acq', x.id, '💳 Еквайринг') + (modOn('agg') ? b('agg', x.id, '🛵 Агрегатор') : '') + (modOn('tax') ? b('inc', x.id, '📒 Це дохід') : '') + b('mov', x.id, '➕ Внесення') + b('auto', x.id, '🔎 Пара') + b('skip', x.id, '🙈 Пропустити');
     const head = `<div class="card"><h3>🏦 Банк · ${esc(mn)}</h3><div class="btns" style="flex-wrap:wrap;align-items:center"><button class="btn sm" data-a="bkM" data-t="-1">‹</button><button class="btn sm" data-a="bkM" data-t="1">›</button>
       <label class="btn sm primary" style="cursor:pointer">📎 Завантажити виписку<input id="bankFile" type="file" accept=".txt,.csv,.tsv" hidden></label></div>
       <div class="muted" style="font-size:12px;margin-top:8px">Файл з інтернет-банку: «Експорт у 1С» (.txt) або CSV. Повторне завантаження не дублює. Еквайринг, оплати накладних і записані витрати зіставляються самі${r.last ? ` · останній імпорт ${new Date(r.last.ts).toLocaleDateString('uk-UA')} (${r.last.n})` : ''}.</div></div>`;
@@ -175,6 +175,7 @@
   document.addEventListener('change', e => { const el = e.target; if (el.id !== 'bankFile' || !el.files?.[0]) return; const f = el.files[0]; el.value = ''; bankFile(f); });
   async function bkAct(k, id) {
     let p = {};
+    if (k === 'inc') { const c = await choose('📒 Записати в книгу доходів', 'Датою виписки. Позика, повернення чи власні гроші — це не дохід: для них «🙈 Пропустити»', [['b2b', '🏢 Банкет / кейтеринг компанії'], ['rent', '🏠 Оренда / суборенда'], ['svc', '🤝 Послуги'], ['other', '💼 Інший дохід']].map(([val, label]) => ({ label, val }))); if (!c) return; p.cat = c; }
     if (k === 'skip') { const why = await choose('🙈 Пропустити', 'Що це за операція? У касі нічого не зміниться', BK_WHY.map(([v, label]) => ({ label, val: v }))); if (!why) return; p.why = why; }
     if (k === 'un' && !(await confirmBox('↩️ Скасувати звірку?', 'Витрату чи рух, які записала звірка, буде видалено, а рядок повернеться на підтвердження'))) return;
     if (k === 'exp' && !(await confirmBox('💸 Записати витрату з картки?', 'Сума піде у витрати дня виписки'))) return;
@@ -191,7 +192,7 @@
       const ag = g.length === 1 ? g[0].id : await choose('🛵 Від якого агрегатора виплата?', `${bkD(x.d)} · ${money(x.sum)}`, g.map(a => ({ label: a.n, val: a.id }))); if (!ag) return;
       const v = await modal({ title: '🛵 За які дні продажів ця виплата?', body: `<div style="max-height:50vh;overflow:auto">${ds.map(d => `<label class="kv"><span><input type="checkbox" class="bkDay" value="${d}"> ${bkD(d)}</span></label>`).join('')}</div>`, buttons: [{ label: '✅ Зіставити', val: 'ok', cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
       p.ag = ag; p.days = v === 'ok' ? [...document.querySelectorAll('.bkDay:checked')].map(i => i.value) : []; closeModal(); if (!p.days.length) return; }
-    const r = await act('bankAct', { id, a: k, ...p }, '✅ Готово'); if (r?.warn) toast('⚠️ ' + r.warn); if (r) loadView();
+    const r = await act('bankAct', { id, a: k, ...p }, '✅ Готово'); if (r?.warn) toast('⚠️ ' + r.warn); if (r) { S.incR = null; loadView(); } // 📒 книга доходів перечитається
   }
   on('bkAct', async (el) => { bkAct(el.dataset.k, el.dataset.id); return; });
   on('bkM', async (el) => { const m = S.data.bank?.m || new Date().toISOString().slice(0, 7); let [y, mm] = m.split('-').map(Number); mm += +el.dataset.t; if (mm < 1) { mm = 12; y--; } if (mm > 12) { mm = 1; y++; } S.bankM = `${y}-${String(mm).padStart(2, '0')}`; S.data.bank = null; renderMain(); loadView(); return; });

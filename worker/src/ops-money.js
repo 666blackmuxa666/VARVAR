@@ -25,7 +25,7 @@ export const getMov = async (env, day = dayKey()) => (await env.DB.get('mov:' + 
 export const SUM_MAX = 1e6; // 🛡 стеля однієї грошової операції в касі (грн): відсікає Infinity/1e15/сміття
 async function _addMove(env, m) {
   if (!MOVE[m.type] || !(m.sum > 0 && m.sum <= SUM_MAX)) return null;
-  const k = 'mov:' + dayKey(), l = await getMov(env); const e = { ts: Date.now(), at: hhmm(), type: m.type, sum: Math.round(m.sum), note: String(m.note || '').slice(0, 100), by: m.by || '' };
+  const k = 'mov:' + dayKey(), l = await getMov(env); const e = { ts: Date.now(), at: hhmm(), type: m.type, sum: Math.round(m.sum), note: String(m.note || '').slice(0, 100), by: m.by || '', ...(m.inc === 'cert' || m.inc === 'dep' ? { inc: m.inc } : {}) }; // 📒 inc — дохід у книзі (сертифікат / передоплата)
   l.push(e); await env.DB.put(k, JSON.stringify(l));
   /* у стрічку не пишемо — рухи грошей видно лише в касі */
   return e;

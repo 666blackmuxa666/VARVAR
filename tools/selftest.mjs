@@ -1336,6 +1336,32 @@ async function loyTests(A, W, dish) {
     must(xp.sections.some(s => s.id === 'bank' && s.rows.some(r => String(r[7]).endsWith(RUN))), 'банку немає в експорті');
     return `безготівка ${C} ₴ · комісія ${a.m.fee} ₴`;
   });
+  await step('📒 книга доходів: продажі дня = чеки без чайових; інший дохід вручну й з виписки («це дохід» → книга, «скасувати» → зникає); межі; пороги; експорт; офіціанту заборонено', async () => {
+    const ok = (r, w) => { must(r.status === 200 && !r.j.error, w + ': ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 200)); return r.j; };
+    const day = new Date(Date.now() + 2 * 3600e3).toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' }), m = day.slice(0, 7);
+    const v0 = ok(await vpos(VA, 'incGet', {}), 'книга'); must(v0.m === m && v0.sum?.pdvLim === 1e6 && v0.cats?.rent && Array.isArray(v0.sum.months) && v0.sum.months.length === 12, 'книга: ' + JSON.stringify(v0).slice(0, 200));
+    const rep = ok(await vpos(VA, 'report', { from: day, to: day }), 'звіт'), rev = rep.checks.reduce((a, c) => a + c.sum - (c.tip || 0), 0), d0 = v0.days.find(x => x.d === day);
+    must(Math.abs((d0?.sale || 0) - rev) < 0.05, `продажі дня ${d0?.sale} ≠ чеки без чайових ${rev}`);
+    must(v0.days.every(x => Math.abs(x.tot - (x.sale + x.cert + x.dep + x.oth)) < 0.011), 'разом дня ≠ сума частин');
+    must((await pos(users.waiter?.token, 'incGet')).status === 403, 'офіціант бачить книгу доходів');
+    must((await vpos(VA, 'incAdd', { sum: -5, cat: 'rent' })).status === 400, 'мінусовий дохід');
+    must((await vpos(VA, 'incAdd', { sum: 10, d: '2099-01-01' })).status === 400, 'дохід у майбутньому');
+    const v1 = ok(await vpos(VA, 'incAdd', { sum: 1500.5, cat: 'b2b', note: 'QA банкет ' + RUN, d: day }), 'інший дохід'), x1 = v1.other.find(x => x.note === 'QA банкет ' + RUN);
+    must(x1 && x1.cat === 'b2b' && Math.abs(v1.t.oth - v0.t.oth - 1500.5) < 0.011 && Math.abs(v1.sum.ytd - v0.sum.ytd - 1500.5) < 0.011 && Math.abs(v1.sum.roll - v0.sum.roll - 1500.5) < 0.011, 'інший дохід не в книзі / році / 12 міс.');
+    const OWN = 'UA213223130000026007233566001', d = new Date(Date.now() + 2 * 3600e3).toLocaleDateString('uk-UA', { timeZone: 'Europe/Kyiv', day: '2-digit', month: '2-digit', year: 'numeric' });
+    const f = ['1CClientBankExchange', 'ВерсияФормата=1.02', 'РасчСчет=' + OWN, 'СекцияДокумент=Платежное поручение', 'Номер=9', 'Дата=' + d, 'Сумма=2000.00', 'ПлательщикСчет=UA443052990000026003333333333', 'Плательщик=ТОВ Замовник', 'ПлательщикИНН=32323232', 'ПолучательСчет=' + OWN, 'ДатаПоступило=' + d, 'НазначениеПлатежа=Оплата банкету ' + RUN, 'КонецДокумента', 'КонецФайла'].join('\r\n');
+    ok(await vpos(VA, 'bankImp', { text: f }), 'виписка'); const bl = ok(await vpos(VA, 'bankList'), 'банк').list.find(x => x.pur === 'Оплата банкету ' + RUN); must(bl?.st === 'q', 'надходження не на підтвердженні: ' + bl?.st);
+    must(ok(await vpos(VA, 'incGet', {}), 'книга').bankQ.n >= 1, 'книга не попередила про нерозібране надходження');
+    const bx = ok(await vpos(VA, 'bankAct', { id: bl.id, a: 'inc', cat: 'b2b' }), 'це дохід').x; must(bx.st === 'ok' && bx.m.k === 'inc', 'це дохід: ' + JSON.stringify(bx).slice(0, 160));
+    const v2 = ok(await vpos(VA, 'incGet', {}), 'книга'), x2 = v2.other.find(x => x.bank === bl.id); must(x2 && x2.sum === 2000 && x2.d === day, 'дохід з виписки не в книзі');
+    must((await vpos(VA, 'incDel', { id: x2.id })).status === 400, 'дохід з виписки прибрано повз банк');
+    ok(await vpos(VA, 'bankAct', { id: bl.id, a: 'un' }), 'скасувати'); must(!ok(await vpos(VA, 'incGet', {}), 'книга').other.some(x => x.bank === bl.id), 'скасування в банку не прибрало дохід');
+    ok(await vpos(VA, 'bankAct', { id: bl.id, a: 'skip', why: 'loan' }), 'позика');
+    const xp = ok(await vpos(VA, 'acctExport', { from: day, to: day }), 'експорт'), si = xp.sections.find(s => s.id === 'inc'), so = xp.sections.find(s => s.id === 'incOth');
+    must(si && si.rows.every(r => r.length === si.head.length) && so?.rows.some(r => r[2] === 'QA банкет ' + RUN), 'книги немає в експорті');
+    const v3 = ok(await vpos(VA, 'incDel', { id: x1.id }), 'прибрати'); must(!v3.other.some(x => x.id === x1.id) && Math.abs(v3.t.oth - v0.t.oth) < 0.011, 'прибраний дохід лишився');
+    return `продажі дня ${Math.round(rev)} ₴ · 12 міс. ${v3.sum.pdvPct}% порогу ПДВ`;
+  });
   await step('🛵 агрегатори: модуль вимкнено → оплата 400; Glovo як спосіб оплати → окремо в зміні й чеку; права й межі; видалення чека віднімає; виплата у виписці → комісія витратою; бот', async () => {
     const ok = (r, w) => { must(r.status === 200 && !r.j.error, w + ': ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 200)); return r.j; };
     const it = (await http(`/v/${VID}/api/menu`)).j.categories.flatMap(c => c.items).find(i => typeof i.price === 'number');

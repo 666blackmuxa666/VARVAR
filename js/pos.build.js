@@ -4321,7 +4321,7 @@ var __objRest = (source, exclude) => {
     const sg = (x) => `<b class="money" style="color:${x.sum > 0 ? "var(--green)" : "inherit"}">${x.sum > 0 ? "+" : "\u2212"}${money(Math.abs(x.sum))}</b>`;
     const line = (x, btns) => `<div class="kv" style="align-items:flex-start;gap:10px"><span style="min-width:0;overflow-wrap:anywhere">${{ ok: "\u2705", q: "\u26A0\uFE0F", x: "\u{1F648}" }[x.st]} ${bkD(x.d)} \xB7 ${esc(x.who || "\u2014")}${x.pur ? `<br><small class="muted">${esc(x.pur.slice(0, 160))}</small>` : ""}${x.mt ? `<br><small>${esc(x.mt)}</small>` : ""}${btns ? `<div class="btns" style="margin-top:6px;flex-wrap:wrap">${btns}</div>` : ""}</span>${sg(x)}</div>`;
     const b = (k, id, l) => `<button class="btn sm" data-a="bkAct" data-k="${k}" data-id="${id}">${l}</button>`;
-    const qb = (x) => x.sum < 0 ? b("inv", x.id, "\u{1F9FE} \u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0456") + b("exp", x.id, "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0430") + b("mov", x.id, "\u2796 \u0412\u0438\u043B\u0443\u0447\u0435\u043D\u043D\u044F") + b("auto", x.id, "\u{1F50E} \u041F\u0430\u0440\u0430") + b("skip", x.id, "\u{1F648} \u041F\u0440\u043E\u043F\u0443\u0441\u0442\u0438\u0442\u0438") : b("acq", x.id, "\u{1F4B3} \u0415\u043A\u0432\u0430\u0439\u0440\u0438\u043D\u0433") + (modOn("agg") ? b("agg", x.id, "\u{1F6F5} \u0410\u0433\u0440\u0435\u0433\u0430\u0442\u043E\u0440") : "") + b("mov", x.id, "\u2795 \u0412\u043D\u0435\u0441\u0435\u043D\u043D\u044F") + b("auto", x.id, "\u{1F50E} \u041F\u0430\u0440\u0430") + b("skip", x.id, "\u{1F648} \u041F\u0440\u043E\u043F\u0443\u0441\u0442\u0438\u0442\u0438");
+    const qb = (x) => x.sum < 0 ? b("inv", x.id, "\u{1F9FE} \u041D\u0430\u043A\u043B\u0430\u0434\u043D\u0456") + b("exp", x.id, "\u{1F4B8} \u0412\u0438\u0442\u0440\u0430\u0442\u0430") + b("mov", x.id, "\u2796 \u0412\u0438\u043B\u0443\u0447\u0435\u043D\u043D\u044F") + b("auto", x.id, "\u{1F50E} \u041F\u0430\u0440\u0430") + b("skip", x.id, "\u{1F648} \u041F\u0440\u043E\u043F\u0443\u0441\u0442\u0438\u0442\u0438") : b("acq", x.id, "\u{1F4B3} \u0415\u043A\u0432\u0430\u0439\u0440\u0438\u043D\u0433") + (modOn("agg") ? b("agg", x.id, "\u{1F6F5} \u0410\u0433\u0440\u0435\u0433\u0430\u0442\u043E\u0440") : "") + (modOn("tax") ? b("inc", x.id, "\u{1F4D2} \u0426\u0435 \u0434\u043E\u0445\u0456\u0434") : "") + b("mov", x.id, "\u2795 \u0412\u043D\u0435\u0441\u0435\u043D\u043D\u044F") + b("auto", x.id, "\u{1F50E} \u041F\u0430\u0440\u0430") + b("skip", x.id, "\u{1F648} \u041F\u0440\u043E\u043F\u0443\u0441\u0442\u0438\u0442\u0438");
     const head = `<div class="card"><h3>\u{1F3E6} \u0411\u0430\u043D\u043A \xB7 ${esc(mn)}</h3><div class="btns" style="flex-wrap:wrap;align-items:center"><button class="btn sm" data-a="bkM" data-t="-1">\u2039</button><button class="btn sm" data-a="bkM" data-t="1">\u203A</button>
       <label class="btn sm primary" style="cursor:pointer">\u{1F4CE} \u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0438\u0442\u0438 \u0432\u0438\u043F\u0438\u0441\u043A\u0443<input id="bankFile" type="file" accept=".txt,.csv,.tsv" hidden></label></div>
       <div class="muted" style="font-size:12px;margin-top:8px">\u0424\u0430\u0439\u043B \u0437 \u0456\u043D\u0442\u0435\u0440\u043D\u0435\u0442-\u0431\u0430\u043D\u043A\u0443: \xAB\u0415\u043A\u0441\u043F\u043E\u0440\u0442 \u0443 1\u0421\xBB (.txt) \u0430\u0431\u043E CSV. \u041F\u043E\u0432\u0442\u043E\u0440\u043D\u0435 \u0437\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F \u043D\u0435 \u0434\u0443\u0431\u043B\u044E\u0454. \u0415\u043A\u0432\u0430\u0439\u0440\u0438\u043D\u0433, \u043E\u043F\u043B\u0430\u0442\u0438 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0438\u0445 \u0456 \u0437\u0430\u043F\u0438\u0441\u0430\u043D\u0456 \u0432\u0438\u0442\u0440\u0430\u0442\u0438 \u0437\u0456\u0441\u0442\u0430\u0432\u043B\u044F\u044E\u0442\u044C\u0441\u044F \u0441\u0430\u043C\u0456${r.last ? ` \xB7 \u043E\u0441\u0442\u0430\u043D\u043D\u0456\u0439 \u0456\u043C\u043F\u043E\u0440\u0442 ${new Date(r.last.ts).toLocaleDateString("uk-UA")} (${r.last.n})` : ""}.</div></div>`;
@@ -4370,6 +4370,11 @@ var __objRest = (source, exclude) => {
   });
   async function bkAct(k, id) {
     let p = {};
+    if (k === "inc") {
+      const c = await choose("\u{1F4D2} \u0417\u0430\u043F\u0438\u0441\u0430\u0442\u0438 \u0432 \u043A\u043D\u0438\u0433\u0443 \u0434\u043E\u0445\u043E\u0434\u0456\u0432", "\u0414\u0430\u0442\u043E\u044E \u0432\u0438\u043F\u0438\u0441\u043A\u0438. \u041F\u043E\u0437\u0438\u043A\u0430, \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F \u0447\u0438 \u0432\u043B\u0430\u0441\u043D\u0456 \u0433\u0440\u043E\u0448\u0456 \u2014 \u0446\u0435 \u043D\u0435 \u0434\u043E\u0445\u0456\u0434: \u0434\u043B\u044F \u043D\u0438\u0445 \xAB\u{1F648} \u041F\u0440\u043E\u043F\u0443\u0441\u0442\u0438\u0442\u0438\xBB", [["b2b", "\u{1F3E2} \u0411\u0430\u043D\u043A\u0435\u0442 / \u043A\u0435\u0439\u0442\u0435\u0440\u0438\u043D\u0433 \u043A\u043E\u043C\u043F\u0430\u043D\u0456\u0457"], ["rent", "\u{1F3E0} \u041E\u0440\u0435\u043D\u0434\u0430 / \u0441\u0443\u0431\u043E\u0440\u0435\u043D\u0434\u0430"], ["svc", "\u{1F91D} \u041F\u043E\u0441\u043B\u0443\u0433\u0438"], ["other", "\u{1F4BC} \u0406\u043D\u0448\u0438\u0439 \u0434\u043E\u0445\u0456\u0434"]].map(([val, label]) => ({ label, val })));
+      if (!c) return;
+      p.cat = c;
+    }
     if (k === "skip") {
       const why = await choose("\u{1F648} \u041F\u0440\u043E\u043F\u0443\u0441\u0442\u0438\u0442\u0438", "\u0429\u043E \u0446\u0435 \u0437\u0430 \u043E\u043F\u0435\u0440\u0430\u0446\u0456\u044F? \u0423 \u043A\u0430\u0441\u0456 \u043D\u0456\u0447\u043E\u0433\u043E \u043D\u0435 \u0437\u043C\u0456\u043D\u0438\u0442\u044C\u0441\u044F", BK_WHY.map(([v, label]) => ({ label, val: v })));
       if (!why) return;
@@ -4421,7 +4426,10 @@ var __objRest = (source, exclude) => {
     }
     const r = await act("bankAct", __spreadValues({ id, a: k }, p), "\u2705 \u0413\u043E\u0442\u043E\u0432\u043E");
     if (r == null ? void 0 : r.warn) toast("\u26A0\uFE0F " + r.warn);
-    if (r) loadView();
+    if (r) {
+      S.incR = null;
+      loadView();
+    }
   }
   on("bkAct", async (el) => {
     bkAct(el.dataset.k, el.dataset.id);
@@ -4994,7 +5002,7 @@ var __objRest = (source, exclude) => {
     const p = S.printer || {}, ok2 = p.seen && Date.now() - p.seen < 6e4;
     return `<div class="cards"><div class="card"><div class="big">${ok2 ? "\u2705 \u043D\u0430 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : p.seen ? "\u274C \u043D\u0435\u043C\u0430\u0454 \u0437\u0432\u02BC\u044F\u0437\u043A\u0443" : "\u274C \u043F\u0440\u043E\u0433\u0440\u0430\u043C\u0430 \u0434\u0440\u0443\u043A\u0443 \u043D\u0435 \u0437\u0430\u043F\u0443\u0449\u0435\u043D\u0430"}</div>
       <div class="muted">${p.seen ? "\u041E\u0441\u0442\u0430\u043D\u043D\u0456\u0439 \u0437\u0432\u02BC\u044F\u0437\u043E\u043A: " + hhmm(p.seen) : ""} \xB7 \u0443 \u0447\u0435\u0440\u0437\u0456: ${(_a2 = p.q) != null ? _a2 : 0}</div>${p.q && isAdmin() ? '<div class="btnrow" style="margin-top:10px"><button class="btn sm" data-a="pQList">\u{1F4CB} \u0429\u043E \u0432 \u0447\u0435\u0440\u0437\u0456</button><button class="btn sm red" data-a="pQClear">\u{1F5D1} \u041E\u0447\u0438\u0441\u0442\u0438\u0442\u0438 \u0447\u0435\u0440\u0433\u0443</button></div>' : ""}</div>
-      <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">\u{1F5A8} \u0422\u0435\u0441\u0442\u043E\u0432\u0438\u0439 \u0434\u0440\u0443\u043A</button><button class="btn" data-a="pQr">\u{1F533} QR \u043C\u0435\u043D\u044E \u0434\u043B\u044F \u0441\u0442\u043E\u043B\u0443</button><button class="btn" data-a="qrPanel">\u{1F533} \u0423\u0441\u0456 QR-\u043A\u043E\u0434\u0438</button></div></div>${stCard()}${taxCard()}${prnCard()}`;
+      <div class="card" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-a="pTest">\u{1F5A8} \u0422\u0435\u0441\u0442\u043E\u0432\u0438\u0439 \u0434\u0440\u0443\u043A</button><button class="btn" data-a="pQr">\u{1F533} QR \u043C\u0435\u043D\u044E \u0434\u043B\u044F \u0441\u0442\u043E\u043B\u0443</button><button class="btn" data-a="qrPanel">\u{1F533} \u0423\u0441\u0456 QR-\u043A\u043E\u0434\u0438</button></div></div>${stCard()}${taxCard()}${incCard()}${prnCard()}`;
   }
   const stNew = () => "c" + Math.random().toString(36).slice(2, 7);
   function stCard() {
@@ -5135,6 +5143,72 @@ var __objRest = (source, exclude) => {
     const k = el.dataset.txs, on2 = S.txR.tax[k] ? 0 : 1;
     el.classList.toggle("on", !!on2);
     await taxDo({ [k]: on2 });
+  });
+  function incCard() {
+    if (!isAdmin() || !modOn("tax")) return "";
+    const R = S.incR, mn = (m) => (/* @__PURE__ */ new Date(m + "-15T12:00:00")).toLocaleDateString("uk-UA", { month: "long", year: "numeric" });
+    const hd = (m) => `<div class="card" style="margin-top:12px"><h3>\u{1F4D2} \u041A\u043D\u0438\u0433\u0430 \u0434\u043E\u0445\u043E\u0434\u0456\u0432${m ? " \xB7 " + esc(mn(m)) : ""}</h3>`;
+    if (!R) {
+      if (!S.incL) {
+        S.incL = 1;
+        api("incGet", { m: S.incM || "" }).then((r) => {
+          S.incR = r;
+          S.incL = 0;
+          renderMain();
+        }).catch(() => {
+          S.incL = 0;
+        });
+      }
+      return hd("") + '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div></div>';
+    }
+    const t = R.t, s = R.sum, dm2 = (d) => d.slice(8) + "." + d.slice(5, 7), now = (/* @__PURE__ */ new Date()).toISOString().slice(0, 7);
+    const bar = (p, l) => `<div style="margin:6px 0 10px"><div class="muted" style="font-size:12px;margin-bottom:4px">${l}</div><div style="height:8px;border-radius:4px;background:var(--line,#333);overflow:hidden"><div style="height:100%;width:${Math.min(100, p)}%;background:${p >= 95 ? "var(--red)" : p >= 80 ? "var(--orange,#e9a23b)" : "var(--accent)"}"></div></div></div>`;
+    const part = (r) => [r.cert ? "\u{1F381} " + money(r.cert) : "", r.dep ? "\u{1F4B0} " + money(r.dep) : "", r.oth ? "\u{1F4BC} " + money(r.oth) : ""].filter(Boolean).join(" \xB7 ");
+    return hd(R.m) + `<div class="btns" style="margin-bottom:8px"><button class="btn sm" data-inc="m" data-v="-1">\u2039</button><button class="btn sm" data-inc="m" data-v="1" ${R.m >= now ? "disabled" : ""}>\u203A</button><button class="btn sm primary" data-inc="add">\u2795 \u0406\u043D\u0448\u0438\u0439 \u0434\u043E\u0445\u0456\u0434</button></div>
+      <div class="muted" style="font-size:12px;margin-bottom:8px">\u0414\u043E\u0445\u0456\u0434 \u2014 \u0443 \u0434\u0435\u043D\u044C, \u043A\u043E\u043B\u0438 \u043D\u0430\u0434\u0456\u0439\u0448\u043B\u0438 \u0433\u0440\u043E\u0448\u0456: \u0447\u0435\u043A\u0438 \u0431\u0435\u0437 \u0447\u0430\u0439\u043E\u0432\u0438\u0445 (\u043A\u0430\u0440\u0442\u043A\u0430 \u0439 \u0430\u0433\u0440\u0435\u0433\u0430\u0442\u043E\u0440\u0438 \u2014 \u0443 \u0434\u0435\u043D\u044C \u043F\u0440\u043E\u0434\u0430\u0436\u0443), \u043F\u0440\u043E\u0434\u0430\u0436 \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0456\u0432, \u043F\u0435\u0440\u0435\u0434\u043E\u043F\u043B\u0430\u0442\u0438 \u0439 \u0456\u043D\u0448\u0438\u0439 \u0434\u043E\u0445\u0456\u0434. \u0427\u0430\u0439\u043E\u0432\u0456, \u0432\u043D\u0435\u0441\u0435\u043D\u043D\u044F, \u0432\u043B\u0430\u0441\u043D\u0456 \u043F\u0435\u0440\u0435\u043A\u0430\u0437\u0438 \u0439 \u043F\u043E\u0437\u0438\u043A\u0438 \u2014 \u043D\u0435 \u0434\u043E\u0445\u0456\u0434. \u26A0\uFE0F \u041E\u0440\u0456\u0454\u043D\u0442\u043E\u0432\u043D\u043E \u2014 \u0437\u0432\u0456\u0440\u0442\u0435 \u0437 \u0431\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u043E\u043C.</div>
+      <div class="widgets">${[["\u{1F9FE} \u041F\u0440\u043E\u0434\u0430\u0436\u0456", money(t.sale)], ["\u{1F381} \u0421\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438", money(t.cert)], ["\u{1F4B0} \u041F\u0435\u0440\u0435\u0434\u043E\u043F\u043B\u0430\u0442\u0438", money(t.dep)], ["\u{1F4BC} \u0406\u043D\u0448\u0438\u0439", money(t.oth)], ["\u{1F4D2} \u0420\u0430\u0437\u043E\u043C \u0437\u0430 \u043C\u0456\u0441\u044F\u0446\u044C", money(t.tot)], [`\u{1F4CA} \u0417 \u043F\u043E\u0447\u0430\u0442\u043A\u0443 ${s.y}`, money(s.ytd)]].map(([l, v]) => `<div class="widget"><span>${l}</span><b class="money">${v}</b></div>`).join("")}</div>
+      ${s.lim ? bar(s.limPct, `\u041B\u0456\u043C\u0456\u0442 ${esc(s.kind.slice(3))} \u0433\u0440\u0443\u043F\u0438 \u0404\u041F: ${money(s.ytd)} \u0437 ${money(s.lim)} \xB7 ${s.limPct}%`) : ""}
+      ${s.pdv ? "" : bar(s.pdvPct, `\u041F\u043E\u0440\u0456\u0433 \u041F\u0414\u0412 \u0437\u0430 12 \u043C\u0456\u0441. (${dm2(s.from + "-01").slice(3)}\u2013\u0437\u0430\u0440\u0430\u0437): ${money(s.roll)} \u0437 1 000 000 \u20B4 \xB7 ${s.pdvPct}%${s.pdvPct >= 100 ? " \u2014 \u043F\u043E\u0442\u0440\u0456\u0431\u043D\u0430 \u0440\u0435\u0454\u0441\u0442\u0440\u0430\u0446\u0456\u044F \u043F\u043B\u0430\u0442\u043D\u0438\u043A\u043E\u043C \u041F\u0414\u0412" : ""}`)}
+      ${R.bankQ.n ? `<div class="kv" style="color:var(--red)"><span>\u26A0\uFE0F \u041D\u0430 \u0440\u0430\u0445\u0443\u043D\u043E\u043A \u043D\u0430\u0434\u0456\u0439\u0448\u043B\u043E ${R.bankQ.n} \u043E\u043F. \u043D\u0430 ${money(R.bankQ.sum)}, \u0449\u0435 \u043D\u0435 \u0440\u043E\u0437\u0456\u0431\u0440\u0430\u043D\u043E \u2014 \u{1F4B0} \u041A\u0430\u0441\u0430 \u2192 \u{1F3E6} \u0411\u0430\u043D\u043A: \xAB\u{1F4D2} \u0426\u0435 \u0434\u043E\u0445\u0456\u0434\xBB \u0447\u0438 \u0456\u043D\u0448\u0435</span></div>` : ""}
+      ${R.other.length ? `<h3 class="muted" style="margin:12px 0 6px;font-size:14px">\u{1F4BC} \u0406\u043D\u0448\u0438\u0439 \u0434\u043E\u0445\u0456\u0434</h3>${R.other.map((x) => `<div class="kv"><span style="min-width:0;overflow-wrap:anywhere">${dm2(x.d)} \xB7 ${esc(R.cats[x.cat] || x.cat)}${x.note ? `<br><small class="muted">${esc(x.note)}</small>` : ""}</span><span style="display:flex;gap:6px;align-items:center"><b class="money">${money(x.sum)}</b>${x.bank ? '<small class="muted">\u{1F3E6}</small>' : `<button class="btn sm" data-inc="del" data-id="${esc(x.id)}" aria-label="\u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438">\u2715</button>`}</span></div>`).join("")}` : ""}
+      <details style="margin-top:10px"><summary>\u041F\u043E \u0434\u043D\u044F\u0445 \xB7 ${R.days.length}</summary>${R.days.map((r) => `<div class="kv"><span>${dm2(r.d)}${r.n ? ` \xB7 \u0447\u0435\u043A\u0456\u0432 ${r.n}` : ""}${part(r) ? `<br><small class="muted">\u{1F9FE} ${money(r.sale)} \xB7 ${part(r)}</small>` : ""}</span><b class="money">${money(r.tot)}</b></div>`).join("") || '<div class="muted">\u0414\u043E\u0445\u043E\u0434\u0443 \u0446\u044C\u043E\u0433\u043E \u043C\u0456\u0441\u044F\u0446\u044F \u0449\u0435 \u043D\u0435\u043C\u0430\u0454</div>'}</details></div>`;
+  }
+  document.addEventListener("click", async (e) => {
+    const el = e.target.closest("button[data-inc]");
+    if (!el || !S.incR) return;
+    const a = el.dataset.inc;
+    if (a === "m") {
+      const [y, m] = S.incR.m.split("-").map(Number), t = y * 12 + m - 1 + +el.dataset.v;
+      S.incM = `${Math.floor(t / 12)}-${String(t % 12 + 1).padStart(2, "0")}`;
+      S.incR = null;
+      renderMain();
+      return;
+    }
+    if (a === "del") {
+      if (!await confirmBox("\u2715 \u041F\u0440\u0438\u0431\u0440\u0430\u0442\u0438 \u0446\u0435\u0439 \u0434\u043E\u0445\u0456\u0434 \u0437 \u043A\u043D\u0438\u0433\u0438?")) return;
+      const r = await act("incDel", { id: el.dataset.id }, "\u2715 \u041F\u0440\u0438\u0431\u0440\u0430\u043D\u043E");
+      if (r) {
+        S.incR = r;
+        renderMain();
+      }
+      return;
+    }
+    if (a === "add") {
+      const sum = await askVal("\u0421\u0443\u043C\u0430, \u20B4", "", "number");
+      if (!sum) return;
+      const cat = await choose("\u{1F4BC} \u0429\u043E \u0446\u0435 \u0437\u0430 \u0434\u043E\u0445\u0456\u0434?", "\u0427\u0435\u043A\u0438, \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438 \u0439 \u043F\u0435\u0440\u0435\u0434\u043E\u043F\u043B\u0430\u0442\u0438 \u043A\u0430\u0441\u0430 \u0440\u0430\u0445\u0443\u0454 \u0441\u0430\u043C\u0430", Object.entries(S.incR.cats).map(([val, label]) => ({ label, val })));
+      if (!cat) return;
+      const note = await askVal("\u0412\u0456\u0434 \u043A\u043E\u0433\u043E / \u0437\u0430 \u0449\u043E (\u043D\u0435\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E)", "");
+      if (note == null) return;
+      const d = await askVal("\u0414\u0430\u0442\u0430 \u043D\u0430\u0434\u0445\u043E\u0434\u0436\u0435\u043D\u043D\u044F (\u0420\u0420\u0420\u0420-\u041C\u041C-\u0414\u0414)", (/* @__PURE__ */ new Date()).toLocaleDateString("sv-SE", { timeZone: "Europe/Kyiv" }));
+      if (!d) return;
+      const r = await act("incAdd", { sum: +String(sum).replace(",", "."), cat, note, d }, "\u{1F4D2} \u0417\u0430\u043F\u0438\u0441\u0430\u043D\u043E");
+      if (r) {
+        S.incR = r;
+        S.incM = r.m;
+        renderMain();
+      }
+    }
   });
   function prnCard() {
     if (!isAdmin() || !window.PRN) return "";

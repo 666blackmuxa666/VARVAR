@@ -37,6 +37,11 @@ export async function acctExport(env, from, to) {
     sections.push({ id: 'bank', title: 'Банк (виписка)', head: ['Дата', '№', 'Надійшло', 'Списано', 'Контрагент', 'ЄДРПОУ / ІПН', 'Рахунок', 'Призначення', 'Звірка'],
       rows: [...bk.map(x => [x.d, x.no || '', x.sum > 0 ? r2(x.sum) : '', x.sum < 0 ? r2(-x.sum) : '', x.who || '', x.code || '', x.iban || '', x.pur || '', ({ ok: '✅ ', q: '⚠️ на підтвердження', x: '' }[x.st] || '') + matchText(x)]),
         ['Разом', '', r2(bk.reduce((a, x) => a + (x.sum > 0 ? x.sum : 0), 0)), r2(-bk.reduce((a, x) => a + (x.sum < 0 ? x.sum : 0), 0)), '', '', '', '', '']] }); }
+  { const I = await import('./income.js'), mo = []; for (const m of mm) mo.push(await I.incMonth(env, m)); // 📒 книга доходів (за датою надходження)
+    const ds = mo.flatMap(x => x.days).filter(x => x.d >= from && x.d <= to), oth = mo.flatMap(x => x.other).filter(x => x.d >= from && x.d <= to).sort((a, b) => (a.d < b.d ? -1 : 1)), T = k => r2(ds.reduce((a, x) => a + x[k], 0));
+    sections.push({ id: 'inc', title: 'Книга доходів', head: ['Дата', 'Продажі (без чайових)', 'з них безготівка', 'Сертифікати', 'Передоплати', 'Інший дохід', 'Разом'],
+      rows: [...ds.map(x => [x.d, x.sale, x.card, x.cert, x.dep, x.oth, x.tot]), ['Разом', T('sale'), T('card'), T('cert'), T('dep'), T('oth'), T('tot')]] });
+    if (oth.length) sections.push({ id: 'incOth', title: 'Інший дохід', head: ['Дата', 'Вид', 'Від кого / за що', 'Сума', 'З виписки'], rows: oth.map(x => [x.d, I.CATS[x.cat] || x.cat, x.note || '', x.sum, x.bank ? 'так' : '']) }); }
   return { from, to, sections };
 }
 
