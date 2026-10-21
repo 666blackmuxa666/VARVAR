@@ -64,6 +64,7 @@ export async function posApi(b, req, env) {
   // 🧮 Розрахунок: склад, техкарти, накладні, інвентаризація — свої права (адмін / кухар)
   if (/^sk[A-Z]/.test(b.op || '')) return stockApi(b, env, me, { invoice: aiInvoice, card: aiCard, dups: aiDups });
   if (/^zp[A-Z]/.test(b.op || '')) return payApi(b, env, me); // 👷 зміни й зарплата
+  if (/^api(Keys|KeyNew|KeyDel|KeyHook|HookTest)$/.test(b.op || '')) return (await import('./api-v1.js')).apiAdmin(b, env, me); // 🔌 ключі API партнерів (кабінет)
   if (me.role === 'cook' && !['logout', 'state', 'zpMy', 'zpIn', 'zpOut', 'zpSwap', 'zpSwapStep', 'zpPeople', 'avatar', 'menu', 'fav', 'order', 'accept', 'reject', 'stop', 'kitchen', 'kDone', 'kStart', 'kUndo', 'kMsg', 'evCom', 'chatSay', 'jsErr', 'evComDel', 'evRx', 'evSeen', 'evVoice', 'evVoiceGet', 'evNames', 'printTest', 'tabJobs', 'tabAck', 'ideaAdd', 'ideaList', 'ideaDel', 'ideaThr', 'ideaSay', 'ideaSeen', 'help', 'taskList', 'taskMark', 'taskPh', 'lookV'].includes(b.op)) return [{ error: 'Кухар — лише черга, замовлення й стоп-лист' }, 403];
 
   // 🛵 кур'єр: лише свої доставки

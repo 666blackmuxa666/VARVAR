@@ -843,6 +843,53 @@ async function loyTests(A, W, dish) {
     for (const m of l) { must((await o('inboxSet', { id: m.id })).ok, 'done'); must((await o('inboxSet', { id: m.id, del: 1 })).ok, 'del'); }
     must(!(await o('inbox')).list.some(m => m.text.startsWith(tag)), 'не видалилось'); });
 
+  sect('🔌 API партнерів (v1)');
+  if (A && dish) {
+    const ah = (path, key, o = {}) => fetch(API + '/api/v1/' + path, { method: o.body ? 'POST' : 'GET', headers: { 'content-type': 'application/json', ...(key ? { authorization: 'Bearer ' + key } : {}), ...(o.h || {}) }, body: o.body ? JSON.stringify(o.body) : undefined }).then(async r => ({ status: r.status, etag: r.headers.get('etag'), j: await r.json().catch(() => ({})) }));
+    let key = '', kid = '', key2 = '', oid = '';
+    await step('🔑 apiKeyNew: лише адмін, http-webhook — ні; ключ і секрет не видно в списку', async () => {
+      if (W) must((await pos(W, 'apiKeyNew', { name: 'QA', sc: ['menu'] })).status === 403, 'офіціант створив ключ');
+      must((await pos(A, 'apiKeyNew', { name: 'QA', sc: ['menu'], hook: 'http://example.com/h' })).status === 400, 'http webhook прийнято');
+      const r = await posOk(A, 'apiKeyNew', { name: 'QA ' + RUN, sc: ['menu', 'orders'] }); key = r.key; kid = r.id; must(/^atk_[a-f0-9]{8}_[a-f0-9]{32}$/.test(key), key);
+      const r2 = await posOk(A, 'apiKeyNew', { name: 'QA2 ' + RUN, sc: ['sales', 'orders'], hook: 'https://example.com/h' }); key2 = r2.key; must(/^whs_/.test(r2.hs || ''), 'немає секрету webhook');
+      const l = JSON.stringify(await posOk(A, 'apiKeys')); must(l.includes(kid) && !l.includes(key.slice(13)) && !l.includes(key2.slice(13)) && !l.includes(r2.hs), 'ключ або секрет видно в списку');
+    });
+    await step('🔐 без ключа / підроблений → 401; без права → 403', async () => {
+      must((await ah('ping')).status === 401, 'без ключа');
+      must((await ah('ping', key.slice(0, -1) + (key.endsWith('0') ? '1' : '0'))).status === 401, 'підроблений ключ');
+      must((await ah('sales', key)).status === 403, 'sales без права');
+      must((await ah('menu', key2)).status === 403, 'menu без права');
+      const p = await ah('ping', key); must(p.status === 200 && p.j.scopes.includes('orders'), JSON.stringify(p.j));
+    });
+    await step('🍽 GET menu + ETag → 304', async () => {
+      const m = await ah('menu', key); must(m.status === 200 && m.j.categories?.length && m.etag, String(m.status));
+      must(m.j.categories.flatMap(c => c.items).some(i => i.id === dish.id), 'страви немає');
+      must((await ah('menu', key, { h: { 'if-none-match': m.etag } })).status === 304, 'не 304');
+    });
+    await step('🛵 POST orders: створює; повтор ext_id — без дубля; ліміт сайту не чіпає; чужий ключ статус не бачить', async () => {
+      const ext = 'qa-' + RUN, body = { ext_id: ext, type: 'pickup', customer: { name: 'QA API', phone: '0670007' + String(Math.floor(Math.random() * 900) + 100) }, time: '12:00', payment: 'cash', items: [{ id: dish.id, qty: 2 }] };
+      must((await ah('orders', key, { body: { ...body, ext_id: '' } })).status === 400, 'без ext_id');
+      must((await ah('orders', key, { body: { ...body, type: 'x' } })).status === 400, 'невідомий type');
+      const r = await ah('orders', key, { body }); must(r.status === 200 && r.j.ok && /^[a-f0-9]{10}$/.test(r.j.id) && r.j.total === dish.price * 2, JSON.stringify(r.j)); oid = r.j.id;
+      const r2 = await ah('orders', key, { body }); must(r2.j.id === oid && r2.j.duplicate, 'дубль: ' + JSON.stringify(r2.j));
+      for (let i = 0; i < 3; i++) { const x = await ah('orders', key, { body: { ...body, ext_id: ext + '-' + i } }); must(x.status === 200, 'ліміт гостей сайту зачепив API: ' + x.status); }
+      const s = await ah('orders/' + oid, key); must(s.status === 200 && s.j.status === 'new' && s.j.ext_id === ext, JSON.stringify(s.j));
+      must((await ah('orders/' + oid, key2)).status === 404, 'чужий ключ бачить замовлення');
+    });
+    await step('📊 GET sales: чеки за день; діапазон > 31 дня → 400', async () => {
+      const s = await ah('sales', key2); must(s.status === 200 && Array.isArray(s.j.checks), JSON.stringify(s.j).slice(0, 200));
+      must((await ah('sales?from=2026-01-01&to=2026-03-01', key2)).status === 400, 'великий діапазон');
+    });
+    await step('🔐 /api/go: _api від гостя не знімає ліміт сайту', async () => {
+      const b = { kind: 'pick', name: 'QA Хакер API', phone: '0670008' + String(Math.floor(Math.random() * 900) + 100), when: '12:00', pay: 'cash', items: [{ id: dish.id, q: 1 }], device: 'qa-api-' + RUN, _api: 'x' };
+      const st = []; for (let i = 0; i < 4; i++) st.push((await http('/api/go', b)).status); must(st.includes(429), 'ліміт не спрацював: ' + st);
+    });
+    await step('🗑 відкликаний ключ → 401', async () => {
+      await posOk(A, 'apiKeyDel', { id: kid }); must((await ah('ping', key)).status === 401, 'працює після відкликання');
+      for (const k of (await posOk(A, 'apiKeys')).list.filter(k => k.name.endsWith(' ' + RUN))) await posOk(A, 'apiKeyDel', { id: k.id });
+    });
+  }
+
   sect('🖨 Черга друку: список і очищення');
   await step('printQ / printClear', async () => { await posOk(A, 'printTest'); await posOk(A, 'printTest'); const l = (await posOk(A, 'printQ')).list; must(l.length >= 2, 'черга ' + l.length);
     must((await pos(W, 'printClear', {})).status === 403, 'офіціант очистив'); const one = await posOk(A, 'printClear', { id: l[0].id }); must(one.n === 1, 'одне');

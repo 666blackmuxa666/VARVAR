@@ -53,7 +53,7 @@ export class Store extends DurableObject {
     if (req.headers.get('Upgrade') !== 'websocket') { // увесь запит — тут, база локальна
       const venue = req.headers.get('x-venue') || MAIN, DB = localDB(this, this.env.DB, venue);
       if (venue !== MAIN && !(await DB.get('cfg:venue')) && !req.headers.get('x-venue-init')) return Response.json({ error: 'venue_not_found' }, { status: 404 }); // 🏪 заклад ще не створено в HUB
-      const env = { ...(await venueEnv(this.env, venue, DB)), DB, INSTORE: 1 };
+      const env = { ...(await venueEnv(this.env, venue, DB)), DB, INSTORE: 1, WAKE: ms => this.wake(ms) }; // WAKE — підтягнути будильник (webhook API за хвилину)
       if (this.venue !== venue) { this.venue = venue; if ((await this.ctx.storage.get('__venue')) !== venue) await this.ctx.storage.put('__venue', venue); } // ⏰ будильнику треба знати, чий він
       if (this.schema !== SCHEMA) { // 🧬 дані закладу — до поточної версії (один раз на запуск об'єкта; паралельні запити чекають ту саму міграцію)
         this.mig ||= ALS.run({ venue }, () => migrate(env)).then(v => { this.schema = v; }, () => {}).finally(() => { this.mig = null; });

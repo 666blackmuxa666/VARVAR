@@ -370,6 +370,7 @@ export async function reviewQueue(env, ph, sum) { if (!ph) return; const c = awa
 export async function cron(env) {
   const now = Date.now(), out = []; let next = now + 3600e3; const soon = t => { if (t < next) next = t; }; // ⏰ коли закладу прокинутись наступного разу (store.js alarm)
   if (await (await import('./courier.js')).courWatch(env).catch(() => false)) soon(now + 60e3); // 🛵 ніхто не взяв доставку
+  { const n = await (await import('./api-v1.js')).apiTick(env).catch(e => (console.log('api', e.message), 0)); if (n) soon(n); } // 🔌 статуси замовлень партнерам (webhook)
   await autoDay(env).catch(e => console.log('autoZ', e.message)); // 🌙 автоматичний Z за минулий день
   await (await import('./brand.js')).brandBots(env).catch(e => console.log('brand', e.message)); // 🎨 аватари й описи ботів (раз на версію)
   await (await import('./backup.js')).backupDaily(env).catch(e => console.log('backup', e.message)); // 💾 щоночі

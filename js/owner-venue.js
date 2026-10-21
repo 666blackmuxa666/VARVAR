@@ -12,7 +12,7 @@ window.OWNV = ctx => {
     if (!r.ok || j.error) throw new Error(errText(j.error) || 'Помилка ' + r.status); return j;
   }
   const errText = e => ({ admin: 'Потрібні права адміна', image: 'Невірний формат картинки', too_big: 'Завеликий файл', not_found: 'Не знайдено' }[e] || e);
-  const SEC0 = [['start', '🚀 Запуск'], ['venue', '🏪 Заклад і каса'], ['site', '🌐 Сайт'], ['menu', '🍽 Меню'], ['go', '🛵 Доставка'], ['staff', '👥 Персонал'], ['bots', '🤖 Боти'], ['printer', '🖨 Принтер'], ['dz', '🎨 Друк і дизайн'], ['pay', '💳 Оплата'], ['mig', '📥 Перехід'], ['log', '🛡 Журнал і копії']];
+  const SEC0 = [['start', '🚀 Запуск'], ['venue', '🏪 Заклад і каса'], ['site', '🌐 Сайт'], ['menu', '🍽 Меню'], ['go', '🛵 Доставка'], ['staff', '👥 Персонал'], ['bots', '🤖 Боти'], ['printer', '🖨 Принтер'], ['dz', '🎨 Друк і дизайн'], ['pay', '💳 Оплата'], ['mig', '📥 Перехід'], ['api', '🔌 API'], ['log', '🛡 Журнал і копії']];
   /* 🚀 Запуск — лише поки заклад не налаштований (VARVAR — ніколи) */
   const doneKey = id => 'own_ready_' + id, isDone = id => { if (id === 'varvar') return true; try { return localStorage.getItem(doneKey(id)) === '1'; } catch { return false; } };
   const secs = () => SEC0.filter(([k]) => k !== 'start' || !isDone(S.cfgV?.id));
@@ -39,6 +39,7 @@ window.OWNV = ctx => {
       if (sec === 'pay') { const [bl, g] = await Promise.all([api('bill', { venue: id }), vapi(id, 'goCfg').catch(() => ({}))]); v.d = { ...bl, go: g.cfg || {}, glp: g.lp, prov: g.prov, main: g.main, ref: (await api('ref', { venue: id }).catch(() => ({}))).ref }; if (g.lp) v.d.onl = (await vapi(id, 'onlList', { days: 30 }).catch(() => ({}))).list || []; [v.d.fis, v.d.menu] = await Promise.all([vapi(id, 'fisInfo', { check: 1 }).catch(() => null), vapi(id, 'menu').then(m => m.menu).catch(() => null)]); }
       if (sec === 'go') { const r = await vapi(id, 'goCfg'); v.d = { go: r.cfg, lp: r.lp, main: r.main }; }
       if (sec === 'staff') v.d = await vapi(id, 'staff');
+      if (sec === 'api') v.d = await vapi(id, 'apiKeys'); /* 🔌 ключі партнерів (api-v1.js) */
       if (sec === 'mig') v.d = await vapi(id, 'migLog'); /* 📥 перехід з іншої системи (owner-mig.js) */
       if (sec === 'log') { const [a, b] = await Promise.all([vapi(id, 'alog', { m: S.logM || '' }), api('bak', { venue: id, do: 'list' }).catch(() => ({ list: [] }))]); v.d = { list: a.list, bak: b.list }; }
     } catch (e) { toast('⚠️ ' + e.message); v.d = { err: e.message }; }
@@ -197,6 +198,14 @@ window.OWNV = ctx => {
       return `<div class="card"><h3>🎨 Усе для друку — без дизайнера</h3><div class="muted" style="font-size:14px;margin-bottom:10px">Візитки, таблички з QR на кожен стіл, меню з цінами, флаєри, банери, сертифікати, наклейки й бейджі — з вашої назви, лого, контактів і меню. ${window.OWNDZ.STY.length} готових стилів, 🎲 випадкові поєднання й свої стилі. Завантажуйте PDF для друкарні (з полями під обріз) або друкуйте самі.</div><button class="btn primary" data-a="vdz">🎨 Відкрити студію</button></div>
         <div class="dz-prods" style="margin-top:12px">${Object.entries(P).map(([k, p]) => `<button data-a="vdz" data-k="${k}"><b>${p.n}</b><small>${p.d}</small></button>`).join('')}</div>`;
     },
+    api(v) { // 🔌 ключі API для агрегаторів, сайтів і бухгалтерії
+      const d = v.d, base = `https://posatom.online/v/${v.id}/api/v1/`, dt = t => t ? new Date(t).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'ще не було';
+      return `<div class="grid"><div class="card" style="grid-column:1/-1"><h3>🔌 API для партнерів</h3><div class="muted" style="font-size:14px">Ключ дає партнеру (Glovo, Bolt, ваш сайт, бухгалтерія) доступ лише до того, що ви дозволили. Замовлення з API падають у касу, на кухню й у бот — як із сайту.</div>
+        <div class="kv"><span>Адреса API<br><small class="muted" style="word-break:break-all">${esc(base)}</small></span><button class="btn sm" data-a="vapiCp" data-v="${esc(base)}">📋</button></div>
+        <div class="kv"><span>Документація для розробника партнера</span><a class="btn sm" href="https://posatom.online/api" target="_blank">📖 Відкрити</a></div></div>
+        <div class="card" style="grid-column:1/-1"><h3>🔑 Ключі · ${d.list.length}</h3>${d.list.map(k => `<div class="kv"><span><b>${esc(k.name)}</b><br><small class="muted">${k.sc.map(x => esc((d.scopes[x] || x).split(' ')[0])).join(' ')} · створив ${esc(k.by)} · використано: ${dt(k.last)}${k.hook ? '<br>🔔 ' + esc(k.hook) : ''}</small></span><span class="btnrow"><button class="btn sm" data-a="vapiHook" data-id="${k.id}" title="Сповіщення про статуси">🔔</button>${k.hook ? `<button class="btn sm" data-a="vapiTest" data-id="${k.id}" title="Тестове сповіщення">🧪</button>` : ''}<button class="btn sm" data-a="vapiDel" data-id="${k.id}" title="Відкликати">🗑</button></span></div>`).join('') || '<div class="muted">Ключів ще немає</div>'}
+          <div class="btnrow" style="margin-top:10px"><button class="btn sm primary" data-a="vapiNew">➕ Новий ключ</button></div></div></div>`;
+    },
     log(v) { return SECV.bak(v) + '<h3 style="margin:18px 4px 8px">📜 Журнал змін</h3>' + SECV.log0(v); },
     log0(v) {
       const m = S.logM || new Date().toLocaleDateString('sv-SE').slice(0, 7), q = (S.logQ || '').toLowerCase(), l = v.d.list.filter(x => !q || x.t.toLowerCase().includes(q));
@@ -252,6 +261,15 @@ window.OWNV = ctx => {
   document.addEventListener('click', async e => {
     const el = e.target.closest('[data-a]'); if (!el || !S.cfgV) return; const a = el.dataset.a, d = el.dataset, v = S.cfgV, id = v.id;
     if (a === 'vsec') { v.sec = d.s; return load(); }
+    if (a === 'vapiCp') { try { await navigator.clipboard.writeText(d.v); toast('📋 Скопійовано'); } catch { prompt('Скопіюйте:', d.v); } return; }
+    if (a.startsWith('vapi')) try { // 🔌 ключі API
+      const secret = (title, rows) => { const bg = modal(title, `<div class="muted" style="font-size:13px;margin-bottom:8px">⚠️ Показується <b>один раз</b>. Скопіюйте й передайте партнеру захищеним каналом.</div>${rows.map(([l, x]) => `<div class="kv"><span>${l}<br><small style="word-break:break-all">${esc(x)}</small></span><button type="button" class="btn sm" data-cp="${esc(x)}">📋</button></div>`).join('')}`, async () => {}); bg.addEventListener('click', async e => { const b = e.target.closest('[data-cp]'); if (!b) return; try { await navigator.clipboard.writeText(b.dataset.cp); toast('📋 Скопійовано'); } catch { prompt('Скопіюйте:', b.dataset.cp); } }); };
+      if (a === 'vapiNew') return modal('🔑 Новий ключ API', `<label>Для кого<input name="n" required maxlength="40" placeholder="Glovo / Бухгалтерія / Сайт"></label>${Object.entries(v.d.scopes).map(([k, l]) => `<label class="kv"><span>${esc(l)}</span><input type="checkbox" name="sc" value="${k}" ${k !== 'sales' ? 'checked' : ''}></label>`).join('')}<label>Webhook для статусів (необовʼязково)<input name="h" type="url" placeholder="https://partner.com/atom-hook"></label>`,
+        async f => { const sc = [...f.querySelectorAll('[name=sc]:checked')].map(x => x.value), r = await vapi(id, 'apiKeyNew', { name: f.n.value, sc, hook: f.h.value.trim() }); setTimeout(() => secret('✅ Ключ створено', [['🔑 Ключ API', r.key], ...(r.hs ? [['🔏 Секрет підпису webhook', r.hs]] : [])]), 50); load(); });
+      if (a === 'vapiDel') { if (!confirm('Відкликати ключ? Партнер одразу втратить доступ.')) return; await vapi(id, 'apiKeyDel', { id: d.id }); toast('🗑 Відкликано'); return load(); }
+      if (a === 'vapiHook') { const k = v.d.list.find(x => x.id === d.id), u = await ask('🔔 Адреса webhook (https://…, порожньо — вимкнути)', k?.hook || '', 'url'); if (u == null) return; const r = await vapi(id, 'apiKeyHook', { id: d.id, hook: u.trim() }); if (r.hs) secret('🔔 Webhook збережено', [['🔏 Новий секрет підпису', r.hs]]); else toast('🔕 Сповіщення вимкнено'); return load(); }
+      if (a === 'vapiTest') { const r = await vapi(id, 'apiHookTest', { id: d.id }); return toast(r.ok ? '✅ Партнер прийняв сповіщення' : `⚠️ Не прийняв (${r.status || 'немає відповіді'})`); }
+    } catch (err) { return toast('⚠️ ' + err.message); }
     if (a === 'vpickBack') { S.cfgV = null; S.tab = 'cfg'; return render(); }
     if (a === 'vback') { S.cfgV = null; S.tab = 'ven'; return render(); }
     if (a === 'vsite') { const long = ['about', 'banquet', 'hookah'].includes(d.k), x = await ask(el.closest('.kv')?.querySelector('span')?.firstChild?.textContent || d.k, v.d.site[d.k], ['rating', 'ratingN', 'preMin'].includes(d.k) ? 'number' : 'text', long); if (x == null) return; return act(() => vapi(id, 'siteSet', { k: d.k, v: x }), '💾 Збережено'); }

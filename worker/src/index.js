@@ -30,7 +30,7 @@ const MAX_ORDER = 30000, RATE_MS = 15000, BILL_TTL = 12 * 3600;
 // 💸 запити, що працюють з базою, виконуються всередині Durable Object (store.js → Store.fetch):
 // там кожне читання/запис — локальне, а платний «запит до DO» — один на дію, а не 20–50
 // 💳 оплати закладу (tpay, gopay, callback LiqPay/mono) — теж у Store: там діє межа робочого дня закладу (cfg.dayH), інакше між 00:00 і 03:00 події лягали не в той день
-const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|goinfo|promo|reco|site|book|bookpre|wl|cert|me|me\/start|me\/poll|me\/logout|tpay|gopay|lp\/(go|table|cert))$|tg$|tg2$|tg3$|tg4$|__cron$)/;
+const IN_STORE = /^\/(api\/(status|scan|menu|orders|pos|call|order|admin|ai|go|goinfo|promo|reco|site|book|bookpre|wl|cert|me|me\/start|me\/poll|me\/logout|tpay|gopay|lp\/(go|table|cert))$|api\/v1\/[a-z0-9\/]+$|tg$|tg2$|tg3$|tg4$|__cron$)/;
 // 💾 кеш у пам'яті воркера для однакових для всіх відповідей (на *.workers.dev кеш Cloudflare не працює).
 // Економить запити до Durable Object: меню відкривають сотні гостей, а змінюється воно рідко. Стоп-лист сервер
 // все одно перевіряє при замовленні (priceMap пропускає hidden), тож 20 с затримки безпечні.
@@ -48,7 +48,7 @@ async function cached(req, path, run) {
 }
 export default {
   async fetch(req0, env) {
-    { const h = new URL(req0.url).hostname; if (h === 'posatom.online' || h === 'www.posatom.online') return atomSite(req0, env); } // 🌐 ATOM: сайт закладів на власному домені
+    { const h = new URL(req0.url).hostname; if ((h === 'posatom.online' || h === 'www.posatom.online') && !/^\/v\/[a-z0-9-]+\/api\/v1\//.test(new URL(req0.url).pathname)) return atomSite(req0, env); } // 🔌 API партнерів: posatom.online/v/<заклад>/api/v1/… // 🌐 ATOM: сайт закладів на власному домені
     // 🏪 заклад: /v/<id>/… → запит без префікса + заголовок x-venue; без префікса — VARVAR
     const { venue, path: p } = splitVenue(new URL(req0.url)), req = venue === MAIN ? new Request(req0) : stripVenue(req0, venue, p);
     if (venue === MAIN) { req.headers.delete('x-venue'); req.headers.delete('x-venue-init'); } // заклад визначає лише адреса, не заголовок від клієнта
@@ -146,6 +146,7 @@ export async function handle(req, env) {
         ids.forEach((id, i) => { const o = all[i]; out[id] = o && { s: o.s, t: o.t, by: o.by, at: o.at, ...(o.go ? { g: o.g || o.s, no: tn(o.t), eta: o.eta, gAt: o.gAt, ...(o.cour ? { c: o.cour } : {}), ...(o.loc && (o.g || o.s) === 'road' ? { loc: o.loc } : {}), ...(o.etaC ? { etaC: o.etaC } : {}) } : {}) }; });
         return json(out);
       }
+      if (url.pathname.startsWith('/api/v1/')) return (await import('./api-v1.js')).apiV1(req, env, url); // 🔌 API партнерів (ключ закладу)
       if (url.pathname === '/api/pos/live') return posLive(req, env, url);
       if (url.pathname === '/api/pos' && req.method === 'POST') { // 📴 qid — дія з офлайн-черги каси: повтор не виконується вдруге (відповідь загубилась, а дія пройшла)
         const b = await req.json(), q = /^[a-z0-9]{8,24}$/.test(b.qid || '') ? 'qid:' + b.qid : '';
@@ -198,7 +199,7 @@ export async function handle(req, env) {
       if (url.pathname === '/api/tpay') { const T = await import('./lpay.js'); if (req.method === 'POST') { const b = await req.json(), si = await scanInfo(env, b.device); /* як для замовлень: сканував QR (сесія діє) або Wi‑Fi закладу */
         return json(...await T.tpayStart(env, b, { scan: si?.until > Date.now() ? si.t || 0 : -1, wifi: await inVenue(env, ip) })); } return json(await T.tpayState(env, url.searchParams.get('id'))); } // 🍽 оплата столу з QR
       if (url.pathname === '/api/gopay') return json(await (await import('./delivery.js')).goPayState(env, url.searchParams.get('id')));
-      if (url.pathname === '/api/go' && req.method === 'POST') { const gb = await req.json(); if (gb && typeof gb === 'object') { delete gb._paid; delete gb._oid; delete gb._me; gb._me = await (await import('./site.js')).meSess(env, (req.headers.get('authorization') || '').slice(7)).catch(() => null); /* 🔐 бонуси лише для гостя, що увійшов під цим телефоном */ } /* 🔐 службові поля лише від LiqPay (delivery.js), не від гостя */ return json(...await goOrder(gb, ip, env)); }
+      if (url.pathname === '/api/go' && req.method === 'POST') { const gb = await req.json(); if (gb && typeof gb === 'object') { delete gb._paid; delete gb._oid; delete gb._me; delete gb._api; gb._me = await (await import('./site.js')).meSess(env, (req.headers.get('authorization') || '').slice(7)).catch(() => null); /* 🔐 бонуси лише для гостя, що увійшов під цим телефоном */ } /* 🔐 службові поля лише від LiqPay (delivery.js), не від гостя */ return json(...await goOrder(gb, ip, env)); }
       if (url.pathname === '/api/sup') { const c = await hub(env).atomCfg(); return new Response(JSON.stringify({ url: c.sup || '', hrs: c.hrs || '9:00–22:00' }), { headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'public, max-age=300' } }); } // 🛟 підтримка ATOM у Telegram — сайт, кабінет, каса
       if (url.pathname === '/api/goinfo') return json(await goInfo(env, url.searchParams.get('ph'), (req.headers.get('authorization') || '').slice(7)));
       if (url.pathname === '/api/promo' && req.method === 'POST') return json(await promoQuote(await req.json(), env)); // 🎁 знижки кошика ?go
@@ -393,7 +394,7 @@ async function admin(b, ip, env) {
 
 // 🌐 posatom.online/<заклад>/… → файли сайту (GitHub Pages) без змін; заклад береться зі шляху (js/config.js).
 // /<заклад>/ — візитка; /<заклад>/?t=…&k=… (QR столу) — меню; /owner/ — кабінет власника; / — поки VARVAR
-const ATOM_SEO = { '/pos-kafe': '/seo-pos-kafe.html', '/kasa-restoran': '/seo-kasa-restoran.html', '/qr-menu': '/seo-qr-menu.html', '/blog': '/blog.html', '/privacy': '/privacy.html' };
+const ATOM_SEO = { '/pos-kafe': '/seo-pos-kafe.html', '/kasa-restoran': '/seo-kasa-restoran.html', '/qr-menu': '/seo-qr-menu.html', '/blog': '/blog.html', '/privacy': '/privacy.html', '/api': '/api.html' };
 async function atomSite(req, env) {
   let url = new URL(req.url);
   if (url.hostname === 'www.posatom.online') return Response.redirect('https://posatom.online' + url.pathname + url.search, 301);

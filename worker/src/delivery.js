@@ -118,7 +118,7 @@ export async function goOrder(b, ip, env) {
   if (!phone || !name) return [{ error: 'contact' }, 400];
   const addr = String(b.addr || '').trim().slice(0, 200); if (kind === 'del' && addr.length < 5) return [{ error: 'addr' }, 400];
   // антиспам: 3 замовлення за 10 хв з пристрою/IP
-  const rk = 'gorl:' + String(b.device || ip).slice(0, 64), rn = b._paid ? 0 : +(await env.DB.get(rk)) || 0; if (rn >= 3) return [{ error: 'rate' }, 429];
+  const rk = 'gorl:' + String(b.device || ip).slice(0, 64), rn = b._paid || b._api ? 0 : +(await env.DB.get(rk)) || 0; /* 🔌 партнер API — свій ліміт на ключ (api-v1.js) */ if (rn >= 3) return [{ error: 'rate' }, 429];
   const PRICES = priceMap(await getMenu(env)), lines = [], sold = []; let sum = 0;
   for (const it of (Array.isArray(b.items) ? b.items : []).slice(0, 60)) {
     const p = PRICES[it.id], q = Math.min(50, Math.max(0, parseInt(it.q, 10) || 0)); if (!p || !q) continue;
@@ -169,7 +169,7 @@ export async function goOrder(b, ip, env) {
     env.DB.put('ord:' + oid, JSON.stringify({ s: 'new', g: 'new', t, html: msg, lines, comment, kind: TYPES[kind], sum, sold, go: 1, eta: Date.now() + c.prep * 60e3 }), { expirationTtl: BILL_TTL }),
     logEvent(env, { k: 'guest', t, oid, s: 'new', kind: `${TYPES[kind]}${when ? ' на ' + when : ''}`, lines, comment: [name, fmtPhone(phone), kind === 'del' ? addr : '', pl, change ? `решта з ${change}` : ''].filter(Boolean).join(' · '), sum: sum + fee - bonus - pr, go: kind }),
     addStat(env, 'orders', 1), addDishes(env, sold),
-    b._paid ? null : env.DB.put(rk, String(rn + 1), { expirationTtl: 600 }),
+    b._paid || b._api ? null : env.DB.put(rk, String(rn + 1), { expirationTtl: 600 }),
     cliTouch(env, phone, x => { x.name = name; if (addr && !x.addr.includes(addr)) x.addr = [addr, ...x.addr].slice(0, 5); x.lastGo = { at: Date.now(), lines: lines.slice(0, 20), items: b.items.slice(0, 40).map(i => ({ id: String(i.id).slice(0, 40), ...(i.v ? { v: String(i.v).slice(0, 20) } : {}), q: Math.min(50, parseInt(i.q, 10) || 1) })) }; }), // 🔁 «Повторити» в боті
   ]);
   const res = await tg(env, 'sendMessage', { chat_id: env.CHAT_ID, text: msg, parse_mode: 'HTML', disable_web_page_preview: true, reply_markup: { inline_keyboard: [[
