@@ -8,7 +8,8 @@ import { getMenu, saveMenu, menuLock, slug } from './menu.js';
 import { getIng, getCards, norm, r3, UNITS } from './stock.js';
 import { supEnsure, nrmSup } from './suppliers.js';
 import { normPhone, getCli, cliTouch, fmtPhone } from './delivery.js';
-import { getCert } from './site.js';
+import { getCert, bookImport } from './site.js';
+import { getStaff } from './ops-staff.js';
 
 // вид → назва й поля (* — обовʼязкові). Ті самі ключі використовує майстер для зіставлення колонок.
 export const KINDS = {
@@ -18,6 +19,8 @@ export const KINDS = {
   sup: { t: '🚚 Постачальники', f: { n: 'Назва*', code: 'ЄДРПОУ / ІПН', iban: 'IBAN', phone: 'Телефон', addr: 'Адреса' } },
   cli: { t: '👤 Гості й бонуси', f: { phone: 'Телефон*', name: 'Імʼя', bal: 'Бонуси, ₴', bd: 'День народження', note: 'Нотатка' } },
   cert: { t: '🎁 Сертифікати', f: { code: 'Код*', sum: 'Номінал*', left: 'Залишок', phone: 'Телефон', to: 'Кому', exp: 'Діє до' } },
+  staff: { t: '👥 Персонал', f: { n: 'Імʼя*', role: 'Посада' } },
+  book: { t: '📅 Броні й передоплати', f: { id: 'Код', date: 'Дата*', time: 'Час*', name: 'Імʼя*', phone: 'Телефон*', people: 'Гостей', kind: 'Тип (стіл/банкет)', dep: 'Передоплата, ₴', comment: 'Коментар', t: 'Стіл' } },
 };
 export const SYS = { xls: '📊 Excel / CSV', '1c': '🟡 1С / BAS', poster: '🟠 Poster', syrve: '🟣 Syrve / iiko', other: '🔹 Інша система' };
 const MAX = 2000, UNDO_MAX = 1.8e6, UNDO_DAYS = 7;
@@ -32,12 +35,14 @@ export const unitOf = u => { const s = String(u || '').toLowerCase().replace(/\.
 // дата народження: 31.12.1990 · 1990-12-31 · 31.12 → «ММ-ДД»
 const bdOf = v => { const s = T(v, 20); let m = s.match(/^(\d{1,2})[./-](\d{1,2})(?:[./-]\d{2,4})?$/); if (m) return pad(m[2]) + '-' + pad(m[1]); m = s.match(/^\d{4}-(\d{2})-(\d{2})/); return m ? m[1] + '-' + m[2] : ''; };
 const pad = x => String(x).padStart(2, '0');
+const timeOf = v => { const m = T(v, 10).match(/^(\d{1,2})[:.](\d{2})/); return m && +m[1] < 24 && +m[2] < 60 ? pad(m[1]) + ':' + m[2] : ''; };
+const ymd = v => { const t = dateOf(v); return t ? new Date(t).toISOString().slice(0, 10) : ''; };
 const dateOf = v => { const s = T(v, 20); let m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/); if (m) return Date.UTC(+(m[3].length === 2 ? '20' + m[3] : m[3]), +m[2] - 1, +m[1], 21); m = s.match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], 21) : 0; };
 const uid = () => crypto.randomUUID().replace(/-/g, '').slice(0, 8);
 const hash = s => { let h = 2166136261; s = String(s ?? '∅'); for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return (h >>> 0).toString(36) + s.length; };
 
 // 📼 запис змін для відкату: перше «було» кожного ключа, який чіпає імпорт (журнали подій і складу не відкочуємо)
-const KEEP = /^(menu|ing|cards|supl|certs)$|^(sup|cli|cert|mig:x):/;
+const KEEP = /^(menu|ing|cards|supl|certs|staff)$|^(sup|cli|cert|book|bkm|mig:x):/;
 function recorder(env) {
   const was = {}, db = env.DB;
   const note = async k => { if (KEEP.test(k) && !(k in was)) was[k] = await db.get(k); };
@@ -165,9 +170,44 @@ const AP = {
     if (codes.length) await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; for (const k of codes) if (!l.includes(k)) l.push(k); await env.DB.put('certs', JSON.stringify(l.slice(-500))); });
     return { add, upd, skip, tot: { left: left / 100 } };
   },
+  // 👥 персонал без PIN: PIN з чужої системи не перенести (там хеш) — адмін задає кожному в Налаштуваннях → Персонал → 🔑
+  async staff(env, rows, c) {
+    const RL = [[/адмін|админ|менедж|управ|директ|admin|manag/i, 'admin'], [/кух|повар|кухар|шеф|cook|chef|пекар|кондит/i, 'cook'], [/курʼ?'?єр|курьер|courier|достав/i, 'courier']];
+    return L(env, 'staff', async () => {
+      const l = await getStaff(env); let add = 0, upd = 0, skip = 0;
+      rows.forEach((r, i) => {
+        const n = T(r.n, 30); if (!n) return c.err(i, 'немає імені'), skip++;
+        const role = (RL.find(([re]) => re.test(String(r.role || ''))) || [, 'waiter'])[1];
+        const y = l.find(z => z.name.toLowerCase() === n.toLowerCase());
+        if (y) { upd++; if (r.role && y.role !== role) c.err(i, `«${n}»: вже є з іншою роллю — роль не змінюємо`, 1); return; }
+        l.push({ id: crypto.randomUUID().slice(0, 6), name: n, role, mig: c.sys }); add++;
+      });
+      if (!c.dry && add) await env.DB.put('staff', JSON.stringify(l));
+      return { add, upd, skip, tot: { nopin: add } };
+    });
+  },
+  // 📅 майбутні броні; передоплата — гроші гостя, вже отримані старою системою: показуємо в броні, зараховує адмін при розрахунку
+  async book(env, rows, c) {
+    const x = await getX(env, 'book'), today = dayKey(); let add = 0, upd = 0, skip = 0, dep = 0;
+    for (const [i, r] of rows.entries()) {
+      const date = ymd(r.date), time = timeOf(r.time) || timeOf(String(r.date || '').split(/[ T]/)[1]), name = T(r.name, 40), phone = normPhone(r.phone);
+      if (!date || !time) { c.err(i, `дата «${T(r.date, 20)}» або час «${T(r.time, 10)}» не розпізнано`); skip++; continue; }
+      if (date < today) { c.err(i, `${date}: бронь у минулому — пропущено`, 1); skip++; continue; }
+      if (!name || !phone) { c.err(i, `${date} ${time}: потрібні імʼя і телефон`); skip++; continue; }
+      const d = num(r.dep); if (d != null && d < 0) { c.err(i, `${name}: мінусова передоплата`); skip++; continue; }
+      const ext = c.ext(r) || `${c.sys}:${date}|${time}|${phone}`, t = Math.round(num(r.t) || 0);
+      x[ext] ? upd++ : add++; if (d > 0) dep += Math.round(d * 100);
+      if (c.dry) continue;
+      const b = await bookImport(env, x[ext], { kind: /банк|banq|фурш|корпор/i.test(String(r.kind || '')) ? 'banquet' : 'table', name, phone, date, time,
+        people: Math.max(1, Math.min(60, Math.round(num(r.people) || 2))), comment: T(r.comment, 300), ...(t > 0 && t <= (+env.TABLES || 999) ? { t } : {}), ...(d > 0 ? { dep: k2(d) } : {}), mig: c.sys });
+      x[ext] = b.id;
+    }
+    if (!c.dry && (add || upd)) await env.DB.put('mig:x:book', JSON.stringify(x));
+    return { add, upd, skip, tot: { dep: dep / 100 } };
+  },
 };
 // ключ дубліката всередині файлу (останній рядок перемагає — як і при повторному імпорті)
-const DUPK = { menu: r => T(r.name).toLowerCase(), ing: r => norm(r.n), cards: r => T(r.dish).toLowerCase() + '|' + norm(r.ing), sup: r => nrmSup(r.n), cli: r => normPhone(r.phone), cert: r => T(r.code).toUpperCase() };
+const DUPK = { menu: r => T(r.name).toLowerCase(), ing: r => norm(r.n), cards: r => T(r.dish).toLowerCase() + '|' + norm(r.ing), sup: r => nrmSup(r.n), cli: r => normPhone(r.phone), cert: r => T(r.code).toUpperCase(), staff: r => T(r.n).toLowerCase(), book: r => T(r.id) || ymd(r.date) + '|' + T(r.time) + '|' + normPhone(r.phone) };
 
 // 🚀 { sys, kind, rows, map?, dry } → підсумок. who — хто імпортує
 export async function migRun(env, b, who) {
@@ -208,7 +248,7 @@ export async function migUndo(env, id, who) {
     if (l.some(x => x.ts > e.ts && x.undo && !x.undone)) return { error: 'Спершу відмініть пізніші імпорти' };
     const u = await env.DB.get('mig:u:' + id, 'json'); if (!u) return { error: `Відкат можливий ${UNDO_DAYS} днів — строк минув` };
     const keys = Object.keys(u.was), cur = await env.DB.getMany(keys), moved = keys.filter((k, i) => hash(cur[i]) !== u.h[k]);
-    if (moved.length) return { error: `Після імпорту вже змінювали: ${[...new Set(moved.map(k => ({ menu: 'меню', ing: 'склад', cards: 'техкарти', supl: 'постачальників', certs: 'сертифікати' }[k] || { sup: 'постачальника', cli: 'гостя', cert: 'сертифікат', 'mig:x': 'звʼязки' }[k.split(':').slice(0, k.startsWith('mig:x') ? 2 : 1).join(':')] || k)))].join(', ')}. Відкат лише через копію — напишіть ATOM` };
+    if (moved.length) return { error: `Після імпорту вже змінювали: ${[...new Set(moved.map(k => ({ menu: 'меню', ing: 'склад', cards: 'техкарти', supl: 'постачальників', certs: 'сертифікати', staff: 'персонал' }[k] || { sup: 'постачальника', cli: 'гостя', cert: 'сертифікат', book: 'броні', bkm: 'броні', 'mig:x': 'звʼязки' }[k.split(':').slice(0, k.startsWith('mig:x') ? 2 : 1).join(':')] || k)))].join(', ')}. Відкат лише через копію — напишіть ATOM` };
     for (const k of keys) u.was[k] == null ? await env.DB.delete(k) : await env.DB.put(k, u.was[k]);
     if (e.kind === 'ing') { const ing = await getIng(env); await openDoc(env, k2(ing.filter(z => !z.off && !z.grp).reduce((a, z) => a + ((z.st?.k || 0) + (z.st?.b || 0)) * (z.cost || 0), 0)), who).catch(() => {}); }
     e.undone = Date.now(); e.undoBy = T(who, 40); await env.DB.put('mig:log', JSON.stringify(l)); await env.DB.delete('mig:u:' + id);

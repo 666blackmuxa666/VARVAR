@@ -15,7 +15,7 @@ window.OWNMIG = (() => {
   };
   const FILL = { menu: ['cat'], ing: ['cat', 'wh'], cards: ['dish'] }; // порожня клітинка = як у рядку вище (групи в 1С / рецептури)
   const TOTAL = /^(разом|всього|усього|итого|всего|total)\b/i;
-  const ORDER = ['menu', 'ing', 'cards', 'sup', 'cli', 'cert'];
+  const ORDER = ['menu', 'ing', 'cards', 'sup', 'cli', 'cert', 'staff', 'book'];
   const DIRECT = { poster: 'Poster → Доступ → Інтеграції → API → скопіюйте ключ (вигляд 123456:abc…). Заберемо меню, техкарти, залишки, постачальників і гостей з бонусами.', syrve: 'Syrve Office → Налаштування Cloud API → «API login». Заберемо меню й товари; техкарти й залишки — файлом.' };
   function fromPull(k) { // 📡 рядки з API старої системи → та сама таблиця, що й з файлу (зіставлення 1:1)
     const m = st(), F = Object.keys(kinds()[k].f), rows = m.pulled?.[k] || []; if (!rows.length) return;
@@ -65,11 +65,11 @@ window.OWNMIG = (() => {
 
   // ---------- вигляд ----------
   const esc = s => C.esc(s), n2 = x => (+x || 0).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const TOT = { cats: 'нових розділів', q: 'продуктів із залишком', val: 'вартість складу, ₴', dishes: 'техкарт', newIng: 'нових продуктів з техкарт', bal: 'бонусів разом, ₴', left: 'залишок сертифікатів, ₴' };
-  const totText = t => Object.entries(t || {}).filter(([k]) => TOT[k]).map(([k, v]) => `${TOT[k]}: <b>${['val', 'bal', 'left'].includes(k) ? n2(v) : v}</b>`).join(' · ');
+  const TOT = { cats: 'нових розділів', q: 'продуктів із залишком', val: 'вартість складу, ₴', dishes: 'техкарт', newIng: 'нових продуктів з техкарт', bal: 'бонусів разом, ₴', left: 'залишок сертифікатів, ₴', nopin: 'працівникам задати PIN', dep: 'передоплат разом, ₴' };
+  const totText = t => Object.entries(t || {}).filter(([k]) => TOT[k]).map(([k, v]) => `${TOT[k]}: <b>${['val', 'bal', 'left', 'dep'].includes(k) ? n2(v) : v}</b>`).join(' · ');
   function html(v) {
     const d = v.d, m = st(), K = d.kinds || {}, SYS = d.sys || {};
-    if (!d.on) return `<div class="card"><h3>📥 Перехід з іншої системи</h3><div class="muted" style="margin-bottom:10px">Модуль вимкнено. Увімкніть, щоб перенести меню, техкарти, залишки, постачальників, гостей з бонусами й сертифікати з 1С, Poster, Excel чи іншої системи.</div><button class="btn primary" data-a="migOn">🧩 Увімкнути модуль «Перехід»</button></div>`;
+    if (!d.on) return `<div class="card"><h3>📥 Перехід з іншої системи</h3><div class="muted" style="margin-bottom:10px">Модуль вимкнено. Увімкніть, щоб перенести меню, техкарти, залишки, постачальників, гостей з бонусами, сертифікати, персонал і майбутні броні з 1С, Poster, Excel чи іншої системи.</div><button class="btn primary" data-a="migOn">🧩 Увімкнути модуль «Перехід»</button></div>`;
     const kindBtns = ORDER.filter(k => K[k]).map(k => `<button class="btn sm ${m.kind === k ? 'primary' : ''}" data-a="migKind" data-k="${k}">${K[k].t}${m.pulled?.[k]?.length ? ' · ' + m.pulled[k].length : ''}</button>`).join(' ');
     let body = `<div class="card"><h3>📥 Перехід з іншої системи</h3>
       <div class="muted" style="font-size:13px;margin-bottom:10px">Порядок: меню → продукти й залишки → техкарти → постачальники → гості → сертифікати. Повторний імпорт оновлює, а не дублює. Перед кожним імпортом робиться копія даних.</div>
@@ -106,6 +106,8 @@ window.OWNMIG = (() => {
       ${r.dups?.length ? `<br>🔁 Повтори у файлі (береться останній): ${r.dups.slice(0, 10).map(x => `${ln(x.i)} = ${ln(x.j)}`).join(', ')}${r.dups.length > 10 ? '…' : ''}` : ''}</div>
       ${bad.length ? `<div style="font-size:13px;margin-top:6px">${bad.slice(0, 30).map(e => `❌ ${ln(e.i)}: ${esc(e.m)}`).join('<br>')}${bad.length > 30 ? `<br>…ще ${bad.length - 30}` : ''}</div>` : ''}
       ${warn.length ? `<div class="muted" style="font-size:13px;margin-top:6px">${warn.slice(0, 30).map(e => `⚠️ ${ln(e.i)}: ${esc(e.m)}`).join('<br>')}${warn.length > 30 ? `<br>…ще ${warn.length - 30}` : ''}</div>` : ''}
+      ${!r.dry && r.kind === 'staff' && r.add ? '<div class="muted" style="font-size:13px;margin-top:6px">🔑 PIN з іншої системи не переноситься. Задайте кожному в касі: Налаштування → Персонал → 🔑 (до того працівник не увійде).</div>' : ''}
+      ${!r.dry && r.kind === 'book' && r.tot?.dep ? '<div class="muted" style="font-size:13px;margin-top:6px">💰 Передоплати видно в броні (каса й бот). Їх отримала стара система — при розрахунку адмін зараховує суму вручну.</div>' : ''}
       ${!r.dry && r.kind === 'cards' ? '<div class="muted" style="font-size:13px;margin-top:6px">📋 Техкарти збережено як чернетки — шеф перевіряє грамовки й підтверджує в касі: Склад → Техкарти → фільтр «чернетки».</div>' : ''}`;
   }
   function logHTML(d, K, SYS) {

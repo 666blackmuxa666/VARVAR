@@ -108,7 +108,7 @@ async function bkEdit(env, id, fn, nm) {
 }
 const BST = { new: '🆕 нова', ok: '✅ підтверджено', no: '❌ відхилено', came: '🪑 прийшли', noshow: '🚫 не прийшли', cancel: '↩️ скасовано гостем' };
 export const bkLabel = s => BST[s] || s;
-const bkText = b => `${b.kind === 'banquet' ? '🎉 <b>БАНКЕТ</b>' : '📅 <b>БРОНЬ</b>'} · <b>${b.date.slice(8)}.${b.date.slice(5, 7)} о ${b.time}</b> · ${b.people} гост.\n👤 ${esc(b.name)} · <a href="tel:+${b.phone}">${fmtPhone(b.phone)}</a>${b.comment ? `\n💬 ${esc(b.comment)}` : ''}${b.pre?.length ? `\n🍽 Передзамовлення:\n${b.pre.map(esc).join('\n')}` : ''}${b.t ? `\n🪑 Стіл ${b.t}` : b.tw ? `\n🗺 Гість обрав стіл ${b.tw}` : ''}`;
+const bkText = b => `${b.kind === 'banquet' ? '🎉 <b>БАНКЕТ</b>' : '📅 <b>БРОНЬ</b>'} · <b>${b.date.slice(8)}.${b.date.slice(5, 7)} о ${b.time}</b> · ${b.people} гост.\n👤 ${esc(b.name)} · <a href="tel:+${b.phone}">${fmtPhone(b.phone)}</a>${b.comment ? `\n💬 ${esc(b.comment)}` : ''}${b.pre?.length ? `\n🍽 Передзамовлення:\n${b.pre.map(esc).join('\n')}` : ''}${b.t ? `\n🪑 Стіл ${b.t}` : b.tw ? `\n🗺 Гість обрав стіл ${b.tw}` : ''}${b.dep ? `\n💰 Передоплата <b>${money(b.dep)}</b> — уже сплачено, врахуйте при розрахунку` : ''}`;
 export const bkButtons = b => b.st === 'new' ? [[{ text: '✅ Підтвердити', callback_data: `bk:${b.id}:ok` }, { text: '❌ Відхилити', callback_data: `bk:${b.id}:no` }]]
   : b.st === 'ok' ? [[{ text: '🪑 Прийшли', callback_data: `bk:${b.id}:came` }, { text: '🚫 Не прийшли', callback_data: `bk:${b.id}:noshow` }], ...(b.pre?.length && !b.preSent ? [[{ text: '🔥 Передзамовлення на кухню', callback_data: `bk:${b.id}:kit` }]] : [])] : [];
 export async function bookCreate(b, ip, env) {
@@ -203,6 +203,13 @@ export async function bookEditFields(env, id, f, who) {
   if (!x) return { error: 'Не знайдено' };
   if (x.mid) await tg(env, 'editMessageText', { chat_id: env.CHAT_ID, message_id: x.mid, text: `${bkText(x)}\n\n✏️ змінено — <b>${esc(who)}</b>`, parse_mode: 'HTML', reply_markup: { inline_keyboard: bkButtons(x) } }).catch(() => {});
   if (f.date || f.time) await guestMsg(env, x.phone, `✏️ Вашу бронь змінено: <b>${x.date.slice(8)}.${x.date.slice(5, 7)} о ${x.time}</b>, ${x.people} гост.`);
+  return x;
+}
+// 📥 перенесена бронь (mig.js): без повідомлень гостю й у групу — гість уже має підтвердження від старої системи
+export async function bookImport(env, id, f) {
+  if (id) { const x = await bkEdit(env, id, y => { Object.assign(y, f); delete y.remA; delete y.remG; }, f.date.slice(0, 7)); if (x) return x; }
+  const x = { id: f.date.replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 12), ...f, st: 'ok', at: Date.now(), src: 'перенос' };
+  await L(env, 'book:' + f.date.slice(0, 7), async () => { const l = await getBk(env, f.date.slice(0, 7)); l.push(x); await env.DB.put('book:' + f.date.slice(0, 7), JSON.stringify(l)); });
   return x;
 }
 export async function bookManual(env, f, who) {

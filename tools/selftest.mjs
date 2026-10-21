@@ -1227,7 +1227,7 @@ async function loyTests(A, W, dish) {
     const m = (await pos('state')).j.cfg; must(!m?.mods, 'VARVAR отримав mods — старий заклад мав лишитись «усе увімкнено»');
     return 'лише каса → увімкнути/вимкнути';
   });
-  await step('📥 перехід (етап 1): модуль вимкнено → 400; меню/продукти (г→кг, залишки, документ «вхідні залишки»)/техкарти-чернетки/гості/сертифікати до копійки; повтор не дублює; відкат і його заборона', async () => {
+  await step('📥 перехід (етап 1): модуль вимкнено → 400; меню/продукти (г→кг, залишки, документ «вхідні залишки»)/техкарти-чернетки/гості/сертифікати до копійки; персонал без PIN; броні з передоплатою; повтор не дублює; відкат і його заборона', async () => {
     const run = (kind, rows, dry = 0, sys = 'xls') => vpos(VA, 'migRun', { sys, kind, rows, dry }), ok = (r, w) => { must(r.status === 200 && !r.j.error, w + ': ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 200)); return r.j; };
     must((await run('menu', [{ name: 'QA Борщ', price: '150' }])).status === 400, 'модуль вимкнено, а імпорт пройшов');
     must((await pos(users.waiter?.token, 'migRun', { kind: 'menu', rows: [{ name: 'x', price: 1 }] })).status === 403, 'офіціант імпортує');
@@ -1269,7 +1269,21 @@ async function loyTests(A, W, dish) {
     ok(await vpos(VA, 'loyCliSet', { phone: ph, f: { note: 'змінили після імпорту' } }), 'змінити гостя');
     const bl = await vpos(VA, 'migUndo', { id: cl.id }); must(bl.status === 400 && /змінювали/.test(bl.j.error), 'відкат затер зміни після імпорту: ' + JSON.stringify(bl.j));
     must((await vpos(VA, 'ldgAudit', { ref: 'mig:' + m1.id })).j.list.some(x => x.what === 'mig'), 'журнал змін імпорту');
-    return '6 видів, повтор, відкат';
+    { // 👥 персонал без PIN (ніхто не входить, поки адмін не задасть) і 📅 броні з передоплатою — без повідомлень гостю; обидва відкочуються
+      const sn = 'QA Перенос ' + RUN, sf = ok(await run('staff', [{ n: sn, role: 'Кухар-універсал' }, { n: '' }]), 'персонал');
+      must(sf.add === 1 && sf.skip === 1 && sf.tot.nopin === 1, 'персонал: ' + JSON.stringify(sf).slice(0, 200));
+      const st = (await vpos(VA, 'staff')).j.staff.find(x => x.name === sn); must(st?.role === 'cook' && st.nopin && !('pin' in st), 'працівник: ' + JSON.stringify(st));
+      ok(await vpos(VA, 'migUndo', { id: sf.id }), 'відкат персоналу'); must(!(await vpos(VA, 'staff')).j.staff.some(x => x.name === sn), 'працівник лишився після відкату');
+      const dd = new Date(Date.now() + 5 * 864e5 + 3 * 3600e3).toISOString().slice(0, 10), dm = dd.slice(8) + '.' + dd.slice(5, 7) + '.' + dd.slice(0, 4), bph = '063' + String(Date.now()).slice(-7);
+      const B = [{ id: 'R1', date: dm, time: '19:30', name: 'QA Перенос-бронь', phone: bph, people: '6', kind: 'Банкет', dep: '2 500,50' }, { date: '01.01.2020', time: '12:00', name: 'QA Стара', phone: bph }, { date: dm, time: '', name: 'x', phone: bph }];
+      const bk = ok(await run('book', B), 'броні'); must(bk.add === 1 && bk.skip === 2 && bk.tot.dep === 2500.5, 'броні: ' + JSON.stringify(bk).slice(0, 220));
+      const bk2 = ok(await run('book', [{ ...B[0], time: '20:00' }]), 'повтор броні'); must(bk2.add === 0 && bk2.upd === 1, 'повтор броні дублює');
+      const bl = (await vpos(VA, 'bkList', { from: dd, to: dd })).j.list.filter(x => x.phone.endsWith(bph.slice(1)));
+      must(bl.length === 1 && bl[0].dep === 2500.5 && bl[0].kind === 'banquet' && bl[0].st === 'ok' && bl[0].time === '20:00' && bl[0].people === 6, 'бронь: ' + JSON.stringify(bl).slice(0, 220));
+      ok(await vpos(VA, 'migUndo', { id: bk2.id }), 'відкат броні'); must((await vpos(VA, 'bkList', { from: dd, to: dd })).j.list.find(x => x.phone.endsWith(bph.slice(1)))?.time === '19:30', 'відкат повтору не повернув час');
+      ok(await vpos(VA, 'migUndo', { id: bk.id }), 'відкат броней'); must(!(await vpos(VA, 'bkList', { from: dd, to: dd })).j.list.some(x => x.phone.endsWith(bph.slice(1))), 'бронь лишилась після відкату');
+    }
+    return '8 видів, повтор, відкат';
   });
   await step('🏦 банк (етап 2): модуль/права; виписка 1С → еквайринг з комісією, оплата 2 накладних, власний переказ, черга; повтор не дублює; дії й заборони; CSV; облік і експорт', async () => {
     const ok = (r, w) => { must(r.status === 200 && !r.j.error, w + ': ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 200)); return r.j; };

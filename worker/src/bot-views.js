@@ -312,7 +312,7 @@ export function parseDay(s) {
   let d = `${y}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`; if (!m[3] && d < addD(t, -31)) d = `${+y + 1}${d.slice(4)}`;
   return isDay(d) && new Date(d + 'T12:00:00Z').toISOString().slice(0, 10) === d ? d : null;
 }
-export const bkLine = b => `${b.kind === 'banquet' ? '🎉' : '📅'} <b>${dm(b.date)} ${b.time}</b> · ${b.people} гост. · ${esc(b.name)} ${fmtPhone(b.phone)} · ${bkLabel(b.st)}${b.t ? ` · 🪑 стіл ${b.t}` : b.tw ? ` · 🗺 бажає стіл ${b.tw}` : ''}${b.comment ? `\n💬 ${esc(b.comment)}` : ''}${b.note ? `\n📝 ${esc(b.note)}` : ''}${b.pre?.length ? `\n🍽 ${b.pre.map(esc).join(', ')}` : ''}`;
+export const bkLine = b => `${b.kind === 'banquet' ? '🎉' : '📅'} <b>${dm(b.date)} ${b.time}</b> · ${b.people} гост. · ${esc(b.name)} ${fmtPhone(b.phone)} · ${bkLabel(b.st)}${b.t ? ` · 🪑 стіл ${b.t}` : b.tw ? ` · 🗺 бажає стіл ${b.tw}` : ''}${b.comment ? `\n💬 ${esc(b.comment)}` : ''}${b.note ? `\n📝 ${esc(b.note)}` : ''}${b.dep ? `\n💰 передоплата ${b.dep} ₴ — уже сплачено` : ''}${b.pre?.length ? `\n🍽 ${b.pre.map(esc).join(', ')}` : ''}`;
 const bkKb = b => ({ inline_keyboard: [...bkButtons(b), [{ text: '✏️ Змінити', callback_data: 'bke:' + b.id }]] });
 export async function booksSend(env, send, from = dayKey(), to = addD(dayKey(), 14)) {
   const l = await bookList(env, from, to), one = from === to, title = one ? `📅 Броні на ${dm(from)}` : `📅 Броні ${dm(from)}–${dm(to)}`;
