@@ -17,7 +17,7 @@ window.PHOTOAI = (() => {
     #phw .ph-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px;max-height:38vh;overflow:auto;margin:6px 0}#phw .ph-d{position:relative;aspect-ratio:1;border-radius:10px;background:var(--card2,#ffffff10) center/cover;cursor:pointer;display:block;overflow:hidden}
     #phw .ph-d input{position:absolute;top:4px;right:4px;width:20px;height:20px;margin:0}#phw .ph-d b{position:absolute;left:0;right:0;bottom:0;background:#000b;color:#fff;font-size:10px;font-weight:500;padding:3px 4px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#phw .ph-d em{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;font-size:22px;opacity:.5}
     #phw .ph-act{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:6px;margin-top:10px}#phw .ph-act .btn{white-space:normal;line-height:1.2;min-width:0;padding:8px 12px;text-align:center}#phw details summary{cursor:pointer;font-size:14px;padding:4px 0}#phw .ph-steps{font-size:13px;padding:8px 10px;border-radius:10px;border:1px dashed var(--line2,#ffffff33);margin:6px 0;text-align:left}`;
-  const quotaRow = () => `<div class="ph-q"><span>📊 Цього місяця</span><b>${inf.n} / ${inf.free}${inf.over ? ` · +${inf.over} × ${inf.price} ₴` : ''}</b></div>`;
+  const quotaRow = () => `<div class="ph-q"><span>📊 Цього місяця</span><b>${inf.free == null ? inf.n + ' · без ліміту' : inf.n + ' / ' + inf.free}${inf.over ? ` · +${inf.over} × ${inf.price} ₴` : ''}</b></div>`;
   const tgt = cat => cat ? (inf.cat[cat] ||= { prompt: '', refs: [] }) : inf; // стиль блоку або всього закладу
   const refsRow = cat => { const r = tgt(cat).refs; return `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0">${r.map((u, i) => `<div style="width:72px;height:72px;border-radius:10px;background:var(--card2,#ffffff10) url('${esc(u)}') center/cover;position:relative"><button data-ph="refDel" data-i="${i}" style="position:absolute;top:2px;right:2px;background:#000a;color:#fff;border-radius:8px;width:22px;height:22px">✕</button></div>`).join('')}${r.length < 2 ? '<button class="btn sm" data-ph="refAdd" style="height:72px">＋ Зразок</button>' : ''}</div>`; };
   const styleBlock = cat => cat
@@ -111,8 +111,8 @@ window.PHOTOAI = (() => {
   const gen = it => make({ id: it.id, series: 1, refs: 1, ...(it.img ? { mode: 'edit' } : {}) }); // з фото — обробка під зразок, без — з нуля
   // блок: без зразка спершу одна страва → «✅ Взяти» робить її зразком (якір) → решта блоку в тому ж стилі
   async function batch(list, cid) {
-    const left = Math.max(0, inf.free - inf.n), over = Math.max(0, list.length - left);
-    if (!confirm(`📸 ${list.length} фото для блоку?\nБезкоштовно ще ${left}.${over ? ` Понад ліміт — ${over} × ${inf.price} ₴ = ${over * inf.price} ₴.` : ''}\nЗайме ~${Math.ceil(list.length * 15 / 60)} хв — вікно не закривайте.`)) return;
+    const left = inf.free == null ? list.length : Math.max(0, inf.free - inf.n), over = Math.max(0, list.length - left);
+    if (!confirm(`📸 ${list.length} фото для блоку?\n${inf.free == null ? 'Без ліміту.' : `Безкоштовно ще ${left}.`}${over ? ` Понад ліміт — ${over} × ${inf.price} ₴ = ${over * inf.price} ₴.` : ''}\nЗайме ~${Math.ceil(list.length * 15 / 60)} хв — вікно не закривайте.`)) return;
     if (over) paid = true;
     if (!tgt(cid).refs.length && list.length > 1) return anchor(list, cid);
     run(list, cid);
@@ -192,7 +192,7 @@ window.PHOTOAI = (() => {
   function review(it, st, r) {
     const before = st.src === 'up' ? st.data : st.src === 'edit' ? it.img : '';
     const w = box('📸 ' + esc(nm(it)), `<div style="display:grid;grid-template-columns:${before ? '1fr 1fr' : '1fr'};gap:8px">${before ? `<figure style="margin:0"><img src="${esc(before)}" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px"><figcaption class="muted" style="text-align:center">було</figcaption></figure>` : ''}<figure style="margin:0"><img src="${esc(r.draft)}" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px"><figcaption class="muted" style="text-align:center">ШІ</figcaption></figure></div>
-      <div class="muted" style="font-size:12px;margin-top:8px">Цього місяця: ${r.n} фото${r.over ? ` · понад ліміт ${r.over} × ${r.price} ₴` : ` з ${r.free} безкоштовних`}</div>
+      <div class="muted" style="font-size:12px;margin-top:8px">Цього місяця: ${r.n} фото${r.over ? ` · понад ліміт ${r.over} × ${r.price} ₴` : r.free == null ? ' · без ліміту' : ` з ${r.free} безкоштовних`}</div>
       <div class="ph-act"><button class="btn primary" data-v="ok">✅ Взяти в меню</button><button class="btn" data-v="edit">✍️ Підправити опис і ще раз</button><button class="btn ghost" data-v="no">✕ Не треба</button></div>`);
     w.addEventListener('click', async e => {
       const b = e.target.closest('[data-v]'); if (!b) return; b.disabled = true; const v = b.dataset.v;
