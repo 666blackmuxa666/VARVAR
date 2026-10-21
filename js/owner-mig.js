@@ -74,7 +74,8 @@ window.OWNMIG = (() => {
     let body = `<div class="card"><h3>📥 Перехід з іншої системи</h3>
       <div class="muted" style="font-size:13px;margin-bottom:10px">Порядок: меню → продукти й залишки → техкарти → постачальники → гості → сертифікати. Повторний імпорт оновлює, а не дублює. Перед кожним імпортом робиться копія даних.</div>
       <label>Звідки переходимо<select id="migSys">${Object.entries(SYS).map(([k, l]) => `<option value="${k}" ${m.sys === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
-      ${m.sys === '1c' ? `<div class="alert" style="font-size:13px;margin:8px 0">🟡 <b>1С / BAS:</b> довідник «Номенклатура» → Зберегти як Excel; залишки — «Оборотно-сальдова відомість» по рах. 201 / 281 на дату переходу (з кількістю) → Excel; рецептури — звіт «Калькуляційні картки» → Excel. Шапку звіту прибирати не треба.</div>` : ''}
+      ${m.sys === '1c' ? `<div class="alert" style="font-size:13px;margin:8px 0">⚡ <b>Автоматично:</b> на компʼютері з 1С запустіть програму вивантаження — вона сама знайде меню з цінами, залишки, техкарти, контрагентів і дисконтні картки та збереже файли на робочий стіл (папка ATOM-1C-…). База лише читається; пароль 1С вводите ви, він нікуди не передається.<div style="margin-top:8px"><button class="btn sm primary" data-a="mig1c">⬇️ Програма вивантаження з 1С (Windows)</button></div>
+        <div style="margin-top:8px">🟡 <b>Вручну:</b> довідник «Номенклатура» → Зберегти як Excel; залишки — «Оборотно-сальдова відомість» по рах. 201 / 281 на дату переходу (з кількістю) → Excel; рецептури — звіт «Калькуляційні картки» → Excel. Шапку звіту прибирати не треба.</div></div>` : ''}
       ${DIRECT[m.sys] ? `<div class="alert" style="font-size:13px;margin:8px 0">📡 <b>Напряму з ${esc(SYS[m.sys])}</b> — без файлів: ${DIRECT[m.sys]} Ключ використовується один раз і ніде не зберігається.
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"><input id="migTok" type="password" autocomplete="off" placeholder="Ключ API" style="flex:1;min-width:180px"><button class="btn sm primary" data-a="migPull">📡 Забрати дані</button></div>
         ${m.pulled ? `<div style="margin-top:8px">✅ Отримано: ${ORDER.filter(k => m.pulled[k]?.length).map(k => `${esc(K[k].t)} <b>${m.pulled[k].length}</b>`).join(' · ') || 'нічого'}. Оберіть розділ нижче (по порядку) → 🔍 Перевірити → ✅ Імпортувати.${m.pullNote ? `<br>ℹ️ ${esc(m.pullNote)}` : ''}</div>` : ''}</div>` : ''}
@@ -124,6 +125,12 @@ window.OWNMIG = (() => {
       try { const r = await C.vapi('migPull', { sys: m.sys, token: tok }); Object.assign(m, { pulled: r.data, pullNote: r.note || '', sysName: C.S.cfgV?.d?.sys?.[m.sys] || m.sys, kind: '', head: [], data: [], map: {}, res: null }); C.toast('📡 Дані отримано — перевіряйте по розділах'); }
       catch (e) { C.toast('⚠️ ' + e.message); }
       if (t) t.value = ''; el.disabled = false; return C.render();
+    }
+    if (a === 'mig1c') { // .cmd завантажує скрипт з нашого сайту й запускає (без прав адміністратора); сам скрипт — 1c/atom-1c-export.ps1
+      const u = new URL('1c/atom-1c-export.ps1', location.href).href.replace(/'/g, ''), /* поруч з owner.html: /owner/1c/… */ f = '%TEMP%\\atom-1c-export.ps1';
+      const cmd = ['@echo off', 'chcp 65001 >nul', 'title ATOM - 1C export', 'echo Downloading...', `powershell -NoProfile -Command "try { $h=New-Object -ComObject WinHttp.WinHttpRequest.5.1; try { [void]$h.GetType().InvokeMember('Option',[Reflection.BindingFlags]::SetProperty,$null,$h,@(9,0x0A80)) } catch {}; $h.Open('GET','${u}',$false); $h.Send(); if ($h.Status -ne 200) { exit 1 }; [IO.File]::WriteAllBytes('${f}',[byte[]]$h.ResponseBody) } catch { exit 1 }"`, 'if errorlevel 1 (echo Download failed. Check internet. & pause & exit /b 1)', `powershell -NoProfile -ExecutionPolicy Bypass -File "${f}"`, ''].join('\r\n');
+      const x = document.createElement('a'); x.href = URL.createObjectURL(new Blob([cmd], { type: 'application/octet-stream' })); x.download = 'ATOM-1C-export.cmd'; x.click(); setTimeout(() => URL.revokeObjectURL(x.href), 5000);
+      return C.toast('⬇️ Запустіть ATOM-1C-export.cmd на компʼютері з 1С');
     }
     if (a === 'migClear') { Object.assign(m, { head: [], data: [], map: {}, res: null, file: '' }); return C.render(); }
     if (a === 'migCheck' || a === 'migGo') {
