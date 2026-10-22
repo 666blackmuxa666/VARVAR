@@ -1249,6 +1249,15 @@ async function loyTests(A, W, dish) {
     const m1 = ok(await run('menu', M), 'імпорт меню'); must(m1.add === 2 && m1.undo, 'меню: ' + JSON.stringify(m1).slice(0, 160));
     const m2 = ok(await run('menu', [{ id: 'A1', cat: 'QA Супи', name: 'QA Борщ український', price: '155' }, M[1]]), 'повтор меню'); must(m2.add === 0 && m2.upd === 2, 'повтор дублює: ' + JSON.stringify(m2).slice(0, 160));
     const it = await items(); must(it.filter(i => /^QA Борщ/.test(i.name.uk)).length === 1 && it.find(i => i.name.uk === 'QA Борщ український')?.price === 155, 'код A1 не оновив страву');
+    { // 🥤 розміри: рядки «назва + розмір» → одна страва з варіантами; повтор без розміру розміри не стирає (раніше — delete it.variants)
+      const V = [{ cat: 'QA Пиво', name: 'QA Лагер', price: '60', v: '0,3 л' }, { cat: 'QA Пиво', name: 'QA Лагер', price: '90', v: '0.5' }, { name: 'QA Лагер', price: '1', v: 'великий' }];
+      const vr = ok(await run('menu', V, 0, 'rkeeper'), 'розміри'); must(vr.add === 1 && vr.upd === 2 && vr.errs.some(e => e.w && /потрібне число/.test(e.m)), 'розміри: ' + JSON.stringify(vr).slice(0, 220));
+      const lg = async () => (await items()).find(i => i.name.uk === 'QA Лагер'); let l = await lg();
+      must(l?.variants?.length === 2 && l.variants[0].v === '0.3' && l.variants[0].p === 60 && l.variants[1].p === 90 && l.size === 'л' && !('price' in l), 'страва з розмірами: ' + JSON.stringify(l));
+      const v2 = ok(await run('menu', [{ name: 'QA Лагер', price: '99' }]), 'повтор без розміру'); l = await lg();
+      must(v2.errs.some(e => e.w && /розміри лишили/.test(e.m)) && l.variants?.length === 2 && l.variants[1].p === 90, 'повтор стер розміри: ' + JSON.stringify(l));
+      ok(await vpos(VA, 'migUndo', { id: v2.id }), 'відкат повтору'); ok(await vpos(VA, 'migUndo', { id: vr.id }), 'відкат розмірів'); must(!(await lg()), 'страва з розмірами лишилась після відкату');
+    }
     const g = ok(await run('ing', [{ n: 'QA Буряк', u: 'г', q: '2500', cost: '0,02' }, { n: 'QA Сметана', u: 'кг', q: '1.5', sum: '90', wh: 'Бар' }, { n: 'QA Дивне', u: 'бочка' }]), 'продукти');
     must(g.add === 3 && g.tot.q === 2 && g.errs.some(e => e.w && /одиниця/.test(e.m)), 'продукти: ' + JSON.stringify(g).slice(0, 200));
     const ing = (await vpos(VA, 'skData')).j.ing, bur = ing.find(x => x.n === 'QA Буряк'), sm = ing.find(x => x.n === 'QA Сметана');
@@ -1280,6 +1289,9 @@ async function loyTests(A, W, dish) {
       must(sf.add === 1 && sf.skip === 1 && sf.tot.nopin === 1, 'персонал: ' + JSON.stringify(sf).slice(0, 200));
       const st = (await vpos(VA, 'staff')).j.staff.find(x => x.name === sn); must(st?.role === 'cook' && st.nopin && !('pin' in st), 'працівник: ' + JSON.stringify(st));
       ok(await vpos(VA, 'migUndo', { id: sf.id }), 'відкат персоналу'); must(!(await vpos(VA, 'staff')).j.staff.some(x => x.name === sn), 'працівник лишився після відкату');
+      const rk = ok(await run('staff', [{ n: sn + ' RK', role: 'Менеджер' }, { n: sn + ' RD', role: 'Директор' }], 0, 'rkeeper'), 'персонал R-Keeper'); // RK7_dbf усім пише «менеджер»
+      const rs = (await vpos(VA, 'staff')).j.staff; must(rs.find(x => x.name === sn + ' RK')?.role === 'waiter' && rs.find(x => x.name === sn + ' RD')?.role === 'admin' && rk.errs.some(e => e.w), 'R-Keeper «менеджер» став адміном: ' + JSON.stringify(rs.filter(x => x.name.startsWith(sn))));
+      ok(await vpos(VA, 'migUndo', { id: rk.id }), 'відкат персоналу R-Keeper');
       const dd = new Date(Date.now() + 5 * 864e5 + 3 * 3600e3).toISOString().slice(0, 10), dm = dd.slice(8) + '.' + dd.slice(5, 7) + '.' + dd.slice(0, 4), bph = '063' + String(Date.now()).slice(-7);
       const B = [{ id: 'R1', date: dm, time: '19:30', name: 'QA Перенос-бронь', phone: bph, people: '6', kind: 'Банкет', dep: '2 500,50' }, { date: '01.01.2020', time: '12:00', name: 'QA Стара', phone: bph }, { date: dm, time: '', name: 'x', phone: bph }];
       const bk = ok(await run('book', B), 'броні'); must(bk.add === 1 && bk.skip === 2 && bk.tot.dep === 2500.5, 'броні: ' + JSON.stringify(bk).slice(0, 220));
@@ -1289,7 +1301,7 @@ async function loyTests(A, W, dish) {
       ok(await vpos(VA, 'migUndo', { id: bk2.id }), 'відкат броні'); must((await vpos(VA, 'bkList', { from: dd, to: dd })).j.list.find(x => x.phone.endsWith(bph.slice(1)))?.time === '19:30', 'відкат повтору не повернув час');
       ok(await vpos(VA, 'migUndo', { id: bk.id }), 'відкат броней'); must(!(await vpos(VA, 'bkList', { from: dd, to: dd })).j.list.some(x => x.phone.endsWith(bph.slice(1))), 'бронь лишилась після відкату');
     }
-    return '8 видів, повтор, відкат';
+    return '8 видів, розміри, R-Keeper, повтор, відкат';
   });
   await step('🏦 банк (етап 2): модуль/права; виписка 1С → еквайринг з комісією, оплата 2 накладних, власний переказ, черга; повтор не дублює; дії й заборони; CSV; облік і експорт', async () => {
     const ok = (r, w) => { must(r.status === 200 && !r.j.error, w + ': ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 200)); return r.j; };

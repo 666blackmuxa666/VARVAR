@@ -240,7 +240,7 @@ export async function certAsk(b, ip, env) {
     return [{ ok: true, pay: f.url, code }, 200];
   }
   await env.DB.put('cert:' + code, JSON.stringify(c)); await env.DB.put(rk, String(rn + 1), { expirationTtl: 3600 });
-  await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; l.push(code); await env.DB.put('certs', JSON.stringify(l.slice(-500))); });
+  await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; l.push(code); await env.DB.put('certs', JSON.stringify(l.slice(-5000))); });
   await logEvent(env, { k: 'cert', code, s: 'new', text: `🎁 Сертифікат ${money(sum)} · від ${from}${to ? ' для ' + to : ''} · ${fmtPhone(phone)} — чекає оплати` });
   await notify(env, `🎁 <b>Заявка на сертифікат</b> ${money(sum)}\nвід <b>${esc(from)}</b>${to ? ` для <b>${esc(to)}</b>` : ''}\n📞 <a href="tel:+${phone}">${fmtPhone(phone)}</a>${c.note ? `\n💬 ${esc(c.note)}` : ''}\n\nПісля оплати — підтвердьте:`, { inline_keyboard: [[{ text: '💵 Оплачено готівкою', callback_data: `ct:${code}:cash` }, { text: '💳 Карткою', callback_data: `ct:${code}:card` }], [{ text: '❌ Скасувати', callback_data: `ct:${code}:no` }]] });
   await guestMsg(env, phone, `🎁 Заявку на сертифікат ${money(sum)} отримали. Адміністратор зв'яжеться щодо оплати.`);
@@ -255,7 +255,7 @@ export async function certPaid(env, x) {
   const { lpOk } = await import('./liqpay.js'); if (!lpOk(x)) return { ok: true, fail: 1 };
   if (Math.round(+x.amount || 0) + 1 < c0.sum) { await late(`сума ${Math.round(+x.amount || 0)} грн менша за сертифікат ${c0.sum} грн — не активовано`); return { ok: true, fail: 1 }; } /* 💳 недоплата — не активуємо */
   const c = await certPay(env, code, 'online', '🌐 LiqPay', { lp: String(x.payment_id || '') }); if (!c) return { ok: true, dup: 1 }; /* перевірка «ще не оплачено», позначка LiqPay й активація — під одним замком: паралельний повтор не проведе гроші двічі */
-  await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; if (!l.includes(code)) l.push(code); await env.DB.put('certs', JSON.stringify(l.slice(-500))); });
+  await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; if (!l.includes(code)) l.push(code); await env.DB.put('certs', JSON.stringify(l.slice(-5000))); });
   await logEvent(env, { k: 'cert', code, s: 'acc', accBy: '🌐 онлайн', text: `🎁 Сертифікат ${money(c.sum)} · від ${c.from}${c.to ? ' для ' + c.to : ''} — 💳 оплачено онлайн${x.status === 'sandbox' ? ' · 🧪 тест' : ''}` });
   await notify(env, `🎁 <b>Сертифікат оплачено онлайн</b> ${money(c.sum)} · код <b>${code}</b>\nвід ${esc(c.from)}${c.to ? ` для ${esc(c.to)}` : ''}`).catch(() => {});
   return { ok: true };
@@ -289,7 +289,7 @@ export async function certUse(env, t, code, who) {
 export async function certGift(env, { phone, name, gift, items, sum, days, here }) {
   const code = certCode(), c = { ...(here ? { here: 1 } : {}), code, sum, left: sum, from: (await getSite(env)).name + ' 🎂', to: name || '', phone, note: '', st: 'ok', paid: 'gift', gift, items, at: Date.now(), exp: Date.now() + days * 864e5, uses: [] };
   await env.DB.put('cert:' + code, JSON.stringify(c));
-  await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; l.push(code); await env.DB.put('certs', JSON.stringify(l.slice(-500))); });
+  await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; l.push(code); await env.DB.put('certs', JSON.stringify(l.slice(-5000))); });
   return c;
 }
 // ✕ прибрати сертифікат з рахунку (передумали): сума повертається на сертифікат; подарунок ДН, вибитий у рахунку, — зникає, і гість знову може його отримати

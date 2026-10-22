@@ -13,7 +13,7 @@ import { getStaff } from './ops-staff.js';
 
 // вид → назва й поля (* — обовʼязкові). Ті самі ключі використовує майстер для зіставлення колонок.
 export const KINDS = {
-  menu: { t: '🍽 Меню', f: { id: 'Код', cat: 'Розділ', name: 'Назва*', price: 'Ціна*', desc: 'Опис', size: 'Вага / обʼєм' } },
+  menu: { t: '🍽 Меню', f: { id: 'Код', cat: 'Розділ', name: 'Назва*', price: 'Ціна*', v: 'Розмір (0,5 л)', desc: 'Опис', size: 'Вага / обʼєм' } },
   ing: { t: '📦 Продукти й залишки', f: { id: 'Код', n: 'Назва*', u: 'Одиниця', cat: 'Група', q: 'Залишок', wh: 'Склад', cost: 'Ціна за одиницю', sum: 'Сума залишку', bc: 'Штрихкод' } },
   cards: { t: '📋 Техкарти', f: { dish: 'Страва*', ing: 'Продукт*', q: 'Брутто*', u: 'Одиниця', loss: 'Втрати, %', out: 'Вихід, г' } },
   sup: { t: '🚚 Постачальники', f: { n: 'Назва*', code: 'ЄДРПОУ / ІПН', iban: 'IBAN', phone: 'Телефон', addr: 'Адреса' } },
@@ -22,7 +22,7 @@ export const KINDS = {
   staff: { t: '👥 Персонал', f: { n: 'Імʼя*', role: 'Посада' } },
   book: { t: '📅 Броні й передоплати', f: { id: 'Код', date: 'Дата*', time: 'Час*', name: 'Імʼя*', phone: 'Телефон*', people: 'Гостей', kind: 'Тип (стіл/банкет)', dep: 'Передоплата, ₴', comment: 'Коментар', t: 'Стіл' } },
 };
-export const SYS = { xls: '📊 Excel / CSV', '1c': '🟡 1С / BAS', poster: '🟠 Poster', syrve: '🟣 Syrve / iiko', other: '🔹 Інша система' };
+export const SYS = { xls: '📊 Excel / CSV', '1c': '🟡 1С / BAS', poster: '🟠 Poster', syrve: '🟣 Syrve / iiko', rkeeper: '🔴 R-Keeper / StoreHouse', other: '🔹 Інша система' };
 const MAX = 2000, UNDO_MAX = 1.8e6, UNDO_DAYS = 7;
 const T = (v, n = 120) => String(v ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
 // «1 234,50 ₴» → 1234.5; порожньо → null (поле не задано)
@@ -64,14 +64,18 @@ const AP = {
       rows.forEach((r, i) => {
         const name = T(r.name, 60), p = num(r.price); if (!name) return c.err(i, 'немає назви'), skip++; if (!(p > 0)) return c.err(i, `«${name}»: немає ціни`), skip++;
         const price = Math.round(p); if (price !== p) c.err(i, `«${name}»: ціну ${p} округлено до ${price} ₴`, 1);
-        const ext = c.ext(r), cn = T(r.cat, 40) || 'Меню';
+        const ext = c.ext(r), cn = T(r.cat, 40) || 'Меню', vm = T(r.v, 16).replace(',', '.').match(/^(\d+(?:\.\d+)?)\s*([a-zа-яʼ'.]*)$/i);
+        if (r.v && !vm) c.err(i, `«${name}»: розмір «${T(r.v, 16)}» — потрібне число (0,5 або 0.33 л) — ціну взяли без розміру`, 1);
         let it = (ext && x[ext] && all().find(y => y.id === x[ext])) || all().find(y => y.name.uk.toLowerCase() === name.toLowerCase());
         let cat = menu.categories.find(k => !k.tech && k.name.uk.toLowerCase() === cn.toLowerCase());
         if (!cat) { let id = slug(cn) || 'cat'; while (menu.categories.some(k => k.id === id)) id += '-2'; cat = { id, name: { uk: cn, en: cn }, items: [] }; const t = menu.categories.findIndex(k => k.tech); t >= 0 ? menu.categories.splice(t, 0, cat) : menu.categories.push(cat); cats++; }
         if (!it) { it = { id: 'p-' + slug(name).slice(0, 24) + '-' + uid().slice(0, 4), name: { uk: name, en: name } }; cat.items.push(it); add++; }
         else { upd++; if (r.cat && !cat.items.includes(it)) { menu.categories.forEach(k => { k.items = k.items.filter(y => y !== it); }); cat.items.push(it); } it.name = { ...it.name, uk: name }; }
-        it.price = price; delete it.variants;
-        const d = T(r.desc, 300); if (d) it.desc = { uk: d, en: d }; const sz = T(r.size, 30); if (sz) it.size = sz;
+        // 🥤 розмір (0,5 л) → варіант страви: рядки з однією назвою й різними розмірами = одна позиція з розмірами
+        if (vm) { const v = String(+vm[1]), vs = it.variants || []; const o = vs.find(z => z.v === v); o ? (o.p = price) : vs.push({ v, p: price }); it.variants = vs.sort((a, b) => a.v - b.v); delete it.price; if (vm[2] && !it.size) it.size = vm[2].replace(/\.$/, ''); }
+        else if (it.variants?.length) c.err(i, `«${name}»: у системі є розміри (${it.variants.map(z => z.v).join(', ')}) — ціну без розміру не ставимо, розміри лишили`, 1);
+        else it.price = price;
+        const d = T(r.desc, 300); if (d) it.desc = { uk: d, en: d }; const sz = T(r.size, 30); if (sz && !it.variants) it.size = sz; // у страви з розмірами size — одиниця розміру (л)
         if (ext) x[ext] = it.id;
       });
       if (!c.dry && (add || upd)) { await saveMenu(env, menu); await env.DB.put('mig:x:menu', JSON.stringify(x)); }
@@ -167,7 +171,7 @@ const AP = {
       const x = { ...(o || { code, from: `Перенесено (${SYS[c.sys] || c.sys})`, note: '', st: 'ok', paid: 'mig', at: now, uses: [] }), sum: k2(sum), left: k2(lf), to: T(r.to, 40) || o?.to || '', phone: normPhone(r.phone) || o?.phone || '', mig: c.sys, ...(exp ? { exp } : {}) };
       await L(env, 'cert:' + code, () => env.DB.put('cert:' + code, JSON.stringify(x))); codes.push(code);
     }
-    if (codes.length) await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; for (const k of codes) if (!l.includes(k)) l.push(k); await env.DB.put('certs', JSON.stringify(l.slice(-500))); });
+    if (codes.length) await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; for (const k of codes) if (!l.includes(k)) l.push(k); await env.DB.put('certs', JSON.stringify(l.slice(-5000))); });
     return { add, upd, skip, tot: { left: left / 100 } };
   },
   // 👥 персонал без PIN: PIN з чужої системи не перенести (там хеш) — адмін задає кожному в Налаштуваннях → Персонал → 🔑
@@ -177,7 +181,10 @@ const AP = {
       const l = await getStaff(env); let add = 0, upd = 0, skip = 0;
       rows.forEach((r, i) => {
         const n = T(r.n, 30); if (!n) return c.err(i, 'немає імені'), skip++;
-        const role = (RL.find(([re]) => re.test(String(r.role || ''))) || [, 'waiter'])[1];
+        // R-Keeper (RK7_dbf) усім пише «менеджер» — з нього адміном робимо лише явних адмінів/директорів, решта — офіціанти
+        const rk = c.sys === 'rkeeper' && /менедж|manag/i.test(String(r.role || '')) && !/адмін|админ|директ|управ|admin/i.test(String(r.role || ''));
+        const role = rk ? 'waiter' : (RL.find(([re]) => re.test(String(r.role || ''))) || [, 'waiter'])[1];
+        if (rk) c.err(i, `«${T(r.n, 30)}»: «${T(r.role, 30)}» з R-Keeper — поставили офіціанта; адміна призначте в Налаштуваннях → Персонал`, 1);
         const y = l.find(z => z.name.toLowerCase() === n.toLowerCase());
         if (y) { upd++; if (r.role && y.role !== role) c.err(i, `«${n}»: вже є з іншою роллю — роль не змінюємо`, 1); return; }
         l.push({ id: crypto.randomUUID().slice(0, 6), name: n, role, mig: c.sys }); add++;
@@ -207,7 +214,7 @@ const AP = {
   },
 };
 // ключ дубліката всередині файлу (останній рядок перемагає — як і при повторному імпорті)
-const DUPK = { menu: r => T(r.name).toLowerCase(), ing: r => norm(r.n), cards: r => T(r.dish).toLowerCase() + '|' + norm(r.ing), sup: r => nrmSup(r.n), cli: r => normPhone(r.phone), cert: r => T(r.code).toUpperCase(), staff: r => T(r.n).toLowerCase(), book: r => T(r.id) || ymd(r.date) + '|' + T(r.time) + '|' + normPhone(r.phone) };
+const DUPK = { menu: r => T(r.name).toLowerCase() + '|' + T(r.v).replace(',', '.'), ing: r => norm(r.n), cards: r => T(r.dish).toLowerCase() + '|' + norm(r.ing), sup: r => nrmSup(r.n), cli: r => normPhone(r.phone), cert: r => T(r.code).toUpperCase(), staff: r => T(r.n).toLowerCase(), book: r => T(r.id) || ymd(r.date) + '|' + T(r.time) + '|' + normPhone(r.phone) };
 
 // 🚀 { sys, kind, rows, map?, dry } → підсумок. who — хто імпортує
 export async function migRun(env, b, who) {

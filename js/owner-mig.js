@@ -1,21 +1,25 @@
 // 📥 Кабінет власника → заклад → Перехід: майстер переходу з іншої системи (етап 1). Адаптер «будь-який Excel/CSV»:
-// файл (.xlsx/.xls/.csv) або вставка з таблиці → пошук рядка заголовків (звіти 1С мають шапку) → зіставлення колонок (вгадуємо + памʼятаємо для системи)
+// файл (.xlsx/.xls/.csv, R-Keeper: .dbf з RK7_dbf і .xml довідників XML-інтерфейсу) або вставка з таблиці → пошук рядка заголовків (звіти 1С мають шапку) → зіставлення колонок (вгадуємо + памʼятаємо для системи)
 // → 🔍 перевірка (migRun dry) → ✅ імпорт → журнал з ↩️ відкатом. Сервер — worker/src/mig.js. Підключається з owner-venue.js (розділ «mig»).
 window.OWNMIG = (() => {
   let C = null; // { S, esc, money, toast, render, vapi, reload }
   const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-  // підказки заголовків: поле → як його називають у 1С / Poster / Excel (укр і рос)
+  // підказки заголовків: поле → як його називають у 1С / Poster / R-Keeper / Excel (укр і рос). Порядок полів = KINDS (rowsOf бере ключі звідси)
   const HINT = {
-    menu: { id: /^(код|артикул|id|code)\b/, cat: /розд|катег|груп|categ/, name: /назв|найменув|наименов|страв|блюд|товар|name|позиц|номенклат/, price: /ціна|цена|вартість|price/, desc: /опис|склад|desc/, size: /ваг|вихід|выход|об.?є?м|порц|size|грам/ },
+    menu: { id: /^(код|артикул|id|code|ident)\b/, cat: /розд|катег|груп|categ|parent/, name: /назв|найменув|наименов|страв|блюд|товар|name|позиц|номенклат/, price: /ціна|цена|вартість|price/, v: /^(розмір|размер|варіант|вариант|variant|модифікац)/, desc: /опис|склад|desc/, size: /ваг|вихід|выход|об.?є?м|порц|size|грам/ },
     ing: { id: /^(код|артикул|id|code)\b/, n: /назв|найменув|наименов|номенклат|товар|продукт|інгред|ингред|name/, u: /^(од|ед)\.?\b|одиниц|единиц|unit/, cat: /груп|катег|розд/, q: /залиш|остат|кільк|колич|к-ть|qty|сальдо/, wh: /^склад|warehouse|місце збер/, cost: /ціна|цена|собіварт|себестоим|price|cost/, sum: /сума|сумма|вартість|стоимост|sum|total/, bc: /штрих|barcode|ean/ },
     cards: { dish: /страв|блюд|dish|продукц|рецепт|калькуляц|техкарт/, ing: /продукт|інгред|ингред|сировин|сырь|компонент|ingredient|номенклат|товар/, q: /брутто|кільк|колич|норма|qty|вага/, u: /^(од|ед)\.?\b|одиниц|единиц|unit/, loss: /втрат|потер|відход|отход|loss/, out: /вихід|выход|нетто|yield/ },
     sup: { n: /назв|найменув|наименов|контрагент|постач|поставщ|name/, code: /єдрпоу|едрпоу|іпн|инн|рнокпп|edrpou|^код/, iban: /iban|рахун|счет|р\/р/, phone: /тел|phone|моб/, addr: /адрес|address/ },
     cli: { phone: /тел|phone|моб/, name: /^ім|^им|піб|фио|name|клієнт|клиент|гість|гост/, bal: /бонус|бал|bonus|point/, bd: /народж|рожд|birth|д\.?\s?н\.?$/, note: /нотат|приміт|примеч|коментар|note/ },
+    staff: { n: /^ім|^им|піб|фио|прізв|фамил|name|працівн|сотрудн|employee/, role: /посад|должн|роль|role|категор/ },
+    book: { id: /^(код|номер|id|code)\b/, date: /дата|date|день/, time: /час|время|time/, name: /^ім|^им|піб|фио|name|гість|гост|клієнт|клиент|замовн/, phone: /тел|phone|моб/, people: /гост.*к|осіб|персон|people|pax|кільк/, kind: /тип|вид|kind|банкет/, dep: /передопл|предопл|аванс|депоз|deposit|prepay/, comment: /комент|примеч|приміт|comment|note/, t: /^стіл|^стол|table/ },
     cert: { code: /код|номер|code|^№/, sum: /номінал|номинал|сума|сумма|amount|nominal/, left: /залиш|остат|balance|left/, phone: /тел|phone/, to: /кому|отримув|получат|^to$/, exp: /діє до|действ|термін|срок|expir/ },
   };
   const FILL = { menu: ['cat'], ing: ['cat', 'wh'], cards: ['dish'] }; // порожня клітинка = як у рядку вище (групи в 1С / рецептури)
   const TOTAL = /^(разом|всього|усього|итого|всего|total)\b/i;
   const ORDER = ['menu', 'ing', 'cards', 'sup', 'cli', 'cert', 'staff', 'book'];
+  // 🔴 R-Keeper: файли вивантаження й звідки їх узяти (див. _team/rkeeper.md)
+  const RK = `🔴 <b>R-Keeper:</b> вивантажуйте, <b>поки працює ваш сервер RK7</b>. <b>Меню, ціни, персонал</b> — утиліта RK7_dbf (файли .dbf) або довідники XML-інтерфейсу <code>GetRefData</code> (MENUITEMS, CATEGLIST, EMPLOYEES — файли .xml). <b>Техкарти, залишки, постачальники</b> — StoreHouse: калькуляційні карти, звіт залишків на дату переходу, кореспонденти → Excel. <b>Гості з бонусами, сертифікати</b> — звіт CRM на день переходу → Excel. Не впевнені — напишіть ATOM, вивантажимо разом безкоштовно.`;
   const DIRECT = { poster: 'Poster → Доступ → Інтеграції → API → скопіюйте ключ (вигляд 123456:abc…). Заберемо меню, техкарти, залишки, постачальників і гостей з бонусами.', syrve: 'Syrve Office → Налаштування Cloud API → «API login». Заберемо меню й товари; техкарти й залишки — файлом.' };
   function fromPull(k) { // 📡 рядки з API старої системи → та сама таблиця, що й з файлу (зіставлення 1:1)
     const m = st(), F = Object.keys(kinds()[k].f), rows = m.pulled?.[k] || []; if (!rows.length) return;
@@ -34,7 +38,16 @@ window.OWNMIG = (() => {
     return out.map(r => r.map(x => String(x).trim()));
   }
   let xl = null;
+  // .xml R-Keeper (відповідь GetRefData): таблиця = найчастіший елемент з атрибутами, колонки — атрибути (Code, Name, …)
+  function parseXML(t) {
+    const doc = new DOMParser().parseFromString(t, 'application/xml'); if (doc.querySelector('parsererror')) throw new Error('Файл XML пошкоджений');
+    const by = new Map(); for (const e of doc.getElementsByTagName('*')) if (e.attributes.length >= 2) by.set(e.tagName, (by.get(e.tagName) || 0) + 1);
+    const tag = [...by].sort((a, b) => b[1] - a[1])[0]?.[0]; if (!tag) throw new Error('У XML не знайдено рядків');
+    const els = [...doc.getElementsByTagName(tag)], cols = [...new Set(els.flatMap(e => [...e.attributes].map(a => a.name)))];
+    return [cols, ...els.map(e => cols.map(c => e.getAttribute(c) ?? ''))];
+  }
   async function parseFile(f) {
+    if (/\.xml$/i.test(f.name)) { const t = new TextDecoder('utf-8').decode(await f.arrayBuffer()); if (!/urn:schemas-microsoft-com:office:spreadsheet/.test(t.slice(0, 2000))) return parseXML(t); }
     if (/\.(csv|txt|tsv)$/i.test(f.name)) { const buf = new Uint8Array(await f.arrayBuffer()); let t = new TextDecoder('utf-8').decode(buf); if (t.includes('�')) t = new TextDecoder('windows-1251').decode(buf); return parseText(t.replace(/^﻿/, '')); }
     if (!window.XLSX) { xl ||= new Promise((res, rej) => { const s = document.createElement('script'); s.src = XLSX_URL; s.onload = res; s.onerror = () => { xl = null; rej(new Error('Не вдалося завантажити читач Excel — перевірте інтернет')); }; document.head.append(s); }); await xl; }
     const wb = window.XLSX.read(await f.arrayBuffer(), { type: 'array' }), ws = wb.Sheets[wb.SheetNames[0]];
@@ -76,6 +89,7 @@ window.OWNMIG = (() => {
       <label>Звідки переходимо<select id="migSys">${Object.entries(SYS).map(([k, l]) => `<option value="${k}" ${m.sys === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
       ${m.sys === '1c' ? `<div class="alert" style="font-size:13px;margin:8px 0">⚡ <b>Автоматично:</b> на компʼютері з 1С запустіть програму вивантаження — вона сама знайде меню з цінами, залишки, техкарти, контрагентів і дисконтні картки та збереже файли на робочий стіл (папка ATOM-1C-…). База лише читається; пароль 1С вводите ви, він нікуди не передається.<div style="margin-top:8px"><button class="btn sm primary" data-a="mig1c">⬇️ Програма вивантаження з 1С (Windows)</button></div>
         <div style="margin-top:8px">🟡 <b>Вручну:</b> довідник «Номенклатура» → Зберегти як Excel; залишки — «Оборотно-сальдова відомість» по рах. 201 / 281 на дату переходу (з кількістю) → Excel; рецептури — звіт «Калькуляційні картки» → Excel. Шапку звіту прибирати не треба.</div></div>` : ''}
+      ${m.sys === 'rkeeper' ? `<div class="alert" style="font-size:13px;margin:8px 0">${RK}</div>` : ''}
       ${DIRECT[m.sys] ? `<div class="alert" style="font-size:13px;margin:8px 0">📡 <b>Напряму з ${esc(SYS[m.sys])}</b> — без файлів: ${DIRECT[m.sys]} Ключ використовується один раз і ніде не зберігається.
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"><input id="migTok" type="password" autocomplete="off" placeholder="Ключ API" style="flex:1;min-width:180px"><button class="btn sm primary" data-a="migPull">📡 Забрати дані</button></div>
         ${m.pulled ? `<div style="margin-top:8px">✅ Отримано: ${ORDER.filter(k => m.pulled[k]?.length).map(k => `${esc(K[k].t)} <b>${m.pulled[k].length}</b>`).join(' · ') || 'нічого'}. Оберіть розділ нижче (по порядку) → 🔍 Перевірити → ✅ Імпортувати.${m.pullNote ? `<br>ℹ️ ${esc(m.pullNote)}` : ''}</div>` : ''}</div>` : ''}
@@ -88,7 +102,7 @@ window.OWNMIG = (() => {
     const m = st(), F = Object.entries(k.f), rows = m.head.length ? rowsOf() : [];
     let h = `<div class="card"><h3>${esc(k.t)}</h3>
       <div class="muted" style="font-size:13px">Колонки: ${F.map(([, l]) => esc(l)).join(' · ')} (* — обовʼязково). Назви колонок можуть бути будь-які — зіставимо нижче.</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0"><label class="btn sm" style="cursor:pointer">📄 Обрати файл<input id="migFile" type="file" accept=".xlsx,.xls,.csv,.txt,.tsv" hidden></label><span class="muted" style="font-size:13px;overflow-wrap:anywhere">${m.file ? '📎 ' + esc(m.file) : 'Excel (.xlsx, .xls) або CSV'}</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0"><label class="btn sm" style="cursor:pointer">📄 Обрати файл<input id="migFile" type="file" accept=".xlsx,.xls,.csv,.txt,.tsv,.dbf,.xml" hidden></label><span class="muted" style="font-size:13px;overflow-wrap:anywhere">${m.file ? '📎 ' + esc(m.file) : `Excel (.xlsx, .xls) або CSV${m.sys === 'rkeeper' ? ', R-Keeper .dbf / .xml' : ''}`}</span></div>
       <textarea id="migPaste" rows="3" placeholder="…або скопіюйте рядки з Excel / Google Sheets разом із заголовком і вставте сюди" style="width:100%;font:inherit;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px"></textarea>`;
     if (m.head.length) {
       h += `<div style="margin-top:12px"><b>🔗 Зіставлення колонок</b> <span class="muted" style="font-size:13px">· рядків: ${rows.length}</span></div>
@@ -168,5 +182,5 @@ window.OWNMIG = (() => {
     document.addEventListener('paste', e => { if (e.target.id !== 'migPaste' || !C) return; setTimeout(() => { const v = e.target.value; if (v.trim()) { setTable(parseText(v), '📋 вставлено з таблиці'); C.render(); } }, 0); });
   }
   let bound = false;
-  return { init(ctx) { C = ctx; if (!bound) { bound = true; bind(); } }, html: v => html(v), _parseText: parseText };
+  return { init(ctx) { C = ctx; if (!bound) { bound = true; bind(); } }, html: v => html(v), _parseText: parseText, _parseXML: parseXML };
 })();

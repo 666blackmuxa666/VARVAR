@@ -152,7 +152,7 @@ async function _importMenu(env, rows, replace) {
     if (!c) { let id = slug(cn) || 'cat'; while (menu.categories.some(x => x.id === id)) id += '-2'; c = { id, name: { uk: cn, en: cn }, items: [] }; const t = menu.categories.findIndex(x => x.tech); t >= 0 ? menu.categories.splice(t, 0, c) : menu.categories.push(c); cats++; }
     let it = menu.categories.flatMap(x => x.items).find(i => i.name.uk.toLowerCase() === name.toLowerCase());
     if (!it) { let id = 'p-' + (slug(name) || 'item').slice(0, 24) + '-' + (Date.now() + add).toString(36).slice(-4); it = { id, name: { uk: name, en: name } }; c.items.push(it); add++; } else upd++;
-    it.price = price; delete it.variants;
+    if (!it.variants?.length) it.price = price; // 🥤 страва з розмірами: ціну без розміру не ставимо — розміри не стираємо
     const d = String(r.desc || '').trim().slice(0, 300); if (d) it.desc = { uk: d, en: d };
     const sz = String(r.size || '').trim().slice(0, 30); if (sz) it.size = sz;
     const im = String(r.img || '').trim(); if (/^https:\/\/[^\s"'<>()]+$/.test(im) && im.length <= 300) it.img = im; // 🖼 фото за адресою (демо, імпорт)
