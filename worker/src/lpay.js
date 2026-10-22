@@ -13,6 +13,7 @@ import { exCheck } from './excise.js';
 
 const TIPS = [0, 5, 10, 15];
 // скільки ще сплатити за стіл (без чайових): рахунок мінус уже оплачене онлайн
+export const eqShare = (pay, n) => Math.ceil(pay / n); // ➗ однаково на сайті й сервері
 export const tDue = b => Math.max(0, payable(b) - (b.paid?.net || 0));
 export async function tpayOn(env) { const c = await getGoCfg(env); return !!(c.qrpay && lpKeys(env)); }
 
@@ -39,11 +40,12 @@ export async function tpayStart(env, b, at) {
   if (extra > 30000) return [{ error: 'too_big' }, 400]; // стеля як у /api/order (MAX_ORDER)
   if (!bill?.total && !extra) return [{ error: 'empty' }, 400];
   if (bill?.total) await promoFill(env, bill).catch(() => {});
-  const due = (bill?.total ? tDue(bill) : 0) + extra; if (due < 1) return [{ error: 'paid' }, 400];
+  const left = (bill?.total ? tDue(bill) : 0) + extra; if (left < 1) return [{ error: 'paid' }, 400];
+  const parts = !extra && +b.n >= 2 && +b.n <= 20 ? Math.floor(+b.n) : 0, due = parts ? Math.min(left, eqShare(payable(bill), parts)) : left; // ➗ порівну: гість платить свою частку, решта — наступним
   const pct = TIPS.includes(+b.tip) ? +b.tip : 0, tip = b.tipSum != null ? Math.max(0, Math.min(due, Math.round(+b.tipSum || 0))) : Math.round(due * pct / 100), amount = due + tip; /* tipSum — сума з вікна «Хочу чек» */
   const id = Date.now().toString(36) + [...crypto.getRandomValues(new Uint8Array(3))].map(x => x.toString(16).padStart(2, '0')).join('');
   await env.DB.put('tpp:' + id, JSON.stringify({ t, due, tip, amount, at: Date.now(), ...(bill?.total ? { bo: bill.opened || 1 } : {}), ...(items.length ? { items, comment: String(b.comment || '').slice(0, 300) } : {}) }), { expirationTtl: 3600 });
-  const f = await lpForm(lpKeys(env), { order_id: `tb-${env.VENUE || 'varvar'}-${id}`, amount, description: `Рахунок · стіл ${tn(t)}${tip ? ` · чайові ${tip} грн` : ''}`, result_url: siteLink(`?tpaid=${id}`), server_url: env.SELF_URL + '/api/lp/table' });
+  const f = await lpForm(lpKeys(env), { order_id: `tb-${env.VENUE || 'varvar'}-${id}`, amount, description: `Рахунок · стіл ${tn(t)}${parts ? ` · частка 1/${parts}` : ''}${tip ? ` · чайові ${tip} грн` : ''}`, result_url: siteLink(`?tpaid=${id}`), server_url: env.SELF_URL + '/api/lp/table' });
   if (!f.url) return [{ error: 'pay_fail', msg: f.error }, 502];
   return [{ ok: true, pay: f.url, id, sum: amount }, 200];
 }

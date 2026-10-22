@@ -3,6 +3,7 @@
 // st: 0 чернетка → 1 проведено; проведений не змінюється й не видаляється — виправлення = сторно (документ з −sum, rev ↔ rev).
 // ext — зовнішній ключ («1c:<GUID>», «sale:<день>»): повторний імпорт оновлює чернетку / повертає наявний, а не дублює.
 import { dayKey, isDay, L } from './ops.js';
+import { plocked } from './plock.js';
 
 export const DOC_TYPES = {
   sale: '🧾 Продажі за день', inv: '📥 Прихідна накладна', wo: '🗑 Списання', pko: '💵 Прибутковий касовий ордер', vko: '💸 Видатковий касовий ордер',
@@ -50,10 +51,10 @@ const byExt = async (env, ext) => row((await sql(env, ['SELECT * FROM doc WHERE 
 // ➕ новий документ (або той самий за ext: чернетку оновлюємо, проведений повертаємо як є — { doc, same: 1 })
 export async function docAdd(env, d, who = '') {
   if (!has(env)) return { error: 'Облік недоступний' };
-  const c = clean(d || {}); if (c.error) return c; if (!c.payer) c.payer = (await payerOf(env))?.id || '';
+  const c = clean(d || {}); if (c.error) return c; { const e = await plocked(env, c.day); if (e) return { error: e }; } if (!c.payer) c.payer = (await payerOf(env))?.id || '';
   return L(env, 'ledger', async () => {
     if (c.ext) { const o = await byExt(env, c.ext); if (o) {
-      if (o.st !== 0) return { doc: o, same: 1 };
+      if (o.st !== 0) return { doc: o, same: 1 }; { const e = await plocked(env, o.day); if (e) return { error: e }; }
       await sql(env, ['UPDATE doc SET type=?, payer=?, day=?, no=?, st=?, sum=?, src=?, body=?, upd=? WHERE id=?', c.type, c.payer, c.day, c.no, c.st, c.sum, c.src, c.body, Date.now(), o.id],
         ['INSERT INTO audit (ts, who, what, ref, was, now) VALUES (?, ?, ?, ?, ?, ?)', Date.now(), cut(who, 60), 'doc.edit', 'doc:' + o.id, J({ sum: o.sum, day: o.day, st: o.st }), J({ sum: c.sum, day: c.day, st: c.st })]);
       return { doc: await docGet(env, o.id) };
@@ -67,14 +68,14 @@ export async function docAdd(env, d, who = '') {
 // ✅ провести чернетку
 export async function docPost(env, id, who = '') {
   return L(env, 'ledger', async () => {
-    const o = await docGet(env, id); if (!o) return { error: 'Документ не знайдено' }; if (o.st !== 0) return { error: 'Документ уже проведено' };
+    const o = await docGet(env, id); if (!o) return { error: 'Документ не знайдено' }; if (o.st !== 0) return { error: 'Документ уже проведено' }; { const e = await plocked(env, o.day); if (e) return { error: e }; }
     await sql(env, ['UPDATE doc SET st=1, upd=? WHERE id=?', Date.now(), o.id], ['INSERT INTO audit (ts, who, what, ref, was, now) VALUES (?, ?, ?, ?, ?, ?)', Date.now(), cut(who, 60), 'doc.post', 'doc:' + o.id, J({ st: 0 }), J({ st: 1 })]);
     return { doc: await docGet(env, o.id) };
   });
 }
 // ↩️ сторно: новий проведений документ з −sum на облікову дату day (за замовч. сьогодні); оригінал лишається, обидва посилаються один на одного
 export async function docStorno(env, id, who = '', why = '', day = acctDay()) {
-  if (!isDay(day)) return { error: 'Дата — РРРР-ММ-ДД' };
+  if (!isDay(day)) return { error: 'Дата — РРРР-ММ-ДД' }; { const e = await plocked(env, day); if (e) return { error: e }; } // 🔒 сторно — на відкриту дату
   return L(env, 'ledger', async () => {
     const o = await docGet(env, id); if (!o) return { error: 'Документ не знайдено' };
     if (o.st !== 1) return { error: 'Чернетку не сторнують — її виправляють' }; if (o.rev) return { error: 'Документ уже сторновано або це сторно' };

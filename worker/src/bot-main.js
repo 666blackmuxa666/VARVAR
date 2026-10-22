@@ -225,6 +225,12 @@ export async function handleUpdate(u, env) {
   if (text === W.book || low === '/book' || low === 'броні') return booksSend(env, send);
   if ((x = text.match(/^броні\s+(\S+?)(?:\s*[-–]\s*(\S+))?$/i))) { const a = parseDay(x[1]), b = x[2] ? parseDay(x[2]) : a; if (!a || !b) return send({ text: '⚠️ Формат: <code>броні 25.10</code> або <code>броні 25.10-30.10</code>' }); return booksSend(env, send, a, b > a ? b : a); }
   if ((x = text.match(/^бронь\s+([\s\S]+)$/i))) return send(await bookNew(env, x[1], who));
+  { const m = text.match(/^(закрити|відкрити)\s+період(?:\s+(\d{1,2})[./](\d{4}))?$|^період$/i); if (m && admin) { // 🔒 Ф5 замок періоду (паритет з касою: Звіти → 🔒): закрити період 09.2026 · відкрити період · період
+    const P = await import('./plock.js');
+    if (!m[1]) { const to = await P.plockTo(env); return send({ text: to ? `🔒 Закрито по ${to.split('-').reverse().join('.')}\nВідкрити: <code>відкрити період</code>` : '🔓 Період не закрито\nЗакрити: <code>закрити період 09.2026</code>' }); }
+    if (/^з/i.test(m[1]) && !m[2]) return send({ text: '⚠️ Формат: <code>закрити період 09.2026</code>' });
+    const r = await P.plockSet(env, /^з/i.test(m[1]) ? `${m[3]}-${m[2].padStart(2, '0')}` : '', who + ' · бот'); if (r.error) return send({ text: '⚠️ ' + r.error });
+    await notify(env, r.to ? `🤖 🔒 Період до ${r.to.split('-').reverse().join('.')} закрито — ${esc(who)}` : `🤖 🔓 Період відкрито — ${esc(who)}`); return send({ text: r.to ? `🔒 Закрито по ${r.to.split('-').reverse().join('.')}: минулі чеки, витрати й Z-звіти більше не правляться` : '🔓 Період відкрито' }); } }
   { const m2 = text.match(/^сайт(?:\s+(\S+)\s*([\s\S]*))?$/i); if (m2 && admin) { // 🌐 сайт телефон … · сайт години 11:00-23:00 · сайт акція Назва — опис · сайт акція видалити N
     const k = (m2[1] || '').toLowerCase(), v = (m2[2] || '').trim(), s0 = await getSite(env);
     if (!k) return send({ text: `🌐 <b>Сайт-візитка</b>\n${esc(s0.name)} · ${esc(s0.phone)} · ${s0.from}–${s0.to}\n📍 ${esc(s0.addr)}\n⭐ ${s0.rating || '—'} (${s0.ratingN})\nАкції: ${s0.promos.map((p, i) => `${i + 1}) ${esc(p.t)}`).join('; ') || '—'}\n\nКоманди: <code>сайт телефон …</code>, <code>сайт адреса …</code>, <code>сайт години 11:00-23:00</code>, <code>сайт опис …</code>, <code>сайт рейтинг 4.8 120</code>, <code>сайт інстаграм …</code>, <code>сайт акція Назва — опис</code>, <code>сайт акція видалити 1</code>\n${siteLink('about.html')}` });

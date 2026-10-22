@@ -22,6 +22,14 @@
   }
   // 📤 експорт для бухгалтера: CSV (Excel, UTF-8 + «;») або друк/PDF — за обраний період
   const csvOf = x => x.sections.map(s => [s.title, s.head, ...s.rows].map(r => Array.isArray(r) ? r.map(v => { const t = String(v ?? ''); return /[;"\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; }).join(';') : r).join('\r\n')).join('\r\n\r\n');
+  async function plockFlow() { // 🔒 Ф5: закритий місяць — минулі чеки, витрати, Z і документи не правляться
+    let r; try { r = await api('plockGet'); } catch { return toast('⚠️ Не вдалось'); }
+    const d = new Date(); d.setDate(0); const def = d.toISOString().slice(0, 7), dm2 = s => s.split('-').reverse().join('.');
+    const v = await modal({ title: '🔒 Закрити період', text: (r.to ? `Зараз закрито по ${dm2(r.to)}.` : 'Період не закрито.') + ' Після закриття чеки, витрати, Z-звіти й документи місяця не змінюються — повернення лише сьогоднішнім днем.', body: `<input id="askIn" type="month" value="${def}" max="${def}">`,
+      buttons: [{ label: '🔒 Закрити по кінець місяця', val: 'ok', cls: 'primary' }, ...(r.to ? [{ label: '🔓 Відкрити', val: 'open', cls: 'red' }] : []), { label: 'Скасувати', val: null }], keep: true });
+    const m = $('#askIn')?.value || ''; closeModal(); if (!v) return;
+    await act('plockSet', { m: v === 'open' ? '' : m }, v === 'open' ? '🔓 Період відкрито' : '🔒 Період закрито');
+  }
   async function acctExport() {
     const [from, to] = perRange(S.rep.p), how = await choose('📤 Експорт для бухгалтера', `Період ${from} — ${to}: продажі, оплати за типами, приходи складу, списання, витрати з каси, ЗП.`, [{ label: '📄 CSV (Excel)', val: 'csv', cls: 'primary' }, { label: '🖨 PDF / друк', val: 'pdf' }, { label: '🧾 M.E.Doc — податкові накладні', val: 'medoc' }, { label: '📗 BAS — продажі по позиціях', val: 'bas' }]);
     if (!how) return;
@@ -93,7 +101,7 @@
     const nF = [R.pay, R.by, R.grp, R.cat, R.t, R.q.trim()].filter(Boolean).length;
     const dm = d => d.split('-').reverse().slice(0, from.slice(0, 4) === to.slice(0, 4) ? 2 : 3).join('.');
     const head = `<div class="rhead"><div><h1>Звіти</h1><span class="muted">${from === to ? dm(from) : dm(from) + ' — ' + dm(to)}${S.data.prev ? ' · порівняння з попередніми ' + daysIn(from, to).length + ' дн.' : ''}</span></div>
-      <button class="btn sm" data-a="rAcct">📤 Бухгалтеру</button><button class="btn sm ${nF ? 'primary' : ''}" data-a="rFo">⚙️ Фільтри${nF ? ` · ${nF}` : ''}</button></div>
+      <button class="btn sm" data-a="rAcct">📤 Бухгалтеру</button>${isAdmin() ? '<button class="btn sm" data-a="rLock">🔒 Період</button>' : ''}<button class="btn sm ${nF ? 'primary' : ''}" data-a="rFo">⚙️ Фільтри${nF ? ` · ${nF}` : ''}</button></div>
       <div class="chips scroll">${PER.map(([k, l]) => `<button class="chip ${R.p === k ? 'on' : ''}" data-a="rp" data-p="${k}">${l}</button>`).join('')}</div>
       ${R.p === 'c' ? `<div class="frow" style="margin-top:10px"><label>З<input type="date" id="rFrom" value="${from}"></label><label>По<input type="date" id="rTo" value="${to}"></label></div>` : ''}`;
     const filters = R.fo || nF ? `<div class="filters" style="margin-top:10px">${R.fo ? `<div class="frow">
@@ -213,6 +221,7 @@
 
   // ---------- 🖱 кнопки розділу (data-a) ----------
   on('rAcct', async (el, e, a, t) => { acctExport(); return; });
+  on('rLock', async (el, e, a, t) => { plockFlow(); return; });
   on('rTab', async (el, e, a, t) => { S.rep.tab = el.dataset.t; (S.rep.last ||= {})[SECS.find(x => x[2].includes(el.dataset.t))[0]] = el.dataset.t; renderMain(); return; });
   on('rSec', async (el, e, a, t) => { { const sc = SECS.find(x => x[0] === el.dataset.s); S.rep.tab = (S.rep.last || {})[sc[0]] || sc[2][0]; renderMain(); if (S.rep.tab === 'plus' || !S.data.range) loadView(); return; } });
   on('rDay', async (el, e, a, t) => { if (matchMedia('(hover: none)').matches && !el.classList.contains('on')) { el.parentNode.querySelectorAll('.c.on').forEach(x => x.classList.remove('on')); el.classList.add('on'); el.parentNode.previousElementSibling.textContent = el.title + ' · ще раз — звіт за день'; return; } Object.assign(S.rep, { p: 'c', from: el.dataset.d, to: el.dataset.d }); loadView(); $('#main').scrollTop = 0; return; });

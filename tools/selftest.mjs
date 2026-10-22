@@ -547,6 +547,15 @@ async function apiTests() {
       must(!st.tables.some(x => x.t === 13), 'стіл лишився'); must(!st.events.some(e => e.k === 'tpay' && e.t === 13 && e.s === 'new'), 'подія ще блимає');
       must((s1.z.onl || 0) - (s0.z.onl || 0) === tp.sum, `онлайн ${s0.z.onl} → ${s1.z.onl}`); return `+${tp.sum}`;
     });
+    await step('➗ /api/tpay n=2: кожен гість платить свою частку, третій — «вже оплачено»', async () => {
+      const T9 = 9; { const b = (await posOk(A, 'state')).tables.find(x => x.t === T9); if (b?.paid) await pos(A, 'tpayOk', { t: T9, print: false }); else if (b) await pos(A, 'delete', { t: T9, reason: 'QA прибирання' }); }
+      const k9 = new URL((await posOk(A, 'qrInfo')).list.find(x => x.t === T9).url).searchParams.get('k'), tot = dish.price * 3, one = Math.ceil(tot / 2);
+      await posOk(A, 'order', { t: T9, items: [{ id: dish.id, q: 3 }] }); const got = [];
+      for (let i = 0; i < 2; i++) { const r = await http('/api/tpay', { t: T9, k: k9, n: 2, tip: 0 }); must(r.status === 200, `${i + 1}: ${r.status} ${JSON.stringify(r.j)}`); got.push(r.j.sum);
+        const c = await lpPost('/api/lp/table', lpSign({ order_id: 'tb-varvar-' + r.j.id, status: 'sandbox', amount: r.j.sum, payment_id: 41 + i })); must(c.j.ok, JSON.stringify(c.j)); }
+      must(got[0] === one && got[0] + got[1] === tot, `частки ${got} з ${tot}`);
+      const no = await http('/api/tpay', { t: T9, k: k9, n: 2, tip: 0 }); must(no.status === 400 && no.j.error === 'paid', 'третя частка: ' + no.status);
+      await posOk(A, 'tpayOk', { t: T9, print: false }); return got.join(' + ') + ' грн'; });
     await step('«Замовити + чек» → 🌐: нові страви оплачуються разом і після оплати йдуть у рахунок і на кухню', async () => {
       const T9 = 9; { const b = (await posOk(A, 'state')).tables.find(x => x.t === T9); if (b?.paid) await pos(A, 'tpayOk', { t: T9, print: false }); else if (b) await pos(A, 'delete', { t: T9, reason: 'QA прибирання' }); }
       const k9 = new URL((await posOk(A, 'qrInfo')).list.find(x => x.t === T9).url).searchParams.get('k');
@@ -1216,6 +1225,14 @@ async function loyTests(A, W, dish) {
     must((await vpos(VA, 'state')).j.events?.some(x => /без зв'язку 5 хв/.test(x.text)), 'у стрічці немає «каса без зв\'язку»');
     return '12 → повний код, ліцензія: строк і каса';
   });
+  await step('🔒 Ф5 замок періоду: закритий місяць — чек, витрата, Z і документ за минулу дату не правляться; поточний місяць закрити не можна', async () => {
+    const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - 2); const m = d.toISOString().slice(0, 7), day = m + '-15';
+    must((await vpos(VA, 'plockSet', { m: new Date().toISOString().slice(0, 7) })).status === 400, 'закрито поточний місяць');
+    try { const r = await vpos(VA, 'plockSet', { m }); must(r.status === 200 && r.j.to?.startsWith(m), 'plockSet ' + JSON.stringify(r.j));
+      must((await vpos(VA, 'plockGet')).j.to === r.j.to, 'plockGet');
+      for (const [op, b] of [['expense', { sum: 1, day }], ['closedEdit', { ref: 'qa', day, p: {} }], ['zDel', { i: 0, day }], ['ldgAdd', { type: 'inc', sum: 100, day }]]) { const x = await vpos(VA, op, b); must(x.status >= 400 && /🔒/.test(x.j.error || ''), `${op}: ${x.status} ${JSON.stringify(x.j).slice(0, 120)}`); }
+    } finally { await vpos(VA, 'plockSet', { m: '' }); }
+    must(!(await vpos(VA, 'plockGet')).j.to, 'не відкрився'); return m; });
   await step('📒 облік: документ (копійки, ext без дублів), сторно, підсумки, журнал змін (чек, налаштування), бекап з SQL', async () => {
     const vok = async (op, b) => { const r = await vpos(VA, op, b); must(r.status === 200 && r.j.ok, `${op} → ${r.status} ${JSON.stringify(r.j).slice(0, 200)}`); return r.j; };
     must((await vpos(VA, 'ldgAdd', { type: 'inc', sum: 10.5 })).status === 400, 'дробові копійки прийнято');

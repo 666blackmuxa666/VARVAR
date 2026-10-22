@@ -59,6 +59,7 @@ export async function posApi(b, req, env) {
   // 📱 демо-каса ATOM (сайт продажу): усе можна спробувати, крім платного ШІ, Telegram, друку, персоналу й кодів
   if (env.VENUE === 'atom-demo' && /Гість демо/.test(me.name || '') && /^(help|aiBench|photo[A-Z]|menuPhoto|menuImport|skInvParse|skCardAi|skDups|print|rcpt|closedPrint|precheck|qrNew|regCode|staff[A-Z]|wifi|courTg|reset|lookVSet|dzSet|site[A-Z]*Ai|aiSite|gbSend|chat|menuSave|modsSave|menuDel|menuUndo|catAdd|catSet|cfgSet|closedRefund|tpayRefund|closedDel|zDel|bak|go[A-Z]*Cfg|goCfgSet|siteSet|siteDesign|menuDesign)/.test(b.op || '')) return [{ error: '🔒 У демо це вимкнено — підключіть свій заклад' }, 403];
   const ok = (x = {}) => [{ ok: true, ...x }, 200];
+  if (b.day && /^(closed(Back|Reopen|Edit|Refund|Del)|tableBack|move(Del|Back)|expense(Back|Del)?|z(Del|Back)|ldgSale)$/.test(b.op || '')) { const e = await (await import('./plock.js')).plocked(env, String(b.day)); if (e) return [{ error: e }, 423]; } // 🔒 Ф5 закритий період
   if (/^push[A-Z]/.test(b.op || '')) return (await import('./push.js')).pushApi(b, env, me); // 🔔 сповіщення в шторку — кожному працівнику
   // 👨‍🍳 кухар: черга кухні + вибити замовлення + стоп-лист; решта — ні
   // 🧮 Розрахунок: склад, техкарти, накладні, інвентаризація — свої права (адмін / кухар)
@@ -388,6 +389,8 @@ async function adminRest(b, env, who, ip, ok) {
     case 'kitchenPct': { const v = Math.round(+b.pct); if (!(v >= 0 && v <= 100)) return [{ error: 'Від 0 до 100' }, 400]; await env.DB.put('kitchen_pct', String(v)); await notify(env, `🖥 👨‍🍳 Частка кухні від чайових: <b>${v}%</b> — ${esc(who)}`); return ok(); }
     case 'acctFile': { if (!/^\d{4}-\d{2}-\d{2}$/.test(b.from) || !/^\d{4}-\d{2}-\d{2}$/.test(b.to) || Date.parse(b.to) - Date.parse(b.from) > 370 * 864e5) return [{ error: 'Невірний період' }, 400]; const r = await acctFile(env, b.from, b.to, String(b.fmt), b.no); return r.error ? [r, 400] : ok(r); } // 🧾 M.E.Doc / BAS
     case 'acctExport': { const r = await acctExport(env, String(b.from), String(b.to)); if (!r) return [{ error: 'Невірний період' }, 400]; return ok(r); } // 📤 експорт для бухгалтера
+    case 'plockGet': return ok({ to: await (await import('./plock.js')).plockTo(env) }); // 🔒 Ф5
+    case 'plockSet': { const r = await (await import('./plock.js')).plockSet(env, String(b.m || ''), who); if (r.error) return [{ error: r.error }, 400]; await notify(env, r.to ? `🖥 🔒 Період до ${r.to.split('-').reverse().join('.')} закрито — ${esc(who)}` : `🖥 🔓 Період відкрито — ${esc(who)}`); return ok(r); }
     case 'taxGet': return ok(await taxView(env)); // 📅 податковий календар
     // 📒 облік (фундамент): документи, підсумки по платнику/типу, сторно, журнал змін. Екранів поки немає — для кабінету й експорту
     case 'ldgDocs': return ok({ list: await (await import('./ledger.js')).docList(env, { from: b.from, to: b.to, type: b.type, payer: b.payer, limit: b.limit }) });

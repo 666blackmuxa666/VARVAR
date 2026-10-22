@@ -4633,6 +4633,29 @@ var __objRest = (source, exclude) => {
     const t = String(v != null ? v : "");
     return /[;"\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
   }).join(";") : r).join("\r\n")).join("\r\n\r\n");
+  async function plockFlow() {
+    var _a2;
+    let r;
+    try {
+      r = await api("plockGet");
+    } catch (e) {
+      return toast("\u26A0\uFE0F \u041D\u0435 \u0432\u0434\u0430\u043B\u043E\u0441\u044C");
+    }
+    const d = /* @__PURE__ */ new Date();
+    d.setDate(0);
+    const def = d.toISOString().slice(0, 7), dm2 = (s) => s.split("-").reverse().join(".");
+    const v = await modal({
+      title: "\u{1F512} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u043F\u0435\u0440\u0456\u043E\u0434",
+      text: (r.to ? `\u0417\u0430\u0440\u0430\u0437 \u0437\u0430\u043A\u0440\u0438\u0442\u043E \u043F\u043E ${dm2(r.to)}.` : "\u041F\u0435\u0440\u0456\u043E\u0434 \u043D\u0435 \u0437\u0430\u043A\u0440\u0438\u0442\u043E.") + " \u041F\u0456\u0441\u043B\u044F \u0437\u0430\u043A\u0440\u0438\u0442\u0442\u044F \u0447\u0435\u043A\u0438, \u0432\u0438\u0442\u0440\u0430\u0442\u0438, Z-\u0437\u0432\u0456\u0442\u0438 \u0439 \u0434\u043E\u043A\u0443\u043C\u0435\u043D\u0442\u0438 \u043C\u0456\u0441\u044F\u0446\u044F \u043D\u0435 \u0437\u043C\u0456\u043D\u044E\u044E\u0442\u044C\u0441\u044F \u2014 \u043F\u043E\u0432\u0435\u0440\u043D\u0435\u043D\u043D\u044F \u043B\u0438\u0448\u0435 \u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456\u0448\u043D\u0456\u043C \u0434\u043D\u0435\u043C.",
+      body: `<input id="askIn" type="month" value="${def}" max="${def}">`,
+      buttons: [{ label: "\u{1F512} \u0417\u0430\u043A\u0440\u0438\u0442\u0438 \u043F\u043E \u043A\u0456\u043D\u0435\u0446\u044C \u043C\u0456\u0441\u044F\u0446\u044F", val: "ok", cls: "primary" }, ...r.to ? [{ label: "\u{1F513} \u0412\u0456\u0434\u043A\u0440\u0438\u0442\u0438", val: "open", cls: "red" }] : [], { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }],
+      keep: true
+    });
+    const m = ((_a2 = $("#askIn")) == null ? void 0 : _a2.value) || "";
+    closeModal();
+    if (!v) return;
+    await act("plockSet", { m: v === "open" ? "" : m }, v === "open" ? "\u{1F513} \u041F\u0435\u0440\u0456\u043E\u0434 \u0432\u0456\u0434\u043A\u0440\u0438\u0442\u043E" : "\u{1F512} \u041F\u0435\u0440\u0456\u043E\u0434 \u0437\u0430\u043A\u0440\u0438\u0442\u043E");
+  }
   async function acctExport() {
     const [from, to] = perRange(S.rep.p), how = await choose("\u{1F4E4} \u0415\u043A\u0441\u043F\u043E\u0440\u0442 \u0434\u043B\u044F \u0431\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u0430", `\u041F\u0435\u0440\u0456\u043E\u0434 ${from} \u2014 ${to}: \u043F\u0440\u043E\u0434\u0430\u0436\u0456, \u043E\u043F\u043B\u0430\u0442\u0438 \u0437\u0430 \u0442\u0438\u043F\u0430\u043C\u0438, \u043F\u0440\u0438\u0445\u043E\u0434\u0438 \u0441\u043A\u043B\u0430\u0434\u0443, \u0441\u043F\u0438\u0441\u0430\u043D\u043D\u044F, \u0432\u0438\u0442\u0440\u0430\u0442\u0438 \u0437 \u043A\u0430\u0441\u0438, \u0417\u041F.`, [{ label: "\u{1F4C4} CSV (Excel)", val: "csv", cls: "primary" }, { label: "\u{1F5A8} PDF / \u0434\u0440\u0443\u043A", val: "pdf" }, { label: "\u{1F9FE} M.E.Doc \u2014 \u043F\u043E\u0434\u0430\u0442\u043A\u043E\u0432\u0456 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0456", val: "medoc" }, { label: "\u{1F4D7} BAS \u2014 \u043F\u0440\u043E\u0434\u0430\u0436\u0456 \u043F\u043E \u043F\u043E\u0437\u0438\u0446\u0456\u044F\u0445", val: "bas" }]);
     if (!how) return;
@@ -4764,7 +4787,7 @@ var __objRest = (source, exclude) => {
     const nF = [R.pay, R.by, R.grp, R.cat, R.t, R.q.trim()].filter(Boolean).length;
     const dm2 = (d) => d.split("-").reverse().slice(0, from.slice(0, 4) === to.slice(0, 4) ? 2 : 3).join(".");
     const head = `<div class="rhead"><div><h1>\u0417\u0432\u0456\u0442\u0438</h1><span class="muted">${from === to ? dm2(from) : dm2(from) + " \u2014 " + dm2(to)}${S.data.prev ? " \xB7 \u043F\u043E\u0440\u0456\u0432\u043D\u044F\u043D\u043D\u044F \u0437 \u043F\u043E\u043F\u0435\u0440\u0435\u0434\u043D\u0456\u043C\u0438 " + daysIn(from, to).length + " \u0434\u043D." : ""}</span></div>
-      <button class="btn sm" data-a="rAcct">\u{1F4E4} \u0411\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u0443</button><button class="btn sm ${nF ? "primary" : ""}" data-a="rFo">\u2699\uFE0F \u0424\u0456\u043B\u044C\u0442\u0440\u0438${nF ? ` \xB7 ${nF}` : ""}</button></div>
+      <button class="btn sm" data-a="rAcct">\u{1F4E4} \u0411\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u0443</button>${isAdmin() ? '<button class="btn sm" data-a="rLock">\u{1F512} \u041F\u0435\u0440\u0456\u043E\u0434</button>' : ""}<button class="btn sm ${nF ? "primary" : ""}" data-a="rFo">\u2699\uFE0F \u0424\u0456\u043B\u044C\u0442\u0440\u0438${nF ? ` \xB7 ${nF}` : ""}</button></div>
       <div class="chips scroll">${PER.map(([k, l]) => `<button class="chip ${R.p === k ? "on" : ""}" data-a="rp" data-p="${k}">${l}</button>`).join("")}</div>
       ${R.p === "c" ? `<div class="frow" style="margin-top:10px"><label>\u0417<input type="date" id="rFrom" value="${from}"></label><label>\u041F\u043E<input type="date" id="rTo" value="${to}"></label></div>` : ""}`;
     const filters = R.fo || nF ? `<div class="filters" style="margin-top:10px">${R.fo ? `<div class="frow">
@@ -4997,6 +5020,10 @@ var __objRest = (source, exclude) => {
   }
   on("rAcct", async (el, e, a, t) => {
     acctExport();
+    return;
+  });
+  on("rLock", async (el, e, a, t) => {
+    plockFlow();
     return;
   });
   on("rTab", async (el, e, a, t) => {
