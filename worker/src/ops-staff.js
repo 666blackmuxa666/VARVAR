@@ -9,7 +9,6 @@ import { SENSITIVE, cleanPerm, diffPerm } from './perm.js';
 export const normPass = s => String(s || '').trim().toLowerCase().replace(/[иiыїі]/g, 'і').replace(/ё/g, 'е').replace(/[.\s]+$/g, '');
 export const samePass = (a, b) => !!b && normPass(a) === normPass(b);
 export const adminPass = async env => (await env.DB.get('admin_pass')) || env.ADMIN_PIN || '';
-export const waiterPass = async env => (await env.DB.get('waiter_pass')) || 'фіц';
 export const isAdmin = async (env, uid) => !!uid && !!(await env.DB.get('adm:' + uid));
 export const isWaiter = async (env, uid) => !!uid && !!(await env.DB.get('wlog:' + uid));
 export async function pinHash(pin) {

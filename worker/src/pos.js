@@ -21,7 +21,7 @@ import { aiInvoice, aiCard, aiDups } from './ai.js';
 import {
   esc, money, hhmm, dayKey, isDay, tablesCount, notify, getBill, openTables, billItems, payable, addWaiterOrder, itemsFromMenu, removeOne, closeTable, payLabel, precheck,
   setDiscount, setTip, moveTable, splitTable, restoreVoid, getVoids, deleteTable, getClosed, closedRec, delClosed, reprintClosed, getExp, addExpense, delExpense, setFloat, cashData, reportsData,
-  getStations, setStations, setItemStation, kqView, pinFind, pinUpgrade, topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenClosed, markCook, kitchenPct, getCfg, setCfg, setHalls, setMap, hallsOf, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, delZ, restoreZ, editEv, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, waiterPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, editStaff, editClosed, dayX, loggedWaiters, resetAll, acceptOrder, getEvents, logEvent,
+  getStations, setStations, setItemStation, kqView, pinFind, pinUpgrade, topData, setHidden, GROUPS, groupOf, getFav, toggleFav, getShift, shiftData, openShift, closeShift, lastZ, dayZData, dayZ, zDayText, MOVE, MOVE_ALL, addMove, kitchenClosed, markCook, kitchenPct, getCfg, setCfg, setHalls, setMap, hallsOf, rejectOrder, getKq, kitchenDone, kitchenStart, kitchenUndo, kitchenMsg, kitchenStats, restoreClosed, reopenClosed, restoreTable, restoreExpense, restoreMove, delZ, restoreZ, editEv, balances, reconcile, delMove, getMov, zText, reportRange, samePass, adminPass, pinHash, tipBalances, payTips, getStaff, regCode, regRole, addStaff, delStaff, editStaff, editClosed, dayX, loggedWaiters, resetAll, acceptOrder, getEvents, logEvent,
 } from './ops.js';
 
 const SESSION_TTL = { admin: 12 * 3600, waiter: 30 * 86400, cook: 30 * 86400, courier: 30 * 86400 };
@@ -308,7 +308,7 @@ export async function posApi(b, req, env) {
       await addExpense(env, e, day || undefined); await notify(env, `🖥 💸 Витрата${day ? ` за ${day.split('-').reverse().join('.')}` : ''} ${money(sum)} ${e.src === 'card' ? '💳 з карти' : '💵 з каси'}${e.note ? ` — ${esc(e.note)}` : ''} · ${esc(who)}`); return ok();
     }
     case 'expenseDel': { if (!admin) return needAdmin(); const ok2 = await delExpense(env, +b.i, b.day); if (ok2 === 'inv') return [{ error: 'Це оплата накладної — видаліть або змініть накладну у Складі' }, 400]; if (ok2) await notify(env, `🖥 🗑 Витрату${b.day ? ' за ' + esc(String(b.day)) : ''} видалено — ${esc(who)}`).catch(() => {}); return ok(); }
-    case 'reset': return ok({ n: await resetAll(env) });
+    case 'reset': { if (env.VENUE !== 'atom-demo' && (env.PLATFORM_BOT || env.BOT_TOKEN) !== 'local-test') return [{ error: 'Обнулення вимкнено на робочому закладі: історія чеків і Z-звітів зберігається. Потрібно почати з нуля — напишіть ATOM' }, 403]; return ok({ n: await resetAll(env) }); } // ♻️ лише демо й тести
     case 'evDrop': { const t = String(b.match || ''); if (t.length < 3) return [{ error: 'Мінімум 3 символи' }, 400]; let n = 0; await editEv(env, l => { const k = l.filter(e => !JSON.stringify(e).includes(t)); n = l.length - k.length; l.length = 0; l.push(...k); }); return ok({ n }); }
 
     // меню (🔒 по одному — див. menuLock)

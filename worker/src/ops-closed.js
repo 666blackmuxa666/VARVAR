@@ -149,7 +149,8 @@ export async function reprintClosed(env, ref, who, day = dayKey()) {
 async function aud(env, what, who, day, r, was = null) {
   const x = r?.x || r; if (!x || typeof x !== 'object' || x.error || (r?.what && !r.what.length)) return;
   try { const lg = await import('./ledger.js'); await lg.audit(env, who || '', what, `closed:${day}/${x.id || x.t || ''}`, was, { sum: x.sum, cash: x.cash, card: x.card, ...(r?.what ? { what: r.what.join(', ') } : {}), ...(x.del ? { del: 1 } : {}), ...(x.rm ? { rm: 1 } : {}) });
-    if (day < dayKey()) await lg.saleSync(env, day); } catch (e) { console.log('aud', e.message); }
+    if (day < dayKey()) await lg.saleSync(env, day);
+    if (day.slice(0, 7) < dayKey().slice(0, 7)) await env.DB.delete('incm:' + day.slice(0, 7)); /* 📒 минулий місяць змінився — підсумок книги доходів наново */ } catch (e) { console.log('aud', e.message); }
 }
 async function billBack(env, ...a) { return L(env, 'bills', () => _billBack(env, ...a)); }
 export async function delClosed(env, ref, day, who = '') { day = cDay(day); const r = await L(env, 'closed:' + day, () => _delClosed(env, ref, day)); fisSafe(env, day, (r?.x || r)?.id || (typeof ref === 'string' && !/^\d+$/.test(ref) ? ref : '')); await aud(env, 'closed.del', who, day, r); return r; }

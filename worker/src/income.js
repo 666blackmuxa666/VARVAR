@@ -77,8 +77,8 @@ export async function incWatch(env, tax) {
   if (!s.pdv) { const k = step(s.pdvPct); if (k > (w.pdv || 0)) { w.pdv = k; msg.push(`${k >= 100 ? '🛑' : '⚠️'} <b>Поріг ПДВ</b>: за 12 міс. дохід ${money(s.roll)} — ${Math.round(s.pdvPct)}% від 1 000 000 ₴.${k >= 100 ? ' Потрібна реєстрація платником ПДВ — зверніться до бухгалтера.' : ' Після 1 млн за 12 міс. треба реєструватись платником ПДВ.'}`); } }
   if (s.lim) { const k = step(s.limPct); if (k > (w.ep || 0)) { w.ep = k; msg.push(`${k >= 100 ? '🛑' : '⚠️'} <b>Ліміт ${s.kind.slice(3)} групи ЄП</b>: з початку ${s.y} р. ${money(s.ytd)} — ${Math.round(s.limPct)}% з ${money(s.lim)}.${k >= 95 ? ' Поговоріть з бухгалтером про перехід.' : ''}`); } }
   if (!msg.length) return;
-  await L(env, 'tax', async () => { const t = await (await import('./tax.js')).getTax(env); t.incW = w; await env.DB.put('tax', JSON.stringify(t)); });
-  await notify(env, `📒 <b>Книга доходів</b>\n${msg.join('\n')}\n<i>Орієнтовно за даними каси — звірте з бухгалтером.</i>`).catch(() => {});
+  const sent = await notify(env, `📒 <b>Книга доходів</b>\n${msg.join('\n')}\n<i>Орієнтовно за даними каси — звірте з бухгалтером.</i>`).then(r => r.json()).then(d => d.ok, () => false);
+  if (sent) await L(env, 'tax', async () => { const t = await (await import('./tax.js')).getTax(env); t.incW = w; await env.DB.put('tax', JSON.stringify(t)); }); // не дійшло — спробуємо наступного понеділка
 }
 
 // 🤖 бот: місяць, рік, пороги

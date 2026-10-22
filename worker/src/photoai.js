@@ -3,7 +3,7 @@
 // Перше «✅ Взяти» в блоці без зразків стає зразком блоку (якір) — наступні страви блоку отримують той самий фон, кут і світло. Результат — чернетка img:draft-<id>; у меню — лише після «✅ Взяти».
 // Ліміт: FREE генерацій на місяць на заклад, далі — PRICE ₴ за фото з балансу ШІ (VARVAR — без місячного ліміту й оплати, лише DAY_CAP) (рахується в phq:<місяць>.over для рахунку платформи); жорстка стеля DAY_CAP на добу.
 import { getMenu, saveMenu, menuLock } from './menu.js';
-import { dayKey } from './ops.js';
+import { dayKey, L } from './ops.js';
 
 export const FREE = 20, PRICE = 3, DAY_CAP = 30;
 const isMain = env => (env.VENUE || 'varvar') === 'varvar'; // VARVAR — заклад платформи: ШІ-фото без ліміту на місяць
@@ -76,9 +76,12 @@ async function photoMake(b, env, who) {
   const paid = q.n >= FREE && !isMain(env); /* 🤖 понад ліміт — з балансу ШІ закладу (VARVAR — без ліміту й оплати) */
   if (paid && (await aiBal(env)).bal < PRICE) return [{ error: `Безкоштовні ${FREE} фото цього місяця використано. Поповніть баланс ШІ в кабінеті власника (💳 Оплата) — ${PRICE} ₴ за фото`, bal: 1 }, 402];
   if (paid && !b.pay) return [{ error: 'pay', n: q.n, free: FREE, price: PRICE }, 402]; // каса питає «понад ліміт — 3 ₴, продовжити?»
-  if (await env.DB.get('phbusy')) return [{ error: 'Інше фото ще генерується — зачекайте кілька секунд' }, 429];
-  await env.DB.put('phbusy', '1', { expirationTtl: 120 }); // довше за тайм-аут ШІ (90 с) — другий запит не пройде перевірку балансу
+  const busy = await L(env, 'phbusy', async () => { if (await env.DB.get('phbusy')) return 1; await env.DB.put('phbusy', '1', { expirationTtl: 120 }); }); // 🔒 зайняти атомарно; довше за тайм-аут ШІ (90 с)
+  if (busy) return [{ error: 'Інше фото ще генерується — зачекайте кілька секунд' }, 429];
   try {
+    const { q: q2 } = await quota(env); Object.assign(q, q2); // поки чекали — могло пройти інше фото: ліміт і баланс ще раз, уже під «зайнято»
+    if (!paid && q.n >= FREE && !isMain(env)) return [{ error: 'pay', n: q.n, free: FREE, price: PRICE }, 402];
+    if (paid && (await aiBal(env)).bal < PRICE) return [{ error: `Безкоштовні ${FREE} фото цього місяця використано. Поповніть баланс ШІ в кабінеті власника (💳 Оплата) — ${PRICE} ₴ за фото`, bal: 1 }, 402];
     const st = (await env.DB.get('cfg:photoStyle', 'json')) || {}, cs = st.cat?.[cat?.id] || {}, style = [st.prompt || STYLE0, cs.prompt].filter(Boolean).join('\nДЛЯ ЦЬОГО РОЗДІЛУ: '), refK = cs.refs?.length ? cs.refs : st.refs || [];
     st.dish ||= {}; const note = b.note != null ? String(b.note).trim().slice(0, 600) : (st.dish[id] || '');
     if (b.note != null && note !== (st.dish[id] || '')) { if (note) st.dish[id] = note; else delete st.dish[id]; await env.DB.put('cfg:photoStyle', JSON.stringify(st)); } // промт страви — спільний для каси, кабінету й бота

@@ -128,7 +128,7 @@ window.OWNMIG = (() => {
   function logHTML(d, K, SYS) {
     const l = d.list || [], lastUndo = l.find(e => e.undo && !e.undone);
     if (!l.length) return '';
-    return `<div class="card"><h3>🕓 Журнал переходу</h3>${l.slice(0, 15).map(e => `<div class="kv"><span style="min-width:0">${e.undone ? '↩️' : e.nerr ? '⚠️' : '✅'} <b>${esc(K[e.kind]?.t || e.kind)}</b> · ${esc(SYS[e.sys] || e.sys)}<br><small class="muted">${new Date(e.ts).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · нових ${e.add}, оновлено ${e.upd}${e.skip ? `, пропущено ${e.skip}` : ''} · ${esc(e.who || '')}${e.undone ? ' · відмінено' : ''}${totText(e.tot) ? '<br>' + totText(e.tot) : ''}</small></span>${e === lastUndo ? `<button class="btn sm" data-a="migUndo" data-id="${esc(e.id)}">↩️ Відмінити</button>` : ''}</div>`).join('')}</div>`;
+    return `<div class="card"><h3>🕓 Журнал переходу</h3>${l.slice(0, 15).map(e => `<div class="kv"><span style="min-width:0">${e.undone ? '↩️' : e.nerr ? '⚠️' : '✅'} <b>${esc(K[e.kind]?.t || e.kind)}</b> · ${esc(SYS[e.sys] || e.sys)}<br><small class="muted">${new Date(e.ts).toLocaleString('uk-UA', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · нових ${e.add}, оновлено ${e.upd}${e.skip ? `, пропущено ${e.skip}` : ''} · ${esc(e.who || '')}${e.undone ? ' · відмінено' : !e.undo ? ' · ↩️ відкат недоступний (завеликий) — лише повна копія через ATOM' : ''}${totText(e.tot) ? '<br>' + totText(e.tot) : ''}</small></span>${e === lastUndo ? `<button class="btn sm" data-a="migUndo" data-id="${esc(e.id)}">↩️ Відмінити</button>` : ''}</div>`).join('')}</div>`;
   }
 
   // ---------- дії ----------

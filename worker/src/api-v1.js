@@ -25,7 +25,7 @@ const sbSt = a => { const f = sbFlow(a.t); return f[Math.min(f.length - 1, Math.
 const sbOut = (id, o, a) => { const st = sbSt(a); return { ...ordOut(id, o, a.ext), status: st, ...(st === 'road' ? { courier: 'Андрій (демо)' } : {}) }; };
 const keys = async env => (await env.DB.get('apikeys', 'json')) || [];
 const pub = k => ({ id: k.id, name: k.name, sc: k.sc, at: k.at, by: k.by, last: k.last || 0, hook: k.hook || '' });
-const hookOk = u => { try { const x = new URL(u); return x.protocol === 'https:' && !/^(localhost|127\.|10\.|192\.168\.|169\.254\.|\[)/.test(x.hostname) && u.length <= 300; } catch { return false; } };
+const hookOk = u => { try { const x = new URL(u); return x.protocol === 'https:' && !x.username && !x.port && x.hostname.includes('.') && /[a-z]/i.test(x.hostname.split('.').pop()) && !/^(localhost|\[)|\.(local|localhost|internal|lan|home|arpa)$/i.test(x.hostname) && u.length <= 300; } catch { return false; } }; // лише доменне імʼя (IP-адреси, приватні зони й нестандартні порти — ні)
 const J = (d, s = 200, h = {}) => new Response(s === 304 ? null : JSON.stringify(d), { status: s, headers: { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, content-type, if-none-match', 'cache-control': 'no-store', ...h } });
 
 // 🔑 перевірка ключа: Authorization: Bearer atk_… (або X-Api-Key)
@@ -83,11 +83,11 @@ export async function apiV1(req, env, url) {
       const from = url.searchParams.get('from') || dayKey(), to = url.searchParams.get('to') || from, re = /^\d{4}-\d{2}-\d{2}$/;
       if (!re.test(from) || !re.test(to) || isNaN(Date.parse(from)) || isNaN(Date.parse(to)) || to < from) return J({ error: 'bad_date', format: 'YYYY-MM-DD' }, 400);
       if ((Date.parse(to) - Date.parse(from)) / 864e5 > 30) return J({ error: 'range', max_days: 31 }, 400);
-      const ms = [...new Set([from.slice(0, 7), to.slice(0, 7)])], idx = (await env.DB.getMany(ms.map(m => 'invl:' + m), 'json')).flatMap(x => x || []).filter(x => !x.del && x.day >= from && x.day <= to).slice(0, 500);
+      const ms = [...new Set([from.slice(0, 7), to.slice(0, 7)])], all = (await env.DB.getMany(ms.map(m => 'invl:' + m), 'json')).flatMap(x => x || []).filter(x => !x.del && x.day >= from && x.day <= to), more = all.length > 500, idx = all.slice(0, 500); // понад 500 — truncated: true, партнер ділить період
       const inv = idx.length ? await env.DB.getMany(idx.map(x => 'inv:' + x.id), 'json') : [];
       const out = inv.filter(x => x && !x.del).map(x => ({ id: x.id, date: x.day, at: x.ts, supplier: x.sup, no: x.no || '', doc_date: x.date || '', total: x.total, payment: x.pay, paid: !!x.paid || x.pay !== 'debt',
         lines: x.lines.map(ln => ({ id: ln.id, name: ln.n, unit: ln.u, qty: ln.bq, sum: ln.sum, warehouse: ln.wh === 'b' ? 'bar' : 'kitchen' })) }));
-      return J({ from, to, receipts: out });
+      return J({ from, to, receipts: out, ...(more ? { truncated: true, limit: 500 } : {}) });
     }
     const om = p.match(/^orders(?:\/([a-f0-9]{10}))?$/);
     if (om && om[1] && req.method === 'GET') { // статус свого замовлення
@@ -130,7 +130,7 @@ async function createOrder(req, env) {
 // 📮 надіслати подію партнеру з підписом + журнал останніх доставок (кабінет → 🔌 API)
 async function send(env, k, event, data) {
   const body = JSON.stringify({ event, venue: env.VENUE || 'varvar', ...data, sent_at: new Date().toISOString() });
-  const st = await fetch(k.hook, { method: 'POST', headers: { 'content-type': 'application/json', 'x-atom-event': event, 'x-atom-signature': await hmac(k.hs, body) }, body, signal: AbortSignal.timeout(5000) }).then(r => r.status, () => 0);
+  const st = await fetch(k.hook, { method: 'POST', headers: { 'content-type': 'application/json', 'x-atom-event': event, 'x-atom-signature': await hmac(k.hs, body) }, body, redirect: 'manual', signal: AbortSignal.timeout(5000) }).then(r => r.status, () => 0);
   await L(env, 'apihooklog', async () => { const l = (await env.DB.get('apihooklog', 'json')) || []; l.unshift({ k: k.id, e: event, st, at: Date.now() }); await env.DB.put('apihooklog', JSON.stringify(l.slice(0, 40))); });
   return st >= 200 && st < 300 ? true : st;
 }

@@ -263,7 +263,7 @@ export async function migRun(env, b, who) {
   if (c.dry) { const r = await AP[kind](env, rows, c); return { dry: 1, kind, n: rows.length, ...r, errs, dups: dups.slice(0, 50) }; }
   // справжній імпорт: повний знімок (запасний шлях) → запис змін → застосування → журнал
   const id = Date.now().toString(36), tag = 'перед-переходом-' + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
-  let bak = ''; try { bak = (await (await import('./backup.js')).backupNow(env, tag)).tag; } catch (e) { console.log('mig bak', e.message); }
+  let bak = ''; try { bak = (await (await import('./backup.js')).backupNow(env, tag)).tag; } catch (e) { console.log('mig bak', e.message); return { error: 'Не вдалось зробити копію перед імпортом — нічого не змінено. Напишіть ATOM.' }; } // без копії не імпортуємо
   const R = recorder(env), r = await AP[kind](R.env, rows, c);
   if (r.open) await openDoc(env, r.tot.val, who).catch(e => console.log('mig open', e.message));
   const keys = Object.keys(R.was), after = keys.length ? await env.DB.getMany(keys) : [], size = JSON.stringify(R.was).length;

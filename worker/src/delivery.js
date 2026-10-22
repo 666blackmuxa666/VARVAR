@@ -108,12 +108,12 @@ export async function goPayState(env, oid) {
   const p = await env.DB.get('gop:' + oid, 'json'); return p ? { st: p.fail ? 'fail' : 'wait', sum: p.amount } : { st: 'none' };
 }
 export async function goOrder(b, ip, env) {
-  const c = await getGoCfg(env), kind = b.kind === 'del' ? 'del' : 'pick';
-  if (!b._paid && (!c.on || !c[kind])) return [{ error: 'off' }, 403]; // гість уже заплатив — замовлення створюємо, навіть якщо щойно вимкнули/зачинились
-  if (!b._paid && (env.VENUE || 'varvar') !== 'varvar' && await env.DB.get('cfg:lock')) return [{ error: 'off' }, 403]; // ⛔ підписка не оплачена
+  const c = await getGoCfg(env), kind = b.kind === 'del' ? 'del' : 'pick', lp = b._paid && !b._api; // 🔌 «prepaid» партнера — не підтверджена оплата: перевірки ті самі
+  if (!lp && (!c.on || !c[kind])) return [{ error: 'off' }, 403]; // гість уже заплатив — замовлення створюємо, навіть якщо щойно вимкнули/зачинились
+  if (!lp && (env.VENUE || 'varvar') !== 'varvar' && await env.DB.get('cfg:lock')) return [{ error: 'off' }, 403]; // ⛔ підписка не оплачена
   let when = /^\d{1,2}:\d{2}$/.test(b.when || '') ? String(b.when).padStart(5, '0') : '';
   if (when) { const m = s => +s.slice(0, 2) * 60 + +s.slice(3), d = (m(hhmm()) - m(when) + 1440) % 1440; if (d > 0 && d < 720) when = ''; } // ⏰ час уже минув сьогодні → якнайшвидше
-  if (!b._paid && !b._sb && (env.PLATFORM_BOT || env.BOT_TOKEN) !== 'local-test' && !isOpen(c, when || hhmm())) return [{ error: 'closed', from: c.from, to: c.to }, 403];
+  if (!lp && !b._sb && (env.PLATFORM_BOT || env.BOT_TOKEN) !== 'local-test' && !isOpen(c, when || hhmm())) return [{ error: 'closed', from: c.from, to: c.to }, 403];
   const phone = normPhone(b.phone), name = String(b.name || '').trim().slice(0, 40);
   if (!phone || !name) return [{ error: 'contact' }, 400];
   const addr = String(b.addr || '').trim().slice(0, 200); if (kind === 'del' && addr.length < 5) return [{ error: 'addr' }, 400];
@@ -127,10 +127,11 @@ export async function goOrder(b, ip, env) {
     for (const r of [{ n, price }, ...modRows(p.md, it.m, n)]) { sum += r.price * q; sold.push({ n: r.n, q, sum: r.price * q }); lines.push(`${q}× ${r.n} — ${r.price * q}`); } // 🧩 R3
   }
   if (!lines.length) return [{ error: 'empty' }, 400];
-  if (!b._paid && sum < c.min) return [{ error: 'min', min: c.min }, 400];
+  if (!lp && sum < c.min) return [{ error: 'min', min: c.min }, 400];
   if (sum > 30000) return [{ error: 'too_big' }, 400];
-  if (!b._paid) { const exe = await exCheck(env, sold); if (exe) return [{ error: 'excise', msg: exe }, 409]; } // 🍾 оплачене онлайн — уже не блокуємо
+  if (!lp) { const exe = await exCheck(env, sold); if (exe) return [{ error: 'excise', msg: exe }, 409]; } // 🍾 оплачене онлайн — уже не блокуємо
   const fee = kind === 'del' && !(c.free && sum >= c.free) ? c.fee : 0;
+  if (b._api && b._paid) b._paid = { ...b._paid, sum: sum + fee }; // сума — порахована сервером, не зі слів партнера
   const cli = await getCli(env, phone), bonus = Math.min(Math.max(0, Math.round(+b.bonus || 0)), isMem(cli) && (b._paid || b._me === phone) ? cli.bal || 0 : 0, /* 🔐 списати бонуси може лише власник телефону (сесія кабінету) */ Math.floor(sum * c.bmax / 100));
   const pay = ['cash', 'card', 'online'].includes(b.pay) ? b.pay : 'cash', change = pay === 'cash' ? Math.max(0, Math.min(10000, Math.round(+b.change || 0))) : 0;
   const cut = Math.max(0, Math.min(20, parseInt(b.cut, 10) || 0)), note = String(b.comment || '').trim().slice(0, 200), ent = String(b.ent || '').trim().slice(0, 60);
@@ -160,7 +161,7 @@ export async function goOrder(b, ip, env) {
     await putBill(env, t, bill); return { t, bill };
   });
   const pr = r.bill.promo?.sum || 0, prL = (r.bill.promo?.lines || []).filter(l => l.amt).map(l => `🎁 ${l.n} −${l.amt}`);
-  const { t } = r, pl = { cash: '💵 готівка', card: '💳 картка при отриманні', online: b._paid ? `✅ ОПЛАЧЕНО онлайн ${b._paid.sum} грн` : '💳 онлайн' }[pay];
+  const { t } = r, pl = { cash: '💵 готівка', card: '💳 картка при отриманні', online: b._paid?.via === 'api' ? `✅ ОПЛАЧЕНО через партнера (${esc(String(b.src || '').slice(4))}) ${b._paid.sum} грн` : b._paid ? `✅ ОПЛАЧЕНО онлайн ${b._paid.sum} грн` : '💳 онлайн' }[pay];
   const msg = [`${kind === 'del' ? '🛵' : '🥡'} <b>${TYPES[kind]} ${tn(t)}</b>${when ? ` · <b>на ${when}</b>` : ''}`,
     `👤 ${esc(name)} · <a href="tel:+${phone}">${fmtPhone(phone)}</a>`, kind === 'del' ? `📍 ${esc(addr)}${ent ? ` (${esc(ent)})` : ''}` : '',
     '', ...lines.map(esc), fee ? `🛵 Доставка — ${fee}` : '', ...prL.map(esc), `Сума: <b>${sum + fee - bonus - pr} грн</b>${bonus ? ` (−${bonus} бонусами)` : ''}`,

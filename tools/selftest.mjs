@@ -947,6 +947,12 @@ async function loyTests(A, W, dish) {
       const s = await ah('orders/' + oid, key); must(s.status === 200 && s.j.status === 'new' && s.j.ext_id === ext, JSON.stringify(s.j));
       must((await ah('orders/' + oid, key2)).status === 404, 'чужий ключ бачить замовлення');
     });
+    await step('💳 API prepaid — не підтверджена оплата: вимкнене «з собою» не обходить', async () => {
+      await posOk(A, 'goCfgSet', { k: 'pick', v: 0 });
+      try { const r = await ah('orders', key, { body: { ext_id: 'qa-pre-' + RUN, type: 'pickup', customer: { name: 'QA Prepaid', phone: '0670009' + String(Math.floor(Math.random() * 900) + 100) }, time: '12:00', payment: 'prepaid', paid_sum: 0, items: [{ id: dish.id, qty: 1 }] } });
+        must(r.status === 403 && r.j.error === 'closed_for_orders', 'prepaid обійшов вимкнення: ' + r.status + ' ' + JSON.stringify(r.j)); }
+      finally { await pos(A, 'goCfgSet', { k: 'pick', v: 1 }); }
+    });
     await step('📊 GET sales: чеки за день; діапазон > 31 дня → 400', async () => {
       const s = await ah('sales', key2); must(s.status === 200 && Array.isArray(s.j.checks), JSON.stringify(s.j).slice(0, 200));
       must((await ah('sales?from=2026-01-01&to=2026-03-01', key2)).status === 400, 'великий діапазон');
@@ -965,6 +971,7 @@ async function loyTests(A, W, dish) {
       must((await ah('menu', SB)).status === 200 && (await ah('stock', SB)).status === 200, 'menu/stock');
       const body = { ext_id: 'qa-sb-' + RUN, type: 'delivery', customer: { name: 'QA Пісочниця', phone: '0670010' + String(Math.floor(Math.random() * 900) + 100) }, address: 'вул. Тестова 1', payment: 'cash', items: [{ id: dish.id, qty: 1 }] };
       must((await ah('orders', SB, { body: { ...body, webhook: 'http://example.com/h' } })).status === 400, 'http webhook прийнято');
+      for (const h of ['https://172.16.0.5/h', 'https://10.1.2.3/h', 'https://[::1]/h', 'https://intranet/h', 'https://x.local/h', 'https://example.com:8443/h']) must((await ah('orders', SB, { body: { ...body, ext_id: body.ext_id + 'w', webhook: h } })).status === 400, 'webhook на приватну адресу прийнято: ' + h);
       const r = await ah('orders', SB, { body }); must(r.status === 200 && r.j.ok, JSON.stringify(r.j));
       const s = await ah('orders/' + r.j.id, SB); must(s.status === 200 && s.j.status === 'new' && s.j.ext_id === body.ext_id, JSON.stringify(s.j));
       must((await ah('orders/' + r.j.id, key)).status === 404, 'звичайний ключ бачить замовлення пісочниці');
