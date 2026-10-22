@@ -24,6 +24,34 @@ export async function backupList(env) {
   return r.keys.map(k => ({ tag: k.name.slice(pre().length), ...(k.metadata || {}) })).sort((a, b) => (b.at || 0) - (a.at || 0));
 }
 export async function backupGet(env, tag) { const b = await env.DB.kv.get(pre() + tag, 'arrayBuffer'); return b ? gunz(b) : null; }
+// 🔏 Файл копії для власника: конверт {atom_backup, venue, at, sig, data} з підписом HMAC (ключ із MASTER_KEY) — підроблений чи чужий файл не залити
+const sigOf = async (env, venue, at, data) => {
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode('bakfile:' + (env.MASTER_KEY || '')), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return [...new Uint8Array(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(venue + '|' + at + '|' + data)))].map(x => x.toString(16).padStart(2, '0')).join('');
+};
+export async function backupSigned(env, tag) {
+  const data = await backupGet(env, tag); if (!data) return null; const at = Date.now(), venue = venueId();
+  return JSON.stringify({ atom_backup: 1, venue, tag, at, sig: env.MASTER_KEY ? await sigOf(env, venue, at, data) : '', data });
+}
+// перевірка файлу: формат, підпис, чий заклад → попередній перегляд (дата, чеки, клієнти, працівники)
+export async function backupCheck(env, text, anyVenue) {
+  let f; try { f = JSON.parse(text); } catch { return { error: 'Це не файл копії (не читається)' }; }
+  if (!f || f.atom_backup !== 1 || typeof f.data !== 'string' || !f.venue) return { error: 'Невірний формат файлу копії' };
+  if (!env.MASTER_KEY || !f.sig) return { error: 'Файл без підпису — відновлення з нього заборонено' };
+  const want = await sigOf(env, f.venue, f.at, f.data), a = String(f.sig);
+  if (a.length !== want.length || [...a].reduce((x, c, i) => x | (c.charCodeAt(0) ^ want.charCodeAt(i)), 0)) return { error: 'Підпис не збігається — файл змінено або він не від ATOM' };
+  if (!anyVenue && f.venue !== venueId()) return { error: 'Це копія іншого закладу (' + String(f.venue).slice(0, 40) + ')' };
+  let rows; try { rows = JSON.parse(f.data); if (!Array.isArray(rows)) throw 0; } catch { return { error: 'Вміст копії пошкоджено' }; }
+  const cnt = p => rows.filter(e => Array.isArray(e) && String(e[0]).startsWith(p)).length, st = rows.find(e => e[0] === 'staff');
+  return { ok: true, venue: f.venue, at: f.at, tag: f.tag, n: rows.length, checks: cnt('closed:'), clients: cnt('cli:'), staff: Array.isArray(st?.[1]) ? st[1].length : 0, rows };
+}
+export async function backupRestoreFile(env, text, who) {
+  const c = await backupCheck(env, text); if (c.error) return c;
+  await backupNow(env, 'до-відновлення-' + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, ''));
+  const n = await env.DB.restore(c.rows);
+  await logEvent(env, { k: 'shift', text: `♻️ Дані закладу відновлено з файлу копії (${n} записів) — ${who}` }).catch(() => {});
+  return { ok: true, n };
+}
 export async function backupRestore(env, tag, who) {
   const txt = await backupGet(env, tag); if (!txt) return { error: 'Бекап не знайдено' };
   const data = JSON.parse(txt); await backupNow(env, 'до-відновлення-' + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, ''));

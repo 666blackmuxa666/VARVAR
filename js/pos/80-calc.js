@@ -45,7 +45,7 @@
         <div class="sk-act">${adm ? `<button class="rb plus" data-a="skAdd" data-id="${x.id}" title="Оприбуткувати">+</button>` : ''}<button class="rb minus" data-a="skOff" data-id="${x.id}" title="Списати">−</button><button class="rb" data-a="skMv" data-id="${x.id}" title="Перемістити між складами">⇄</button></div></div>`; };
     const groups = {}; list.forEach(x => (groups[x.cat || 'Інше'] ||= []).push(x));
     const body = list.length ? Object.keys(groups).sort().map(c => `<div class="card"><h3>${esc(c)} <span class="muted">· ${groups[c].length}</span></h3>${groups[c].sort((a, b) => a.n.localeCompare(b.n)).map(rowH).join('')}</div>`).join('')
-      : `<div class="card"><div class="muted">${D.ing.length ? 'Нічого не знайдено' : adm ? 'Склад порожній. Додайте продукти кнопкою «➕ Продукт» — або просто внесіть першу накладну (🧾 Накладні → 📷 Фото): продукти створяться самі.' : 'Склад ще порожній.'}</div></div>`;
+      : `<div class="card">${D.ing.length ? emptyBox('🔎', 'Нічого не знайдено', 'Спробуйте інше слово.') : adm ? emptyBox('📦', 'Склад порожній', 'Додайте продукти кнопкою «➕ Продукт» — або внесіть першу накладну (🧾 Накладні → 📷 Фото): продукти створяться самі.') : emptyBox('📦', 'Склад ще порожній')}</div>`;
     return pills + tools + `<div class="sk-list">${body}</div>`;
   }
   async function skIngEdit(id, preset = {}) {

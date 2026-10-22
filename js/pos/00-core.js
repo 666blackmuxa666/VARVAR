@@ -7,6 +7,8 @@
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const tn = t => +t > 2000 ? 'С‑' + (t - 2000) : +t > 1000 ? 'Д‑' + (t - 1000) : t; // 🛵 віртуальні столи доставки / самовивозу
   const money = n => `${Math.round(n || 0).toLocaleString('uk-UA')} ₴`;
+  // 🫙 порожній екран: що тут буде → навіщо → одна дія (btn: [підпис, data-a], необов'язково)
+  const emptyBox = (em, title, sub, btn) => `<div class="empty-box"><div class="eb-i">${em}</div><b>${esc(title)}</b>${sub ? `<div class="muted">${esc(sub)}</div>` : ''}${btn ? `<button class="btn sm" data-a="${esc(btn[1])}">${esc(btn[0])}</button>` : ''}</div>`;
   const store = { get(k, d) { try { const v = localStorage.getItem('pos_' + (VENUE ? VENUE + '_' : '') + k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem('pos_' + (VENUE ? VENUE + '_' : '') + k, JSON.stringify(v)); return true; } catch { return false; } } };
   // 👑 вхід з кабінету власника: #tok=…&me=… (у якорі — не йде на сервер і в історію)
   const OPEN_SET = new URLSearchParams(location.hash.slice(1)).get('set') || ''; // 👑 з кабінету: одразу відкрити вкладку налаштувань (напр. повний редактор сайту)

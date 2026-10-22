@@ -152,7 +152,9 @@ export async function intApi(req, env, path) {
   if (path === '/__int/bak') { const B = await import('./backup.js'); // 💾
     if (b.do === 'list') return [{ list: await B.backupList(env) }, 200];
     if (b.do === 'now') return [await B.backupNow(env, 'вручну-' + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')), 200];
-    if (b.do === 'get') { console.log('BAKGET', env.VENUE || 'main', String(b.tag).slice(0, 60), String(b.who || '').slice(0, 40)); const t = await B.backupGet(env, String(b.tag)); return t ? [{ data: t }, 200] : [{ error: 'Не знайдено' }, 404]; }
+    if (b.do === 'get') { console.log('BAKGET', env.VENUE || 'main', String(b.tag).slice(0, 60), String(b.who || '').slice(0, 40)); const t = await B.backupSigned(env, String(b.tag)); return t ? [{ data: t }, 200] : [{ error: 'Не знайдено' }, 404]; }
+    if (b.do === 'fcheck') { const r = await B.backupCheck(env, String(b.text || '')); delete r.rows; return [r, 200]; }
+    if (b.do === 'frestore') return [await B.backupRestoreFile(env, String(b.text || ''), String(b.who || '')), 200];
     if (b.do === 'restore') return [await B.backupRestore(env, String(b.tag), String(b.who || '')), 200];
     return [{ error: 'unknown' }, 400]; }
   if (path === '/__int/dig') { const D = await import('./digest.js'); return [b.do === 'chat' ? await D.digChat(env, b.chat) : b.do === 'now' ? (await D.digRun(env, dayKey(), false), await D.digList(env)) : await D.digList(env), 200]; }
@@ -379,8 +381,8 @@ ${JSON.stringify(data.filter(Boolean))}
       try { const r = await (await import('./ai.js')).aiAnswer(env, prompt); return ok({ answer: String(r.answer || '').slice(0, 3000) }); } catch (e) { return bad('ШІ зараз недоступний, спробуйте за хвилину'); } }
     case 'bak': { // 💾 бекапи: список / зробити зараз / завантажити — власник; відновити — лише платформа
       if (!(await may(b.venue))) return bad('Немає доступу', 403); const op = String(b.do || 'list');
-      if (op === 'restore' && (!plat || b.confirm !== b.venue)) return bad(plat ? 'Для підтвердження введіть адресу закладу' : 'Відновлення — лише через розробника (🆘 Допомога)', 403);
-      const r = await callVenue(env, b.venue, '/__int/bak', { do: op, tag: b.tag, who: me.name }); return r.error ? bad(r.error) : ok(r); }
+      if ((op === 'restore' || op === 'frestore') && (!plat || b.confirm !== b.venue)) return bad(plat ? 'Для підтвердження введіть адресу закладу' : 'Відновлення — лише через розробника (🆘 Допомога)', 403);
+      const r = await callVenue(env, b.venue, '/__int/bak', { do: op, tag: b.tag, text: b.text, who: me.name }); return r.error ? bad(r.error) : ok(r); }
     case 'bill': { // 💳 оплата ATOM і баланс ШІ закладу
       if (!(await may(b.venue))) return bad('Немає доступу', 403); const v = await H.venueGet(b.venue); if (!v) return bad('Немає закладу');
       const B = await import('./billing.js'), ai = b.venue === MAIN ? null : await callVenue(env, b.venue, '/__int/aibal', {}).catch(() => null);
