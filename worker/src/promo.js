@@ -2,7 +2,7 @@
 // від суми, день народження). Рахує лише сервер: promoCalc — чиста функція, promoFill — підставляє bill.promo перед показом / чеком / закриттям.
 // Ключі: loy → {on, max, levels[], rules[]}; cli:<телефон> + {lvl (ручний), bd 'MM-DD', note, nth{ruleId: шт}, h[≤30]}.
 import { L, TZ, esc, money, dayKey, isDay, billItems, getBill, putBill, notify } from './ops.js';
-import { getMenu, priceMap } from './menu.js';
+import { getMenu, priceMap, modRows } from './menu.js';
 import { getCli, cliTouch, normPhone, fmtPhone } from './delivery.js';
 
 export const LOY_DEF = {
@@ -146,7 +146,7 @@ export async function promoQuote(b, env) {
   for (const it of (Array.isArray(b.items) ? b.items : []).slice(0, 60)) {
     const p = P[it.id], q = Math.min(50, Math.max(0, parseInt(it.q, 10) || 0)); if (!p || !q) continue;
     const price = typeof p.p === 'number' ? p.p : Object.hasOwn(p.p, String(it.v)) ? p.p[it.v] : 0; if (!(price > 0)) continue;
-    items.push({ name: p.n + (typeof p.p === 'number' ? '' : ` ${it.v} ${p.s || 'л'}`), q, sum: price * q });
+    const name = p.n + (typeof p.p === 'number' ? '' : ` ${it.v} ${p.s || 'л'}`); items.push({ name, q, sum: price * q }); for (const r of modRows(p.md, it.m, name)) items.push({ name: r.n, q, sum: r.price * q });
   }
   const ph = normPhone(b.phone), c0 = ph ? await getCli(env, ph) : null, cli = c0 && (c0.chat || c0.lvl) ? c0 : null; // як promoFill: рівень / ДН / N-та — лише учасникам
   const r = promoCalc(await getLoy(env), { items, kind: b.kind === 'del' ? 'del' : 'pick', cli, ph, catOf: catMap(menu) });

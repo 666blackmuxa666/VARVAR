@@ -35,7 +35,7 @@
   document.addEventListener('click', async e => {
     const tp = e.target.closest('[data-tptip]'); if (tp) { tpTip = +tp.dataset.tptip; renderCart(); return; }
     const go = e.target.closest('[data-tpay], [data-pay="online"]'); if (!go) return; go.disabled = true; const fromChk = go.dataset.pay === 'online'; /* 🌐 з кошика або з вікна «Хочу чек» */
-    try { const { status, data } = await api('/api/tpay', { t: qt || table, k: qt ? qk : '', device, tip: tpTip, ...(fromChk ? { tipSum: tipAmount() + ktipAmount() } : {}), ...(fromChk && pendingType === 'order_check' ? { items: [...cartEntries().map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; }), ...(packId && packQty() ? [{ id: packId, q: packQty() }] : [])], comment: [tw ? 'З СОБОЮ' : '', $('#comment')?.value || ''].filter(Boolean).join(' · ').slice(0, 300) } : {}) }); if (status === 409 && data?.error === 'excise') throw new Error(t('exSold')); if (status !== 200 || !data.pay) throw new Error({ bad_qr: '📷 Відскануйте QR на столі ще раз — і спробуйте знову', empty: 'Рахунок столу порожній', paid: '✅ Рахунок уже оплачено', off: 'Онлайн-оплата зараз вимкнена — оплатіть офіціанту' }[data?.error] || t('tPayFail')); try { localStorage.setItem('vv_tpay', data.id); if (fromChk && pendingType === 'order_check') localStorage.setItem('vv_tpay_cart', data.id); } catch {} location.href = data.pay; }
+    try { const { status, data } = await api('/api/tpay', { t: qt || table, k: qt ? qk : '', device, tip: tpTip, ...(fromChk ? { tipSum: tipAmount() + ktipAmount() } : {}), ...(fromChk && pendingType === 'order_check' ? { items: [...cartEntries().map(([k, q]) => { const [id, v, m] = k.split('|'); return { id, v, ...(m ? { m: m.split(',') } : {}), q }; }), ...(packId && packQty() ? [{ id: packId, q: packQty() }] : [])], comment: [tw ? 'З СОБОЮ' : '', $('#comment')?.value || ''].filter(Boolean).join(' · ').slice(0, 300) } : {}) }); if (status === 409 && data?.error === 'excise') throw new Error(t('exSold')); if (status !== 200 || !data.pay) throw new Error({ bad_qr: '📷 Відскануйте QR на столі ще раз — і спробуйте знову', empty: 'Рахунок столу порожній', paid: '✅ Рахунок уже оплачено', off: 'Онлайн-оплата зараз вимкнена — оплатіть офіціанту' }[data?.error] || t('tPayFail')); try { localStorage.setItem('vv_tpay', data.id); if (fromChk && pendingType === 'order_check') localStorage.setItem('vv_tpay_cart', data.id); } catch {} location.href = data.pay; }
     catch (er) { go.disabled = false; alert(er?.message || t('tPayFail')); }
   });
   (async () => { const id = qs.get('tpaid'); if (!id) return; history.replaceState(null, '', location.pathname); /* повернулись з LiqPay */
@@ -72,8 +72,11 @@
 
   let goPK = null; // 💲 ?go: 'pick' / 'del' — окремі ціни (модуль «prices», goinfo.prices); null — звичайні
   const prK = (o, base) => goPK && +o?.pr?.[goPK] > 0 ? +o.pr[goPK] : base;
-  const priceOf = key => { const [id, v] = key.split('|'); const it = byId[id], vv = v && it.variants.find(x => x.v === v); return v ? prK(vv, vv.p) : prK(it, it.price); };
-  const labelOf = key => { const [id, v] = key.split('|'); const it = byId[id]; return itemName(it) + (v ? unit(` ${v} л`) : ''); };
+  // 🧩 R3 модифікатори: ключ кошика «id|розмір|група:номер,…»; ціну рахує сервер (modRows), тут — лише показати
+  const modsOfG = it => (it?.mods || []).map(id => (menu?.mods || []).find(g => g.id === id)).filter(Boolean);
+  const modSel = (it, m) => { const s = new Set((m || '').split(',').filter(Boolean)); return modsOfG(it).flatMap(g => g.items.filter((x, k) => s.has(g.id + ':' + k))); };
+  const priceOf = key => { const [id, v, m] = key.split('|'); const it = byId[id], vv = v && it.variants.find(x => x.v === v); return (v ? prK(vv, vv.p) : prK(it, it.price)) + modSel(it, m).reduce((a, x) => a + (+x.p || 0), 0); };
+  const labelOf = key => { const [id, v, m] = key.split('|'); const it = byId[id], md = modSel(it, m); return itemName(it) + (v ? unit(` ${v} л`) : '') + (md.length ? ' › ' + md.map(x => x.n).join(', ') : ''); };
   const cartEntries = () => Object.entries(cart).filter(([k, q]) => q > 0 && byId[k.split('|')[0]]);
   let packAdj = 0; // ручна поправка кількості упаковок (+/−)
   const packQty = () => tw ? Math.max(0, cartEntries().filter(([k]) => FOOD.has(catOf[k.split('|')[0]])).reduce((s, [, q]) => s + q, 0) + packAdj) : 0;
@@ -119,13 +122,14 @@
         ${btns}
       </div></article>`;
   }
+  const cntOf = key => (cart[key] || 0) + Object.entries(cart).filter(([k]) => k.split('|').length === 3 && k.startsWith(key.includes('|') ? key + '|' : key + '||')).reduce((s, [, q]) => s + q, 0); // 🧩 разом з модифікаторами
   const addBtn = (key, label) => {
-    const q = cart[key] || 0;
+    const q = cntOf(key);
     return `<button class="add ${q ? 'on' : ''}" data-add="${esc(key)}" data-label="${esc(label)}">${q ? `<i>${q}</i>` : ''}${esc(label)}</button>`;
   };
   function refreshButtons() {
     document.querySelectorAll('button[data-add]').forEach(b => { /* лише кнопки: на <html> конструктор меню ставить data-add="round" (стиль кнопки) */
-      const q = cart[b.dataset.add] || 0;
+      const q = cntOf(b.dataset.add);
       b.classList.toggle('on', q > 0);
       b.innerHTML = (q ? `<i>${q}</i>` : '') + esc(b.dataset.label);
     });
@@ -238,6 +242,20 @@
   const openSheet = () => { $('#msg').textContent = ''; renderCart(); $('#sheet').hidden = false; document.body.classList.add('lock'); syncStatus(); };
   const closeAll = () => { $('#sheet').hidden = $('#wifiModal').hidden = true; document.body.classList.remove('lock'); };
 
+  // 🧩 вибір модифікаторів (обовʼязкові не пропустити) → у кошик окремим ключем
+  let modCur = null;
+  function modPick(id, v) {
+    const it = byId[id], gs = modsOfG(it); modCur = { id, v: v || '', gs };
+    $('#modT').textContent = itemName(it) + (v ? unit(` ${v} л`) : ''); $('#modOk').textContent = '✅ ' + t('modAdd');
+    $('#modBody').innerHTML = gs.map(g => `<div class="tips-t" style="margin-top:12px"><b>${esc(g.name)}</b><span class="muted">${g.min ? t('modReq') : ''}${g.max > 1 ? ` · ${t('modUpTo')} ${g.max}` : ''}</span></div>` + g.items.map((x, k) => `<label class="line" style="cursor:pointer"><input type="${g.max === 1 ? 'radio' : 'checkbox'}" name="gm-${esc(g.id)}" value="${esc(g.id)}:${k}"${g.min && g.max === 1 && !k ? ' checked' : ''}><span class="ln">${esc(x.n)}</span>${+x.p ? `<span class="lp">+${money(+x.p)}</span>` : ''}</label>`).join('')).join('');
+    $('#modModal').hidden = false;
+  }
+  function modOk() {
+    if (!modCur) return; const sel = [...document.querySelectorAll('#modBody input:checked')].map(i => i.value);
+    const bad = modCur.gs.find(g => { const n = sel.filter(k => k.startsWith(g.id + ':')).length; return n < g.min || n > g.max; });
+    if (bad) { toastG(`${t('modNeed')}: ${bad.name}${bad.max > 1 ? ` (${t('modUpTo')} ${bad.max})` : ''}`); return; }
+    $('#modModal').hidden = true; change(modCur.id + (modCur.v || sel.length ? '|' + modCur.v : '') + (sel.length ? '|' + sel.join(',') : ''), 1); modCur = null;
+  }
   function change(key, d) {
     cart[key] = Math.max(0, (cart[key] || 0) + d);
     if (!cart[key]) delete cart[key];
@@ -300,7 +318,7 @@
     try {
       const { status, data } = await api('/api/order', {
         table: +table, type, pay, device, tip: pay ? tipAmount() : 0, ktip: pay ? ktipAmount() : 0, comment: [items.length && tw ? 'З СОБОЮ' : '', $('#comment').value].filter(Boolean).join(' · ').slice(0, 300),
-        items: [...items.map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; }), ...(items.length && packId && packQty() ? [{ id: packId, q: packQty() }] : [])],
+        items: [...items.map(([k, q]) => { const [id, v, m] = k.split('|'); return { id, v, ...(m ? { m: m.split(',') } : {}), q }; }), ...(items.length && packId && packQty() ? [{ id: packId, q: packQty() }] : [])],
       });
       if (status === 403 && data.error === 'wrong_table') { $('#msg').textContent = `📷 ${t('table')} ${data.t}`; return; }
       if (status === 403) { inVenue = false; $('#wifiBanner').hidden = false; showWifi(); $('#msg').textContent = ''; return; }
@@ -362,7 +380,7 @@
   const goTotal = () => Math.max(0, goFood() + goFee() - goBonus() - (gf.pr?.sum || 0));
   // 🎁 акції й рівень клієнта — рахує сервер (/api/promo), тут лише показ; при замовленні сервер рахує наново
   let prSeq = 0;
-  async function goPromo() { const n = ++prSeq, items = cartEntries().map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; });
+  async function goPromo() { const n = ++prSeq, items = cartEntries().map(([k, q]) => { const [id, v, m] = k.split('|'); return { id, v, ...(m ? { m: m.split(',') } : {}), q }; });
     try { const { status, data } = await api('/api/promo', { kind: gf.kind, phone: gf.phone, items }); if (n !== prSeq || status !== 200) return; const was = JSON.stringify(gf.pr || null); gf.pr = data.sum || data.lvl ? data : null; if (JSON.stringify(gf.pr) !== was && !$('#goModal').hidden) { goRead(); goForm(); } } catch {} }
   const GST = { new: ['⏳', 'goStNew'], acc: ['✅', 'goStAcc'], cook: ['🔥', 'goStCook'], ready: ['🍽', 'goStReady'], road: ['🛵', 'goStRoad'], done: ['🤝', 'goStDone'], rej: ['❌', 'goStRej'] };
   async function goInit() {
@@ -437,7 +455,7 @@
     const items = cartEntries();
     try {
       const { status, data } = await api('/api/go', { kind: gf.kind, name: gf.name, phone: gf.phone, addr: gf.addr, ent: gf.ent, when: gf.when, cut: gf.cut, pay: gf.pay, change: gf.change, bonus: goBonus(), comment: $('#comment').value, device, src: qs.get('src') || '',
-        items: [...items.map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; }), ...(packId && packQty() ? [{ id: packId, q: packQty() }] : [])] });
+        items: [...items.map(([k, q]) => { const [id, v, m] = k.split('|'); return { id, v, ...(m ? { m: m.split(',') } : {}), q }; }), ...(packId && packQty() ? [{ id: packId, q: packQty() }] : [])] });
       if (status !== 200) { m.textContent = { closed: `${t('goClosed')} ${data.from}–${data.to}`, min: `${t('goMinSum')} ${money(data.min || 0)}`, rate: t('wait'), contact: t('goNeedContact'), addr: t('goNeedAddr'), off: t('goOff'), excise: t('exSold') }[data.error] || t('error'); return; }
       if (data.pay) { /* 🌐 онлайн: кошик лишається до підтвердження оплати; замовлення зʼявиться в закладі після оплати */
         store.set('goPend', { id: data.id, sum: data.sum, ts: Date.now(), items: items.map(([k, q]) => [k, q]) }); m.textContent = t('goPayGo'); location.href = data.pay; return; }
@@ -481,7 +499,7 @@
     if (d.goP) { goRead(); gf.pay = d.goP; goForm(); return true; }
     if (d.goCut) { goRead(); gf.cut = Math.max(0, Math.min(20, gf.cut + +d.goCut)); goForm(); return true; }
     if ('goSend' in d) { goSend(); return true; }
-    if ('goPre' in d) { (async () => { const items = cartEntries().map(([k, q]) => { const [id, v] = k.split('|'); return { id, v, q }; });
+    if ('goPre' in d) { (async () => { const items = cartEntries().map(([k, q]) => { const [id, v, m] = k.split('|'); return { id, v, ...(m ? { m: m.split(',') } : {}), q }; });
       const { status } = await api('/api/bookpre', { id: BOOK, phone: store.get('bkPhone', store.get('goPhone', '')), items }).catch(() => ({ status: 0 }));
       if (status === 200) { cart = {}; save(); refreshButtons(); renderFab(); $('#msg').textContent = '✅ ' + t('goPreOk'); setTimeout(() => { location.href = window.VARVAR.link('about.html#book'); }, 1500); } else $('#msg').textContent = status === 409 ? (lang === 'en' ? 'The kitchen already has your pre-order — please call us to change it' : 'Передзамовлення вже на кухні — щоб змінити, зателефонуйте нам') : t('error'); })(); return true; }
     if ('goDst' in d) { navigator.geolocation?.getCurrentPosition(p => { gf.dst = { la: Math.round(p.coords.latitude * 1e5) / 1e5, lo: Math.round(p.coords.longitude * 1e5) / 1e5 }; goRead(); goForm(); }, () => { $('#goMsg').textContent = t('goDstFail'); }, { timeout: 8000 }); return true; }
@@ -535,7 +553,8 @@
     else if (el.dataset.aiA != null) aiStep(el.dataset.aiA);
     else if (el.dataset.aiPick != null) aiTake(+el.dataset.aiPick);
     else if ('aiAgain' in el.dataset) aiOpen();
-    else if (el.dataset.add) change(el.dataset.add, 1);
+    else if (el.dataset.add) { const [id, v] = el.dataset.add.split('|'); modsOfG(byId[id]).length ? modPick(id, v) : change(el.dataset.add, 1); }
+    else if (el.id === 'modOk') modOk();
     else if (el.dataset.pk) { if (packQty() + +el.dataset.pk >= 0) packAdj += +el.dataset.pk; renderCart(); renderFab(); }
     else if ('tw' in el.dataset && !GO) { packAdj = 0; tw = !tw; store.set('tw', tw); renderCart(); renderFab(); }
     else if (el.dataset.inc) change(el.dataset.inc, 1);

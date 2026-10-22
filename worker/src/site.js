@@ -1,6 +1,6 @@
 // 🌐 Сайт-візитка: дані закладу, бронювання (+ передзамовлення), подарункові сертифікати, кабінет гостя (вхід через Telegram),
 // відгук після візиту, нагадування (Cron). Гість ідентифікується телефоном — той самий cli:<телефон>, що й бонуси (delivery.js).
-import { getMenu, priceMap } from './menu.js';
+import { getMenu, priceMap, modRows } from './menu.js';
 import { tg, esc, hhmm, dayKey, L, logEvent, editEv, notify, addWaiterOrder, getBill, putBill, money, TZ, addMove, discAmt } from './ops.js';
 import { normPhone, fmtPhone, getCli, cliTouch } from './delivery.js';
 import { siteLink, venueId, MAIN } from './venue.js';
@@ -136,7 +136,7 @@ export async function bookPre(b, env) {
   const id = String(b.id || ''); if (!/^\d{8}[a-f0-9]{6}(?:[a-f0-9]{6})?$/.test(id)) return [{ error: 'bad' }, 400];
   const P = priceMap(await getMenu(env)), lines = [];
   for (const it of (Array.isArray(b.items) ? b.items : []).slice(0, 40)) { const p = P[it.id], q = Math.min(30, Math.max(0, parseInt(it.q, 10) || 0)); if (!p || !q) continue;
-    const price = typeof p.p === 'number' ? p.p : Object.hasOwn(p.p, String(it.v)) ? p.p[it.v] : 0; if (!(price > 0)) continue; lines.push(`${q}× ${p.n}${typeof p.p === 'number' ? '' : ` ${it.v} ${p.s || 'л'}`} — ${price * q}`); }
+    const price = typeof p.p === 'number' ? p.p : Object.hasOwn(p.p, String(it.v)) ? p.p[it.v] : 0; if (!(price > 0)) continue; const name = p.n + (typeof p.p === 'number' ? '' : ` ${it.v} ${p.s || 'л'}`); for (const r of [{ n: name, price }, ...modRows(p.md, it.m, name)]) lines.push(`${q}× ${r.n} — ${r.price * q}`); }
   const ph = normPhone(b.phone);
   let sent = false; const x = await bkEdit(env, id, y => { if (y.phone !== ph || ['no', 'came', 'noshow', 'cancel'].includes(y.st)) return false; if (y.preSent) { sent = true; return false; } y.pre = lines; y.preIds = b.items.slice(0, 40); });
   if (sent) return [{ error: 'sent' }, 409]; /* уже на кухні — змінити можна лише через заклад */

@@ -1,6 +1,6 @@
 // Замовлення офіціанта кнопками: стіл → категорія → страва → (розмір) → кількість → знову категорії.
 // Чернетка одна на офіціанта: KV ob:<uid> {table, items:[{name,price,q}], com, mid, chat}; повідомлення редагується на місці.
-import { getMenu, menuFor } from './menu.js';
+import { getMenu, menuFor, modsOf, modRows } from './menu.js';
 import { tn, goKind } from './tn.js';
 import { upsFor } from './delivery.js';
 import { GROUPS, groupOf, getFav, toggleFav, getCfg } from './ops.js';
@@ -58,14 +58,22 @@ async function itemsView(env, ob, c) {
   return { text: head(ob) + `\n\n📂 <b>${esc(cat.name.uk)}</b>`, markup: { inline_keyboard: [...chunk(btns, 2), [b('⬅️ Назад', 'g:' + groupOf(cat.id))]] } };
 }
 
+// 🧩 R3 модифікатори: вибір живе в чернетці ob.pm = { c, i, v, s: ['група:номер'], ok }; кнопки — номери груп/варіантів (callback ≤ 64 байт)
+function modsView(ob, it, gs, name, back) {
+  const s = new Set(ob.pm.s), rows = gs.flatMap((g, gi) => [[{ text: `— ${g.name} ${g.min ? '(обовʼязково)' : `(до ${g.max})`} —`, callback_data: 'o:h0' }],
+    ...chunk(g.items.map((x, k) => b(`${s.has(g.id + ':' + k) ? '✅ ' : ''}${x.n}${x.p ? ' +' + x.p : ''}`, `mt:${gi}:${k}`)), 2)]);
+  return { text: head(ob) + `\n\n🧩 <b>${esc(name)}</b> — оберіть:`, markup: { inline_keyboard: [...rows, [b('⬅️ Назад', back), b('✅ Далі', 'mok')]] } };
+}
 async function qtyView(env, ob, c, i, v) {
-  const it = (await menuOb(env, ob)).categories[c]?.items[i]; if (!it) return catsView(env, ob);
+  const menu = await menuOb(env, ob), it = menu.categories[c]?.items[i]; if (!it) return catsView(env, ob);
   if (it.variants && v === undefined) // спершу розмір
     return { text: head(ob) + `\n\n🥤 <b>${esc(it.name.uk)}</b> — який розмір?`, markup: { inline_keyboard: [...chunk(it.variants.map((x, k) => b(`${x.v} ${it.size || ''} · ${x.p}`, `i:${c}:${i}:${k}`)), 3), [b('⬅️ Назад', 'c:' + c)]] } };
-  const vv = it.variants?.[v], price = vv ? vv.p : it.price;
-  const name = it.name.uk + (vv ? ` ${vv.v} ${it.size || ''}`.trimEnd() : '');
+  const vv = it.variants?.[v], name = it.name.uk + (vv ? ` ${vv.v} ${it.size || ''}`.trimEnd() : ''), gs = modsOf(menu, it);
+  const pm = ob.pm?.c === c && ob.pm.i === i && ob.pm.v === (v ?? null) ? ob.pm : null;
+  if (gs.length && !pm?.ok) { if (!pm) ob.pm = { c, i, v: v ?? null, s: [] }; return modsView(ob, it, gs, name, 'c:' + c); } // ob.pm зберігає той, хто викликав
+  const md = gs.length ? modRows(gs, pm.s, name) : [], price = (vv ? vv.p : it.price) + md.reduce((a, x) => a + x.price, 0);
   const tail = v === undefined ? '' : ':' + v, isFav = (await getFav(env)).includes(it.id);
-  return { text: head(ob) + `\n\n🍽 <b>${esc(name)}</b> · ${price} грн — скільки?`,
+  return { text: head(ob) + `\n\n🍽 <b>${esc(name)}</b>${md.length ? ` › ${md.map(x => esc(x.n.slice(name.length + 3))).join(', ')}` : ''} · ${price} грн — скільки?`,
     markup: { inline_keyboard: [[1, 2, 3].map(n => b(String(n), `q:${c}:${i}:${n}${tail}`)), [4, 5, 6].map(n => b(String(n), `q:${c}:${i}:${n}${tail}`)), [b('⬅️ Назад', 'c:' + c), b(isFav ? '☆ Прибрати з обраних' : '⭐ В обрані', `fv:${c}:${i}${tail}`)]] } };
 }
 
@@ -95,18 +103,28 @@ export async function obCallback(env, uid, p) {
   if (a === 'fv') {
     const it = (await getMenu(env)).categories[+x]?.items[+y]; if (!it) return { view: await catsView(env, ob) };
     const on = !(await getFav(env)).includes(it.id); await toggleFav(env, it.id, on);
-    return { view: await qtyView(env, ob, +x, +y, z === undefined ? undefined : +z), toast: on ? '⭐ Додано в обрані' : 'Прибрано з обраних' };
+    const view = await qtyView(env, ob, +x, +y, z === undefined ? undefined : +z); await putOb(env, uid, ob); return { view, toast: on ? '⭐ Додано в обрані' : 'Прибрано з обраних' };
   }
   if (a === 'c') return { view: await itemsView(env, ob, +x) };
-  if (a === 'i') return { view: await qtyView(env, ob, +x, +y, z === undefined ? undefined : +z) };
+  if (a === 'i') { delete ob.pm; const view = await qtyView(env, ob, +x, +y, z === undefined ? undefined : +z); await putOb(env, uid, ob); return { view }; }
+  if (a === 'mt' || a === 'mok') { // 🧩 тап на варіант / «Далі»
+    const pm = ob.pm, menu = await menuOb(env, ob), it = pm && menu.categories[pm.c]?.items[pm.i]; if (!it) return { view: await catsView(env, ob) };
+    const gs = modsOf(menu, it), back = 'c:' + pm.c, vv = pm.v != null ? it.variants?.[pm.v] : null, name = it.name.uk + (vv ? ` ${vv.v} ${it.size || ''}`.trimEnd() : '');
+    if (a === 'mt') { const g = gs[+x]; if (!g?.items[+y]) return { toast: '' }; const key = g.id + ':' + y, mine = pm.s.filter(k => k.startsWith(g.id + ':'));
+      if (pm.s.includes(key)) pm.s = pm.s.filter(k => k !== key); else { if (g.max === 1) pm.s = pm.s.filter(k => !mine.includes(k)); else if (mine.length >= g.max) return { toast: `${g.name}: не більше ${g.max}` }; pm.s.push(key); }
+      await putOb(env, uid, ob); return { view: modsView(ob, it, gs, name, back) }; }
+    const miss = gs.find(g => pm.s.filter(k => k.startsWith(g.id + ':')).length < g.min); if (miss) return { toast: `Оберіть: ${miss.name}` };
+    pm.ok = 1; await putOb(env, uid, ob); return { view: await qtyView(env, ob, pm.c, pm.i, pm.v ?? undefined) };
+  }
   if (a === 'q') {
-    const it = (await menuOb(env, ob)).categories[+x]?.items[+y]; if (!it || it.hidden) return { view: await catsView(env, ob), toast: 'Немає в наявності' };
+    const menu = await menuOb(env, ob), it = menu.categories[+x]?.items[+y]; if (!it || it.hidden) return { view: await catsView(env, ob), toast: 'Немає в наявності' };
     const vv = w !== undefined ? it.variants?.[+w] : null;
-    const name = it.name.uk + (vv ? ` ${vv.v} ${it.size || ''}`.trimEnd() : ''), price = vv ? vv.p : it.price;
-    const ex = ob.items.find(e => e.name === name);
-    if (ex) ex.q += +z; else ob.items.push({ name, price, q: +z });
-    await putOb(env, uid, ob);
-    const view = await catsView(env, ob), menu = await menuOb(env, ob), sug = [];
+    const name = it.name.uk + (vv ? ` ${vv.v} ${it.size || ''}`.trimEnd() : ''), price = vv ? vv.p : it.price, gs = modsOf(menu, it);
+    const pm = ob.pm?.ok && ob.pm.c === +x && ob.pm.i === +y && ob.pm.v === (w !== undefined ? +w : null) ? ob.pm : null;
+    if (gs.length && !pm && gs.some(g => g.min)) { delete ob.pm; const view = await qtyView(env, ob, +x, +y, w !== undefined ? +w : undefined); await putOb(env, uid, ob); return { view }; } // 💡 допродаж/старі кнопки — спершу вибір
+    for (const r of [{ n: name, price }, ...(pm ? modRows(gs, pm.s, name) : [])]) { const ex = ob.items.find(e => e.name === r.n); if (ex) ex.q += +z; else ob.items.push({ name: r.n, price: r.price, q: +z }); }
+    delete ob.pm; await putOb(env, uid, ob);
+    const view = await catsView(env, ob), sug = [];
     for (const n of await upsFor(env, it.name.uk).catch(() => [])) { // 💡 допродаж: що ще запропонувати гостю
       if (sug.length >= 3 || ob.items.some(e => e.name === n)) continue;
       menu.categories.forEach((cc, ci) => cc.items.forEach((x, xi) => { if (x.name.uk === n && !x.hidden && !x.variants && sug.length < 3 && !sug.some(s => s.n === n)) sug.push({ n, c: ci, i: xi, p: x.price }); }));

@@ -153,15 +153,30 @@
       v = await choose(it.name.uk, 'Оберіть розмір', it.variants.map(x => ({ label: `${x.v} ${it.size || ''} · ${prOf(it, x, S.open)} ₴`, val: x.v })));
       if (v == null) { if (wasKb) $('#search')?.focus(); return; }
     }
-    const vv = it.variants?.find(x => x.v === v);
-    const key = it.id + (v ? '|' + v : ''), cart = cartOf(S.open);
-    cart[key] ||= { id: it.id, v, name: it.name.uk + (vv ? ` ${vv.v} ${it.size || ''}`.trimEnd() : ''), price: prOf(it, vv, S.open), q: 0 };
+    const vv = it.variants?.find(x => x.v === v), base = it.name.uk + (vv ? ` ${vv.v} ${it.size || ''}`.trimEnd() : '');
+    const m = await pickMods(it, base); if (m == null) { if (wasKb) $('#search')?.focus(); return; }
+    const md = modRowsOf(it, m, base), key = it.id + (v ? '|' + v : '') + (m.length ? '|' + (v ? '' : '|') + m.join(',') : ''), cart = cartOf(S.open);
+    cart[key] ||= { id: it.id, v, ...(m.length ? { m } : {}), name: base + (md.length ? ' › ' + md.map(x => x.n.slice(base.length + 3)).join(', ') : ''), price: prOf(it, vv, S.open) + md.reduce((a, x) => a + x.price, 0), q: 0 };
     const keepKb = wasKb || searching(); cart[key].q++; saveCarts();
     if (S.q) { S.q = ''; const se = $('#search'); if (se) se.value = ''; // знайшли й додали — пошук очищується, можна одразу писати нове
       const c = S.menu?.categories.find(x => x.items.some(i => i.id === it.id)), gr = c && S.groups?.find(x => x.cats?.includes(c.id)); /* і відкривається розділ цієї страви, а не перша вкладка групи (була «Кава» замість «Пиво») */
       if (c && gr && curGrp() !== 'fav') { S.grp = gr.id; S.cat = c.id; } }
     renderSheet(); if (keepKb && !searching()) $('#search')?.focus();
     upsHint(it.name.uk, cart);
+  }
+  // 🧩 R3 вікно модифікаторів (обовʼязкові не пропустити) → ['група:номер', …]; [] — у страви немає; null — скасовано
+  async function pickMods(it, name) {
+    const gs = modsOfIt(it); if (!gs.length) return [];
+    let sel = gs.filter(g => g.min && g.max === 1).map(g => g.id + ':0'); // перший варіант обовʼязкової групи — уже позначений
+    for (;;) {
+      const body = gs.map(g => `<div style="margin:12px 0 4px"><b>${esc(g.name)}</b> <span class="muted">${g.min ? 'обовʼязково' : 'за бажанням'}${g.max > 1 ? ` · до ${g.max}` : ''}</span></div>` + g.items.map((x, k) => `<label class="kv" style="cursor:pointer"><span>${esc(x.n)}${x.p ? ` <span class="muted">+${x.p} ₴</span>` : ''}</span><input type="${g.max === 1 ? 'radio' : 'checkbox'}" name="md-${esc(g.id)}" value="${esc(g.id)}:${k}"${sel.includes(g.id + ':' + k) ? ' checked' : ''}></label>`).join('')).join('');
+      const ok = await modal({ title: '🧩 ' + name, body, keep: true, buttons: [{ label: '✅ Додати', val: 1, cls: 'primary' }, { label: 'Скасувати', val: null }] });
+      if (!ok) return null;
+      sel = [...document.querySelectorAll('#modal input:checked')].map(i => i.value); closeModal();
+      const bad = gs.find(g => { const n = sel.filter(k => k.startsWith(g.id + ':')).length; return n < g.min || n > g.max; });
+      if (!bad) return sel;
+      toast(`🧩 ${bad.name}: ${bad.min ? `оберіть ${bad.min === bad.max ? bad.min : bad.min + '–' + bad.max}` : `не більше ${bad.max}`}`);
+    }
   }
   // 💡 допродаж: правила власника + «часто беруть разом» → підказка після додавання страви (карта вантажиться раз)
   async function upsHint(name, cart) {
@@ -171,7 +186,7 @@
   }
   for (const ev of ['change', 'compositionend']) document.addEventListener(ev, e => { if (e.target.id === 'cartCom') S.coms[S.open] = e.target.value; }); // 📝 iPad: підказки клавіатури
   async function sendCart() {
-    const t = S.open, cart = cartOf(t), pk = packItem(), pq = pk ? packQ(t) : 0, items = [...Object.values(cart).map(x => ({ id: x.id, v: x.v, q: x.q })), ...(pq ? [{ id: pk.id, q: pq }] : [])];
+    const t = S.open, cart = cartOf(t), pk = packItem(), pq = pk ? packQ(t) : 0, items = [...Object.values(cart).map(x => ({ id: x.id, v: x.v, ...(x.m ? { m: x.m } : {}), q: x.q })), ...(pq ? [{ id: pk.id, q: pq }] : [])];
     if (!items.length) return;
     { const ci = $('#cartCom'); if (ci) { ci.blur(); S.coms[t] = ci.value.trim(); } } /* 📝 iPad: останнє слово з підказок клавіатури потрапляє в поле вже після натискання — беремо текст прямо з поля, інакше коментар «їде» до наступного замовлення */
     const btn = document.querySelector('[data-a="send"]'); if (btn) btn.disabled = true;

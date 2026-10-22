@@ -84,9 +84,31 @@ export function priceMap(menu) {
   const m = Object.create(null); // без прототипу: id «constructor» / «__proto__» не знаходить «страву»
   menu.categories.forEach(c => c.items.forEach(it => {
     if (it.hidden) return;
-    m[it.id] = { n: it.name.uk, s: it.size, p: it.variants ? Object.fromEntries(it.variants.map(v => [v.v, v.p])) : it.price };
+    const md = modsOf(menu, it);
+    m[it.id] = { n: it.name.uk, s: it.size, p: it.variants ? Object.fromEntries(it.variants.map(v => [v.v, v.p])) : it.price, ...(md.length ? { md } : {}) };
   }));
   return m;
+}
+
+// 🧩 R3 модифікатори: menu.mods = [{ id, name, min, max, items: [{ n, p }] }], у страви it.mods = [id…].
+// Модифікатор — окремий рядок рахунку «Капучино › рослинне — 15» (свій рядок у звітах, техкарта за назвою; 0 ₴ — не фіскалізується).
+export const modsOf = (menu, it) => (it?.mods || []).map(id => (menu.mods || []).find(g => g.id === id)).filter(Boolean);
+// вибір m = ['група:номер', …] → рядки { n, price } (лише групи цієї страви, не більше max у групі; обовʼязкові перевіряє екран вибору)
+export function modRows(groups, m, dish) {
+  const sel = new Set(Array.isArray(m) ? m.slice(0, 30).map(String) : []), out = [];
+  for (const g of groups || []) out.push(...g.items.filter((x, k) => sel.has(g.id + ':' + k)).slice(0, g.max || 20).map(x => ({ n: `${dish} › ${x.n}`, price: Math.max(0, Math.round(+x.p || 0)) })));
+  return out;
+}
+// групи від каси / кабінету / майстра: чистимо й обмежуємо (id сталий — на нього посилаються страви)
+export function cleanMods(list) {
+  const ids = new Set();
+  return (Array.isArray(list) ? list : []).slice(0, 40).map(g => {
+    let id = String(g?.id || '').replace(/[^a-z0-9-]/gi, '').slice(0, 16) || 'm' + Math.random().toString(36).slice(2, 7);
+    while (ids.has(id)) id += 'x'; ids.add(id);
+    const items = (Array.isArray(g?.items) ? g.items : []).map(x => ({ n: String(x?.n || '').trim().slice(0, 40), p: Math.max(0, Math.min(99999, Math.round(+x?.p || 0))) })).filter(x => x.n).slice(0, 20);
+    const max = Math.max(1, Math.min(items.length || 1, parseInt(g?.max, 10) || 1)), min = Math.max(0, Math.min(max, parseInt(g?.min, 10) || 0));
+    return { id, name: String(g?.name || '').trim().slice(0, 40), min, max, items };
+  }).filter(g => g.name && g.items.length);
 }
 
 // ---------- пошук ----------
@@ -105,7 +127,7 @@ const findCat = (menu, q) => findMany(menu.categories, q, c => [c.name.uk, c.nam
 
 // ---------- розбір фрази ----------
 // ключові слова → поле; «склад» забирає весь хвіст (там є коми)
-const KW = [['price', 'ціна|цена|ціну|price'], ['pick', 'винос|навинос'], ['del', 'доставка|доставку'], /* 💲 R4 */ ['size', 'вага|вагу|обʼєм|обєм|обьем|об\'єм|об’єм|size|weight'], ['name', 'назва|назву|name'], ['desc', 'склад|інгредієнти|опис|desc']];
+const KW = [['price', 'ціна|цена|ціну|price'], ['pick', 'винос|навинос'], ['del', 'доставка|доставку'], /* 💲 R4 */ ['mods', 'модифікатори|модифікатор'], /* 🧩 R3 */ ['size', 'вага|вагу|обʼєм|обєм|обьем|об\'єм|об’єм|size|weight'], ['name', 'назва|назву|name'], ['desc', 'склад|інгредієнти|опис|desc']];
 const KW_RE = new RegExp(`(?:^|[\\s,;.\\-–—:])(${KW.map(k => k[1]).join('|')})(?=[\\s:=\\-–—]|$)`, 'i');
 function parseFields(text) {
   const out = {}; let rest = text; const m0 = rest.match(KW_RE);
@@ -131,10 +153,10 @@ export function slug(s) {
   return norm(s).split('').map(ch => t[ch] ?? ch).join('').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'item';
 }
 
-function card(it, c) {
+function card(it, c, menu) {
   const price = it.variants ? it.variants.map(v => `${v.v} л — ${v.p} грн`).join(', ') : `${it.price} грн`;
   return [`<b>${esc(it.name.uk)}</b>${it.hidden ? ' ⛔ (стоп-лист)' : ''}`, c ? `Розділ: ${esc(c.name.uk)}` : '',
-    `Ціна: ${price}`, ...Object.entries(PR_KINDS).map(([k, l]) => { const x = it.variants ? it.variants.filter(v => v.pr?.[k]).map(v => `${v.v} л — ${v.pr[k]}`).join(', ') : it.pr?.[k] ? it.pr[k] + ' грн' : ''; return x ? `${l}: ${x}` : ''; }), it.size && !it.variants ? `Вага: ${esc(it.size)}` : '', it.desc ? `Склад: ${esc(it.desc.uk)}` : ''].filter(Boolean).join('\n');
+    `Ціна: ${price}`, ...Object.entries(PR_KINDS).map(([k, l]) => { const x = it.variants ? it.variants.filter(v => v.pr?.[k]).map(v => `${v.v} л — ${v.pr[k]}`).join(', ') : it.pr?.[k] ? it.pr[k] + ' грн' : ''; return x ? `${l}: ${x}` : ''; }), modsOf(menu || {}, it).length ? `🧩 Модифікатори: ${modsOf(menu, it).map(g => esc(g.name)).join(', ')}` : '', it.size && !it.variants ? `Вага: ${esc(it.size)}` : '', it.desc ? `Склад: ${esc(it.desc.uk)}` : ''].filter(Boolean).join('\n');
 }
 const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 const many = (r, q) => `Знайшов кілька: ${r.map(x => x.it.name.uk).join(', ')}. Напишіть точніше, ніж «${esc(q)}».`;
@@ -148,6 +170,12 @@ export const HELP = `<b>Як керувати меню</b> (пишіть зви�
 <code>мєско назва Мєско XL</code>
 <code>pepsi ціна 0.5 75</code> (для напоїв з розмірами)
 <code>мєско винос 420</code> · <code>мєско доставка 450</code> (💲 окремі ціни, 0 — як у залі)
+
+🧩 <b>Модифікатори</b> (молоко, сироп, прожарка)
+<code>група Молоко 1: звичайне 0, рослинне 15</code> (1 — обовʼязково один)
+<code>група Сироп 0-2: ваніль 10, карамель 10</code> (до двох, за бажанням)
+<code>капучино модифікатори Молоко, Сироп</code> · <code>капучино модифікатори 0</code>
+<code>модифікатори</code> — усі групи · <code>видалити групу Сироп</code>
 
 ➕ <b>Додати</b>
 <code>додати в бургери: Монстр, ціна 450, вага 500, склад булка, телятина, сир</code>
@@ -210,6 +238,23 @@ async function _handleMenuText(text, env, { canEdit = true } = {}) {
     const r = await _addCategory(env, m[1]); if (r?.error) return r.error;
     return `📂 Розділ <b>${esc(r.c.name.uk)}</b> додано в кінець меню.\nДодати страву: <code>додати в ${esc(r.c.name.uk.toLowerCase())}: Назва, ціна 15</code>`;
   }
+  if (/^(модифікатори|групи модифікаторів)$/i.test(t)) return (menu.mods || []).length ? '🧩 <b>Модифікатори</b>\n' + menu.mods.map(g => `• <b>${esc(g.name)}</b> ${g.min ? `обовʼязково ${g.min === g.max ? g.min : g.min + '–' + g.max}` : `до ${g.max}`}: ${g.items.map(x => esc(x.n) + (x.p ? ' +' + x.p : '')).join(', ')} · страв: ${itemsOf(menu).filter(x => x.it.mods?.includes(g.id)).length}`).join('\n') : 'Модифікаторів ще немає. Приклад:\n<code>група Молоко 1: звичайне 0, рослинне 15</code>';
+  if ((m = t.match(/^група\s+(.+?)\s+(\d+)(?:\s*[-–]\s*(\d+))?\s*:\s*(.+)$/i))) { // 🧩 R3: «група Молоко 1: звичайне 0, рослинне 15» — створити або замінити
+    if (!canEdit) return NO;
+    const items = m[4].split(/[,;]/).map(z => z.trim().match(/^(.+?)(?:\s+\+?(\d+))?$/)).filter(Boolean).map(z => ({ n: z[1].trim(), p: +z[2] || 0 }));
+    const min = m[3] ? +m[2] : Math.min(+m[2], 1), max = m[3] ? +m[3] : Math.max(1, +m[2]); // «1» — рівно один; «0-2» — від 0 до 2
+    const old = (menu.mods || []).find(g => g.name.toLowerCase() === m[1].toLowerCase());
+    const l = cleanMods([...(menu.mods || []).filter(g => g !== old), { id: old?.id || slug(m[1]).slice(0, 12), name: m[1], min, max, items }]), g = l.find(x => x.name === m[1].trim().slice(0, 40));
+    if (!g) return 'Треба хоча б один варіант: <code>група Молоко 1: звичайне 0, рослинне 15</code>';
+    menu.mods = l; await saveMenu(env, menu);
+    return `🧩 Група <b>${esc(g.name)}</b> ${old ? 'оновлена' : 'створена'}: ${g.items.map(x => esc(x.n) + (x.p ? ' +' + x.p : '')).join(', ')}\nДодати до страви: <code>капучино модифікатори ${esc(g.name)}</code>`;
+  }
+  if ((m = t.match(/^видалити\s+групу\s+(.+)$/i))) {
+    if (!canEdit) return NO;
+    const g = (menu.mods || []).find(x => x.name.toLowerCase() === m[1].trim().toLowerCase()); if (!g) return `Не знайшов групу «${esc(m[1])}». Напишіть «модифікатори».`;
+    menu.mods = menu.mods.filter(x => x !== g); itemsOf(menu).forEach(({ it }) => { if (it.mods) { it.mods = it.mods.filter(id => id !== g.id); if (!it.mods.length) delete it.mods; } });
+    await saveMenu(env, menu); return `🗑 Групу <b>${esc(g.name)}</b> видалено (і зі страв).`;
+  }
   if (/^(розділи|категорії|категории)$/i.test(t)) return menu.categories.map(c => `• ${esc(c.name.uk)} (${c.items.length})${c.tech ? '' : ' ' + { kitchen: '🍳', bar: '🍹', hookah: '💨' }[c.g] + (c.nopack ? ' 🚫🥡' : '')}`).join('\n') + '\n\n🍳 кухня · 🍹 бар · 💨 кальян. Змінити: <code>розділ Десерти бар</code> / <code>розділ Соуси без упаковки</code>';
   if ((m = t.match(/^розділ\s+(.+?)\s+(кухня|бар|кальян|без упаковки|з упаковкою)$/i))) { // 📂 як кнопки в касі (Налаштування → Меню)
     if (!canEdit) return NO;
@@ -252,11 +297,11 @@ async function _handleMenuText(text, env, { canEdit = true } = {}) {
   const f = parseFields(t);
   if (!f.head) return null;
   const r = findItem(menu, f.head);
-  const edits = ['price', 'pick', 'del', 'size', 'name', 'desc'].filter(k => f[k] != null);
+  const edits = ['price', 'pick', 'del', 'mods', 'size', 'name', 'desc'].filter(k => f[k] != null);
   if (!r.length) return edits.length ? `Не знайшов страву «${esc(f.head)}». Напишіть «help», щоб побачити приклади.` : null;
   if (r.length > 1) return many(r, f.head);
   const { it, c } = r[0];
-  if (!edits.length) return card(it, c);
+  if (!edits.length) return card(it, c, menu);
   if (!canEdit) return NO;
   if (f.price != null) {
     if (it.variants) {
@@ -273,11 +318,15 @@ async function _handleMenuText(text, env, { canEdit = true } = {}) {
       if (!v) return `У «${esc(it.name.uk)}» кілька розмірів (${it.variants.map(x => x.v).join(', ')}). Пишіть так: <code>${esc(it.name.uk)} ${k === 'del' ? 'доставка' : 'винос'} ${it.variants[0].v} 80</code>`;
       +pm[2] > 0 ? ((v.pr ||= {})[k] = +pm[2]) : drop(v); }
     else { const p = parseInt(s, 10); if (isNaN(p)) return 'Ціна має бути числом (0 — як у залі).'; p > 0 ? ((it.pr ||= {})[k] = p) : drop(it); } }
+  if (f.mods != null) { // 🧩 «капучино модифікатори Молоко, Сироп» · «… модифікатори 0» — прибрати
+    const ns = /^(0|ні|нема|немає|-)$/i.test(f.mods.trim()) ? [] : f.mods.split(/[,;]/).map(z => z.trim().toLowerCase()).filter(Boolean), gs = ns.map(n => (menu.mods || []).find(g => g.name.toLowerCase() === n));
+    if (gs.some(g => !g)) return `Не знайшов групу «${esc(ns[gs.findIndex(g => !g)])}». Напишіть «модифікатори».`;
+    if (gs.length) it.mods = [...new Set(gs.map(g => g.id))]; else delete it.mods; }
   if (f.size != null) it.size = fmtSize(f.size);
   if (f.name) it.name = { uk: f.name, en: it.name.en === it.name.uk ? f.name : it.name.en };
   if (f.desc != null) it.desc = { uk: f.desc, en: f.desc };
   await saveMenu(env, menu);
-  return `✏️ Оновлено:\n${card(it, c)}`;
+  return `✏️ Оновлено:\n${card(it, c, menu)}`;
 }
 
 // фото з підписом «фото <назва>» → KV, віддається з /img/<id>

@@ -69,7 +69,8 @@
     const sub = (b, name, q) => { const r = b.items.find(z => z.name === name); if (!r) return 0; q = Math.min(q, r.q); const u = Math.round(r.sum / r.q), k = b.total ? b.pay2 / b.total : 1; r.q -= q; r.sum -= u * q; b.total -= u * q; b.pay2 = Math.round(b.pay2 - u * q * k); if (r.q <= 0) b.items = b.items.filter(z => z !== r); b.off = 1; return u * q; };
     for (const x of q) { const d = x.data || {}, t = +d.t;
       if (x.op === 'order' && t > 0) { const b = tb(t), lines = [];
-        for (const it of d.items || []) { const m = by[it.id]; if (!m) continue; const v = m.variants ? m.variants.find(z => z.v === it.v) || m.variants[0] : null, name = m.name.uk + (v ? ` ${v.v} ${m.size || 'л'}`.trimEnd() : ''), sum = prOf(m, v, t) * it.q; add(b, name, it.q, sum); lines.push(`${it.q}× ${name} — ${sum}`); }
+        for (const it of d.items || []) { const m = by[it.id]; if (!m) continue; const v = m.variants ? m.variants.find(z => z.v === it.v) || m.variants[0] : null, name = m.name.uk + (v ? ` ${v.v} ${m.size || 'л'}`.trimEnd() : ''), sum = prOf(m, v, t) * it.q; add(b, name, it.q, sum); lines.push(`${it.q}× ${name} — ${sum}`);
+          for (const r of modRowsOf(m, it.m, name)) { add(b, r.n, it.q, r.price * it.q); lines.push(`${it.q}× ${r.n} — ${r.price * it.q}`); } } // 🧩 R3 як на сервері (modRows)
         b.log = [...(b.log || []), { lines, comment: d.comment || '', off: 1, at: x.at }]; b.orders = (b.orders || 0) + 1; }
       else if (!S.tables[t]) continue;
       else if (x.op === 'remove') sub(S.tables[t], d.name, 1);
@@ -310,6 +311,9 @@
   // 💲 R4 ціна за типом рахунку: 🥡 С‑ / 🛵 Д‑ (нова доставка — S.goDraft); it.pr / v.pr = { pick, del }; модуль «prices». Сервер рахує так само (menuFor)
   const prKind = t => { if (!modOn('prices')) return null; const G = S.tables?.[t]?.go || (t === -1 ? S.goDraft : null); return G ? (G.kind === 'del' ? 'del' : 'pick') : +t > 2000 ? 'pick' : +t > 1000 ? 'del' : null; };
   const prOf = (it, vv, t) => { const o = vv || it, k = prKind(t); return k && +o.pr?.[k] > 0 ? +o.pr[k] : vv ? vv.p : it.price; };
+  // 🧩 R3 модифікатори: групи страви й рядки вибору (як modsOf/modRows на сервері — worker/src/menu.js)
+  const modsOfIt = it => (it?.mods || []).map(id => (S.menu?.mods || []).find(g => g.id === id)).filter(Boolean);
+  const modRowsOf = (it, m, dish) => { const sel = new Set(m || []); return modsOfIt(it).flatMap(g => g.items.filter((x, k) => sel.has(g.id + ':' + k)).slice(0, g.max || 20).map(x => ({ n: `${dish} › ${x.n}`, price: Math.max(0, Math.round(+x.p || 0)) }))); };
   const NAV_PERM = { cash: 'cash', reports: 'reports', calc: 'stock', team: 'staff', settings: 'settings' };
   const navList = () => {
     if (isCour()) return NAV_COUR; if (isCook()) return S.me?.can?.length ? [...NAV_COOK, ...NAV_A.filter(([v]) => NAV_PERM[v] && can(NAV_PERM[v]) && !NAV_COOK.some(x => x[0] === v))] : NAV_COOK;
@@ -662,10 +666,10 @@
     $('#login').hidden = true; $('#app').hidden = false;
     renderNav(); $('#main').innerHTML = '<div class="muted">Завантаження…</div>';
     setTimeout(pushBanner, 4000); // 🔔 запропонувати сповіщення (один раз)
+    if (!isCour()) loadMenu().catch(() => {}); // ⚡ меню паралельно зі станом, а не після
     try { await loadState(); } catch (e) { console.error('start', e); if (e.message === 'auth') return; // 🩺 не «вічне завантаження»: показати помилку й надіслати на сервер (видно в логах)
       $('#main').innerHTML = `<div class="card"><h3>⚠️ Каса не завантажилась</h3><div class="muted" style="word-break:break-word">${esc(String(e.message || e))}</div><button class="btn" onclick="location.reload()">🔄 Ще раз</button></div>`;
       api('jsErr', { m: String(e.message || e).slice(0, 300), st: String(e.stack || '').slice(0, 1500) }).catch(() => {}); return; }
-    if (!isCour()) loadMenu().catch(() => {});
     connect();
     document.body.classList.toggle('cook', isCook()); document.body.classList.toggle('adm', isAdmin()); document.body.classList.toggle('cour', isCour());
     if (isCook()) { S.view = 'kq'; renderNav(); loadKq().catch(() => {}); kitchenGate(); }

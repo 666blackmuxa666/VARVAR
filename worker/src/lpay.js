@@ -2,7 +2,7 @@
 // Стіл: гість платить фактичний рахунок (рахує сервер) + чайові → bill.paid, стіл НЕ закривається:
 // у касі плитка червона, у стрічці «💳 оплачено — підтвердіть» (✅ закрити · ✏️ стіл · ❌ повернути гроші).
 import { getBill, putBill, payable, logEvent, editEv, L, notify, closeTable, esc, tg, addWaiterOrder } from './ops.js';
-import { getMenu, priceMap } from './menu.js';
+import { getMenu, priceMap, modRows } from './menu.js';
 import { getGoCfg } from './delivery.js';
 import { lpKeys, lpForm, lpOk, lpApi, lpRefund } from './liqpay.js';
 import { tableKey } from './qr.js';
@@ -33,7 +33,7 @@ export async function tpayStart(env, b, at) {
   const PR = Array.isArray(b.items) && b.items.length ? priceMap(await getMenu(env)) : null, items = [];
   if (PR) for (const it of b.items.slice(0, 60)) { const p = PR[it.id], q = Math.min(50, Math.max(0, parseInt(it.q, 10) || 0)); if (!p || !q) continue;
     const price = typeof p.p === 'number' ? p.p : Object.hasOwn(p.p, String(it.v)) ? p.p[it.v] : 0; if (!(price > 0)) continue;
-    items.push({ name: p.n + (typeof p.p === 'number' ? '' : ` ${it.v} ${p.s || 'л'}`), price, q }); }
+    const name = p.n + (typeof p.p === 'number' ? '' : ` ${it.v} ${p.s || 'л'}`); items.push({ name, price, q }); for (const r of modRows(p.md, it.m, name)) items.push({ name: r.n, price: r.price, q }); }
   if (items.length) { const exe = await exCheck(env, items); if (exe) return [{ error: 'excise', msg: exe }, 409]; } // 🍾 марок менше, ніж замовив гість
   const extra = items.reduce((a, i) => a + i.price * i.q, 0);
   if (extra > 30000) return [{ error: 'too_big' }, 400]; // стеля як у /api/order (MAX_ORDER)

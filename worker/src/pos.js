@@ -55,9 +55,9 @@ export async function posApi(b, req, env) {
   const t = +b.t || 0;
   const needAdmin = () => [{ error: 'admin' }, 403];
   // ⛔ підписку ATOM не оплачено (5+ днів) — каса лише для перегляду: нові замовлення й чеки — ні
-  if (/^(order|close|accept|split|move|discount|precheck|goNew|goSt|tpayOk|tip|tipPay|cashMove|closedEdit|closedReopen|voidBack|tableBack|expense|shiftOpen|menuSave|menuDel|catAdd|menuImport)$/.test(b.op || '') && env.VENUE !== 'varvar') { const lk = await env.DB.get('cfg:lock', 'json'); if (lk) return [{ error: lk.why === 'off' ? '⛔ Заклад вимкнено платформою ATOM — каса в режимі перегляду' : '⛔ Підписку ATOM не оплачено — каса в режимі перегляду. Оплатіть у кабінеті власника (💳 Оплата)' }, 402]; }
+  if (/^(order|close|accept|split|move|discount|precheck|goNew|goSt|tpayOk|tip|tipPay|cashMove|closedEdit|closedReopen|voidBack|tableBack|expense|shiftOpen|menuSave|modsSave|menuDel|catAdd|menuImport)$/.test(b.op || '') && env.VENUE !== 'varvar') { const lk = await env.DB.get('cfg:lock', 'json'); if (lk) return [{ error: lk.why === 'off' ? '⛔ Заклад вимкнено платформою ATOM — каса в режимі перегляду' : '⛔ Підписку ATOM не оплачено — каса в режимі перегляду. Оплатіть у кабінеті власника (💳 Оплата)' }, 402]; }
   // 📱 демо-каса ATOM (сайт продажу): усе можна спробувати, крім платного ШІ, Telegram, друку, персоналу й кодів
-  if (env.VENUE === 'atom-demo' && /Гість демо/.test(me.name || '') && /^(help|aiBench|photo[A-Z]|menuPhoto|menuImport|skInvParse|skCardAi|skDups|print|rcpt|closedPrint|precheck|qrNew|regCode|staff[A-Z]|wifi|courTg|reset|lookVSet|dzSet|site[A-Z]*Ai|aiSite|gbSend|chat|menuSave|menuDel|menuUndo|catAdd|catSet|cfgSet|closedRefund|tpayRefund|closedDel|zDel|bak|go[A-Z]*Cfg|goCfgSet|siteSet|siteDesign|menuDesign)/.test(b.op || '')) return [{ error: '🔒 У демо це вимкнено — підключіть свій заклад' }, 403];
+  if (env.VENUE === 'atom-demo' && /Гість демо/.test(me.name || '') && /^(help|aiBench|photo[A-Z]|menuPhoto|menuImport|skInvParse|skCardAi|skDups|print|rcpt|closedPrint|precheck|qrNew|regCode|staff[A-Z]|wifi|courTg|reset|lookVSet|dzSet|site[A-Z]*Ai|aiSite|gbSend|chat|menuSave|modsSave|menuDel|menuUndo|catAdd|catSet|cfgSet|closedRefund|tpayRefund|closedDel|zDel|bak|go[A-Z]*Cfg|goCfgSet|siteSet|siteDesign|menuDesign)/.test(b.op || '')) return [{ error: '🔒 У демо це вимкнено — підключіть свій заклад' }, 403];
   const ok = (x = {}) => [{ ok: true, ...x }, 200];
   if (/^push[A-Z]/.test(b.op || '')) return (await import('./push.js')).pushApi(b, env, me); // 🔔 сповіщення в шторку — кожному працівнику
   // 👨‍🍳 кухар: черга кухні + вибити замовлення + стоп-лист; решта — ні
@@ -312,7 +312,7 @@ export async function posApi(b, req, env) {
 
     // меню (🔒 по одному — див. menuLock)
     case 'catSet': { if (!admin) return needAdmin(); const r = await (await import('./menu.js')).setCatGroup(env, String(b.id), b); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 📂 Меню: розділ <b>${esc(r.c.name.uk)}</b> → ${{ kitchen: '🍳 кухня', bar: '🍹 бар', hookah: '💨 кальян' }[r.c.g]}${r.c.nopack ? ' · без упаковки' : ''} — ${esc(who)}`); return ok(); }
-    case 'menuSave': case 'catAdd': case 'menuDel': case 'menuUndo': case 'menuPhoto': return menuLock(env, () => menuOp(b, env, who));
+    case 'menuSave': case 'modsSave': case 'catAdd': case 'menuDel': case 'menuUndo': case 'menuPhoto': return menuLock(env, () => menuOp(b, env, who));
     case 'menuImport': { if (!admin) return needAdmin(); const r = await importMenu(env, b.rows, !!b.replace); await notify(env, `🖥 📥 Меню: імпорт — додано ${r.add}, оновлено ${r.upd}, розділів ${r.cats} · ${esc(who)}`); return ok(r); }
     // 📥 перехід з іншої системи (етап 1, mig.js): журнал, перевірка/імпорт пакета, точковий відкат
     case 'migLog': { if (!admin) return needAdmin(); return ok({ ...(await (await import('./mig.js')).migLog(env)), on: await (await import('./ops.js')).modOn(env, 'mig') }); }
@@ -337,6 +337,11 @@ async function menuOp(b, env, who) {
   const ok = (x = {}) => [{ ok: true, ...x }, 200];
   switch (b.op) {
     case 'menuSave': return menuSave(env, b.item, who);
+    case 'modsSave': { // 🧩 R3 групи модифікаторів; страви без групи, що зникла, — просто без неї
+      const { cleanMods } = await import('./menu.js'), menu = await getMenu(env); menu.mods = cleanMods(b.mods); const ids = new Set(menu.mods.map(g => g.id));
+      menu.categories.forEach(c => c.items.forEach(it => { if (it.mods) { it.mods = it.mods.filter(id => ids.has(id)); if (!it.mods.length) delete it.mods; } }));
+      await saveMenu(env, menu); await notify(env, `🖥 🧩 Меню: модифікатори (${menu.mods.length} груп) — ${esc(who)}`); return ok({ mods: menu.mods });
+    }
     case 'catAdd': { const r = await addCategory(env, b.name); if (!r || r.error) return [{ error: r?.error || 'Потрібна назва' }, 400]; await notify(env, `🖥 📂 Меню: новий розділ <b>${esc(r.c.name.uk)}</b> — ${esc(who)}`); return ok({ id: r.c.id }); }
     case 'menuDel': {
       const menu = await getMenu(env); let name = '';
@@ -471,6 +476,7 @@ async function menuSave(env, x, who) {
   if (desc) it.desc = { uk: desc, en: it.desc?.en && it.desc.en !== it.desc.uk ? it.desc.en : desc }; else delete it.desc;
   if (Array.isArray(x.variants) && x.variants.length) { it.variants = x.variants.filter(v => v.v && +v.p > 0).map(v => ({ v: String(v.v), p: Math.round(+v.p) })); delete it.price; }
   else { const p = Math.round(+x.price || 0); if (!p) return [{ error: 'Потрібна ціна' }, 400]; it.price = p; delete it.variants; }
+  if (Array.isArray(x.mods)) { const ids = new Set((menu.mods || []).map(g => g.id)), l = [...new Set(x.mods.map(String))].filter(id => ids.has(id)).slice(0, 10); if (l.length) it.mods = l; else delete it.mods; } // 🧩 R3 групи страви
   if (x.pr && typeof x.pr === 'object') (await import('./menu.js')).setPr(it, x.pr); // 💲 R4 окремі ціни (лише коли модуль увімкнено — інакше каса pr не шле, старі лишаються)
   await saveMenu(env, menu);
   await notify(env, `🖥 ${isNew ? '➕ Меню: додано' : '✏️ Меню: оновлено'} <b>${esc(name)}</b> — ${it.variants ? it.variants.map(v => `${v.v} ${v.p}`).join(' / ') : it.price + ' грн'} · ${esc(who)}`);

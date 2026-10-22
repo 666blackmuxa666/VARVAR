@@ -108,7 +108,7 @@
   document.addEventListener('change', e => { if (e.target.dataset?.prn) prnDo(e.target); });
   function menuHTML() {
     if (!S.menu) return '<div class="head"><h1>Меню</h1></div><div class="muted">Завантаження…</div>';
-    return `<div class="head"><h1>Меню</h1><button class="btn" data-a="menuUndo">↩️ Відмінити останню зміну</button><button class="btn" data-a="catAdd">📂 Новий розділ</button><button class="btn" data-a="phPanel">📸 ШІ-фото</button><button class="btn primary" data-a="menuEdit" data-id="">➕ Нова страва</button></div>
+    return `<div class="head"><h1>Меню</h1><button class="btn" data-a="menuUndo">↩️ Відмінити останню зміну</button><button class="btn" data-a="catAdd">📂 Новий розділ</button><button class="btn" data-a="modsEdit">🧩 Модифікатори${S.menu.mods?.length ? ` (${S.menu.mods.length})` : ''}</button><button class="btn" data-a="phPanel">📸 ШІ-фото</button><button class="btn primary" data-a="menuEdit" data-id="">➕ Нова страва</button></div>
       <div class="muted" style="font-size:13px;margin:4px 4px 0">📂 Біля кожного розділу — куди йдуть його страви: 🍳 кухня (бігунок і екран кухні, упаковка «з собою») / 🍹 бар / 💨 кальян.</div>
       ${S.menu.categories.map(c => `<div class="btnrow" style="margin:18px 4px 8px;align-items:center;flex-wrap:wrap"><h3 class="muted catH" style="margin:0;flex:1;min-width:0">${esc(c.name.uk)}</h3>${c.tech ? '<span class="muted" style="font-size:12px">⚙️ технічний</span>' : `<button class="btn sm" data-a="catG" data-id="${c.id}" title="Куди йдуть страви розділу">${{ kitchen: '🍳 Кухня', bar: '🍹 Бар', hookah: '💨 Кальян' }[c.g] || '🍳 Кухня'}</button>${c.g === 'kitchen' ? `<button class="btn sm" data-a="catPack" data-id="${c.id}">${c.nopack ? '🚫 Без упаковки' : '🥡 З упаковкою'}</button>` : ''}`}</div><div class="grid2">${c.items.map(i => `<button class="list-row press" data-a="menuEdit" data-id="${i.id}" style="text-align:left"><div class="grow"><b>${esc(i.name.uk)}</b>${i.hidden ? ' ⛔' : ''}<div class="muted" style="font-size:13px">${i.variants ? i.variants.map(v => `${v.v} — ${v.p}`).join(' / ') : i.price + ' ₴'}${i.size && !i.variants ? ' · ' + esc(i.size) : ''}</div></div>›</button>`).join('')}</div>`).join('')}`;
   }
@@ -184,6 +184,16 @@
     return `<div class="rhead"><div><h1>Налаштування</h1><span class="muted">правила роботи, принтер</span></div><div class="icogrp">${isAdmin() ? `<a class="btn icobtn" href="owner.html${VENUE ? '' : '#pos=' + S.token}" target="_blank" rel="noopener" title="Кабінет власника">👑</a>` : ''}<button class="btn icobtn" data-a="zpHelp" title="Допомога">🆘</button></div></div>
       <div class="seg rsec">${SS.map(([k, l]) => `<button class="${cur === k ? 'on' : ''}" data-a="setTab" data-s="${k}">${l}</button>`).join('')}</div>${part[cur]}`;
   }
+  // 🧩 R3 групи модифікаторів — текстом, рядок на групу: «Молоко | 1 | звичайне 0, рослинне 15» (1 — рівно один; 0-2 — до двох за бажанням)
+  const modsTxt = l => (l || []).map(g => `${g.name} | ${g.min === g.max ? g.min : g.min + '-' + g.max} | ${g.items.map(x => x.n + ' ' + x.p).join(', ')}`).join('\n');
+  const modsParse = (t, old) => t.split('\n').map(r => r.split('|').map(x => x.trim())).filter(r => r[0] && r[2]).map(([name, mm, its]) => { const [a, b] = String(mm || '0').split(/[-–]/).map(x => parseInt(x, 10) || 0);
+    return { id: (old || []).find(g => g.name.toLowerCase() === name.toLowerCase())?.id, name, min: b == null ? Math.min(a, 1) : a, max: b == null ? Math.max(a, 1) : b, items: its.split(',').map(z => z.trim().match(/^(.+?)(?:\s+\+?(\d+))?$/)).filter(Boolean).map(z => ({ n: z[1], p: +z[2] || 0 })) }; });
+  async function modsEdit() {
+    const v = await modal({ title: '🧩 Модифікатори', body: `<div class="muted" style="font-size:13px">Рядок — одна група: <b>назва | скільки | варіант ціна, …</b><br>«1» — обовʼязково один (прожарка), «0-2» — до двох за бажанням (сироп). Ціна 0 — безкоштовно.<br>Потім у страві поставте галочку групи. Платні модифікатори йдуть окремим рядком чека й мають свою техкарту за назвою «Капучино › рослинне».</div>
+      <textarea id="fMods" rows="8" style="width:100%;margin-top:8px" placeholder="Молоко | 1 | звичайне 0, рослинне 15&#10;Сироп | 0-2 | ваніль 10, карамель 10">${esc(modsTxt(S.menu.mods))}</textarea>`, buttons: [{ label: '💾 Зберегти', val: 1, cls: 'primary' }, { label: 'Скасувати', val: null }], keep: true });
+    if (!v) return; const mods = modsParse($('#fMods').value, S.menu.mods); closeModal();
+    if (await act('modsSave', { mods }, '🧩 Збережено')) { await loadMenu(); loadView(); }
+  }
   async function menuEdit(id) {
     const it = itemsAll().find(i => i.id === id) || null;
     const cat = it ? S.menu.categories.find(c => c.items.includes(it)).id : S.menu.categories[0].id;
@@ -194,6 +204,7 @@
       <label>Ціна, ₴ ${it?.variants ? '' : ''}<input id="fPrice" inputmode="numeric" value="${it?.price ?? ''}" placeholder="напр. 380"></label>
       <label>Або розміри (для напоїв): <span class="muted">0.33=60, 0.5=70</span><input id="fVar" value="${esc(it?.variants ? it.variants.map(v => `${v.v}=${v.p}`).join(', ') : '')}"></label>
       ${modOn('prices') ? (() => { const pv = k => it?.variants ? it.variants.filter(v => v.pr?.[k]).map(v => `${v.v}=${v.pr[k]}`).join(', ') : it?.pr?.[k] ?? '', ph = it?.variants ? 'напр. 0.5=75 · порожньо — як у залі' : 'порожньо — як у залі'; return `<label>🥡 Ціна з собою<input id="fPick" value="${esc(pv('pick'))}" placeholder="${ph}"></label><label>🛵 Ціна доставки<input id="fDel" value="${esc(pv('del'))}" placeholder="${ph}"></label>`; })() : ''}
+      ${S.menu.mods?.length ? `<div class="muted" style="margin-top:6px">🧩 Модифікатори (каса спитає при додаванні)</div>${S.menu.mods.map(g => `<label class="kv" style="cursor:pointer"><span>${esc(g.name)} <span class="muted">${g.items.map(x => esc(x.n)).join(', ')}</span></span><input type="checkbox" class="fMod" value="${esc(g.id)}"${it?.mods?.includes(g.id) ? ' checked' : ''}></label>`).join('')}` : ''}
       <label>Вага/обʼєм<input id="fSize" value="${esc(it?.size || '')}" placeholder="напр. 400 г або л"></label>
       <label>Склад<textarea id="fDesc" rows="3">${esc(it?.desc?.uk || '')}</textarea></label>
       ${it ? `<label>Фото${it.img ? '' : ' <span class="muted">— ще немає</span>'}<img id="fPrev" src="${esc(it.img || '')}" alt="" style="display:${it.img ? 'block' : 'none'};width:100%;max-width:240px;aspect-ratio:1;object-fit:cover;border-radius:12px;margin:6px 0;background:var(--card2)"><input id="fPhoto" type="file" accept="image/*" onchange="const f=this.files[0],p=document.getElementById('fPrev');if(f&&p){p.src=URL.createObjectURL(f);p.style.display='block'}"></label>` : ''}</div>`;
@@ -202,7 +213,7 @@
     if (v === 'del') { if (await confirmBox(`Видалити «${it.name.uk}» з меню?`)) await act('menuDel', { id: it.id }, '🗑 Видалено'); return; }
     if (v !== 'save') return;
     const variants = $('#fVar').value.split(',').map(s => s.trim()).filter(Boolean).map(s => { const [vv, p] = s.split(/[=:]/).map(x => x.trim()); return { v: vv.replace(',', '.'), p: +p }; }).filter(x => x.v && x.p);
-    const item = { id: it?.id, cat: $('#fCat').value, name: $('#fName').value, nameEn: $('#fEn').value, price: +$('#fPrice').value, variants, size: $('#fSize').value, desc: $('#fDesc').value, ...($('#fPick') ? { pr: { pick: $('#fPick').value, del: $('#fDel').value } } : {}) }; // 💲 модуль «prices»
+    const item = { id: it?.id, cat: $('#fCat').value, name: $('#fName').value, nameEn: $('#fEn').value, price: +$('#fPrice').value, variants, size: $('#fSize').value, desc: $('#fDesc').value, ...(S.menu.mods?.length ? { mods: [...document.querySelectorAll('.fMod:checked')].map(x => x.value) } : {}), ...($('#fPick') ? { pr: { pick: $('#fPick').value, del: $('#fDel').value } } : {}) }; // 💲 модуль «prices»
     const file = $('#fPhoto')?.files?.[0];
     closeModal();
     const r = await act('menuSave', { item }, '💾 Збережено');
@@ -286,6 +297,7 @@
   on('qrPanel', async (el, e, a, t) => { qrPanel(); return; });
   on('catG', async (el, e, a, t) => { { const c = S.menu.categories.find(x => x.id === el.dataset.id); if (!c) return; const g = await choose('📂 ' + c.name.uk, 'Куди йдуть страви цього розділу?', [{ label: '🍳 Кухня', val: 'kitchen' }, { label: '🍹 Бар', val: 'bar' }, { label: '💨 Кальян', val: 'hookah' }]); if (g && g !== c.g && await act('catSet', { id: c.id, g }, '📂 Збережено')) loadMenu().catch(() => {}); return; } });
   on('catPack', async (el, e, a, t) => { { const c = S.menu.categories.find(x => x.id === el.dataset.id); if (c && await act('catSet', { id: c.id, nopack: !c.nopack }, c.nopack ? '🥡 Упаковка рахується' : '🚫 Без упаковки')) loadMenu().catch(() => {}); return; } });
+  on('modsEdit', async () => modsEdit());
   on('catAdd', async (el, e, a, t) => { { const v = await ask('📂 Новий розділ меню', 'Назва, напр. Упакування'); if (v && await act('catAdd', { name: v }, '📂 Розділ додано в кінець меню')) loadMenu().catch(() => {}); return; } });
   on('menuUndo', async (el, e, a, t) => { if (await confirmBox('Скасувати останню зміну меню?')) act('menuUndo', {}, '↩️ Скасовано'); return; });
   on('staffAdd', async (el, e, a, t) => { {

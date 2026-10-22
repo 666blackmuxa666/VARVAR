@@ -8,7 +8,7 @@ import { courUpdate } from './courier.js';
 import { guestBot, guestCallback, guestText, guestHello, sitePublic, bookCreate, bookStatus, bookPre, certAsk, certPublic, siteMsg, siteHit, meStart, mePoll, meData, meLogout, cron } from './site.js';
 // VARVAR — Cloudflare Worker: прийом замовлень, перевірка Wi‑Fi закладу, Telegram.
 // Secrets: BOT_TOKEN, CHAT_ID, ADMIN_PIN, TG_SECRET   Vars: ALLOWED_ORIGIN, TABLES, SELF_URL   KV: DB
-import { getMenu, priceMap } from './menu.js';
+import { getMenu, priceMap, modRows } from './menu.js';
 import { handleUpdate } from './bot.js';
 import { KITCHEN_HTML } from './kitchen.js';
 import { setDayH, tg, esc, getBill, putBill, addStat, addDishes, hhmm, logEvent, editEv, billItems, payable, addKitchen, getCfg } from './ops.js';
@@ -318,9 +318,8 @@ async function orderRaw(b, ip, env) {
     const price = typeof p.p === 'number' ? p.p : Object.hasOwn(p.p, String(it.v)) ? p.p[it.v] : 0;
     if (!(price > 0)) continue;
     const n = p.n + (typeof p.p === 'number' ? '' : ` ${it.v} ${p.s || 'л'}`); // назва як у каси (itemsFromMenu) — один рядок у рахунку
-    sum += price * q;
-    sold.push({ n, q, sum: price * q });
-    lines.push(`${q}× ${n} — ${price * q}`);
+    for (const r of [{ n, price }, ...modRows(p.md, it.m, n)]) { // 🧩 R3 модифікатори — окремими рядками
+      sum += r.price * q; sold.push({ n: r.n, q, sum: r.price * q }); lines.push(`${q}× ${r.n} — ${r.price * q}`); }
   }
   if (type !== 'check' && !lines.length) return [{ error: 'empty' }, 400];
   if (sum > MAX_ORDER) return [{ error: 'too_big' }, 400];

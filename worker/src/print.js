@@ -136,7 +136,8 @@ export function kitchenTicket({ table, kind, lines, comment, by, urgent }, rc = 
     ['c', rc.kTime ? `${kind}  ·  ${hhmm()}` : kind],
     ...(by && rc.kWaiter ? [['c', `Замовив: ${by}`]] : []),
     ['dbl'],
-    ...lines.map(l => { const m = l.match(/^(\d+)× (.+?) — \d+$/); return ['k', m ? `${m[1]} × ${m[2]}` : l]; }),
+    ...lines.map((l, i) => { const m = l.match(/^(\d+)× (.+?) — \d+$/), md = m?.[2].split(' › '), pv = i && lines[i - 1].match(/^\d+× (.+?) — \d+$/)?.[1].split(' › ')[0];
+      return md?.length > 1 && pv === md[0] ? ['k', `    › ${md.slice(1).join(' › ')}`] : ['k', m ? `${m[1]} × ${m[2]}` : l]; }), // 🧩 модифікатор під своєю стравою — з відступом
     // «з собою» — окремою чорною плашкою, решта коментаря звичайним шрифтом з переносом
     ...(/^З СОБОЮ/.test(comment || '') ? [['dbl'], ['inv', 'З СОБОЮ']] : []),
     ...(comment && comment.replace(/^З СОБОЮ\s*·?\s*/, '') ? [['dbl'], ['b', `>> ${comment.replace(/^З СОБОЮ\s*·?\s*/, '')}`]] : []),

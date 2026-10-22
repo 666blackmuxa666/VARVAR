@@ -1,6 +1,6 @@
 // 🛵 Замовлення за посиланням: самовивіз і доставка. Кожне — «віртуальний стіл» (tn.js): звичайний bill: з полем go,
 // тож працюють усі дії столу (дозамовлення, знижка, скасування, кухня, склад, закриття, звіти).
-import { menuFor, priceMap } from './menu.js';
+import { menuFor, priceMap, modRows } from './menu.js';
 import { tg, esc, hhmm, dayKey, getBill, putBill, billItems, payable, discAmt, logEvent, addStat, addDishes, L, editEv, closeTable, notify, openTables } from './ops.js';
 import { GO_DEL, GO_PICK, isGo, tn } from './tn.js';
 import { courNotify } from './courier.js';
@@ -124,7 +124,7 @@ export async function goOrder(b, ip, env) {
     const p = PRICES[it.id], q = Math.min(50, Math.max(0, parseInt(it.q, 10) || 0)); if (!p || !q) continue;
     const price = typeof p.p === 'number' ? p.p : Object.hasOwn(p.p, String(it.v)) ? p.p[it.v] : 0; if (!(price > 0)) continue;
     const n = p.n + (typeof p.p === 'number' ? '' : ` ${it.v} ${p.s || 'л'}`);
-    sum += price * q; sold.push({ n, q, sum: price * q }); lines.push(`${q}× ${n} — ${price * q}`);
+    for (const r of [{ n, price }, ...modRows(p.md, it.m, n)]) { sum += r.price * q; sold.push({ n: r.n, q, sum: r.price * q }); lines.push(`${q}× ${r.n} — ${r.price * q}`); } // 🧩 R3
   }
   if (!lines.length) return [{ error: 'empty' }, 400];
   if (!b._paid && sum < c.min) return [{ error: 'min', min: c.min }, 400];

@@ -259,6 +259,10 @@ var __objRest = (source, exclude) => {
           const v = m.variants ? m.variants.find((z) => z.v === it.v) || m.variants[0] : null, name = m.name.uk + (v ? ` ${v.v} ${m.size || "\u043B"}`.trimEnd() : ""), sum = prOf(m, v, t) * it.q;
           add(b, name, it.q, sum);
           lines.push(`${it.q}\xD7 ${name} \u2014 ${sum}`);
+          for (const r of modRowsOf(m, it.m, name)) {
+            add(b, r.n, it.q, r.price * it.q);
+            lines.push(`${it.q}\xD7 ${r.n} \u2014 ${r.price * it.q}`);
+          }
         }
         b.log = [...b.log || [], { lines, comment: d.comment || "", off: 1, at: x.at }];
         b.orders = (b.orders || 0) + 1;
@@ -886,6 +890,14 @@ var __objRest = (source, exclude) => {
     var _a2;
     const o = vv || it, k = prKind(t);
     return k && +((_a2 = o.pr) == null ? void 0 : _a2[k]) > 0 ? +o.pr[k] : vv ? vv.p : it.price;
+  };
+  const modsOfIt = (it) => ((it == null ? void 0 : it.mods) || []).map((id) => {
+    var _a2;
+    return (((_a2 = S.menu) == null ? void 0 : _a2.mods) || []).find((g) => g.id === id);
+  }).filter(Boolean);
+  const modRowsOf = (it, m, dish) => {
+    const sel = new Set(m || []);
+    return modsOfIt(it).flatMap((g) => g.items.filter((x, k) => sel.has(g.id + ":" + k)).slice(0, g.max || 20).map((x) => ({ n: `${dish} \u203A ${x.n}`, price: Math.max(0, Math.round(+x.p || 0)) })));
   };
   const NAV_PERM = { cash: "cash", reports: "reports", calc: "stock", team: "staff", settings: "settings" };
   const navList = () => {
@@ -1868,6 +1880,8 @@ var __objRest = (source, exclude) => {
     renderNav();
     $("#main").innerHTML = '<div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
     setTimeout(pushBanner, 4e3);
+    if (!isCour()) loadMenu().catch(() => {
+    });
     try {
       await loadState();
     } catch (e) {
@@ -1878,8 +1892,6 @@ var __objRest = (source, exclude) => {
       });
       return;
     }
-    if (!isCour()) loadMenu().catch(() => {
-    });
     connect();
     document.body.classList.toggle("cook", isCook());
     document.body.classList.toggle("adm", isAdmin());
@@ -2115,7 +2127,7 @@ var __objRest = (source, exclude) => {
     });
   }
   async function addItem(id) {
-    var _a2, _b2, _c, _d, _e;
+    var _a2, _b2, _c, _d, _e, _f;
     const wasKb = searching();
     const it = itemsAll().find((i) => i.id === id);
     if (!it) return;
@@ -2128,9 +2140,14 @@ var __objRest = (source, exclude) => {
         return;
       }
     }
-    const vv = (_b2 = it.variants) == null ? void 0 : _b2.find((x) => x.v === v);
-    const key = it.id + (v ? "|" + v : ""), cart = cartOf(S.open);
-    cart[key] || (cart[key] = { id: it.id, v, name: it.name.uk + (vv ? ` ${vv.v} ${it.size || ""}`.trimEnd() : ""), price: prOf(it, vv, S.open), q: 0 });
+    const vv = (_b2 = it.variants) == null ? void 0 : _b2.find((x) => x.v === v), base = it.name.uk + (vv ? ` ${vv.v} ${it.size || ""}`.trimEnd() : "");
+    const m = await pickMods(it, base);
+    if (m == null) {
+      if (wasKb) (_c = $("#search")) == null ? void 0 : _c.focus();
+      return;
+    }
+    const md = modRowsOf(it, m, base), key = it.id + (v ? "|" + v : "") + (m.length ? "|" + (v ? "" : "|") + m.join(",") : ""), cart = cartOf(S.open);
+    cart[key] || (cart[key] = __spreadProps(__spreadValues({ id: it.id, v }, m.length ? { m } : {}), { name: base + (md.length ? " \u203A " + md.map((x) => x.n.slice(base.length + 3)).join(", ") : ""), price: prOf(it, vv, S.open) + md.reduce((a, x) => a + x.price, 0), q: 0 }));
     const keepKb = wasKb || searching();
     cart[key].q++;
     saveCarts();
@@ -2138,7 +2155,7 @@ var __objRest = (source, exclude) => {
       S.q = "";
       const se = $("#search");
       if (se) se.value = "";
-      const c = (_c = S.menu) == null ? void 0 : _c.categories.find((x) => x.items.some((i) => i.id === it.id)), gr = c && ((_d = S.groups) == null ? void 0 : _d.find((x) => {
+      const c = (_d = S.menu) == null ? void 0 : _d.categories.find((x) => x.items.some((i) => i.id === it.id)), gr = c && ((_e = S.groups) == null ? void 0 : _e.find((x) => {
         var _a3;
         return (_a3 = x.cats) == null ? void 0 : _a3.includes(c.id);
       }));
@@ -2148,8 +2165,26 @@ var __objRest = (source, exclude) => {
       }
     }
     renderSheet();
-    if (keepKb && !searching()) (_e = $("#search")) == null ? void 0 : _e.focus();
+    if (keepKb && !searching()) (_f = $("#search")) == null ? void 0 : _f.focus();
     upsHint(it.name.uk, cart);
+  }
+  async function pickMods(it, name) {
+    const gs2 = modsOfIt(it);
+    if (!gs2.length) return [];
+    let sel = gs2.filter((g) => g.min && g.max === 1).map((g) => g.id + ":0");
+    for (; ; ) {
+      const body = gs2.map((g) => `<div style="margin:12px 0 4px"><b>${esc(g.name)}</b> <span class="muted">${g.min ? "\u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E" : "\u0437\u0430 \u0431\u0430\u0436\u0430\u043D\u043D\u044F\u043C"}${g.max > 1 ? ` \xB7 \u0434\u043E ${g.max}` : ""}</span></div>` + g.items.map((x, k) => `<label class="kv" style="cursor:pointer"><span>${esc(x.n)}${x.p ? ` <span class="muted">+${x.p} \u20B4</span>` : ""}</span><input type="${g.max === 1 ? "radio" : "checkbox"}" name="md-${esc(g.id)}" value="${esc(g.id)}:${k}"${sel.includes(g.id + ":" + k) ? " checked" : ""}></label>`).join("")).join("");
+      const ok2 = await modal({ title: "\u{1F9E9} " + name, body, keep: true, buttons: [{ label: "\u2705 \u0414\u043E\u0434\u0430\u0442\u0438", val: 1, cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }] });
+      if (!ok2) return null;
+      sel = [...document.querySelectorAll("#modal input:checked")].map((i) => i.value);
+      closeModal();
+      const bad = gs2.find((g) => {
+        const n = sel.filter((k) => k.startsWith(g.id + ":")).length;
+        return n < g.min || n > g.max;
+      });
+      if (!bad) return sel;
+      toast(`\u{1F9E9} ${bad.name}: ${bad.min ? `\u043E\u0431\u0435\u0440\u0456\u0442\u044C ${bad.min === bad.max ? bad.min : bad.min + "\u2013" + bad.max}` : `\u043D\u0435 \u0431\u0456\u043B\u044C\u0448\u0435 ${bad.max}`}`);
+    }
   }
   async function upsHint(name, cart) {
     if (!S.ups) {
@@ -2166,7 +2201,7 @@ var __objRest = (source, exclude) => {
     if (e.target.id === "cartCom") S.coms[S.open] = e.target.value;
   });
   async function sendCart() {
-    const t = S.open, cart = cartOf(t), pk = packItem(), pq = pk ? packQ(t) : 0, items = [...Object.values(cart).map((x) => ({ id: x.id, v: x.v, q: x.q })), ...pq ? [{ id: pk.id, q: pq }] : []];
+    const t = S.open, cart = cartOf(t), pk = packItem(), pq = pk ? packQ(t) : 0, items = [...Object.values(cart).map((x) => __spreadProps(__spreadValues({ id: x.id, v: x.v }, x.m ? { m: x.m } : {}), { q: x.q })), ...pq ? [{ id: pk.id, q: pq }] : []];
     if (!items.length) return;
     {
       const ci = $("#cartCom");
@@ -5284,8 +5319,9 @@ var __objRest = (source, exclude) => {
     if ((_a2 = e.target.dataset) == null ? void 0 : _a2.prn) prnDo(e.target);
   });
   function menuHTML() {
+    var _a2;
     if (!S.menu) return '<div class="head"><h1>\u041C\u0435\u043D\u044E</h1></div><div class="muted">\u0417\u0430\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F\u2026</div>';
-    return `<div class="head"><h1>\u041C\u0435\u043D\u044E</h1><button class="btn" data-a="menuUndo">\u21A9\uFE0F \u0412\u0456\u0434\u043C\u0456\u043D\u0438\u0442\u0438 \u043E\u0441\u0442\u0430\u043D\u043D\u044E \u0437\u043C\u0456\u043D\u0443</button><button class="btn" data-a="catAdd">\u{1F4C2} \u041D\u043E\u0432\u0438\u0439 \u0440\u043E\u0437\u0434\u0456\u043B</button><button class="btn" data-a="phPanel">\u{1F4F8} \u0428\u0406-\u0444\u043E\u0442\u043E</button><button class="btn primary" data-a="menuEdit" data-id="">\u2795 \u041D\u043E\u0432\u0430 \u0441\u0442\u0440\u0430\u0432\u0430</button></div>
+    return `<div class="head"><h1>\u041C\u0435\u043D\u044E</h1><button class="btn" data-a="menuUndo">\u21A9\uFE0F \u0412\u0456\u0434\u043C\u0456\u043D\u0438\u0442\u0438 \u043E\u0441\u0442\u0430\u043D\u043D\u044E \u0437\u043C\u0456\u043D\u0443</button><button class="btn" data-a="catAdd">\u{1F4C2} \u041D\u043E\u0432\u0438\u0439 \u0440\u043E\u0437\u0434\u0456\u043B</button><button class="btn" data-a="modsEdit">\u{1F9E9} \u041C\u043E\u0434\u0438\u0444\u0456\u043A\u0430\u0442\u043E\u0440\u0438${((_a2 = S.menu.mods) == null ? void 0 : _a2.length) ? ` (${S.menu.mods.length})` : ""}</button><button class="btn" data-a="phPanel">\u{1F4F8} \u0428\u0406-\u0444\u043E\u0442\u043E</button><button class="btn primary" data-a="menuEdit" data-id="">\u2795 \u041D\u043E\u0432\u0430 \u0441\u0442\u0440\u0430\u0432\u0430</button></div>
       <div class="muted" style="font-size:13px;margin:4px 4px 0">\u{1F4C2} \u0411\u0456\u043B\u044F \u043A\u043E\u0436\u043D\u043E\u0433\u043E \u0440\u043E\u0437\u0434\u0456\u043B\u0443 \u2014 \u043A\u0443\u0434\u0438 \u0439\u0434\u0443\u0442\u044C \u0439\u043E\u0433\u043E \u0441\u0442\u0440\u0430\u0432\u0438: \u{1F373} \u043A\u0443\u0445\u043D\u044F (\u0431\u0456\u0433\u0443\u043D\u043E\u043A \u0456 \u0435\u043A\u0440\u0430\u043D \u043A\u0443\u0445\u043D\u0456, \u0443\u043F\u0430\u043A\u043E\u0432\u043A\u0430 \xAB\u0437 \u0441\u043E\u0431\u043E\u044E\xBB) / \u{1F379} \u0431\u0430\u0440 / \u{1F4A8} \u043A\u0430\u043B\u044C\u044F\u043D.</div>
       ${S.menu.categories.map((c) => `<div class="btnrow" style="margin:18px 4px 8px;align-items:center;flex-wrap:wrap"><h3 class="muted catH" style="margin:0;flex:1;min-width:0">${esc(c.name.uk)}</h3>${c.tech ? '<span class="muted" style="font-size:12px">\u2699\uFE0F \u0442\u0435\u0445\u043D\u0456\u0447\u043D\u0438\u0439</span>' : `<button class="btn sm" data-a="catG" data-id="${c.id}" title="\u041A\u0443\u0434\u0438 \u0439\u0434\u0443\u0442\u044C \u0441\u0442\u0440\u0430\u0432\u0438 \u0440\u043E\u0437\u0434\u0456\u043B\u0443">${{ kitchen: "\u{1F373} \u041A\u0443\u0445\u043D\u044F", bar: "\u{1F379} \u0411\u0430\u0440", hookah: "\u{1F4A8} \u041A\u0430\u043B\u044C\u044F\u043D" }[c.g] || "\u{1F373} \u041A\u0443\u0445\u043D\u044F"}</button>${c.g === "kitchen" ? `<button class="btn sm" data-a="catPack" data-id="${c.id}">${c.nopack ? "\u{1F6AB} \u0411\u0435\u0437 \u0443\u043F\u0430\u043A\u043E\u0432\u043A\u0438" : "\u{1F961} \u0417 \u0443\u043F\u0430\u043A\u043E\u0432\u043A\u043E\u044E"}</button>` : ""}`}</div><div class="grid2">${c.items.map((i) => `<button class="list-row press" data-a="menuEdit" data-id="${i.id}" style="text-align:left"><div class="grow"><b>${esc(i.name.uk)}</b>${i.hidden ? " \u26D4" : ""}<div class="muted" style="font-size:13px">${i.variants ? i.variants.map((v) => `${v.v} \u2014 ${v.p}`).join(" / ") : i.price + " \u20B4"}${i.size && !i.variants ? " \xB7 " + esc(i.size) : ""}</div></div>\u203A</button>`).join("")}</div>`).join("")}`;
   }
@@ -5390,8 +5426,25 @@ var __objRest = (source, exclude) => {
     return `<div class="rhead"><div><h1>\u041D\u0430\u043B\u0430\u0448\u0442\u0443\u0432\u0430\u043D\u043D\u044F</h1><span class="muted">\u043F\u0440\u0430\u0432\u0438\u043B\u0430 \u0440\u043E\u0431\u043E\u0442\u0438, \u043F\u0440\u0438\u043D\u0442\u0435\u0440</span></div><div class="icogrp">${isAdmin() ? `<a class="btn icobtn" href="owner.html${VENUE ? "" : "#pos=" + S.token}" target="_blank" rel="noopener" title="\u041A\u0430\u0431\u0456\u043D\u0435\u0442 \u0432\u043B\u0430\u0441\u043D\u0438\u043A\u0430">\u{1F451}</a>` : ""}<button class="btn icobtn" data-a="zpHelp" title="\u0414\u043E\u043F\u043E\u043C\u043E\u0433\u0430">\u{1F198}</button></div></div>
       <div class="seg rsec">${SS.map(([k, l]) => `<button class="${cur === k ? "on" : ""}" data-a="setTab" data-s="${k}">${l}</button>`).join("")}</div>${part[cur]}`;
   }
+  const modsTxt = (l) => (l || []).map((g) => `${g.name} | ${g.min === g.max ? g.min : g.min + "-" + g.max} | ${g.items.map((x) => x.n + " " + x.p).join(", ")}`).join("\n");
+  const modsParse = (t, old) => t.split("\n").map((r) => r.split("|").map((x) => x.trim())).filter((r) => r[0] && r[2]).map(([name, mm, its]) => {
+    var _a2;
+    const [a, b] = String(mm || "0").split(/[-–]/).map((x) => parseInt(x, 10) || 0);
+    return { id: (_a2 = (old || []).find((g) => g.name.toLowerCase() === name.toLowerCase())) == null ? void 0 : _a2.id, name, min: b == null ? Math.min(a, 1) : a, max: b == null ? Math.max(a, 1) : b, items: its.split(",").map((z) => z.trim().match(/^(.+?)(?:\s+\+?(\d+))?$/)).filter(Boolean).map((z) => ({ n: z[1], p: +z[2] || 0 })) };
+  });
+  async function modsEdit() {
+    const v = await modal({ title: "\u{1F9E9} \u041C\u043E\u0434\u0438\u0444\u0456\u043A\u0430\u0442\u043E\u0440\u0438", body: `<div class="muted" style="font-size:13px">\u0420\u044F\u0434\u043E\u043A \u2014 \u043E\u0434\u043D\u0430 \u0433\u0440\u0443\u043F\u0430: <b>\u043D\u0430\u0437\u0432\u0430 | \u0441\u043A\u0456\u043B\u044C\u043A\u0438 | \u0432\u0430\u0440\u0456\u0430\u043D\u0442 \u0446\u0456\u043D\u0430, \u2026</b><br>\xAB1\xBB \u2014 \u043E\u0431\u043E\u0432\u02BC\u044F\u0437\u043A\u043E\u0432\u043E \u043E\u0434\u0438\u043D (\u043F\u0440\u043E\u0436\u0430\u0440\u043A\u0430), \xAB0-2\xBB \u2014 \u0434\u043E \u0434\u0432\u043E\u0445 \u0437\u0430 \u0431\u0430\u0436\u0430\u043D\u043D\u044F\u043C (\u0441\u0438\u0440\u043E\u043F). \u0426\u0456\u043D\u0430 0 \u2014 \u0431\u0435\u0437\u043A\u043E\u0448\u0442\u043E\u0432\u043D\u043E.<br>\u041F\u043E\u0442\u0456\u043C \u0443 \u0441\u0442\u0440\u0430\u0432\u0456 \u043F\u043E\u0441\u0442\u0430\u0432\u0442\u0435 \u0433\u0430\u043B\u043E\u0447\u043A\u0443 \u0433\u0440\u0443\u043F\u0438. \u041F\u043B\u0430\u0442\u043D\u0456 \u043C\u043E\u0434\u0438\u0444\u0456\u043A\u0430\u0442\u043E\u0440\u0438 \u0439\u0434\u0443\u0442\u044C \u043E\u043A\u0440\u0435\u043C\u0438\u043C \u0440\u044F\u0434\u043A\u043E\u043C \u0447\u0435\u043A\u0430 \u0439 \u043C\u0430\u044E\u0442\u044C \u0441\u0432\u043E\u044E \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0443 \u0437\u0430 \u043D\u0430\u0437\u0432\u043E\u044E \xAB\u041A\u0430\u043F\u0443\u0447\u0438\u043D\u043E \u203A \u0440\u043E\u0441\u043B\u0438\u043D\u043D\u0435\xBB.</div>
+      <textarea id="fMods" rows="8" style="width:100%;margin-top:8px" placeholder="\u041C\u043E\u043B\u043E\u043A\u043E | 1 | \u0437\u0432\u0438\u0447\u0430\u0439\u043D\u0435 0, \u0440\u043E\u0441\u043B\u0438\u043D\u043D\u0435 15&#10;\u0421\u0438\u0440\u043E\u043F | 0-2 | \u0432\u0430\u043D\u0456\u043B\u044C 10, \u043A\u0430\u0440\u0430\u043C\u0435\u043B\u044C 10">${esc(modsTxt(S.menu.mods))}</textarea>`, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: 1, cls: "primary" }, { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
+    if (!v) return;
+    const mods = modsParse($("#fMods").value, S.menu.mods);
+    closeModal();
+    if (await act("modsSave", { mods }, "\u{1F9E9} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E")) {
+      await loadMenu();
+      loadView();
+    }
+  }
   async function menuEdit(id) {
-    var _a2, _b2, _c, _d;
+    var _a2, _b2, _c, _d, _e, _f;
     const it = itemsAll().find((i) => i.id === id) || null;
     const cat = it ? S.menu.categories.find((c) => c.items.includes(it)).id : S.menu.categories[0].id;
     const body = `<div class="form">
@@ -5410,8 +5463,12 @@ var __objRest = (source, exclude) => {
       }, ph = (it == null ? void 0 : it.variants) ? "\u043D\u0430\u043F\u0440. 0.5=75 \xB7 \u043F\u043E\u0440\u043E\u0436\u043D\u044C\u043E \u2014 \u044F\u043A \u0443 \u0437\u0430\u043B\u0456" : "\u043F\u043E\u0440\u043E\u0436\u043D\u044C\u043E \u2014 \u044F\u043A \u0443 \u0437\u0430\u043B\u0456";
       return `<label>\u{1F961} \u0426\u0456\u043D\u0430 \u0437 \u0441\u043E\u0431\u043E\u044E<input id="fPick" value="${esc(pv("pick"))}" placeholder="${ph}"></label><label>\u{1F6F5} \u0426\u0456\u043D\u0430 \u0434\u043E\u0441\u0442\u0430\u0432\u043A\u0438<input id="fDel" value="${esc(pv("del"))}" placeholder="${ph}"></label>`;
     })() : ""}
+      ${((_b2 = S.menu.mods) == null ? void 0 : _b2.length) ? `<div class="muted" style="margin-top:6px">\u{1F9E9} \u041C\u043E\u0434\u0438\u0444\u0456\u043A\u0430\u0442\u043E\u0440\u0438 (\u043A\u0430\u0441\u0430 \u0441\u043F\u0438\u0442\u0430\u0454 \u043F\u0440\u0438 \u0434\u043E\u0434\u0430\u0432\u0430\u043D\u043D\u0456)</div>${S.menu.mods.map((g) => {
+      var _a3;
+      return `<label class="kv" style="cursor:pointer"><span>${esc(g.name)} <span class="muted">${g.items.map((x) => esc(x.n)).join(", ")}</span></span><input type="checkbox" class="fMod" value="${esc(g.id)}"${((_a3 = it == null ? void 0 : it.mods) == null ? void 0 : _a3.includes(g.id)) ? " checked" : ""}></label>`;
+    }).join("")}` : ""}
       <label>\u0412\u0430\u0433\u0430/\u043E\u0431\u02BC\u0454\u043C<input id="fSize" value="${esc((it == null ? void 0 : it.size) || "")}" placeholder="\u043D\u0430\u043F\u0440. 400 \u0433 \u0430\u0431\u043E \u043B"></label>
-      <label>\u0421\u043A\u043B\u0430\u0434<textarea id="fDesc" rows="3">${esc(((_b2 = it == null ? void 0 : it.desc) == null ? void 0 : _b2.uk) || "")}</textarea></label>
+      <label>\u0421\u043A\u043B\u0430\u0434<textarea id="fDesc" rows="3">${esc(((_c = it == null ? void 0 : it.desc) == null ? void 0 : _c.uk) || "")}</textarea></label>
       ${it ? `<label>\u0424\u043E\u0442\u043E${it.img ? "" : ' <span class="muted">\u2014 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454</span>'}<img id="fPrev" src="${esc(it.img || "")}" alt="" style="display:${it.img ? "block" : "none"};width:100%;max-width:240px;aspect-ratio:1;object-fit:cover;border-radius:12px;margin:6px 0;background:var(--card2)"><input id="fPhoto" type="file" accept="image/*" onchange="const f=this.files[0],p=document.getElementById('fPrev');if(f&&p){p.src=URL.createObjectURL(f);p.style.display='block'}"></label>` : ""}</div>`;
     const v = await modal({ title: it ? "\u0420\u0435\u0434\u0430\u0433\u0443\u0432\u0430\u0442\u0438 \u0441\u0442\u0440\u0430\u0432\u0443" : "\u041D\u043E\u0432\u0430 \u0441\u0442\u0440\u0430\u0432\u0430", body, buttons: [{ label: "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438", val: "save", cls: "primary" }, ...it ? [{ label: "\u{1F4F8} \u0428\u0406-\u0444\u043E\u0442\u043E", val: "ai" }, { label: "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0441\u0442\u0440\u0430\u0432\u0443", val: "del", cls: "red" }] : [], { label: "\u0421\u043A\u0430\u0441\u0443\u0432\u0430\u0442\u0438", val: null }], keep: true });
     if (v === "ai") {
@@ -5427,8 +5484,8 @@ var __objRest = (source, exclude) => {
       const [vv, p] = s.split(/[=:]/).map((x) => x.trim());
       return { v: vv.replace(",", "."), p: +p };
     }).filter((x) => x.v && x.p);
-    const item = __spreadValues({ id: it == null ? void 0 : it.id, cat: $("#fCat").value, name: $("#fName").value, nameEn: $("#fEn").value, price: +$("#fPrice").value, variants, size: $("#fSize").value, desc: $("#fDesc").value }, $("#fPick") ? { pr: { pick: $("#fPick").value, del: $("#fDel").value } } : {});
-    const file = (_d = (_c = $("#fPhoto")) == null ? void 0 : _c.files) == null ? void 0 : _d[0];
+    const item = __spreadValues(__spreadValues({ id: it == null ? void 0 : it.id, cat: $("#fCat").value, name: $("#fName").value, nameEn: $("#fEn").value, price: +$("#fPrice").value, variants, size: $("#fSize").value, desc: $("#fDesc").value }, ((_d = S.menu.mods) == null ? void 0 : _d.length) ? { mods: [...document.querySelectorAll(".fMod:checked")].map((x) => x.value) } : {}), $("#fPick") ? { pr: { pick: $("#fPick").value, del: $("#fDel").value } } : {});
+    const file = (_f = (_e = $("#fPhoto")) == null ? void 0 : _e.files) == null ? void 0 : _f[0];
     closeModal();
     const r = await act("menuSave", { item }, "\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0436\u0435\u043D\u043E");
     if (r && file) {
@@ -5727,6 +5784,7 @@ var __objRest = (source, exclude) => {
       return;
     }
   });
+  on("modsEdit", async () => modsEdit());
   on("catAdd", async (el, e, a, t) => {
     {
       const v = await ask("\u{1F4C2} \u041D\u043E\u0432\u0438\u0439 \u0440\u043E\u0437\u0434\u0456\u043B \u043C\u0435\u043D\u044E", "\u041D\u0430\u0437\u0432\u0430, \u043D\u0430\u043F\u0440. \u0423\u043F\u0430\u043A\u0443\u0432\u0430\u043D\u043D\u044F");

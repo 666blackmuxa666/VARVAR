@@ -4,7 +4,7 @@
 // Відкат точковий: під час імпорту записуємо, якими були змінені ключі (mig:u:<id>); відмінити можна, лише поки їх ніхто не змінював після імпорту.
 // Повний знімок (бекап «перед-переходом-…») — запасний шлях, відновлює лише платформа.
 import { L, dayKey, hhmm, notify, esc } from './ops.js';
-import { getMenu, saveMenu, menuLock, slug } from './menu.js';
+import { getMenu, saveMenu, menuLock, slug, cleanMods } from './menu.js';
 import { getIng, getCards, norm, r3, UNITS } from './stock.js';
 import { supEnsure, nrmSup } from './suppliers.js';
 import { normPhone, getCli, cliTouch, fmtPhone } from './delivery.js';
@@ -15,6 +15,7 @@ import { getStaff } from './ops-staff.js';
 // вид → назва й поля (* — обовʼязкові). Ті самі ключі використовує майстер для зіставлення колонок.
 export const KINDS = {
   menu: { t: '🍽 Меню', f: { id: 'Код', cat: 'Розділ', name: 'Назва*', price: 'Ціна*', pick: 'Ціна з собою', del: 'Ціна доставки', v: 'Розмір (0,5 л)', desc: 'Опис', size: 'Вага / обʼєм' } },
+  mods: { t: '🧩 Модифікатори', f: { grp: 'Група*', n: 'Варіант*', p: 'Ціна', min: 'Мінімум', max: 'Максимум', dish: 'Страви (через ;)' } },
   ing: { t: '📦 Продукти й залишки', f: { id: 'Код', n: 'Назва*', u: 'Одиниця', cat: 'Група', q: 'Залишок', wh: 'Склад', cost: 'Ціна за одиницю', sum: 'Сума залишку', bc: 'Штрихкод' } },
   cards: { t: '📋 Техкарти', f: { dish: 'Страва*', ing: 'Продукт*', q: 'Брутто*', u: 'Одиниця', loss: 'Втрати, %', out: 'Вихід, г' } },
   sup: { t: '🚚 Постачальники', f: { n: 'Назва*', code: 'ЄДРПОУ / ІПН', iban: 'IBAN', phone: 'Телефон', addr: 'Адреса' } },
@@ -86,6 +87,26 @@ const AP = {
       });
       if (!c.dry && (add || upd)) { await saveMenu(env, menu); await env.DB.put('mig:x:menu', JSON.stringify(x)); }
       return { add, upd, skip, tot: { cats } };
+    });
+  },
+  // 🧩 R3: рядок — один варіант групи («Молоко · рослинне · 15»); min/max і страви — з будь-якого рядка групи (R-Keeper MODISCHEMES/MODIGROUPS/MODIFIERS)
+  async mods(env, rows, c) {
+    return menuLock(env, async () => {
+      const menu = await getMenu(env), gs = (menu.mods || []).map(g => ({ ...g, items: [...g.items] })), all = menu.categories.flatMap(k => k.items), seen = new Set(), link = new Map();
+      let add = 0, upd = 0, skip = 0;
+      rows.forEach((r, i) => {
+        const gn = T(r.grp, 40), n = T(r.n, 40); if (!gn || !n) return c.err(i, 'немає групи або варіанта'), skip++;
+        const p = num(r.p) || 0; if (p < 0) return c.err(i, `«${n}»: ціна менша за 0`), skip++;
+        let g = gs.find(z => z.name.toLowerCase() === gn.toLowerCase()); if (!g) { g = { id: slug(gn).slice(0, 12) || 'm', name: gn, min: 0, max: 1, items: [] }; gs.push(g); }
+        if (!seen.has(g)) { seen.add(g); g.new = !(menu.mods || []).some(z => z.id === g.id && z.name === g.name); }
+        if (T(r.min) !== '') g.min = Math.max(0, parseInt(r.min, 10) || 0); if (T(r.max) !== '') g.max = Math.max(1, parseInt(r.max, 10) || 1);
+        const o = g.items.find(z => z.n.toLowerCase() === n.toLowerCase()); if (o) { o.p = Math.round(p); upd++; } else { g.items.push({ n, p: Math.round(p) }); add++; }
+        for (const dn of T(r.dish, 300).split(';').map(z => z.trim().toLowerCase()).filter(Boolean)) { const it = all.find(y => y.name.uk.toLowerCase() === dn); if (it) link.set(it, [...(link.get(it) || []), g]); else c.err(i, `«${dn}» — страви немає в меню (спершу імпортуйте 🍽 Меню)`, 1); }
+      });
+      const clean = cleanMods(gs.map(({ new: _, ...g }) => g)), byName = new Map(clean.map(g => [g.name.toLowerCase(), g.id]));
+      for (const [it, l] of link) it.mods = [...new Set([...(it.mods || []), ...l.map(g => byName.get(g.name.toLowerCase())).filter(Boolean)])].slice(0, 10);
+      if (!c.dry && (add || upd)) { menu.mods = clean; await saveMenu(env, menu); }
+      return { add, upd, skip, tot: { grp: seen.size, dish: link.size } };
     });
   },
   async ing(env, rows, c) {
@@ -228,7 +249,7 @@ const AP = {
   },
 };
 // ключ дубліката всередині файлу (останній рядок перемагає — як і при повторному імпорті)
-const DUPK = { menu: r => T(r.name).toLowerCase() + '|' + T(r.v).replace(',', '.'), ing: r => norm(r.n), cards: r => T(r.dish).toLowerCase() + '|' + norm(r.ing), sup: r => nrmSup(r.n), cli: r => normPhone(r.phone), cert: r => T(r.code).toUpperCase(), staff: r => T(r.n).toLowerCase(), book: r => T(r.id) || ymd(r.date) + '|' + T(r.time) + '|' + normPhone(r.phone) };
+const DUPK = { menu: r => T(r.name).toLowerCase() + '|' + T(r.v).replace(',', '.'), mods: r => T(r.grp).toLowerCase() + '|' + T(r.n).toLowerCase(), ing: r => norm(r.n), cards: r => T(r.dish).toLowerCase() + '|' + norm(r.ing), sup: r => nrmSup(r.n), cli: r => normPhone(r.phone), cert: r => T(r.code).toUpperCase(), staff: r => T(r.n).toLowerCase(), book: r => T(r.id) || ymd(r.date) + '|' + T(r.time) + '|' + normPhone(r.phone) };
 
 // 🚀 { sys, kind, rows, map?, dry } → підсумок. who — хто імпортує
 export async function migRun(env, b, who) {

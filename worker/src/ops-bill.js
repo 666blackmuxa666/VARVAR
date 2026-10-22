@@ -4,7 +4,7 @@ import { agBump } from './agg.js';
 import { fisSafe } from './fiscal.js';
 import { courNotify } from './courier.js';
 import { cliClose, goButtons, goGone } from './delivery.js';
-import { getMenu, menuFor } from './menu.js';
+import { getMenu, menuFor, modsOf, modRows } from './menu.js';
 import { BILL_TTL, L, LINE, addDishes, addStat, billItems, bump, dayKey, discAmt, editEv, esc, getBill, getCfg, hhmm, kqMut, logClosed, logEvent, notify, openTables, payable, pct, putBill, tg } from './ops-core.js';
 import { addKitchen, kitchenCancel, kitchenClosed } from './ops-kitchen.js';
 import { getMov } from './ops-money.js';
@@ -68,7 +68,9 @@ export async function itemsFromMenu(env, list, kind = null) { // kind: 'pick' / 
     const it = by[x.id]; const q = Math.min(50, Math.max(0, parseInt(x.q, 10) || 0));
     if (!it || !q) continue;
     const v = it.variants ? it.variants.find(z => z.v === x.v) || it.variants[0] : null;
-    out.push({ name: it.name.uk + (v ? ` ${v.v} ${it.size || 'л'}`.trimEnd() : ''), price: v ? v.p : it.price, q, hidden: !!it.hidden });
+    const name = it.name.uk + (v ? ` ${v.v} ${it.size || 'л'}`.trimEnd() : '');
+    out.push({ name, price: v ? v.p : it.price, q, hidden: !!it.hidden });
+    for (const r of modRows(modsOf(menu, it), x.m, name)) out.push({ name: r.n, price: r.price, q, hidden: !!it.hidden }); // 🧩 R3 модифікатори — рядками під стравою
   }
   return out;
 }

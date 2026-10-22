@@ -92,10 +92,10 @@ function share(sum, w) { const ks = Object.keys(w), T = ks.reduce((a, k) => a + 
 const exGood = (g, e) => { if (!e) return g; if (e.uk) g.uktzed = e.uk; const b = (e.c || []).filter(z => !z[2]).map(z => z[1]), el = (e.c || []).filter(z => z[2]).map(z => z[1]); if (b.length) g.excise_barcodes = b; if (el.length) g.e_excise_barcodes = el; return g; };
 export function receiptsOf(x, ex = {}, route = () => 'a') {
   const per = {};
-  for (const [n, q, s] of x.dishes || []) { const m = per[route(n) || 'a'] ||= new Map(), a = m.get(n) || [0, 0]; m.set(n, [a[0] + q, a[1] + s]); }
+  for (const [n, q, s] of x.dishes || []) { const m = per[route(n.split(' › ')[0]) || 'a'] ||= new Map(), a = m.get(n) || [0, 0]; m.set(n, [a[0] + q, a[1] + s]); }
   if (!Object.keys(per).length && x.sum - (x.tip || 0) > 0) per.a = new Map([['Замовлення', [1, x.gross ?? x.sum - (x.tip || 0)]]]); // старий/«схудлий» запис без страв
-  const goods = {};
-  for (const [k, m] of Object.entries(per)) for (const [n, [q, s]] of m) if (q > 0 && s >= 0) (goods[k] ||= []).push(K(s) % q ? { good: exGood({ code: code(n), name: `${q}× ${n}`.slice(0, 120), price: K(s) }, ex[n]), quantity: 1000 } : { good: exGood({ code: code(n), name: n.slice(0, 120), price: K(s) / q }, ex[n]), quantity: q * 1000 });
+  const goods = {}; // 🧩 безкоштовний модифікатор (прожарка) — не позиція чека
+  for (const [k, m] of Object.entries(per)) for (const [n, [q, s]] of m) if (q > 0 && s >= 0 && !(s === 0 && n.includes(' › '))) (goods[k] ||= []).push(K(s) % q ? { good: exGood({ code: code(n), name: `${q}× ${n}`.slice(0, 120), price: K(s) }, ex[n]), quantity: 1000 } : { good: exGood({ code: code(n), name: n.slice(0, 120), price: K(s) / q }, ex[n]), quantity: q * 1000 });
   if (x.tip) (goods.a ||= []).push({ good: { code: 'tip', name: 'Чайові', price: K(x.tip) }, quantity: 1000 });
   const tot = Object.fromEntries(Object.entries(goods).map(([k, g]) => [k, g.reduce((a, y) => a + y.good.price * y.quantity / 1000, 0)]));
   const paid = share(K(x.sum), tot), card = share(Math.min(K(x.card || 0), K(x.sum)), paid), out = {};
