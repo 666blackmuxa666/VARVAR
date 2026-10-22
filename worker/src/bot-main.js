@@ -231,6 +231,13 @@ export async function handleUpdate(u, env) {
     if (/^з/i.test(m[1]) && !m[2]) return send({ text: '⚠️ Формат: <code>закрити період 09.2026</code>' });
     const r = await P.plockSet(env, /^з/i.test(m[1]) ? `${m[3]}-${m[2].padStart(2, '0')}` : '', who + ' · бот'); if (r.error) return send({ text: '⚠️ ' + r.error });
     await notify(env, r.to ? `🤖 🔒 Період до ${r.to.split('-').reverse().join('.')} закрито — ${esc(who)}` : `🤖 🔓 Період відкрито — ${esc(who)}`); return send({ text: r.to ? `🔒 Закрито по ${r.to.split('-').reverse().join('.')}: минулі чеки, витрати й Z-звіти більше не правляться` : '🔓 Період відкрито' }); } }
+  if (/^(вивантаження|усі дані|\/export)$/i.test(low) && admin) { // 📦 Ф12 (паритет з касою: Звіти → 📦 Усі дані): ZIP лише в особистий чат адміна, не в групу
+    const r = await (await import('./export.js')).fullExport(env), fd = new FormData(); fd.append('chat_id', String(uid)); fd.append('parse_mode', 'HTML');
+    fd.append('caption', `📦 Усі дані закладу · ${Math.round(r.bytes.length / 1024)} КБ\nТаблиці (Excel) + повний JSON. Паролів, PIN і ключів у файлі немає. Опис — README.txt`);
+    fd.append('document', new Blob([r.bytes], { type: 'application/zip' }), r.name);
+    const t = await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendDocument`, { method: 'POST', body: fd }).then(x => x.json()).catch(() => null);
+    if (!t?.ok) return send({ text: '⚠️ Не вдалось надіслати файл' + (t?.description ? ': ' + esc(t.description) : '') + '. Напишіть боту в особисті й повторіть' });
+    await notify(env, `🤖 📦 Повне вивантаження даних закладу — ${esc(who)}`); return send({ text: chat === uid ? '📦 Готово — файл вище' : '📦 Файл надіслано вам в особисті' }); }
   { const m2 = text.match(/^сайт(?:\s+(\S+)\s*([\s\S]*))?$/i); if (m2 && admin) { // 🌐 сайт телефон … · сайт години 11:00-23:00 · сайт акція Назва — опис · сайт акція видалити N
     const k = (m2[1] || '').toLowerCase(), v = (m2[2] || '').trim(), s0 = await getSite(env);
     if (!k) return send({ text: `🌐 <b>Сайт-візитка</b>\n${esc(s0.name)} · ${esc(s0.phone)} · ${s0.from}–${s0.to}\n📍 ${esc(s0.addr)}\n⭐ ${s0.rating || '—'} (${s0.ratingN})\nАкції: ${s0.promos.map((p, i) => `${i + 1}) ${esc(p.t)}`).join('; ') || '—'}\n\nКоманди: <code>сайт телефон …</code>, <code>сайт адреса …</code>, <code>сайт години 11:00-23:00</code>, <code>сайт опис …</code>, <code>сайт рейтинг 4.8 120</code>, <code>сайт інстаграм …</code>, <code>сайт акція Назва — опис</code>, <code>сайт акція видалити 1</code>\n${siteLink('about.html')}` });

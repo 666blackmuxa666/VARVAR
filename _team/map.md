@@ -16,7 +16,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | `bank.js` | 287 | 🏦 Банк (етап 2): імпорт виписок і автозвірка. Модуль `bank`, право `cash`. Каса → 🏦 Банк і бот (файл виписки / «банк»). |
 | `bankapi.js` | 103 | 🔄 Банк автоматично (етап 2): monobank — особистий токен api.monobank.ua (лише рахунки ФОП у гривні) і ПриватБанк «Автоклієнт». |
 | `billing.js` | 86 | 💳 Платежі платформи ATOM (ключі LiqPay платформи = VARVAR): |
-| `bot-main.js` | 732 | 🤖 Бот персоналу — обробка повідомлень (handleUpdate) і натискань кнопок (handleCallback) |
+| `bot-main.js` | 739 | 🤖 Бот персоналу — обробка повідомлень (handleUpdate) і натискань кнопок (handleCallback) |
 | `bot-views.js` | 393 | 🤖 Бот персоналу — екрани й клавіатури: столи, рахунок, каса, звіти, кухня, закриті, стоп-лист, Wi‑Fi, персонал, броні, рух грошей, Z |
 | `bot.js` | 9 | Telegram-бот закладу. Вхід: пароль офіціанта (столи, замовлення, закриття, стоп-лист) |
 | `brand.js` | 52 | 🎨 Оформлення трьох Telegram-ботів: аватар з емблемою (img/bots/*.png), ім'я, опис, команди. |
@@ -29,6 +29,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | `digest.js` | 59 | 🌙 Підсумок дня для власника (о 23:00 за Києвом): виручка, чеки, оплати, ЗП, нестача, топ страв. |
 | `excise.js` | 145 | 🍾 Акциз: марки пляшок на складі → продаж порціями → марка у фіскальному чеку при першій порції з пляшки. |
 | `exmark.js` | 57 | 🍾 Акцизні марки: пляшки акцизного продукту (марка → скільки лишилось у пляшці). Чиста логіка без імпортів складу. |
+| `export.js` | 108 | 📦 Ф12 Повне вивантаження закладу одним ZIP: «дані клієнта — у клієнта». Лише читання. |
 | `fiscal.js` | 262 | 🧾 ПРРО Checkbox: фіскальний чек на кожен закритий рахунок, повернення, службові внесення/видачі, Z. |
 | `guestbot.js` | 252 | 🤖 Бот гостей (@…GUEST_BOT_TOKEN): меню, статус замовлення, бонуси, день народження, сертифікати, |
 | `hub.js` | 342 | 🌐 HUB — центральна база платформи (один Durable Object): акаунти власників, заклади, сесії кабінету. |
@@ -55,12 +56,12 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | `ops-staff.js` | 135 | 👥 Доступ і персонал: паролі, PIN, коди реєстрації, працівники, права, перейменування, аватарки |
 | `ops.js` | 10 | Спільна логіка закладу для Telegram-бота і касової програми (POS). |
 | `orderui.js` | 155 | Замовлення офіціанта кнопками: стіл → категорія → страва → (розмір) → кількість → знову категорії. |
-| `owner.js` | 491 | 👑 Кабінет власника мережі й консоль платформи: /api/owner (поза закладом) + внутрішні виклики закладів /__int/* (всередині Store). |
+| `owner.js` | 494 | 👑 Кабінет власника мережі й консоль платформи: /api/owner (поза закладом) + внутрішні виклики закладів /__int/* (всередині Store). |
 | `pay.js` | 233 | 👷 Графік змін і зарплата: прихід «Почати зміну» → адмін підтверджує → ✅ у графіку; ставка за зміну + % від виручки + бонус за план; |
 | `perm.js` | 59 | 🔑 Ролі й права з галочками (_team/roles.md). |
 | `photoai.js` | 112 | 📸 ШІ-фото страв в одному стилі закладу: Gemini Image (платний ключ GEMINI_IMG_KEY — лише тут; решта ШІ — безкоштовний ключ). |
 | `plock.js` | 18 | 🔒 Ф5 замок періоду: закритий місяць не правиться (чеки, витрати, Z, рух каси, облікові документи). |
-| `pos.js` | 488 | API касової програми (pos.html). POST /api/pos {op, ...} з заголовком Authorization: Bearer <token>. |
+| `pos.js` | 489 | API касової програми (pos.html). POST /api/pos {op, ...} з заголовком Authorization: Bearer <token>. |
 | `print.js` | 224 | Черга друку для принтера в закладі (XP-80C через програму printer/varvar-print.ps1 на Windows). |
 | `promo.js` | 306 | 🎁 Лояльність: рівні постійних клієнтів (знижка / кешбек) і акції-правила (категорія, щасливі години, N-та в подарунок, |
 | `push.js` | 147 | 🔔 Push-сповіщення в шторку (Web Push, VAPID + aes128gcm, RFC 8291/8292) — без бібліотек, лише WebCrypto. |
@@ -91,7 +92,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 - **40-kitchen.js** (88) — kOff:2, loadKq:3, tone:10, siren:13, kPlay:37, kSndPick:47, kitchenStart:53, kitchenGate:59, kqHTML:61
 - **50-cash.js** (211) — cashHTML:1, cashHTML0:8, balInfo:53, cashMove:64, shOpen:73, zDay:85, cEdit:103, bankHTML:145, bankFile:164, bkAct:179
 - **52-agg.js** (26) — aggsLoad:3, aggManage:8, aggEd:17
-- **60-reports.js** (230) — perRange:1, dishOf:14, plockFlow:25, acctExport:33, loadReport:49, prevRange:66, repChecks:68, repStats:75, reportsHTML:92
+- **60-reports.js** (236) — perRange:1, dishOf:14, plockFlow:25, acctExport:33, loadReport:49, prevRange:66, repChecks:68, repStats:75, reportsHTML:92
 - **70-settings.js** (319) — stopHTML:1, printerHTML:11, printerCards:14, stCard:23, stSave:32, stEdit:33, taxCard:47, taxDo:63, incCard:72, prnCard:99, menuHTML:109, lookHTML:115, settingsHTML:129, modsEdit:191, menuEdit:197, qrPanel:227, qrSave:239, qrSheet:244, shrink:256, hallsSave:263, hallEdit:264
 - **75-loyalty.js** (180) — gbInbox:9, gbThread:13, loadLoy:22, loyRange:32, loyHTML:33, ruleWhat:77, loyLvEdit:82, loyRuleEdit:94, loyCliCard:130, loyAfter:149
 - **80-calc.js** (573) — loadCalc:1, calcHTML:14, skStockHTML:26, skIngEdit:51, skMergeUI:79, skGrpEdit:93, skDups:106, skGrpNew:115, skQty:116, skPick:135, skJournal:148, skBuyHTML:163, skShare:170, skInvHTML:176, skDraftHTML:190, skNewIng:211, skDraftSave:220, skAutoF:231, skPhotos:233, skBench:246, skScan:258, skCode:265, skDraftAdd:281, skCam:287, skInvView:303, skUnitCost:311, skCardsHTML:317, skCardOpen:334, skCardEdHTML:340, skMass:369, skMakeIngs:377, skCardSave:386, skCardAi:396, skAiAll:405, skTechHTML:424, skTechOne:429, skTechAll:434, skProdHTML:441, skProduce:448, skCountHTML:455, skCfInput:471, skCntFinish:477, skCntShow:484, skRepHTML:493
@@ -164,6 +165,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | fav | pos.js:134 | 10-hall.js |
 | fisRetry | pos.js:276 | 10-hall.js |
 | float | pos.js:303 | 00-core.js |
+| fullExport | pos.js:392 | 60-reports.js |
 | gbCast | guestbot.js:244 | 75-loyalty.js |
 | gbClose | guestbot.js:247 | 75-loyalty.js |
 | gbCount | guestbot.js:243 | 75-loyalty.js |
@@ -179,7 +181,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | goMap | delivery.js:279 | 20-delivery.js |
 | goSt | delivery.js:261, pos.js:90 | 00-core.js, 20-delivery.js |
 | hallsSet | pos.js:384 | 70-settings.js |
-| help | owner.js:361, pos.js:74 | 85-team.js |
+| help | owner.js:363, pos.js:74 | 85-team.js |
 | ibanQr | pos.js:153 | 10-hall.js |
 | ideaAdd | ideas.js:42 | 85-team.js |
 | ideaDel | ideas.js:44 | 85-team.js |
@@ -188,9 +190,9 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | ideaSay | ideas.js:47 | 85-team.js |
 | ideaSeen | ideas.js:48 | 85-team.js |
 | ideaThr | ideas.js:46 | 85-team.js |
-| incAdd | pos.js:405 | 70-settings.js |
-| incDel | pos.js:406 | 70-settings.js |
-| incGet | pos.js:404 | 70-settings.js |
+| incAdd | pos.js:406 | 70-settings.js |
+| incDel | pos.js:407 | 70-settings.js |
+| incGet | pos.js:405 | 70-settings.js |
 | jsErr | pos.js:248 | 00-core.js |
 | kDone | pos.js:186 | 40-kitchen.js |
 | kMsg | pos.js:189 | 40-kitchen.js |
@@ -199,8 +201,8 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | kUndo | pos.js:188 | 40-kitchen.js |
 | kitchen | pos.js:181 | 40-kitchen.js |
 | kitchenPct | pos.js:389 | 00-core.js |
-| login | owner.js:274, pos.js:40 | 00-core.js |
-| logout | owner.js:319, pos.js:109 | 00-core.js |
+| login | owner.js:276, pos.js:40 | 00-core.js |
+| logout | owner.js:321, pos.js:109 | 00-core.js |
 | lookV | pos.js:82 | 00-core.js |
 | lookVSet | pos.js:89 | 70-settings.js |
 | loyCli | promo.js:247 | 75-loyalty.js |
@@ -227,8 +229,8 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | moveDel | pos.js:293 | 50-cash.js |
 | order | pos.js:137 | 10-hall.js |
 | photoInfo | photoai.js:37 | 70-settings.js |
-| plockGet | pos.js:392 | 60-reports.js |
-| plockSet | pos.js:393 | 60-reports.js |
+| plockGet | pos.js:393 | 60-reports.js |
+| plockSet | pos.js:394 | 60-reports.js |
 | precheck | pos.js:152 | 00-core.js |
 | printClear | pos.js:251 | 00-core.js, 70-settings.js |
 | printMove | pos.js:205 | 00-core.js |
@@ -250,7 +252,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | reject | pos.js:173 | 10-hall.js |
 | remove | pos.js:151 | 10-hall.js |
 | report | pos.js:301 | 60-reports.js |
-| reset | owner.js:288, pos.js:311 | 70-settings.js |
+| reset | owner.js:290, pos.js:311 | 70-settings.js |
 | shift | pos.js:287 | 00-core.js, 50-cash.js |
 | shiftOpen | pos.js:298 | 50-cash.js |
 | skAdj | stock.js:535 | 80-calc.js |
@@ -297,13 +299,13 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | skSupSave | stock.js:586 | 82-suppliers.js |
 | skTech | stock.js:553 | 80-calc.js |
 | split | pos.js:170 | 10-hall.js |
-| stGet | pos.js:408 | 70-settings.js |
-| stSet | pos.js:409 | 70-settings.js |
+| stGet | pos.js:409 | 70-settings.js |
+| stSet | pos.js:410 | 70-settings.js |
 | staff | pos.js:380 | 00-core.js, 50-cash.js |
 | staffAdd | pos.js:382 | 70-settings.js |
-| staffDel | pos.js:414 | 70-settings.js |
-| staffEdit | pos.js:415 | 85-team.js |
-| staffPerm | pos.js:52, pos.js:411 | 85-team.js |
+| staffDel | pos.js:415 | 70-settings.js |
+| staffEdit | pos.js:416 | 85-team.js |
+| staffPerm | pos.js:52, pos.js:412 | 85-team.js |
 | state | pos.js:115 | 00-core.js |
 | stop | pos.js:193 | 70-settings.js |
 | tableBack | pos.js:267 | 10-hall.js |
@@ -314,9 +316,9 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | taskMark | tasks.js:84 | 86-tasks.js |
 | taskPh | tasks.js:85 | 86-tasks.js |
 | taskTpl | tasks.js:86 | 86-tasks.js |
-| taxDone | pos.js:407 | 70-settings.js |
-| taxGet | pos.js:394 | 70-settings.js |
-| taxSet | pos.js:403 | 70-settings.js |
+| taxDone | pos.js:408 | 70-settings.js |
+| taxGet | pos.js:395 | 70-settings.js |
+| taxSet | pos.js:404 | 70-settings.js |
 | tip | pos.js:169 | 00-core.js, 10-hall.js |
 | tipPay | pos.js:290 | 00-core.js |
 | tpayOk | lpay.js:92, pos.js:91 | 10-hall.js |
@@ -325,7 +327,7 @@ _Генерується `node tools/map.mjs` (і кожним `tools/test.sh`). 
 | upsMap | delivery.js:286 | 10-hall.js |
 | upsSet | delivery.js:288 | 70-settings.js |
 | voidBack | pos.js:263 | 10-hall.js |
-| waiterOut | pos.js:419 | 70-settings.js |
+| waiterOut | pos.js:420 | 70-settings.js |
 | wifi | pos.js:372 | 00-core.js |
 | wifiAdd | pos.js:373 | 70-settings.js |
 | wifiClear | pos.js:377 | 70-settings.js |
@@ -374,7 +376,7 @@ _Ключ — префікс до «:» (`bill:`, `att:`…)._
 | `ccash:` | courier.js |
 | `cert:` | mig.js, promo.js, site.js |
 | `cfg:` | delivery.js, index.js, lpay.js, owner.js, photoai.js, plock.js, pos.js, store.js, venue.js |
-| `cli:` | delivery.js, promo.js |
+| `cli:` | delivery.js, export.js, promo.js |
 | `closed:` | fiscal.js, ledger.js, ops-bill.js, ops-closed.js, ops-core.js, ops-money.js, pos.js |
 | `cnt:` | stock.js |
 | `cooks:` | ops-bill.js, pay.js, pos.js |

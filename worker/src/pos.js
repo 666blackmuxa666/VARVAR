@@ -389,6 +389,7 @@ async function adminRest(b, env, who, ip, ok) {
     case 'kitchenPct': { const v = Math.round(+b.pct); if (!(v >= 0 && v <= 100)) return [{ error: 'Від 0 до 100' }, 400]; await env.DB.put('kitchen_pct', String(v)); await notify(env, `🖥 👨‍🍳 Частка кухні від чайових: <b>${v}%</b> — ${esc(who)}`); return ok(); }
     case 'acctFile': { if (!/^\d{4}-\d{2}-\d{2}$/.test(b.from) || !/^\d{4}-\d{2}-\d{2}$/.test(b.to) || Date.parse(b.to) - Date.parse(b.from) > 370 * 864e5) return [{ error: 'Невірний період' }, 400]; const r = await acctFile(env, b.from, b.to, String(b.fmt), b.no); return r.error ? [r, 400] : ok(r); } // 🧾 M.E.Doc / BAS
     case 'acctExport': { const r = await acctExport(env, String(b.from), String(b.to)); if (!r) return [{ error: 'Невірний період' }, 400]; return ok(r); } // 📤 експорт для бухгалтера
+    case 'fullExport': { const r = await (await import('./export.js')).fullExportB64(env); await notify(env, `🖥 📦 Повне вивантаження даних закладу (${r.kb} КБ) — ${esc(who)}`); return ok(r); } // 📦 Ф12 усі дані одним ZIP
     case 'plockGet': return ok({ to: await (await import('./plock.js')).plockTo(env) }); // 🔒 Ф5
     case 'plockSet': { const r = await (await import('./plock.js')).plockSet(env, String(b.m || ''), who); if (r.error) return [{ error: r.error }, 400]; await notify(env, r.to ? `🖥 🔒 Період до ${r.to.split('-').reverse().join('.')} закрито — ${esc(who)}` : `🖥 🔓 Період відкрито — ${esc(who)}`); return ok(r); }
     case 'taxGet': return ok(await taxView(env)); // 📅 податковий календар

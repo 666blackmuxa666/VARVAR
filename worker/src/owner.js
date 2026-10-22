@@ -5,7 +5,7 @@ import { MAIN, doName, isVenueId, saveSecrets, getSecrets } from './venue.js';
 import { L } from './ops-core.js';
 import { tg } from './ops.js';
 import { mailOn, sendMail, ownerLink } from './mail.js';
-import { reportRange, openTables, dayKey, getCfg, payable } from './ops.js';
+import { reportRange, openTables, dayKey, getCfg, payable, logEvent } from './ops.js';
 import { getAtt } from './pay.js';
 import { printStatus } from './print.js';
 
@@ -157,6 +157,8 @@ export async function intApi(req, env, path) {
     if (b.do === 'frestore') return [await B.backupRestoreFile(env, String(b.text || ''), String(b.who || '')), 200];
     if (b.do === 'restore') return [await B.backupRestore(env, String(b.tag), String(b.who || '')), 200];
     return [{ error: 'unknown' }, 400]; }
+  if (path === '/__int/export') { const r = await (await import('./export.js')).fullExportB64(env); // 📦 Ф12 повне вивантаження (власник — з кабінету)
+    await logEvent(env, { k: 'shift', text: `📦 Повне вивантаження даних (${r.kb} КБ) — ${String(b.who || '').slice(0, 40)}` }).catch(() => {}); return [r, 200]; }
   if (path === '/__int/dig') { const D = await import('./digest.js'); return [b.do === 'chat' ? await D.digChat(env, b.chat) : b.do === 'now' ? (await D.digRun(env, dayKey(), false), await D.digList(env)) : await D.digList(env), 200]; }
   if (path === '/__int/an') { const { anData } = await import('./analytics.js'); const r = await anData(env, isDay(b.from) ? b.from : dayKey(), isDay(b.to) ? b.to : dayKey()); return [r, r.error ? 400 : 200]; }
   if (path === '/__int/sum') { const r = await venueSum(env, b.from, b.to); if (b.pnl) r.pnl = await pnl(env, r).catch(e => ({ error: e.message })); return [r, 200]; }
@@ -383,6 +385,7 @@ ${JSON.stringify(data.filter(Boolean))}
       if (!(await may(b.venue))) return bad('Немає доступу', 403); const op = String(b.do || 'list');
       if ((op === 'restore' || op === 'frestore') && (!plat || b.confirm !== b.venue)) return bad(plat ? 'Для підтвердження введіть адресу закладу' : 'Відновлення — лише через розробника (🆘 Допомога)', 403);
       const r = await callVenue(env, b.venue, '/__int/bak', { do: op, tag: b.tag, text: b.text, who: me.name }); return r.error ? bad(r.error) : ok(r); }
+    case 'export': { if (!(await may(b.venue))) return bad('Немає доступу', 403); const r = await callVenue(env, b.venue, '/__int/export', { who: '👑 ' + me.name }); return r.error ? bad(r.error) : ok(r); } // 📦 Ф12
     case 'bill': { // 💳 оплата ATOM і баланс ШІ закладу
       if (!(await may(b.venue))) return bad('Немає доступу', 403); const v = await H.venueGet(b.venue); if (!v) return bad('Немає закладу');
       const B = await import('./billing.js'), ai = b.venue === MAIN ? null : await callVenue(env, b.venue, '/__int/aibal', {}).catch(() => null);

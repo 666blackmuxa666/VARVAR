@@ -1233,6 +1233,17 @@ async function loyTests(A, W, dish) {
       for (const [op, b] of [['expense', { sum: 1, day }], ['closedEdit', { ref: 'qa', day, p: {} }], ['zDel', { i: 0, day }], ['ldgAdd', { type: 'inc', sum: 100, day }]]) { const x = await vpos(VA, op, b); must(x.status >= 400 && /🔒/.test(x.j.error || ''), `${op}: ${x.status} ${JSON.stringify(x.j).slice(0, 120)}`); }
     } finally { await vpos(VA, 'plockSet', { m: '' }); }
     must(!(await vpos(VA, 'plockGet')).j.to, 'не відкрився'); return m; });
+  await step('📦 Ф12 повне вивантаження: ZIP з таблицями (формат пакету переходу) + JSON без секретів і PIN', async () => {
+    const r = await vpos(VA, 'fullExport'); must(r.status === 200 && r.j.b64 && /\.zip$/.test(r.j.name), 'fullExport ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 160));
+    const z = Buffer.from(r.j.b64, 'base64'), F = {}; let i = 0;
+    while (z.readUInt32LE(i) === 0x04034b50) { const m = z.readUInt16LE(i + 8), cs = z.readUInt32LE(i + 18), nl = z.readUInt16LE(i + 26), xl = z.readUInt16LE(i + 28), nm = z.slice(i + 30, i + 30 + nl).toString('utf8'), b = z.slice(i + 30 + nl + xl, i + 30 + nl + xl + cs);
+      F[nm] = (m === 8 ? (await import('node:zlib')).inflateRawSync(b) : b).toString('utf8'); i += 30 + nl + xl + cs; }
+    for (const n of ['README.txt', '01-меню.csv', '03-продукти-залишки.csv', '06-гості-бонуси.csv', '08-персонал.csv', '10-чеки.csv', '11-чеки-страви.csv', '13-z-звіти.csv', 'atom-data.json']) must(n in F, 'немає ' + n + ' у ' + Object.keys(F));
+    must(F['01-меню.csv'].split('\r\n')[0].includes('Назва;Ціна'), 'заголовок меню: ' + F['01-меню.csv'].slice(0, 80));
+    const j = JSON.parse(F['atom-data.json']); must(j.atom_export === 1 && j.data.menu && j.data.staff, 'JSON без меню/персоналу');
+    must(!Object.keys(j.data).some(k => /^(cfg:secrets|apikeys|fis:tok|reg_|st:|tgs:)/.test(k)), 'секрети у файлі: ' + Object.keys(j.data).filter(k => /^(cfg:secrets|apikeys|fis:tok|reg_|st:|tgs:)/.test(k)));
+    must(!j.data.staff.some(s => 'pin' in s), 'PIN у файлі');
+    return `${r.j.kb} КБ, файлів ${Object.keys(F).length}`; });
   await step('📒 облік: документ (копійки, ext без дублів), сторно, підсумки, журнал змін (чек, налаштування), бекап з SQL', async () => {
     const vok = async (op, b) => { const r = await vpos(VA, op, b); must(r.status === 200 && r.j.ok, `${op} → ${r.status} ${JSON.stringify(r.j).slice(0, 200)}`); return r.j; };
     must((await vpos(VA, 'ldgAdd', { type: 'inc', sum: 10.5 })).status === 400, 'дробові копійки прийнято');

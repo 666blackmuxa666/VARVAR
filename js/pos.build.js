@@ -4787,7 +4787,7 @@ var __objRest = (source, exclude) => {
     const nF = [R.pay, R.by, R.grp, R.cat, R.t, R.q.trim()].filter(Boolean).length;
     const dm2 = (d) => d.split("-").reverse().slice(0, from.slice(0, 4) === to.slice(0, 4) ? 2 : 3).join(".");
     const head = `<div class="rhead"><div><h1>\u0417\u0432\u0456\u0442\u0438</h1><span class="muted">${from === to ? dm2(from) : dm2(from) + " \u2014 " + dm2(to)}${S.data.prev ? " \xB7 \u043F\u043E\u0440\u0456\u0432\u043D\u044F\u043D\u043D\u044F \u0437 \u043F\u043E\u043F\u0435\u0440\u0435\u0434\u043D\u0456\u043C\u0438 " + daysIn(from, to).length + " \u0434\u043D." : ""}</span></div>
-      <button class="btn sm" data-a="rAcct">\u{1F4E4} \u0411\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u0443</button>${isAdmin() ? '<button class="btn sm" data-a="rLock">\u{1F512} \u041F\u0435\u0440\u0456\u043E\u0434</button>' : ""}<button class="btn sm ${nF ? "primary" : ""}" data-a="rFo">\u2699\uFE0F \u0424\u0456\u043B\u044C\u0442\u0440\u0438${nF ? ` \xB7 ${nF}` : ""}</button></div>
+      <button class="btn sm" data-a="rAcct">\u{1F4E4} \u0411\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u0443</button>${isAdmin() ? '<button class="btn sm" data-a="rLock">\u{1F512} \u041F\u0435\u0440\u0456\u043E\u0434</button><button class="btn sm" data-a="rAll">\u{1F4E6} \u0423\u0441\u0456 \u0434\u0430\u043D\u0456</button>' : ""}<button class="btn sm ${nF ? "primary" : ""}" data-a="rFo">\u2699\uFE0F \u0424\u0456\u043B\u044C\u0442\u0440\u0438${nF ? ` \xB7 ${nF}` : ""}</button></div>
       <div class="chips scroll">${PER.map(([k, l]) => `<button class="chip ${R.p === k ? "on" : ""}" data-a="rp" data-p="${k}">${l}</button>`).join("")}</div>
       ${R.p === "c" ? `<div class="frow" style="margin-top:10px"><label>\u0417<input type="date" id="rFrom" value="${from}"></label><label>\u041F\u043E<input type="date" id="rTo" value="${to}"></label></div>` : ""}`;
     const filters = R.fo || nF ? `<div class="filters" style="margin-top:10px">${R.fo ? `<div class="frow">
@@ -5025,6 +5025,22 @@ var __objRest = (source, exclude) => {
   on("rLock", async (el, e, a, t) => {
     plockFlow();
     return;
+  });
+  on("rAll", async () => {
+    if (!await choose("\u{1F4E6} \u0423\u0441\u0456 \u0434\u0430\u043D\u0456 \u0437\u0430\u043A\u043B\u0430\u0434\u0443", "\u041E\u0434\u0438\u043D ZIP: \u043C\u0435\u043D\u044E, \u0441\u043A\u043B\u0430\u0434, \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0438, \u043F\u043E\u0441\u0442\u0430\u0447\u0430\u043B\u044C\u043D\u0438\u043A\u0438, \u0433\u043E\u0441\u0442\u0456, \u0441\u0435\u0440\u0442\u0438\u0444\u0456\u043A\u0430\u0442\u0438, \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B, \u0443\u0441\u0456 \u0447\u0435\u043A\u0438, \u0432\u0438\u0442\u0440\u0430\u0442\u0438, Z-\u0437\u0432\u0456\u0442\u0438 \u0439 \u043D\u0430\u043A\u043B\u0430\u0434\u043D\u0456 + \u043F\u043E\u0432\u043D\u0438\u0439 JSON. \u041F\u0430\u0440\u043E\u043B\u0456\u0432, PIN \u0456 \u043A\u043B\u044E\u0447\u0456\u0432 \u0443 \u0444\u0430\u0439\u043B\u0456 \u043D\u0435\u043C\u0430\u0454. \u0412\u0438\u0432\u0430\u043D\u0442\u0430\u0436\u0435\u043D\u043D\u044F \u0431\u0430\u0447\u0438\u0442\u044C \u0433\u0440\u0443\u043F\u0430.", [{ label: "\u2B07\uFE0F \u0412\u0438\u0432\u0430\u043D\u0442\u0430\u0436\u0438\u0442\u0438", val: 1, cls: "primary" }])) return;
+    toast("\u{1F4E6} \u0417\u0431\u0438\u0440\u0430\u044E \u0444\u0430\u0439\u043B\u2026");
+    let r;
+    try {
+      r = await api("fullExport", {}, 6e4);
+    } catch (e) {
+      return toast("\u26A0\uFE0F " + (e.message || "\u041D\u0435 \u0432\u0434\u0430\u043B\u043E\u0441\u044C"));
+    }
+    const u = Uint8Array.from(atob(r.b64), (c) => c.charCodeAt(0)), a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([u], { type: "application/zip" }));
+    a.download = r.name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5e3);
+    toast(`\u{1F4E6} ${r.name} \xB7 ${r.kb} \u041A\u0411`);
   });
   on("rTab", async (el, e, a, t) => {
     var _a2;

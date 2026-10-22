@@ -73,7 +73,7 @@ const CP = { 0x401: 0xA8, 0x451: 0xB8, 0x404: 0xAA, 0x454: 0xBA, 0x406: 0xB2, 0x
 const cp1251 = s => Uint8Array.from([...s], ch => { const c = ch.codePointAt(0); return c < 0x80 ? c : c >= 0x410 && c <= 0x44F ? c - 0x350 : CP[c] || 0x3F; });
 const xe = s => cpOk(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const CRC = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
-const crc32 = b => { let c = 0xFFFFFFFF; for (const x of b) c = CRC[(c ^ x) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+export const crc32 = b => { let c = 0xFFFFFFFF; for (const x of b) c = CRC[(c ^ x) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
 function zip(files) { // без стиснення (store) — M.E.Doc імпортує XML після розпакування
   const parts = [], cen = []; let off = 0;
   const h = (n, ...v) => { const b = new Uint8Array(n), d = new DataView(b.buffer); let i = 0; for (const [sz, x] of v) { sz === 2 ? d.setUint16(i, x, true) : d.setUint32(i, x, true); i += sz; } return b; };
@@ -87,7 +87,7 @@ function zip(files) { // без стиснення (store) — M.E.Doc імпо�
   const all = [...parts, ...cs, h(22, [4, 0x06054b50], [2, 0], [2, 0], [2, files.length], [2, files.length], [4, csz], [4, off], [2, 0])], out = new Uint8Array(all.reduce((a, b) => a + b.length, 0));
   let i = 0; for (const b of all) { out.set(b, i); i += b.length; } return out;
 }
-const b64 = u => { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
+export const b64 = u => { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
 const f2 = n => r2(n).toFixed(2), fq = n => String(Math.round(n * 1000) / 1000), fp = n => String(Math.round(n * 1e6) / 1e6);
 const nil = t => `<${t} xsi:nil="true" />`, tg = (t, v) => v === '' || v == null ? nil(t) : `<${t}>${xe(v)}</${t}>`;
 // одна зведена ПН за день (тип причини 11, покупець «Неплатник» 100000000000); ставка 20 % — ціни меню з ПДВ

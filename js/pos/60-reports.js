@@ -101,7 +101,7 @@
     const nF = [R.pay, R.by, R.grp, R.cat, R.t, R.q.trim()].filter(Boolean).length;
     const dm = d => d.split('-').reverse().slice(0, from.slice(0, 4) === to.slice(0, 4) ? 2 : 3).join('.');
     const head = `<div class="rhead"><div><h1>Звіти</h1><span class="muted">${from === to ? dm(from) : dm(from) + ' — ' + dm(to)}${S.data.prev ? ' · порівняння з попередніми ' + daysIn(from, to).length + ' дн.' : ''}</span></div>
-      <button class="btn sm" data-a="rAcct">📤 Бухгалтеру</button>${isAdmin() ? '<button class="btn sm" data-a="rLock">🔒 Період</button>' : ''}<button class="btn sm ${nF ? 'primary' : ''}" data-a="rFo">⚙️ Фільтри${nF ? ` · ${nF}` : ''}</button></div>
+      <button class="btn sm" data-a="rAcct">📤 Бухгалтеру</button>${isAdmin() ? '<button class="btn sm" data-a="rLock">🔒 Період</button><button class="btn sm" data-a="rAll">📦 Усі дані</button>' : ''}<button class="btn sm ${nF ? 'primary' : ''}" data-a="rFo">⚙️ Фільтри${nF ? ` · ${nF}` : ''}</button></div>
       <div class="chips scroll">${PER.map(([k, l]) => `<button class="chip ${R.p === k ? 'on' : ''}" data-a="rp" data-p="${k}">${l}</button>`).join('')}</div>
       ${R.p === 'c' ? `<div class="frow" style="margin-top:10px"><label>З<input type="date" id="rFrom" value="${from}"></label><label>По<input type="date" id="rTo" value="${to}"></label></div>` : ''}`;
     const filters = R.fo || nF ? `<div class="filters" style="margin-top:10px">${R.fo ? `<div class="frow">
@@ -222,6 +222,12 @@
   // ---------- 🖱 кнопки розділу (data-a) ----------
   on('rAcct', async (el, e, a, t) => { acctExport(); return; });
   on('rLock', async (el, e, a, t) => { plockFlow(); return; });
+  on('rAll', async () => { // 📦 Ф12: усі дані закладу одним ZIP (таблиці + JSON, без паролів і ключів)
+    if (!(await choose('📦 Усі дані закладу', 'Один ZIP: меню, склад, техкарти, постачальники, гості, сертифікати, персонал, усі чеки, витрати, Z-звіти й накладні + повний JSON. Паролів, PIN і ключів у файлі немає. Вивантаження бачить група.', [{ label: '⬇️ Вивантажити', val: 1, cls: 'primary' }]))) return;
+    toast('📦 Збираю файл…'); let r; try { r = await api('fullExport', {}, 60000); } catch (e) { return toast('⚠️ ' + (e.message || 'Не вдалось')); }
+    const u = Uint8Array.from(atob(r.b64), c => c.charCodeAt(0)), a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([u], { type: 'application/zip' })); a.download = r.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast(`📦 ${r.name} · ${r.kb} КБ`);
+  });
   on('rTab', async (el, e, a, t) => { S.rep.tab = el.dataset.t; (S.rep.last ||= {})[SECS.find(x => x[2].includes(el.dataset.t))[0]] = el.dataset.t; renderMain(); return; });
   on('rSec', async (el, e, a, t) => { { const sc = SECS.find(x => x[0] === el.dataset.s); S.rep.tab = (S.rep.last || {})[sc[0]] || sc[2][0]; renderMain(); if (S.rep.tab === 'plus' || !S.data.range) loadView(); return; } });
   on('rDay', async (el, e, a, t) => { if (matchMedia('(hover: none)').matches && !el.classList.contains('on')) { el.parentNode.querySelectorAll('.c.on').forEach(x => x.classList.remove('on')); el.classList.add('on'); el.parentNode.previousElementSibling.textContent = el.title + ' · ще раз — звіт за день'; return; } Object.assign(S.rep, { p: 'c', from: el.dataset.d, to: el.dataset.d }); loadView(); $('#main').scrollTop = 0; return; });
