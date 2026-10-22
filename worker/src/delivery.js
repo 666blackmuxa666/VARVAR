@@ -1,6 +1,6 @@
 // 🛵 Замовлення за посиланням: самовивіз і доставка. Кожне — «віртуальний стіл» (tn.js): звичайний bill: з полем go,
 // тож працюють усі дії столу (дозамовлення, знижка, скасування, кухня, склад, закриття, звіти).
-import { getMenu, priceMap } from './menu.js';
+import { menuFor, priceMap } from './menu.js';
 import { tg, esc, hhmm, dayKey, getBill, putBill, billItems, payable, discAmt, logEvent, addStat, addDishes, L, editEv, closeTable, notify, openTables } from './ops.js';
 import { GO_DEL, GO_PICK, isGo, tn } from './tn.js';
 import { courNotify } from './courier.js';
@@ -119,7 +119,7 @@ export async function goOrder(b, ip, env) {
   const addr = String(b.addr || '').trim().slice(0, 200); if (kind === 'del' && addr.length < 5) return [{ error: 'addr' }, 400];
   // антиспам: 3 замовлення за 10 хв з пристрою/IP
   const rk = 'gorl:' + String(b.device || ip).slice(0, 64), rn = b._paid || b._api ? 0 : +(await env.DB.get(rk)) || 0; /* 🔌 партнер API — свій ліміт на ключ (api-v1.js) */ if (rn >= 3) return [{ error: 'rate' }, 429];
-  const PRICES = priceMap(await getMenu(env)), lines = [], sold = []; let sum = 0;
+  const PRICES = priceMap(await menuFor(env, kind)), lines = [], sold = []; let sum = 0;
   for (const it of (Array.isArray(b.items) ? b.items : []).slice(0, 60)) {
     const p = PRICES[it.id], q = Math.min(50, Math.max(0, parseInt(it.q, 10) || 0)); if (!p || !q) continue;
     const price = typeof p.p === 'number' ? p.p : Object.hasOwn(p.p, String(it.v)) ? p.p[it.v] : 0; if (!(price > 0)) continue;
@@ -240,7 +240,7 @@ export async function upsFor(env, name) { // до 4 назв: правила в�
 // публічні дані для сайту: налаштування (без зайвого) і баланс бонусів
 export async function goInfo(env, ph, tok) {
   const c = await getGoCfg(env), cli = ph && tok && (await (await import('./site.js')).meSess(env, tok)) === normPhone(ph) ? await getCli(env, normPhone(ph)) : null; // 🔐 баланс — лише власнику (сесія кабінету), не за одним номером
-  return { on: c.on, del: c.del, pick: c.pick, from: c.from, to: c.to, open: isOpen(c), min: c.min, fee: c.fee, free: c.free, prep: c.prep, phone: c.phone, zone: c.zone, cash: c.cash, bmax: c.bmax, onl: c.onl && lpKeys(env) ? 1 : 0, track: c.track ? 1 : 0, ...(isMem(cli) ? { bal: cli.bal || 0 } : {}), ...(ph ? {} : { pr: (await (await import('./promo.js')).promoShow(env).catch(() => [])).filter(r => !r.w || r.w.some(w => w !== 'hall')) }) }; // адреси — лише в касі (не світимо за номером)
+  return { on: c.on, del: c.del, pick: c.pick, from: c.from, to: c.to, open: isOpen(c), min: c.min, fee: c.fee, free: c.free, prep: c.prep, phone: c.phone, zone: c.zone, cash: c.cash, bmax: c.bmax, onl: c.onl && lpKeys(env) ? 1 : 0, track: c.track ? 1 : 0, ...((await (await import('./ops-core.js')).modOn(env, 'prices')) ? { prices: 1 } : {}), ...(isMem(cli) ? { bal: cli.bal || 0 } : {}), ...(ph ? {} : { pr: (await (await import('./promo.js')).promoShow(env).catch(() => [])).filter(r => !r.w || r.w.some(w => w !== 'hall')) }) }; // адреси — лише в касі (не світимо за номером)
 }
 
 // ---------- 🖥 API каси: go* / cli* ----------

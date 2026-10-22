@@ -384,6 +384,18 @@ async function apiTests() {
     const r = await http('/api/go', { kind: 'del', name: 'QA Гість', phone: '0670000' + String(Math.floor(Math.random() * 900) + 100), addr: 'вул. Тестова 1', when: '12:00', pay: 'cash', items: [{ id: dish.id, q: 1 }], device: 'qa-' + RUN });
     must(r.status === 200 && r.j.ok, `${r.status} ${JSON.stringify(r.j)}`); G = r.j.t; oid = r.j.id; must(G > 1000 && G < 2000, 'номер ' + G); return r.j.no;
   });
+  await step('💲 R4 окремі ціни: доставка дорожча з модулем; без модуля / у залі — звичайна; кабінет не стирає розміри', async () => {
+    const menu = (await posOk(A, 'menu')).menu, cat = menu.categories.find(c => c.items.some(i => i.id === dish.id)), was = (await posOk(A, 'state')).cfg?.mods?.prices;
+    const save = pr => posOk(A, 'menuSave', { item: { id: dish.id, cat: cat.id, name: dish.name.uk, price: dish.price, size: dish.size || '', desc: dish.desc?.uk || '', pr } });
+    const goTot = async () => { const r = await posOk(A, 'order', { go: { kind: 'del', name: 'QA Ціни', addr: 'вул. Тестова 9' }, items: [{ id: dish.id, q: 1 }] }); must(r.t > 1000, 'не доставка: ' + r.t); return r.total; };
+    try {
+      await save({ pick: '', del: String(dish.price + 11) });
+      const m2 = (await posOk(A, 'menu')).menu.categories.flatMap(c => c.items).find(i => i.id === dish.id); must(m2.pr?.del === dish.price + 11 && !m2.pr.pick, 'pr не збереглось: ' + JSON.stringify(m2.pr));
+      await posOk(A, 'modSet', { k: 'prices', v: 1 }); const on = await goTot(); must(on === dish.price + 11, `доставка з модулем: ${on} ≠ ${dish.price + 11}`);
+      await posOk(A, 'modSet', { k: 'prices', v: 0 }); const off = await goTot(); must(off === dish.price, `без модуля: ${off} ≠ ${dish.price}`);
+      return `доставка ${on} / без модуля ${off}`;
+    } finally { await save({ pick: '', del: '' }).catch(() => {}); await pos(A, 'modSet', { k: 'prices', v: was === 0 ? 0 : 1 }).catch(() => {}); }
+  });
   await step('🔐 /api/go: службові _paid/_oid від гостя ігноруються (не «оплачено онлайн», ліміт діє)', async () => {
     const body = { kind: 'pick', name: 'QA Хакер', phone: '0670001' + String(Math.floor(Math.random() * 900) + 100), when: '12:00', pay: 'cash', items: [{ id: dish.id, q: 1 }], device: 'qa-hk-' + RUN, _paid: { sum: 1 }, _oid: 'abcdef0123' };
     const rs = []; for (let i = 0; i < 4; i++) rs.push(await http('/api/go', body));

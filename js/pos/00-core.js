@@ -69,7 +69,7 @@
     const sub = (b, name, q) => { const r = b.items.find(z => z.name === name); if (!r) return 0; q = Math.min(q, r.q); const u = Math.round(r.sum / r.q), k = b.total ? b.pay2 / b.total : 1; r.q -= q; r.sum -= u * q; b.total -= u * q; b.pay2 = Math.round(b.pay2 - u * q * k); if (r.q <= 0) b.items = b.items.filter(z => z !== r); b.off = 1; return u * q; };
     for (const x of q) { const d = x.data || {}, t = +d.t;
       if (x.op === 'order' && t > 0) { const b = tb(t), lines = [];
-        for (const it of d.items || []) { const m = by[it.id]; if (!m) continue; const v = m.variants ? m.variants.find(z => z.v === it.v) || m.variants[0] : null, name = m.name.uk + (v ? ` ${v.v} ${m.size || 'л'}`.trimEnd() : ''), sum = (v ? v.p : m.price) * it.q; add(b, name, it.q, sum); lines.push(`${it.q}× ${name} — ${sum}`); }
+        for (const it of d.items || []) { const m = by[it.id]; if (!m) continue; const v = m.variants ? m.variants.find(z => z.v === it.v) || m.variants[0] : null, name = m.name.uk + (v ? ` ${v.v} ${m.size || 'л'}`.trimEnd() : ''), sum = prOf(m, v, t) * it.q; add(b, name, it.q, sum); lines.push(`${it.q}× ${name} — ${sum}`); }
         b.log = [...(b.log || []), { lines, comment: d.comment || '', off: 1, at: x.at }]; b.orders = (b.orders || 0) + 1; }
       else if (!S.tables[t]) continue;
       else if (x.op === 'remove') sub(S.tables[t], d.name, 1);
@@ -307,6 +307,9 @@
   const can = k => S.me?.can ? S.me.can.includes(k) : realAdmin();
   // 🧩 Ф13 модулі закладу: немає cfg.mods → старий заклад, усе увімкнено; новий заклад — лише каса
   const modOn = k => { const m = (S.data?.staff?.cfg || S.cfg)?.mods; return !m || !!m[k]; };
+  // 💲 R4 ціна за типом рахунку: 🥡 С‑ / 🛵 Д‑ (нова доставка — S.goDraft); it.pr / v.pr = { pick, del }; модуль «prices». Сервер рахує так само (menuFor)
+  const prKind = t => { if (!modOn('prices')) return null; const G = S.tables?.[t]?.go || (t === -1 ? S.goDraft : null); return G ? (G.kind === 'del' ? 'del' : 'pick') : +t > 2000 ? 'pick' : +t > 1000 ? 'del' : null; };
+  const prOf = (it, vv, t) => { const o = vv || it, k = prKind(t); return k && +o.pr?.[k] > 0 ? +o.pr[k] : vv ? vv.p : it.price; };
   const NAV_PERM = { cash: 'cash', reports: 'reports', calc: 'stock', team: 'staff', settings: 'settings' };
   const navList = () => {
     if (isCour()) return NAV_COUR; if (isCook()) return S.me?.can?.length ? [...NAV_COOK, ...NAV_A.filter(([v]) => NAV_PERM[v] && can(NAV_PERM[v]) && !NAV_COOK.some(x => x[0] === v))] : NAV_COOK;

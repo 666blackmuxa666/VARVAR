@@ -1,7 +1,7 @@
 // API касової програми (pos.html). POST /api/pos {op, ...} з заголовком Authorization: Bearer <token>.
 // Живі оновлення: WebSocket /api/pos/live?token=… (див. store.js). Логіка — спільна з ботом (ops.js).
 import { getMenu, saveMenu, addCategory, menuLock, importMenu } from './menu.js';
-import { tn, isGo } from './tn.js';
+import { tn, isGo, goKind } from './tn.js';
 import { goFromPos, goAttach, goButtons, fmtPhone, goApi } from './delivery.js';
 import { siteApi } from './siteapi.js';
 import { loyApi, promoFillMany } from './promo.js';
@@ -134,7 +134,7 @@ export async function posApi(b, req, env) {
 
     // ---- столи ----
     case 'order': {
-      const items = await itemsFromMenu(env, b.items);
+      const items = await itemsFromMenu(env, b.items, t ? goKind(t) : b.go ? (b.go.kind === 'del' ? 'del' : 'pick') : null); // 💲 ціна з собою / доставки
       const exe = await exCheck(env, items); if (exe) return [{ error: exe }, 409]; // 🍾 не продати більше, ніж є пляшок з марками
       const comment = String(b.comment || '').trim().slice(0, 200);
       let T = t, go = null;
@@ -471,6 +471,7 @@ async function menuSave(env, x, who) {
   if (desc) it.desc = { uk: desc, en: it.desc?.en && it.desc.en !== it.desc.uk ? it.desc.en : desc }; else delete it.desc;
   if (Array.isArray(x.variants) && x.variants.length) { it.variants = x.variants.filter(v => v.v && +v.p > 0).map(v => ({ v: String(v.v), p: Math.round(+v.p) })); delete it.price; }
   else { const p = Math.round(+x.price || 0); if (!p) return [{ error: 'Потрібна ціна' }, 400]; it.price = p; delete it.variants; }
+  if (x.pr && typeof x.pr === 'object') (await import('./menu.js')).setPr(it, x.pr); // 💲 R4 окремі ціни (лише коли модуль увімкнено — інакше каса pr не шле, старі лишаються)
   await saveMenu(env, menu);
   await notify(env, `🖥 ${isNew ? '➕ Меню: додано' : '✏️ Меню: оновлено'} <b>${esc(name)}</b> — ${it.variants ? it.variants.map(v => `${v.v} ${v.p}`).join(' / ') : it.price + ' грн'} · ${esc(who)}`);
   return [{ ok: true, id: it.id }, 200];

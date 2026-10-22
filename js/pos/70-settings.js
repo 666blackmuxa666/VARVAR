@@ -193,6 +193,7 @@
       <label>Назва англійською (необовʼязково)<input id="fEn" value="${esc(it && it.name.en !== it.name.uk ? it.name.en : '')}"></label>
       <label>Ціна, ₴ ${it?.variants ? '' : ''}<input id="fPrice" inputmode="numeric" value="${it?.price ?? ''}" placeholder="напр. 380"></label>
       <label>Або розміри (для напоїв): <span class="muted">0.33=60, 0.5=70</span><input id="fVar" value="${esc(it?.variants ? it.variants.map(v => `${v.v}=${v.p}`).join(', ') : '')}"></label>
+      ${modOn('prices') ? (() => { const pv = k => it?.variants ? it.variants.filter(v => v.pr?.[k]).map(v => `${v.v}=${v.pr[k]}`).join(', ') : it?.pr?.[k] ?? '', ph = it?.variants ? 'напр. 0.5=75 · порожньо — як у залі' : 'порожньо — як у залі'; return `<label>🥡 Ціна з собою<input id="fPick" value="${esc(pv('pick'))}" placeholder="${ph}"></label><label>🛵 Ціна доставки<input id="fDel" value="${esc(pv('del'))}" placeholder="${ph}"></label>`; })() : ''}
       <label>Вага/обʼєм<input id="fSize" value="${esc(it?.size || '')}" placeholder="напр. 400 г або л"></label>
       <label>Склад<textarea id="fDesc" rows="3">${esc(it?.desc?.uk || '')}</textarea></label>
       ${it ? `<label>Фото${it.img ? '' : ' <span class="muted">— ще немає</span>'}<img id="fPrev" src="${esc(it.img || '')}" alt="" style="display:${it.img ? 'block' : 'none'};width:100%;max-width:240px;aspect-ratio:1;object-fit:cover;border-radius:12px;margin:6px 0;background:var(--card2)"><input id="fPhoto" type="file" accept="image/*" onchange="const f=this.files[0],p=document.getElementById('fPrev');if(f&&p){p.src=URL.createObjectURL(f);p.style.display='block'}"></label>` : ''}</div>`;
@@ -201,7 +202,7 @@
     if (v === 'del') { if (await confirmBox(`Видалити «${it.name.uk}» з меню?`)) await act('menuDel', { id: it.id }, '🗑 Видалено'); return; }
     if (v !== 'save') return;
     const variants = $('#fVar').value.split(',').map(s => s.trim()).filter(Boolean).map(s => { const [vv, p] = s.split(/[=:]/).map(x => x.trim()); return { v: vv.replace(',', '.'), p: +p }; }).filter(x => x.v && x.p);
-    const item = { id: it?.id, cat: $('#fCat').value, name: $('#fName').value, nameEn: $('#fEn').value, price: +$('#fPrice').value, variants, size: $('#fSize').value, desc: $('#fDesc').value };
+    const item = { id: it?.id, cat: $('#fCat').value, name: $('#fName').value, nameEn: $('#fEn').value, price: +$('#fPrice').value, variants, size: $('#fSize').value, desc: $('#fDesc').value, ...($('#fPick') ? { pr: { pick: $('#fPick').value, del: $('#fDel').value } } : {}) }; // 💲 модуль «prices»
     const file = $('#fPhoto')?.files?.[0];
     closeModal();
     const r = await act('menuSave', { item }, '💾 Збережено');
@@ -295,7 +296,7 @@
       }
   });
   const MODS_UI = [['tax', '📅 Податки', 'Податковий календар і нагадування про звіти й платежі'], ['hr', '👥 Кадри й зарплата', 'Графік змін, зарплата, операції й ефективність у «Персонал»'],
-    ['agg', '🛵 Агрегатори доставки', 'Glovo, Bolt Food: оплата «🛵» при закритті, окремо в Z-звіті, звірка виплат з банком'], ['acct', '📒 Облік', 'Документи й звіти для бухгалтера (наповнюється з наступними оновленнями)'], ['mig', '🔁 Перехід з іншої системи', 'Імпорт з 1С / Excel — у кабінеті власника, у боті /mig'], ['bank', '🏦 Банк і звірка', 'Виписки (1С / CSV), звірка з еквайрингом і накладними — Каса → 🏦 Банк'], ['edo', '📨 ЕДО з постачальниками', 'Електронні накладні (скоро)']];
+    ['agg', '🛵 Агрегатори доставки', 'Glovo, Bolt Food: оплата «🛵» при закритті, окремо в Z-звіті, звірка виплат з банком'], ['acct', '📒 Облік', 'Документи й звіти для бухгалтера (наповнюється з наступними оновленнями)'], ['mig', '🔁 Перехід з іншої системи', 'Імпорт з 1С / Excel — у кабінеті власника, у боті /mig'], ['bank', '🏦 Банк і звірка', 'Виписки (1С / CSV), звірка з еквайрингом і накладними — Каса → 🏦 Банк'], ['prices', '💲 Окремі ціни: з собою / доставка', 'Своя ціна страви для 🥡 самовивозу й 🛵 доставки (поля в картці страви). Порожньо — як у залі'], ['edo', '📨 ЕДО з постачальниками', 'Електронні накладні (скоро)']];
   on('modTgl', async (el, e, a, t) => { const k = el.dataset.k; if (await act('modSet', { k, v: modOn(k) ? 0 : 1 }, '🧩 Збережено')) { loadView(); loadState().catch(() => {}); } });
   on('cfgTgl', async (el, e, a, t) => { { const k = el.dataset.k, cur = S.data.staff?.cfg?.[k] ?? S.cfg?.[k] ?? +(el.dataset.def || 0); if (await act('cfgSet', { k, v: cur ? 0 : 1 }, '⚙️ Збережено')) { loadView(); loadState().catch(() => {}); } return; } });
   on('staffDel', async (el, e, a, t) => { if (await confirmBox('Видалити працівника?', 'Його PIN перестане працювати')) { await act('staffDel', { id: el.dataset.id }); loadView(); } return; });

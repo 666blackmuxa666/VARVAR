@@ -70,7 +70,9 @@
   // напої — менші картки
   const isDrinks = c => c.tech || (c.g ? c.g !== 'kitchen' : false); // бар / кальян — компактні картки (3 в ряд)
 
-  const priceOf = key => { const [id, v] = key.split('|'); const it = byId[id]; return v ? it.variants.find(x => x.v === v).p : it.price; };
+  let goPK = null; // 💲 ?go: 'pick' / 'del' — окремі ціни (модуль «prices», goinfo.prices); null — звичайні
+  const prK = (o, base) => goPK && +o?.pr?.[goPK] > 0 ? +o.pr[goPK] : base;
+  const priceOf = key => { const [id, v] = key.split('|'); const it = byId[id], vv = v && it.variants.find(x => x.v === v); return v ? prK(vv, vv.p) : prK(it, it.price); };
   const labelOf = key => { const [id, v] = key.split('|'); const it = byId[id]; return itemName(it) + (v ? unit(` ${v} л`) : ''); };
   const cartEntries = () => Object.entries(cart).filter(([k, q]) => q > 0 && byId[k.split('|')[0]]);
   let packAdj = 0; // ручна поправка кількості упаковок (+/−)
@@ -107,8 +109,8 @@
   });
   function card(it) {
     const btns = it.variants
-      ? `<div class="vars">${it.variants.map(v => addBtn(it.id + '|' + v.v, unit(`${v.v} л`) + ` · ${v.p}`)).join('')}</div>`
-      : `<div class="row"><span class="price">${it.price} <small>${t('cur')}</small></span>${addBtn(it.id, '+')}</div>`;
+      ? `<div class="vars">${it.variants.map(v => addBtn(it.id + '|' + v.v, unit(`${v.v} л`) + ` · ${prK(v, v.p)}`)).join('')}</div>`
+      : `<div class="row"><span class="price">${prK(it, it.price)} <small>${t('cur')}</small></span>${addBtn(it.id, '+')}</div>`;
     return `<article class="item">
       ${it.img ? `<div class="ph"><img src="${it.img}${it.img.includes('?') ? '' : '?v=' + IMG_VER}" alt="" loading="lazy" decoding="async">${likeBtn(it.id)}</div>` : ''}
       <div class="info">
@@ -369,6 +371,7 @@
     try { goCfg = (await api('/api/goinfo')).data; } catch {}
     try { reco = (await api('/api/reco')).data || {}; } catch {}
     if (goCfg && !goCfg[gf.kind]) gf.kind = goCfg.del ? 'del' : 'pick';
+    if (goCfg?.prices) { goPK = gf.kind; renderMenu(); }
     const bar = $('#wifiBanner');
     if (goCfg && (!goCfg.on || !goCfg.open)) { bar.hidden = false; bar.textContent = !goCfg.on ? '⛔ ' + t('goOff') : `🕐 ${t('goClosed')} ${goCfg.from}–${goCfg.to}`; }
     if (BOOK) { bar.hidden = false; bar.className = 'wifi-banner go-ok'; bar.textContent = '📅 ' + t('goPreBar'); }
@@ -398,7 +401,7 @@
     $('.table-row').hidden = true;
     const recs = []; for (const [k] of rows) for (const n of reco[byId[k.split('|')[0]]?.name.uk] || []) { const it = byUk(n); if (it && !it.variants && !cart[it.id] && !recs.includes(it)) recs.push(it); }
     const toFree = goCfg && gf.kind === 'del' && goCfg.free ? goCfg.free - goFood() : 0;
-    $('#twBox').innerHTML = (recs.length ? `<div class="go-reco"><div class="cl-title">💡 ${t('goReco')}</div><div class="go-chips">${recs.slice(0, 4).map(it => `<button class="go-chip" data-add="${it.id}" data-label="${esc(itemName(it))}">+ ${esc(itemName(it))} · ${it.price}</button>`).join('')}</div></div>` : '')
+    $('#twBox').innerHTML = (recs.length ? `<div class="go-reco"><div class="cl-title">💡 ${t('goReco')}</div><div class="go-chips">${recs.slice(0, 4).map(it => `<button class="go-chip" data-add="${it.id}" data-label="${esc(itemName(it))}">+ ${esc(itemName(it))} · ${prK(it, it.price)}</button>`).join('')}</div></div>` : '')
       + (rows.length && toFree > 0 ? `<div class="go-hint">🛵 ${t('goToFree')} <b>${money(toFree)}</b></div>` : '');
     const act = goHist.filter(o => !['done', 'rej'].includes(o.g) && Date.now() - o.ts < 12 * 3600e3), old = goHist.filter(o => !act.includes(o)).slice(-5).reverse();
     $('#history').innerHTML = (act.length ? `<div class="hist"><div class="hist-title">📦 ${t('goActive')}</div>${act.map(o => `<button class="go-ord" data-go-st="${o.id}"><b>${o.no}</b> · ${GST[o.g || 'new'][0]} ${t(GST[o.g || 'new'][1])}<span>${money(o.sum)}</span></button>`).join('')}</div>` : '')
@@ -474,7 +477,7 @@
   function goClick(el) {
     const d = el.dataset;
     if ('goOut' in d) { goRead(); goForm(); delete $('#goModal').dataset.show; ($('#sheet').hidden = true, $('#goModal').hidden = false); goBal(); goPromo(); return true; }
-    if (d.goK) { goRead(); gf.kind = d.goK; goForm(); goPromo(); return true; }
+    if (d.goK) { goRead(); gf.kind = d.goK; if (goPK) { goPK = gf.kind; renderMenu(); } goForm(); goPromo(); return true; }
     if (d.goP) { goRead(); gf.pay = d.goP; goForm(); return true; }
     if (d.goCut) { goRead(); gf.cut = Math.max(0, Math.min(20, gf.cut + +d.goCut)); goForm(); return true; }
     if ('goSend' in d) { goSend(); return true; }

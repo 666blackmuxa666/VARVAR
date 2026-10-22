@@ -1,7 +1,7 @@
 // Замовлення офіціанта кнопками: стіл → категорія → страва → (розмір) → кількість → знову категорії.
 // Чернетка одна на офіціанта: KV ob:<uid> {table, items:[{name,price,q}], com, mid, chat}; повідомлення редагується на місці.
-import { getMenu } from './menu.js';
-import { tn } from './tn.js';
+import { getMenu, menuFor } from './menu.js';
+import { tn, goKind } from './tn.js';
 import { upsFor } from './delivery.js';
 import { GROUPS, groupOf, getFav, toggleFav, getCfg } from './ops.js';
 
@@ -10,6 +10,8 @@ const TTL = 3 * 3600;
 const chunk = (a, n) => a.reduce((r, x, i) => (i % n ? r[r.length - 1].push(x) : r.push([x]), r), []);
 const b = (text, d) => ({ text, callback_data: 'o:' + d });
 
+// 💲 ціни за типом рахунку: стіл Д‑/С‑ або перемикач «з собою» (ob.gk) — модуль «prices»
+const menuOb = (env, ob) => menuFor(env, ob.gk || goKind(ob.table));
 export const getOb = async (env, uid) => env.DB.get('ob:' + uid, 'json');
 export const putOb = (env, uid, ob) => env.DB.put('ob:' + uid, JSON.stringify(ob), { expirationTtl: TTL });
 const sum = ob => ob.items.reduce((s, i) => s + i.price * i.q, 0);
@@ -40,24 +42,24 @@ export async function catsView(env, ob) {
 }
 
 async function groupView(env, ob, g) {
-  const menu = await getMenu(env), list = menu.categories.map((c, i) => ({ c, i })).filter(x => groupOf(x.c.id) === g);
+  const menu = await menuOb(env, ob), list = menu.categories.map((c, i) => ({ c, i })).filter(x => groupOf(x.c.id) === g);
   if (list.length === 1) return itemsView(env, ob, list[0].i);
   return { text: head(ob) + `\n\n${esc((GROUPS.find(x => x.id === g) || {}).name || '')}`, markup: { inline_keyboard: [...chunk(list.map(x => b(x.c.name.uk, 'c:' + x.i)), 2), [b('⬅️ Назад', 'back')]] } };
 }
 async function favView(env, ob) {
-  const menu = await getMenu(env), fav = await getFav(env), btns = [];
+  const menu = await menuOb(env, ob), fav = await getFav(env), btns = [];
   menu.categories.forEach((c, ci) => c.items.forEach((it, ii) => { if (fav.includes(it.id)) btns.push(it.hidden ? b(`⛔ ${it.name.uk}`, 'h') : b(`${it.name.uk} · ${it.variants ? it.variants[0].p + '+' : it.price}`, `i:${ci}:${ii}`)); }));
   return { text: head(ob) + '\n\n⭐ <b>Обрані</b>' + (btns.length ? '' : '\n<i>Поки порожньо. Відкрийте страву і натисніть «⭐ В обрані».</i>'), markup: { inline_keyboard: [...chunk(btns, 2), [b('⬅️ Назад', 'back')]] } };
 }
 async function itemsView(env, ob, c) {
-  const cat = (await getMenu(env)).categories[c]; if (!cat) return catsView(env, ob);
+  const cat = (await menuOb(env, ob)).categories[c]; if (!cat) return catsView(env, ob);
   const btns = cat.items.map((it, i) => it.hidden ? b(`⛔ ${it.name.uk}`, 'h')
     : b(`${it.name.uk} · ${it.variants ? it.variants[0].p + '+' : it.price}`, `i:${c}:${i}`));
   return { text: head(ob) + `\n\n📂 <b>${esc(cat.name.uk)}</b>`, markup: { inline_keyboard: [...chunk(btns, 2), [b('⬅️ Назад', 'g:' + groupOf(cat.id))]] } };
 }
 
 async function qtyView(env, ob, c, i, v) {
-  const it = (await getMenu(env)).categories[c]?.items[i]; if (!it) return catsView(env, ob);
+  const it = (await menuOb(env, ob)).categories[c]?.items[i]; if (!it) return catsView(env, ob);
   if (it.variants && v === undefined) // спершу розмір
     return { text: head(ob) + `\n\n🥤 <b>${esc(it.name.uk)}</b> — який розмір?`, markup: { inline_keyboard: [...chunk(it.variants.map((x, k) => b(`${x.v} ${it.size || ''} · ${x.p}`, `i:${c}:${i}:${k}`)), 3), [b('⬅️ Назад', 'c:' + c)]] } };
   const vv = it.variants?.[v], price = vv ? vv.p : it.price;
@@ -85,7 +87,9 @@ export async function obCallback(env, uid, p) {
   if (a === 'tp') return { tablePick: true };
   if (a === 'back') return { view: await catsView(env, ob) };
   if (a === 'ur') { ob.ur = !ob.ur; await putOb(env, uid, ob); return { view: await catsView(env, ob), toast: ob.ur ? '⚡ Терміново' : 'Звичайно' }; }
-  if (a === 'tw') { ob.gk = !ob.gk ? 'pick' : ob.gk === 'pick' ? 'del' : null; ob.tw = !!ob.gk; await putOb(env, uid, ob); return { view: await catsView(env, ob), toast: ob.gk === 'del' ? '🛵 Доставка — окремий чек Д‑' : ob.gk ? '🥡 Самовивіз — окремий чек С‑' : 'В залі' }; } // з собою → віртуальний стіл
+  if (a === 'tw') { ob.gk = !ob.gk ? 'pick' : ob.gk === 'pick' ? 'del' : null; ob.tw = !!ob.gk;
+    const P = {}; (await menuOb(env, ob)).categories.forEach(c => c.items.forEach(it => it.variants ? it.variants.forEach(v => { P[it.name.uk + ` ${v.v} ${it.size || ''}`.trimEnd()] = v.p; }) : (P[it.name.uk] = it.price)));
+    ob.items.forEach(i => { if (P[i.name] > 0) i.price = P[i.name]; }); /* 💲 уже додане — за цінами нового типу */ await putOb(env, uid, ob); return { view: await catsView(env, ob), toast: ob.gk === 'del' ? '🛵 Доставка — окремий чек Д‑' : ob.gk ? '🥡 Самовивіз — окремий чек С‑' : 'В залі' }; } // з собою → віртуальний стіл
   if (a === 'f') return { view: await favView(env, ob) };
   if (a === 'g') return { view: await groupView(env, ob, x) };
   if (a === 'fv') {
@@ -96,13 +100,13 @@ export async function obCallback(env, uid, p) {
   if (a === 'c') return { view: await itemsView(env, ob, +x) };
   if (a === 'i') return { view: await qtyView(env, ob, +x, +y, z === undefined ? undefined : +z) };
   if (a === 'q') {
-    const it = (await getMenu(env)).categories[+x]?.items[+y]; if (!it || it.hidden) return { view: await catsView(env, ob), toast: 'Немає в наявності' };
+    const it = (await menuOb(env, ob)).categories[+x]?.items[+y]; if (!it || it.hidden) return { view: await catsView(env, ob), toast: 'Немає в наявності' };
     const vv = w !== undefined ? it.variants?.[+w] : null;
     const name = it.name.uk + (vv ? ` ${vv.v} ${it.size || ''}`.trimEnd() : ''), price = vv ? vv.p : it.price;
     const ex = ob.items.find(e => e.name === name);
     if (ex) ex.q += +z; else ob.items.push({ name, price, q: +z });
     await putOb(env, uid, ob);
-    const view = await catsView(env, ob), menu = await getMenu(env), sug = [];
+    const view = await catsView(env, ob), menu = await menuOb(env, ob), sug = [];
     for (const n of await upsFor(env, it.name.uk).catch(() => [])) { // 💡 допродаж: що ще запропонувати гостю
       if (sug.length >= 3 || ob.items.some(e => e.name === n)) continue;
       menu.categories.forEach((cc, ci) => cc.items.forEach((x, xi) => { if (x.name.uk === n && !x.hidden && !x.variants && sug.length < 3 && !sug.some(s => s.n === n)) sug.push({ n, c: ci, i: xi, p: x.price }); }));

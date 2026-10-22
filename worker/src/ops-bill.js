@@ -4,7 +4,7 @@ import { agBump } from './agg.js';
 import { fisSafe } from './fiscal.js';
 import { courNotify } from './courier.js';
 import { cliClose, goButtons, goGone } from './delivery.js';
-import { getMenu } from './menu.js';
+import { getMenu, menuFor } from './menu.js';
 import { BILL_TTL, L, LINE, addDishes, addStat, billItems, bump, dayKey, discAmt, editEv, esc, getBill, getCfg, hhmm, kqMut, logClosed, logEvent, notify, openTables, payable, pct, putBill, tg } from './ops-core.js';
 import { addKitchen, kitchenCancel, kitchenClosed } from './ops-kitchen.js';
 import { getMov } from './ops-money.js';
@@ -60,8 +60,8 @@ async function _addWaiterOrder(env, d, who, comment = '', src = 'бот', urgent
   return { sum, total: bill.total, lines, prev };
 }
 // позиції з меню за id → рядки замовлення (ціни — лише з меню)
-export async function itemsFromMenu(env, list) {
-  const menu = await getMenu(env); const by = {};
+export async function itemsFromMenu(env, list, kind = null) { // kind: 'pick' / 'del' — 💲 окремі ціни (menuFor)
+  const menu = await menuFor(env, kind); const by = {};
   menu.categories.forEach(c => c.items.forEach(it => { by[it.id] = it; }));
   const out = [];
   for (const x of (Array.isArray(list) ? list : []).slice(0, 80)) {

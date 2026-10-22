@@ -14,7 +14,7 @@ import { getStaff } from './ops-staff.js';
 
 // вид → назва й поля (* — обовʼязкові). Ті самі ключі використовує майстер для зіставлення колонок.
 export const KINDS = {
-  menu: { t: '🍽 Меню', f: { id: 'Код', cat: 'Розділ', name: 'Назва*', price: 'Ціна*', v: 'Розмір (0,5 л)', desc: 'Опис', size: 'Вага / обʼєм' } },
+  menu: { t: '🍽 Меню', f: { id: 'Код', cat: 'Розділ', name: 'Назва*', price: 'Ціна*', pick: 'Ціна з собою', del: 'Ціна доставки', v: 'Розмір (0,5 л)', desc: 'Опис', size: 'Вага / обʼєм' } },
   ing: { t: '📦 Продукти й залишки', f: { id: 'Код', n: 'Назва*', u: 'Одиниця', cat: 'Група', q: 'Залишок', wh: 'Склад', cost: 'Ціна за одиницю', sum: 'Сума залишку', bc: 'Штрихкод' } },
   cards: { t: '📋 Техкарти', f: { dish: 'Страва*', ing: 'Продукт*', q: 'Брутто*', u: 'Одиниця', loss: 'Втрати, %', out: 'Вихід, г' } },
   sup: { t: '🚚 Постачальники', f: { n: 'Назва*', code: 'ЄДРПОУ / ІПН', iban: 'IBAN', phone: 'Телефон', addr: 'Адреса' } },
@@ -80,6 +80,7 @@ const AP = {
         if (vm) { const v = String(+vm[1]), vs = it.variants || []; const o = vs.find(z => z.v === v); o ? (o.p = price) : vs.push({ v, p: price }); it.variants = vs.sort((a, b) => a.v - b.v); delete it.price; if (vm[2] && !it.size) it.size = vm[2].replace(/\.$/, ''); }
         else if (it.variants?.length) c.err(i, `«${name}»: у системі є розміри (${it.variants.map(z => z.v).join(', ')}) — ціну без розміру не ставимо, розміри лишили`, 1);
         else it.price = price;
+        for (const k of ['pick', 'del']) { const q = Math.round(num(r[k])); if (!(q > 0)) continue; const o = vm ? it.variants.find(z => z.v === String(+vm[1])) : it.variants?.length ? null : it; if (o) (o.pr ||= {})[k] = q; } // 💲 R4 окремі ціни (R-Keeper PRICETYPES) — діють з модулем «prices»
         const d = T(r.desc, 300); if (d) it.desc = { uk: d, en: d }; const sz = T(r.size, 30); if (sz && !it.variants) it.size = sz; // у страви з розмірами size — одиниця розміру (л)
         if (ext) x[ext] = it.id;
       });

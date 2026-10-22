@@ -60,6 +60,26 @@ export async function saveMenu(env, menu) {
 }
 
 // id → { n: назва, p: ціна | {варіант: ціна} }; приховані (стоп-лист) не продаються
+// 💲 R4 окремі ціни: it.pr = { pick, del } (у розмірів — v.pr); немає — звичайна ціна. Діє лише з модулем «prices».
+export const PR_KINDS = { pick: '🥡 з собою', del: '🛵 доставка' };
+export function menuPriced(menu, kind) {
+  if (!PR_KINDS[kind]) return menu;
+  const p = (o, base) => +o.pr?.[kind] > 0 ? +o.pr[kind] : base;
+  return { ...menu, categories: menu.categories.map(c => ({ ...c, items: c.items.map(it => !it.pr && !it.variants?.some(v => v.pr) ? it
+    : { ...it, ...(it.variants ? { variants: it.variants.map(v => ({ ...v, p: p(v, v.p) })) } : { price: p(it, it.price) }) }) })) };
+}
+// pr = { pick, del }: число (страва) або «0.5=75, 1=140» (розміри); порожньо — як у залі. Каса, кабінет, майстер переходу
+export function setPr(it, pr) {
+  delete it.pr; it.variants?.forEach(v => delete v.pr);
+  for (const k of Object.keys(PR_KINDS)) { const s = String(pr?.[k] ?? '').trim(); if (!s) continue;
+    if (it.variants) s.split(/[,;]/).forEach(z => { const [vv, p] = z.split(/[=:]/).map(q => String(q || '').trim().replace(',', '.')); const v = it.variants.find(o => o.v === vv); if (v && +p > 0) (v.pr ||= {})[k] = Math.round(+p); });
+    else if (+s.replace(',', '.') > 0) (it.pr ||= {})[k] = Math.round(+s.replace(',', '.'));
+  }
+}
+export async function menuFor(env, kind) {
+  const m = await getMenu(env); if (!PR_KINDS[kind]) return m;
+  return (await (await import('./ops-core.js')).modOn(env, 'prices')) ? menuPriced(m, kind) : m;
+}
 export function priceMap(menu) {
   const m = Object.create(null); // без прототипу: id «constructor» / «__proto__» не знаходить «страву»
   menu.categories.forEach(c => c.items.forEach(it => {
@@ -85,7 +105,7 @@ const findCat = (menu, q) => findMany(menu.categories, q, c => [c.name.uk, c.nam
 
 // ---------- розбір фрази ----------
 // ключові слова → поле; «склад» забирає весь хвіст (там є коми)
-const KW = [['price', 'ціна|цена|ціну|price'], ['size', 'вага|вагу|обʼєм|обєм|обьем|об\'єм|об’єм|size|weight'], ['name', 'назва|назву|name'], ['desc', 'склад|інгредієнти|опис|desc']];
+const KW = [['price', 'ціна|цена|ціну|price'], ['pick', 'винос|навинос'], ['del', 'доставка|доставку'], /* 💲 R4 */ ['size', 'вага|вагу|обʼєм|обєм|обьем|об\'єм|об’єм|size|weight'], ['name', 'назва|назву|name'], ['desc', 'склад|інгредієнти|опис|desc']];
 const KW_RE = new RegExp(`(?:^|[\\s,;.\\-–—:])(${KW.map(k => k[1]).join('|')})(?=[\\s:=\\-–—]|$)`, 'i');
 function parseFields(text) {
   const out = {}; let rest = text; const m0 = rest.match(KW_RE);
@@ -114,7 +134,7 @@ export function slug(s) {
 function card(it, c) {
   const price = it.variants ? it.variants.map(v => `${v.v} л — ${v.p} грн`).join(', ') : `${it.price} грн`;
   return [`<b>${esc(it.name.uk)}</b>${it.hidden ? ' ⛔ (стоп-лист)' : ''}`, c ? `Розділ: ${esc(c.name.uk)}` : '',
-    `Ціна: ${price}`, it.size && !it.variants ? `Вага: ${esc(it.size)}` : '', it.desc ? `Склад: ${esc(it.desc.uk)}` : ''].filter(Boolean).join('\n');
+    `Ціна: ${price}`, ...Object.entries(PR_KINDS).map(([k, l]) => { const x = it.variants ? it.variants.filter(v => v.pr?.[k]).map(v => `${v.v} л — ${v.pr[k]}`).join(', ') : it.pr?.[k] ? it.pr[k] + ' грн' : ''; return x ? `${l}: ${x}` : ''; }), it.size && !it.variants ? `Вага: ${esc(it.size)}` : '', it.desc ? `Склад: ${esc(it.desc.uk)}` : ''].filter(Boolean).join('\n');
 }
 const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 const many = (r, q) => `Знайшов кілька: ${r.map(x => x.it.name.uk).join(', ')}. Напишіть точніше, ніж «${esc(q)}».`;
@@ -127,6 +147,7 @@ export const HELP = `<b>Як керувати меню</b> (пишіть зви�
 <code>мєско склад коржик, свинина, фрі</code>
 <code>мєско назва Мєско XL</code>
 <code>pepsi ціна 0.5 75</code> (для напоїв з розмірами)
+<code>мєско винос 420</code> · <code>мєско доставка 450</code> (💲 окремі ціни, 0 — як у залі)
 
 ➕ <b>Додати</b>
 <code>додати в бургери: Монстр, ціна 450, вага 500, склад булка, телятина, сир</code>
@@ -231,7 +252,7 @@ async function _handleMenuText(text, env, { canEdit = true } = {}) {
   const f = parseFields(t);
   if (!f.head) return null;
   const r = findItem(menu, f.head);
-  const edits = ['price', 'size', 'name', 'desc'].filter(k => f[k] != null);
+  const edits = ['price', 'pick', 'del', 'size', 'name', 'desc'].filter(k => f[k] != null);
   if (!r.length) return edits.length ? `Не знайшов страву «${esc(f.head)}». Напишіть «help», щоб побачити приклади.` : null;
   if (r.length > 1) return many(r, f.head);
   const { it, c } = r[0];
@@ -247,6 +268,11 @@ async function _handleMenuText(text, env, { canEdit = true } = {}) {
       const p = parseInt(f.price, 10); if (!p) return 'Ціна має бути числом.'; it.price = p;
     }
   }
+  for (const k of ['pick', 'del']) { if (f[k] == null) continue; const s = f[k].trim(), drop = o => { if (o.pr) { delete o.pr[k]; if (!Object.keys(o.pr).length) delete o.pr; } }; // 💲 R4: 0 — як у залі
+    if (it.variants) { const pm = s.match(/^(\d+(?:[.,]\d+)?)\s*(?:л)?\s*[-=:–]?\s*(\d+)$/), v = pm && it.variants.find(x => x.v === pm[1].replace(',', '.'));
+      if (!v) return `У «${esc(it.name.uk)}» кілька розмірів (${it.variants.map(x => x.v).join(', ')}). Пишіть так: <code>${esc(it.name.uk)} ${k === 'del' ? 'доставка' : 'винос'} ${it.variants[0].v} 80</code>`;
+      +pm[2] > 0 ? ((v.pr ||= {})[k] = +pm[2]) : drop(v); }
+    else { const p = parseInt(s, 10); if (isNaN(p)) return 'Ціна має бути числом (0 — як у залі).'; p > 0 ? ((it.pr ||= {})[k] = p) : drop(it); } }
   if (f.size != null) it.size = fmtSize(f.size);
   if (f.name) it.name = { uk: f.name, en: it.name.en === it.name.uk ? f.name : it.name.en };
   if (f.desc != null) it.desc = { uk: f.desc, en: f.desc };
