@@ -439,6 +439,20 @@ ${JSON.stringify(data.filter(Boolean))}
       if (cur && Object.keys(cur).length) vers.unshift({ at: Date.now(), d: cur });
       await kv.put('atom:design', JSON.stringify(d)); await kv.put('atom:design:v', JSON.stringify(vers.slice(0, 10)));
       return ok({ d, vers: vers.slice(0, 10) }); }
+    case 'plan': case 'planSet': { // 🗺 «План»: читання / пакет змін під локом; 10 попередніх версій — щоб відкотити випадкове стирання
+      const P = await import('./plan.js'), kv = env.DB.kv || env.DB;
+      if (b.op === 'plan') return ok({ d: (await kv.get(P.PLAN_KEY, 'json')) || P.planEmpty() });
+      return ok(await L(env, P.PLAN_KEY, async () => {
+        const cur = await kv.get(P.PLAN_KEY, 'json'), r = P.planApply(cur ? structuredClone(cur) : null, b.ops, '👑 ' + me.name), j = JSON.stringify(r.d);
+        if (j.length > 400000) return { error: 'План завеликий — почистіть кошик' };
+        if (cur && b.ops?.some(o => o.o === 'del')) { const v = (await kv.get(P.PLAN_KEY + ':v', 'json')) || []; v.unshift({ at: Date.now(), d: cur }); await kv.put(P.PLAN_KEY + ':v', JSON.stringify(v.slice(0, 10))); }
+        await kv.put(P.PLAN_KEY, j); return { d: r.d, out: r.out };
+      })); }
+    case 'planImg': { // 📎 скрін у чернетку / задачу — як sitePhoto, у KV img:*
+      const m = String(b.data || '').match(/^data:image\/(jpeg|png|webp);base64,(.+)$/); if (!m) return bad('Потрібна картинка');
+      const bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0)); if (bytes.length > 3e6) return bad('Скрін завеликий (до 3 МБ)');
+      const id = 'plan-' + crypto.randomUUID().slice(0, 8); await (env.DB.kv || env.DB).put('img:' + id, bytes.buffer);
+      return ok({ url: `${env.SELF_URL}/img/${id}` }); }
     case 'leadNew': { const r = await H.leadAdd({ ...b, src: 'вручну' }, 'own:' + Date.now()); return r.error ? bad(r.error) : ok({ lead: r }); }
     case 'crmKey': { const P = await import('./push.js'), l = (await H.supGet('opush')) || []; return ok({ on: P.pushOn(env), key: env.VAPID_PUB || '', n: l.filter(x => x.m === me.email).length, mine: !!b.e && l.some(x => x.e === b.e) }); } // 🔔 повзунок «Сповіщення CRM»
     case 'crmSub': { const r = await (await import('./push.js')).crmSub(env, H, me.email, b.sub, !!b.on); return r.error ? bad(r.error) : ok(r); }

@@ -889,6 +889,18 @@ async function loyTests(A, W, dish) {
     finally { await pos(A, 'delete', { t: T, reason: 'QA' }); }
   });
 
+  sect('🗺 План кабінету');
+  await step('план: задача → ⭐ → ✅ у кошик → видалення; не-платформі 403', async () => {
+    const lg = await http('/api/owner', { op: 'login', email: 'qa-platform@test.local', pass: 'qa-platform-pass-1' }); if (lg.status !== 200) return 'немає тестового акаунта платформи — пропуск';
+    const o = (op, b = {}) => fetch(API + '/api/owner', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + lg.j.token }, body: JSON.stringify({ op, ...b }) }).then(r => r.json());
+    const tag = 'QA-plan-' + Date.now(), r = await o('planSet', { ops: [{ o: 'add', f: { t: tag, zone: 'team', star: 1 } }] }), id = r.out?.[0]?.id; must(id, JSON.stringify(r).slice(0, 150));
+    const k = await o('planSet', { ops: [{ o: 'add', f: { t: tag + ' sub', parent: id } }, { o: 'set', id, f: { done: 1, res: 'QA' } }] }); const x = k.d.items.find(y => y.id === id);
+    must(x.done && !x.star && k.d.items.some(y => y.parent === id && y.zone === 'team'), 'done/star/підзадача: ' + JSON.stringify(x));
+    must(!(await o('planSet', { ops: [{ o: 'add', f: { t: ' ' } }] })).out[0].ok && (await o('plan')).d.items.some(y => y.id === id), 'читання/порожня назва');
+    const del = await o('planSet', { ops: [{ o: 'del', id }] }); must(!del.d.items.some(y => y.t.startsWith(tag)), 'видалення разом із підзадачею');
+    const own = await http('/api/owner', { op: 'login', email: 'qa-own-x@test.local', pass: 'x' }).catch(() => ({})); if (own.j?.token) must((await fetch(API + '/api/owner', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + own.j.token }, body: '{"op":"plan"}' })).status === 403, 'власнику закладу план доступний');
+  });
+
   sect('📨 Вхідні кабінету');
   await step('побажання й 🆘 з каси потрапляють у вхідні платформи; ✅ / 🗑', async () => {
     const tag = 'QA-inbox-' + Date.now(); await posOk(W, 'ideaAdd', { text: tag + ' idea' }); await posOk(A, 'help', { text: tag + ' help' });

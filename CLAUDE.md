@@ -4,6 +4,7 @@
 
 ## Де що
 - **Спершу `graphify-out/` або `_team/map.md`**, потім `grep -n` + `sed -n` у потрібних рядках. Файли цілком не читати.
+- Задачі й план — кабінет → «🗺 План» (KV `atom:plan`): `node tools/plan.mjs next|take|done|add|draft`, ⭐ першими. `_team/board.md` — лише «На злиття» і «Звіти».
 - Агент команди: регламент (гілка, звіт ≤10 рядків, без деплою) — `_team/rules-full.md`.
 - Паспорт розділу — `_team/<розділ>.md` (таблиця розділів — `_team/rules-full.md`). Мультизаклад — `_team/platform.md`. Тести — `_team/qa.md`.
 - Сервер: Worker `worker/src/`, база — один DO `Store` (`env.DB` як KV). «Прочитав → змінив → записав» — лише під `L(env, keys, fn)`.

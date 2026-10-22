@@ -250,11 +250,11 @@
   }
   function render() {
     if (!S.me) return;
-    const plat = S.me.role === 'platform', acc = S.me.role === 'acc', TABS = acc ? [['acc', '🧮 Мої клієнти']] : [['home', '🏠 Мережа'], ['an', '📊 Аналітика'], ['ven', '🏪 Заклади'], ['cfg', '⚙️ Налаштування'], ['inbox', `📨 Вхідні${S.inboxN ? ` <i class="bdg">${S.inboxN}</i>` : ''}`], ...(plat ? [['crm', '🚀 Продажі'], ['plat', '🌐 Платформа']] : []), ['learn', '🎓 Навчання']];
+    const plat = S.me.role === 'platform', acc = S.me.role === 'acc', TABS = acc ? [['acc', '🧮 Мої клієнти']] : [['home', '🏠 Мережа'], ['an', '📊 Аналітика'], ['ven', '🏪 Заклади'], ['cfg', '⚙️ Налаштування'], ['inbox', `📨 Вхідні${S.inboxN ? ` <i class="bdg">${S.inboxN}</i>` : ''}`], ...(plat ? [['crm', '🚀 Продажі'], ['plan', '🗺 План'], ['plat', '🌐 Платформа']] : []), ['learn', '🎓 Навчання']];
     if (!TABS.some(x => x[0] === S.tab)) S.tab = 'home';
     app.innerHTML = `<header class="top"><div class="in"><img src="img/app/pos.svg" alt="ATOM"><b>${acc ? 'Кабінет бухгалтера' : 'Кабінет власника'}</b><button class="who-av" data-a="myAv" title="Змінити фото">${VVAV.html(S.me.av, S.me.name)}</button><div class="who"><b>${esc(S.me.name)}</b><span class="muted">${plat ? '👑 платформа' : acc ? '🧮 бухгалтер' : 'власник'}</span></div><div class="icogrp">${acc ? '' : '<button class="icobtn" data-a="myLook" title="Вигляд кабінету">🎨</button>'}<button class="icobtn" data-a="help" title="Допомога">🆘</button><button class="icobtn" data-a="out" title="Вийти">🚪</button></div></div>
       <nav class="tabs">${TABS.map(([k, l]) => `<button class="${S.tab === k ? 'on' : ''}" data-a="tab" data-t="${k}">${l}</button>`).join('')}<button data-a="reload">🔄</button></nav></header>
-      <main>${acc ? OWNACC.view({ api, toast, render, modal }) : S.tab === 'cfg' ? (S.cfgV ? VC.view() : pickVenue()) : S.tab === 'home' ? home() : S.tab === 'an' ? analytics() : S.tab === 'ven' ? venues() : S.tab === 'learn' ? OWNCOURSE.view({ canOpen: S.venues.length === 1 }) : S.tab === 'inbox' ? inbox() : S.tab === 'crm' && plat ? OWNCRM.view({ api, toast, render, modal, kpi, VC, enter: goPos }) : platform()}</main>`;
+      <main>${acc ? OWNACC.view({ api, toast, render, modal }) : S.tab === 'cfg' ? (S.cfgV ? VC.view() : pickVenue()) : S.tab === 'home' ? home() : S.tab === 'an' ? analytics() : S.tab === 'ven' ? venues() : S.tab === 'learn' ? OWNCOURSE.view({ canOpen: S.venues.length === 1 }) : S.tab === 'inbox' ? inbox() : S.tab === 'crm' && plat ? OWNCRM.view({ api, toast, render, modal, kpi, VC, enter: goPos }) : S.tab === 'plan' && plat ? OWNPLAN.view({ api, toast, render, modal }) : platform()}</main>`;
   }
 
   // ---------- модалки ----------
@@ -297,7 +297,7 @@
     if (a === 'tab' && d.t === 'inbox') S.ib = null;
     if (a === 'tab') { S.cfgV = null; S.tab = d.t; store.set('tab', d.t); if (d.t === 'home' || d.t === 'an') return load(); return render(); }
     if (a === 'accMan') return OWNACC.manage({ api, toast, render, modal }, d.v, S.venues.find(x => x.id === d.v)?.name || d.v);
-    if (a === 'reload') { OWNACC.reset(); OWNAN.reset(); S.plat = null; window.OWNCRM?.reset(); return start(); }
+    if (a === 'reload') { OWNACC.reset(); OWNAN.reset(); S.plat = null; window.OWNCRM?.reset(); window.OWNPLAN?.reset(); return start(); }
     if (a === 'per') { S.per = d.p; if (d.p === 'own') return render(); return load(); }
     if (a === 'perGo') { S.from = $('#pf').value; S.to = $('#pt').value; if (S.from > S.to) [S.from, S.to] = [S.to, S.from]; return load(); }
     if (a === 'enter') { el.disabled = true; try { await goPos(d.v, d.set); } catch (x) { toast('⚠️ ' + x.message); el.disabled = false; } return; }
