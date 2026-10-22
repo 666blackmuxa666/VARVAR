@@ -9,6 +9,7 @@ import { getIng, getCards, norm, r3, UNITS } from './stock.js';
 import { supEnsure, nrmSup } from './suppliers.js';
 import { normPhone, getCli, cliTouch, fmtPhone } from './delivery.js';
 import { getCert, bookImport } from './site.js';
+import { getLoy } from './promo.js';
 import { getStaff } from './ops-staff.js';
 
 // вид → назва й поля (* — обовʼязкові). Ті самі ключі використовує майстер для зіставлення колонок.
@@ -17,7 +18,7 @@ export const KINDS = {
   ing: { t: '📦 Продукти й залишки', f: { id: 'Код', n: 'Назва*', u: 'Одиниця', cat: 'Група', q: 'Залишок', wh: 'Склад', cost: 'Ціна за одиницю', sum: 'Сума залишку', bc: 'Штрихкод' } },
   cards: { t: '📋 Техкарти', f: { dish: 'Страва*', ing: 'Продукт*', q: 'Брутто*', u: 'Одиниця', loss: 'Втрати, %', out: 'Вихід, г' } },
   sup: { t: '🚚 Постачальники', f: { n: 'Назва*', code: 'ЄДРПОУ / ІПН', iban: 'IBAN', phone: 'Телефон', addr: 'Адреса' } },
-  cli: { t: '👤 Гості й бонуси', f: { phone: 'Телефон*', name: 'Імʼя', bal: 'Бонуси, ₴', bd: 'День народження', note: 'Нотатка' } },
+  cli: { t: '👤 Гості й бонуси', f: { phone: 'Телефон*', name: 'Імʼя', bal: 'Бонуси, ₴', bd: 'День народження', note: 'Нотатка', card: 'Номер картки', grp: 'Група / рівень', dep: 'Депозит, ₴' } },
   cert: { t: '🎁 Сертифікати', f: { code: 'Код*', sum: 'Номінал*', left: 'Залишок', phone: 'Телефон', to: 'Кому', exp: 'Діє до' } },
   staff: { t: '👥 Персонал', f: { n: 'Імʼя*', role: 'Посада' } },
   book: { t: '📅 Броні й передоплати', f: { id: 'Код', date: 'Дата*', time: 'Час*', name: 'Імʼя*', phone: 'Телефон*', people: 'Гостей', kind: 'Тип (стіл/банкет)', dep: 'Передоплата, ₴', comment: 'Коментар', t: 'Стіл' } },
@@ -54,6 +55,10 @@ function recorder(env) {
   return { env: { ...env, DB }, was };
 }
 const getX = async (env, kind) => (await env.DB.get('mig:x:' + kind, 'json')) || {};
+
+// сертифікат з міграції (paid:'mig' — оплачено в старій системі, не рух каси) + індекс certs
+const certPut = (env, code, o, f, sys, now) => L(env, 'cert:' + code, () => env.DB.put('cert:' + code, JSON.stringify({ ...(o || { code, from: `Перенесено (${SYS[sys] || sys})`, note: '', st: 'ok', paid: 'mig', at: now, uses: [] }), ...f, mig: sys })));
+const certsAdd = (env, codes) => codes.length && L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; for (const k of codes) if (!l.includes(k)) l.push(k); await env.DB.put('certs', JSON.stringify(l.slice(-5000))); });
 
 // ---------- застосування по видах. ctx: { sys, dry, errs(i, m, w), ext(row) } → { add, upd, skip, tot } ----------
 const AP = {
@@ -147,17 +152,26 @@ const AP = {
     }
     return { add, upd, skip, tot: {} };
   },
+  // 💳 картка → cli.card (пошук гостя за номером); група → рівень лояльності за назвою; 💰 депозит → сертифікат гостя DEP-<телефон>
+  // (гроші отримані ще в старій системі — не дохід у нас; погашення як сертифікат: каса й бот уже вміють)
   async cli(env, rows, c) {
-    let add = 0, upd = 0, skip = 0, bal = 0;
+    let add = 0, upd = 0, skip = 0, bal = 0, dep = 0; const lv = (await getLoy(env)).levels, codes = [], now = Date.now();
+    const lvOf = g => { const q = g.toLowerCase(); return lv.find(l => l.name.toLowerCase() === q) || lv.find(l => l.name.toLowerCase().includes(q) || q.includes(l.name.toLowerCase())); };
     for (const [i, r] of rows.entries()) {
       const ph = normPhone(r.phone); if (!ph) { c.err(i, `телефон «${T(r.phone, 20)}» не схожий на український`); skip++; continue; }
       const b = num(r.bal); if (b != null && b < 0) { c.err(i, `${fmtPhone(ph)}: мінусові бонуси`); skip++; continue; }
-      const had = await getCli(env, ph); had ? upd++ : add++; if (b != null) bal += Math.round(b * 100);
+      const d = num(r.dep); if (d != null && d < 0) { c.err(i, `${fmtPhone(ph)}: мінусовий депозит — це борг гостя, перенесіть вручну`); skip++; continue; }
+      const card = T(r.card, 24).replace(/\s/g, ''), g = T(r.grp, 40), l = g ? lvOf(g) : null;
+      if (g && !l) c.err(i, `${fmtPhone(ph)}: рівня «${g}» немає в «Лояльності» — записали в нотатку; створіть рівень і імпортуйте ще раз`, 1);
+      const dc = 'DEP-' + ph, o = d ? await getCert(env, dc) : null; if (o && !o.mig) { c.err(i, `${fmtPhone(ph)}: депозит ${dc} уже змінювали в системі — не чіпаємо`, 1); }
+      const had = await getCli(env, ph); had ? upd++ : add++; if (b != null) bal += Math.round(b * 100); if (d) dep += Math.round(d * 100);
       if (c.dry) continue;
-      const nm = T(r.name, 40), bd = bdOf(r.bd), note = T(r.note, 200);
-      await cliTouch(env, ph, x => { if (nm && !x.name) x.name = nm; if (b != null) x.bal = k2(b); if (bd) x.bd = bd; if (note && !String(x.note || '').includes(note)) x.note = T((x.note ? x.note + ' · ' : '') + note, 300); x.mig = c.sys; });
+      const nm = T(r.name, 40), bd = bdOf(r.bd), note = [T(r.note, 200), g && !l ? 'Група: ' + g : ''].filter(Boolean).join(' · ');
+      await cliTouch(env, ph, x => { if (nm && !x.name) x.name = nm; if (b != null) x.bal = k2(b); if (bd) x.bd = bd; if (card) x.card = card; if (l) x.lvl = l.id; if (note && !String(x.note || '').includes(note)) x.note = T((x.note ? x.note + ' · ' : '') + note, 300); x.mig = c.sys; });
+      if (d && !(o && !o.mig)) { await certPut(env, dc, o, { sum: k2(Math.max(d, o?.sum || 0)), left: k2(d), to: nm || o?.to || '', phone: ph, from: `💰 Депозит гостя (${SYS[c.sys] || c.sys})` }, c.sys, now); codes.push(dc); }
     }
-    return { add, upd, skip, tot: { bal: bal / 100 } };
+    await certsAdd(env, codes);
+    return { add, upd, skip, tot: { bal: bal / 100, ...(dep ? { dep: dep / 100 } : {}) } };
   },
   async cert(env, rows, c) {
     let add = 0, upd = 0, skip = 0, left = 0; const now = Date.now(), codes = [];
@@ -168,10 +182,9 @@ const AP = {
       const o = await getCert(env, code); if (o && !o.mig) { c.err(i, `${code}: такий сертифікат уже є в системі — не чіпаємо`, 1); skip++; continue; }
       o ? upd++ : add++; left += Math.round(lf * 100);
       if (c.dry) continue;
-      const x = { ...(o || { code, from: `Перенесено (${SYS[c.sys] || c.sys})`, note: '', st: 'ok', paid: 'mig', at: now, uses: [] }), sum: k2(sum), left: k2(lf), to: T(r.to, 40) || o?.to || '', phone: normPhone(r.phone) || o?.phone || '', mig: c.sys, ...(exp ? { exp } : {}) };
-      await L(env, 'cert:' + code, () => env.DB.put('cert:' + code, JSON.stringify(x))); codes.push(code);
+      await certPut(env, code, o, { sum: k2(sum), left: k2(lf), to: T(r.to, 40) || o?.to || '', phone: normPhone(r.phone) || o?.phone || '', ...(exp ? { exp } : {}) }, c.sys, now); codes.push(code);
     }
-    if (codes.length) await L(env, 'certs', async () => { const l = (await env.DB.get('certs', 'json')) || []; for (const k of codes) if (!l.includes(k)) l.push(k); await env.DB.put('certs', JSON.stringify(l.slice(-5000))); });
+    await certsAdd(env, codes);
     return { add, upd, skip, tot: { left: left / 100 } };
   },
   // 👥 персонал без PIN: PIN з чужої системи не перенести (там хеш) — адмін задає кожному в Налаштуваннях → Персонал → 🔑

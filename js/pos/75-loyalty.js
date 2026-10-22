@@ -131,7 +131,7 @@
     const r = await act('loyCliGet', { phone: ph }); if (!r) return; const c = r.cli;
     const hist = c.h.length ? c.h.map(h => `<div class="kv"><span>${new Date(h.ts).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' })} · ${h.t === 'hall' ? '🪑 зал' : h.t === 'del' ? '🛵 доставка' : '🥡 з собою'}</span><b class="money">${money(h.sum)}${h.pr ? ` <small class="muted">🎁−${h.pr}</small>` : ''}</b></div>`).join('') : '<div class="muted">Історія з\'явиться після наступних чеків</div>';
     const body = `<div class="kv"><span>📞 Телефон</span><a href="tel:+${c.phone}">${fmtPh(c.phone)}</a></div><div class="kv"><span>🏅 Рівень</span><b>${esc(c.lvn || '—')}${c.man ? ' ✋ вручну' : ''}</b></div>
-      <div class="kv"><span>🧾 Візитів · сума</span><b>${c.n} · ${money(c.sum)}</b></div><div class="kv"><span>🎁 Бонуси</span><b>${money(c.bal)}</b></div>
+      <div class="kv"><span>🧾 Візитів · сума</span><b>${c.n} · ${money(c.sum)}</b></div><div class="kv"><span>🎁 Бонуси</span><b>${money(c.bal)}</b></div>${c.dep ? `<div class="kv"><span>💰 Депозит · сертифікат <b>${c.dep.code}</b></span><b class="money">${money(c.dep.left)}</b></div>` : ''}${c.card ? `<div class="kv"><span>💳 Картка</span><b>${esc(c.card)}</b></div>` : ''}
       <div class="kv"><span>🎂 День народження</span><b>${bdTxt(c.bd) || '—'}</b></div>${c.note ? `<div class="kv"><span>📌 ${esc(c.note)}</span></div>` : ''}
       <h3 style="margin-top:12px">🕓 Історія</h3><div class="scrollbox sm">${hist}</div>`;
     const v = await modal({ title: `👤 ${c.name || 'Клієнт'}`, body, buttons: [{ label: '✏️ Ім\'я / ДН / нотатка', val: 'edit', cls: 'primary' }, ...(isAdmin() ? [{ label: '🏅 Рівень', val: 'lvl' }] : []), { label: 'Закрити', val: null }] });

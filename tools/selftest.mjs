@@ -1301,7 +1301,16 @@ async function loyTests(A, W, dish) {
       ok(await vpos(VA, 'migUndo', { id: bk2.id }), 'відкат броні'); must((await vpos(VA, 'bkList', { from: dd, to: dd })).j.list.find(x => x.phone.endsWith(bph.slice(1)))?.time === '19:30', 'відкат повтору не повернув час');
       ok(await vpos(VA, 'migUndo', { id: bk.id }), 'відкат броней'); must(!(await vpos(VA, 'bkList', { from: dd, to: dd })).j.list.some(x => x.phone.endsWith(bph.slice(1))), 'бронь лишилась після відкату');
     }
-    return '8 видів, розміри, R-Keeper, повтор, відкат';
+    { // 💳 гості R-Keeper: картка (пошук), група → рівень, 💰 депозит → сертифікат DEP-<телефон>; відкат прибирає депозит
+      const lv = (await vpos(VA, 'loyGet')).j.cfg.levels[0], rp = '063' + String(Date.now()).slice(-7), cn = '77' + String(Date.now()).slice(-6);
+      const rg = ok(await run('cli', [{ phone: rp, name: 'QA RK гість', card: cn, grp: lv.name.toUpperCase(), dep: '1 500,00' }, { phone: rp.replace('063', '050'), grp: 'Нема такої групи' }, { phone: rp.replace('063', '073'), dep: '-5' }], 0, 'rkeeper'), 'гості R-Keeper');
+      must(rg.add === 2 && rg.skip === 1 && rg.tot.dep === 1500 && rg.errs.some(e => e.w && /рівня/.test(e.m)), 'гості R-Keeper: ' + JSON.stringify(rg).slice(0, 250));
+      const rc = (await vpos(VA, 'loyCliGet', { phone: rp })).j.cli; must(rc?.card === cn && rc.lvl === lv.id && rc.dep?.left === 1500, 'картка/рівень/депозит: ' + JSON.stringify(rc));
+      must((await vpos(VA, 'loyCli', { q: cn })).j.list.some(x => x.phone === rc.phone), 'пошук гостя за карткою');
+      const dc = (await vpos(VA, 'certGet', { code: rc.dep.code })).j.c; must(dc?.st === 'ok' && dc.left === 1500 && /Депозит/.test(dc.from), 'депозит не сертифікат з міграції: ' + JSON.stringify(dc));
+      ok(await vpos(VA, 'migUndo', { id: rg.id }), 'відкат гостей R-Keeper'); must((await vpos(VA, 'certGet', { code: rc.dep.code })).status === 400, 'депозит лишився після відкату');
+    }
+    return '8 видів, розміри, R-Keeper (персонал, гості з депозитом), повтор, відкат';
   });
   await step('🏦 банк (етап 2): модуль/права; виписка 1С → еквайринг з комісією, оплата 2 накладних, власний переказ, черга; повтор не дублює; дії й заборони; CSV; облік і експорт', async () => {
     const ok = (r, w) => { must(r.status === 200 && !r.j.error, w + ': ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 200)); return r.j; };

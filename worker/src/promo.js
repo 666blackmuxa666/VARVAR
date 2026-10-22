@@ -158,15 +158,15 @@ export async function allCli(env) {
   const keys = (await env.DB.list({ prefix: 'cli:' })).keys.map(k => k.name), vals = keys.length ? await env.DB.getMany(keys, 'json') : [];
   return keys.map((k, i) => ({ phone: k.slice(4), ...(vals[i] || {}) })).filter(c => c.phone);
 }
-const cliRow = (cfg, c) => { const lv = cliLevel(cfg, c); return { phone: c.phone, name: c.name || '', n: c.n || 0, sum: c.sum || 0, bal: c.bal || 0, bd: c.bd || '', note: c.note || '', last: c.last || 0, tg: c.chat ? 1 : 0, lvl: lv?.id || '', lvn: lv ? `${lv.e} ${lv.name}` : '', man: !!c.lvl }; };
+const cliRow = (cfg, c) => { const lv = cliLevel(cfg, c); return { phone: c.phone, name: c.name || '', n: c.n || 0, sum: c.sum || 0, bal: c.bal || 0, bd: c.bd || '', note: c.note || '', ...(c.card ? { card: c.card } : {}), last: c.last || 0, tg: c.chat ? 1 : 0, lvl: lv?.id || '', lvn: lv ? `${lv.e} ${lv.name}` : '', man: !!c.lvl }; };
 // f: all | <id рівня> | bd (день народження ±7 днів) | sleep (не був 30+ днів) | bal (є бонуси)
 export async function cliList(env, q = '', f = 'all') {
   const cfg = await getLoy(env), k = kyiv(Date.now()), qq = String(q).toLowerCase().trim(), qd = qq.replace(/\D/g, '');
-  return (await allCli(env)).map(c => cliRow(cfg, c)).filter(c => (!qq || (qd.length >= 3 && c.phone.includes(qd)) || c.name.toLowerCase().includes(qq))
+  return (await allCli(env)).map(c => cliRow(cfg, c)).filter(c => (!qq || (qd.length >= 3 && (c.phone.includes(qd) || c.card?.includes(qd))) || c.name.toLowerCase().includes(qq))
     && (f === 'all' || (f === 'tg' ? c.tg || c.man : f === 'bd' ? bdDiff(c.bd, k) <= 7 : f === 'sleep' ? c.last && Date.now() - c.last > 30 * 864e5 : f === 'bal' ? c.bal > 0 : c.lvl === f)))
     .sort((a, b) => b.sum - a.sum).slice(0, 200);
 }
-export async function cliCard(env, ph) { const c = await getCli(env, ph); if (!c) return null; const cfg = await getLoy(env); return { ...cliRow(cfg, { phone: ph, ...c }), h: c.h || [], nth: c.nth || {} }; }
+export async function cliCard(env, ph) { const c = await getCli(env, ph); if (!c) return null; const cfg = await getLoy(env), d = await env.DB.get('cert:DEP-' + ph, 'json'); return { ...cliRow(cfg, { phone: ph, ...c }), h: c.h || [], nth: c.nth || {}, ...(d?.st === 'ok' && d.left > 0 ? { dep: { code: d.code, left: d.left } } : {}) }; } // 💰 депозит з міграції (сертифікат DEP-<телефон>)
 export async function cliEdit(env, ph, f, admin) {
   if (f.lvl != null && !admin) return { error: 'Рівень призначає адміністратор' };
   const cfg = await getLoy(env);
@@ -278,7 +278,7 @@ export async function loyBotText(env, text, admin) {
 async function cliBotCard(env, ph, admin) {
   const c = await cliCard(env, ph); if (!c) return { text: `🆕 ${fmtPhone(ph)} — ще не замовляв` };
   const cfg = await getLoy(env);
-  return { text: [`👤 <b>${esc(c.name || '—')}</b> · ${fmtPhone(ph)}`, `🏅 ${esc(c.lvn || '—')}${c.man ? ' (вручну)' : ''}`, `🧾 ${c.n} візитів · ${money(c.sum)} · 🎁 бонусів ${money(c.bal)}`,
+  return { text: [`👤 <b>${esc(c.name || '—')}</b> · ${fmtPhone(ph)}`, `🏅 ${esc(c.lvn || '—')}${c.man ? ' (вручну)' : ''}`, `🧾 ${c.n} візитів · ${money(c.sum)} · 🎁 бонусів ${money(c.bal)}`, c.dep ? `💰 Депозит ${money(c.dep.left)} — сертифікат <code>${c.dep.code}</code>` : '', c.card ? `💳 Картка ${esc(c.card)}` : '',
     c.bd ? `🎂 ${bdText(c.bd)}` : '', c.note ? `📌 ${esc(c.note)}` : '', c.h.length ? '\n<b>Останні:</b>\n' + c.h.slice(0, 8).map(h => `${new Date(h.ts).toLocaleDateString('uk-UA', { timeZone: TZ, day: '2-digit', month: '2-digit' })} · ${h.t === 'hall' ? '🪑' : h.t === 'del' ? '🛵' : '🥡'} ${money(h.sum)}${h.pr ? ` (акції −${h.pr})` : ''}`).join('\n') : ''].filter(Boolean).join('\n'),
     markup: admin ? kbOf([...cfg.levels.reduce((a, l, i) => { if (i % 3 === 0) a.push([]); a[a.length - 1].push({ text: `${c.lvl === l.id ? '✅ ' : ''}${l.e} ${l.name}`.slice(0, 30), callback_data: `llv:${ph}:${l.id}` }); return a; }, []), [{ text: '↺ Рівень авто', callback_data: `llv:${ph}:-` }]]) : undefined };
 }
