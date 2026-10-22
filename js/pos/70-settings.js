@@ -116,7 +116,7 @@
     const L = look(), opt = (k, v, l) => `<button class="lk-o${L[k] == v ? ' on' : ''}" data-a="look" data-k="${k}" data-v="${v}">${l}</button>`;
     const st = VVSkin.studio({ venue: S.lookV, dev: lookDev(), canVenue: isAdmin(), scope: S.lookScope, ...(isAdmin() ? {} : { note: 'Ваш колір і стиль — лише на цьому пристрої. Інші бачать вигляд закладу.' }), open: S.lookOpen, toast, ask: (t, ph) => ask(t, ph),
       onScope: v => { S.lookScope = v; }, rerender: renderMain,
-      setVenue: l => { S.lookV = l; S.lookScope = 'venue'; applyLook(); }, saveVenue: l => api('lookVSet', { look: l }),
+      setVenue: l => { S.lookV = l; store.set('lookV', l); S.lookScope = 'venue'; applyLook(); }, saveVenue: l => api('lookVSet', { look: l }),
       setDev: d => { const { own, sk, ct, ca } = d; store.set('look', { ...look(), own, ...(own ? { sk, theme: ct || '', accent: ca || '' } : { sk: undefined, theme: 'night', accent: '' }) }); applyLook(); } });
     setTimeout(pushSwSync, 0);
     return `<div class="grid2 set"><div class="card" style="grid-column:1/-1"><h3>🎨 Студія вигляду</h3>${st}</div>

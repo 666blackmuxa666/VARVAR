@@ -16,7 +16,7 @@
   const hhmm = t => new Date(t).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
 
   const S = {
-    token: store.get('token', ''), me: store.get('me', null), view: 'hall', n: 15, tables: {}, events: [], printer: {}, menu: null,
+    token: store.get('token', ''), me: store.get('me', null), lookV: store.get('lookV', null), view: 'hall', n: 15, tables: {}, events: [], printer: {}, menu: null,
     tw: {}, packAdj: {}, kst: store.get('kst', ''), open: 0, carts: store.get('carts', {}), coms: {}, grp: store.get('grp', ''), cat: '', q: '', fav: [], groups: [], photos: store.get('photos', true), shift: null, shown: new Set(), rep: { p: 'd', pay: '', by: '', grp: '', cat: '', t: '', q: '', tab: 'overview', sort: 's', fo: false }, mobileMenu: false, data: {}, kq: [], kqSeen: null, kqCanc: new Set(), ur: {}, kFont: store.get('kfont', 1), seen: new Set(), ready: false, live: false,
   };
   // 🏪 бренд закладу (лого й назва) — приходить разом зі state, пам'ятається для вікна входу; VARVAR — свій логотип
@@ -281,7 +281,7 @@
   const lookDev = () => { const L = look(); return { own: L.own ? 1 : 0, sk: 'sk' in L ? L.sk : undefined, ct: L.theme, ca: L.accent }; };
   const skinOf = () => VVSkin.resolve(S.lookV, lookDev()).K;
   function applySkin(over) { const K = over ? (VVSkin.apply(over), over) : VVSkin.paint(S.lookV, lookDev()); document.body.classList.toggle('noanim', (K && !K.anim) || !look().anim); }
-  async function loadLookV() { try { const r = await api('lookV'); S.lookV = r.look || null; applyLook(); } catch {} }
+  async function loadLookV() { try { const r = await api('lookV'); S.lookV = r.look || null; store.set('lookV', S.lookV); applyLook(); } catch {} } // 🎨 вигляд закладу пам'ятається — при запуску одразу свій, без стрибка зі стандартного
   const setLook = (k, v) => { store.set('look', { ...look(), [k]: v }); applyLook(); renderMain(); };
   applyLook();
 
@@ -526,6 +526,7 @@
       skCardCalc();
     }
     if (d.ch && K.card && t.tagName === 'INPUT' && t.type !== 'checkbox') { K.card[d.ch] = t.value; skCardCalc(); }
+    if (t.id === 'cPrice' && K.card) { K.card.price = +t.value || 0; skCardCalc(); }
   });
   document.addEventListener('change', async e => {
     const t = e.target, K = S.sk, d = t.dataset || {};
@@ -538,6 +539,7 @@
       if (d.k === 'f') { if (t.value === '?') { const v = await ask('Скільки одиниць складу в одній одиниці з накладної?', 'напр. 12 (шт у ящику) або 2.5 (кг в упаковці)'); const f = +String(v || '').replace(',', '.'); if (f > 0) l.f = f; renderMain(); } else { l.f = +t.value; skDraftUpd(+d.dl); } }
     }
     if (d.cl != null && K.card && t.tagName === 'SELECT') { const l = K.card.items[+d.cl]; if (!l) return; if (t.value === '__new') { const a = await skNewIng('', 'кг', 'k'); if (a) { l.add = a; l.id = null; } } else { l.id = t.value || null; delete l.add; const x = S.data.sk.ing.find(y => y.id === l.id); if (x && l.loss == null && x.loss) l.loss = x.loss; } renderMain(); }
+    if (t.id === 'cPrice' && K.card) skPriceSet(t.value);
     if (d.ch && K.card && (t.tagName === 'SELECT' || t.type === 'checkbox')) { K.card[d.ch] = t.type === 'checkbox' ? t.checked : t.value; renderMain(); }
   });
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'scIn') { e.preventDefault(); const v = e.target.value; e.target.value = ''; skCode(v); } });

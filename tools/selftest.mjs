@@ -396,6 +396,15 @@ async function apiTests() {
       return `доставка ${on} / без модуля ${off}`;
     } finally { await save({ pick: '', del: '' }).catch(() => {}); await pos(A, 'modSet', { k: 'prices', v: was === 0 ? 0 : 1 }).catch(() => {}); }
   });
+  await step('💲 Ціна з техкарти (menuPrice): змінює ціну в меню; 0 і чужий розмір — відмова', async () => {
+    const get = async () => (await posOk(A, 'menu')).menu.categories.flatMap(c => c.items).find(i => i.id === dish.id).price;
+    try {
+      await posOk(A, 'menuPrice', { key: dish.id, price: dish.price + 7 }); const p = await get(); must(p === dish.price + 7, `ціна ${p} ≠ ${dish.price + 7}`);
+      const z = await pos(A, 'menuPrice', { key: dish.id, price: 0 }); must(z.status === 400, '0 ₴ пройшло: ' + z.status);
+      const v = await pos(A, 'menuPrice', { key: dish.id + '|9.9', price: 50 }); must(v.status === 404, 'неіснуючий розмір: ' + v.status);
+      return `${dish.price} → ${p}`;
+    } finally { await pos(A, 'menuPrice', { key: dish.id, price: dish.price }).catch(() => {}); }
+  });
   await step('🧩 R3 модифікатори: група до страви → у рахунку окремий рядок «страва › варіант», ціна додається; група зникла — страва без неї', async () => {
     const menu = (await posOk(A, 'menu')).menu, cat = menu.categories.find(c => c.items.some(i => i.id === dish.id)), was = menu.mods || [];
     const save = mods => posOk(A, 'menuSave', { item: { id: dish.id, cat: cat.id, name: dish.name.uk, price: dish.price, size: dish.size || '', desc: dish.desc?.uk || '', mods } });

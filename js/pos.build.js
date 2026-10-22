@@ -89,6 +89,7 @@ var __objRest = (source, exclude) => {
   const S = {
     token: store.get("token", ""),
     me: store.get("me", null),
+    lookV: store.get("lookV", null),
     view: "hall",
     n: 15,
     tables: {},
@@ -799,6 +800,7 @@ var __objRest = (source, exclude) => {
     try {
       const r = await api("lookV");
       S.lookV = r.look || null;
+      store.set("lookV", S.lookV);
       applyLook();
     } catch (e) {
     }
@@ -1474,6 +1476,10 @@ var __objRest = (source, exclude) => {
       K.card[d.ch] = t.value;
       skCardCalc();
     }
+    if (t.id === "cPrice" && K.card) {
+      K.card.price = +t.value || 0;
+      skCardCalc();
+    }
   });
   document.addEventListener("change", async (e) => {
     const t = e.target, K = S.sk, d = t.dataset || {};
@@ -1538,6 +1544,7 @@ var __objRest = (source, exclude) => {
       }
       renderMain();
     }
+    if (t.id === "cPrice" && K.card) skPriceSet(t.value);
     if (d.ch && K.card && (t.tagName === "SELECT" || t.type === "checkbox")) {
       K.card[d.ch] = t.type === "checkbox" ? t.checked : t.value;
       renderMain();
@@ -5328,6 +5335,7 @@ var __objRest = (source, exclude) => {
       rerender: renderMain,
       setVenue: (l) => {
         S.lookV = l;
+        store.set("lookV", l);
         S.lookScope = "venue";
         applyLook();
       },
@@ -6901,10 +6909,35 @@ ${g.sup}:
     var _a2;
     const C = S.data.skCost, c = (_a2 = C == null ? void 0 : C.cards) == null ? void 0 : _a2[key], semi = key.startsWith("semi:");
     const it = semi ? null : C.list.find((x2) => x2.key === key), x = semi ? S.data.sk.ing.find((y) => y.id === key.slice(5)) : null;
-    S.sk.card = { key, name: semi ? x == null ? void 0 : x.n : it == null ? void 0 : it.name, price: (it == null ? void 0 : it.price) || 0, semi, u: x == null ? void 0 : x.u, out: (c == null ? void 0 : c.out) || "", yield: (c == null ? void 0 : c.yield) || (semi ? 1 : ""), wh: (c == null ? void 0 : c.wh) || "", perL: !!(c == null ? void 0 : c.perL), mk: (c == null ? void 0 : c.mk) || "", draft: !!(c == null ? void 0 : c.draft), note: (c == null ? void 0 : c.note) || "", items: ((c == null ? void 0 : c.items) || []).map((l) => __spreadValues({}, l)), isNew: !c, variant: key.includes("|") };
+    S.sk.card = { key, name: semi ? x == null ? void 0 : x.n : it == null ? void 0 : it.name, price: (it == null ? void 0 : it.price) || 0, price0: (it == null ? void 0 : it.price) || 0, semi, u: x == null ? void 0 : x.u, out: (c == null ? void 0 : c.out) || "", yield: (c == null ? void 0 : c.yield) || (semi ? 1 : ""), wh: (c == null ? void 0 : c.wh) || "", perL: !!(c == null ? void 0 : c.perL), mk: (c == null ? void 0 : c.mk) || "", draft: !!(c == null ? void 0 : c.draft), note: (c == null ? void 0 : c.note) || "", items: ((c == null ? void 0 : c.items) || []).map((l) => __spreadValues({}, l)), isNew: !c, variant: key.includes("|") };
     S.sk.tab = semi ? S.sk.tab : "cards";
     renderMain();
     $("#main").scrollTop = 0;
+  }
+  const fcCls = (fc, tgt) => fc == null ? "" : fc <= tgt ? "good" : fc <= tgt + 10 ? "mid" : "bad";
+  const mkF = (cost, p) => cost && p ? "\xD7" + Math.round(p / cost * 100) / 100 + ` (${p >= cost ? "+" : ""}${Math.round((p / cost - 1) * 100)}%)` : "\u2014";
+  async function skPriceSet(p) {
+    var _a2, _b2;
+    const c = S.sk.card;
+    p = Math.round(+p || 0);
+    if (!c || p === c.price0) return;
+    const el = $("#cPrice");
+    if (!(p > 0)) {
+      if (el) el.value = c.price0 || "";
+      c.price = c.price0;
+      return skCardCalc();
+    }
+    const r = await act("menuPrice", { key: c.key, price: p }, `\u{1F4B2} \u0426\u0456\u043D\u0430 \u0432 \u043C\u0435\u043D\u044E: ${money(p)}`);
+    if (!r) {
+      c.price = c.price0;
+      if (el) el.value = c.price0 || "";
+      return skCardCalc();
+    }
+    c.price = c.price0 = p;
+    const it = (_b2 = (_a2 = S.data.skCost) == null ? void 0 : _a2.list) == null ? void 0 : _b2.find((x) => x.key === c.key);
+    if (it) it.price = p;
+    if (el) el.value = p;
+    skCardCalc();
   }
   function skCardEdHTML() {
     var _a2, _b2, _c, _d;
@@ -6928,12 +6961,13 @@ ${g.sup}:
         ${c.items.length ? `<div class="kv tot sk-mass"><span>\u2696\uFE0F \u0417\u0430\u0433\u0430\u043B\u044C\u043D\u0430 \u043C\u0430\u0441\u0430 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0456\u0432</span><b id="cMass">${skMass(c)}</b></div>` : ""}
         <div class="btnrow"><button class="btn sm" data-a="skClAdd">\u2795 \u041F\u0440\u043E\u0434\u0443\u043A\u0442</button><button class="btn sm" data-a="skCardAi">${S.sk.aiBusy ? "\u23F3 AI \u0434\u0443\u043C\u0430\u0454\u2026" : "\u2728 \u0417\u0430\u043F\u043E\u0432\u043D\u0438\u0442\u0438 \u0437 AI"}</button></div></div>
       ${c.semi ? `<div class="card sk-howto">\u{1F4D0} <b>\u042F\u043A \u0446\u0435 \u043F\u0440\u0430\u0446\u044E\u0454:</b> \u0432\u043A\u0430\u0436\u0456\u0442\u044C \u0440\u0435\u0446\u0435\u043F\u0442 \u043D\u0430 \u0431\u0443\u0434\u044C-\u044F\u043A\u0438\u0439 \u0432\u0438\u0445\u0456\u0434 (\u043D\u0430\u043F\u0440. \u043D\u0430 <b>1 ${esc(c.u || "\u043B")}</b>: \u0443\u0441\u0456 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0438 \u0439 \xAB\u0412\u0438\u0445\u0456\u0434 \u043F\u0430\u0440\u0442\u0456\u0457\xBB = 1). \u0421\u0438\u0441\u0442\u0435\u043C\u0430 \u043F\u043E\u0440\u0430\u0445\u0443\u0454, \u0441\u043A\u0456\u043B\u044C\u043A\u0438 \u043A\u043E\u0448\u0442\u0443\u0454 1 ${esc(c.u || "\u043B")}.<br>\u0423 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0456 \u0441\u0442\u0440\u0430\u0432\u0438 \u0434\u043E\u0434\u0430\u0439\u0442\u0435 \u0446\u0435\u0439 \u0441\u043E\u0443\u0441 \u044F\u043A \u0437\u0432\u0438\u0447\u0430\u0439\u043D\u0438\u0439 \u043F\u0440\u043E\u0434\u0443\u043A\u0442 (\u043D\u0430\u043F\u0440. <b>0.05 ${esc(c.u || "\u043B")}</b>) \u2014 \u0441\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C \u0441\u0442\u0440\u0430\u0432\u0438 \u043F\u043E\u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F \u0437 \u0446\u0456\u043D\u0438 1 ${esc(c.u || "\u043B")}${((_d = (_c = S.cfg) == null ? void 0 : _c.semiCalc) != null ? _d : 1) ? ", \u0430 \u043F\u0440\u0438 \u043F\u0440\u043E\u0434\u0430\u0436\u0456 \u0437\u0456 \u0441\u043A\u043B\u0430\u0434\u0443 \u0441\u043F\u0438\u0448\u0443\u0442\u044C\u0441\u044F \u0441\u0430\u043C\u0456 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0438 \u0440\u0435\u0446\u0435\u043F\u0442\u0443. \u0412\u0430\u0440\u0438\u0442\u0438 \xAB\u0437\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0443\xBB \u0432 \u0441\u0438\u0441\u0442\u0435\u043C\u0456 \u043D\u0435 \u043F\u043E\u0442\u0440\u0456\u0431\u043D\u043E." : ". \u0420\u0435\u0436\u0438\u043C \u043F\u0430\u0440\u0442\u0456\u0439: \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0438 \u0441\u043F\u0438\u0441\u0443\u044E\u0442\u044C\u0441\u044F, \u043A\u043E\u043B\u0438 \u043D\u0430 \u043A\u0443\u0445\u043D\u0456 \u0432\u0456\u0434\u043C\u0456\u0447\u0430\u044E\u0442\u044C \xAB\u{1F373} \u0417\u0430\u0433\u043E\u0442\u043E\u0432\u043A\u0430\xBB."}</div>` : ""}
-      <div class="card"><div class="kv tot"><span>\u0421\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C ${c.semi ? "\u043F\u0430\u0440\u0442\u0456\u0457" : "\u043F\u043E\u0440\u0446\u0456\u0457"}</span><b class="money" id="cCost">${money(cost)}</b></div>
-        ${c.semi ? `<div class="kv"><span>\u0417\u0430 1 ${esc(c.u || "")}</span><b class="money" id="cPer">${per != null ? money(per) : "\u2014"}</b></div>` : `<div class="kv"><span>\u0424\u0443\u0434\u043A\u043E\u0441\u0442</span><b id="cFc" class="${fc == null ? "" : fc <= tgt ? "good" : fc <= tgt + 10 ? "mid" : "bad"}">${fc != null ? fc : "\u2014"}%</b></div><div class="kv"><span>\u041C\u0430\u0440\u0436\u0430 \u0437 \u043F\u043E\u0440\u0446\u0456\u0457</span><b class="money" id="cM">${money(c.price - cost)}</b></div>
-        <div class="kv"><span>\u0420\u0435\u043A\u043E\u043C\u0435\u043D\u0434\u043E\u0432\u0430\u043D\u0430 \u0446\u0456\u043D\u0430 \u043F\u0440\u0438 \u0444\u0443\u0434\u043A\u043E\u0441\u0442\u0456 ${tgt}%</span><b class="money" id="cRec">${rec2 ? money(rec2) : "\u2014"}</b></div>
-        <div class="kv sk-mk"><span>\u{1F4C8} \u041D\u0430\u0446\u0456\u043D\u043A\u0430 (\u043C\u043D\u043E\u0436\u043D\u0438\u043A)<br><small class="muted">\u043D\u0430\u043F\u0440. 4 = \u0441\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C \xD7 4</small></span><span class="kv-r"><input data-ch="mk" inputmode="decimal" value="${c.mk || ""}" placeholder="\xD74" style="width:80px"></span></div>
-        <div class="kv"><span>\u0426\u0456\u043D\u0430 \u0437\u0430 \u043D\u0430\u0446\u0456\u043D\u043A\u043E\u044E</span><b class="money" id="cMk">${+c.mk && cost ? money(Math.ceil(cost * +String(c.mk).replace(",", ".") / 5) * 5) : "\u2014"}</b></div>
-        <div class="kv"><span>\u0424\u0430\u043A\u0442\u0438\u0447\u043D\u0430 \u043D\u0430\u0446\u0456\u043D\u043A\u0430 \u0437\u0430 \u0446\u0456\u043D\u043E\u044E \u0432 \u043C\u0435\u043D\u044E</span><b id="cMkF">${cost && c.price ? "\xD7" + Math.round(c.price / cost * 100) / 100 + ` (+${Math.round((c.price / cost - 1) * 100)}%)` : "\u2014"}</b></div>`}
+      ${c.semi ? `<div class="card"><div class="kv tot"><span>\u0421\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C \u043F\u0430\u0440\u0442\u0456\u0457</span><b class="money" id="cCost">${money(cost)}</b></div>
+        <div class="kv"><span>\u0417\u0430 1 ${esc(c.u || "")}</span><b class="money" id="cPer">${per != null ? money(per) : "\u2014"}</b></div>` : `<div class="card sk-sum"><h3>\u{1F4B0} \u041F\u0456\u0434\u0441\u0443\u043C\u043E\u043A</h3>
+        <div class="sk-sum3"><div><span>\u0421\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C</span><b class="money" id="cCost">${money(cost)}</b></div><div><span>\u0424\u0443\u0434\u043A\u043E\u0441\u0442 <small>\u0446\u0456\u043B\u044C ${tgt}%</small></span><b id="cFc" class="${fcCls(fc, tgt)}">${fc != null ? fc : "\u2014"}%</b></div><div><span>\u041C\u0430\u0440\u0436\u0430</span><b class="money" id="cM">${money(c.price - cost)}</b></div></div>
+        <div class="kv tot"><span>\u{1F4B2} \u0426\u0456\u043D\u0430 \u0432 \u043C\u0435\u043D\u044E</span>${can("menu") ? `<span class="kv-r"><input id="cPrice" inputmode="numeric" value="${c.price || ""}" placeholder="\u20B4" style="width:96px;text-align:center"> \u20B4</span>` : `<b class="money">${money(c.price)}</b>`}</div>
+        <div class="kv"><span>\u{1F3AF} \u0420\u0435\u043A\u043E\u043C\u0435\u043D\u0434\u043E\u0432\u0430\u043D\u0430<br><small class="muted">\u043F\u0440\u0438 \u0444\u0443\u0434\u043A\u043E\u0441\u0442\u0456 ${tgt}%</small></span><span class="kv-r"><b class="money" id="cRec">${rec2 ? money(rec2) : "\u2014"}</b>${can("menu") ? '<button class="btn sm" data-a="skPriceSet" data-w="rec">\u041F\u043E\u0441\u0442\u0430\u0432\u0438\u0442\u0438</button>' : ""}</span></div>
+        <div class="kv sk-mk"><span>\u{1F4C8} \u041D\u0430\u0446\u0456\u043D\u043A\u0430<br><small class="muted">\u0441\u043E\u0431\u0456\u0432\u0430\u0440\u0442\u0456\u0441\u0442\u044C \xD7 \u043C\u043D\u043E\u0436\u043D\u0438\u043A</small></span><span class="kv-r"><input data-ch="mk" inputmode="decimal" value="${c.mk || ""}" placeholder="\xD74" style="width:64px"><b class="money" id="cMk">${+c.mk && cost ? money(Math.ceil(cost * +String(c.mk).replace(",", ".") / 5) * 5) : "\u2014"}</b>${can("menu") ? '<button class="btn sm" data-a="skPriceSet" data-w="mk">\u041F\u043E\u0441\u0442\u0430\u0432\u0438\u0442\u0438</button>' : ""}</span></div>
+        <div class="kv"><span>\u0417\u0430\u0440\u0430\u0437 \u043D\u0430\u0446\u0456\u043D\u043A\u0430</span><b id="cMkF">${mkF(cost, c.price)}</b></div>`}
         <div class="btnrow"><button class="btn primary" data-a="skCardSave">\u{1F4BE} \u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438</button>${c.isNew ? "" : '<button class="btn red" data-a="skCardDel">\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0443</button>'}</div>
         <div class="muted" style="font-size:12px;margin-top:8px">\u0411\u0440\u0443\u0442\u0442\u043E \u2014 \u0441\u043A\u0456\u043B\u044C\u043A\u0438 \u0431\u0435\u0440\u0435\u0442\u044C\u0441\u044F \u0437\u0456 \u0441\u043A\u043B\u0430\u0434\u0443; \u043D\u0435\u0442\u0442\u043E \u2014 \u043F\u0456\u0441\u043B\u044F \u0447\u0438\u0441\u0442\u043A\u0438 / \u0432\u0430\u0440\u043A\u0438. \u041F\u0440\u043E\u0434\u0430\u0436 \u0441\u0442\u0440\u0430\u0432\u0438 \u0441\u043F\u0438\u0441\u0443\u0454 \u0431\u0440\u0443\u0442\u0442\u043E \u0437\u0456 \u0441\u043A\u043B\u0430\u0434\u0443. \u0427\u0435\u0440\u043D\u0435\u0442\u043A\u0430 AI \u043D\u0435 \u0441\u043F\u0438\u0441\u0443\u0454, \u043F\u043E\u043A\u0438 \u0432\u0438 \u043D\u0435 \u0437\u0431\u0435\u0440\u0435\u0436\u0435\u0442\u0435.</div></div>`;
   }
@@ -6975,9 +7009,10 @@ ${g.sup}:
       const fc = c.price ? Math.round(cost / c.price * 1e3) / 10 : null;
       set("cFc", (fc != null ? fc : "\u2014") + "%");
       const el = $("#cFc");
-      if (el) el.className = fc == null ? "" : fc <= tgt ? "good" : fc <= tgt + 10 ? "mid" : "bad";
+      if (el) el.className = fcCls(fc, tgt);
       set("cM", money(c.price - cost));
       set("cRec", cost ? money(Math.ceil(cost / (tgt / 100) / 5) * 5) : "\u2014");
+      set("cMkF", mkF(cost, c.price));
     }
   };
   async function skMakeIngs(lines) {
@@ -7214,6 +7249,7 @@ ${g.sup}:
     return head + loss + kpis + meH + tbl + off;
   }
   document.addEventListener("click", async (e) => {
+    var _a2, _b2;
     const el = e.target.closest("[data-a]");
     if (!el || !/^sk/.test(el.dataset.a)) return;
     const a = el.dataset.a, K = S.sk;
@@ -7412,6 +7448,17 @@ ${g.sup}:
       case "skCardSave":
         skCardSave(false);
         break;
+      case "skPriceSet": {
+        const c = K.card, tgt = ((_b2 = (_a2 = S.data.skCost) == null ? void 0 : _a2.cfg) == null ? void 0 : _b2.foodCost) || 30, cost = c.items.reduce((a2, l) => a2 + (l.id ? (+l.q || 0) * skUnitCost(l.id) : 0), 0), mk = +String(c.mk || "").replace(",", ".");
+        const p = el.dataset.w === "rec" ? cost ? Math.ceil(cost / (tgt / 100) / 5) * 5 : 0 : mk && cost ? Math.ceil(cost * mk / 5) * 5 : 0;
+        if (!p) {
+          toast(el.dataset.w === "mk" ? "\u0412\u043A\u0430\u0436\u0456\u0442\u044C \u043C\u043D\u043E\u0436\u043D\u0438\u043A \u043D\u0430\u0446\u0456\u043D\u043A\u0438" : "\u0421\u043F\u0435\u0440\u0448\u0443 \u0434\u043E\u0434\u0430\u0439\u0442\u0435 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0438");
+          break;
+        }
+        c.price = p;
+        skPriceSet(p);
+        break;
+      }
       case "skCardDel":
         if (await confirmBox("\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438 \u0442\u0435\u0445\u043A\u0430\u0440\u0442\u0443?", "\u0421\u0442\u0440\u0430\u0432\u0430 \u043F\u0435\u0440\u0435\u0441\u0442\u0430\u043D\u0435 \u0441\u043F\u0438\u0441\u0443\u0432\u0430\u0442\u0438 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0438")) {
           if (await act("skCardSave", { key: K.card.key, name: K.card.name, card: null }, "\u{1F5D1} \u0412\u0438\u0434\u0430\u043B\u0435\u043D\u043E")) {

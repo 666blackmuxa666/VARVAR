@@ -334,9 +334,17 @@
   function skCardOpen(key) {
     const C = S.data.skCost, c = C?.cards?.[key], semi = key.startsWith('semi:');
     const it = semi ? null : C.list.find(x => x.key === key), x = semi ? S.data.sk.ing.find(y => y.id === key.slice(5)) : null;
-    S.sk.card = { key, name: semi ? x?.n : it?.name, price: it?.price || 0, semi, u: x?.u, out: c?.out || '', yield: c?.yield || (semi ? 1 : ''), wh: c?.wh || '', perL: !!c?.perL, mk: c?.mk || '', draft: !!c?.draft, note: c?.note || '', items: (c?.items || []).map(l => ({ ...l })), isNew: !c, variant: key.includes('|') };
+    S.sk.card = { key, name: semi ? x?.n : it?.name, price: it?.price || 0, price0: it?.price || 0, semi, u: x?.u, out: c?.out || '', yield: c?.yield || (semi ? 1 : ''), wh: c?.wh || '', perL: !!c?.perL, mk: c?.mk || '', draft: !!c?.draft, note: c?.note || '', items: (c?.items || []).map(l => ({ ...l })), isNew: !c, variant: key.includes('|') };
     S.sk.tab = semi ? S.sk.tab : 'cards'; renderMain(); $('#main').scrollTop = 0;
   }
+  const fcCls = (fc, tgt) => fc == null ? '' : fc <= tgt ? 'good' : fc <= tgt + 10 ? 'mid' : 'bad';
+  const mkF = (cost, p) => cost && p ? '×' + (Math.round(p / cost * 100) / 100) + ` (${p >= cost ? '+' : ''}${Math.round((p / cost - 1) * 100)}%)` : '—';
+  async function skPriceSet(p) { // 💲 ціна в меню — одразу, з техкарти (не чекаючи «💾 Зберегти»)
+    const c = S.sk.card; p = Math.round(+p || 0); if (!c || p === c.price0) return; const el = $('#cPrice');
+    if (!(p > 0)) { if (el) el.value = c.price0 || ''; c.price = c.price0; return skCardCalc(); }
+    const r = await act('menuPrice', { key: c.key, price: p }, `💲 Ціна в меню: ${money(p)}`);
+    if (!r) { c.price = c.price0; if (el) el.value = c.price0 || ''; return skCardCalc(); }
+    c.price = c.price0 = p; const it = S.data.skCost?.list?.find(x => x.key === c.key); if (it) it.price = p; if (el) el.value = p; skCardCalc(); }
   function skCardEdHTML() {
     const c = S.sk.card, D = S.data.sk, ing = D.ing.filter(x => !x.off).sort((a, b) => a.n.localeCompare(b.n)), im = new Map(D.ing.map(x => [x.id, x])), tgt = S.data.skCost?.cfg?.foodCost || 30;
     const cost = c.items.reduce((a, l) => a + (l.id ? (+l.q || 0) * skUnitCost(l.id) : 0), 0), fc = c.price ? Math.round(cost / c.price * 1000) / 10 : null, rec = cost ? Math.ceil(cost / (tgt / 100) / 5) * 5 : 0;
@@ -355,13 +363,14 @@
         ${c.items.length ? `<div class="kv tot sk-mass"><span>⚖️ Загальна маса продуктів</span><b id="cMass">${skMass(c)}</b></div>` : ''}
         <div class="btnrow"><button class="btn sm" data-a="skClAdd">➕ Продукт</button><button class="btn sm" data-a="skCardAi">${S.sk.aiBusy ? '⏳ AI думає…' : '✨ Заповнити з AI'}</button></div></div>
       ${c.semi ? `<div class="card sk-howto">📐 <b>Як це працює:</b> вкажіть рецепт на будь-який вихід (напр. на <b>1 ${esc(c.u || 'л')}</b>: усі продукти й «Вихід партії» = 1). Система порахує, скільки коштує 1 ${esc(c.u || 'л')}.<br>У техкарті страви додайте цей соус як звичайний продукт (напр. <b>0.05 ${esc(c.u || 'л')}</b>) — собівартість страви порахується з ціни 1 ${esc(c.u || 'л')}${(S.cfg?.semiCalc ?? 1) ? ', а при продажі зі складу спишуться самі продукти рецепту. Варити «заготовку» в системі не потрібно.' : '. Режим партій: продукти списуються, коли на кухні відмічають «🍳 Заготовка».'}</div>` : ''}
-      <div class="card"><div class="kv tot"><span>Собівартість ${c.semi ? 'партії' : 'порції'}</span><b class="money" id="cCost">${money(cost)}</b></div>
-        ${c.semi ? `<div class="kv"><span>За 1 ${esc(c.u || '')}</span><b class="money" id="cPer">${per != null ? money(per) : '—'}</b></div>`
-        : `<div class="kv"><span>Фудкост</span><b id="cFc" class="${fc == null ? '' : fc <= tgt ? 'good' : fc <= tgt + 10 ? 'mid' : 'bad'}">${fc ?? '—'}%</b></div><div class="kv"><span>Маржа з порції</span><b class="money" id="cM">${money(c.price - cost)}</b></div>
-        <div class="kv"><span>Рекомендована ціна при фудкості ${tgt}%</span><b class="money" id="cRec">${rec ? money(rec) : '—'}</b></div>
-        <div class="kv sk-mk"><span>📈 Націнка (множник)<br><small class="muted">напр. 4 = собівартість × 4</small></span><span class="kv-r"><input data-ch="mk" inputmode="decimal" value="${c.mk || ''}" placeholder="×4" style="width:80px"></span></div>
-        <div class="kv"><span>Ціна за націнкою</span><b class="money" id="cMk">${+c.mk && cost ? money(Math.ceil(cost * +String(c.mk).replace(',', '.') / 5) * 5) : '—'}</b></div>
-        <div class="kv"><span>Фактична націнка за ціною в меню</span><b id="cMkF">${cost && c.price ? '×' + (Math.round(c.price / cost * 100) / 100) + ` (+${Math.round((c.price / cost - 1) * 100)}%)` : '—'}</b></div>`}
+      ${c.semi ? `<div class="card"><div class="kv tot"><span>Собівартість партії</span><b class="money" id="cCost">${money(cost)}</b></div>
+        <div class="kv"><span>За 1 ${esc(c.u || '')}</span><b class="money" id="cPer">${per != null ? money(per) : '—'}</b></div>`
+      : `<div class="card sk-sum"><h3>💰 Підсумок</h3>
+        <div class="sk-sum3"><div><span>Собівартість</span><b class="money" id="cCost">${money(cost)}</b></div><div><span>Фудкост <small>ціль ${tgt}%</small></span><b id="cFc" class="${fcCls(fc, tgt)}">${fc ?? '—'}%</b></div><div><span>Маржа</span><b class="money" id="cM">${money(c.price - cost)}</b></div></div>
+        <div class="kv tot"><span>💲 Ціна в меню</span>${can('menu') ? `<span class="kv-r"><input id="cPrice" inputmode="numeric" value="${c.price || ''}" placeholder="₴" style="width:96px;text-align:center"> ₴</span>` : `<b class="money">${money(c.price)}</b>`}</div>
+        <div class="kv"><span>🎯 Рекомендована<br><small class="muted">при фудкості ${tgt}%</small></span><span class="kv-r"><b class="money" id="cRec">${rec ? money(rec) : '—'}</b>${can('menu') ? '<button class="btn sm" data-a="skPriceSet" data-w="rec">Поставити</button>' : ''}</span></div>
+        <div class="kv sk-mk"><span>📈 Націнка<br><small class="muted">собівартість × множник</small></span><span class="kv-r"><input data-ch="mk" inputmode="decimal" value="${c.mk || ''}" placeholder="×4" style="width:64px"><b class="money" id="cMk">${+c.mk && cost ? money(Math.ceil(cost * +String(c.mk).replace(',', '.') / 5) * 5) : '—'}</b>${can('menu') ? '<button class="btn sm" data-a="skPriceSet" data-w="mk">Поставити</button>' : ''}</span></div>
+        <div class="kv"><span>Зараз націнка</span><b id="cMkF">${mkF(cost, c.price)}</b></div>`}
         <div class="btnrow"><button class="btn primary" data-a="skCardSave">💾 Зберегти</button>${c.isNew ? '' : '<button class="btn red" data-a="skCardDel">🗑 Видалити техкарту</button>'}</div>
         <div class="muted" style="font-size:12px;margin-top:8px">Брутто — скільки береться зі складу; нетто — після чистки / варки. Продаж страви списує брутто зі складу. Чернетка AI не списує, поки ви не збережете.</div></div>`;
   }
@@ -373,7 +382,7 @@
     const set = (id, v) => { const el = $('#' + id); if (el) el.textContent = v; };
     set('cMass', skMass(c)); { const mk = +String(c.mk || '').replace(',', '.'); set('cMk', mk && cost ? money(Math.ceil(cost * mk / 5) * 5) : '—'); }
     set('cCost', money(cost)); if (c.semi) set('cPer', +c.yield > 0 ? money(cost / +c.yield) : '—');
-    else { const fc = c.price ? Math.round(cost / c.price * 1000) / 10 : null; set('cFc', (fc ?? '—') + '%'); const el = $('#cFc'); if (el) el.className = fc == null ? '' : fc <= tgt ? 'good' : fc <= tgt + 10 ? 'mid' : 'bad'; set('cM', money(c.price - cost)); set('cRec', cost ? money(Math.ceil(cost / (tgt / 100) / 5) * 5) : '—'); } };
+    else { const fc = c.price ? Math.round(cost / c.price * 1000) / 10 : null; set('cFc', (fc ?? '—') + '%'); const el = $('#cFc'); if (el) el.className = fcCls(fc, tgt); set('cM', money(c.price - cost)); set('cRec', cost ? money(Math.ceil(cost / (tgt / 100) / 5) * 5) : '—'); set('cMkF', mkF(cost, c.price)); } };
   async function skMakeIngs(lines) { // нові продукти (з AI / накладної) → створити, повернути id
     for (const l of lines) {
       if (l.id || !l.add) continue;
@@ -555,6 +564,8 @@
       case 'skClAdd': K.card.items.push({ id: null, q: 0 }); renderMain(); break;
       case 'skClDel': K.card.items.splice(+el.dataset.i, 1); renderMain(); break;
       case 'skCardSave': skCardSave(false); break;
+      case 'skPriceSet': { const c = K.card, tgt = S.data.skCost?.cfg?.foodCost || 30, cost = c.items.reduce((a2, l) => a2 + (l.id ? (+l.q || 0) * skUnitCost(l.id) : 0), 0), mk = +String(c.mk || '').replace(',', '.');
+        const p = el.dataset.w === 'rec' ? (cost ? Math.ceil(cost / (tgt / 100) / 5) * 5 : 0) : (mk && cost ? Math.ceil(cost * mk / 5) * 5 : 0); if (!p) { toast(el.dataset.w === 'mk' ? 'Вкажіть множник націнки' : 'Спершу додайте продукти'); break; } c.price = p; skPriceSet(p); break; }
       case 'skCardDel': if (await confirmBox('Видалити техкарту?', 'Страва перестане списувати продукти')) { if (await act('skCardSave', { key: K.card.key, name: K.card.name, card: null }, '🗑 Видалено')) { K.card = null; loadView(); } } break;
       case 'skCardAi': skCardAi(); break;
       case 'skAiAll': skAiAll(); break;

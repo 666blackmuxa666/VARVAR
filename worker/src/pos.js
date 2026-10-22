@@ -55,9 +55,9 @@ export async function posApi(b, req, env) {
   const t = +b.t || 0;
   const needAdmin = () => [{ error: 'admin' }, 403];
   // ⛔ підписку ATOM не оплачено (5+ днів) — каса лише для перегляду: нові замовлення й чеки — ні
-  if (/^(order|close|accept|split|move|discount|precheck|goNew|goSt|tpayOk|tip|tipPay|cashMove|closedEdit|closedReopen|voidBack|tableBack|expense|shiftOpen|menuSave|modsSave|menuDel|catAdd|menuImport)$/.test(b.op || '') && env.VENUE !== 'varvar') { const lk = await env.DB.get('cfg:lock', 'json'); if (lk) return [{ error: lk.why === 'off' ? '⛔ Заклад вимкнено платформою ATOM — каса в режимі перегляду' : '⛔ Підписку ATOM не оплачено — каса в режимі перегляду. Оплатіть у кабінеті власника (💳 Оплата)' }, 402]; }
+  if (/^(order|close|accept|split|move|discount|precheck|goNew|goSt|tpayOk|tip|tipPay|cashMove|closedEdit|closedReopen|voidBack|tableBack|expense|shiftOpen|menuSave|menuPrice|modsSave|menuDel|catAdd|menuImport)$/.test(b.op || '') && env.VENUE !== 'varvar') { const lk = await env.DB.get('cfg:lock', 'json'); if (lk) return [{ error: lk.why === 'off' ? '⛔ Заклад вимкнено платформою ATOM — каса в режимі перегляду' : '⛔ Підписку ATOM не оплачено — каса в режимі перегляду. Оплатіть у кабінеті власника (💳 Оплата)' }, 402]; }
   // 📱 демо-каса ATOM (сайт продажу): усе можна спробувати, крім платного ШІ, Telegram, друку, персоналу й кодів
-  if (env.VENUE === 'atom-demo' && /Гість демо/.test(me.name || '') && /^(help|aiBench|photo[A-Z]|menuPhoto|menuImport|skInvParse|skCardAi|skDups|print|rcpt|closedPrint|precheck|qrNew|regCode|staff[A-Z]|wifi|courTg|reset|lookVSet|dzSet|site[A-Z]*Ai|aiSite|gbSend|chat|menuSave|modsSave|menuDel|menuUndo|catAdd|catSet|cfgSet|closedRefund|tpayRefund|closedDel|zDel|bak|go[A-Z]*Cfg|goCfgSet|siteSet|siteDesign|menuDesign)/.test(b.op || '')) return [{ error: '🔒 У демо це вимкнено — підключіть свій заклад' }, 403];
+  if (env.VENUE === 'atom-demo' && /Гість демо/.test(me.name || '') && /^(help|aiBench|photo[A-Z]|menuPhoto|menuImport|skInvParse|skCardAi|skDups|print|rcpt|closedPrint|precheck|qrNew|regCode|staff[A-Z]|wifi|courTg|reset|lookVSet|dzSet|site[A-Z]*Ai|aiSite|gbSend|chat|menuSave|menuPrice|modsSave|menuDel|menuUndo|catAdd|catSet|cfgSet|closedRefund|tpayRefund|closedDel|zDel|bak|go[A-Z]*Cfg|goCfgSet|siteSet|siteDesign|menuDesign)/.test(b.op || '')) return [{ error: '🔒 У демо це вимкнено — підключіть свій заклад' }, 403];
   const ok = (x = {}) => [{ ok: true, ...x }, 200];
   if (b.day && /^(closed(Back|Reopen|Edit|Refund|Del)|tableBack|move(Del|Back)|expense(Back|Del)?|z(Del|Back)|ldgSale)$/.test(b.op || '')) { const e = await (await import('./plock.js')).plocked(env, String(b.day)); if (e) return [{ error: e }, 423]; } // 🔒 Ф5 закритий період
   if (/^push[A-Z]/.test(b.op || '')) return (await import('./push.js')).pushApi(b, env, me); // 🔔 сповіщення в шторку — кожному працівнику
@@ -313,7 +313,7 @@ export async function posApi(b, req, env) {
 
     // меню (🔒 по одному — див. menuLock)
     case 'catSet': { if (!admin) return needAdmin(); const r = await (await import('./menu.js')).setCatGroup(env, String(b.id), b); if (r.error) return [{ error: r.error }, 400]; await notify(env, `🖥 📂 Меню: розділ <b>${esc(r.c.name.uk)}</b> → ${{ kitchen: '🍳 кухня', bar: '🍹 бар', hookah: '💨 кальян' }[r.c.g]}${r.c.nopack ? ' · без упаковки' : ''} — ${esc(who)}`); return ok(); }
-    case 'menuSave': case 'modsSave': case 'catAdd': case 'menuDel': case 'menuUndo': case 'menuPhoto': return menuLock(env, () => menuOp(b, env, who));
+    case 'menuSave': case 'menuPrice': case 'modsSave': case 'catAdd': case 'menuDel': case 'menuUndo': case 'menuPhoto': return menuLock(env, () => menuOp(b, env, who));
     case 'menuImport': { if (!admin) return needAdmin(); const r = await importMenu(env, b.rows, !!b.replace); await notify(env, `🖥 📥 Меню: імпорт — додано ${r.add}, оновлено ${r.upd}, розділів ${r.cats} · ${esc(who)}`); return ok(r); }
     // 📥 перехід з іншої системи (етап 1, mig.js): журнал, перевірка/імпорт пакета, точковий відкат
     case 'migLog': { if (!admin) return needAdmin(); return ok({ ...(await (await import('./mig.js')).migLog(env)), on: await (await import('./ops.js')).modOn(env, 'mig') }); }
@@ -338,6 +338,13 @@ async function menuOp(b, env, who) {
   const ok = (x = {}) => [{ ok: true, ...x }, 200];
   switch (b.op) {
     case 'menuSave': return menuSave(env, b.item, who);
+    case 'menuPrice': { // 💲 ціна страви прямо з техкарти: key = id або id|розмір
+      const [id, v] = String(b.key || '').split('|'), p = Math.round(+b.price || 0); if (!(p > 0 && p <= 1e6)) return [{ error: 'Ціна — від 1 ₴' }, 400];
+      const menu = await getMenu(env), it = menu.categories.flatMap(c => c.items).find(i => i.id === id); if (!it) return [{ error: 'Страву не знайдено' }, 404];
+      const vr = v != null ? it.variants?.find(x => String(x.v) === v) : null; if (v != null ? !vr : it.variants) return [{ error: 'Розмір не знайдено' }, 404];
+      const was = vr ? vr.p : it.price; if (vr) vr.p = p; else it.price = p;
+      await saveMenu(env, menu); await notify(env, `🖥 💲 Ціна <b>${esc(it.name.uk)}${vr ? ' ' + esc(vr.v) : ''}</b>: ${was} → ${p} грн · ${esc(who)}`); return ok({ price: p });
+    }
     case 'modsSave': { // 🧩 R3 групи модифікаторів; страви без групи, що зникла, — просто без неї
       const { cleanMods } = await import('./menu.js'), menu = await getMenu(env); menu.mods = cleanMods(b.mods); const ids = new Set(menu.mods.map(g => g.id));
       menu.categories.forEach(c => c.items.forEach(it => { if (it.mods) { it.mods = it.mods.filter(id => ids.has(id)); if (!it.mods.length) delete it.mods; } }));

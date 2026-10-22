@@ -28,7 +28,7 @@ const MAP = [
   ['reports', /^(report|reports|acctExport|acctFile|ldgDocs|ldgTotals|ldgAudit)$/],
   ['tax', /^(tax(Get|Set|Done)|inc(Get|Add|Del))$/],
   ['stock', /^sk[A-Z]/],
-  ['menu', /^(catSet|menuSave|modsSave|catAdd|menuDel|menuUndo|menuPhoto|menuImport|stGet|stSet|stItem|photo[A-Z]\w*)$/],
+  ['menu', /^(catSet|menuSave|menuPrice|modsSave|catAdd|menuDel|menuUndo|menuPhoto|menuImport|stGet|stSet|stItem|photo[A-Z]\w*)$/],
   ['staff', /^(staff|regCode|staffAdd|staffDel|staffEdit|staffPerm)$/],
   ['pay', /^zp(Grid|Att|Plan|PlanCopy|Op|OpDel|GridSet|Staff)$/],
   ['print', /^(rcptSet|rcptLogo|rcptTest|printRoute|tabReg|printMove|printClear|printQr|qrInfo|qrNew|dzGet|dzSet)$/],
