@@ -1,8 +1,8 @@
 // 📴 Каса без інтернету: усі файли каси (сторінка, стилі, скрипти, звуки, іконки) — з мережі, а якщо її немає або вона «висить» — з копії в браузері.
 // Копія робиться одразу при встановленні (не лише з того, що вже відкривали) і оновлюється після кожного успішного завантаження.
 // Запити до сервера (API, WebSocket) сюди не потрапляють — їх обробляє офлайн-черга в самій касі.
-const C = 'pos-v3';
-const PRE = ['pos.html', 'pos.webmanifest', 'css/pos.css', 'css/skin.css', 'js/config.js', 'js/skin.js', 'js/prnroute.js', 'js/tabprint.js', 'js/photo-ai.js', 'js/avatar.js', 'js/floor3d.js', 'js/pos.build.js', 'printer/logo.png', 'img/icon.png', 'img/app/pos.png', 'snd/duck.mp3'];
+const C = 'pos-v4';
+const PRE = ['pos.html', 'pos.webmanifest', 'css/pos.css', 'css/skin.css', 'js/config.js', 'js/skin.js', 'js/prnroute.js', 'js/tabprint.js', 'js/photo-ai.js', 'js/avatar.js', 'js/sheet.js', 'js/floor3d.js', 'js/pos.build.js', 'printer/logo.png', 'img/icon.png', 'img/app/pos.png', 'snd/duck.mp3'];
 const FILE = /\.(html|css|js|png|jpe?g|webp|svg|ico|mp3|ogg|wav|woff2?|webmanifest)$/;
 self.addEventListener('install', e => e.waitUntil(caches.open(C).then(c => Promise.all(PRE.map(u => fetch(u, { cache: 'no-cache' }).then(r => r.ok ? c.put(u, r) : 0).catch(() => {})))).then(() => self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(l => Promise.all(l.filter(k => k.startsWith('pos-') && k !== C).map(k => caches.delete(k)))).then(() => self.clients.claim())));

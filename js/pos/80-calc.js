@@ -463,7 +463,7 @@
       return h + `<div class="cnt-r"><span>${x.semi ? '🍳 ' : ''}${esc(x.n)}<br><small class="muted">система: ${fq(x.st?.[wh] || 0, x.u)}</small></span><input data-cf="${x.id}" inputmode="decimal" value="${esc(K.cf[x.id] ?? '')}" placeholder="факт, ${x.u}"><span class="cnt-d" id="cfd${x.id}">${diffH(x)}</span></div>`; }).join('');
     const hist = (S.data.skCnts || []).slice(0, 15).map(c => `<div class="kv press" data-a="skCntView" data-id="${c.id}"><span>${c.undo ? '<s class="muted">' : ''}${c.day.slice(8)}.${c.day.slice(5, 7)} · ${WHN[c.wh]} · ${esc(c.by)} <span class="muted">· ${c.n} поз.</span>${c.undo ? ' ↩️</s>' : ''}</span>${adm ? `<span class="kv-r"><b class="neg">${money(c.short)}</b><b class="good">+${money(c.over)}</b></span>` : ''}</div>`).join('');
     return `<div class="sk-tools">${adm ? `<div class="chips">${['k', 'b'].map(w => `<button class="chip ${wh === w ? 'on' : ''}" data-a="skCwh" data-w="${w}">${WHN[w]}</button>`).join('')}</div>` : ''}<input id="skCq" placeholder="🔎 Пошук продукту" value="${esc(K.cq)}"></div>
-      <div class="card"><div class="rhead"><div><h3 style="margin:0">📝 ${WHN[wh]}: внесено ${n} з ${all.length}</h3><span class="muted">Пишіть фактичний залишок (можна «250 г»). Чернетка зберігається сама — можна рахувати з планшета частинами. Порожні рядки не змінюються.</span></div>
+      <div class="card"><div class="rhead"><div><h3 style="margin:0">📝 ${WHN[wh]}: внесено ${n} з ${all.length}</h3></div>
         <button class="btn primary" data-a="skCntFin" ${n ? '' : 'disabled'}>✅ Завершити</button></div>${rows || '<div class="muted">На цьому складі ще немає продуктів</div>'}</div>
       ${hist ? `<div class="card"><h3>Історія</h3>${hist}</div>` : ''}`;
   }

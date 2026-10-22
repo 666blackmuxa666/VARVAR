@@ -101,7 +101,7 @@
     const nF = [R.pay, R.by, R.grp, R.cat, R.t, R.q.trim()].filter(Boolean).length;
     const dm = d => d.split('-').reverse().slice(0, from.slice(0, 4) === to.slice(0, 4) ? 2 : 3).join('.');
     const head = `<div class="rhead"><div><h1>Звіти</h1><span class="muted">${from === to ? dm(from) : dm(from) + ' — ' + dm(to)}${S.data.prev ? ' · порівняння з попередніми ' + daysIn(from, to).length + ' дн.' : ''}</span></div>
-      <button class="btn sm" data-a="rAcct">📤 Бухгалтеру</button>${isAdmin() ? '<button class="btn sm" data-a="rLock">🔒 Період</button><button class="btn sm" data-a="rAll">📦 Усі дані</button>' : ''}<button class="btn sm ${nF ? 'primary' : ''}" data-a="rFo">⚙️ Фільтри${nF ? ` · ${nF}` : ''}</button></div>
+      <div class="rh-btns"><button class="btn sm" data-a="rAcct">📤 Бухгалтеру</button>${isAdmin() ? '<button class="btn sm" data-a="rLock">🔒 Період</button><button class="btn sm" data-a="rAll">📦 Усі дані</button>' : ''}<button class="btn sm ${nF ? 'primary' : ''}" data-a="rFo">⚙️ Фільтри${nF ? ` · ${nF}` : ''}</button></div></div>
       <div class="chips scroll">${PER.map(([k, l]) => `<button class="chip ${R.p === k ? 'on' : ''}" data-a="rp" data-p="${k}">${l}</button>`).join('')}</div>
       ${R.p === 'c' ? `<div class="frow" style="margin-top:10px"><label>З<input type="date" id="rFrom" value="${from}"></label><label>По<input type="date" id="rTo" value="${to}"></label></div>` : ''}`;
     const filters = R.fo || nF ? `<div class="filters" style="margin-top:10px">${R.fo ? `<div class="frow">

@@ -1882,6 +1882,9 @@ const OVERFLOW_JS = `(() => {
     }
   }
   if (document.documentElement.scrollWidth > innerWidth + 2) bad.push('горизонтальний скрол сторінки: ' + document.documentElement.scrollWidth + '>' + innerWidth);
+  const mn = document.getElementById('main'); if (mn && mn.scrollWidth > mn.clientWidth + 2) bad.push('розділ ширший за екран (гуляє вбік): ' + mn.scrollWidth + '>' + mn.clientWidth);
+  for (const c of document.querySelectorAll('#main .card .card')) if (vis(c)) { bad.push('плитка в плитці (незакритий div?): ' + label(c)); break; }
+  for (const w of document.querySelectorAll('#main .switch')) if (vis(w) && Math.abs(w.getBoundingClientRect().width - 52) > 2) { bad.push('розтягнутий перемикач: ' + label(w.parentElement)); break; }
   return bad.slice(0, 8);
 })()`;
 

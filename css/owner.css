@@ -408,3 +408,18 @@ input[type=checkbox].sw:checked::after, .kv > input[type=checkbox]:checked::afte
 .pl-ta { width: 100%; font: inherit; color: var(--text); background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin: 8px 0; }
 .pl-im { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; } .pl-im img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; } .pl-dr { margin-bottom: 8px; } .pl-dr.done { opacity: .55; }
 @media (max-width: 600px) { .pl-r { flex-wrap: wrap; } .pl-bd { flex-basis: 100%; max-width: none; justify-content: flex-start; padding-left: 68px; } .pl-r.sub .pl-bd { padding-left: 68px; } }
+
+/* 📱 сторінка не «гуляє» вбік; шапка вміщається на телефоні; вікна — нижній лист, як у касі (свайп униз — js/sheet.js), фон під вікном не гортається */
+html, body { overflow-x: clip; }
+.top .in > b { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.top .in > * { flex-shrink: 0; } .top .in > b { flex-shrink: 1; }
+@media (max-width: 560px) { .top .in { padding: 10px 12px; gap: 8px; } .top .icogrp .icobtn { width: 32px; height: 32px; } }
+@media (max-width: 380px) { .top .in > b { display: none; } }
+.modal-bg, .modal { overscroll-behavior: contain; }
+html:has(.modal-bg) { overflow: hidden; }
+@media (max-width: 600px) {
+  .modal-bg { place-items: end stretch; padding: 0; padding-top: calc(40px + env(safe-area-inset-top)); }
+  .modal { max-width: none; max-height: calc(100dvh - 40px - env(safe-area-inset-top)); border-radius: 22px 22px 0 0; border-bottom: 0; padding: 26px 16px calc(18px + env(safe-area-inset-bottom)); animation: sheetUp .26s cubic-bezier(.2, .9, .3, 1); position: relative; }
+  .modal::before { content: ''; position: absolute; top: 9px; left: 50%; width: 40px; height: 5px; margin-left: -20px; border-radius: 3px; background: var(--line2, #ffffff33); }
+}
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: none; } }

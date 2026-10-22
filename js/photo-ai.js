@@ -10,7 +10,7 @@ window.PHOTOAI = (() => {
   const items = () => C.menu.categories.filter(c => !c.tech).flatMap(c => c.items);
   const nm = it => it.name?.uk || it.name || '';
   async function load(ctx) { C = ctx; try { inf = await C.vapi('photoInfo'); } catch (e) { C.toast('⚠️ ' + e.message); return false; } if (!inf.on) { C.toast('⚠️ ШІ-фото ще не підключено'); return false; } inf.dish ||= {}; inf.cat ||= {}; return true; }
-  const CSS = `#phw .modal{width:min(640px,100%);max-width:640px;padding:16px}#phw h3{margin:0 0 8px;text-align:left}#phw .ph-hint{font-size:12px;color:var(--muted,#999);margin:4px 0 8px;text-align:left}
+  const CSS = `#phw .modal{width:min(640px,100%);max-width:640px;padding:16px}@media(max-width:600px){#phw .modal{width:100%;max-width:none;padding:26px 14px calc(16px + env(safe-area-inset-bottom))}}#phw h3{margin:0 0 8px;text-align:left}#phw .ph-hint{font-size:12px;color:var(--muted,#999);margin:4px 0 8px;text-align:left}
     #phw .ph-q{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:6px 10px;border-radius:10px;background:var(--card2,#ffffff10);margin:6px 0}
     #phw .ph-cats{display:grid;gap:6px;margin-top:8px}#phw .ph-cat{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;text-align:left;padding:8px 10px;border-radius:12px;background:var(--card2,#ffffff10);border:1px solid var(--line,#ffffff1a);color:inherit;font:inherit;cursor:pointer}
     #phw .ph-cat small,#phw .ph-cat .m{color:var(--muted,#999);font-size:12px}#phw .ph-st{display:flex;width:76px}#phw .ph-st i{width:30px;height:30px;border-radius:8px;background:var(--card,#0003) center/cover;border:2px solid var(--card2,#222);margin-left:-8px}#phw .ph-st i:first-child{margin-left:0}

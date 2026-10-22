@@ -736,63 +736,6 @@ var __objRest = (source, exclude) => {
       mode = "";
     }, { passive: true });
   }
-  {
-    let d = null;
-    const atTop = (t, m) => {
-      for (let n = t; n && n !== m.parentNode; n = n.parentNode) if (n.scrollTop > 0) return false;
-      return true;
-    };
-    document.addEventListener("touchstart", (e) => {
-      var _a2, _b2;
-      d = null;
-      if (innerWidth > 600 || e.touches.length > 1) return;
-      const m = (_b2 = (_a2 = e.target).closest) == null ? void 0 : _b2.call(_a2, ".modal-bg > .modal");
-      if (!m || e.target.closest("input[type=range],textarea,canvas,.nodrag")) return;
-      const p = e.touches[0];
-      if (p.clientY - m.getBoundingClientRect().top > 70 && !atTop(e.target, m)) return;
-      d = { m, y: p.clientY, x: p.clientX, dy: 0, on: false };
-    }, { passive: true });
-    document.addEventListener("touchmove", (e) => {
-      if (!d) return;
-      const p = e.touches[0], dy = p.clientY - d.y, dx = Math.abs(p.clientX - d.x);
-      if (!d.on) {
-        if (dx > 12 && dx > dy || dy < -6) {
-          d = null;
-          return;
-        }
-        if (dy > 10) d.on = true;
-        else return;
-      }
-      d.dy = Math.max(0, dy);
-      d.m.style.transition = "none";
-      d.m.style.transform = `translateY(${d.dy}px)`;
-    }, { passive: true });
-    document.addEventListener("touchend", () => {
-      var _a2;
-      if (!d) return;
-      const { m, dy, on: on2 } = d;
-      d = null;
-      if (!on2) return;
-      if (dy > Math.min(120, m.offsetHeight * 0.25)) {
-        const bg = m.parentNode;
-        m.style.transition = "transform .18s";
-        m.style.transform = "translateY(100%)";
-        (_a2 = navigator.vibrate) == null ? void 0 : _a2.call(navigator, 8);
-        setTimeout(() => {
-          bg.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-          if (bg.isConnected) {
-            m.style.transform = "";
-          }
-        }, 170);
-      } else {
-        m.style.transition = "transform .2s";
-        m.style.transform = "";
-        setTimeout(() => {
-          m.style.transition = "";
-        }, 220);
-      }
-    });
-  }
   document.addEventListener("visibilitychange", wake);
   addEventListener("pageshow", wake);
   addEventListener("focus", wake);
@@ -4787,7 +4730,7 @@ var __objRest = (source, exclude) => {
     const nF = [R.pay, R.by, R.grp, R.cat, R.t, R.q.trim()].filter(Boolean).length;
     const dm2 = (d) => d.split("-").reverse().slice(0, from.slice(0, 4) === to.slice(0, 4) ? 2 : 3).join(".");
     const head = `<div class="rhead"><div><h1>\u0417\u0432\u0456\u0442\u0438</h1><span class="muted">${from === to ? dm2(from) : dm2(from) + " \u2014 " + dm2(to)}${S.data.prev ? " \xB7 \u043F\u043E\u0440\u0456\u0432\u043D\u044F\u043D\u043D\u044F \u0437 \u043F\u043E\u043F\u0435\u0440\u0435\u0434\u043D\u0456\u043C\u0438 " + daysIn(from, to).length + " \u0434\u043D." : ""}</span></div>
-      <button class="btn sm" data-a="rAcct">\u{1F4E4} \u0411\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u0443</button>${isAdmin() ? '<button class="btn sm" data-a="rLock">\u{1F512} \u041F\u0435\u0440\u0456\u043E\u0434</button><button class="btn sm" data-a="rAll">\u{1F4E6} \u0423\u0441\u0456 \u0434\u0430\u043D\u0456</button>' : ""}<button class="btn sm ${nF ? "primary" : ""}" data-a="rFo">\u2699\uFE0F \u0424\u0456\u043B\u044C\u0442\u0440\u0438${nF ? ` \xB7 ${nF}` : ""}</button></div>
+      <div class="rh-btns"><button class="btn sm" data-a="rAcct">\u{1F4E4} \u0411\u0443\u0445\u0433\u0430\u043B\u0442\u0435\u0440\u0443</button>${isAdmin() ? '<button class="btn sm" data-a="rLock">\u{1F512} \u041F\u0435\u0440\u0456\u043E\u0434</button><button class="btn sm" data-a="rAll">\u{1F4E6} \u0423\u0441\u0456 \u0434\u0430\u043D\u0456</button>' : ""}<button class="btn sm ${nF ? "primary" : ""}" data-a="rFo">\u2699\uFE0F \u0424\u0456\u043B\u044C\u0442\u0440\u0438${nF ? ` \xB7 ${nF}` : ""}</button></div></div>
       <div class="chips scroll">${PER.map(([k, l]) => `<button class="chip ${R.p === k ? "on" : ""}" data-a="rp" data-p="${k}">${l}</button>`).join("")}</div>
       ${R.p === "c" ? `<div class="frow" style="margin-top:10px"><label>\u0417<input type="date" id="rFrom" value="${from}"></label><label>\u041F\u043E<input type="date" id="rTo" value="${to}"></label></div>` : ""}`;
     const filters = R.fo || nF ? `<div class="filters" style="margin-top:10px">${R.fo ? `<div class="frow">
@@ -5444,7 +5387,7 @@ var __objRest = (source, exclude) => {
         ${row("\u{1F3F7} \u041C\u0430\u043A\u0441. \u0437\u043D\u0438\u0436\u043A\u0430 \u043E\u0444\u0456\u0446\u0456\u0430\u043D\u0442\u0430", ((_a2 = c.discMax) != null ? _a2 : 20) + "%", ch("cfg", ' data-k="discMax"'), "\u0411\u0456\u043B\u044C\u0448\u0443 \u0437\u043D\u0438\u0436\u043A\u0443 \u0434\u0430\u0454 \u043B\u0438\u0448\u0435 \u0430\u0434\u043C\u0456\u043D\u0456\u0441\u0442\u0440\u0430\u0442\u043E\u0440")}
         ${row("\u{1F468}\u200D\u{1F373} \u0427\u0430\u0441\u0442\u043A\u0430 \u043A\u0443\u0445\u043D\u0456 \u0432\u0456\u0434 \u0447\u0430\u0439\u043E\u0432\u0438\u0445", ((_b2 = st == null ? void 0 : st.kpct) != null ? _b2 : 20) + "%", ch("kpct"), `\u041F\u043B\u044E\u0441 \xAB\u043F\u043E\u0434\u044F\u043A\u0430 \u043A\u0443\u0445\u043D\u0456\xBB \u0432\u0456\u0434 \u0433\u043E\u0441\u0442\u044F; \u043F\u043E\u0440\u0456\u0432\u043D\u0443 \u043C\u0456\u0436 \u043A\u0443\u0445\u0430\u0440\u044F\u043C\u0438 \u043D\u0430 \u0437\u043C\u0456\u043D\u0456${((_c = st == null ? void 0 : st.cooks) == null ? void 0 : _c.length) ? ` (\u0437\u0430\u0440\u0430\u0437: ${st.cooks.map(esc).join(", ")})` : " (\u0441\u044C\u043E\u0433\u043E\u0434\u043D\u0456 \u0449\u0435 \u043D\u0456\u043A\u043E\u0433\u043E \u2014 \u043F\u0456\u0434\u0435 \u0432 \xAB\u{1F468}\u200D\u{1F373} \u041A\u0443\u0445\u043D\u044F\xBB)"}`)}</div>
       <div class="card"><h3>\u{1F319} \u0414\u0435\u043D\u044C \u0456 Z-\u0437\u0432\u0456\u0442</h3>
-        ${row("\u{1F552} \u0420\u043E\u0431\u043E\u0447\u0438\u0439 \u0434\u0435\u043D\u044C \u0437\u0430\u043A\u0456\u043D\u0447\u0443\u0454\u0442\u044C\u0441\u044F \u043E", String((_d = c.dayH) != null ? _d : 3).padStart(2, "0") + ":00", ch("cfg", ' data-k="dayH"'), "\u0427\u0435\u043A\u0438 \u0434\u043E \u0446\u0456\u0454\u0457 \u0433\u043E\u0434\u0438\u043D\u0438 \u0440\u0430\u0445\u0443\u044E\u0442\u044C\u0441\u044F \u0432 \u043F\u043E\u043F\u0435\u0440\u0435\u0434\u043D\u0456\u0439 \u0434\u0435\u043D\u044C (0\u20138)")}
+        ${row("\u{1F552} \u0420\u043E\u0431\u043E\u0447\u0438\u0439 \u0434\u0435\u043D\u044C \u0437\u0430\u043A\u0456\u043D\u0447\u0443\u0454\u0442\u044C\u0441\u044F \u043E", String((_d = c.dayH) != null ? _d : 3).padStart(2, "0") + ":00", ch("cfg", ' data-k="dayH"'), "\u0427\u0435\u043A\u0438 \u0434\u043E \u0446\u0456\u0454\u0457 \u0433\u043E\u0434\u0438\u043D\u0438 \u0440\u0430\u0445\u0443\u044E\u0442\u044C\u0441\u044F \u0432 \u043F\u043E\u043F\u0435\u0440\u0435\u0434\u043D\u0456\u0439 \u0434\u0435\u043D\u044C (0\u20138)")}</div>
       <div class="card"><h3>\u{1F477} \u0417\u043C\u0456\u043D\u0438</h3>
         ${row("\u23F0 \u0417\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F \u0440\u0430\u0445\u0443\u0454\u0442\u044C\u0441\u044F \u043F\u0456\u0441\u043B\u044F", ((_e = c.lateMin) != null ? _e : 10) + " \u0445\u0432", ch("cfg", ' data-k="lateMin"'), "\u0412\u0456\u0434 \u0437\u0430\u043F\u043B\u0430\u043D\u043E\u0432\u0430\u043D\u043E\u0433\u043E \u0447\u0430\u0441\u0443 \u043F\u043E\u0447\u0430\u0442\u043A\u0443 \u0437\u043C\u0456\u043D\u0438")}
         ${row("\u2796 \u0428\u0442\u0440\u0430\u0444 \u0437\u0430 \u0437\u0430\u043F\u0456\u0437\u043D\u0435\u043D\u043D\u044F", ((_f = c.lateFine) != null ? _f : 0) + " \u20B4", ch("cfg", ' data-k="lateFine"'), "0 \u2014 \u0431\u0435\u0437 \u0448\u0442\u0440\u0430\u0444\u0443; \u0430\u0434\u043C\u0456\u043D \u0432\u0438\u0440\u0456\u0448\u0443\u0454 \u043A\u043D\u043E\u043F\u043A\u043E\u044E \xAB\u2705 + \u0448\u0442\u0440\u0430\u0444\xBB")}</div>
@@ -7199,7 +7142,7 @@ ${g.sup}:
     }).join("");
     const hist = (S.data.skCnts || []).slice(0, 15).map((c) => `<div class="kv press" data-a="skCntView" data-id="${c.id}"><span>${c.undo ? '<s class="muted">' : ""}${c.day.slice(8)}.${c.day.slice(5, 7)} \xB7 ${WHN[c.wh]} \xB7 ${esc(c.by)} <span class="muted">\xB7 ${c.n} \u043F\u043E\u0437.</span>${c.undo ? " \u21A9\uFE0F</s>" : ""}</span>${adm ? `<span class="kv-r"><b class="neg">${money(c.short)}</b><b class="good">+${money(c.over)}</b></span>` : ""}</div>`).join("");
     return `<div class="sk-tools">${adm ? `<div class="chips">${["k", "b"].map((w) => `<button class="chip ${wh === w ? "on" : ""}" data-a="skCwh" data-w="${w}">${WHN[w]}</button>`).join("")}</div>` : ""}<input id="skCq" placeholder="\u{1F50E} \u041F\u043E\u0448\u0443\u043A \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0443" value="${esc(K.cq)}"></div>
-      <div class="card"><div class="rhead"><div><h3 style="margin:0">\u{1F4DD} ${WHN[wh]}: \u0432\u043D\u0435\u0441\u0435\u043D\u043E ${n} \u0437 ${all.length}</h3><span class="muted">\u041F\u0438\u0448\u0456\u0442\u044C \u0444\u0430\u043A\u0442\u0438\u0447\u043D\u0438\u0439 \u0437\u0430\u043B\u0438\u0448\u043E\u043A (\u043C\u043E\u0436\u043D\u0430 \xAB250 \u0433\xBB). \u0427\u0435\u0440\u043D\u0435\u0442\u043A\u0430 \u0437\u0431\u0435\u0440\u0456\u0433\u0430\u0454\u0442\u044C\u0441\u044F \u0441\u0430\u043C\u0430 \u2014 \u043C\u043E\u0436\u043D\u0430 \u0440\u0430\u0445\u0443\u0432\u0430\u0442\u0438 \u0437 \u043F\u043B\u0430\u043D\u0448\u0435\u0442\u0430 \u0447\u0430\u0441\u0442\u0438\u043D\u0430\u043C\u0438. \u041F\u043E\u0440\u043E\u0436\u043D\u0456 \u0440\u044F\u0434\u043A\u0438 \u043D\u0435 \u0437\u043C\u0456\u043D\u044E\u044E\u0442\u044C\u0441\u044F.</span></div>
+      <div class="card"><div class="rhead"><div><h3 style="margin:0">\u{1F4DD} ${WHN[wh]}: \u0432\u043D\u0435\u0441\u0435\u043D\u043E ${n} \u0437 ${all.length}</h3></div>
         <button class="btn primary" data-a="skCntFin" ${n ? "" : "disabled"}>\u2705 \u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u0438</button></div>${rows || '<div class="muted">\u041D\u0430 \u0446\u044C\u043E\u043C\u0443 \u0441\u043A\u043B\u0430\u0434\u0456 \u0449\u0435 \u043D\u0435\u043C\u0430\u0454 \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u0456\u0432</div>'}</div>
       ${hist ? `<div class="card"><h3>\u0406\u0441\u0442\u043E\u0440\u0456\u044F</h3>${hist}</div>` : ""}`;
   }
