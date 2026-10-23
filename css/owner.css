@@ -8,7 +8,8 @@
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 var(--font); -webkit-font-smoothing: antialiased; }
-button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; touch-action: manipulation; }
+html { touch-action: pan-x pan-y; } /* 🤏 без масштабування пальцями: сторінка кабінету не «гуляє» */
 input, select { font: inherit; color: var(--text); background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; width: 100%; outline: none; }
 input:focus, select:focus { border-color: var(--accent); }
 [hidden] { display: none !important; }
@@ -53,6 +54,7 @@ a { color: var(--accent); }
 main { max-width: 1200px; margin: 0 auto; padding: 16px 16px 60px; }
 h2 { font-size: 20px; margin: 22px 0 10px; }
 h2:first-child { margin-top: 4px; }
+h3.acc-grp { font-size: 15px; margin: 16px 0 8px; } /* 👤 Акаунти: групи «Платформа / Власники / Бухгалтери» */
 
 .card { background: var(--card); border-radius: 18px; padding: 16px; border: 1px solid var(--line); min-width: 0; }
 .card h3 { margin: 0 0 10px; font-size: 16px; }
