@@ -898,6 +898,13 @@ async function loyTests(A, W, dish) {
     finally { await pos(A, 'delete', { t: T, reason: 'QA' }); }
   });
 
+  sect('🛡 Заголовки сайту');
+  await step('posatom.online: кабінет не вбудувати в чужий сайт, nosniff, https', async () => { // fetch не дає підмінити Host — тому node:http
+    const { request } = await import('node:http'), u = new URL(API);
+    const h = await new Promise((ok, no) => request({ host: u.hostname, port: u.port, path: '/owner/', headers: { host: 'posatom.online' } }, r => { r.resume(); ok(r.headers); }).on('error', no).end());
+    must(h['x-frame-options'] === 'SAMEORIGIN' && h['x-content-type-options'] === 'nosniff' && /max-age/.test(h['strict-transport-security'] || ''), JSON.stringify(h).slice(0, 200));
+  });
+
   sect('🗺 План кабінету');
   await step('план: задача → ⭐ → ✅ у кошик → видалення; не-платформі 403', async () => {
     const lg = await http('/api/owner', { op: 'login', email: 'qa-platform@test.local', pass: 'qa-platform-pass-1' }); if (lg.status !== 200) return 'немає тестового акаунта платформи — пропуск';

@@ -46,9 +46,17 @@ async function cached(req, path, run) {
   MEM.set(key, { body, headers, exp: Date.now() + ttl * 1000 });
   return new Response(body, { status: 200, headers: { ...headers, 'x-cache': 'MISS' } });
 }
+// 🛡 Заголовки безпеки для posatom.online: кабінет і касу не вбудувати в чужий сайт (підміна кліків), браузер не вгадує тип файлу, завжди https
+const SEC_H = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin', 'strict-transport-security': 'max-age=15552000' };
+function secH(r) {
+  if (r.webSocket) return r;
+  const h = new Headers(r.headers); for (const [k, v] of Object.entries(SEC_H)) if (!h.has(k)) h.set(k, v);
+  if (/html/.test(h.get('content-type') || '')) h.set('x-frame-options', 'SAMEORIGIN');
+  return new Response(r.body, { status: r.status, statusText: r.statusText, headers: h });
+}
 export default {
   async fetch(req0, env) {
-    { const h = new URL(req0.url).hostname; if ((h === 'posatom.online' || h === 'www.posatom.online') && !/^\/v\/[a-z0-9-]+\/api\/v1\//.test(new URL(req0.url).pathname)) return atomSite(req0, env); } // 🔌 API партнерів: posatom.online/v/<заклад>/api/v1/… // 🌐 ATOM: сайт закладів на власному домені
+    { const h = new URL(req0.url).hostname; if ((h === 'posatom.online' || h === 'www.posatom.online') && !/^\/v\/[a-z0-9-]+\/api\/v1\//.test(new URL(req0.url).pathname)) return secH(await atomSite(req0, env)); } // 🔌 API партнерів: posatom.online/v/<заклад>/api/v1/… // 🌐 ATOM: сайт закладів на власному домені
     // 🏪 заклад: /v/<id>/… → запит без префікса + заголовок x-venue; без префікса — VARVAR
     const { venue, path: p } = splitVenue(new URL(req0.url)), req = venue === MAIN && !(p.startsWith('/api/v1/') && p !== new URL(req0.url).pathname) ? new Request(req0) : stripVenue(req0, venue, p); // 🔌 /v/varvar/api/v1/… — теж без префікса
     if (venue === MAIN) { req.headers.delete('x-venue'); req.headers.delete('x-venue-init'); } // заклад визначає лише адреса, не заголовок від клієнта
