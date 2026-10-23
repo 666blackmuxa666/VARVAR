@@ -51,7 +51,7 @@
     const R = S.txR, T = R.tax, dm = d => d.split('-').reverse().slice(0, 2).join('.');
     return hd + `<div class="muted" style="font-size:13px;margin-bottom:8px">Оберіть форму — система нагадає в Telegram про звіти й платежі та дасть посилання на кабінет платника. Ми не подаємо звіти й не маємо доступу до рахунків. ⚠️ Дати й суми орієнтовні — звірте з бухгалтером.</div>
       <div class="kv"><span>Форма</span><button class="btn sm ${T.kind ? 'primary' : ''}" data-tx="kind">${esc(R.kinds[T.kind] || 'Не обрано')}</button></div>
-      ${T.kind === 'tov' ? `<div class="kv"><span>Платник ПДВ</span><span class="switch press ${T.pdv ? 'on' : ''}" data-txs="pdv" role="switch" aria-checked="${T.pdv ? 'true' : 'false'}"></span></div>` : ''}
+      ${T.kind === 'tov' || T.kind === 'fop3' ? `<div class="kv"><span>Платник ПДВ</span><span class="switch press ${T.pdv ? 'on' : ''}" data-txs="pdv" role="switch" aria-checked="${T.pdv ? 'true' : 'false'}"></span></div>` : ''}
       ${T.pdv ? `<div class="kv"><span>🧾 Реквізити для податкових накладних (M.E.Doc)<br><small class="muted">${T.pn ? esc(T.pn.n) + ' · ІПН ' + esc(T.pn.ipn) : 'не заповнено — потрібні для вивантаження ПН у 📊 Звіти → 📤 Бухгалтеру'}</small></span><button class="btn sm" data-tx="pn">✏️</button></div>` : ''}
       ${T.kind ? `<div class="kv"><span>🔔 Нагадування в Telegram</span><span class="switch press ${T.on ? 'on' : ''}" data-txs="on" role="switch" aria-checked="${T.on ? 'true' : 'false'}"></span></div>
       <div class="kv"><span>Нагадувати за (днів)</span><button class="btn sm" data-tx="lead">${T.lead}</button></div>
