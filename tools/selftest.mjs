@@ -182,6 +182,13 @@ async function apiTests() {
     must(v.list.some(e => e.id === 'esv') && v.list.some(e => e.id === 'decl') && v.list.every(e => !/^\d{4}-\d{2}-\d{2}$/.test(e.d) ? false : ![0, 6].includes(new Date(e.d + 'T12:00:00Z').getUTCDay())), 'строки: ' + v.list.map(e => e.key).join());
     const esv = v.list.find(e => e.id === 'esv'); must(esv.amt === 1760 * 3, 'ЄСВ квартал ≠ 5280: ' + esv.amt);
     const d = await posOk(A, 'taxDone', { key: esv.key, v: 1 }); must(d.list.find(e => e.key === esv.key)?.done, 'done не збереглось');
+    { // 🧮 Бухгалтер: ставки 2026 (МЗП 8647) і ПДВ
+      const v2 = await posOk(A, 'taxSet', { kind: 'fop3', pdv: 0, rates: { minWage: 8647, ep3: 5 } }); must(v2.list.find(e => e.id === 'esv').amt === 5707.02, 'ЄСВ квартал при МЗП 8647 ≠ 5707.02');
+      const f2 = await posOk(A, 'taxSet', { kind: 'fop2' }); must(f2.list.find(e => e.id === 'ep').amt === 1729.4, 'ЄП 2 групи ≠ 20% від 8647: ' + f2.list.find(e => e.id === 'ep').amt);
+      const p3 = await posOk(A, 'taxSet', { kind: 'fop3', pdv: 1 }); must(p3.tax.rates.ep3 === 3, 'ФОП 3 з ПДВ — ЄП 3%: ' + p3.tax.rates.ep3); must(p3.list.some(e => e.id === 'pdv'), 'ФОП 3 платник ПДВ — немає події ПДВ');
+      const pt = await posOk(A, 'taxSet', { kind: 'tov', pdv: 1 }); const pv = pt.list.find(e => e.id === 'pdv'); must(pv && (+pv.d.slice(8) >= 30 || +pv.d.slice(8) <= 3), 'ПДВ платіж має бути 30-го (10 днів після декларації 20-го): ' + pv?.d);
+      await posOk(A, 'taxSet', { pdv: 0 });
+    }
     const t = await posOk(A, 'taxSet', { kind: 'tov', pdv: 1 }); must(t.list.some(e => e.id === 'pdv') && t.list.some(e => e.id === 'zp'), 'ТОВ без ПДВ/ЗП');
     must((await pos(A, 'taxSet', { kind: 'zzz' })).status === 400, 'невідома форма');
     must((await pos(A, 'taxSet', { rates: { esv: -1 } })).status === 400, 'мінусова ставка');

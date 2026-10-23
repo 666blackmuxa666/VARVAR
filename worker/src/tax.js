@@ -4,7 +4,7 @@ import { dayKey, esc, money, notify, tg, L } from './ops.js';
 
 export const TAX_LINK = 'https://cabinet.tax.gov.ua/';
 export const KINDS = { fop1: 'ФОП 1 група', fop2: 'ФОП 2 група', fop3: 'ФОП 3 група', tov: 'ТОВ (загальна система)' };
-export const RATES = { minWage: 8000, living: 3328, esv: 22, ep3: 5, vz: 1, pdfo: 18, vzZp: 5 }; // 2026; змінюються власником
+export const RATES = { minWage: 8647, living: 3328, esv: 22, ep3: 5, vz: 1, pdfo: 18, vzZp: 5 }; // 2026; змінюються власником
 const r2 = n => Math.round((+n || 0) * 100) / 100;
 const pad = n => String(n).padStart(2, '0');
 const iso = (y, m, d) => new Date(Date.UTC(y, m - 1, d)).toISOString().slice(0, 10); // m/d можуть «переливатись» (m=14 → наступний рік)
@@ -16,7 +16,7 @@ const qName = (y, q) => `${q} кв. ${y}`;
 const mName = (y, m) => `${pad(((m - 1) % 12 + 12) % 12 + 1)}.${y + Math.floor((m - 1) / 12)}`;
 
 export const getTax = async env => ({ kind: '', pdv: 0, on: 1, lead: 3, rates: {}, done: {}, ...((await env.DB.get('tax', 'json')) || {}) });
-export const rateOf = tax => ({ ...RATES, ...(tax.rates || {}) });
+export const rateOf = tax => ({ ...RATES, ...(tax.pdv ? { ep3: 3 } : {}), ...(tax.rates || {}) }); // ФОП 3 групи: 5 % (без ПДВ) або 3 % (платник ПДВ)
 
 // усі події року Y (дата, ключ, назва); per — період, за який рахується орієнтовна сума
 function yearEvents(tax, Y) {
@@ -29,6 +29,7 @@ function yearEvents(tax, Y) {
       add(plus(dl, 10), 'ep', 'pay', `💰 Єдиний податок за ${qName(y, q)}`, { per, calc: 'ep3' });
       add(plus(dl, 10), 'vz', 'pay', `💰 Військовий збір за ${qName(y, q)}`, { per, calc: 'vz' });
       add(iso(y, q * 3 + 1, 20), 'esv', 'pay', `💰 ЄСВ за себе за ${qName(y, q)}`, { calc: 'esvQ' });
+      if (tax.pdv) { add(dl, 'pdvDecl', 'decl', `📄 Декларація з ПДВ за ${qName(y, q)}`); add(plus(dl, 10), 'pdv', 'pay', `💰 ПДВ за ${qName(y, q)}`); } // платник ЄП-ПДВ: податковий період — квартал
     }
   } else if (k === 'fop1' || k === 'fop2') {
     for (let m = 1; m <= 12; m++) {
@@ -39,7 +40,7 @@ function yearEvents(tax, Y) {
   } else { // ТОВ
     for (let m = 1; m <= 12; m++) {
       add(iso(Y, m, 20), 'zp', 'pay', `💰 ЄСВ, ПДФО та військовий збір із зарплати за ${mName(Y, m - 1)}`, { calc: 'zp', mon: iso(Y, m - 1, 1).slice(0, 7) });
-      if (tax.pdv) { add(iso(Y, m, 20), 'pdvDecl', 'decl', `📄 Декларація з ПДВ за ${mName(Y, m - 1)}`); add(iso(Y, m, 25), 'pdv', 'pay', `💰 ПДВ за ${mName(Y, m - 1)}`); }
+      if (tax.pdv) { add(iso(Y, m, 20), 'pdvDecl', 'decl', `📄 Декларація з ПДВ за ${mName(Y, m - 1)}`); add(iso(Y, m, 30), 'pdv', 'pay', `💰 ПДВ за ${mName(Y, m - 1)}`); }
     }
     for (const [q, y] of [[4, Y - 1], [1, Y], [2, Y], [3, Y]]) { add(plus(qEnd(y, q), 40), 'f1', 'decl', `📄 Звіт з ПДФО (1ДФ) і декларація з прибутку за ${qName(y, q)}`); }
   }
@@ -59,8 +60,9 @@ export async function taxAmount(env, tax, e) {
   if (c === 'esvM') return r2(R.minWage * R.esv / 100);
   if (c === 'esvQ') return r2(R.minWage * R.esv / 100 * 3);
   if (c === 'ep3' || c === 'vz') {
-    const r = await (await import('./ops.js')).reportRange(env, e.per[0], e.per[1] < dayKey() ? e.per[1] : dayKey()); if (!r) return null;
-    const rev = r.checks.reduce((a, x) => a + x.sum - x.tip, 0); return r2(rev * (c === 'ep3' ? R.ep3 : R.vz) / 100);
+    const { incMonth } = await import('./income.js'), a = e.per[0].slice(0, 7), b = e.per[1].slice(0, 7); let rev = 0; // дохід — як у 📒 книзі доходів (чеки без чайових + сертифікати, передоплати, інший дохід)
+    for (let m = a, i = 0; m <= b && i < 12; i++) { rev += (await incMonth(env, m)).t.tot; const t = +m.slice(0, 4) * 12 + +m.slice(5, 7); m = `${Math.floor(t / 12)}-${pad(t % 12 + 1)}`; }
+    return r2(rev * (c === 'ep3' ? R.ep3 : R.vz) / 100);
   }
   if (c === 'zp') { const p = await (await import('./pay.js')).payroll(env, e.mon).catch(() => null); return p ? r2(p.fund * (R.esv + R.pdfo + R.vzZp) / 100) : null; }
   return null;
@@ -77,7 +79,7 @@ export async function taxSet(env, b) {
   return L(env, 'tax', async () => {
     const t = await getTax(env);
     if ('kind' in b) t.kind = b.kind || '';
-    if ('pdv' in b) t.pdv = b.pdv ? 1 : 0;
+    if ('pdv' in b) { const p = b.pdv ? 1 : 0; if (p !== t.pdv && t.rates) delete t.rates.ep3; t.pdv = p; } // ставка ЄП залежить від ПДВ — скидаємо на типову
     if ('on' in b) t.on = b.on ? 1 : 0;
     if ('lead' in b) { const n = Math.round(+b.lead); if (!(n >= 0 && n <= 30)) return { error: 'Нагадувати за 0–30 днів' }; t.lead = n; }
     if (b.pn && typeof b.pn === 'object') { // 🧾 реквізити продавця для ПН (M.E.Doc): ЄДРПОУ/РНОКПП, ІПН платника ПДВ, код ДПІ, назва, посадова особа
