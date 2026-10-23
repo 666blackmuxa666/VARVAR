@@ -13,15 +13,16 @@ window.OWNMIG = (() => {
     sup: { n: /назв|найменув|наименов|контрагент|постач|поставщ|name/, code: /єдрпоу|едрпоу|іпн|инн|рнокпп|edrpou|^код/, iban: /iban|рахун|счет|р\/р/, phone: /тел|phone|моб/, addr: /адрес|address/ },
     cli: { phone: /тел|phone|моб/, name: /^ім|^им|піб|фио|name|клієнт|клиент|гість|гост/, bal: /^(?!.*(депоз|deposit)).*(бонус|бал|bonus|point)/, bd: /народж|рожд|birth|д\.?\s?н\.?$/, note: /нотат|приміт|примеч|коментар|note/, card: /картк|карт[аы]|card/, grp: /груп|рівен|уровен|discount|знижк|скидк/, dep: /депоз|deposit|аванс/ },
     staff: { n: /^ім|^им|піб|фио|прізв|фамил|name|працівн|сотрудн|employee/, role: /посад|должн|роль|role|категор/ },
+    hall: { n: /зал|hall|приміщ|зона/, c: /стол|стіл|table|кільк|count/ },
     book: { id: /^(код|номер|id|code)\b/, date: /дата|date|день/, time: /час|время|time/, name: /^ім|^им|піб|фио|name|гість|гост|клієнт|клиент|замовн/, phone: /тел|phone|моб/, people: /гост.*к|осіб|персон|people|pax|кільк/, kind: /тип|вид|kind|банкет/, dep: /передопл|предопл|аванс|депоз|deposit|prepay/, comment: /комент|примеч|приміт|comment|note/, t: /^стіл|^стол|table/ },
     cert: { code: /код|номер|code|^№/, sum: /номінал|номинал|сума|сумма|amount|nominal/, left: /залиш|остат|balance|left/, phone: /тел|phone/, to: /кому|отримув|получат|^to$/, exp: /діє до|действ|термін|срок|expir/ },
   };
   const FILL = { menu: ['cat'], ing: ['cat', 'wh'], cards: ['dish'] }; // порожня клітинка = як у рядку вище (групи в 1С / рецептури)
   const TOTAL = /^(разом|всього|усього|итого|всего|total)\b/i;
-  const ORDER = ['menu', 'ing', 'cards', 'sup', 'cli', 'cert', 'staff', 'book'];
+  const ORDER = ['menu', 'mods', 'ing', 'cards', 'sup', 'cli', 'cert', 'staff', 'hall', 'book'];
   // 🔴 R-Keeper: файли вивантаження й звідки їх узяти (див. _team/rkeeper.md)
   const RK = `🔴 <b>R-Keeper:</b> вивантажуйте, <b>поки працює ваш сервер RK7</b>. <b>Меню, ціни, персонал</b> — утиліта RK7_dbf (файли .dbf) або довідники XML-інтерфейсу <code>GetRefData</code> (MENUITEMS, CATEGLIST, EMPLOYEES — файли .xml). <b>Техкарти, залишки, постачальники</b> — StoreHouse: калькуляційні карти, звіт залишків на дату переходу, кореспонденти → Excel. <b>Гості</b> — звіт CRM на день переходу → Excel: телефон, бонуси, <b>номер картки, група знижки, залишок депозиту</b> (депозит стане сертифікатом гостя <code>DEP-телефон</code> — гаситься на касі й у боті). <b>Сертифікати</b> — окремим файлом. Не впевнені — напишіть ATOM, вивантажимо разом безкоштовно.`;
-  const DIRECT = { poster: 'Poster → Доступ → Інтеграції → API → скопіюйте ключ (вигляд 123456:abc…). Заберемо меню, техкарти, залишки, постачальників і гостей з бонусами.', syrve: 'Syrve Office → Налаштування Cloud API → «API login». Заберемо меню й товари; техкарти й залишки — файлом.' };
+  const DIRECT = { poster: 'Poster → Доступ → Інтеграції → API → скопіюйте ключ (вигляд 123456:abc…). Заберемо меню, модифікатори, техкарти з напівфабрикатами, залишки, постачальників, гостей з бонусами й картками, персонал і зали зі столами.', syrve: 'Syrve Office → Налаштування Cloud API → «API login». Заберемо меню й товари; техкарти й залишки — файлом.' };
   function fromPull(k) { // 📡 рядки з API старої системи → та сама таблиця, що й з файлу (зіставлення 1:1)
     const m = st(), F = Object.keys(kinds()[k].f), rows = m.pulled?.[k] || []; if (!rows.length) return;
     Object.assign(m, { head: F.map(f => kinds()[k].f[f].replace('*', '')), data: rows.map(r => F.map(f => r[f] ?? '')), map: Object.fromEntries(F.map((f, j) => [f, j])), file: '📡 ' + (C.S.mig.sysName || '') });

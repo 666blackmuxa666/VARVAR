@@ -1413,7 +1413,24 @@ async function loyTests(A, W, dish) {
       const dc = (await vpos(VA, 'certGet', { code: rc.dep.code })).j.c; must(dc?.st === 'ok' && dc.left === 1500 && /Депозит/.test(dc.from), 'депозит не сертифікат з міграції: ' + JSON.stringify(dc));
       ok(await vpos(VA, 'migUndo', { id: rg.id }), 'відкат гостей R-Keeper'); must((await vpos(VA, 'certGet', { code: rc.dep.code })).status === 400, 'депозит лишився після відкату');
     }
-    return '8 видів, розміри, R-Keeper (персонал, гості з депозитом), повтор, відкат';
+    { // 🥣 напівфабрикат: «страва» техкарти = продукт складу → картка semi: з виходом; 🧩 модифікатори з привʼязкою до страви; 🪑 зали з Poster
+      const sc = ok(await run('cards', [{ dish: 'QA Сметана', ing: 'QA Буряк', q: '100', u: 'г', out: '500' }], 0, 'poster'), 'напівфабрикат');
+      const sm2 = (await vpos(VA, 'skData')).j.ing.find(x => x.n === 'QA Сметана'), sk = (await vpos(VA, 'skCost')).j.cards['semi:' + sm2?.id];
+      must(sc.tot.semi === 1 && sm2?.semi && sk?.yield === 0.5 && sk.items.some(l => l.q === 0.1), 'напівфабрикат: ' + JSON.stringify({ tot: sc.tot, sm2, sk }).slice(0, 250));
+      ok(await vpos(VA, 'migUndo', { id: sc.id }), 'відкат напівфабрикату'); must(!(await vpos(VA, 'skData')).j.ing.find(x => x.n === 'QA Сметана')?.semi, 'напівфабрикат лишився після відкату');
+      const md = ok(await run('mods', [{ grp: 'QA Соус', n: 'QA Сирний', p: '15', min: '0', max: '2', dish: 'QA Борщ український;QA Нема' }, { grp: 'QA Соус', n: 'QA Часниковий', p: '10' }], 0, 'poster'), 'модифікатори');
+      const mm = (await vpos(VA, 'menu')).j.menu, mg = (mm.mods || []).find(x => x.name === 'QA Соус');
+      must(md.add === 2 && mg?.max === 2 && mg.items[0].p === 15 && (await items()).find(i => i.name.uk === 'QA Борщ український')?.mods?.includes(mg.id) && md.errs.some(e => e.w && /немає в меню/.test(e.m)), 'модифікатори: ' + JSON.stringify({ md, mg }).slice(0, 250));
+      ok(await vpos(VA, 'migUndo', { id: md.id }), 'відкат модифікаторів'); must(!((await vpos(VA, 'menu')).j.menu.mods || []).some(x => x.name === 'QA Соус'), 'група лишилась після відкату');
+      const c0 = (await vpos(VA, 'state')).j.cfg, n0 = Math.min(Math.max(c0.tables || 10, 1), 100);
+      const hd = ok(await run('hall', [{ n: 'QA Тераса', c: String(n0) }, { n: 'QA Великий', c: '150' }, { n: '', c: '2' }], 1, 'poster'), 'зали (перевірка)');
+      must(hd.add === 1 && hd.skip === 2 && hd.errs.some(e => /від 1 до 100/.test(e.m)), 'зали dry: ' + JSON.stringify(hd).slice(0, 200));
+      must(!((await vpos(VA, 'state')).j.cfg.halls || []).some(h => h.n === 'QA Тераса'), 'перевірка змінила зали');
+      const hl = ok(await run('hall', [{ n: 'QA Тераса', c: String(n0) }], 0, 'poster'), 'зали'); const h1 = (await vpos(VA, 'state')).j.cfg;
+      must(hl.add === 1 && h1.halls?.some(h => h.n === 'QA Тераса' && h.ic === '🌿' && h.c === n0), 'зал не створено: ' + JSON.stringify(h1.halls));
+      ok(await vpos(VA, 'hallsSet', { halls: c0.halls || [], go: c0.goTabs }), 'повернути зали');
+    }
+    return '10 видів (+напівфабрикати, модифікатори, зали), розміри, R-Keeper (персонал, гості з депозитом), повтор, відкат';
   });
   await step('🏦 банк (етап 2): модуль/права; виписка 1С → еквайринг з комісією, оплата 2 накладних, власний переказ, черга; повтор не дублює; дії й заборони; CSV; облік і експорт', async () => {
     const ok = (r, w) => { must(r.status === 200 && !r.j.error, w + ': ' + r.status + ' ' + JSON.stringify(r.j).slice(0, 200)); return r.j; };

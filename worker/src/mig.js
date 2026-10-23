@@ -11,6 +11,7 @@ import { normPhone, getCli, cliTouch, fmtPhone } from './delivery.js';
 import { getCert, bookImport } from './site.js';
 import { getLoy } from './promo.js';
 import { getStaff } from './ops-staff.js';
+import { getCfg, hallsOf, setHalls } from './ops-core.js';
 
 // вид → назва й поля (* — обовʼязкові). Ті самі ключі використовує майстер для зіставлення колонок.
 export const KINDS = {
@@ -22,6 +23,7 @@ export const KINDS = {
   cli: { t: '👤 Гості й бонуси', f: { phone: 'Телефон*', name: 'Імʼя', bal: 'Бонуси, ₴', bd: 'День народження', note: 'Нотатка', card: 'Номер картки', grp: 'Група / рівень', dep: 'Депозит, ₴' } },
   cert: { t: '🎁 Сертифікати', f: { code: 'Код*', sum: 'Номінал*', left: 'Залишок', phone: 'Телефон', to: 'Кому', exp: 'Діє до' } },
   staff: { t: '👥 Персонал', f: { n: 'Імʼя*', role: 'Посада' } },
+  hall: { t: '🪑 Зали й столи', f: { n: 'Зал*', c: 'Столів*' } },
   book: { t: '📅 Броні й передоплати', f: { id: 'Код', date: 'Дата*', time: 'Час*', name: 'Імʼя*', phone: 'Телефон*', people: 'Гостей', kind: 'Тип (стіл/банкет)', dep: 'Передоплата, ₴', comment: 'Коментар', t: 'Стіл' } },
 };
 export const SYS = { xls: '📊 Excel / CSV', '1c': '🟡 1С / BAS', poster: '🟠 Poster', syrve: '🟣 Syrve / iiko', rkeeper: '🔴 R-Keeper / StoreHouse', other: '🔹 Інша система' };
@@ -140,11 +142,13 @@ const AP = {
   async cards(env, rows, c) {
     const menu = await getMenu(env), items = menu.categories.flatMap(k => k.items);
     return L(env, 'ing', async () => {
-      const l = await getIng(env), cards = await getCards(env), by = new Map(); let add = 0, upd = 0, skip = 0, ni = 0;
+      const l = await getIng(env), cards = await getCards(env), by = new Map(); let add = 0, upd = 0, skip = 0, ni = 0, semi = 0;
       rows.forEach((r, i) => { const d = T(r.dish, 60); if (!d) return c.err(i, 'немає страви'), skip++; const k = d.toLowerCase(); if (!by.has(k)) by.set(k, { d, rows: [] }); by.get(k).rows.push([r, i]); });
       for (const { d, rows: rr } of by.values()) {
-        const it = items.find(y => y.name.uk.toLowerCase() === d.toLowerCase()); if (!it) { c.err(rr[0][1], `«${d}»: такої страви немає в меню — спершу імпортуйте меню`); skip += rr.length; continue; }
-        if (cards[it.id] && !cards[it.id].draft) { c.err(rr[0][1], `«${d}»: техкарту вже підтвердив шеф — не чіпаємо`, 1); skip += rr.length; continue; }
+        const it = items.find(y => y.name.uk.toLowerCase() === d.toLowerCase()), sf = !it && l.find(z => !z.off && norm(z.n) === norm(d)); // 🥣 не страва, а продукт складу — це заготовка (напівфабрикат): техкарта «semi:»
+        if (!it && !sf) { c.err(rr[0][1], `«${d}»: такої страви немає в меню (і заготовки на складі) — спершу імпортуйте меню й продукти`); skip += rr.length; continue; }
+        const key = it ? it.id : 'semi:' + sf.id;
+        if (cards[key] && !cards[key].draft) { c.err(rr[0][1], `«${d}»: техкарту вже підтвердив шеф — не чіпаємо`, 1); skip += rr.length; continue; }
         const lines = []; let out = 0;
         for (const [r, i] of rr) {
           const n = T(r.ing, 60), q0 = num(r.q); if (!n || !(q0 > 0)) { c.err(i, `«${d}»: рядок без продукту або кількості`); skip++; continue; }
@@ -156,10 +160,12 @@ const AP = {
           if (num(r.out) > 0) out = Math.round(num(r.out));
         }
         if (!lines.length) continue;
-        cards[it.id] ? upd++ : add++; cards[it.id] = { items: lines.slice(0, 40), ...(out ? { out } : {}), draft: 1, mig: c.sys };
+        cards[key] ? upd++ : add++;
+        if (sf) { sf.semi = 1; semi++; cards[key] = { items: lines.slice(0, 40), yield: out ? r3(sf.u === 'шт' ? 1 : out / 1000) : 1, draft: 1, mig: c.sys }; if (!out) c.err(rr[0][1], `«${d}»: без виходу — вважаємо, що рецепт дає 1 ${sf.u}`, 1); } // вихід у г/мл → кг/л заготовки
+        else cards[key] = { items: lines.slice(0, 40), ...(out ? { out } : {}), draft: 1, mig: c.sys };
       }
-      if (!c.dry && (add || upd)) { if (ni) await env.DB.put('ing', JSON.stringify(l)); await env.DB.put('cards', JSON.stringify(cards)); }
-      return { add, upd, skip, tot: { dishes: add + upd, newIng: ni } };
+      if (!c.dry && (add || upd)) { if (ni || semi) await env.DB.put('ing', JSON.stringify(l)); await env.DB.put('cards', JSON.stringify(cards)); }
+      return { add, upd, skip, tot: { dishes: add + upd, newIng: ni, ...(semi ? { semi } : {}) } };
     });
   },
   async sup(env, rows, c) {
@@ -209,6 +215,16 @@ const AP = {
     await certsAdd(env, codes);
     return { add, upd, skip, tot: { left: left / 100 } };
   },
+  // 🪑 зали: назва + кількість столів (номери — підряд, як у касі). Зал з такою назвою — оновлюємо кількість. Відкат залів — вручну (Налаштування → Зали)
+  async hall(env, rows, c) {
+    const cfg = await getCfg(env), hs = (cfg.halls?.length ? hallsOf(cfg) : []).map(h => ({ ...h })); let add = 0, upd = 0, skip = 0; // залів ще не налаштовували — замість стандартного «Зал» ставимо зали зі старої системи
+    rows.forEach((r, i) => { const n = T(r.n, 24), k = Math.round(num(r.c) || 0); if (!n) return c.err(i, 'немає назви залу'), skip++; if (!(k > 0 && k <= 100)) return c.err(i, `«${n}»: у залі від 1 до 100 столів`), skip++;
+      const h = hs.find(z => z.n.toLowerCase() === n.toLowerCase()); if (h) { h.c = k; upd++; } else { hs.push({ n, ic: /тера|веранд|літн|летн|terr/i.test(n) ? '🌿' : /бар/i.test(n) ? '🍸' : /vip|віп/i.test(n) ? '🛋' : '🪑', c: k }); add++; } });
+    if (hs.length > 12) { c.err(0, 'Залів більше 12 — перенесемо перші 12'); hs.length = 12; }
+    if (hs.reduce((a, h) => a + h.c, 0) > 200) { c.err(0, 'Разом більше 200 столів — зменшіть кількість'); return { add: 0, upd: 0, skip: rows.length, tot: {} }; }
+    if (!c.dry && (add || upd)) { const r = await setHalls(env, hs, cfg.goTabs); if (r?.error) { c.err(0, r.error); return { add: 0, upd: 0, skip: rows.length, tot: {} }; } }
+    return { add, upd, skip, tot: { tables: hs.reduce((a, h) => a + h.c, 0) } };
+  },
   // 👥 персонал без PIN: PIN з чужої системи не перенести (там хеш) — адмін задає кожному в Налаштуваннях → Персонал → 🔑
   async staff(env, rows, c) {
     const RL = [[/адмін|админ|менедж|управ|директ|admin|manag/i, 'admin'], [/кух|повар|кухар|шеф|cook|chef|пекар|кондит/i, 'cook'], [/курʼ?'?єр|курьер|courier|достав/i, 'courier']];
@@ -249,7 +265,7 @@ const AP = {
   },
 };
 // ключ дубліката всередині файлу (останній рядок перемагає — як і при повторному імпорті)
-const DUPK = { menu: r => T(r.name).toLowerCase() + '|' + T(r.v).replace(',', '.'), mods: r => T(r.grp).toLowerCase() + '|' + T(r.n).toLowerCase(), ing: r => norm(r.n), cards: r => T(r.dish).toLowerCase() + '|' + norm(r.ing), sup: r => nrmSup(r.n), cli: r => normPhone(r.phone), cert: r => T(r.code).toUpperCase(), staff: r => T(r.n).toLowerCase(), book: r => T(r.id) || ymd(r.date) + '|' + T(r.time) + '|' + normPhone(r.phone) };
+const DUPK = { menu: r => T(r.name).toLowerCase() + '|' + T(r.v).replace(',', '.'), mods: r => T(r.grp).toLowerCase() + '|' + T(r.n).toLowerCase(), ing: r => norm(r.n), cards: r => T(r.dish).toLowerCase() + '|' + norm(r.ing), sup: r => nrmSup(r.n), cli: r => normPhone(r.phone), cert: r => T(r.code).toUpperCase(), staff: r => T(r.n).toLowerCase(), hall: r => T(r.n).toLowerCase(), book: r => T(r.id) || ymd(r.date) + '|' + T(r.time) + '|' + normPhone(r.phone) };
 
 // 🚀 { sys, kind, rows, map?, dry } → підсумок. who — хто імпортує
 export async function migRun(env, b, who) {
@@ -308,27 +324,41 @@ export async function migBotText(env, link) {
 
 // 📡 Перехід напряму (етап 2): власник вставляє ключ API своєї старої системи → ми забираємо дані її ж API й повертаємо рядки
 // нашими полями (KINDS). Далі — той самий майстер: перевірка → імпорт → відкат. Ключ ніде не зберігається й не пишеться в журнал;
-// звертаємось лише до офіційних адрес систем (не до довільних URL). Poster: меню, техкарти, залишки, постачальники, гості з бонусами.
+// звертаємось лише до офіційних адрес систем (не до довільних URL). Poster: меню, модифікатори, техкарти з напівфабрикатами, залишки, постачальники, гості, персонал, зали.
 // Syrve/iiko Cloud API віддає лише номенклатуру (меню + товари); техкарти й залишки там — через файл.
 const cents = v => v == null || v === '' ? '' : String(Math.round(+v) / 100);
 const getJ = async (u, o = {}) => { const r = await fetch(u, { ...o, signal: AbortSignal.timeout(20000) }); const j = await r.json().catch(() => null); if (!r.ok || !j) throw new Error(r.status === 401 || r.status === 403 ? 'Ключ не підходить' : `Система відповіла ${r.status}`); return j; };
 async function pullPoster(tok) {
   if (!/^\d+:[0-9a-f]{20,64}$/i.test(tok)) return { error: 'Ключ Poster має вигляд 123456:abcdef… (Доступ → Інтеграції → API)' };
   const P = async (m, q = '') => { const j = await getJ(`https://joinposter.com/api/${m}?token=${encodeURIComponent(tok)}${q}`); if (j.error) throw new Error(j.error.message || j.message || 'Poster: помилка ' + (j.error.code || j.error)); return j.response || []; };
-  const [prods, left, sups] = await Promise.all([P('menu.getProducts'), P('storage.getStorageLeftovers', '&zero_leftovers=true'), P('storage.getSuppliers').catch(() => [])]);
+  const O = (m, q) => P(m, q).catch(() => []); // необовʼязкове: нема прав у ключа — просто не переносимо
+  const [prods, left, sups, pre, emp, halls, tabs] = await Promise.all([P('menu.getProducts'), P('storage.getStorageLeftovers', '&zero_leftovers=true'), O('storage.getSuppliers'), O('menu.getPrepacks'), O('access.getEmployees'), O('spots.getSpotTablesHalls'), O('spots.getTableHallTables', '&without_deleted=1')]);
   const cli = []; for (let off = 0; off < 10000; off += 500) { const l = await P('clients.getClients', `&num=500&offset=${off}`); cli.push(...l); if (l.length < 500) break; }
   const U = { kg: 'кг', l: 'л', p: 'шт' }, SU = { kg: 'г', l: 'мл', p: 'шт' }, ingN = new Map(left.map(x => [String(x.ingredient_id), x.ingredient_name]));
+  const preL = (Array.isArray(pre) ? pre : []).filter(p => String(p.delete || '0') !== '1'), preN = new Map(preL.map(p => [String(p.product_id), p.product_name]));
   const live = prods.filter(p => p.type !== '1' && +p.type !== 1 && String(p.delete || '0') !== '1');
   const price = p => cents((p.spots || []).find(s => +s.visible)?.price ?? p.spots?.[0]?.price ?? (typeof p.price === 'object' ? Object.values(p.price || {})[0] : p.price));
-  const cards = [], miss = new Set();
-  for (const p of live.filter(p => +p.type === 2)) for (const s of p.ingredients || []) { const n = ingN.get(String(s.ingredient_id)); if (!n) { miss.add(p.product_name); continue; } cards.push({ dish: p.product_name, ing: n, q: String(s.structure_brutto ?? ''), u: SU[s.structure_unit] || s.structure_unit || '', out: '' }); }
+  const de = v => String(v || '').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n)).replace(/&quot;/g, '"').replace(/&amp;/g, '&').trim();
+  // склад страви / напівфабрикату: інгредієнт або напівфабрикат (structure_type 2) — за назвою
+  const cards = [], miss = new Set(), row = (dish, s, out) => { const n = (+s.structure_type === 2 ? preN.get(String(s.ingredient_id)) : ingN.get(String(s.ingredient_id))) || s.ingredient_name; if (!n) return miss.add(dish); cards.push({ dish, ing: n, q: String(s.structure_brutto ?? ''), u: SU[s.structure_unit] || s.structure_unit || '', out }); };
+  for (const p of preL) for (const s of p.ingredients || []) row(p.product_name, s, p.out ? String(p.out) : '');
+  for (const p of live.filter(p => +p.type === 2)) for (const s of p.ingredients || []) row(p.product_name, s, '');
+  // групи модифікаторів страв → одна група на всі страви, де вона є
+  const mg = new Map();
+  for (const p of live) for (const g of p.group_modifications || []) { if (+g.is_deleted === 1) continue; for (const m of g.modifications || []) { if (+m.is_deleted === 1) continue; const k = de(g.name) + '|' + de(m.name); const o = mg.get(k) || mg.set(k, { grp: de(g.name), n: de(m.name), p: String(+m.price || 0), min: String(g.num_min ?? ''), max: String(g.num_max ?? ''), d: new Set() }).get(k); o.d.add(p.product_name); } }
+  const TY = { 0: 'офіціант', 1: 'адміністратор', 3: 'комірник', 4: 'адміністратор', 50: 'менеджер', 90: 'адміністратор' };
+  const hl = (Array.isArray(halls) ? halls : []).filter(h => +h.delete !== 1), tl = (Array.isArray(tabs) ? tabs : []).filter(t => +t.is_deleted !== 1), spots = new Set(hl.map(h => h.spot_id));
   return { data: {
     menu: live.flatMap(p => p.modifications?.length ? p.modifications.map(x => ({ id: p.product_id + '-' + x.modificator_id, cat: p.category_name || '', name: `${p.product_name} — ${String(x.modificator_name || '').trim()}`, price: price(x), desc: '', size: '' })) // товар з модифікаціями (смаки, обʼєми) — окремі позиції
       : [{ id: p.product_id, cat: p.category_name || '', name: p.product_name, price: price(p), desc: '', size: '' }]),
-    ing: left.filter(x => +x.hidden !== 1).map(x => ({ id: x.ingredient_id, n: x.ingredient_name, u: U[x.ingredient_unit] || x.ingredient_unit || '', cat: '', q: String(x.ingredient_left ?? ''), wh: '', cost: cents(x.prime_cost), sum: cents(x.storage_ingredient_sum), bc: '' })),
+    mods: [...mg.values()].map(({ d, ...o }) => ({ ...o, dish: [...d].join(';') })),
+    ing: [...left.filter(x => +x.hidden !== 1).map(x => ({ id: x.ingredient_id, n: x.ingredient_name, u: U[x.ingredient_unit] || x.ingredient_unit || '', cat: '', q: String(x.ingredient_left ?? ''), wh: '', cost: cents(x.prime_cost), sum: cents(x.storage_ingredient_sum), bc: '' })),
+      ...preL.filter(p => !left.some(x => x.ingredient_name === p.product_name)).map(p => ({ id: 'pp' + p.product_id, n: p.product_name, u: U[live.flatMap(d => d.ingredients || []).find(s => +s.structure_type === 2 && String(s.ingredient_id) === String(p.product_id))?.structure_unit] || 'кг', cat: 'Напівфабрикати', q: '', wh: '', cost: '', sum: '', bc: '' }))],
     cards, sup: sups.filter(s => +s.delete !== 1).map(s => ({ n: s.supplier_name, code: s.supplier_tin || s.supplier_code || '', iban: '', phone: s.supplier_phone || '', addr: s.supplier_adress || '' })),
-    cli: cli.filter(c => +c.delete !== 1 && (c.phone_number || c.phone)).map(c => ({ phone: c.phone_number || c.phone, name: [c.firstname, c.lastname].filter(Boolean).join(' '), bal: cents(c.bonus), bd: c.birthday && !/^0000/.test(c.birthday) ? c.birthday : '', note: c.comment || '' })),
-  }, note: miss.size ? `Техкарти з напівфабрикатами перенесено частково: ${[...miss].slice(0, 5).join(', ')}${miss.size > 5 ? '…' : ''}` : '' };
+    cli: cli.filter(c => +c.delete !== 1 && (c.phone_number || c.phone)).map(c => ({ phone: c.phone_number || c.phone, name: [c.firstname, c.lastname].filter(Boolean).join(' '), bal: cents(c.bonus), bd: c.birthday && !/^0000/.test(c.birthday) ? c.birthday : '', note: c.comment || '', card: c.card_number || '', grp: c.client_groups_name || '', dep: +c.ewallet > 0 ? cents(c.ewallet) : '' })),
+    staff: (Array.isArray(emp) ? emp : []).filter(e => e.name && +e.user_type !== 2).map(e => ({ n: de(e.name), role: de(e.role_name) || TY[+e.user_type] || '' })),
+    hall: hl.map(h => ({ n: de(h.hall_name), c: String(tl.filter(t => String(t.hall_id) === String(h.hall_id)).length) })).filter(h => +h.c > 0),
+  }, note: [miss.size ? `Не знайшли склад для: ${[...miss].slice(0, 5).join(', ')}${miss.size > 5 ? '…' : ''}` : '', spots.size > 1 ? `У Poster ${spots.size} заклади — зали всіх разом; зайві видаліть у Налаштуваннях → Зали` : '', 'PIN-коди працівників Poster не віддає — задайте їх у Налаштуваннях → Персонал'].filter(Boolean).join('. ') };
 }
 async function pullSyrve(tok, org) {
   if (!/^[\w-]{8,80}$/.test(tok)) return { error: 'Ключ Syrve — «API login» з налаштувань Syrve Cloud' };
