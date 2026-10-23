@@ -39,6 +39,8 @@ export async function qrPng(text, scale = 8) {
 }
 // /print/qr-t3-ab12cd.png (принтер) або /print/qr-t3-ab12cd.png?s=20 (друкарня, великий)
 export async function qrRoute(env, url) {
+  const fc = url.pathname.match(/^\/print\/fc-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.png$/); // 🧾 QR фіскального чека Checkbox (друк і екран каси)
+  if (fc) return new Response(await qrPng('https://check.checkbox.ua/' + fc[1], Math.min(12, Math.max(4, +url.searchParams.get('s') || 6))), { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000', 'access-control-allow-origin': '*' } });
   const m = url.pathname.match(/^\/print\/qr(?:-t(\d{1,3}))?-([a-f0-9]{6})(?:-a)?\.png$/); if (!m) return null;
   const key = await qrKey(env); if (!key.startsWith(m[2])) return new Response('old', { status: 404 });
   const s = Math.min(24, Math.max(4, +url.searchParams.get('s') || 8));

@@ -1147,6 +1147,13 @@ async function loyTests(A, W, dish) {
       must(m.some(q => q.path === '/shifts'), 'зміна Checkbox не відкрилась');
       must(sell?.id === x.fis.r.a.id && sell.goods[0].quantity === 2000 && sell.goods.reduce((a, g) => a + g.good.price * g.quantity / 1000, 0) - (sell.discounts?.[0]?.value || 0) === x.sum * 100, 'тіло чека: ' + JSON.stringify(sell).slice(0, 200));
       must(sell.payments.length === 1 && sell.payments[0].type === 'CASHLESS' && sell.payments[0].value === x.sum * 100, 'оплата карткою: ' + JSON.stringify(sell.payments));
+      { /* 🧾 папір: чек друкується після фіскалізації — з ФН ПРРО, ФН чека й QR на check.checkbox.ua; копія — з тим самим ФН */
+        const fj = async () => (await vpos(VA, 'printQ')).j.list.filter(j => j.kind === 'receipt' && j.fis?.includes('fc-' + x.fis.r.a.id));
+        let pj = []; for (let i = 0; i < 20 && !pj.length; i++) { await sleep(150); pj = await fj(); }
+        must(pj[0]?.fis.join() === ['4000000000', 'TEST' + x.fis.r.a.id.slice(0, 8), 'fc-' + x.fis.r.a.id].join(), 'фіскальний блок чека: ' + JSON.stringify(pj[0]));
+        const png = await fetch(`${API}/v/${VID}/print/fc-${x.fis.r.a.id}.png`); must(png.ok && png.headers.get('content-type') === 'image/png', 'QR чека ' + png.status);
+        must((await vpos(VA, 'closedPrint', { ref: x.id })).j.done && (await fj()).length === 2, 'копія без фіскального блока');
+        x = (await vpos(VA, 'closed')).j.list.find(r => r.id === x.id); must(x.fis.r.a.fc === 'TEST' + x.fis.r.a.id.slice(0, 8), 'ФН чека не збережено'); }
       must((await vpos(VA, 'fisRetry', { ref: x.id })).j.r?.a?.id === x.fis.r.a.id, 'повтор без змін створив новий чек');
       must((await vpos(VA, 'closedDel', { ref: x.id })).status === 200, 'closedDel');
       let y; for (let i = 0; i < 20 && !y?.fis?.r?.a?.ret; i++) { await sleep(150); y = (await vpos(VA, 'closed')).j.list.find(r => r.id === x.id); }

@@ -2,7 +2,7 @@
 // (частина ops.js — інші файли імпортують з ops.js, як і раніше)
 import { agBump } from './agg.js';
 import { cliTouch } from './delivery.js';
-import { fisSafe } from './fiscal.js';
+import { fisSafe, fisOn, fisPrint } from './fiscal.js';
 import { addTipBal, getVoids, splitTip, tipSplitOf } from './ops-bill.js';
 import { L, addDishes, addStat, bump, cDay, dayKey, getBill, hhmm, logEvent, pct, putBill } from './ops-core.js';
 import { queuePrint, receipt } from './print.js';
@@ -142,7 +142,8 @@ export async function reprintClosed(env, ref, who, day = dayKey()) {
   const x = await closedRec(env, ref, day);
   if (!x?.dishes?.length) return false;
   const bill = { total: x.gross || x.dishes.reduce((a, d) => a + (+d[2] || 0), 0) || (x.sum - (x.tip || 0)), /* сума страв до бонусів — щоб «сплачено» на копії = як у касі */ ...(x.promo ? { promo: { lines: x.promo, sum: x.promoSum || 0 } } : {}), ...(x.bonus ? { bonus: x.bonus } : {}), disc: x.disc, ...(x.discSum != null ? { discSum: x.discSum } : {}), tip: (x.tip || 0) - (x.ktip || 0), ktip: x.ktip, log: [{ lines: x.dishes.map(([n, q, sum]) => `${q}× ${n} — ${sum}`) }] };
-  await queuePrint(env, 'receipt', await receipt(env, { table: x.t, bill, final: true, pay: x.card && x.cash ? 'mix' : x.onl ? 'online' : x.card ? 'card' : 'cash', by: who }));
+  const rc = await receipt(env, { table: x.t, bill, final: true, pay: x.card && x.cash ? 'mix' : x.onl ? 'online' : x.card ? 'card' : 'cash', by: who });
+  await queuePrint(env, 'receipt', fisOn(env) && x.id ? [...rc.slice(0, -1), ...await fisPrint(env, cDay(day), x.id).catch(() => []), ['gap']] : rc); // 🧾 копія — з тим самим ФН і QR
   return true;
 }
 // 📝 журнал змін (Ф6) + перерахунок продажів минулого дня в обліку (документ sale)

@@ -1,7 +1,7 @@
 // 🍽 Стіл: замовлення (гість/офіціант), прийняти/відхилити, скасування страв, закриття й оплата, знижка, чайові, перенесення, розділення, видалення
 // (частина ops.js — інші файли імпортують з ops.js, як і раніше)
 import { agBump } from './agg.js';
-import { fisSafe } from './fiscal.js';
+import { fisSafe, fisOn, fisPrint } from './fiscal.js';
 import { courNotify } from './courier.js';
 import { cliClose, goButtons, goGone } from './delivery.js';
 import { getMenu, menuFor, modsOf, modRows } from './menu.js';
@@ -161,7 +161,8 @@ async function _closeTable(env, t, who, pay = 'cash', print = true) {
   const ag = String(pay).startsWith('agg:') ? pay.slice(4) : '', agS = ag ? rest : 0; /* 🛵 агрегатор (Glovo, Bolt…) — безготівка (agS ⊂ card), виплата нетто приходить на рахунок */
   const card = onl + (pay === 'card' || pay === 'iban' || ag ? rest : 0), cash = sum - card, ib = pay === 'iban' ? rest : 0; if (onl && !rest) pay = 'online'; /* 🏦 переказ на рахунок закладу — безготівка (ib ⊂ card) */
   if (pre > sum + 1) notify(env, `⚠️ Стіл ${tn(t)}: гість оплатив онлайн ${pre} грн, а рахунок ${sum} грн — переплата ${pre - sum} грн. Поверніть різницю в кабінеті LiqPay.`).catch(() => {}); /* 💳 зменшили рахунок після оплати */
-  if (print) await queuePrint(env, 'receipt', await receipt(env, { table: t, bill, final: true, pay, by: who }));
+  const rc = print ? await receipt(env, { table: t, bill, final: true, pay, by: who }) : null, fz = rc && fisOn(env); // 🧾 з ПРРО — друкуємо після фіскалізації (з ФН і QR), див. closeTable
+  if (rc && !fz) await queuePrint(env, 'receipt', rc);
   await env.DB.delete('bill:' + t);
   const kq = kitchenClosed(env, [+t]); // стіл закрили — замовлення лишаються на кухні з позначкою «оплачено» (паралельно з виручкою)
   await bump(env, 'day:' + dayKey(), d => { d.closed = (d.closed || 0) + sum; d.tables = (d.tables || 0) + 1; d.cash = (d.cash || 0) + cash; d.card = (d.card || 0) + card; if (onl) d.onl = (d.onl || 0) + onl; agBump(d, ag, agS); if (disc) d.disc = (d.disc || 0) + disc; if (tip) d.tip = (d.tip || 0) + tip; });
@@ -179,7 +180,7 @@ async function _closeTable(env, t, who, pay = 'cash', print = true) {
     logEvent(env, { k: 'close', t, by: who, sum, pay, print }),
     bill.paid ? editEv(env, l => { for (const e of l) if (e.k === 'tpay' && +e.t === +t && e.s === 'new') { e.s = 'acc'; e.accBy = who || ''; } }) : null, // 💳 оплачено з QR — подія гасне
   ]);
-  return { t, sum, cash, card, ...(ib ? { ib } : {}), ...(agS ? { ag, agS } : {}), disc, tip, id: cid };
+  return { t, sum, cash, card, ...(ib ? { ib } : {}), ...(agS ? { ag, agS } : {}), disc, tip, id: cid, ...(fz ? { rc } : {}) };
 }
 export const payLabel = (cash, card, ib, ag) => ag ? '🛵 ' + ag : card && cash ? '💵+💳 змішано' : ib && ib >= card ? '🏦 переказ' : card ? '💳 карта' : '💵 готівка';
 
@@ -353,7 +354,11 @@ export async function removeOne(env, ...a) {
   if (b0?.go && r && !r.error && !(await getBill(env, a[0])).total) { await courNotify(env, a[0], 'gone', '', b0).catch(() => {}); await goGone(env, b0).catch(() => {}); } // прибрали все — доставка скасована
   return r;
 }
-export async function closeTable(env, ...a) { const day = dayKey(), r = await L(env, 'bills', () => _closeTable(env, ...a)); if (r?.id) fisSafe(env, day, r.id); return r; } // 🧾 фіскальний чек — у фоні, касу не тримає
+export async function closeTable(env, ...a) { // 🧾 фіскальний чек — у фоні, касу не тримає; папір з ПРРО — коли Checkbox відповів (ФН чека + QR)
+  const day = dayKey(), r = await L(env, 'bills', () => _closeTable(env, ...a)); if (!r?.id) return r;
+  const rc = r.rc; delete r.rc; const p = fisSafe(env, day, r.id);
+  if (rc) p.then(async () => queuePrint(env, 'receipt', [...rc.slice(0, -1), ...await fisPrint(env, day, r.id).catch(() => []), ['gap']])).catch(e => console.log('fisPrint', e.message));
+  return r; }
 export async function setDiscount(env, ...a) { return L(env, 'bills', () => _setDiscount(env, ...a)); }
 export async function setTip(env, ...a) { return L(env, 'bills', () => _setTip(env, ...a)); }
 export async function moveTable(env, ...a) { return L(env, 'bills', () => _moveTable(env, ...a)); }

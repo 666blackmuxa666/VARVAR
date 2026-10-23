@@ -35,7 +35,7 @@ async function mock(env, c, m, path, body) {
   if (path === '/shifts') { await env.DB.put(sk, '1'); return { status: 202, j: { id: 's1', status: 'CREATED' } }; }
   if (path === '/shifts/close') { await env.DB.delete(sk); return { status: 202, j: { id: 's1', status: 'CLOSING' } }; }
   const seen = (await env.DB.get(rk, 'json')) || [];
-  if (path.startsWith('/receipts/') && m === 'GET') return seen.includes(path.slice(10)) ? { status: 200, j: { id: path.slice(10) } } : { status: 404, j: { message: 'not found' } };
+  if (path.startsWith('/receipts/') && m === 'GET') return seen.includes(path.slice(10)) ? { status: 200, j: { id: path.slice(10), status: 'DONE', fiscal_code: 'TEST' + path.slice(10, 18) } } : { status: 404, j: { message: 'not found' } };
   if (/^\/receipts\/(sell|service)$/.test(path)) {
     if (!(await env.DB.get(sk))) return { status: 400, j: { message: 'Зміну не відкрито' } };
     if (seen.includes(body.id)) return { status: 400, j: { message: 'Чек з таким id вже існує' } };
@@ -184,6 +184,28 @@ export async function fisSync(env, day, id) {
 }
 // не ламати касу: помилка Checkbox лишається в записі (🧾 ⚠️ + «Повторити»)
 export const fisSafe = (env, day, id) => fisSync(env, day || dayKey(), id).catch(e => console.log('fis', e.message));
+
+// 🧾 фіскальний блок паперового чека: ФН ПРРО, ФН чека, QR на check.checkbox.ua. ФН чека Checkbox присвоює за 1–5 с — чекаємо до ~5 с, потім «обробляється» (QR усе одно веде на чек).
+// ФН чека зберігаємо в записі (r.fc) — копія чека вже без запитів; ФН каси — у fis:fn:<6 знаків ключа>.
+async function kasaFn(env, c) { const k = 'fis:fn:' + c.lic.slice(-6); let v = await env.DB.get(k); if (!v) { const i = await call(env, c, 'GET', '/cash-registers/info'); v = i.j?.fiscal_number || ''; if (v) await env.DB.put(k, v); } return v; }
+export async function fisPrint(env, day, id) {
+  const ks = kasas(env); if (!ks.length || !id) return [];
+  const f = ((await env.DB.get('closed:' + day, 'json')) || []).find(c => c.id === id)?.fis;
+  if (!f) return [['dbl'], ['c', '⚠️ Фіскальний чек ще не створено'], ['s', 'Касир надішле його повторно (🧾 у «Закритих»)']];
+  if (f.st === 'err') return [['dbl'], ['c', '⚠️ Фіскальний чек не створено'], ['s', String(f.err || '').slice(0, 120)], ['s', 'Касир надішле його повторно (🧾 у «Закритих»)']];
+  const out = [], got = {};
+  for (const [k, r] of Object.entries(regs(f))) {
+    const c = ks.find(z => z.k === k); if (!r.id || !c) continue;
+    let fc = r.fc || '';
+    for (let i = 0; !fc && i < 4; i++) { const g = await call(env, c, 'GET', '/receipts/' + r.id).catch(() => null); fc = g?.j?.fiscal_code || ''; if (!fc && i < 3 && !isMock(env, c)) await new Promise(z => setTimeout(z, 1500)); }
+    if (fc && !r.fc) got[k] = fc;
+    const fn = await kasaFn(env, c).catch(() => '');
+    out.push(['dbl'], ['c', 'ФІСКАЛЬНИЙ ЧЕК'], ...(ks.length > 1 && c.n ? [['c', c.n]] : []), ...(fn ? [['lr', 'ФН ПРРО', fn]] : []), ['lr', 'ФН чека', fc || 'обробляється'], ['img', 'fc-' + r.id, 130], ['s', 'Перевірити чек: check.checkbox.ua']);
+  }
+  if (Object.keys(got).length) await L(env, 'closed:' + day, async () => { const l = (await env.DB.get('closed:' + day, 'json')) || [], y = l.find(c => c.id === id); if (!y?.fis?.r) return; for (const [k, v] of Object.entries(got)) if (y.fis.r[k]) y.fis.r[k].fc = v; await env.DB.put('closed:' + day, JSON.stringify(l)); });
+  return out;
+}
+export const fisUrl = id => 'https://check.checkbox.ua/' + id;
 
 // 💵 рух готівки → службовий чек каси «a»: внесення (+) / видача (−). Стан у записі mov: fs — скільки зараз «проведено» (0/1), fn — лічильник чеків (id)
 export const SVC = { in: 1, out: -1, salc: -1, tipc: -1 };
