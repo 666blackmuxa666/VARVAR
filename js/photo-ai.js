@@ -20,12 +20,17 @@ window.PHOTOAI = (() => {
   const quotaRow = () => `<div class="ph-q"><span>📊 Цього місяця</span><b>${inf.free == null ? inf.n + ' · без ліміту' : inf.n + ' / ' + inf.free}${inf.over ? ` · +${inf.over} × ${inf.price} ₴` : ''}</b></div>`;
   const tgt = cat => cat ? (inf.cat[cat] ||= { prompt: '', refs: [] }) : inf; // стиль блоку або всього закладу
   const refsRow = cat => { const r = tgt(cat).refs; return `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0">${r.map((u, i) => `<div style="width:72px;height:72px;border-radius:10px;background:var(--card2,#ffffff10) url('${esc(u)}') center/cover;position:relative"><button data-ph="refDel" data-i="${i}" style="position:absolute;top:2px;right:2px;background:#000a;color:#fff;border-radius:8px;width:22px;height:22px">✕</button></div>`).join('')}${r.length < 2 ? '<button class="btn sm" data-ph="refAdd" style="height:72px">＋ Зразок</button>' : ''}</div>`; };
+  const bgOf = cat => (cat && inf.cat[cat]?.bg) || inf.bg || ''; // спільний фон блоку, інакше — закладу
+  const bgRow = cat => { const own = tgt(cat).bg || '', any = bgOf(cat), r = tgt(cat).refs.length || (!cat && inf.refs.length);
+    return `<div class="ph-hint">🖼 <b>Спільний фон</b> — ШІ малює лише страву, а фон у ${cat ? 'всіх фото блоку' : 'фото закладу'} однаковий на 100%; розмір страви підганяєте самі:</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0">${any ? `<div style="width:72px;height:72px;border-radius:10px;background:var(--card2,#ffffff10) url('${esc(any)}') center/cover;position:relative">${own ? '<button data-ph="bgDel" style="position:absolute;top:2px;right:2px;background:#000a;color:#fff;border-radius:8px;width:22px;height:22px">✕</button>' : ''}</div>` : ''}
+      <button class="btn sm" data-ph="bgUp" style="height:72px">📤 Своє фото фону</button><button class="btn sm" data-ph="bgAi" style="height:72px">✨ ШІ-фон${r ? ' зі зразка' : ''}</button>${any && !own && cat ? '<span class="muted" style="font-size:12px">зараз — фон закладу</span>' : ''}</div>`; };
   const styleBlock = cat => cat
-    ? `<div class="ph-hint" style="margin-top:0">🖼 Зразки блоку (до 2) — з них ШІ повторює фон, кут і світло для КОЖНОЇ страви блоку:</div>${refsRow(cat)}
+    ? `${bgRow(cat)}<div class="ph-hint">🖼 Зразки блоку (до 2) — з них ШІ повторює ${bgOf(cat) ? 'посуд, кут і світло' : 'фон, кут і світло'} для КОЖНОЇ страви блоку:</div>${refsRow(cat)}
       <label style="display:block">✍️ Особливості блоку <span class="muted" style="font-size:12px">— необовʼязково</span><textarea id="phP" rows="2" style="${TA}" placeholder="напр.: на дерев'яній дошці, вид збоку, поруч картопля фрі">${esc(tgt(cat).prompt)}</textarea></label>`
     : `<label style="display:block">🎨 Стиль закладу (основа для всіх блоків)<textarea id="phP" rows="5" style="${TA}">${esc(inf.prompt || inf.def)}</textarea></label>
       <div class="btnrow" style="margin:6px 0"><button class="btn sm ghost" data-ph="def">↺ Стандартний стиль</button></div>
-      <div class="ph-hint">Загальні зразки (до 2) — для блоків, у яких немає своїх:</div>${refsRow('')}`;
+      <div class="ph-hint">Загальні зразки (до 2) — для блоків, у яких немає своїх:</div>${refsRow('')}${bgRow('')}`;
   async function saveStyle(w, cat) { const el = w.querySelector('#phP'); if (!el) return; const p = el.value.trim(), o = tgt(cat), cur = cat ? o.prompt : (inf.prompt || inf.def);
     if (p !== cur && (cat || p)) { await C.vapi('photoStyleSet', { prompt: p, ...(cat ? { cat } : {}) }); if (cat) o.prompt = p; else inf.prompt = p; } }
   const upd = x => { inf = { ...inf, ...x }; inf.cat ||= {}; };
@@ -33,10 +38,72 @@ window.PHOTOAI = (() => {
     if (a === 'def') { w.querySelector('#phP').value = inf.def; return true; }
     if (a === 'refDel') { await saveStyle(w, cat).catch(() => {}); try { upd(await C.vapi('photoStyleSet', { refDel: +b.dataset.i, ...(cat ? { cat } : {}) })); } catch (x) { C.toast('⚠️ ' + x.message); } back(); return true; }
     if (a === 'refAdd') { await saveStyle(w, cat).catch(() => {}); refPick(back, cat); return true; }
+    const o = cat ? { cat } : {};
+    if (a === 'bgDel') { try { upd(await C.vapi('photoStyleSet', { bgDel: 1, ...o })); } catch (x) { C.toast('⚠️ ' + x.message); } back(); return true; }
+    if (a === 'bgUp') { await saveStyle(w, cat).catch(() => {}); const data = await C.img(); if (!data) return true; try { upd(await C.vapi('photoStyleSet', { bgData: data, ...o })); C.toast('🖼 Фон збережено'); } catch (x) { C.toast('⚠️ ' + x.message); } back(); return true; }
+    if (a === 'bgAi') { await saveStyle(w, cat).catch(() => {}); bgMake(back, cat); return true; }
     return false;
   }
   const cats = () => C.menu.categories.filter(c => !c.tech && c.items.length);
   const thumbs = l => `<span class="ph-st">${l.slice(0, 3).map(u => `<i style="background-image:url('${esc(u)}')"></i>`).join('') || '<i></i>'}</span>`;
+
+  async function bgMake(back, cat) {
+    box('🖼 Спільний фон', '<div class="ph-hint" style="margin-top:0">⏳ ШІ малює порожній фон… до хвилини</div>');
+    const r = await make({ bg: cat || '' }); if (!r) return back(); inf.n = r.n; inf.over = r.over;
+    const w = box('🖼 Спільний фон', `<img src="${esc(r.draft)}" alt="" style="display:block;width:min(320px,100%);aspect-ratio:1;object-fit:cover;border-radius:12px;margin:0 auto"><div class="ph-hint" style="text-align:center">На цей фон ляже кожна страва ${cat ? 'блоку' : 'закладу'}.</div>
+      <div class="ph-act"><button class="btn primary" data-v="ok">✅ Взяти фон</button><button class="btn" data-v="again">🔄 Інший варіант</button><button class="btn ghost" data-v="no">✕ Не треба</button></div>`);
+    w.addEventListener('click', async e => {
+      const b = e.target.closest('[data-v]'); if (!b) return; w.querySelectorAll('[data-v]').forEach(x => { x.disabled = true; }); const v = b.dataset.v;
+      if (v === 'ok') { try { upd(await C.vapi('photoStyleSet', { bgDraft: 1, ...(cat ? { cat } : {}) })); C.toast('🖼 Фон збережено'); } catch (x) { C.toast('⚠️ ' + x.message); } return back(); }
+      if (v === 'again') return bgMake(back, cat); back();
+    });
+  }
+
+  // ---------- 🖼 страва на спільному фоні: ШІ дає страву на пурпуровому тлі → тут вирізаємо тло й кладемо страву на фон ----------
+  const S = 1024, FIT = .72; // розмір готового фото; «авто» — страва займає 72% кадру
+  const pic = u => new Promise((ok, no) => { const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = () => no(new Error('Фото не завантажилось')); i.src = u; });
+  async function cutOut(u) { // → { c: вирізана страва (прозоре тло), b: [x0, y0, x1, y1] } | null, якщо тло не однотонне
+    const im = await pic(u), w = Math.min(im.naturalWidth, S), h = Math.round(im.naturalHeight * w / im.naturalWidth);
+    const c = Object.assign(document.createElement('canvas'), { width: w, height: h }), x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(im, 0, 0, w, h);
+    const D = x.getImageData(0, 0, w, h), d = D.data, n = w * h, edge = [];
+    for (let i = 0; i < w; i++) edge.push(i, (h - 1) * w + i); for (let j = 1; j < h - 1; j++) edge.push(j * w, j * w + w - 1);
+    const med = ch => { const a = edge.filter((_, i) => !(i % 3)).map(p => d[p * 4 + ch]).sort((a, b) => a - b); return a[a.length >> 1]; }, kr = med(0), kg = med(1), kb = med(2);
+    const dist = new Float32Array(n); for (let p = 0, i = 0; p < n; p++, i += 4) { const r = d[i] - kr, g = d[i + 1] - kg, b = d[i + 2] - kb; dist[p] = Math.sqrt(r * r + g * g + b * b); }
+    const LO = 60, HI = 140; if (edge.filter(p => dist[p] < LO).length < edge.length * .6) return null; // ШІ не дав однотонного тла — не ріжемо
+    const bg = new Uint8Array(n), st = edge.filter(p => dist[p] < HI); st.forEach(p => { bg[p] = 1; });
+    while (st.length) { const p = st.pop(), px = p % w; for (const q of [px > 0 ? p - 1 : -1, px < w - 1 ? p + 1 : -1, p - w, p + w]) if (q >= 0 && q < n && !bg[q] && dist[q] < HI) { bg[q] = 1; st.push(q); } } // тло — лише зʼєднане з краєм: їжа такого ж кольору всередині лишається
+    const spill = kr > 150 && kb > 150 && kg < 120; let x0 = w, y0 = h, x1 = 0, y1 = 0;
+    for (let p = 0, i = 0; p < n; p++, i += 4) {
+      const a = bg[p] || dist[p] < LO ? (dist[p] < LO ? 0 : Math.round(255 * (dist[p] - LO) / (HI - LO))) : 255;
+      const rim = a < 255 || bg[p - 1] || bg[p + 1] || bg[p - w] || bg[p + w];
+      if (spill && rim) { const m = Math.min(d[i], d[i + 2]) - d[i + 1]; if (m > 0) { d[i] -= m * .85; d[i + 2] -= m * .85; } } // прибрати пурпуровий відсвіт по краю
+      d[i + 3] = a; if (a > 40) { const px = p % w, py = (p / w) | 0; if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py; }
+    }
+    if (x1 <= x0 || y1 <= y0) return null; x.putImageData(D, 0, 0); return { c, b: [x0, y0, x1, y1] };
+  }
+  function compose(bg, cut, f, size = S) { // f = { s: множник до «авто», x, y: зсув центру в частках кадру }
+    const c = Object.assign(document.createElement('canvas'), { width: size, height: size }), x = c.getContext('2d');
+    if (bg) { const k = Math.max(size / bg.naturalWidth, size / bg.naturalHeight); x.drawImage(bg, (size - bg.naturalWidth * k) / 2, (size - bg.naturalHeight * k) / 2, bg.naturalWidth * k, bg.naturalHeight * k); } else { x.fillStyle = '#222'; x.fillRect(0, 0, size, size); }
+    const [x0, y0, x1, y1] = cut.b, k = FIT * size / Math.max(x1 - x0, y1 - y0) * f.s, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    x.shadowColor = 'rgba(0,0,0,.55)'; x.shadowBlur = size * .035; x.shadowOffsetY = size * .018; // одна тінь для всіх страв
+    x.drawImage(cut.c, size * (.5 + f.x) - cx * k, size * (.5 + f.y) - cy * k, cut.c.width * k, cut.c.height * k); return c;
+  }
+  const fit0 = () => ({ s: 1, x: 0, y: 0 });
+  function fitter(el, bg, cut, f) { // 📐 розмір і місце страви: повзунок + перетягування пальцем → f змінюється на місці
+    el.innerHTML = `<canvas width="512" height="512" style="display:block;width:min(340px,100%);aspect-ratio:1;border-radius:12px;margin:0 auto;touch-action:none;cursor:grab"></canvas>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button class="btn sm" data-z="-">−</button><input type="range" min="35" max="160" value="${Math.round(f.s * 100)}" style="flex:1"><button class="btn sm" data-z="+">＋</button><button class="btn sm ghost" data-z="0">↺ Авто</button></div>
+      <div class="ph-hint" style="text-align:center">📐 Повзунок — розмір, пальцем — посунути страву</div>`;
+    const cv = el.querySelector('canvas'), rg = el.querySelector('input'), x = cv.getContext('2d'), draw = () => x.drawImage(compose(bg, cut, f, 512), 0, 0);
+    rg.addEventListener('input', () => { f.s = rg.value / 100; draw(); });
+    el.addEventListener('click', e => { const z = e.target.closest('[data-z]')?.dataset.z; if (!z) return; if (z === '0') Object.assign(f, fit0()); else f.s = Math.min(1.6, Math.max(.35, f.s + (z === '+' ? .05 : -.05))); rg.value = Math.round(f.s * 100); draw(); });
+    let p0 = null; cv.addEventListener('pointerdown', e => { p0 = { x: e.clientX, y: e.clientY, f: { ...f } }; cv.setPointerCapture(e.pointerId); });
+    cv.addEventListener('pointermove', e => { if (!p0) return; const r = cv.getBoundingClientRect(); f.x = Math.max(-.4, Math.min(.4, p0.f.x + (e.clientX - p0.x) / r.width)); f.y = Math.max(-.4, Math.min(.4, p0.f.y + (e.clientY - p0.y) / r.height)); draw(); });
+    cv.addEventListener('pointerup', () => { p0 = null; }); draw();
+  }
+  const finalData = (bg, cut, f) => compose(bg, cut, f).toDataURL('image/jpeg', .9);
+  async function prep(u, cid) { // чернетка ШІ → { cut, bg } або null (тоді фото як є)
+    try { const b = bgOf(cid), [cut, bg] = await Promise.all([cutOut(u), b ? pic(b) : null]); return cut ? { cut, bg } : null; } catch { return null; }
+  }
 
   // ---------- головне вікно: блоки меню (кожен блок — свій стиль і зразки → фото блоку однакові) ----------
   async function open(ctx) {
@@ -120,32 +187,41 @@ window.PHOTOAI = (() => {
   async function anchor(list, cid) {
     const [it, ...rest] = list, w = box('📸 Зразок блоку', `<div class="ph-hint" style="margin-top:0">⏳ Малюю першу страву «${esc(nm(it))}» — вона задасть фон, кут і світло для решти ${rest.length}…</div>`);
     const r = await gen(it); if (!r) return catWin(cid); inf.n = r.n; inf.over = r.over;
+    const pr = r.cut ? await prep(r.draft, cid) : null, f = fit0();
     if (!document.getElementById('phw')) return;
-    w.querySelector('.modal').innerHTML = `<h3>📸 Зразок блоку — ${esc(nm(it))}</h3><img src="${esc(r.draft)}" alt="" style="display:block;width:min(320px,100%);aspect-ratio:1;object-fit:cover;border-radius:12px;margin:0 auto">
+    w.querySelector('.modal').innerHTML = `<h3>📸 Зразок блоку — ${esc(nm(it))}</h3>${pr ? '<div id="phFit"></div>' : `<img src="${esc(r.draft)}" alt="" style="display:block;width:min(320px,100%);aspect-ratio:1;object-fit:cover;border-radius:12px;margin:0 auto">`}
       <div class="ph-hint" style="text-align:center">Подобається? Тоді решта ${rest.length} страв блоку буде в такому ж стилі.</div>
       <div class="ph-act"><button class="btn primary" data-v="ok">✅ Так — взяти й робити решту</button><button class="btn" data-v="again">🔄 Інший варіант</button><button class="btn ghost" data-v="no">✕ Стоп</button></div>`;
+    if (pr) fitter(w.querySelector('#phFit'), pr.bg, pr.cut, f);
     w.addEventListener('click', async e => {
       const b = e.target.closest('[data-v]'); if (!b) return; w.querySelectorAll('[data-v]').forEach(x => { x.disabled = true; }); const v = b.dataset.v;
-      if (v === 'ok') { try { upd({ cat: { ...inf.cat, [cid]: { ...tgt(cid), refs: [r.draft] } } }); await C.vapi('photoApply', { id: it.id }); C.onDone?.(); } catch (x) { C.toast('⚠️ ' + x.message); return close(); } return run(rest, cid); }
+      if (v === 'ok') { try { upd({ cat: { ...inf.cat, [cid]: { ...tgt(cid), refs: [r.draft] } } }); await C.vapi('photoApply', { id: it.id, ...(pr ? { data: finalData(pr.bg, pr.cut, f), fit: f } : {}) }); C.onDone?.(); } catch (x) { C.toast('⚠️ ' + x.message); return close(); } return run(rest, cid); }
       await C.vapi('photoDrop', { id: it.id }).catch(() => {});
       if (v === 'again') return anchor(list, cid); catWin(cid);
     });
   }
   async function run(list, cid) {
-    const done = [], w = box('📸 Генерую…', '<div id="phProg" class="ph-hint">…</div><div id="phGrid" class="ph-g" style="max-height:50vh"></div>');
+    const done = [], w = box('📸 Генерую…', '<div id="phProg" class="ph-hint">…</div><div id="phGrid" class="ph-g" style="max-height:50vh"></div><div id="phEd" hidden></div>');
+    const thumb = d => d.pr ? compose(d.pr.bg, d.pr.cut, d.f, 256).toDataURL('image/jpeg', .8) : d.u;
     for (const [k, it] of list.entries()) {
       if (!document.getElementById('phw')) break; w.querySelector('#phProg').textContent = `⏳ ${k + 1} / ${list.length}: ${nm(it)}`;
       const r = await gen(it); if (!r) { if (!paid) break; continue; } inf.n = r.n; inf.over = r.over;
-      done.push({ it, u: r.draft }); w.querySelector('#phGrid').insertAdjacentHTML('beforeend', `<button class="ph-d on" data-i="${done.length - 1}" style="background:#000 url('${esc(r.draft)}') center/cover;outline:3px solid var(--green,#3c3)" title="${esc(nm(it))}"><b>${esc(nm(it))}</b></button>`);
+      const d = { it, u: r.draft, pr: r.cut ? await prep(r.draft, cid) : null, f: fit0() }; done.push(d);
+      w.querySelector('#phGrid').insertAdjacentHTML('beforeend', `<button class="ph-d on" data-i="${done.length - 1}" style="background:#000 url('${esc(thumb(d))}') center/cover;outline:3px solid var(--green,#3c3)" title="${esc(nm(it))}">${d.pr ? '<span data-fit style="position:absolute;top:3px;left:3px;background:#000b;color:#fff;border-radius:8px;padding:2px 5px;font-size:14px">📐</span>' : ''}<b>${esc(nm(it))}</b></button>`);
     }
     if (!done.length) return cid ? catWin(cid) : close();
-    w.querySelector('#phProg').innerHTML = `✅ Готово: ${done.length}. Торкніться фото, яке НЕ подобається, — воно не піде в меню.`;
-    w.querySelector('.modal').insertAdjacentHTML('beforeend', '<div class="ph-act"><button class="btn primary" data-f="ok">✅ Взяти в меню</button><button class="btn ghost" data-f="no">Відкинути всі</button></div>');
+    const tip = `✅ Готово: ${done.length}. Торкніться фото, яке НЕ подобається, — воно не піде в меню.${done.some(d => d.pr) ? ' 📐 — підігнати розмір страви.' : ''}`; w.querySelector('#phProg').innerHTML = tip;
+    w.querySelector('.modal').insertAdjacentHTML('beforeend', '<div class="ph-act" id="phFin"><button class="btn primary" data-f="ok">✅ Взяти в меню</button><button class="btn ghost" data-f="no">Відкинути всі</button></div>');
+    const ed = w.querySelector('#phEd'), grid = w.querySelector('#phGrid'), fin = w.querySelector('#phFin'); let cur = null;
+    const edit = i => { cur = i; const d = done[i]; grid.hidden = fin.hidden = true; ed.hidden = false; w.querySelector('#phProg').textContent = '📐 ' + nm(d.it);
+      fitter(ed, d.pr.bg, d.pr.cut, d.f); ed.insertAdjacentHTML('beforeend', '<div class="ph-act"><button class="btn primary" data-e="ok">✅ Готово</button></div>'); };
     w.addEventListener('click', async e => {
+      if (e.target.closest('[data-e]')) { const t = grid.querySelector(`[data-i="${cur}"]`); t.style.backgroundImage = `url('${thumb(done[cur])}')`; ed.hidden = true; ed.innerHTML = ''; grid.hidden = fin.hidden = false; w.querySelector('#phProg').innerHTML = tip; return; }
+      const z = e.target.closest('#phGrid [data-fit]'); if (z) return edit(+z.closest('[data-i]').dataset.i);
       const t = e.target.closest('#phGrid [data-i]'); if (t) { t.classList.toggle('on'); const on = t.classList.contains('on'); t.style.outline = `3px solid ${on ? 'var(--green,#3c3)' : 'var(--red,#e44)'}`; t.style.opacity = on ? 1 : .4; return; }
       const f = e.target.closest('[data-f]'); if (!f) return; f.disabled = true;
       const keep = new Set([...w.querySelectorAll('#phGrid .on')].map(b => +b.dataset.i)); let n = 0;
-      for (const [i, d] of done.entries()) { if (f.dataset.f === 'ok' && keep.has(i)) { if (await C.vapi('photoApply', { id: d.it.id }).catch(() => null)) n++; } else await C.vapi('photoDrop', { id: d.it.id }).catch(() => {}); }
+      for (const [i, d] of done.entries()) { if (f.dataset.f === 'ok' && keep.has(i)) { if (await C.vapi('photoApply', { id: d.it.id, ...(d.pr ? { data: finalData(d.pr.bg, d.pr.cut, d.f), fit: d.f } : {}) }).catch(() => null)) n++; } else await C.vapi('photoDrop', { id: d.it.id }).catch(() => {}); }
       C.toast(`📸 У меню: ${n} фото`); C.onDone?.(); if (cid) { try { upd(await C.vapi('photoInfo')); } catch {} return catWin(cid); } close();
     });
   }
@@ -156,7 +232,7 @@ window.PHOTOAI = (() => {
     st.src ??= it.img ? 'edit' : 'gen'; st.note ??= inf.dish[it.id] || ''; st.strict ??= true;
     const hasPhoto = st.src !== 'gen', srcImg = st.src === 'up' ? st.data : st.src === 'edit' ? it.img : '';
     const ci = C.menu.categories.find(c => c.items.includes(it))?.id || '', rc = (inf.cat[ci]?.refs.length || inf.refs.length);
-    st.refs ??= !hasPhoto || !!inf.cat[ci]?.refs.length;
+    st.refs ??= !hasPhoto || !!inf.cat[ci]?.refs.length; const bgu = bgOf(ci); st.cut ??= !!bgu;
     const opt = (k, l, dis) => `<button class="btn sm ${st.src === k ? 'primary' : ''}" data-d="src" data-v="${k}" ${dis ? 'disabled' : ''}>${l}</button>`;
     const w = box('', `<h3>📸 ${esc(nm(it))}</h3>
       <div class="muted" style="font-size:13px;margin-bottom:6px">1. Звідки фото</div>
@@ -167,11 +243,13 @@ window.PHOTOAI = (() => {
       <div class="muted" style="font-size:12px">ШІ також бере назву${it.desc?.uk ? ', склад' : ''}${it.size ? ' і вагу' : ''} з меню. Опис зберігається для цієї страви — і в касі, і в кабінеті.</div>
       <div style="display:grid;gap:6px;margin-top:12px">
         ${hasPhoto ? `<label class="kv" style="cursor:pointer"><span>🎯 Суворо як на фото <small class="muted">(міняє лише фон і світло)</small></span><input type="checkbox" id="phS" ${st.strict ? 'checked' : ''}></label>` : ''}
-        <label class="kv" style="cursor:pointer"><span>🖼 Зразки блоку — фон, посуд, кут (${rc})</span><input type="checkbox" id="phR" ${st.refs ? 'checked' : ''} ${!rc ? 'disabled' : ''}></label></div>
+        <label class="kv" style="cursor:pointer"><span>🖼 Зразки блоку — фон, посуд, кут (${rc})</span><input type="checkbox" id="phR" ${st.refs ? 'checked' : ''} ${!rc ? 'disabled' : ''}></label>
+        ${bgu ? `<label class="kv" style="cursor:pointer"><span>🖼 На спільний фон <small class="muted">(фон однаковий, розмір — самі)</small></span><input type="checkbox" id="phB" ${st.cut ? 'checked' : ''}></label>` : ''}</div>
+      ${bgu && inf.cut[it.id] ? '<div class="btnrow" style="margin-top:8px"><button class="btn sm" data-d="refit">📐 Підігнати розмір — без ШІ, безкоштовно</button></div>' : ''}
       <details style="margin-top:10px"><summary>🎨 Стиль закладу (спільний для всіх фото)</summary><div style="margin-top:8px">${styleBlock('')}</div></details>
       ${quotaRow()}
       <div class="ph-act"><button class="btn primary" data-d="go">✨ Згенерувати</button><button class="btn ghost" data-d="x">Закрити</button></div>`);
-    const grab = () => { st.note = w.querySelector('#phN').value.trim(); const s = w.querySelector('#phS'), r = w.querySelector('#phR'); if (s) st.strict = s.checked; if (r && !r.disabled) st.refs = r.checked; };
+    const grab = () => { st.note = w.querySelector('#phN').value.trim(); const s = w.querySelector('#phS'), r = w.querySelector('#phR'); if (s) st.strict = s.checked; if (r && !r.disabled) st.refs = r.checked; const g = w.querySelector('#phB'); if (g) st.cut = g.checked; };
     w.addEventListener('change', e => { if (e.target.id === 'phS') { grab(); dishWin(it, st); } });
     w.addEventListener('click', async e => {
       if (e.target === w) return close();
@@ -179,25 +257,29 @@ window.PHOTOAI = (() => {
       const b = e.target.closest('[data-d]'); if (!b) return; const a = b.dataset.d;
       if (a === 'x') { grab(); if (st.note !== (inf.dish[it.id] || '')) C.vapi('photoStyleSet', { dish: { id: it.id, note: st.note } }).then(() => { inf.dish[it.id] = st.note; }).catch(() => {}); return close(); }
       if (a === 'src') { grab(); const v = b.dataset.v; if (v === 'up') { const data = await C.img(); if (!data) return; st.data = data; } st.src = v; st.refs = v === 'gen'; return dishWin(it, st); }
+      if (a === 'refit') { grab(); b.disabled = true; const pr = await prep(inf.cut[it.id], ci); if (!pr) { b.disabled = false; return C.toast('⚠️ Вирізку не знайдено — згенеруйте ще раз'); } return review(it, st, { cut: 1, pr, fit: { ...fit0(), ...inf.fit[it.id] } }); }
       if (a === 'go') {
         grab(); try { await saveStyle(w, ''); } catch (x) { return C.toast('⚠️ ' + x.message); }
         b.disabled = true; b.textContent = '⏳ ШІ малює… до хвилини';
-        const body = { id: it.id, note: st.note, strict: st.strict ? 1 : 0, refs: st.refs ? 1 : 0, series: st.refs && hasPhoto && !st.strict ? 1 : 0, ...(st.src === 'edit' ? { mode: 'edit' } : st.src === 'up' ? { data: st.data } : {}) };
+        const body = { id: it.id, cut: st.cut ? 1 : 0, note: st.note, strict: st.strict ? 1 : 0, refs: st.refs ? 1 : 0, series: st.refs && hasPhoto && !st.strict ? 1 : 0, ...(st.src === 'edit' ? { mode: 'edit' } : st.src === 'up' ? { data: st.data } : {}) };
         const r = await make(body); if (st.note) inf.dish[it.id] = st.note; else delete inf.dish[it.id];
         if (!r) { b.disabled = false; b.textContent = '✨ Згенерувати'; return; }
         inf.n = r.n; inf.over = r.over; review(it, st, r);
       }
     });
   }
-  function review(it, st, r) {
+  async function review(it, st, r) {
+    const ci = C.menu.categories.find(c => c.items.includes(it))?.id || '', pr = r.pr || (r.cut ? await prep(r.draft, ci) : null), f = r.fit || { ...fit0(), ...inf.fit[it.id] }, refit = !r.draft; // refit — лише новий розмір старої вирізки, без ШІ
     const before = st.src === 'up' ? st.data : st.src === 'edit' ? it.img : '';
-    const w = box('📸 ' + esc(nm(it)), `<div style="display:grid;grid-template-columns:${before ? '1fr 1fr' : '1fr'};gap:8px">${before ? `<figure style="margin:0"><img src="${esc(before)}" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px"><figcaption class="muted" style="text-align:center">було</figcaption></figure>` : ''}<figure style="margin:0"><img src="${esc(r.draft)}" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px"><figcaption class="muted" style="text-align:center">ШІ</figcaption></figure></div>
-      <div class="muted" style="font-size:12px;margin-top:8px">Цього місяця: ${r.n} фото${r.over ? ` · понад ліміт ${r.over} × ${r.price} ₴` : r.free == null ? ' · без ліміту' : ` з ${r.free} безкоштовних`}</div>
+    const w = box('📸 ' + esc(nm(it)), `${pr ? '<div id="phFit"></div>' : `<div style="display:grid;grid-template-columns:${before ? '1fr 1fr' : '1fr'};gap:8px">${before ? `<figure style="margin:0"><img src="${esc(before)}" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px"><figcaption class="muted" style="text-align:center">було</figcaption></figure>` : ''}<figure style="margin:0"><img src="${esc(r.draft)}" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px"><figcaption class="muted" style="text-align:center">ШІ</figcaption></figure></div>`}
+      ${r.cut && !pr ? '<div class="ph-steps">⚠️ ШІ не дав чистого тла — фото без спільного фону. Спробуйте «ще раз».</div>' : ''}
+      ${refit ? '' : `<div class="muted" style="font-size:12px;margin-top:8px">Цього місяця: ${r.n} фото${r.over ? ` · понад ліміт ${r.over} × ${r.price} ₴` : r.free == null ? ' · без ліміту' : ` з ${r.free} безкоштовних`}</div>`}
       <div class="ph-act"><button class="btn primary" data-v="ok">✅ Взяти в меню</button><button class="btn" data-v="edit">✍️ Підправити опис і ще раз</button><button class="btn ghost" data-v="no">✕ Не треба</button></div>`);
+    if (pr) fitter(w.querySelector('#phFit'), pr.bg, pr.cut, f);
     w.addEventListener('click', async e => {
       const b = e.target.closest('[data-v]'); if (!b) return; b.disabled = true; const v = b.dataset.v;
-      if (v === 'ok') { try { const x = await C.vapi('photoApply', { id: it.id }); C.toast(x.anchor ? '📸 Фото в меню · стало зразком блоку' : '📸 Фото в меню'); C.onDone?.(); } catch (x) { C.toast('⚠️ ' + x.message); } return close(); }
-      await C.vapi('photoDrop', { id: it.id }).catch(() => {});
+      if (v === 'ok') { try { const x = await C.vapi('photoApply', { id: it.id, ...(pr ? { data: finalData(pr.bg, pr.cut, f), fit: f } : {}) }); if (pr) { inf.fit[it.id] = { ...f }; if (r.draft) inf.cut[it.id] = r.draft.replace('/img/draft-', '/img/cut-'); } C.toast(x.anchor ? '📸 Фото в меню · стало зразком блоку' : '📸 Фото в меню'); C.onDone?.(); } catch (x) { C.toast('⚠️ ' + x.message); } return close(); }
+      if (!refit) await C.vapi('photoDrop', { id: it.id }).catch(() => {});
       if (v === 'edit') return dishWin(it, st); close();
     });
   }

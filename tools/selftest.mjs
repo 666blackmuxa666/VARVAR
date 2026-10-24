@@ -700,6 +700,13 @@ async function apiTests() {
     const p = await pos(A, 'photoStyleSet', { cat: cid, prompt: 'QA блок' }); must(p.status === 200 && p.j.cat?.[cid]?.prompt === 'QA блок' && p.j.prompt !== 'QA блок', JSON.stringify(p.j).slice(0, 200));
     if (st) { const r = await pos(A, 'photoStyleSet', { cat: cid, refFrom: st.id }); must(r.j.cat?.[cid]?.refs.length === 1 && !r.j.refs.length, 'зразок блоку: ' + JSON.stringify(r.j).slice(0, 200)); await pos(A, 'photoStyleSet', { cat: cid, refDel: 0 }); }
     const e = await pos(A, 'photoStyleSet', { cat: cid, prompt: '' }); must(!e.j.cat?.[cid], 'порожній блок лишився'); });
+  await step('🖼 Спільний фон блоку: своє фото зберігається й прибирається; без чернетки ШІ-фону → 400', async () => {
+    const cid = menu.categories.find(c => !c.tech)?.id; if (!cid) return;
+    const px = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    const r = await pos(A, 'photoStyleSet', { cat: cid, bgData: px }); must(r.status === 200 && /\/img\/bg-/.test(r.j.cat?.[cid]?.bg || '') && !r.j.bg, 'фон: ' + JSON.stringify(r.j.cat?.[cid]).slice(0, 150));
+    const im = await fetch(API + new URL(r.j.cat[cid].bg).pathname); must(im.ok, 'фон не віддається ' + im.status);
+    const d = await pos(A, 'photoStyleSet', { cat: cid, bgDraft: 1 }); must(d.status === 400, 'без чернетки → ' + d.status);
+    const x = await pos(A, 'photoStyleSet', { cat: cid, bgDel: 1 }); must(!x.j.cat?.[cid], 'блок без фону лишився'); });
   await step('🔳 QR: картинки всіх столів, скан працює; «нові коди» — старий QR не працює', async () => {
     const q = await pos(A, 'qrInfo'); must(q.status === 200 && q.j.list.length === q.j.n && q.j.n > 0, JSON.stringify(q.j).slice(0, 200));
     const x = q.j.list[1], png = await fetch(API + new URL(x.img).pathname); const b = new Uint8Array(await png.arrayBuffer()); must(png.ok && b[0] === 0x89 && b[1] === 0x50, 'не PNG ' + png.status);
