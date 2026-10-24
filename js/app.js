@@ -604,7 +604,10 @@ function touchIcon(src, name) {
   const set = h => { let l = document.querySelector('link[rel="apple-touch-icon"]'); if (!l) { l = document.createElement('link'); l.rel = 'apple-touch-icon'; document.head.append(l); } l.href = h; };
   let t = document.querySelector('meta[name="apple-mobile-web-app-title"]'); if (!t) { t = document.createElement('meta'); t.name = 'apple-mobile-web-app-title'; document.head.append(t); } t.content = name || '';
   const i = new Image(); i.crossOrigin = 'anonymous';
-  i.onload = () => { try { const c = document.createElement('canvas'); c.width = c.height = 180; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 180, 180); const k = 150 / Math.max(i.naturalWidth || 150, i.naturalHeight || 150), w = (i.naturalWidth || 150) * k, h = (i.naturalHeight || 150) * k; x.drawImage(i, (180 - w) / 2, (180 - h) / 2, w, h); set(c.toDataURL('image/png')); } catch { set(src); } };
+  i.onload = () => { try { const c = document.createElement('canvas'); c.width = c.height = 180; const x = c.getContext('2d'); const k = 150 / Math.max(i.naturalWidth || 150, i.naturalHeight || 150), w = (i.naturalWidth || 150) * k, h = (i.naturalHeight || 150) * k; x.drawImage(i, (180 - w) / 2, (180 - h) / 2, w, h);
+    // світлий логотип (білий на прозорому) — на темне тло, інакше біле на білому
+    const d = x.getImageData(0, 0, 180, 180).data; let s = 0, n = 0; for (let p = 0; p < d.length; p += 4) if (d[p + 3] > 40) { s += d[p] * .3 + d[p + 1] * .59 + d[p + 2] * .11; n++; }
+    x.globalCompositeOperation = 'destination-over'; x.fillStyle = n && s / n > 170 ? '#141414' : '#fff'; x.fillRect(0, 0, 180, 180); set(c.toDataURL('image/png')); } catch { set(src); } };
   i.onerror = () => {}; i.src = src;
 }
 function fitLogo() {
